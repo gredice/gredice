@@ -10,6 +10,7 @@ import {
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Home,
     Inbox,
@@ -178,6 +179,10 @@ const breadcrumbSections: {
             {
                 ...adminPages.DeliveryRequests,
                 icon: <Truck className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryNotifications,
+                icon: <Graph className="size-4" />,
             },
         ],
     },

@@ -59,6 +59,10 @@ export const adminPages = {
         href: KnownPages.DeliveryRequests,
         label: 'Dostava - Zahtjevi',
     },
+    DeliveryNotifications: {
+        href: KnownPages.DeliveryNotifications,
+        label: 'Dostava - Obavijesti',
+    },
     CommunicationInbox: {
         href: KnownPages.CommunicationInbox,
         label: 'Sandučić',
@@ -115,6 +119,7 @@ export const adminBreadcrumbPages = [
     adminPages.SowingStatistics,
     adminPages.DeliverySlots,
     adminPages.DeliveryRequests,
+    adminPages.DeliveryNotifications,
     adminPages.CommunicationInbox,
     adminPages.CommunicationEmails,
     adminPages.CommunicationSlack,

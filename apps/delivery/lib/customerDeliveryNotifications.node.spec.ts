@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createDeliveryLifecycleEvent } from '@gredice/notifications';
+import {
+    createDeliveryLifecycleEvent,
+    customerDeliveryNotificationWebPushTtlSeconds,
+} from '@gredice/notifications';
+import { deliveryLifecycleNotificationMaximumAgeSeconds } from '@gredice/storage';
 import {
     type CustomerDeliveryMilestoneInput,
     customerDeliveryLifecycleNotification,
@@ -45,6 +49,13 @@ async function withDeliveryNotificationsEnabled<T>(run: () => Promise<T>) {
         }
     }
 }
+
+test('delivery lifecycle outbound TTL matches the bounded health lookback', () => {
+    assert.equal(
+        customerDeliveryNotificationWebPushTtlSeconds,
+        deliveryLifecycleNotificationMaximumAgeSeconds,
+    );
+});
 
 test('delivery notification producer remains disabled unless explicitly enabled', () => {
     assert.equal(customerDeliveryNotificationsEnabled(undefined), false);
@@ -139,11 +150,15 @@ test('delivery lifecycle notification contains only bounded lifecycle metadata',
         requestId: 'request-1',
         retryAttempt: 2,
         runId: 'run-1',
+        source: {
+            id: 'private-operation-id',
+            kind: 'route-progress',
+            version: 7,
+        },
         stopId: '42',
     });
     const serialized = JSON.stringify(notification);
     for (const privateValue of [
-        'private-operation-id',
         'latitude',
         'longitude',
         'address',
@@ -295,11 +310,16 @@ test('exception notification uses bounded customer copy without operational note
         requestId: 'request-1',
         retryAttempt: 0,
         runId: 'run-1',
+        source: {
+            id: 'exception-operation',
+            kind: 'exception-operation',
+            version: 1,
+        },
         stopId: '42',
     });
-    assert.equal(
-        JSON.stringify(notification).includes('exception-operation'),
-        false,
+    assert.doesNotMatch(
+        JSON.stringify(notification),
+        /latitude|longitude|address|phone|email|notes/u,
     );
 });
 
@@ -311,7 +331,7 @@ test('safe milestone publishing contains notification storage failures', async (
                 accountId: 'account-1',
             },
             {
-                createNotification: async () => {
+                createNotificationWithOutcome: async () => {
                     throw new Error('storage unavailable');
                 },
                 getDeliveryAccountContacts: async () => [
@@ -329,6 +349,121 @@ test('safe milestone publishing contains notification storage failures', async (
     );
 
     assert.deepEqual(result, { outcome: 'failed' });
+});
+
+test('producer preserves opaque source IDs and deterministically hashes accepted unsafe operation IDs', async () => {
+    const sourceIdsByRequestId = new Map<string, string>();
+    const unsafeSourceIds = [
+        'operation with spaces',
+        'operation/with/slash',
+        'operacija-žetva',
+        'ž'.repeat(128),
+    ];
+    const inputs = [
+        { requestId: 'request-safe', sourceId: 'legacy-operation:1_2' },
+        {
+            requestId: 'request-safe-trimmed',
+            sourceId: ' legacy-operation:trimmed ',
+        },
+        { requestId: 'request-safe-max', sourceId: 'x'.repeat(128) },
+        ...unsafeSourceIds.map((sourceId, index) => ({
+            requestId: `request-unsafe-${index}`,
+            sourceId,
+        })),
+        {
+            requestId: 'request-unsafe-replay',
+            sourceId: unsafeSourceIds[0] ?? '',
+        },
+    ].map(({ requestId, sourceId }, index) => ({
+        ...customerDeliveryMilestoneInput(requestId, index + 1),
+        source: {
+            id: sourceId,
+            kind: 'stop-operation' as const,
+            version: 1,
+        },
+    }));
+
+    const results = await withDeliveryNotificationsEnabled(async () =>
+        publishCustomerDeliveryMilestonesSafely(inputs, {
+            createNotificationWithOutcome: async (notification) => {
+                const metadata = notification.metadata;
+                if (!metadata || typeof metadata !== 'object') {
+                    assert.fail('Expected bounded lifecycle metadata.');
+                }
+                const requestId = Reflect.get(metadata, 'requestId');
+                const source = Reflect.get(metadata, 'source');
+                if (
+                    typeof requestId !== 'string' ||
+                    !source ||
+                    typeof source !== 'object'
+                ) {
+                    assert.fail('Expected lifecycle source metadata.');
+                }
+                const sourceId = Reflect.get(source, 'id');
+                if (typeof sourceId !== 'string') {
+                    assert.fail('Expected a lifecycle source ID.');
+                }
+                sourceIdsByRequestId.set(requestId, sourceId);
+                return {
+                    notificationId: `notification:${requestId}`,
+                    outcome: 'created',
+                };
+            },
+            getDeliveryAccountContacts: async () => [
+                {
+                    accountId: 'account-1',
+                    avatarUrl: null,
+                    displayName: 'Customer',
+                    id: 'user-1',
+                    role: 'user',
+                    userName: 'customer@example.test',
+                },
+            ],
+            getDeliveryRequestOwners: async (requestIds) =>
+                requestIds.map((requestId) => ({
+                    accountId: 'account-1',
+                    requestId,
+                })),
+        }),
+    );
+
+    assert.equal(
+        results.every((result) => result.outcome === 'published'),
+        true,
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-safe'),
+        'legacy-operation:1_2',
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-safe-trimmed'),
+        'legacy-operation:trimmed',
+    );
+    assert.equal(sourceIdsByRequestId.get('request-safe-max'), 'x'.repeat(128));
+    const hashedSourceIds = unsafeSourceIds.map((_, index) => {
+        const sourceId = sourceIdsByRequestId.get(`request-unsafe-${index}`);
+        assert.ok(sourceId);
+        assert.match(sourceId, /^sha256:[A-Za-z0-9_-]{43}$/u);
+        assert.ok(sourceId.length <= 128);
+        return sourceId;
+    });
+    assert.equal(new Set(hashedSourceIds).size, unsafeSourceIds.length);
+    assert.equal(
+        hashedSourceIds[0],
+        'sha256:NjNiCYbYgIsggPrWEQaupQ3SPcZowQbXugTXPPzP5w8',
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-unsafe-replay'),
+        hashedSourceIds[0],
+    );
+    for (const unsafeSourceId of unsafeSourceIds) {
+        assert.equal(
+            JSON.stringify([...sourceIdsByRequestId.values()]).includes(
+                unsafeSourceId,
+            ),
+            false,
+        );
+    }
 });
 
 test('milestone publishing fans out one recipient-scoped row per customer-capable account user', async () => {
@@ -367,14 +502,20 @@ test('milestone publishing fans out one recipient-scoped row per customer-capabl
                         userName: 'driver@example.test',
                     },
                 ],
-                createNotification: async (notification, options) => {
+                createNotificationWithOutcome: async (
+                    notification,
+                    options,
+                ) => {
                     const idempotencyKey = options?.idempotencyKey;
                     assert.ok(idempotencyKey);
                     created.push({
                         idempotencyKey,
                         userId: notification.userId ?? null,
                     });
-                    return `notification:${notification.userId}`;
+                    return {
+                        notificationId: `notification:${notification.userId}`,
+                        outcome: 'created',
+                    };
                 },
             },
         ),
@@ -393,6 +534,196 @@ test('milestone publishing fans out one recipient-scoped row per customer-capabl
         new Set(created.map(({ idempotencyKey }) => idempotencyKey)).size,
         2,
     );
+});
+
+test('milestone publishing records one privacy-safe suppression decision when every recipient row is reused', async () => {
+    const recordedDecisions: unknown[] = [];
+    const result = await withDeliveryNotificationsEnabled(async () =>
+        publishCustomerDeliveryMilestoneSafely(
+            {
+                ...customerDeliveryMilestoneInput('request-1', 1),
+                accountId: 'account-1',
+            },
+            {
+                getDeliveryAccountContacts: async () => [
+                    {
+                        accountId: 'account-1',
+                        avatarUrl: null,
+                        displayName: 'First',
+                        id: 'user-1',
+                        role: 'user',
+                        userName: 'first@example.test',
+                    },
+                    {
+                        accountId: 'account-1',
+                        avatarUrl: null,
+                        displayName: 'Second',
+                        id: 'user-2',
+                        role: 'farmer',
+                        userName: 'second@example.test',
+                    },
+                ],
+                createNotificationWithOutcome: async (notification) => ({
+                    notificationId: `notification:${notification.userId}`,
+                    outcome: 'reused',
+                }),
+                recordLifecycleNotificationDecision: async (event) => {
+                    recordedDecisions.push(event);
+                },
+            },
+        ),
+    );
+
+    assert.deepEqual(result, {
+        notificationId: 'notification:user-1',
+        notificationIds: ['notification:user-1', 'notification:user-2'],
+        outcome: 'published',
+    });
+    assert.deepEqual(recordedDecisions, [
+        {
+            aggregateId: 'request-1',
+            data: {
+                decision: 'suppressed',
+                milestone: 'arrived',
+                reason: 'idempotency_reused',
+                retryAttempt: 0,
+                runId: 'run-1',
+                sourceId: 'arrival:request-1',
+                stopId: '1',
+            },
+            type: 'delivery.request.lifecycle_notification.decision',
+            version: 1,
+        },
+    ]);
+    assert.doesNotMatch(
+        JSON.stringify(recordedDecisions),
+        /account-1|user-1|user-2|latitude|longitude|address|email|content|header/u,
+    );
+});
+
+test('reused notification publication stays successful when suppression telemetry fails', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+        const result = await withDeliveryNotificationsEnabled(async () =>
+            publishCustomerDeliveryMilestoneSafely(
+                {
+                    ...customerDeliveryMilestoneInput('request-private', 9),
+                    accountId: 'account-private',
+                },
+                {
+                    getDeliveryAccountContacts: async () => [
+                        {
+                            accountId: 'account-private',
+                            avatarUrl: null,
+                            displayName: 'Customer',
+                            id: 'user-private',
+                            role: 'user',
+                            userName: 'private@example.test',
+                        },
+                    ],
+                    createNotificationWithOutcome: async () => ({
+                        notificationId: 'notification:reused',
+                        outcome: 'reused',
+                    }),
+                    recordLifecycleNotificationDecision: async () => {
+                        throw new Error('telemetry unavailable');
+                    },
+                },
+            ),
+        );
+
+        assert.deepEqual(result, {
+            notificationId: 'notification:reused',
+            notificationIds: ['notification:reused'],
+            outcome: 'published',
+        });
+        assert.deepEqual(warnings, [
+            [
+                'Customer delivery suppression telemetry write failed',
+                { errorName: 'Error', milestone: 'arrived' },
+            ],
+        ]);
+        assert.doesNotMatch(
+            JSON.stringify(warnings),
+            /request-private|account-private|user-private|run-1|stop/u,
+        );
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test('route-progress suppression is recorded only after publication is reused', async () => {
+    const recordedDecisions: unknown[] = [];
+    let publicationAttempt = 0;
+    const input = {
+        accountId: 'account-1',
+        milestone: 'near-arrival' as const,
+        occurredAt: new Date('2026-07-16T12:00:00.000Z'),
+        requestId: 'request-1',
+        retryAttempt: 0,
+        runId: 'run-1',
+        source: {
+            id: 'route-progress:2026-07-16T12:00:00.000Z',
+            kind: 'route-progress' as const,
+            version: 1,
+        },
+        stopId: 1,
+    };
+    const dependencies = {
+        getDeliveryAccountContacts: async () => [
+            {
+                accountId: 'account-1',
+                avatarUrl: null,
+                displayName: 'Customer',
+                id: 'user-1',
+                role: 'user',
+                userName: 'customer@example.test',
+            },
+        ],
+        createNotificationWithOutcome: async () => {
+            publicationAttempt += 1;
+            if (publicationAttempt === 1) {
+                throw new Error('temporary publication failure');
+            }
+            return {
+                notificationId: 'notification:route-progress',
+                outcome: publicationAttempt === 2 ? 'created' : 'reused',
+            } as const;
+        },
+        recordLifecycleNotificationDecision: async (event: unknown) => {
+            recordedDecisions.push(event);
+        },
+    };
+
+    const [failed, recovered, reused] = await withDeliveryNotificationsEnabled(
+        async () => [
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+        ],
+    );
+
+    assert.deepEqual(failed, { outcome: 'failed' });
+    assert.equal(recovered.outcome, 'published');
+    assert.equal(reused.outcome, 'published');
+    assert.deepEqual(recordedDecisions, [
+        {
+            aggregateId: 'request-1',
+            data: {
+                decision: 'suppressed',
+                milestone: 'near-arrival',
+                reason: 'eta_threshold_already_emitted',
+                retryAttempt: 0,
+                runId: 'run-1',
+                sourceId: 'route-progress:2026-07-16T12:00:00.000Z',
+                stopId: '1',
+            },
+            type: 'delivery.request.lifecycle_notification.decision',
+            version: 1,
+        },
+    ]);
 });
 
 test('batch milestone publishing isolates one notification storage failure', async () => {
@@ -419,12 +750,15 @@ test('batch milestone publishing isolates one notification storage failure', asy
                         role: 'user',
                         userName: `${accountId}@example.test`,
                     })),
-                createNotification: async (notification) => {
+                createNotificationWithOutcome: async (notification) => {
                     if (notification.accountId === 'account-2') {
                         throw new Error('one write failed');
                     }
                     publishedAccountIds.push(notification.accountId);
-                    return `notification:${notification.accountId}`;
+                    return {
+                        notificationId: `notification:${notification.accountId}`,
+                        outcome: 'created',
+                    };
                 },
             },
         ),

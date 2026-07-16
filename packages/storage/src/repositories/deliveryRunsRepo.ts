@@ -1227,6 +1227,7 @@ export type DeliveryRunRouteProgressMilestone = {
     milestone: 'near-arrival' | 'next-stop' | 'delayed';
     occurredAt: Date;
     retryAttempt: number;
+    sourceId: string;
     stopId: number;
 };
 
@@ -1287,6 +1288,9 @@ export async function recordDeliveryRunRouteProgressMilestones({
             progress.stopId <= 0 ||
             !Number.isSafeInteger(progress.retryAttempt) ||
             progress.retryAttempt < 0 ||
+            progress.sourceId.trim().length === 0 ||
+            progress.sourceId.length > 128 ||
+            !/^[A-Za-z0-9][A-Za-z0-9._:~-]*$/u.test(progress.sourceId) ||
             !(progress.occurredAt instanceof Date) ||
             Number.isNaN(progress.occurredAt.getTime())
         ) {
@@ -1389,9 +1393,8 @@ export async function recordDeliveryRunRouteProgressMilestones({
         );
         const recorded = [];
         for (const progress of uniqueMilestones) {
-            if (existingKeys.has(deliveryRunRouteProgressSourceKey(progress))) {
-                continue;
-            }
+            const sourceKey = deliveryRunRouteProgressSourceKey(progress);
+            if (existingKeys.has(sourceKey)) continue;
             recorded.push(
                 await createEvent(
                     knownEvents.delivery.requestRouteProgressV1(

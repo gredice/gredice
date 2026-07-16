@@ -7,6 +7,7 @@ import {
     getNotificationCampaign,
     getNotificationsForCenter,
     isDeliverablePushSubscription,
+    maxNotificationReadBatchSize,
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
@@ -625,7 +626,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 notificationIds: z
-                    .array(z.string())
+                    .array(z.string().min(1))
+                    .max(maxNotificationReadBatchSize)
                     .describe(
                         'List of notification IDs to update. If not provided, all notifications will be updated.',
                     ),

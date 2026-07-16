@@ -248,6 +248,11 @@ export function customerDeliveryLifecycleNotification(
             requestId: event.requestId,
             retryAttempt: event.retryAttempt,
             runId: event.runId,
+            source: {
+                id: event.source.id,
+                kind: event.source.kind,
+                version: event.source.version,
+            },
             stopId: event.stopId,
         },
         primaryChannel: 'in_app',

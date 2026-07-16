@@ -15,6 +15,7 @@ import type {
     DeliveryRequestExceptionRecoveredPayload,
     DeliveryRequestFulfilledPayloadV1,
     DeliveryRequestFulfilledPayloadV2,
+    DeliveryRequestLifecycleNotificationDecisionPayload,
     DeliveryRequestLifecycleNotificationProcessedPayload,
     DeliveryRequestLifecycleTransitionPayload,
     DeliveryRequestReadyEmailProcessedPayload,
@@ -507,6 +508,15 @@ export const knownEvents = {
         ) => ({
             type: knownEventTypes.delivery
                 .requestLifecycleNotificationProcessed,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestLifecycleNotificationDecisionV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleNotificationDecisionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestLifecycleNotificationDecision,
             version: 1,
             aggregateId,
             data,

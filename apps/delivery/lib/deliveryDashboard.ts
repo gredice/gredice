@@ -1443,6 +1443,7 @@ async function publishCustomerDeliveryProgress({
                     milestone: milestone.milestone,
                     occurredAt: milestone.occurredAt,
                     retryAttempt: milestone.retryAttempt,
+                    sourceId: milestone.source.id,
                     stopId: milestone.stopId,
                 })),
         });

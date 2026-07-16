@@ -7,6 +7,7 @@ import {
     type QueuedWebPushAttempt,
     WebPushDeliveryError,
     type WebPushFailure,
+    webPushFailureEventTypes,
     webPushTimeToLiveSeconds,
 } from './webPushSender';
 
@@ -295,6 +296,70 @@ test('processWebPushAttempts invalidates expired push subscriptions', async () =
     assert.equal(result.retried, 0);
     assert.equal(failures[0]?.invalidSubscription, true);
     assert.equal(failures[0]?.providerResponseCode, 'invalid_410');
+    assert.ok(failures[0]);
+    assert.deepEqual(webPushFailureEventTypes(failures[0]), [
+        'failed',
+        'unsubscribed',
+    ]);
+});
+
+test('processWebPushAttempts isolates failure recorder errors and rejects after the batch', async () => {
+    const recordedAttemptIds: number[] = [];
+    const sentAttemptIds: number[] = [];
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+        await assert.rejects(
+            processWebPushAttempts({
+                attempts: [
+                    queuedAttempt({ attemptId: 1 }),
+                    queuedAttempt({ attemptId: 2 }),
+                ],
+                recorders: {
+                    failed: async (attempt) => {
+                        recordedAttemptIds.push(attempt.attemptId);
+                        if (attempt.attemptId === 1) {
+                            throw new Error('injected recorder failure');
+                        }
+                    },
+                },
+                send: async (attempt) => {
+                    sentAttemptIds.push(attempt.attemptId);
+                    throw new WebPushDeliveryError(
+                        'gone-private',
+                        410,
+                        'expired-endpoint-private',
+                    );
+                },
+            }),
+            (error: unknown) => {
+                assert.ok(error instanceof AggregateError);
+                assert.equal(error.errors.length, 1);
+                assert.match(error.message, /could not be recorded/u);
+                return true;
+            },
+        );
+    } finally {
+        console.warn = originalWarn;
+    }
+
+    assert.deepEqual(sentAttemptIds, [1, 2]);
+    assert.deepEqual(recordedAttemptIds, [1, 2]);
+    assert.deepEqual(
+        warnings.map(([message]) => message),
+        ['Web Push failure recording failed', 'Web Push delivery failed'],
+    );
+    assert.doesNotMatch(
+        JSON.stringify(warnings[0]),
+        /gone-private|expired-endpoint-private|auth-secret|p256dh-key|subscription-1|notification-1/u,
+    );
+});
+
+test('retryable web push failures do not emit unsubscribe engagement', () => {
+    assert.deepEqual(webPushFailureEventTypes({ invalidSubscription: false }), [
+        'failed',
+    ]);
 });
 
 test('createAndSendTestWebPushNotification creates a test notification and reports targeted devices', async () => {

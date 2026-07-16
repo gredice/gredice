@@ -123,6 +123,16 @@ export type DeliveryLifecycleSource = {
     version: number;
 };
 
+export const deliveryLifecycleSourceIdMaximumCharacters = 128;
+
+export function isDeliveryLifecycleSourceId(value: string) {
+    return (
+        value.length > 0 &&
+        value.length <= deliveryLifecycleSourceIdMaximumCharacters &&
+        /^[A-Za-z0-9][A-Za-z0-9._:~-]*$/u.test(value)
+    );
+}
+
 type DeliveryLifecycleObservationBase = {
     occurredAt: string;
     source: DeliveryLifecycleSource;
@@ -235,6 +245,11 @@ function assertCanonicalTimestamp(value: string) {
 
 function assertSource(source: DeliveryLifecycleSource) {
     assertNonEmptyIdentifier(source.id, 'source.id');
+    if (!isDeliveryLifecycleSourceId(source.id)) {
+        throw new Error(
+            `source.id must be a bounded opaque identifier of at most ${deliveryLifecycleSourceIdMaximumCharacters} characters.`,
+        );
+    }
     assertSafeInteger(source.version, 'source.version');
 }
 

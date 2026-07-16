@@ -13,7 +13,9 @@ import {
     deliveryLifecyclePolicies,
     deliveryLifecyclePreferenceCategory,
     deliveryLifecycleRetentionPolicy,
+    deliveryLifecycleSourceIdMaximumCharacters,
     deliveryLifecycleThresholds,
+    isDeliveryLifecycleSourceId,
 } from './deliveryLifecycle';
 
 const context: DeliveryLifecycleContext = {
@@ -124,6 +126,25 @@ describe('delivery lifecycle contract', () => {
             deliveryLifecycleIdempotencyKey(context, 'delivered', 0),
             deliveryLifecycleIdempotencyKey(context, 'delivered', 4),
         );
+    });
+
+    test('recognizes only bounded opaque lifecycle source identifiers', () => {
+        assert.equal(isDeliveryLifecycleSourceId('legacy-operation:1_2'), true);
+        assert.equal(
+            isDeliveryLifecycleSourceId(
+                'x'.repeat(deliveryLifecycleSourceIdMaximumCharacters),
+            ),
+            true,
+        );
+        for (const invalid of [
+            '',
+            'operation with spaces',
+            'operation/with/slash',
+            'operacija-žetva',
+            'x'.repeat(deliveryLifecycleSourceIdMaximumCharacters + 1),
+        ]) {
+            assert.equal(isDeliveryLifecycleSourceId(invalid), false);
+        }
     });
 
     test('creates validated events directly from authoritative durable milestones', () => {
@@ -419,6 +440,18 @@ describe('delivery lifecycle contract', () => {
                     },
                 }),
             /source.version/,
+        );
+        assert.throws(
+            () =>
+                applyDeliveryLifecycleObservation(state, {
+                    ...observation({ kind: 'route-started' }),
+                    source: {
+                        id: `operation-${'x'.repeat(119)}`,
+                        kind: 'run-state',
+                        version: 1,
+                    },
+                }),
+            /source.id must be a bounded opaque identifier of at most 128 characters/,
         );
         assert.throws(
             () =>

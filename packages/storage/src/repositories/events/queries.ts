@@ -19,7 +19,12 @@ import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
 import { enqueueAutomationRunsForEvent } from '../automationsRepo';
 import { knownEventTypes } from './knownEventTypes';
-import type { AiRequestKind, Event, UserBirthdayRewardPayload } from './types';
+import type {
+    AiRequestKind,
+    DeliveryRequestLifecycleNotificationDecisionPayload,
+    Event,
+    UserBirthdayRewardPayload,
+} from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
 const DEFAULT_ALL_EVENTS_PAGE_SIZE = 10000;
@@ -466,6 +471,70 @@ export async function createEvent(
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 
     return event;
+}
+
+export async function createDeliveryLifecycleNotificationDecisionOnce(event: {
+    aggregateId: string;
+    data: DeliveryRequestLifecycleNotificationDecisionPayload;
+    type: string;
+    version: number;
+}) {
+    if (
+        event.type !==
+            knownEventTypes.delivery.requestLifecycleNotificationDecision ||
+        event.version !== 1
+    ) {
+        throw new Error('Invalid delivery lifecycle notification decision.');
+    }
+    const { data } = event;
+    const scopeByMilestone = data.reason === 'eta_threshold_already_emitted';
+    const lockKey = [
+        'delivery-lifecycle-notification-decision',
+        event.aggregateId,
+        scopeByMilestone ? 'milestone-scope' : data.sourceId,
+        data.milestone,
+        data.reason,
+        String(data.retryAttempt),
+        data.runId,
+        data.stopId,
+    ].join(':');
+    return await storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${lockKey}));`,
+        );
+        const existing = await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(
+                and(
+                    eq(events.type, event.type),
+                    eq(events.version, event.version),
+                    eq(events.aggregateId, event.aggregateId),
+                    eq(sql<string>`${events.data}->>'decision'`, data.decision),
+                    eq(
+                        sql<string>`${events.data}->>'milestone'`,
+                        data.milestone,
+                    ),
+                    eq(sql<string>`${events.data}->>'reason'`, data.reason),
+                    eq(
+                        sql<string>`${events.data}->>'retryAttempt'`,
+                        String(data.retryAttempt),
+                    ),
+                    eq(sql<string>`${events.data}->>'runId'`, data.runId),
+                    scopeByMilestone
+                        ? undefined
+                        : eq(
+                              sql<string>`${events.data}->>'sourceId'`,
+                              data.sourceId,
+                          ),
+                    eq(sql<string>`${events.data}->>'stopId'`, data.stopId),
+                ),
+            )
+            .limit(1);
+        if (existing[0]) return false;
+        await createEvent(event, tx);
+        return true;
+    });
 }
 
 async function getDomainAiAnalysisEvents(

@@ -31,6 +31,10 @@
             "schedule": "* * * * *"
         },
         {
+            "path": "/api/internal/cron/delivery-notification-health",
+            "schedule": "*/5 * * * *"
+        },
+        {
             "path": "/api/internal/cron/delivery-lifecycle-reconciliation",
             "schedule": "* * * * *"
         },

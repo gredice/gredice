@@ -77,3 +77,10 @@ test('notification mutation does not reveal out-of-scope notification IDs', () =
     assert.equal(block.match(/Notification not found/g)?.length, 2);
     assert.doesNotMatch(block, /Unauthorized access to notification/);
 });
+
+test('bulk notification reads enforce the storage batch limit at the API boundary', () => {
+    assert.match(
+        routeBlock('put', '/'),
+        /\.array\(z\.string\(\)\.min\(1\)\)\s*\.max\(maxNotificationReadBatchSize\)/,
+    );
+});

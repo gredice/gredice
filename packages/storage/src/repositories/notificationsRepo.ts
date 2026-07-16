@@ -20,6 +20,7 @@ import { storage } from '..';
 import {
     customerDeliveryNotificationRecipientRoles,
     deliveryLifecycleNotificationCategory,
+    deliveryLifecycleNotificationMaximumAgeSeconds,
     deliveryLifecycleNotificationType,
     isCustomerDeliveryLifecycleNotification,
 } from '../deliveryNotificationPolicy';
@@ -68,6 +69,7 @@ type NotificationDatabaseClient = StorageClient | TransactionClient;
 
 // Croatian fallback label for legacy web-push subscriptions without client device metadata.
 export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
+export const maxNotificationReadBatchSize = 200;
 
 export type NotificationDeliveryDecision = {
     accountId: string;
@@ -161,12 +163,16 @@ export type CreateNotificationOptions = {
     routeDelivery?: boolean;
 };
 
+export type CreateNotificationResult = {
+    notificationId: string;
+    outcome: 'created' | 'reused';
+};
+
 export const deliveryLifecycleEmailProvider = 'delivery_lifecycle_email';
 
 const defaultDeliveryLifecycleEmailMaxAttempts = 3;
 const defaultDeliveryLifecycleEmailClaimLeaseMs = 5 * 60 * 1000;
 const maximumDeliveryLifecycleEmailClaimLeaseMs = 60 * 60 * 1000;
-const maximumDeliveryLifecycleEmailAgeSeconds = 24 * 60 * 60;
 const maximumDeliveryLifecycleEmailRecipientLength = 254;
 const deliveryLifecycleEmailExpiredClaimCode = 'claim_expired_before_send';
 
@@ -1439,7 +1445,10 @@ async function createNotificationWithDatabase(
             );
         }
 
-        return notificationId;
+        return {
+            notificationId,
+            outcome: 'reused' as const,
+        };
     }
 
     if (options.routeDelivery !== false) {
@@ -1457,13 +1466,16 @@ async function createNotificationWithDatabase(
         }
     }
 
-    return notificationId;
+    return {
+        notificationId,
+        outcome: 'created' as const,
+    };
 }
 
-export async function createNotification(
+export async function createNotificationWithOutcome(
     notification: InsertNotification,
     options: CreateNotificationOptions = {},
-) {
+): Promise<CreateNotificationResult> {
     const normalizedIdempotencyKey = options.idempotencyKey?.trim();
     if (options.idempotencyKey !== undefined && !normalizedIdempotencyKey) {
         throw new Error('Notification idempotency key must not be empty.');
@@ -1492,6 +1504,14 @@ export async function createNotification(
             notificationId,
         );
     });
+}
+
+export async function createNotification(
+    notification: InsertNotification,
+    options: CreateNotificationOptions = {},
+) {
+    const result = await createNotificationWithOutcome(notification, options);
+    return result.notificationId;
 }
 
 async function enqueuePushDeliveryAttemptsWithDatabase(
@@ -2236,6 +2256,105 @@ export async function revalidateQueuedWebPushDeliveryAttempt({
     });
 }
 
+export async function recordWebPushDeliveryFailure({
+    attemptId,
+    body,
+    invalidSubscription,
+    message,
+    notificationId,
+    now = new Date(),
+    providerResponseCode,
+    pushSubscriptionId,
+    statusCode,
+    willRetry,
+}: {
+    attemptId: number;
+    body: string | null;
+    invalidSubscription: boolean;
+    message: string;
+    notificationId: string;
+    now?: Date;
+    providerResponseCode: string;
+    pushSubscriptionId: string;
+    statusCode: number | null;
+    willRetry: boolean;
+}) {
+    if (invalidSubscription && willRetry) {
+        throw new Error('Invalid Web Push subscriptions cannot be retried.');
+    }
+    return await storage().transaction(async (tx) => {
+        const recorded = await tx
+            .update(notificationDeliveryAttempts)
+            .set({
+                attemptedAt: now,
+                failedAt: willRetry ? null : now,
+                providerResponseBody: body?.slice(0, 512) ?? null,
+                providerResponseCode: providerResponseCode.slice(0, 64),
+                status: willRetry ? 'queued' : 'failed',
+            })
+            .where(
+                and(
+                    eq(notificationDeliveryAttempts.id, attemptId),
+                    eq(
+                        notificationDeliveryAttempts.notificationId,
+                        notificationId,
+                    ),
+                    eq(notificationDeliveryAttempts.channel, 'push'),
+                    eq(notificationDeliveryAttempts.provider, 'web_push_queue'),
+                    eq(
+                        notificationDeliveryAttempts.pushSubscriptionId,
+                        pushSubscriptionId,
+                    ),
+                    eq(notificationDeliveryAttempts.status, 'queued'),
+                    eq(
+                        notificationDeliveryAttempts.providerResponseCode,
+                        webPushDeliveryClaimProviderCode,
+                    ),
+                ),
+            )
+            .returning({ id: notificationDeliveryAttempts.id });
+        if (!recorded[0]) return false;
+
+        await tx
+            .update(webPushSubscriptions)
+            .set({
+                failCount: sql`${webPushSubscriptions.failCount} + 1`,
+                lastFailureAt: now,
+                lastFailureCode: providerResponseCode.slice(0, 64),
+                lastFailureReason: message.slice(0, 512),
+                updatedAt: now,
+                ...(invalidSubscription
+                    ? {
+                          enabled: false,
+                          revokedAt: now,
+                          revokedReason: 'web_push_endpoint_invalid',
+                      }
+                    : {}),
+            })
+            .where(eq(webPushSubscriptions.id, pushSubscriptionId));
+
+        const metadata = {
+            invalidSubscription,
+            provider: 'web_push',
+            statusCode,
+            willRetry,
+        };
+        await tx.insert(notificationDeliveryEvents).values(
+            (invalidSubscription
+                ? (['failed', 'unsubscribed'] as const)
+                : (['failed'] as const)
+            ).map((type) => ({
+                deliveryAttemptId: attemptId,
+                metadata,
+                notificationId,
+                occurredAt: now,
+                type,
+            })),
+        );
+        return true;
+    });
+}
+
 function boundedPositiveInteger(
     value: number,
     fallback: number,
@@ -2433,6 +2552,7 @@ async function updateDeferredDeliveryLifecycleEmailAttempt(
     {
         attemptId,
         attemptedAt,
+        deferralRecordedAt,
         expectedProviderResponseCode = 'quiet_hours',
         notificationId,
         providerResponseCode,
@@ -2441,6 +2561,7 @@ async function updateDeferredDeliveryLifecycleEmailAttempt(
     }: DeliveryLifecycleEmailCandidate & {
         attemptId: number;
         attemptedAt: Date;
+        deferralRecordedAt?: Date;
         expectedProviderResponseCode?: 'claimed' | 'quiet_hours';
         providerResponseCode: string;
         status?: 'dropped' | 'queued';
@@ -2473,6 +2594,23 @@ async function updateDeferredDeliveryLifecycleEmailAttempt(
             ),
         )
         .returning({ id: notificationDeliveryAttempts.id });
+    if (
+        result[0] &&
+        deferralRecordedAt &&
+        providerResponseCode === 'quiet_hours'
+    ) {
+        await db.insert(notificationDeliveryEvents).values({
+            deliveryAttemptId: attemptId,
+            metadata: {
+                eligibleAt: attemptedAt.toISOString(),
+                provider: deliveryLifecycleEmailProvider,
+                reason: 'quiet_hours',
+            },
+            notificationId,
+            occurredAt: deferralRecordedAt,
+            type: 'queued',
+        });
+    }
     return Boolean(result[0]);
 }
 
@@ -2483,8 +2621,9 @@ function deliveryLifecycleNotificationIsExpired(
     const ttlSeconds = Math.max(
         0,
         Math.min(
-            notification.ttlSeconds ?? maximumDeliveryLifecycleEmailAgeSeconds,
-            maximumDeliveryLifecycleEmailAgeSeconds,
+            notification.ttlSeconds ??
+                deliveryLifecycleNotificationMaximumAgeSeconds,
+            deliveryLifecycleNotificationMaximumAgeSeconds,
         ),
     );
     return (
@@ -2573,9 +2712,9 @@ export async function getDeliveryLifecycleEmailCandidates({
                             least(
                                 coalesce(
                                     ${notifications.ttlSeconds},
-                                    ${maximumDeliveryLifecycleEmailAgeSeconds}
+                                    ${deliveryLifecycleNotificationMaximumAgeSeconds}
                                 ),
-                                ${maximumDeliveryLifecycleEmailAgeSeconds}
+                                ${deliveryLifecycleNotificationMaximumAgeSeconds}
                             )
                         ) * interval '1 second'
                     ) > ${now}`,
@@ -2738,20 +2877,20 @@ async function insertDeliveryLifecycleEmailAttempt(
     if (!attemptId) {
         throw new Error('Failed to create delivery lifecycle email attempt.');
     }
-    if (status === 'queued') {
-        await db.insert(notificationDeliveryEvents).values({
-            deliveryAttemptId: attemptId,
-            metadata: {
-                ...(attemptedAt.getTime() !== queuedAt.getTime()
-                    ? { eligibleAt: attemptedAt.toISOString() }
-                    : {}),
-                provider: deliveryLifecycleEmailProvider,
-            },
-            notificationId,
-            occurredAt: queuedAt,
-            type: 'queued',
-        });
-    }
+    await db.insert(notificationDeliveryEvents).values({
+        deliveryAttemptId: attemptId,
+        metadata: {
+            ...(attemptedAt.getTime() !== queuedAt.getTime()
+                ? { eligibleAt: attemptedAt.toISOString() }
+                : {}),
+            provider: deliveryLifecycleEmailProvider,
+            reason: providerResponseCode,
+            ...(status === 'dropped' ? { retryable: false } : {}),
+        },
+        notificationId,
+        occurredAt: queuedAt,
+        type: status === 'queued' ? 'queued' : 'failed',
+    });
     return attemptId;
 }
 
@@ -2799,7 +2938,20 @@ async function terminalizeDeliveryLifecycleEmailCandidate(
                 ),
             )
             .returning({ id: notificationDeliveryAttempts.id });
-        if (terminalized[0]) return queuedAttemptId;
+        if (terminalized[0]) {
+            await db.insert(notificationDeliveryEvents).values({
+                deliveryAttemptId: queuedAttemptId,
+                metadata: {
+                    provider: deliveryLifecycleEmailProvider,
+                    reason,
+                    retryable: false,
+                },
+                notificationId,
+                occurredAt: now,
+                type: 'failed',
+            });
+            return queuedAttemptId;
+        }
     }
     return await insertDeliveryLifecycleEmailAttempt(db, {
         accountId,
@@ -2860,6 +3012,52 @@ async function expireDeliveryLifecycleEmailClaim(
         occurredAt: now,
         type: 'failed',
     });
+}
+
+async function recordDeliveryLifecycleEmailExhaustion(
+    db: TransactionClient,
+    {
+        attemptId,
+        notificationId,
+        now,
+        userId,
+    }: DeliveryLifecycleEmailCandidate & {
+        attemptId: number;
+        now: Date;
+    },
+) {
+    const existing = await db
+        .select({ id: notificationDeliveryEvents.id })
+        .from(notificationDeliveryEvents)
+        .innerJoin(
+            notificationDeliveryAttempts,
+            eq(
+                notificationDeliveryAttempts.id,
+                notificationDeliveryEvents.deliveryAttemptId,
+            ),
+        )
+        .where(
+            and(
+                eq(notificationDeliveryEvents.notificationId, notificationId),
+                eq(notificationDeliveryEvents.type, 'failed'),
+                eq(notificationDeliveryAttempts.userId, userId),
+                sql`${notificationDeliveryEvents.metadata} ->> 'reason' = ${'attempts_exhausted'}`,
+            ),
+        )
+        .limit(1);
+    if (existing[0]) return false;
+    await db.insert(notificationDeliveryEvents).values({
+        deliveryAttemptId: attemptId,
+        metadata: {
+            provider: deliveryLifecycleEmailProvider,
+            reason: 'attempts_exhausted',
+            retryable: false,
+        },
+        notificationId,
+        occurredAt: now,
+        type: 'failed',
+    });
+    return true;
 }
 
 export async function claimDeliveryLifecycleEmailCandidate({
@@ -2991,14 +3189,24 @@ export async function claimDeliveryLifecycleEmailCandidate({
                 userId,
             });
         }
-        if (
-            existingAttempts.filter(
-                (attempt) =>
-                    attempt.status === 'failed' &&
-                    attempt.providerResponseCode !==
-                        deliveryLifecycleEmailExpiredClaimCode,
-            ).length >= boundedMaxAttempts
-        ) {
+        const terminalFailures = existingAttempts.filter(
+            (attempt) =>
+                attempt.status === 'failed' &&
+                attempt.providerResponseCode !==
+                    deliveryLifecycleEmailExpiredClaimCode,
+        );
+        if (terminalFailures.length >= boundedMaxAttempts) {
+            const lastFailure = terminalFailures.sort(
+                (left, right) => right.id - left.id,
+            )[0];
+            if (lastFailure) {
+                await recordDeliveryLifecycleEmailExhaustion(tx, {
+                    attemptId: lastFailure.id,
+                    notificationId,
+                    now,
+                    userId,
+                });
+            }
             return {
                 reason: 'attempts_exhausted',
                 status: 'unavailable',
@@ -3276,6 +3484,7 @@ export async function startDeliveryLifecycleEmailAttempt(
                         now,
                         preference,
                     ),
+                    deferralRecordedAt: now,
                     expectedProviderResponseCode: 'claimed',
                     notificationId: args.notificationId,
                     providerResponseCode: emailDecision.reason,
@@ -3362,6 +3571,7 @@ type DeliveryLifecycleEmailAttemptFinalStatus = 'dropped' | 'failed' | 'sent';
 async function finalizeDeliveryLifecycleEmailAttempt({
     attemptId,
     expectedProviderResponseCode,
+    maxAttempts,
     notificationId,
     now,
     providerMessageId,
@@ -3371,6 +3581,7 @@ async function finalizeDeliveryLifecycleEmailAttempt({
 }: DeliveryLifecycleEmailCandidate & {
     attemptId: number;
     expectedProviderResponseCode: 'claimed' | 'sending';
+    maxAttempts?: number;
     now: Date;
     providerMessageId?: string | null;
     providerResponseCode: string;
@@ -3411,16 +3622,47 @@ async function finalizeDeliveryLifecycleEmailAttempt({
             )
             .returning({ id: notificationDeliveryAttempts.id });
         if (!result[0]) return false;
+        let retryExhausted = false;
+        if (status === 'failed' && maxAttempts) {
+            const [failureTotal] = await tx
+                .select({ count: sql<number>`count(*)::int` })
+                .from(notificationDeliveryAttempts)
+                .where(
+                    and(
+                        eq(
+                            notificationDeliveryAttempts.notificationId,
+                            notificationId,
+                        ),
+                        eq(notificationDeliveryAttempts.userId, userId),
+                        eq(
+                            notificationDeliveryAttempts.provider,
+                            deliveryLifecycleEmailProvider,
+                        ),
+                        eq(notificationDeliveryAttempts.status, 'failed'),
+                        sql`${notificationDeliveryAttempts.providerResponseCode}
+                            is distinct from ${deliveryLifecycleEmailExpiredClaimCode}`,
+                    ),
+                );
+            retryExhausted = (failureTotal?.count ?? 0) >= maxAttempts;
+        }
         await tx.insert(notificationDeliveryEvents).values({
             deliveryAttemptId: attemptId,
             metadata: {
                 provider: deliveryLifecycleEmailProvider,
-                retryable: status === 'failed',
+                retryable: status === 'failed' && !retryExhausted,
             },
             notificationId,
             occurredAt: now,
             type: status === 'sent' ? 'sent' : 'failed',
         });
+        if (retryExhausted) {
+            await recordDeliveryLifecycleEmailExhaustion(tx, {
+                attemptId,
+                notificationId,
+                now,
+                userId,
+            });
+        }
         return true;
     });
 }
@@ -3444,12 +3686,19 @@ export async function markDeliveryLifecycleEmailAttemptSent(
 export async function markDeliveryLifecycleEmailAttemptFailed(
     args: DeliveryLifecycleEmailCandidate & {
         attemptId: number;
+        maxAttempts?: number;
         now?: Date;
     },
 ) {
+    const maxAttempts = boundedPositiveInteger(
+        args.maxAttempts ?? defaultDeliveryLifecycleEmailMaxAttempts,
+        defaultDeliveryLifecycleEmailMaxAttempts,
+        10,
+    );
     return await finalizeDeliveryLifecycleEmailAttempt({
         ...args,
         expectedProviderResponseCode: 'sending',
+        maxAttempts,
         now: args.now ?? new Date(),
         providerResponseCode: 'sender_failed',
         status: 'failed',
@@ -3879,37 +4128,155 @@ export function getNotifications(page: number, limit: number) {
     });
 }
 
-export function setNotificationRead(
+async function recordLifecycleNotificationsOpened(
+    db: TransactionClient,
+    notificationIds: string[],
+    occurredAt: Date,
+) {
+    if (notificationIds.length === 0) return;
+    const visibleAttemptWithoutOpenEvent = and(
+        inArray(notificationDeliveryAttempts.notificationId, notificationIds),
+        eq(notificationDeliveryAttempts.channel, 'in_app'),
+        eq(notificationDeliveryAttempts.provider, 'router'),
+        or(
+            eq(notificationDeliveryAttempts.status, 'accepted'),
+            and(
+                eq(notificationDeliveryAttempts.status, 'queued'),
+                eq(
+                    notificationDeliveryAttempts.providerResponseCode,
+                    'quiet_hours',
+                ),
+            ),
+        ),
+        notExists(
+            db
+                .select({ id: notificationDeliveryEvents.id })
+                .from(notificationDeliveryEvents)
+                .where(
+                    and(
+                        eq(
+                            notificationDeliveryEvents.notificationId,
+                            notificationDeliveryAttempts.notificationId,
+                        ),
+                        eq(notificationDeliveryEvents.type, 'opened'),
+                    ),
+                ),
+        ),
+    );
+    await db.execute(sql`
+        insert into ${notificationDeliveryEvents}
+            ("delivery_attempt_id", "notification_id", "type", "occurred_at", "metadata")
+        select distinct on (${notificationDeliveryAttempts.notificationId})
+            ${notificationDeliveryAttempts.id},
+            ${notificationDeliveryAttempts.notificationId},
+            'opened'::notification_delivery_event_type,
+            ${occurredAt}::timestamp,
+            jsonb_build_object('surface', 'notification_center')
+        from ${notificationDeliveryAttempts}
+        where ${visibleAttemptWithoutOpenEvent}
+        order by
+            ${notificationDeliveryAttempts.notificationId},
+            ${notificationDeliveryAttempts.id} asc
+    `);
+}
+
+export async function setNotificationRead(
     id: string,
     read: boolean,
     readWhere: string,
 ) {
-    return storage()
-        .update(notifications)
-        .set({ readAt: read ? new Date() : null, readWhere })
-        .where(eq(notifications.id, id));
+    if (!read) {
+        return await storage()
+            .update(notifications)
+            .set({ readAt: null, readWhere })
+            .where(eq(notifications.id, id));
+    }
+    return await storage().transaction(async (tx) => {
+        await acquireNotificationDeliveryLock(tx, id);
+        const occurredAt = new Date();
+        const updated = await tx
+            .update(notifications)
+            .set({ readAt: occurredAt, readWhere })
+            .where(and(eq(notifications.id, id), isNull(notifications.readAt)))
+            .returning({
+                category: notifications.category,
+                id: notifications.id,
+                type: notifications.type,
+            });
+        const lifecycleIds = updated.flatMap((notification) =>
+            isCustomerDeliveryLifecycleNotification(notification)
+                ? [notification.id]
+                : [],
+        );
+        await recordLifecycleNotificationsOpened(tx, lifecycleIds, occurredAt);
+        return updated;
+    });
 }
 
-export function setAllNotificationsRead(
+export async function setAllNotificationsRead(
     accountId: string,
     userId: string,
     notificationIds: string[],
     read: boolean,
     readWhere: string,
 ) {
-    return storage()
-        .update(notifications)
-        .set({ readAt: read ? new Date() : null, readWhere })
-        .where(
-            and(
-                inArray(notifications.id, notificationIds),
-                eq(notifications.accountId, accountId),
-                or(
-                    isNull(notifications.userId),
-                    eq(notifications.userId, userId),
-                ),
-            ),
+    if (notificationIds.length > maxNotificationReadBatchSize) {
+        throw new RangeError(
+            `Cannot update more than ${maxNotificationReadBatchSize} notifications at once`,
         );
+    }
+    const uniqueIds = [...new Set(notificationIds)].sort();
+    if (uniqueIds.length === 0) return [];
+    const scopedNotifications = and(
+        inArray(notifications.id, uniqueIds),
+        eq(notifications.accountId, accountId),
+        or(isNull(notifications.userId), eq(notifications.userId, userId)),
+    );
+    if (!read) {
+        return await storage()
+            .update(notifications)
+            .set({ readAt: null, readWhere })
+            .where(scopedNotifications);
+    }
+    return await storage().transaction(async (tx) => {
+        const unreadScopedNotifications = await tx
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(and(scopedNotifications, isNull(notifications.readAt)))
+            .orderBy(asc(notifications.id));
+        const unreadScopedIds = unreadScopedNotifications.map(({ id }) => id);
+        if (unreadScopedIds.length === 0) return [];
+        for (const id of unreadScopedIds) {
+            await acquireNotificationDeliveryLock(tx, id);
+        }
+        const occurredAt = new Date();
+        const updated = await tx
+            .update(notifications)
+            .set({ readAt: occurredAt, readWhere })
+            .where(
+                and(
+                    inArray(notifications.id, unreadScopedIds),
+                    eq(notifications.accountId, accountId),
+                    or(
+                        isNull(notifications.userId),
+                        eq(notifications.userId, userId),
+                    ),
+                    isNull(notifications.readAt),
+                ),
+            )
+            .returning({
+                category: notifications.category,
+                id: notifications.id,
+                type: notifications.type,
+            });
+        const lifecycleIds = updated.flatMap((notification) =>
+            isCustomerDeliveryLifecycleNotification(notification)
+                ? [notification.id]
+                : [],
+        );
+        await recordLifecycleNotificationsOpened(tx, lifecycleIds, occurredAt);
+        return updated;
+    });
 }
 
 export function deleteNotification(id: string) {

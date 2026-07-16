@@ -527,6 +527,24 @@ export type DeliveryRequestLifecycleNotificationProcessedPayload = {
     sourceEventId: number;
 };
 
+export type DeliveryRequestLifecycleNotificationDecisionPayload = {
+    decision: 'suppressed';
+    milestone:
+        | 'route-started'
+        | 'near-arrival'
+        | 'next-stop'
+        | 'delayed'
+        | 'arrived'
+        | 'delivered'
+        | 'exception'
+        | 'recovery';
+    reason: 'eta_threshold_already_emitted' | 'idempotency_reused';
+    retryAttempt: number;
+    runId: string;
+    sourceId: string;
+    stopId: string;
+};
+
 export type DeliveryRunReassignedPayload = {
     previousDriverUserId: string;
     newDriverUserId: string;
@@ -556,7 +574,8 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestExceptionRecoveredPayload
     | DeliveryRequestSurveySentPayload
     | DeliveryRequestReadyEmailProcessedPayload
-    | DeliveryRequestLifecycleNotificationProcessedPayload;
+    | DeliveryRequestLifecycleNotificationProcessedPayload
+    | DeliveryRequestLifecycleNotificationDecisionPayload;
 
 export type DeliveryRequestEventsAnyPayload = Partial<
     DeliveryRequestCreatePayload &
