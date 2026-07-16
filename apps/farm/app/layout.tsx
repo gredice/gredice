@@ -1,3 +1,4 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import { VercelToolbar } from '@vercel/toolbar/next';
@@ -38,7 +39,10 @@ export default function RootLayout({
     const content = (
         <>
             <ClientAppProvider>
-                <AuthAppProvider>{children}</AuthAppProvider>
+                <AuthAppProvider>
+                    <ImpersonationBanner />
+                    {children}
+                </AuthAppProvider>
             </ClientAppProvider>
             <Analytics />
             {shouldInjectToolbar && <VercelToolbar />}

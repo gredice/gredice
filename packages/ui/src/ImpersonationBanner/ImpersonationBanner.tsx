@@ -1,6 +1,5 @@
 'use client';
 
-import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { useEffect, useRef, useState } from 'react';
 
 const bannerPositionStorageKey = 'gredice:impersonation-banner-position:v1';
@@ -16,6 +15,17 @@ type StoredBannerPosition = {
     topRatio: number;
 };
 
+function isStoredBannerPosition(value: unknown): value is StoredBannerPosition {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'leftRatio' in value &&
+        typeof value.leftRatio === 'number' &&
+        'topRatio' in value &&
+        typeof value.topRatio === 'number'
+    );
+}
+
 function getCookie(name: string): string | undefined {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -26,7 +36,23 @@ function getCookie(name: string): string | undefined {
 }
 
 function getStopImpersonateUrl() {
-    return `${getBrowserGrediceAppOrigin('app')}/api/users/stop-impersonate`;
+    const currentUrl = new URL(window.location.origin);
+    if (
+        currentUrl.hostname === 'gredice.test' ||
+        currentUrl.hostname.endsWith('.gredice.test')
+    ) {
+        currentUrl.hostname = 'app.gredice.test';
+        return `${currentUrl.origin}/api/users/stop-impersonate`;
+    }
+
+    if (
+        currentUrl.hostname === 'localhost' ||
+        currentUrl.hostname === '127.0.0.1'
+    ) {
+        return 'http://localhost:3003/api/users/stop-impersonate';
+    }
+
+    return 'https://app.gredice.com/api/users/stop-impersonate';
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -77,13 +103,8 @@ function getStoredPosition(): StoredBannerPosition | null {
     }
 
     try {
-        const parsedPosition = JSON.parse(
-            rawPosition,
-        ) as Partial<StoredBannerPosition>;
-        if (
-            typeof parsedPosition.leftRatio !== 'number' ||
-            typeof parsedPosition.topRatio !== 'number'
-        ) {
+        const parsedPosition: unknown = JSON.parse(rawPosition);
+        if (!isStoredBannerPosition(parsedPosition)) {
             return null;
         }
 

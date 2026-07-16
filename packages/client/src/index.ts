@@ -14,6 +14,7 @@ export { client, clientAuthenticated, clientPublic } from './hono';
 export {
     type GrediceAppOrigin,
     getBrowserGrediceAppOrigin,
+    getGrediceAppOrigin,
 } from './origins';
 export {
     type BrowserPushManager,
