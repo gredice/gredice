@@ -7,6 +7,7 @@ import {
     getEntitiesFormatted,
     getFarmUserAcceptedOperations,
     getFarmUserAcceptedOperationsByScheduleRange,
+    getFarmUserPendingVerificationOperations,
     getFarmUserRaisedBeds,
     getRaisedBedPhotoPreviews,
     getTimeZoneDateKey,
@@ -170,6 +171,10 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
         scheduleCacheTtls.operations,
     );
 });
+
+export const getFarmSchedulePendingOperations = cache(async (userId: string) =>
+    getFarmUserPendingVerificationOperations(userId),
+);
 
 export const getFarmScheduleOperationsForDay = cache(
     async (userId: string, dateKey: string, isToday: boolean) => {

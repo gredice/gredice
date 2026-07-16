@@ -21,6 +21,8 @@ type DeliveryRequestsSummaryCacheInput = {
 };
 
 const CACHE_VERSION = 'v2';
+// Raised-bed payloads added farmId in v3; keep old cached shapes out of Farm Today.
+const FARM_USER_RAISED_BED_PAYLOAD_VERSION = 'v3';
 
 export const scheduleCacheTtls = {
     day: 45,
@@ -80,7 +82,7 @@ export const scheduleCacheKeys = {
     adminDay: (date: Date | string, isToday: boolean) =>
         `schedule:admin:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${CACHE_VERSION}`,
     farmUserRaisedBeds: (userId: string) =>
-        `schedule:farm:user:${safePart(userId)}:raisedBeds:${CACHE_VERSION}`,
+        `schedule:farm:user:${safePart(userId)}:raisedBeds:${FARM_USER_RAISED_BED_PAYLOAD_VERSION}`,
     farmUserOperations: (userId: string, input?: DateRangeCacheInput) =>
         `schedule:farm:user:${safePart(userId)}:operations:${rangePart(input)}:${CACHE_VERSION}`,
     farmUserActiveOperations: (userId: string, from: Date) =>
@@ -90,7 +92,7 @@ export const scheduleCacheKeys = {
     farmRaisedBedPhotoPreviews: (raisedBedIds: number[]) =>
         `schedule:farm:raisedBedPhotoPreviews:${raisedBedIds.map(safePart).join(',')}:${CACHE_VERSION}`,
     farmUserDay: (userId: string, date: Date | string, isToday: boolean) =>
-        `schedule:farm:user:${safePart(userId)}:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${CACHE_VERSION}`,
+        `schedule:farm:user:${safePart(userId)}:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${FARM_USER_RAISED_BED_PAYLOAD_VERSION}`,
     deliveryRequestsSummary: (input: DeliveryRequestsSummaryCacheInput) =>
         [
             'delivery:requests:summary',
