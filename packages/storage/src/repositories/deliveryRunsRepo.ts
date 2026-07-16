@@ -6200,6 +6200,7 @@ async function recordDeliveryRunStopOperationInDatabase(
                                   : {}),
                           }
                         : undefined,
+                    input.occurredAt,
                 );
             } catch (error) {
                 if (error instanceof DeliveryRequestFulfillmentError) {

@@ -133,6 +133,32 @@ const deliveryHandoffReasons = new Set([
     'manual-verification',
     'other-operational',
 ]);
+const customerReceiptMaximumOfflineAgeMs = 36 * 60 * 60 * 1000;
+const customerReceiptMaximumFutureSkewMs = 5 * 60 * 1000;
+
+function customerFulfilledAt(event: DbEvent) {
+    if (
+        event.version !== 2 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        return event.createdAt;
+    }
+
+    const value = (event.data as Record<string, unknown>).fulfilledAt;
+    if (typeof value !== 'string' || value.length === 0 || value.length > 64) {
+        return event.createdAt;
+    }
+
+    const fulfilledAt = new Date(value);
+    const ageMs = event.createdAt.getTime() - fulfilledAt.getTime();
+    return Number.isFinite(fulfilledAt.getTime()) &&
+        ageMs <= customerReceiptMaximumOfflineAgeMs &&
+        ageMs >= -customerReceiptMaximumFutureSkewMs
+        ? fulfilledAt
+        : event.createdAt;
+}
 
 function customerHandoffVerification(
     event: DbEvent,
@@ -494,7 +520,7 @@ function reconstructDeliveryRequestState(
             deliveryException = undefined;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
             customerHandoffReceipt = {
-                fulfilledAt: event.createdAt,
+                fulfilledAt: customerFulfilledAt(event),
                 verification: customerHandoffVerification(event),
             };
         } else if (
@@ -1919,6 +1945,7 @@ export async function fulfillDeliveryRequest(
     deliveryNotes?: string,
     db?: DatabaseClient,
     handoffVerification?: DeliveryRequestHandoffVerificationPayload,
+    fulfilledAt?: Date,
 ): Promise<void> {
     if (!db) {
         await withDeliveryDispatchTransaction(async (tx) => {
@@ -1927,6 +1954,7 @@ export async function fulfillDeliveryRequest(
                 deliveryNotes,
                 tx,
                 handoffVerification,
+                fulfilledAt,
             );
         });
         return;
@@ -1969,6 +1997,7 @@ export async function fulfillDeliveryRequest(
             ? knownEvents.delivery.requestFulfilledV2(requestId, {
                   status: DeliveryRequestStates.FULFILLED,
                   deliveryNotes,
+                  fulfilledAt: (fulfilledAt ?? new Date()).toISOString(),
                   handoffVerification,
               })
             : knownEvents.delivery.requestFulfilledV1(requestId, {

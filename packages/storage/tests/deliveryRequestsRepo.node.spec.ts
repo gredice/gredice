@@ -612,10 +612,12 @@ test('delivery fulfillment projects only a customer-safe handoff receipt', async
             );
         }
         const fulfilledAt = new Date(Date.UTC(2099, 6, 16, 8, index, 0));
+        const syncedAt = new Date(fulfilledAt.getTime() + 30 * 60 * 1000);
         const fulfillmentEvent = await createEvent({
             ...knownEvents.delivery.requestFulfilledV2(fixture.requestId, {
                 status: DeliveryRequestStates.FULFILLED,
                 deliveryNotes: `private-note-${index}`,
+                fulfilledAt: fulfilledAt.toISOString(),
                 handoffVerification: {
                     version: 1,
                     runId: privateRunId,
@@ -635,7 +637,7 @@ test('delivery fulfillment projects only a customer-safe handoff receipt', async
                         : {}),
                 },
             }),
-            createdAt: fulfilledAt,
+            createdAt: syncedAt,
         });
 
         const request = await getDeliveryRequest(fixture.requestId);
@@ -643,7 +645,7 @@ test('delivery fulfillment projects only a customer-safe handoff receipt', async
             await getDeliveryRequestsWithEvents(fixture.accountId)
         ).find((candidate) => candidate.id === fixture.requestId);
         const expectedReceipt = {
-            fulfilledAt: fulfillmentEvent.createdAt,
+            fulfilledAt,
             verification: handoffCase.expected,
         };
 
@@ -662,6 +664,10 @@ test('delivery fulfillment projects only a customer-safe handoff receipt', async
         assert.ok(!serializedReceipt.includes(privateRunId));
         assert.ok(!serializedReceipt.includes(privateOperationId));
         assert.ok(!serializedReceipt.includes(privateReason));
+        assert.notEqual(
+            fulfillmentEvent.createdAt.getTime(),
+            expectedReceipt.fulfilledAt.getTime(),
+        );
     }
 
     await createEvent(
@@ -693,6 +699,7 @@ test('delivery fulfillment projects only a customer-safe handoff receipt', async
         aggregateId: fixture.requestId,
         data: {
             status: DeliveryRequestStates.FULFILLED,
+            fulfilledAt: malformedSentinel,
             handoffVerification: {
                 version: 1,
                 runId: malformedSentinel,

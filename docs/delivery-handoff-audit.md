@@ -111,8 +111,11 @@ for multiple accounts, but each account receives only its own request, harvest
 description, and public trace path. The customer requests API explicitly omits
 driver fulfillment notes before serialization.
 
-The durable fulfillment event supplies the server-created delivery time. Its
-handoff payload is strictly validated and reduced to one advisory state:
+The durable fulfillment event carries the validated recorded handoff time so
+an offline completion keeps the time it happened instead of the later sync
+time. Legacy or malformed timestamps fall back to the server-created event
+time. The handoff payload is strictly validated and reduced to one advisory
+state:
 
 - `scanned` becomes `verified`;
 - `no-label` remains `no-label`;

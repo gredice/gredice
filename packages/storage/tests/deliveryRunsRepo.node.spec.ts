@@ -5471,6 +5471,7 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
         assert.deepEqual(fulfillmentEvent?.data, {
             status: DeliveryRequestStates.FULFILLED,
             deliveryNotes: privateNote,
+            fulfilledAt: deliveryOccurredAt.toISOString(),
             handoffVerification: {
                 version: 1,
                 runId: run.id,

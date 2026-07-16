@@ -444,6 +444,7 @@ export type DeliveryRequestFulfilledPayloadV1 =
 
 export type DeliveryRequestFulfilledPayloadV2 =
     DeliveryRequestFulfilledPayloadBase & {
+        fulfilledAt?: string;
         handoffVerification: DeliveryRequestHandoffVerificationPayload;
     };
 
