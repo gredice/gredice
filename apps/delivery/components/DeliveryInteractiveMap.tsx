@@ -11,7 +11,9 @@ import {
     type DeliveryMapCoordinate,
     type DeliveryMapData,
     type DeliveryMapPosition,
+    type DeliveryMapSelection,
     decodeDeliveryMapPolyline,
+    deliveryMapSelectionKey,
     parseDeliveryMapData,
 } from '../lib/deliveryMapData';
 
@@ -20,6 +22,12 @@ type MapState = 'loading' | 'ready' | 'fallback';
 type MapLayers = {
     markers: google.maps.Marker[];
     polyline: google.maps.Polyline | null;
+};
+
+type RenderedMapData = {
+    layers: MapLayers;
+    positions: DeliveryMapPosition[];
+    selectionPositions: Map<string, DeliveryMapPosition>;
 };
 
 type GoogleMapsClient = {
@@ -118,9 +126,13 @@ function drawMapData(
     map: google.maps.Map,
     maps: GoogleMapsClient,
     data: DeliveryMapData,
-): { layers: MapLayers; positions: DeliveryMapPosition[] } {
+    selectedNode: DeliveryMapSelection | null,
+    onSelectedNodeChange: (selection: DeliveryMapSelection) => void,
+): RenderedMapData {
     const markers: google.maps.Marker[] = [];
     const positions: DeliveryMapPosition[] = [];
+    const selectionPositions = new Map<string, DeliveryMapPosition>();
+    const selectedKey = deliveryMapSelectionKey(selectedNode);
 
     if (data.driverLocation) {
         const driverPosition = position(data.driverLocation);
@@ -138,40 +150,70 @@ function drawMapData(
 
     data.pickupNodes.forEach((pickupNode, index) => {
         const pickupPosition = position(pickupNode);
+        const selection = pickupNode.selectionId
+            ? { kind: 'pickup' as const, id: pickupNode.selectionId }
+            : null;
+        const selectionKey = deliveryMapSelectionKey(selection);
+        const selected = Boolean(selectionKey && selectedKey === selectionKey);
         positions.push(pickupPosition);
-        markers.push(
-            new maps.Marker({
-                map,
-                position: pickupPosition,
-                title: `Lokacija preuzimanja ${index + 1}`,
-                label: {
-                    text: 'P',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                },
-                icon: markerIcon(maps, '#d97706', 10),
-            }),
-        );
+        if (selectionKey) {
+            selectionPositions.set(selectionKey, pickupPosition);
+        }
+        const marker = new maps.Marker({
+            map,
+            position: pickupPosition,
+            title: `Lokacija preuzimanja ${index + 1}`,
+            label: {
+                text: 'P',
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: '700',
+            },
+            icon: markerIcon(
+                maps,
+                selected ? '#92400e' : '#d97706',
+                selected ? 13 : 10,
+            ),
+            zIndex: selected ? 900 : undefined,
+        });
+        if (selection) {
+            marker.addListener('click', () => onSelectedNodeChange(selection));
+        }
+        markers.push(marker);
     });
 
     for (const stop of data.stops) {
         const stopPosition = position(stop);
+        const selection = stop.selectionId
+            ? { kind: 'delivery' as const, id: stop.selectionId }
+            : null;
+        const selectionKey = deliveryMapSelectionKey(selection);
+        const selected = Boolean(selectionKey && selectedKey === selectionKey);
         positions.push(stopPosition);
-        markers.push(
-            new maps.Marker({
-                map,
-                position: stopPosition,
-                title: `Dostavna stanica ${stop.sequence}`,
-                label: {
-                    text: String(stop.sequence),
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                },
-                icon: markerIcon(maps, '#0f766e', 10),
-            }),
-        );
+        if (selectionKey) {
+            selectionPositions.set(selectionKey, stopPosition);
+        }
+        const marker = new maps.Marker({
+            map,
+            position: stopPosition,
+            title: `Dostavna stanica ${stop.sequence}`,
+            label: {
+                text: String(stop.sequence),
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: '700',
+            },
+            icon: markerIcon(
+                maps,
+                selected ? '#115e59' : '#0f766e',
+                selected ? 13 : 10,
+            ),
+            zIndex: selected ? 900 : undefined,
+        });
+        if (selection) {
+            marker.addListener('click', () => onSelectedNodeChange(selection));
+        }
+        markers.push(marker);
     }
 
     const routePositions = data.encodedPolyline
@@ -190,7 +232,11 @@ function drawMapData(
               })
             : null;
 
-    return { layers: { markers, polyline }, positions };
+    return {
+        layers: { markers, polyline },
+        positions,
+        selectionPositions,
+    };
 }
 
 function fitMap(
@@ -215,22 +261,32 @@ export function DeliveryInteractiveMap({
     mapUrl,
     version,
     title,
+    selectedNode = null,
+    onSelectedNodeChange,
 }: {
     apiKey: string;
     mapUrl: string;
     version: string | null;
     title: string;
+    selectedNode?: DeliveryMapSelection | null;
+    onSelectedNodeChange?: (selection: DeliveryMapSelection) => void;
 }) {
     const containerRef = useRef<HTMLElement>(null);
     const mapRef = useRef<google.maps.Map>(null);
     const mapsRef = useRef<GoogleMapsClient>(null);
     const layersRef = useRef<MapLayers>({ markers: [], polyline: null });
     const positionsRef = useRef<DeliveryMapPosition[]>([]);
+    const dataRef = useRef<DeliveryMapData>(null);
+    const selectedNodeRef = useRef<DeliveryMapSelection | null>(selectedNode);
+    const onSelectedNodeChangeRef = useRef(onSelectedNodeChange);
     const fittedMapUrlRef = useRef<string>(null);
     const [state, setState] = useState<MapState>(
         apiKey ? 'loading' : 'fallback',
     );
     const staticMapUrl = versionedMapUrl(mapUrl, version);
+    const selectedNodeKey = deliveryMapSelectionKey(selectedNode);
+    selectedNodeRef.current = selectedNode;
+    onSelectedNodeChangeRef.current = onSelectedNodeChange;
 
     useEffect(() => {
         if (!apiKey) return;
@@ -275,12 +331,29 @@ export function DeliveryInteractiveMap({
                 }
 
                 clearLayers(layersRef.current);
-                const rendered = drawMapData(map, maps, data);
+                const rendered = drawMapData(
+                    map,
+                    maps,
+                    data,
+                    selectedNodeRef.current,
+                    (selection) => onSelectedNodeChangeRef.current?.(selection),
+                );
                 layersRef.current = rendered.layers;
                 positionsRef.current = rendered.positions;
-                if (
-                    fittedMapUrlRef.current !== mapUrl &&
-                    rendered.positions.length > 0
+                dataRef.current = data;
+                const currentSelectedNodeKey = deliveryMapSelectionKey(
+                    selectedNodeRef.current,
+                );
+                const selectedPosition = currentSelectedNodeKey
+                    ? rendered.selectionPositions.get(currentSelectedNodeKey)
+                    : null;
+                if (selectedPosition) {
+                    map.setCenter(selectedPosition);
+                    map.setZoom(15);
+                } else if (
+                    rendered.positions.length > 0 &&
+                    (currentSelectedNodeKey ||
+                        fittedMapUrlRef.current !== mapUrl)
                 ) {
                     fitMap(map, maps, rendered.positions);
                     fittedMapUrlRef.current = mapUrl;
@@ -308,6 +381,32 @@ export function DeliveryInteractiveMap({
             );
         };
     }, [apiKey, mapUrl, version]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        const maps = mapsRef.current;
+        const data = dataRef.current;
+        if (!map || !maps || !data) return;
+        clearLayers(layersRef.current);
+        const rendered = drawMapData(
+            map,
+            maps,
+            data,
+            selectedNodeRef.current,
+            (selection) => onSelectedNodeChangeRef.current?.(selection),
+        );
+        layersRef.current = rendered.layers;
+        positionsRef.current = rendered.positions;
+        const selectedPosition = selectedNodeKey
+            ? rendered.selectionPositions.get(selectedNodeKey)
+            : null;
+        if (selectedPosition) {
+            map.setCenter(selectedPosition);
+            map.setZoom(15);
+        } else if (rendered.positions.length > 0) {
+            fitMap(map, maps, rendered.positions);
+        }
+    }, [selectedNodeKey]);
 
     useEffect(
         () => () => {

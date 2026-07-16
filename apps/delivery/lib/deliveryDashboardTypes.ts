@@ -168,6 +168,7 @@ export type DeliveryRouteStepSummary =
     | {
           kind: 'delivery';
           itinerarySequence: number;
+          mapNodeId?: string;
           retryLaneRank: number | null;
           retryAttempt: number;
           actionState: 'locked' | 'upcoming' | 'current' | 'completed';

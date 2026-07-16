@@ -1,5 +1,6 @@
 'use client';
 
+import type { DeliveryMapSelection } from '../lib/deliveryMapData';
 import { DeliveryInteractiveMap } from './DeliveryInteractiveMap';
 
 const browserApiKey =
@@ -9,10 +10,14 @@ export function DeliveryMap({
     mapUrl,
     version,
     title,
+    selectedNode,
+    onSelectedNodeChange,
 }: {
     mapUrl: string;
     version: string | null;
     title: string;
+    selectedNode?: DeliveryMapSelection | null;
+    onSelectedNodeChange?: (selection: DeliveryMapSelection) => void;
 }) {
     return (
         <DeliveryInteractiveMap
@@ -20,6 +25,8 @@ export function DeliveryMap({
             mapUrl={mapUrl}
             version={version}
             title={title}
+            selectedNode={selectedNode}
+            onSelectedNodeChange={onSelectedNodeChange}
         />
     );
 }

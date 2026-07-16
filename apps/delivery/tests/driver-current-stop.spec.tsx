@@ -281,9 +281,46 @@ test('uses section-level current-command headings in live and offline route view
     await expect(
         page.getByRole('heading', {
             level: 3,
-            name: 'Sljedeća dostava',
+            name: 'Tijek rute',
         }),
     ).toBeVisible();
+});
+
+test('reveals read-only recipient and harvest details from the compact route timeline', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DriverDashboardServerAdvanceStory />);
+    const currentSummary = page.getByRole('region', {
+        name: 'Sažetak trenutačne stanice',
+    });
+    const beforeDocumentTop = await currentSummary.evaluate(
+        (element) =>
+            (element.parentElement?.getBoundingClientRect().top ?? 0) +
+            window.scrollY,
+    );
+    const timeline = page.getByRole('list', {
+        name: 'Tijek dostavne rute',
+    });
+    const nextRow = timeline.getByRole('listitem').nth(1);
+
+    await nextRow.getByRole('button').click();
+    await expect(
+        nextRow.getByText('Telefon: +385 91 555 0101').first(),
+    ).toBeVisible();
+    await expect(
+        nextRow.getByText('Rajčica za predaju · Gredica D'),
+    ).toBeVisible();
+    await expect(nextRow.getByRole('button')).toHaveCount(1);
+
+    const afterDocumentTop = await currentSummary.evaluate(
+        (element) =>
+            (element.parentElement?.getBoundingClientRect().top ?? 0) +
+            window.scrollY,
+    );
+    expect(Math.abs(afterDocumentTop - beforeDocumentTop)).toBeLessThanOrEqual(
+        1,
+    );
 });
 
 test('arrived stop exposes advisory scanning and delivers with its local note', async ({

@@ -4,7 +4,10 @@ import {
     accountCanTrackDeliveryRun,
     resolveDeliveryRunStopGroups,
 } from '../../../../lib/deliveryDashboard';
-import { buildDeliveryMapData } from '../../../../lib/deliveryMapData';
+import {
+    buildDeliveryMapData,
+    deliveryMapStopGroupSelectionId,
+} from '../../../../lib/deliveryMapData';
 import { driverDeliveryTrackingLocation } from '../../../../lib/deliveryTracking';
 import {
     buildGoogleStaticMapUrl,
@@ -76,6 +79,11 @@ export async function GET(
                         latitude: representative.latitude,
                         longitude: representative.longitude,
                         sequence: index + 1,
+                        selectionId: driverView
+                            ? deliveryMapStopGroupSelectionId(
+                                  group.items.map(({ stop }) => stop.id),
+                              )
+                            : null,
                     },
                 ];
             });
@@ -94,6 +102,7 @@ export async function GET(
                                     {
                                         latitude: pickupNode.latitude,
                                         longitude: pickupNode.longitude,
+                                        selectionId: pickupNode.id,
                                     },
                                 ]
                               : [],

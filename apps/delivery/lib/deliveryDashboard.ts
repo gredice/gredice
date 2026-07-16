@@ -44,6 +44,7 @@ import {
     customerDeliveryRecoverySummary,
     driverDeliveryExceptionSummary,
 } from './deliveryExceptionPresentation';
+import { deliveryMapStopGroupSelectionId } from './deliveryMapData';
 import {
     configuredDeliveryHqAddress,
     DeliveryRoutePlanningError,
@@ -765,6 +766,10 @@ async function activeRunSummary(
             itinerarySequence: Number.isFinite(itinerarySequence)
                 ? itinerarySequence
                 : executionStep.itinerarySequence,
+            mapNodeId:
+                deliveryMapStopGroupSelectionId(
+                    group.items.map(({ stop: groupStop }) => groupStop.id),
+                ) ?? undefined,
             retryLaneRank: executionStep.retryLaneRank ?? null,
             retryAttempt: executionStep.retryAttempt ?? 0,
             actionState,

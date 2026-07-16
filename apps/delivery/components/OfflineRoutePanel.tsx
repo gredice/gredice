@@ -2,9 +2,8 @@
 
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import { MapPin, Navigate, Warning } from '@gredice/ui/icons';
+import { Navigate, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import {
@@ -30,8 +29,11 @@ import {
     formatDeliveryDateTime,
     formatDeliveryTime,
     formatDistance,
-    formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import type {
+    DriverRouteTimelineItem,
+    DriverRouteTimelineState,
+} from '../lib/deliveryRouteTimelinePresentation';
 import type {
     OfflineRouteDeliveryStep,
     OfflineRoutePickupStep,
@@ -40,10 +42,7 @@ import type {
 } from '../lib/offlineRouteCache';
 import { DriverCurrentStopCommandCenter } from './DriverCurrentStopCommandCenter';
 import { DeliveryActionSyncStatus } from './DriverDashboard';
-
-function stepTitle(step: OfflineRouteStep) {
-    return step.kind === 'pickup' ? step.name : step.statusLabel;
-}
+import { DriverRouteProgressTimeline } from './DriverRouteProgressTimeline';
 
 function stepItems(step: OfflineRouteStep) {
     return step.kind === 'pickup'
@@ -75,9 +74,68 @@ function stepItems(step: OfflineRouteStep) {
               ]
                   .filter(Boolean)
                   .join(' · '),
-              detail: item.contactName,
+              detail: [item.contactName, item.phone]
+                  .filter(Boolean)
+                  .join(' · '),
               note: item.requestNotes,
           }));
+}
+
+function offlineStepIdentity(step: OfflineRouteStep) {
+    return `${step.kind}:${step.id ?? step.itinerarySequence}`;
+}
+
+function offlineTimelineState(
+    step: OfflineRouteStep,
+    index: number,
+    activeStepIndex: number,
+): DriverRouteTimelineState {
+    if (
+        step.kind === 'delivery' &&
+        (step.stopState === 'failed' ||
+            step.stopState === 'cancelled' ||
+            step.items.some(
+                (item) =>
+                    item.exception?.outcome === 'failed' ||
+                    item.exception?.outcome === 'cancelled',
+            ))
+    ) {
+        return 'exception';
+    }
+    if (
+        step.kind === 'delivery' &&
+        (step.stopState === 'deferred' || step.retryLaneRank !== null)
+    ) {
+        return 'retry';
+    }
+    if (index < activeStepIndex) return 'syncing';
+    if (index === activeStepIndex) return 'current';
+    if (index === activeStepIndex + 1) return 'next';
+    if (step.actionState === 'locked') return 'locked';
+    return 'upcoming';
+}
+
+function offlineTimelineItems(
+    steps: readonly OfflineRouteStep[],
+    activeStepIndex: number,
+): DriverRouteTimelineItem[] {
+    return steps.map((step, index) => ({
+        id: offlineStepIdentity(step),
+        sequence: step.itinerarySequence,
+        kind: step.kind,
+        state: offlineTimelineState(step, index, activeStepIndex),
+        title:
+            step.kind === 'pickup'
+                ? step.name
+                : step.items.length === 1
+                  ? (step.items[0]?.contactName ?? step.statusLabel)
+                  : `${step.items.length} primatelja`,
+        destination: step.address,
+        deliveryCount:
+            step.kind === 'pickup' ? step.expectedCount : step.items.length,
+        estimatedArrivalAt: step.estimatedArrivalAt,
+        estimatedTravelSeconds: step.estimatedTravelSeconds,
+    }));
 }
 
 function hasDeliveryStopId(
@@ -243,6 +301,20 @@ export function OfflineRoutePanel({
         currentStep && hasDeliveryStopId(currentStep)
             ? offlineDeliveryStop(currentStep, snapshot.scope.runId)
             : null;
+    const timelineItems = offlineTimelineItems(
+        snapshot.steps,
+        activeStepIndex,
+    ).map((item) =>
+        item.state === 'syncing'
+            ? {
+                  ...item,
+                  statusMessage: deliveryActionCompletionMessage(
+                      firstEntry,
+                      !routeBarrier,
+                  ),
+              }
+            : item,
+    );
     return (
         <main className="min-h-[100dvh] bg-muted/30 p-4">
             <div className="mx-auto max-w-3xl space-y-4">
@@ -327,194 +399,149 @@ export function OfflineRoutePanel({
                         dok se veza ne vrati i plan ne osvježi.
                     </Alert>
                 ) : null}
-                {snapshot.steps.map((step, index) => {
-                    const actionState =
-                        index < activeStepIndex
-                            ? 'completed'
-                            : index === activeStepIndex
-                              ? 'current'
-                              : step.actionState;
-                    return (
-                        <Card
-                            key={`${step.kind}:${step.id}`}
-                            className={
-                                index === activeStepIndex
-                                    ? 'border-primary'
-                                    : undefined
-                            }
-                        >
-                            <CardContent noHeader className="space-y-3 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
+                <section
+                    aria-labelledby="offline-route-timeline-heading"
+                    className="space-y-3"
+                >
+                    <Typography
+                        id="offline-route-timeline-heading"
+                        level="h3"
+                        semiBold
+                    >
+                        Tijek rute
+                    </Typography>
+                    <DriverRouteProgressTimeline
+                        items={timelineItems}
+                        label="Izvanmrežni tijek dostavne rute"
+                        renderDetails={(item) => {
+                            const index = snapshot.steps.findIndex(
+                                (candidate) =>
+                                    offlineStepIdentity(candidate) === item.id,
+                            );
+                            const step = snapshot.steps[index];
+                            if (!step) return null;
+                            const actionState =
+                                index < activeStepIndex
+                                    ? 'completed'
+                                    : index === activeStepIndex
+                                      ? 'current'
+                                      : step.actionState;
+                            return (
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        {step.kind === 'delivery' &&
+                                        step.slotStartAt ? (
+                                            <Chip size="sm">
+                                                Termin{' '}
+                                                {formatDeliveryTime(
+                                                    step.slotStartAt,
+                                                )}
+                                                {step.slotEndAt
+                                                    ? `–${formatDeliveryTime(step.slotEndAt)}`
+                                                    : ''}
+                                            </Chip>
+                                        ) : null}
+                                        {step.estimatedDistanceMeters !==
+                                        null ? (
+                                            <Chip size="sm">
+                                                {formatDistance(
+                                                    step.estimatedDistanceMeters,
+                                                )}
+                                            </Chip>
+                                        ) : null}
+                                    </div>
+                                    {index ===
+                                    activeStepIndex ? null : routeBarrier ||
+                                      actionState === 'locked' ||
+                                      index < activeStepIndex ||
+                                      (index > activeStepIndex &&
+                                          !deliveryQueued) ? (
+                                        <Button
+                                            disabled
+                                            variant="outlined"
+                                            aria-label={
+                                                index < activeStepIndex
+                                                    ? 'Navigacija do prethodne stanice nije potrebna'
+                                                    : index === activeStepIndex
+                                                      ? 'Navigacija do trenutačne stanice čeka novi plan'
+                                                      : routeBarrier
+                                                        ? 'Navigacija do sljedeće stanice čeka novi plan'
+                                                        : 'Navigacija do sljedeće stanice čeka završetak trenutačne dostave'
+                                            }
+                                            startDecorator={
+                                                <Navigate className="size-4" />
+                                            }
+                                        >
+                                            {index < activeStepIndex
+                                                ? 'Prethodna dostava je spremljena'
+                                                : index === activeStepIndex
+                                                  ? 'Navigacija čeka novi plan'
+                                                  : routeBarrier
+                                                    ? 'Navigacija čeka novi plan'
+                                                    : 'Navigacija čeka završetak dostave'}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(step.address)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            variant="outlined"
+                                            aria-label={
+                                                index === activeStepIndex
+                                                    ? 'Navigacija do trenutačne stanice'
+                                                    : 'Navigacija do sljedeće stanice'
+                                            }
+                                            startDecorator={
+                                                <Navigate className="size-4" />
+                                            }
+                                        >
+                                            Navigacija
+                                        </Button>
+                                    )}
+                                    {step.kind === 'delivery' &&
+                                    actionState === 'locked' &&
+                                    step.lockedReason ? (
                                         <Typography
                                             level="body3"
                                             className="text-muted-foreground"
                                         >
-                                            {index < activeStepIndex
-                                                ? firstEntry?.state === 'synced'
-                                                    ? 'Dovršeni korak čeka osvježenu rutu'
-                                                    : 'Dovršeni korak čeka potvrdu'
-                                                : index === activeStepIndex
-                                                  ? 'Trenutačni korak'
-                                                  : 'Sljedeći korak'}
+                                            {step.lockedReason}
                                         </Typography>
-                                        <Typography level="h3" semiBold>
-                                            {stepTitle(step)}
-                                        </Typography>
-                                    </div>
-                                    <Chip
-                                        color={
-                                            index === activeStepIndex
-                                                ? 'info'
-                                                : 'neutral'
-                                        }
-                                        size="sm"
-                                    >
-                                        #{step.itinerarySequence}
-                                    </Chip>
-                                </div>
-                                {index < activeStepIndex ? (
-                                    <Alert color="info">
-                                        {deliveryActionCompletionMessage(
-                                            firstEntry,
-                                            !routeBarrier,
-                                        )}
-                                    </Alert>
-                                ) : null}
-                                {index !== activeStepIndex ? (
-                                    <>
-                                        <Typography className="flex items-start gap-2">
-                                            <MapPin className="mt-0.5 size-4 shrink-0" />
-                                            {step.address}
-                                        </Typography>
-                                        <div className="flex flex-wrap gap-2">
-                                            {step.kind === 'delivery' &&
-                                            step.slotStartAt ? (
-                                                <Chip size="sm">
-                                                    Termin{' '}
-                                                    {formatDeliveryTime(
-                                                        step.slotStartAt,
-                                                    )}
-                                                    {step.slotEndAt
-                                                        ? `–${formatDeliveryTime(step.slotEndAt)}`
-                                                        : ''}
-                                                </Chip>
-                                            ) : null}
-                                            {step.estimatedArrivalAt ? (
-                                                <Chip size="sm">
-                                                    Dolazak{' '}
-                                                    {formatDeliveryDateTime(
-                                                        step.estimatedArrivalAt,
-                                                    )}
-                                                </Chip>
-                                            ) : null}
-                                            {step.estimatedTravelSeconds !==
-                                            null ? (
-                                                <Chip size="sm">
-                                                    {formatTravelDuration(
-                                                        step.estimatedTravelSeconds,
-                                                    )}
-                                                </Chip>
-                                            ) : null}
-                                            {step.estimatedDistanceMeters !==
-                                            null ? (
-                                                <Chip size="sm">
-                                                    {formatDistance(
-                                                        step.estimatedDistanceMeters,
-                                                    )}
-                                                </Chip>
-                                            ) : null}
-                                        </div>
-                                    </>
-                                ) : null}
-                                {index ===
-                                activeStepIndex ? null : routeBarrier ||
-                                  actionState === 'locked' ||
-                                  index < activeStepIndex ||
-                                  (index > activeStepIndex &&
-                                      !deliveryQueued) ? (
-                                    <Button
-                                        disabled
-                                        variant="outlined"
-                                        aria-label={
-                                            index < activeStepIndex
-                                                ? 'Navigacija do prethodne stanice nije potrebna'
-                                                : index === activeStepIndex
-                                                  ? 'Navigacija do trenutačne stanice čeka novi plan'
-                                                  : routeBarrier
-                                                    ? 'Navigacija do sljedeće stanice čeka novi plan'
-                                                    : 'Navigacija do sljedeće stanice čeka završetak trenutačne dostave'
-                                        }
-                                        startDecorator={
-                                            <Navigate className="size-4" />
-                                        }
-                                    >
-                                        {index < activeStepIndex
-                                            ? 'Prethodna dostava je spremljena'
-                                            : index === activeStepIndex
-                                              ? 'Navigacija čeka novi plan'
-                                              : routeBarrier
-                                                ? 'Navigacija čeka novi plan'
-                                                : 'Navigacija čeka završetak dostave'}
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(step.address)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        variant="outlined"
-                                        aria-label={
-                                            index === activeStepIndex
-                                                ? 'Navigacija do trenutačne stanice'
-                                                : 'Navigacija do sljedeće stanice'
-                                        }
-                                        startDecorator={
-                                            <Navigate className="size-4" />
-                                        }
-                                    >
-                                        Navigacija
-                                    </Button>
-                                )}
-                                {step.kind === 'delivery' &&
-                                actionState === 'locked' &&
-                                step.lockedReason ? (
-                                    <Typography
-                                        level="body3"
-                                        className="text-muted-foreground"
-                                    >
-                                        {step.lockedReason}
-                                    </Typography>
-                                ) : null}
-                                <ul className="space-y-2">
-                                    {stepItems(step).map((item) => (
-                                        <li
-                                            key={item.id}
-                                            className="rounded-md bg-muted px-3 py-2"
-                                        >
-                                            <Typography level="body3" semiBold>
-                                                {item.label}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
+                                    ) : null}
+                                    <ul className="space-y-2">
+                                        {stepItems(step).map((item) => (
+                                            <li
+                                                key={item.id}
+                                                className="rounded-md bg-muted px-3 py-2"
                                             >
-                                                {item.detail}
-                                            </Typography>
-                                            {item.note ? (
                                                 <Typography
                                                     level="body3"
-                                                    className="mt-1 text-amber-800 dark:text-amber-200"
+                                                    semiBold
                                                 >
-                                                    Napomena: {item.note}
+                                                    {item.label}
                                                 </Typography>
-                                            ) : null}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    {item.detail}
+                                                </Typography>
+                                                {item.note ? (
+                                                    <Typography
+                                                        level="body3"
+                                                        className="mt-1 text-amber-800 dark:text-amber-200"
+                                                    >
+                                                        Napomena: {item.note}
+                                                    </Typography>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        }}
+                    />
+                </section>
                 <Typography level="body3" className="text-muted-foreground">
                     Kopija vrijedi najviše 24 sata i briše se završetkom rute,
                     promjenom korisnika ili odjavom.
