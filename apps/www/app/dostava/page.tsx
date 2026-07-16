@@ -13,6 +13,7 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
+import { DeliveryZoneMap } from './DeliveryZoneMap';
 
 export const metadata: Metadata = {
     title: 'Dostava',
@@ -29,6 +30,9 @@ const deliveryLocations = [
 ] as const;
 
 export default function DeliveryPage() {
+    const googleMapsApiKey =
+        process.env.NEXT_PUBLIC_GREDICE_GOOGLE_MAPS_API_KEY?.trim() ?? '';
+
     return (
         <Container maxWidth="md">
             <Stack>
@@ -83,26 +87,23 @@ export default function DeliveryPage() {
                         .
                     </p>
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
-                    <div>
-                        <figure className="mb-4 w-full text-center">
-                            <div className="aspect-[4/3] w-full">
-                                <iframe
-                                    title="Zone dostave"
-                                    src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
-                                    className="h-full w-full rounded-lg border-0"
-                                    sandbox="allow-scripts allow-same-origin"
-                                    loading="lazy"
-                                ></iframe>
-                            </div>
-                            <figcaption className="not-prose mt-2 text-sm text-foreground">
-                                <strong>Zone dostave</strong> -{' '}
-                                <em>
-                                    zone su okvirne, a stvarne zone dostave mogu
-                                    se razlikovati.
-                                </em>
-                            </figcaption>
-                        </figure>
-                    </div>
+                    <figure className="not-prose mb-4 w-full">
+                        <DeliveryZoneMap apiKey={googleMapsApiKey} />
+                        <figcaption className="mt-2 text-sm text-foreground">
+                            <strong>Zone dostave</strong> – područje do 100 km
+                            odnosi se samo na adrese u Hrvatskoj. Granica Grada
+                            Zagreba prikazana je prema{' '}
+                            <a
+                                href="https://geohub-zagreb.hub.arcgis.com/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                službenim podacima GeoHuba Grada Zagreba
+                            </a>
+                            .
+                        </figcaption>
+                    </figure>
                     <table
                         style={{
                             width: '100%',
