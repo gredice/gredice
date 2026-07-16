@@ -8,12 +8,14 @@ import {
     deliveryLifecycleThresholds,
 } from '@gredice/notifications';
 import {
-    createNotification as createStorageNotification,
+    createDeliveryLifecycleNotificationDecisionOnce,
+    createNotificationWithOutcome as createStorageNotificationWithOutcome,
     type DeliveryRunExceptionOutcome,
     type DeliveryRunExceptionReason,
     getDeliveryAccountContacts as getStorageDeliveryAccountContacts,
     getDeliveryRequestOwners as getStorageDeliveryRequestOwners,
     isCustomerDeliveryNotificationRecipientRole,
+    knownEvents,
 } from '@gredice/storage';
 import 'server-only';
 
@@ -47,15 +49,23 @@ export type CustomerDeliveryMilestoneInput =
         );
 
 export type CustomerDeliveryNotificationDependencies = {
-    createNotification: typeof createStorageNotification;
+    createNotificationWithOutcome: typeof createStorageNotificationWithOutcome;
     getDeliveryAccountContacts: typeof getStorageDeliveryAccountContacts;
     getDeliveryRequestOwners: typeof getStorageDeliveryRequestOwners;
+    recordLifecycleNotificationDecision: (
+        event: ReturnType<
+            typeof knownEvents.delivery.requestLifecycleNotificationDecisionV1
+        >,
+    ) => Promise<void>;
 };
 
 const defaultCustomerDeliveryNotificationDependencies = {
-    createNotification: createStorageNotification,
+    createNotificationWithOutcome: createStorageNotificationWithOutcome,
     getDeliveryAccountContacts: getStorageDeliveryAccountContacts,
     getDeliveryRequestOwners: getStorageDeliveryRequestOwners,
+    recordLifecycleNotificationDecision: async (event) => {
+        await createDeliveryLifecycleNotificationDecisionOnce(event);
+    },
 } satisfies CustomerDeliveryNotificationDependencies;
 
 function customerDeliveryNotificationDependencies(
@@ -245,15 +255,17 @@ async function publishCustomerDeliveryEventToRecipients(
     if (recipients.length === 0) {
         return { outcome: 'recipient-unavailable' as const };
     }
-    const notificationIds: string[] = [];
+    const notificationResults: Awaited<
+        ReturnType<typeof createStorageNotificationWithOutcome>
+    >[] = [];
     const concurrency = 5;
     const now = new Date();
     for (let index = 0; index < recipients.length; index += concurrency) {
-        notificationIds.push(
+        notificationResults.push(
             ...(await Promise.all(
                 recipients.slice(index, index + concurrency).map(
                     async (userId) =>
-                        await dependencies.createNotification(
+                        await dependencies.createNotificationWithOutcome(
                             customerDeliveryLifecycleNotification(
                                 event,
                                 userId,
@@ -271,6 +283,38 @@ async function publishCustomerDeliveryEventToRecipients(
             )),
         );
     }
+    if (
+        event.source.kind !== 'route-progress' &&
+        notificationResults.every((result) => result.outcome === 'reused')
+    ) {
+        try {
+            await dependencies.recordLifecycleNotificationDecision(
+                knownEvents.delivery.requestLifecycleNotificationDecisionV1(
+                    event.requestId,
+                    {
+                        decision: 'suppressed',
+                        milestone: event.milestone,
+                        reason: 'idempotency_reused',
+                        retryAttempt: event.retryAttempt,
+                        runId: event.runId,
+                        sourceId: event.source.id,
+                        stopId: event.stopId,
+                    },
+                ),
+            );
+        } catch (error) {
+            console.warn(
+                'Customer delivery suppression telemetry write failed',
+                {
+                    errorName: error instanceof Error ? error.name : 'Unknown',
+                    milestone: event.milestone,
+                },
+            );
+        }
+    }
+    const notificationIds = notificationResults.map(
+        (result) => result.notificationId,
+    );
     return {
         notificationId: notificationIds[0],
         notificationIds,

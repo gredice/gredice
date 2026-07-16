@@ -1455,6 +1455,7 @@ test('a modern pickup-aware route durably records bounded route-progress reconci
         milestone,
         occurredAt,
         retryAttempt: stop.retryAttempt,
+        sourceId: `route-progress:${occurredAt.toISOString()}`,
         stopId: stop.id,
     }));
 
@@ -1486,6 +1487,22 @@ test('a modern pickup-aware route durably records bounded route-progress reconci
                 milestones: milestoneSources,
             }),
         /Delivery route progress source is stale/u,
+    );
+    const firstMilestoneSource = milestoneSources[0];
+    assert.ok(firstMilestoneSource);
+    await assert.rejects(
+        () =>
+            recordDeliveryRunRouteProgressMilestones({
+                routeRevision: run.routeRevision,
+                runId: run.id,
+                milestones: [
+                    {
+                        ...firstMilestoneSource,
+                        sourceId: 'not-an-opaque-id@example.test',
+                    },
+                ],
+            }),
+        /Invalid delivery route progress milestone/u,
     );
     const [pickup] = run.pickupNodes;
     const [manifest] = run.runSlots;
@@ -1527,6 +1544,14 @@ test('a modern pickup-aware route durably records bounded route-progress reconci
         }),
         [],
     );
+    assert.deepEqual(
+        await recordDeliveryRunRouteProgressMilestones({
+            routeRevision: run.routeRevision,
+            runId: run.id,
+            milestones: milestoneSources,
+        }),
+        [],
+    );
 
     const sourceRows = await storage().query.events.findMany({
         where: and(
@@ -1549,6 +1574,42 @@ test('a modern pickup-aware route durably records bounded route-progress reconci
     assert.doesNotMatch(
         JSON.stringify(sourceRows),
         /latitude|longitude|formattedAddress|currentLocation/u,
+    );
+    const decisionRows = await storage().query.events.findMany({
+        where: and(
+            eq(
+                events.type,
+                knownEventTypes.delivery.requestLifecycleNotificationDecision,
+            ),
+            eq(events.aggregateId, requestId),
+        ),
+        orderBy: (event, { asc }) => [asc(event.id)],
+    });
+    assert.deepEqual(
+        decisionRows.map(({ aggregateId, data, type, version }) => ({
+            aggregateId,
+            data,
+            type,
+            version,
+        })),
+        routeProgressMilestones.map((milestone) => ({
+            aggregateId: requestId,
+            data: {
+                decision: 'suppressed',
+                milestone,
+                reason: 'eta_threshold_already_emitted',
+                retryAttempt: stop.retryAttempt,
+                runId: run.id,
+                sourceId: `route-progress:${occurredAt.toISOString()}`,
+                stopId: String(stop.id),
+            },
+            type: 'delivery.request.lifecycle_notification.decision',
+            version: 1,
+        })),
+    );
+    assert.doesNotMatch(
+        JSON.stringify(decisionRows),
+        /latitude|longitude|formattedAddress|currentLocation|accountId|userId/u,
     );
 
     const pending = await getDeliveryLifecycleReconciliationCandidates({

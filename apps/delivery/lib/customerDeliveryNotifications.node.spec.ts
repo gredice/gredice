@@ -139,11 +139,15 @@ test('delivery lifecycle notification contains only bounded lifecycle metadata',
         requestId: 'request-1',
         retryAttempt: 2,
         runId: 'run-1',
+        source: {
+            id: 'private-operation-id',
+            kind: 'route-progress',
+            version: 7,
+        },
         stopId: '42',
     });
     const serialized = JSON.stringify(notification);
     for (const privateValue of [
-        'private-operation-id',
         'latitude',
         'longitude',
         'address',
@@ -295,11 +299,16 @@ test('exception notification uses bounded customer copy without operational note
         requestId: 'request-1',
         retryAttempt: 0,
         runId: 'run-1',
+        source: {
+            id: 'exception-operation',
+            kind: 'exception-operation',
+            version: 1,
+        },
         stopId: '42',
     });
-    assert.equal(
-        JSON.stringify(notification).includes('exception-operation'),
-        false,
+    assert.doesNotMatch(
+        JSON.stringify(notification),
+        /latitude|longitude|address|phone|email|notes/u,
     );
 });
 
@@ -311,7 +320,7 @@ test('safe milestone publishing contains notification storage failures', async (
                 accountId: 'account-1',
             },
             {
-                createNotification: async () => {
+                createNotificationWithOutcome: async () => {
                     throw new Error('storage unavailable');
                 },
                 getDeliveryAccountContacts: async () => [
@@ -367,14 +376,20 @@ test('milestone publishing fans out one recipient-scoped row per customer-capabl
                         userName: 'driver@example.test',
                     },
                 ],
-                createNotification: async (notification, options) => {
+                createNotificationWithOutcome: async (
+                    notification,
+                    options,
+                ) => {
                     const idempotencyKey = options?.idempotencyKey;
                     assert.ok(idempotencyKey);
                     created.push({
                         idempotencyKey,
                         userId: notification.userId ?? null,
                     });
-                    return `notification:${notification.userId}`;
+                    return {
+                        notificationId: `notification:${notification.userId}`,
+                        outcome: 'created',
+                    };
                 },
             },
         ),
@@ -393,6 +408,168 @@ test('milestone publishing fans out one recipient-scoped row per customer-capabl
         new Set(created.map(({ idempotencyKey }) => idempotencyKey)).size,
         2,
     );
+});
+
+test('milestone publishing records one privacy-safe suppression decision when every recipient row is reused', async () => {
+    const recordedDecisions: unknown[] = [];
+    const result = await withDeliveryNotificationsEnabled(async () =>
+        publishCustomerDeliveryMilestoneSafely(
+            {
+                ...customerDeliveryMilestoneInput('request-1', 1),
+                accountId: 'account-1',
+            },
+            {
+                getDeliveryAccountContacts: async () => [
+                    {
+                        accountId: 'account-1',
+                        avatarUrl: null,
+                        displayName: 'First',
+                        id: 'user-1',
+                        role: 'user',
+                        userName: 'first@example.test',
+                    },
+                    {
+                        accountId: 'account-1',
+                        avatarUrl: null,
+                        displayName: 'Second',
+                        id: 'user-2',
+                        role: 'farmer',
+                        userName: 'second@example.test',
+                    },
+                ],
+                createNotificationWithOutcome: async (notification) => ({
+                    notificationId: `notification:${notification.userId}`,
+                    outcome: 'reused',
+                }),
+                recordLifecycleNotificationDecision: async (event) => {
+                    recordedDecisions.push(event);
+                },
+            },
+        ),
+    );
+
+    assert.deepEqual(result, {
+        notificationId: 'notification:user-1',
+        notificationIds: ['notification:user-1', 'notification:user-2'],
+        outcome: 'published',
+    });
+    assert.deepEqual(recordedDecisions, [
+        {
+            aggregateId: 'request-1',
+            data: {
+                decision: 'suppressed',
+                milestone: 'arrived',
+                reason: 'idempotency_reused',
+                retryAttempt: 0,
+                runId: 'run-1',
+                sourceId: 'arrival:request-1',
+                stopId: '1',
+            },
+            type: 'delivery.request.lifecycle_notification.decision',
+            version: 1,
+        },
+    ]);
+    assert.doesNotMatch(
+        JSON.stringify(recordedDecisions),
+        /account-1|user-1|user-2|latitude|longitude|address|email|content|header/u,
+    );
+});
+
+test('reused notification publication stays successful when suppression telemetry fails', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+        const result = await withDeliveryNotificationsEnabled(async () =>
+            publishCustomerDeliveryMilestoneSafely(
+                {
+                    ...customerDeliveryMilestoneInput('request-private', 9),
+                    accountId: 'account-private',
+                },
+                {
+                    getDeliveryAccountContacts: async () => [
+                        {
+                            accountId: 'account-private',
+                            avatarUrl: null,
+                            displayName: 'Customer',
+                            id: 'user-private',
+                            role: 'user',
+                            userName: 'private@example.test',
+                        },
+                    ],
+                    createNotificationWithOutcome: async () => ({
+                        notificationId: 'notification:reused',
+                        outcome: 'reused',
+                    }),
+                    recordLifecycleNotificationDecision: async () => {
+                        throw new Error('telemetry unavailable');
+                    },
+                },
+            ),
+        );
+
+        assert.deepEqual(result, {
+            notificationId: 'notification:reused',
+            notificationIds: ['notification:reused'],
+            outcome: 'published',
+        });
+        assert.deepEqual(warnings, [
+            [
+                'Customer delivery suppression telemetry write failed',
+                { errorName: 'Error', milestone: 'arrived' },
+            ],
+        ]);
+        assert.doesNotMatch(
+            JSON.stringify(warnings),
+            /request-private|account-private|user-private|run-1|stop/u,
+        );
+    } finally {
+        console.warn = originalWarn;
+    }
+});
+
+test('route-progress reuse relies on the one-time ETA decision instead of emitting repeated idempotency decisions', async () => {
+    let recordedDecisions = 0;
+    const result = await withDeliveryNotificationsEnabled(async () =>
+        publishCustomerDeliveryMilestoneSafely(
+            {
+                accountId: 'account-1',
+                milestone: 'near-arrival',
+                occurredAt: new Date('2026-07-16T12:00:00.000Z'),
+                requestId: 'request-1',
+                retryAttempt: 0,
+                runId: 'run-1',
+                source: {
+                    id: 'route-progress:2026-07-16T12:00:00.000Z',
+                    kind: 'route-progress',
+                    version: 1,
+                },
+                stopId: 1,
+            },
+            {
+                getDeliveryAccountContacts: async () => [
+                    {
+                        accountId: 'account-1',
+                        avatarUrl: null,
+                        displayName: 'Customer',
+                        id: 'user-1',
+                        role: 'user',
+                        userName: 'customer@example.test',
+                    },
+                ],
+                createNotificationWithOutcome: async () => ({
+                    notificationId: 'notification:reused',
+                    outcome: 'reused',
+                }),
+                recordLifecycleNotificationDecision: async () => {
+                    recordedDecisions += 1;
+                },
+            },
+        ),
+    );
+
+    assert.equal(result.outcome, 'published');
+    assert.equal(recordedDecisions, 0);
 });
 
 test('batch milestone publishing isolates one notification storage failure', async () => {
@@ -419,12 +596,15 @@ test('batch milestone publishing isolates one notification storage failure', asy
                         role: 'user',
                         userName: `${accountId}@example.test`,
                     })),
-                createNotification: async (notification) => {
+                createNotificationWithOutcome: async (notification) => {
                     if (notification.accountId === 'account-2') {
                         throw new Error('one write failed');
                     }
                     publishedAccountIds.push(notification.accountId);
-                    return `notification:${notification.accountId}`;
+                    return {
+                        notificationId: `notification:${notification.accountId}`,
+                        outcome: 'created',
+                    };
                 },
             },
         ),

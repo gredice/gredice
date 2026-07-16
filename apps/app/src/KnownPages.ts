@@ -145,6 +145,7 @@ export const KnownPages = {
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
+    DeliveryNotifications: '/admin/delivery/notifications',
 
     // External links
     StripePayment: (paymentId: string) =>

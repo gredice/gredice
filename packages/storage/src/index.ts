@@ -38,6 +38,7 @@ export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryDispatchRepo';
 export * from './repositories/deliveryLifecycleNotificationsRepo';
+export * from './repositories/deliveryNotificationObservabilityRepo';
 export * from './repositories/deliveryRequestsRepo';
 export * from './repositories/deliveryRunAssignmentsRepo';
 export * from './repositories/deliveryRunsRepo';

@@ -77,6 +77,8 @@ export const knownEventTypes = {
         requestReadyEmailProcessed: 'delivery.request.ready.email_processed',
         requestLifecycleNotificationProcessed:
             'delivery.request.lifecycle_notification.processed',
+        requestLifecycleNotificationDecision:
+            'delivery.request.lifecycle_notification.decision',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
         requestRouteStarted: 'delivery.request.route_started',

@@ -425,6 +425,18 @@ describe('delivery lifecycle contract', () => {
                 applyDeliveryLifecycleObservation(state, {
                     ...observation({ kind: 'route-started' }),
                     source: {
+                        id: `operation-${'x'.repeat(119)}`,
+                        kind: 'run-state',
+                        version: 1,
+                    },
+                }),
+            /source.id must be a bounded opaque identifier of at most 128 characters/,
+        );
+        assert.throws(
+            () =>
+                applyDeliveryLifecycleObservation(state, {
+                    ...observation({ kind: 'route-started' }),
+                    source: {
                         id: 'operation',
                         kind: 'stop-operation',
                         version: 1,

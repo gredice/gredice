@@ -7,6 +7,7 @@ import {
     type QueuedWebPushAttempt,
     WebPushDeliveryError,
     type WebPushFailure,
+    webPushFailureEventTypes,
     webPushTimeToLiveSeconds,
 } from './webPushSender';
 
@@ -295,6 +296,17 @@ test('processWebPushAttempts invalidates expired push subscriptions', async () =
     assert.equal(result.retried, 0);
     assert.equal(failures[0]?.invalidSubscription, true);
     assert.equal(failures[0]?.providerResponseCode, 'invalid_410');
+    assert.ok(failures[0]);
+    assert.deepEqual(webPushFailureEventTypes(failures[0]), [
+        'failed',
+        'unsubscribed',
+    ]);
+});
+
+test('retryable web push failures do not emit unsubscribe engagement', () => {
+    assert.deepEqual(webPushFailureEventTypes({ invalidSubscription: false }), [
+        'failed',
+    ]);
 });
 
 test('createAndSendTestWebPushNotification creates a test notification and reports targeted devices', async () => {

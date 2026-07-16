@@ -1,5 +1,6 @@
 import {
     createNotification,
+    type NotificationDeliveryEventType,
     notificationDeliveryAttempts,
     notifications,
     promoteDeferredWebPushDeliveryAttempts,
@@ -92,6 +93,14 @@ export type WebPushFailure = {
     statusCode: number | null;
     willRetry: boolean;
 };
+
+export function webPushFailureEventTypes(
+    failure: Pick<WebPushFailure, 'invalidSubscription'>,
+): NotificationDeliveryEventType[] {
+    return failure.invalidSubscription
+        ? ['failed', 'unsubscribed']
+        : ['failed'];
+}
 
 export type WebPushBatchResult = {
     accepted: number;
@@ -402,17 +411,19 @@ async function recordFailedAttempt(
         .update(webPushSubscriptions)
         .set(subscriptionUpdate)
         .where(eq(webPushSubscriptions.id, attempt.pushSubscriptionId));
-    await recordNotificationDeliveryEvent({
-        deliveryAttemptId: attempt.attemptId,
-        metadata: {
-            invalidSubscription: failure.invalidSubscription,
-            provider: 'web_push',
-            statusCode: failure.statusCode,
-            willRetry: failure.willRetry,
-        },
-        notificationId: attempt.notificationId,
-        type: 'failed',
-    });
+    for (const type of webPushFailureEventTypes(failure)) {
+        await recordNotificationDeliveryEvent({
+            deliveryAttemptId: attempt.attemptId,
+            metadata: {
+                invalidSubscription: failure.invalidSubscription,
+                provider: 'web_push',
+                statusCode: failure.statusCode,
+                willRetry: failure.willRetry,
+            },
+            notificationId: attempt.notificationId,
+            type,
+        });
+    }
 }
 
 export async function processWebPushAttempts({

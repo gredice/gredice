@@ -9,12 +9,14 @@ import {
     cleanupNotificationRetention,
     createNotification,
     createNotificationCampaign,
+    createNotificationWithOutcome,
     createUserWithPassword,
     dropDeliveryLifecycleEmailAttempt,
     enqueueNotificationCampaign,
     enqueuePushDeliveryAttemptsForNotification,
     gardens,
     getDeliveryLifecycleEmailCandidates,
+    getDeliveryLifecycleNotificationHealth,
     getNotificationCampaign,
     getNotificationDeliverySummary,
     getNotificationsByAccount,
@@ -22,6 +24,7 @@ import {
     getUser,
     markDeliveryLifecycleEmailAttemptFailed,
     markDeliveryLifecycleEmailAttemptSent,
+    maxNotificationReadBatchSize,
     notificationCampaigns,
     notificationDeliveryAttempts,
     notificationDeliveryEvents,
@@ -41,7 +44,7 @@ import {
     users,
     webPushSubscriptions,
 } from '@gredice/storage';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
     createTestAccount,
     createTestGarden,
@@ -134,7 +137,7 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
     assert.ok(notifications.some((n) => n.id === notificationId));
 });
 
-test('createNotification reuses a bounded opaque identity for repeated domain events', async () => {
+test('createNotificationWithOutcome distinguishes new rows from idempotent reuse while preserving createNotification', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const idempotencyKey = `delivery-lifecycle:${randomUUID()}`;
@@ -147,10 +150,18 @@ test('createNotification reuses a bounded opaque identity for repeated domain ev
         timestamp: new Date(),
     };
 
-    const firstId = await createNotification(notification, { idempotencyKey });
+    const first = await createNotificationWithOutcome(notification, {
+        idempotencyKey,
+    });
     const replayId = await createNotification(notification, { idempotencyKey });
+    const replay = await createNotificationWithOutcome(notification, {
+        idempotencyKey,
+    });
+    const firstId = first.notificationId;
 
     assert.equal(firstId, replayId);
+    assert.deepEqual(first, { notificationId: firstId, outcome: 'created' });
+    assert.deepEqual(replay, { notificationId: firstId, outcome: 'reused' });
     assert.equal(firstId.startsWith('notification:'), true);
     assert.equal(firstId.length <= 128, true);
     assert.equal(firstId.includes(idempotencyKey), false);
@@ -883,6 +894,217 @@ test('notification center uses one account-safe globally ordered page', async ()
     assert.equal(returnedIds.has(foreignUserNotificationId), false);
 });
 
+test('bulk notification reads reject oversized request batches', async () => {
+    await assert.rejects(
+        setAllNotificationsRead(
+            'account-id',
+            'user-id',
+            Array.from(
+                { length: maxNotificationReadBatchSize + 1 },
+                () => 'duplicate-id',
+            ),
+            true,
+            'notification-center',
+        ),
+        new RangeError(
+            `Cannot update more than ${maxNotificationReadBatchSize} notifications at once`,
+        ),
+    );
+});
+
+test('bulk notification reads lock only authorized unread notifications', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-center-lock-owner-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const foreignUserId = await createUserWithPassword(
+        `delivery-center-lock-foreign-${randomUUID()}@example.com`,
+        'password',
+    );
+    await storage()
+        .insert(accountUsers)
+        .values({ accountId, userId: foreignUserId });
+    const createUnrouted = async (targetUserId: string) =>
+        await createNotification(
+            {
+                accountId,
+                category: 'general',
+                content: 'Bulk read lock scope',
+                header: 'Bulk read lock scope',
+                timestamp: new Date(),
+                userId: targetUserId,
+            },
+            { routeDelivery: false },
+        );
+    const ownedNotificationId = await createUnrouted(userId);
+    const foreignNotificationId = await createUnrouted(foreignUserId);
+
+    let signalForeignLockAcquired: (() => void) | undefined;
+    const foreignLockAcquired = new Promise<void>((resolve) => {
+        signalForeignLockAcquired = resolve;
+    });
+    let releaseForeignLock: (() => void) | undefined;
+    const holdForeignLock = new Promise<void>((resolve) => {
+        releaseForeignLock = resolve;
+    });
+    const foreignLockTransaction = storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`notification-delivery:${foreignNotificationId}`}));`,
+        );
+        signalForeignLockAcquired?.();
+        await holdForeignLock;
+    });
+    await foreignLockAcquired;
+
+    const update = setAllNotificationsRead(
+        accountId,
+        userId,
+        [foreignNotificationId, ownedNotificationId],
+        true,
+        'notification-center',
+    );
+    const timeoutMarker = Symbol('timeout');
+    let timeout: NodeJS.Timeout | undefined;
+    let outcome: unknown;
+    try {
+        outcome = await Promise.race([
+            update,
+            new Promise<typeof timeoutMarker>((resolve) => {
+                timeout = setTimeout(() => resolve(timeoutMarker), 1_000);
+            }),
+        ]);
+    } finally {
+        if (timeout) clearTimeout(timeout);
+        releaseForeignLock?.();
+        await foreignLockTransaction;
+    }
+    if (outcome === timeoutMarker) {
+        await update;
+        assert.fail('Bulk read waited on an out-of-scope notification lock');
+    }
+    assert.ok(
+        (
+            await storage().query.notifications.findFirst({
+                where: eq(notifications.id, ownedNotificationId),
+            })
+        )?.readAt,
+    );
+    assert.equal(
+        (
+            await storage().query.notifications.findFirst({
+                where: eq(notifications.id, foreignNotificationId),
+            })
+        )?.readAt,
+        null,
+    );
+});
+
+test('bulk lifecycle reads record one opened event per notification', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-center-batch-open-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const notificationIds = await Promise.all(
+        ['first', 'second'].map(
+            async (label) =>
+                await createNotification(
+                    {
+                        accountId,
+                        category: 'delivery_updates',
+                        content: `Delivery ${label}`,
+                        header: 'Delivery',
+                        timestamp: new Date(),
+                        type: 'delivery_lifecycle',
+                        userId,
+                    },
+                    { routeDelivery: false },
+                ),
+        ),
+    );
+    const attempts = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values(
+            notificationIds.map((notificationId) => ({
+                accountId,
+                channel: 'in_app' as const,
+                notificationId,
+                provider: 'router',
+                status: 'accepted' as const,
+                userId,
+            })),
+        )
+        .returning({
+            id: notificationDeliveryAttempts.id,
+            notificationId: notificationDeliveryAttempts.notificationId,
+        });
+
+    await setAllNotificationsRead(
+        accountId,
+        userId,
+        notificationIds,
+        true,
+        'notification-center',
+    );
+    await setAllNotificationsRead(
+        accountId,
+        userId,
+        notificationIds,
+        true,
+        'notification-center',
+    );
+    await setNotificationRead(
+        notificationIds[0] ?? '',
+        false,
+        'notification-center',
+    );
+    await setNotificationRead(
+        notificationIds[0] ?? '',
+        true,
+        'notification-center',
+    );
+
+    const openedEvents = await storage()
+        .select({
+            deliveryAttemptId: notificationDeliveryEvents.deliveryAttemptId,
+            notificationId: notificationDeliveryEvents.notificationId,
+        })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                inArray(
+                    notificationDeliveryEvents.notificationId,
+                    notificationIds,
+                ),
+                eq(notificationDeliveryEvents.type, 'opened'),
+            ),
+        )
+        .orderBy(asc(notificationDeliveryEvents.notificationId));
+    assert.equal(openedEvents.length, notificationIds.length);
+    assert.deepEqual(
+        new Map(
+            openedEvents.map((event) => [
+                event.notificationId,
+                event.deliveryAttemptId,
+            ]),
+        ),
+        new Map(
+            attempts.map((attempt) => [attempt.notificationId, attempt.id]),
+        ),
+    );
+});
+
 test('recipient lifecycle rows honor account preferences, quiet hours, and independent reads', async () => {
     createTestDb();
     await ensureFarmId();
@@ -1084,7 +1306,48 @@ test('recipient lifecycle rows honor account preferences, quiet hours, and indep
         )?.readAt,
         null,
     );
+    await setAllNotificationsRead(
+        accountId,
+        firstUserId,
+        [firstLifecycleId],
+        true,
+        'notification-center',
+    );
     await setNotificationRead(firstLifecycleId, true, 'notification-center');
+    await setNotificationRead(firstLifecycleId, false, 'notification-center');
+    await setNotificationRead(firstLifecycleId, true, 'notification-center');
+    assert.ok(quietAttempt);
+    const openedEvents = await storage()
+        .select({
+            deliveryAttemptId: notificationDeliveryEvents.deliveryAttemptId,
+            metadata: notificationDeliveryEvents.metadata,
+        })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(notificationDeliveryEvents.notificationId, firstLifecycleId),
+                eq(notificationDeliveryEvents.type, 'opened'),
+            ),
+        );
+    assert.deepEqual(openedEvents, [
+        {
+            deliveryAttemptId: quietAttempt.id,
+            metadata: { surface: 'notification_center' },
+        },
+    ]);
+    const secondOpenedEvents = await storage()
+        .select({ id: notificationDeliveryEvents.id })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(
+                    notificationDeliveryEvents.notificationId,
+                    secondLifecycleId,
+                ),
+                eq(notificationDeliveryEvents.type, 'opened'),
+            ),
+        );
+    assert.equal(secondOpenedEvents.length, 0);
     await storage().insert(notificationUserChannelPreferences).values({
         category: 'delivery_updates',
         channel: 'in_app',
@@ -3097,6 +3360,38 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         }),
         { reason: 'attempts_exhausted', status: 'unavailable' },
     );
+    assert.deepEqual(
+        await claimDeliveryLifecycleEmailCandidate({
+            maxAttempts: 1,
+            notificationId,
+            now: new Date('2026-07-17T23:02:31.000Z'),
+            userId: quietUserId,
+        }),
+        { reason: 'attempts_exhausted', status: 'unavailable' },
+    );
+    const exhaustedEvents = await storage()
+        .select({ metadata: notificationDeliveryEvents.metadata })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(notificationDeliveryEvents.notificationId, notificationId),
+                eq(notificationDeliveryEvents.type, 'failed'),
+            ),
+        );
+    assert.deepEqual(
+        exhaustedEvents.filter(
+            (event) => event.metadata.reason === 'attempts_exhausted',
+        ),
+        [
+            {
+                metadata: {
+                    provider: 'delivery_lifecycle_email',
+                    reason: 'attempts_exhausted',
+                    retryable: false,
+                },
+            },
+        ],
+    );
     const retry = await claimDeliveryLifecycleEmailCandidate({
         notificationId,
         now: new Date('2026-07-17T23:03:00.000Z'),
@@ -3147,7 +3442,8 @@ test('delivery lifecycle email candidates claim per account user with live prefe
                     'delivery_lifecycle_email',
                 ),
             ),
-        );
+        )
+        .orderBy(asc(notificationDeliveryAttempts.id));
     assert.deepEqual(
         providerAttempts.map(({ status, userId }) => ({ status, userId })),
         [
@@ -3170,10 +3466,20 @@ test('delivery lifecycle email candidates claim per account user with live prefe
     const events = await storage()
         .select({ type: notificationDeliveryEvents.type })
         .from(notificationDeliveryEvents)
-        .where(eq(notificationDeliveryEvents.notificationId, notificationId));
+        .where(eq(notificationDeliveryEvents.notificationId, notificationId))
+        .orderBy(asc(notificationDeliveryEvents.id));
     assert.deepEqual(
         events.map((event) => event.type),
-        ['queued', 'failed', 'queued', 'failed', 'queued', 'sent'],
+        [
+            'failed',
+            'queued',
+            'failed',
+            'queued',
+            'failed',
+            'failed',
+            'queued',
+            'sent',
+        ],
     );
 
     const invalidRecipientNotificationId = await createNotification(
@@ -3223,6 +3529,120 @@ test('delivery lifecycle email candidates claim per account user with live prefe
     assert.deepEqual(invalidRecipientAttempts, [
         { providerResponseCode: 'invalid_recipient', status: 'dropped' },
     ]);
+});
+
+test('final email failure records exhaustion before candidate filtering and alerts health', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const email = `delivery-email-exhaustion-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(email, 'password');
+    const accountId = (await getUser(userId))?.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const now = new Date('2051-07-16T12:00:00.000Z');
+    const requestId = `request:${randomUUID()}`;
+    const notificationId = await createNotification(
+        {
+            accountId,
+            category: 'delivery_updates',
+            content: 'Exhaustion test.',
+            header: 'Exhaustion test',
+            metadata: {
+                eventVersion: 1,
+                milestone: 'arrived',
+                requestId,
+                retryAttempt: 0,
+                runId: `run:${randomUUID()}`,
+                source: {
+                    id: `arrival:${randomUUID()}`,
+                    kind: 'stop-operation',
+                    version: 1,
+                },
+                stopId: '42',
+            },
+            timestamp: now,
+            ttlSeconds: 24 * 60 * 60,
+            type: 'delivery_lifecycle',
+            userId,
+        },
+        { routeDelivery: false },
+    );
+    const candidate = (
+        await getDeliveryLifecycleEmailCandidates({ maxAttempts: 1, now })
+    ).find((item) => item.notificationId === notificationId);
+    assert.ok(candidate);
+    const claim = await claimDeliveryLifecycleEmailCandidate({
+        ...candidate,
+        maxAttempts: 1,
+        now,
+    });
+    assert.equal(claim.status, 'claimed');
+    assert.ok(claim.status === 'claimed');
+    assert.deepEqual(
+        await startDeliveryLifecycleEmailAttempt({
+            attemptId: claim.claim.attemptId,
+            notificationId,
+            now: new Date(now.getTime() + 1_000),
+            userId,
+        }),
+        { email, status: 'started' },
+    );
+    assert.equal(
+        await markDeliveryLifecycleEmailAttemptFailed({
+            attemptId: claim.claim.attemptId,
+            maxAttempts: 1,
+            notificationId,
+            now: new Date(now.getTime() + 2_000),
+            userId,
+        }),
+        true,
+    );
+    assert.equal(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                maxAttempts: 1,
+                now: new Date(now.getTime() + 3_000),
+            })
+        ).some((item) => item.notificationId === notificationId),
+        false,
+    );
+    const health = await getDeliveryLifecycleNotificationHealth({
+        from: now,
+        requestId,
+        to: new Date(now.getTime() + 3_000),
+    });
+    assert.equal(health.retryExhaustedCount, 1);
+    assert.equal(health.alerts.retryExhausted, true);
+
+    assert.deepEqual(
+        await claimDeliveryLifecycleEmailCandidate({
+            ...candidate,
+            maxAttempts: 1,
+            now: new Date(now.getTime() + 4_000),
+        }),
+        { reason: 'attempts_exhausted', status: 'unavailable' },
+    );
+    const failedEvents = await storage()
+        .select({ metadata: notificationDeliveryEvents.metadata })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(notificationDeliveryEvents.notificationId, notificationId),
+                eq(notificationDeliveryEvents.type, 'failed'),
+            ),
+        );
+    assert.equal(
+        failedEvents.filter(
+            ({ metadata }) => metadata.reason === 'attempts_exhausted',
+        ).length,
+        1,
+    );
+    assert.equal(
+        failedEvents.some(
+            ({ metadata }) =>
+                metadata.reason === undefined && metadata.retryable === false,
+        ),
+        true,
+    );
 });
 
 test('durable email quiet-hour cursors rotate the batch and preserve the actual audit time', async () => {
@@ -3389,6 +3809,10 @@ test('durable email quiet-hour cursors rotate the batch and preserve the actual 
                     notificationDeliveryAttempts.providerResponseCode,
                     'quiet_hours',
                 ),
+                inArray(
+                    notificationDeliveryAttempts.notificationId,
+                    quietNotificationIds,
+                ),
             ),
         );
     assert.equal(deferredAttempts.length, 3);
@@ -3413,6 +3837,7 @@ test('durable email quiet-hour cursors rotate the batch and preserve the actual 
             queuedEvent.metadata?.eligibleAt,
             '2026-07-21T06:00:00.000Z',
         );
+        assert.equal(queuedEvent.metadata?.reason, 'quiet_hours');
     }
 
     const newImmediateNotificationId = await createEmailNotification({
@@ -3850,6 +4275,22 @@ test('email start revalidates recipient, policy, quiet hours, TTL, and address a
         quietAttempt.attemptedAt.toISOString(),
         '2026-07-20T13:00:00.000Z',
     );
+    const quietEvents =
+        await storage().query.notificationDeliveryEvents.findMany({
+            where: eq(
+                notificationDeliveryEvents.deliveryAttemptId,
+                quietRace.attemptId,
+            ),
+        });
+    assert.equal(
+        quietEvents.some(
+            (event) =>
+                event.type === 'queued' &&
+                event.metadata?.reason === 'quiet_hours' &&
+                event.occurredAt.toISOString() === '2026-07-20T12:00:00.000Z',
+        ),
+        true,
+    );
 
     const membershipRace = await createClaim({ label: 'membership' });
     await storage()
@@ -3933,6 +4374,25 @@ test('email start revalidates recipient, policy, quiet hours, TTL, and address a
                 status: 'dropped',
             })),
     );
+    const terminalEvents =
+        await storage().query.notificationDeliveryEvents.findMany({
+            where: inArray(
+                notificationDeliveryEvents.deliveryAttemptId,
+                terminalAttempts.map(({ id }) => id),
+            ),
+        });
+    for (const attempt of terminalAttempts) {
+        assert.equal(
+            terminalEvents.some(
+                (event) =>
+                    event.deliveryAttemptId === attempt.id &&
+                    event.type === 'failed' &&
+                    event.metadata?.reason === attempt.providerResponseCode &&
+                    event.metadata?.retryable === false,
+            ),
+            true,
+        );
+    }
 });
 
 test('direct lifecycle email targets are terminalized after role or membership loss', async () => {

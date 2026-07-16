@@ -5,6 +5,7 @@ import {
     countAiRequestEventsSince,
     createAutomationDefinition,
     createAutomationRun,
+    createDeliveryLifecycleNotificationDecisionOnce,
     createEvent,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
@@ -51,6 +52,34 @@ test('createEvent and getEvents basic usage', async () => {
             (e) => e.type === event.type && e.aggregateId === aggregateId,
         ),
     );
+});
+
+test('delivery lifecycle notification decisions are inserted once under concurrent replay', async () => {
+    createTestDb();
+    const requestId = `request:${randomUUID()}`;
+    const decision =
+        knownEvents.delivery.requestLifecycleNotificationDecisionV1(requestId, {
+            decision: 'suppressed',
+            milestone: 'arrived',
+            reason: 'idempotency_reused',
+            retryAttempt: 0,
+            runId: `run:${randomUUID()}`,
+            sourceId: `arrival:${randomUUID()}`,
+            stopId: '42',
+        });
+
+    const results = await Promise.all(
+        Array.from(
+            { length: 10 },
+            async () =>
+                await createDeliveryLifecycleNotificationDecisionOnce(decision),
+        ),
+    );
+    assert.equal(results.filter(Boolean).length, 1);
+    const recorded = await getEvents(decision.type, [requestId]);
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0]?.version, 1);
+    assert.deepEqual(recorded[0]?.data, decision.data);
 });
 
 test('getEvents returns empty for unknown aggregate', async () => {
