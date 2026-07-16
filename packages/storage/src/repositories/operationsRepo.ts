@@ -4,6 +4,7 @@ import {
     count,
     desc,
     eq,
+    exists,
     gte,
     inArray,
     isNotNull,
@@ -20,6 +21,7 @@ import {
 } from '../cache/scheduleCache';
 import {
     events,
+    farms,
     farmUsers,
     gardens,
     type InsertOperation,
@@ -77,10 +79,36 @@ function operationFarmIdExpression() {
 
 function operationLocationIntegrityWhere() {
     return and(
-        or(isNull(operations.raisedBedId), eq(raisedBeds.isDeleted, false)),
+        or(
+            isNull(operations.raisedBedId),
+            and(
+                eq(raisedBeds.isDeleted, false),
+                or(
+                    isNull(operations.gardenId),
+                    eq(operations.gardenId, raisedBeds.gardenId),
+                ),
+            ),
+        ),
         or(
             and(isNull(operations.gardenId), isNull(operations.raisedBedId)),
-            eq(gardens.isDeleted, false),
+            and(
+                eq(gardens.isDeleted, false),
+                or(
+                    isNull(operations.farmId),
+                    eq(operations.farmId, gardens.farmId),
+                ),
+            ),
+        ),
+        exists(
+            storage()
+                .select({ id: farms.id })
+                .from(farms)
+                .where(
+                    and(
+                        eq(farms.id, operationFarmIdExpression()),
+                        eq(farms.isDeleted, false),
+                    ),
+                ),
         ),
     );
 }

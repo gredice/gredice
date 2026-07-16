@@ -74,9 +74,11 @@ export type FarmTodayPlantingsSourceData = {
 };
 
 export type FarmTodayOperationsSourceData = {
+    authorizationScope: 'farmMembership';
     pendingOperations: FarmTodayOperationInput[];
     pendingOperationsComplete: boolean;
     raisedBeds: FarmTodayRaisedBedInput[];
+    raisedBedsComplete: boolean;
     scheduledOperations: FarmTodayOperationInput[];
     scheduledOperationsComplete: boolean;
 };
@@ -381,6 +383,8 @@ function isOperationAuthorized(
     operation: FarmTodayOperationInput,
     activeFarmIds: Set<number>,
     authorizedRaisedBedFarmIds: Map<number, number>,
+    authorizationScope: FarmTodayOperationsSourceData['authorizationScope'],
+    raisedBedsComplete: boolean,
 ) {
     if (
         typeof operation.farmId === 'number' &&
@@ -393,10 +397,20 @@ function isOperationAuthorized(
         const raisedBedFarmId = authorizedRaisedBedFarmIds.get(
             operation.raisedBedId,
         );
-        return (
-            typeof raisedBedFarmId === 'number' &&
-            (operation.farmId === null || operation.farmId === raisedBedFarmId)
-        );
+        if (typeof raisedBedFarmId === 'number') {
+            return (
+                operation.farmId === null ||
+                operation.farmId === raisedBedFarmId
+            );
+        }
+
+        if (raisedBedsComplete) {
+            return false;
+        }
+
+        return operation.farmId === null
+            ? authorizationScope === 'farmMembership'
+            : activeFarmIds.has(operation.farmId);
     }
 
     return (
@@ -467,6 +481,8 @@ function buildOperationCandidates({
                 operation,
                 activeFarmIds,
                 authorizedRaisedBedFarmIds,
+                source.authorizationScope,
+                source.raisedBedsComplete,
             )
         ) {
             continue;
@@ -502,6 +518,13 @@ function buildOperationCandidates({
                 positionIndex: raisedBedField?.positionIndex ?? null,
                 raisedBed,
             });
+        } else if (typeof operation.raisedBedId === 'number') {
+            location = {
+                kind: 'raisedBed',
+                label: `Gredica ${operation.raisedBedId}`,
+                positionIndex: null,
+                raisedBedId: operation.raisedBedId,
+            };
         } else {
             if (typeof operation.farmId !== 'number') {
                 continue;

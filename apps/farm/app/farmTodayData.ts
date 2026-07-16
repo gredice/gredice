@@ -86,6 +86,7 @@ export const getFarmTodayData = cache(
                 : {
                       status: 'ready',
                       data: {
+                          authorizationScope: 'farmMembership',
                           pendingOperations:
                               pendingOperationsResult.status === 'fulfilled'
                                   ? pendingOperationsResult.value
@@ -96,6 +97,8 @@ export const getFarmTodayData = cache(
                               plantingsResult.status === 'fulfilled'
                                   ? plantingsResult.value.raisedBeds
                                   : [],
+                          raisedBedsComplete:
+                              plantingsResult.status === 'fulfilled',
                           scheduledOperations:
                               scheduledOperationsResult.status === 'fulfilled'
                                   ? scheduledOperationsResult.value

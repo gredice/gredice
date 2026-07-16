@@ -100,9 +100,11 @@ function emptyPlantings(): FarmTodayPlantingsSourceData {
 
 function emptyOperations(): FarmTodayOperationsSourceData {
     return {
+        authorizationScope: 'farmMembership',
         pendingOperations: [],
         pendingOperationsComplete: true,
         raisedBeds: [],
+        raisedBedsComplete: true,
         scheduledOperations: [],
         scheduledOperationsComplete: true,
     };
@@ -206,9 +208,11 @@ test('composes mixed operation and planting work without merging pending into co
         buildInput({
             operationDefinitions: ready(operationDefinitions),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [operationPending],
                 pendingOperationsComplete: true,
                 raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     operationMine,
                     operationShared,
@@ -316,9 +320,11 @@ test('keeps shared work actionable but omits other-farmer and unrelated-farm det
                 buildDefinition({ id: 715, label: 'Krivi vlasnik gredice' }),
             ]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     sharedOperation,
                     otherOperation,
@@ -368,9 +374,11 @@ test('uses the primary operation assignee until completion authorization support
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [
                     buildOperation({
                         assignedUserId: otherUserId,
@@ -406,9 +414,11 @@ test('uses array-only operation assignments when the primary assignee is missing
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [mine, other],
                 scheduledOperationsComplete: true,
             }),
@@ -542,14 +552,16 @@ test('returns explicit no-farm, empty, no-assigned-work, and all-done states', (
 });
 
 test('keeps available work in partial results and never turns total source failure into empty', () => {
-    const operation = buildOperation();
+    const operation = buildOperation({ farmId: null });
     const partial = composeFarmTodayData(
         buildInput({
             operationDefinitions: unavailable(),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
-                raisedBeds: [buildRaisedBed()],
+                raisedBeds: [],
+                raisedBedsComplete: false,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
@@ -562,6 +574,12 @@ test('keeps available work in partial results and never turns total source failu
         expect(partial.workState).toBe('hasWork');
         expect(partial.summary.countsComplete).toBe(false);
         expect(partial.focusQueue).toHaveLength(1);
+        expect(partial.focusQueue[0]?.location).toEqual({
+            kind: 'raisedBed',
+            label: 'Gredica 10',
+            positionIndex: null,
+            raisedBedId: 10,
+        });
         expect(partial.focusQueue[0]?.durationMinutes).toBeNull();
         expect(partial.focusQueue[0]?.proofRequirements).toEqual({
             images: 'unknown',
@@ -602,9 +620,11 @@ test('keeps available work in partial results and never turns total source failu
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: false,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
@@ -627,9 +647,11 @@ test('keeps available work in partial results and never turns total source failu
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [knownPending],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [],
                 scheduledOperationsComplete: false,
             }),
@@ -684,9 +706,11 @@ test('retains tasks with safe fallbacks when individual directory entries are mi
         buildInput({
             operationDefinitions: ready([]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [buildRaisedBed()],
+                raisedBedsComplete: true,
                 scheduledOperations: [operation],
                 scheduledOperationsComplete: true,
             }),
