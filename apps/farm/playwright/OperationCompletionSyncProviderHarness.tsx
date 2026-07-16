@@ -20,6 +20,7 @@ declare global {
 
 const router = {
     back: () => undefined,
+    bfcacheId: 'farm-sync-provider-harness',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,
