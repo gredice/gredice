@@ -1,3 +1,7 @@
+import {
+    type CustomerDeliveryTrackerInput,
+    customerDeliveryTracker,
+} from './customerDeliveryTracker';
 import type {
     CustomerDeliveryRequestSummary,
     CustomerPickupRequestSummary,
@@ -6,6 +10,7 @@ import type {
 
 type CustomerDeliveryProjectionSource = Pick<
     DeliveryStopSummary,
+    | 'stopState'
     | 'requestId'
     | 'requestState'
     | 'statusLabel'
@@ -13,8 +18,6 @@ type CustomerDeliveryProjectionSource = Pick<
     | 'slotStartAt'
     | 'slotEndAt'
     | 'estimatedArrivalAt'
-    | 'estimatedTravelSeconds'
-    | 'estimatedDistanceMeters'
     | 'reroutePending'
     | 'deliveredAt'
     | 'harvest'
@@ -24,10 +27,32 @@ type CustomerDeliveryProjectionSource = Pick<
     | 'runId'
 >;
 
+export type CustomerDeliveryProjectionContext = Pick<
+    CustomerDeliveryTrackerInput,
+    | 'now'
+    | 'runState'
+    | 'stopsAhead'
+    | 'estimatesCalculatedAt'
+    | 'estimateSource'
+    | 'routePlanVersion'
+    | 'hasTrafficRouteArtifact'
+    | 'trackingStatus'
+    | 'trackingLastAcceptedAt'
+>;
+
 export function customerDeliveryRequestSummary(
     source: CustomerDeliveryProjectionSource,
+    context: CustomerDeliveryProjectionContext,
 ): CustomerDeliveryRequestSummary {
     const tracking = source.tracking;
+    const { eta, progress } = customerDeliveryTracker({
+        ...context,
+        stopState: source.stopState,
+        promisedWindowStartAt: source.slotStartAt,
+        promisedWindowEndAt: source.slotEndAt,
+        estimatedArrivalAt: source.estimatedArrivalAt,
+        reroutePending: source.reroutePending,
+    });
     return {
         mode: 'delivery',
         requestId: source.requestId,
@@ -36,10 +61,8 @@ export function customerDeliveryRequestSummary(
         requestNotes: source.requestNotes,
         slotStartAt: source.slotStartAt,
         slotEndAt: source.slotEndAt,
-        estimatedArrivalAt: source.estimatedArrivalAt,
-        estimatedTravelSeconds: source.estimatedTravelSeconds,
-        estimatedDistanceMeters: source.estimatedDistanceMeters,
-        reroutePending: source.reroutePending,
+        eta,
+        progress,
         deliveredAt: source.deliveredAt,
         harvest: source.harvest,
         receipt: source.receipt ?? null,

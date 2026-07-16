@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CustomerDashboard } from '../components/CustomerDashboard';
 import type {
     CustomerDeliveryDashboard,
@@ -14,10 +15,21 @@ const delivery: CustomerDeliveryRequestSummary = {
     requestNotes: 'Pozvoni na portafon.',
     slotStartAt: '2026-07-16T08:00:00.000Z',
     slotEndAt: '2026-07-16T10:00:00.000Z',
-    estimatedArrivalAt: '2026-07-16T09:00:00.000Z',
-    estimatedTravelSeconds: 900,
-    estimatedDistanceMeters: 5_000,
-    reroutePending: false,
+    eta: {
+        source: 'traffic-route',
+        calculatedAt: '2026-07-16T08:45:00.000Z',
+        freshness: 'fresh',
+        confidence: 'high',
+        rangeStartAt: '2026-07-16T08:55:00.000Z',
+        rangeEndAt: '2026-07-16T09:05:00.000Z',
+        remainingMinSeconds: 600,
+        remainingMaxSeconds: 1_200,
+    },
+    progress: {
+        phase: 'next',
+        stopsAhead: 0,
+        delayed: false,
+    },
     deliveredAt: null,
     harvest: {
         plantName: 'Rajčica za dostavu',
@@ -32,6 +44,7 @@ const delivery: CustomerDeliveryRequestSummary = {
         status: 'live',
         lastAcceptedAt: '2026-07-16T08:45:00.000Z',
         mapAvailable: true,
+        exactLocationExpiresInMs: 110_000,
     },
     mapPath: '/api/map/customer-mixed-run-4135',
 };
@@ -99,9 +112,26 @@ function dashboard({
     };
 }
 
-export function MixedCustomerDashboardStory() {
+function CustomerDashboardFromRequest({
+    dashboard,
+}: {
+    dashboard: CustomerDeliveryDashboard;
+}) {
+    const [requestTiming] = useState(() => ({
+        monotonicMs: performance.now(),
+        wallMs: Date.now(),
+    }));
     return (
         <CustomerDashboard
+            dashboard={dashboard}
+            requestTiming={requestTiming}
+        />
+    );
+}
+
+export function MixedCustomerDashboardStory() {
+    return (
+        <CustomerDashboardFromRequest
             dashboard={dashboard({
                 role: 'user',
                 deliveries: [delivery, readyPickup],
@@ -112,7 +142,7 @@ export function MixedCustomerDashboardStory() {
 
 export function PickupFarmerDashboardStory() {
     return (
-        <CustomerDashboard
+        <CustomerDashboardFromRequest
             dashboard={dashboard({
                 role: 'farmer',
                 deliveries: [readyPickup, fulfilledPickup],
@@ -123,7 +153,7 @@ export function PickupFarmerDashboardStory() {
 
 export function DeliveryUserDashboardStory() {
     return (
-        <CustomerDashboard
+        <CustomerDashboardFromRequest
             dashboard={dashboard({
                 role: 'user',
                 deliveries: [delivery],
@@ -134,7 +164,7 @@ export function DeliveryUserDashboardStory() {
 
 export function EmptyCustomerDashboardStory() {
     return (
-        <CustomerDashboard
+        <CustomerDashboardFromRequest
             dashboard={dashboard({ role: 'user', deliveries: [] })}
         />
     );

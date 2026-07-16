@@ -26,7 +26,27 @@ export type DriverDeliveryTrackingLocation = {
     acceptedAt: string;
 };
 
-export type CustomerDeliveryTrackingSummary = DeliveryTrackingFreshnessSummary;
+export type CustomerDeliveryTrackingSummary =
+    DeliveryTrackingFreshnessSummary & {
+        exactLocationExpiresInMs: number | null;
+    };
+
+export type CustomerDeliveryEtaSummary = {
+    source: 'traffic-route' | 'route-plan' | 'promised-window';
+    calculatedAt: string | null;
+    freshness: 'fresh' | 'stale' | 'fallback' | 'unavailable';
+    confidence: 'high' | 'approximate' | 'none';
+    rangeStartAt: string | null;
+    rangeEndAt: string | null;
+    remainingMinSeconds: number | null;
+    remainingMaxSeconds: number | null;
+};
+
+export type CustomerDeliveryProgressSummary = {
+    phase: 'scheduled' | 'on-route' | 'next' | 'arrived' | 'unavailable';
+    stopsAhead: number | null;
+    delayed: boolean;
+};
 
 export type DeliveryHarvestSummary = {
     plantName: string;
@@ -80,10 +100,8 @@ export type CustomerDeliveryRequestSummary = {
     requestNotes: string | null;
     slotStartAt: string | null;
     slotEndAt: string | null;
-    estimatedArrivalAt: string | null;
-    estimatedTravelSeconds: number | null;
-    estimatedDistanceMeters: number | null;
-    reroutePending: boolean;
+    eta: CustomerDeliveryEtaSummary;
+    progress: CustomerDeliveryProgressSummary;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
     receipt: CustomerDeliveryReceiptSummary | null;

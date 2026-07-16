@@ -20,6 +20,10 @@ import {
 import { useDriverTracking } from '../hooks/useDriverTracking';
 import { useOfflineRouteCache } from '../hooks/useOfflineRouteCache';
 import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
+import {
+    isCustomerDeliveryEtaSummary,
+    isCustomerDeliveryTrackingSummary,
+} from '../lib/customerDeliveryValidation';
 import { deliveryRouteStepsWithLocalActions } from '../lib/deliveryActionPresentation';
 import {
     clearOtherDeliveryActionQueueScopes,
@@ -101,6 +105,10 @@ async function clearOtherStoredDriverRuns(userId: string, activeRunId: string) {
 
 async function readDashboard({ signal }: { signal: AbortSignal }) {
     assertDeliveryOfflineWritesAllowed();
+    const requestTiming = {
+        monotonicMs: performance.now(),
+        wallMs: Date.now(),
+    };
     const response = await fetch('/api/dashboard', {
         cache: 'no-store',
         signal,
@@ -115,7 +123,7 @@ async function readDashboard({ signal }: { signal: AbortSignal }) {
             'Poslužitelj je vratio neispravne podatke o dostavama.',
         );
     }
-    return data;
+    return { dashboard: data, requestTiming };
 }
 
 function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
@@ -159,10 +167,6 @@ function isNullableString(value: unknown) {
     return value === null || typeof value === 'string';
 }
 
-function isNullableNumber(value: unknown) {
-    return value === null || typeof value === 'number';
-}
-
 function isCustomerHarvest(value: unknown) {
     return (
         isRecord(value) &&
@@ -174,16 +178,19 @@ function isCustomerHarvest(value: unknown) {
     );
 }
 
-function isCustomerTracking(value: unknown) {
+function isCustomerProgress(value: unknown) {
     return (
-        value === null ||
-        (isRecord(value) &&
-            (value.status === 'live' ||
-                value.status === 'delayed' ||
-                value.status === 'offline' ||
-                value.status === 'unavailable') &&
-            isNullableString(value.lastAcceptedAt) &&
-            typeof value.mapAvailable === 'boolean')
+        isRecord(value) &&
+        (value.phase === 'scheduled' ||
+            value.phase === 'on-route' ||
+            value.phase === 'next' ||
+            value.phase === 'arrived' ||
+            value.phase === 'unavailable') &&
+        (value.stopsAhead === null ||
+            (typeof value.stopsAhead === 'number' &&
+                Number.isInteger(value.stopsAhead) &&
+                value.stopsAhead >= 0)) &&
+        typeof value.delayed === 'boolean'
     );
 }
 
@@ -212,12 +219,10 @@ function isCustomerDashboardRequest(value: unknown) {
     }
     return (
         value.mode === 'delivery' &&
-        isNullableString(value.estimatedArrivalAt) &&
-        isNullableNumber(value.estimatedTravelSeconds) &&
-        isNullableNumber(value.estimatedDistanceMeters) &&
-        typeof value.reroutePending === 'boolean' &&
+        isCustomerDeliveryEtaSummary(value.eta) &&
+        isCustomerProgress(value.progress) &&
         isNullableString(value.deliveredAt) &&
-        isCustomerTracking(value.tracking) &&
+        isCustomerDeliveryTrackingSummary(value.tracking) &&
         isNullableString(value.mapPath) &&
         (value.receipt === null || isRecord(value.receipt)) &&
         (value.recovery === null || isRecord(value.recovery))
@@ -708,7 +713,7 @@ export function DeliveryDashboard({
         refetchInterval: 10_000,
     });
     const refetchDashboard = query.refetch;
-    const dashboardData = query.data;
+    const dashboardData = query.data?.dashboard;
     const driverDashboard: DriverDeliveryDashboard | null =
         dashboardData?.kind === 'driver' ? dashboardData : null;
     const authenticatedDriverUserId =
@@ -783,11 +788,11 @@ export function DeliveryDashboard({
         },
     });
     const driverWithoutActiveRun =
-        query.data?.kind === 'driver' && !query.data.activeRun
-            ? query.data.user.id
+        dashboardData?.kind === 'driver' && !dashboardData.activeRun
+            ? dashboardData.user.id
             : null;
     const currentDriverUserId =
-        query.data?.kind === 'driver' ? query.data.user.id : null;
+        dashboardData?.kind === 'driver' ? dashboardData.user.id : null;
     const currentDriverRunId = driverDashboard?.activeRun?.id ?? null;
     const previousDriverUserIdRef = useRef<string | null>(null);
     const previousDriverRunScopeRef = useRef<{
@@ -879,11 +884,11 @@ export function DeliveryDashboard({
     }, [authenticatedUserId, queryClient, refetchDashboard]);
 
     useEffect(() => {
-        if (!completedRunId || query.data?.kind !== 'driver') return;
-        if (query.data.activeRun?.id !== completedRunId) {
+        if (!completedRunId || dashboardData?.kind !== 'driver') return;
+        if (dashboardData.activeRun?.id !== completedRunId) {
             setCompletedRunId(null);
         }
-    }, [completedRunId, query.data]);
+    }, [completedRunId, dashboardData]);
 
     useEffect(() => {
         if (authenticatedDriverUserId) return;
@@ -1022,14 +1027,15 @@ export function DeliveryDashboard({
         expectation?: DeliveryServerStateExpectation,
     ) => {
         const refreshed = await query.refetch();
-        if (!refreshed.isSuccess || refreshed.data?.kind !== 'driver') {
+        const refreshedDashboard = refreshed.data?.dashboard;
+        if (!refreshed.isSuccess || refreshedDashboard?.kind !== 'driver') {
             return false;
         }
         if (!expectation) {
             setActionConfirmation(null);
             return true;
         }
-        const refreshedRun = refreshed.data.activeRun;
+        const refreshedRun = refreshedDashboard.activeRun;
         if (!refreshedRun || refreshedRun.id !== expectation.runId) {
             setActionConfirmation(null);
             return true;
@@ -1208,7 +1214,7 @@ export function DeliveryDashboard({
         );
     }
 
-    if (!query.data) {
+    if (!dashboardData) {
         if (offlineRoute && authenticatedDriverUserId) {
             return (
                 <OfflineRouteRecovery
@@ -1245,7 +1251,7 @@ export function DeliveryDashboard({
         );
     }
 
-    const dashboard = query.data;
+    const dashboard = dashboardData;
     return (
         <>
             {!networkOnline || query.isError ? (
@@ -1312,7 +1318,10 @@ export function DeliveryDashboard({
                     onServerStateChanged={refreshDriverServerState}
                 />
             ) : (
-                <CustomerDashboard dashboard={dashboard} />
+                <CustomerDashboard
+                    dashboard={dashboard}
+                    requestTiming={query.data?.requestTiming ?? null}
+                />
             )}
             {!networkOnline || query.isError ? (
                 <div aria-hidden="true" className="h-32 sm:h-24" />

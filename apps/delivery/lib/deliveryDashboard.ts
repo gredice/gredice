@@ -17,6 +17,7 @@ import {
     getDeliveryRunExecutionProgress,
     getDeliveryRunStopsForRequestIds,
     getUser,
+    hasLegacyGoogleRouteArtifact,
     isDeliveryRunStopActionable,
     isDeliveryRunStopTerminal,
     type RecordDeliveryRunStopExceptionsInput,
@@ -1052,9 +1053,14 @@ async function customerDashboard({
     );
     const activeRuns = await Promise.all(activeRunIds.map(getDeliveryRun));
     const currentStopIdsByRunId = new Map<string, Set<number> | null>();
+    const executionProgressByRunId = new Map<
+        string,
+        DeliveryRunExecutionStep[]
+    >();
     for (const run of activeRuns) {
         if (!run) continue;
         const progress = await getDeliveryRunExecutionProgress(run.id);
+        executionProgressByRunId.set(run.id, progress);
         const current = progress.find((step) => step.state === 'current');
         if (current?.kind !== 'delivery' || !current.pickupConfirmed) {
             currentStopIdsByRunId.set(run.id, null);
@@ -1108,19 +1114,41 @@ async function customerDashboard({
                 ? (currentStopIdsByRunId.get(row.run.id)?.has(row.stop.id) ??
                   false)
                 : false;
-            return customerDeliveryRequestSummary(
-                deliveryStopSummary({
-                    items: [{ request, stop: row?.stop }],
-                    run: row?.run,
+            const summary = deliveryStopSummary({
+                items: [{ request, stop: row?.stop }],
+                run: row?.run,
+                isCurrent,
+                audience: 'customer',
+                now: projectedAt,
+                includeTracking:
+                    row?.run.state === DeliveryRunStates.ACTIVE &&
+                    isDeliveryRunStopActionable(row.stop.state) &&
                     isCurrent,
-                    audience: 'customer',
-                    now: projectedAt,
-                    includeTracking:
-                        row?.run.state === DeliveryRunStates.ACTIVE &&
-                        isDeliveryRunStopActionable(row.stop.state) &&
-                        isCurrent,
-                }),
-            );
+            });
+            const runTracking = row
+                ? customerDeliveryTrackingSummary(row.run, projectedAt)
+                : null;
+            return customerDeliveryRequestSummary(summary, {
+                now: projectedAt.toISOString(),
+                runState: row?.run.state ?? null,
+                stopsAhead:
+                    row?.run.state === DeliveryRunStates.ACTIVE
+                        ? customerDeliveryStopsAhead({
+                              progress:
+                                  executionProgressByRunId.get(row.run.id) ??
+                                  [],
+                              stopId: row.stop.id,
+                          })
+                        : null,
+                estimatesCalculatedAt: iso(row?.run.estimatesUpdatedAt),
+                estimateSource: row?.run.estimateSource ?? null,
+                routePlanVersion: row?.run.routePlanVersion ?? null,
+                hasTrafficRouteArtifact: hasLegacyGoogleRouteArtifact(
+                    row?.run.encodedPolyline,
+                ),
+                trackingStatus: runTracking?.status ?? null,
+                trackingLastAcceptedAt: runTracking?.lastAcceptedAt ?? null,
+            });
         })
         .sort((first, second) => {
             const firstTime = first.slotStartAt ?? '';
@@ -1179,6 +1207,26 @@ export function deliveryTrackingStopIds({
     return routePlanVersion < 2
         ? expandLegacyCurrentDeliveryStopIds({ currentStopIds, groups })
         : new Set(currentStopIds);
+}
+
+export function customerDeliveryStopsAhead({
+    progress,
+    stopId,
+}: {
+    progress: readonly DeliveryRunExecutionStep[];
+    stopId: number | null | undefined;
+}) {
+    if (typeof stopId !== 'number') return null;
+
+    const targetIndex = progress.findIndex(
+        (step) => step.kind === 'delivery' && step.stopIds.includes(stopId),
+    );
+    const target = progress[targetIndex];
+    if (!target || target.state === 'completed') return null;
+
+    return progress
+        .slice(0, targetIndex)
+        .filter((step) => step.state !== 'completed').length;
 }
 
 export function deliveryDashboardKindForRole(role: string) {

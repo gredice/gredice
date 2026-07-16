@@ -45,8 +45,9 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         recovery: null,
         tracking: {
             status: 'live',
-            lastAcceptedAt: '2026-07-16T10:15:00.000Z',
+            lastAcceptedAt: '2026-07-16T09:58:30.000Z',
             mapAvailable: true,
+            exactLocationExpiresInMs: 30_000,
         },
         runId: 'safe-map-run',
         deliveryCount: 2,
@@ -70,7 +71,18 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         lockedReason: privateSentinel,
     };
 
-    const projected = customerDeliveryRequestSummary(source);
+    const projectionContext = {
+        now: '2026-07-16T10:00:00.000Z',
+        runState: 'active',
+        stopsAhead: 0,
+        estimatesCalculatedAt: '2026-07-16T09:59:00.000Z',
+        estimateSource: 'legacy',
+        routePlanVersion: 1,
+        hasTrafficRouteArtifact: true,
+        trackingStatus: 'live',
+        trackingLastAcceptedAt: '2026-07-16T09:58:30.000Z',
+    } as const;
+    const projected = customerDeliveryRequestSummary(source, projectionContext);
 
     assert.deepEqual(projected, {
         mode: 'delivery',
@@ -80,18 +92,30 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         requestNotes: 'Pozvoni na portafon.',
         slotStartAt: '2026-07-16T10:00:00.000Z',
         slotEndAt: '2026-07-16T12:00:00.000Z',
-        estimatedArrivalAt: '2026-07-16T10:30:00.000Z',
-        estimatedTravelSeconds: 900,
-        estimatedDistanceMeters: 5_000,
-        reroutePending: false,
+        eta: {
+            source: 'traffic-route',
+            calculatedAt: '2026-07-16T09:59:00.000Z',
+            freshness: 'fresh',
+            confidence: 'high',
+            rangeStartAt: '2026-07-16T10:25:00.000Z',
+            rangeEndAt: '2026-07-16T10:40:00.000Z',
+            remainingMinSeconds: 1_500,
+            remainingMaxSeconds: 2_400,
+        },
+        progress: {
+            phase: 'next',
+            stopsAhead: 0,
+            delayed: false,
+        },
         deliveredAt: null,
         harvest,
         receipt: null,
         recovery: null,
         tracking: {
             status: 'live',
-            lastAcceptedAt: '2026-07-16T10:15:00.000Z',
+            lastAcceptedAt: '2026-07-16T09:58:30.000Z',
             mapAvailable: true,
+            exactLocationExpiresInMs: 30_000,
         },
         mapPath: '/api/map/safe-map-run',
     });
@@ -114,9 +138,22 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         'accuracy',
         'heading',
         'speed',
+        'estimatedArrivalAt',
+        'estimatedTravelSeconds',
+        'estimatedDistanceMeters',
+        'reroutePending',
     ]) {
         assert.equal(privateKey in projected, false, privateKey);
     }
+
+    const laterStop = customerDeliveryRequestSummary(
+        { ...source, tracking: null },
+        { ...projectionContext, stopsAhead: 2 },
+    );
+    assert.equal(laterStop.eta.source, 'traffic-route');
+    assert.equal(laterStop.progress.stopsAhead, 2);
+    assert.equal(laterStop.tracking, null);
+    assert.equal(laterStop.mapPath, null);
 });
 
 test('projects pickup status, public location, and instructions without delivery fields', () => {
@@ -170,6 +207,8 @@ test('projects pickup status, public location, and instructions without delivery
         'recovery',
         'receipt',
         'deliveredAt',
+        'eta',
+        'progress',
     ]) {
         assert.equal(deliveryKey in projected, false, deliveryKey);
     }
@@ -208,7 +247,17 @@ test('does not expose a historical run path when delivery tracking is unavailabl
         deliveries: [],
     };
 
-    const projected = customerDeliveryRequestSummary(source);
+    const projected = customerDeliveryRequestSummary(source, {
+        now: '2026-07-16T12:30:00.000Z',
+        runState: 'completed',
+        stopsAhead: null,
+        estimatesCalculatedAt: null,
+        estimateSource: null,
+        routePlanVersion: 1,
+        hasTrafficRouteArtifact: false,
+        trackingStatus: null,
+        trackingLastAcceptedAt: null,
+    });
 
     assert.equal(projected.mapPath, null);
     assert.equal(JSON.stringify(projected).includes(historicalRun), false);

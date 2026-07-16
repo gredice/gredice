@@ -11,6 +11,9 @@ test('keeps delivery tracking while presenting pickup location and instructions 
     mount,
     page,
 }) => {
+    await page.clock.install({
+        time: new Date('2026-07-16T08:45:10.000Z'),
+    });
     await mount(<MixedCustomerDashboardStory />);
 
     await expect(
@@ -35,11 +38,18 @@ test('keeps delivery tracking while presenting pickup location and instructions 
         delivery.getByRole('heading', { name: 'Rajčica za dostavu' }),
     ).toBeVisible();
     await expect(delivery.getByText('Dostava', { exact: true })).toBeVisible();
-    await expect(delivery.getByText('Dolazak', { exact: true })).toBeVisible();
-    await expect(delivery.getByText('Vožnja', { exact: true })).toBeVisible();
     await expect(
-        delivery.getByText('Udaljenost', { exact: true }),
+        delivery.getByText('Procijenjeni dolazak', { exact: true }),
     ).toBeVisible();
+    await expect(
+        delivery.getByText('Ažurna procjena prema prometu', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        delivery.getByText('Tvoja dostava je sljedeća.', { exact: true }),
+    ).toBeVisible();
+    await expect(delivery.locator('time')).toHaveCount(5);
+    const deliveryText = await delivery.innerText();
+    expect(deliveryText).not.toMatch(/Vožnja|Udaljenost/);
 
     const map = page.getByRole('img', {
         name: 'Trenutna lokacija vozača i moja dostava',
@@ -144,6 +154,9 @@ test('keeps the user delivery-only heading and tracking experience', async ({
     mount,
     page,
 }) => {
+    await page.clock.install({
+        time: new Date('2026-07-16T08:45:10.000Z'),
+    });
     await mount(<DeliveryUserDashboardStory />);
 
     await expect(

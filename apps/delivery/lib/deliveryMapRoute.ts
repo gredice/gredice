@@ -1,3 +1,4 @@
+import { deliveryRunRoutePolyline } from '@gredice/storage/deliveryTrackingPolicy';
 import {
     buildDeliveryMapData,
     customerCurrentDeliveryMapStops,
@@ -204,7 +205,7 @@ export function createDeliveryMapRouteHandlers<
                       )
                     : [],
                 stops,
-                encodedPolyline: run.encodedPolyline,
+                encodedPolyline: deliveryRunRoutePolyline(run.encodedPolyline),
                 customerView,
             });
             if (new URL(request.url).searchParams.get('format') === 'json') {

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
     customerDeliveryReceiptSummary,
+    customerDeliveryStopsAhead,
     deliveryDashboardKindForRole,
     deliveryMutationRouteState,
     deliveryRecipientCount,
@@ -242,6 +243,94 @@ test('current route tracking keeps the server-confirmed physical stop ids', () =
         ],
         [21],
     );
+});
+
+test('customer progress counts unfinished physical checkpoints without splitting bulk stops', () => {
+    const progress = [
+        {
+            kind: 'pickup' as const,
+            pickupNodeId: 'completed-pickup',
+            itinerarySequence: 1,
+            manifestIds: ['manifest-completed'],
+            state: 'completed' as const,
+        },
+        {
+            kind: 'pickup' as const,
+            pickupNodeId: 'current-pickup',
+            itinerarySequence: 2,
+            manifestIds: ['manifest-current'],
+            state: 'current' as const,
+        },
+        {
+            kind: 'delivery' as const,
+            itinerarySequence: 3,
+            stopKey: 'PRIVATE BULK STOP',
+            stopIds: [21, 22],
+            actionableStopIds: [21, 22],
+            pickupConfirmed: true,
+            state: 'upcoming' as const,
+        },
+        {
+            kind: 'delivery' as const,
+            itinerarySequence: 4,
+            stopKey: 'PRIVATE LATER STOP',
+            stopIds: [31],
+            actionableStopIds: [31],
+            pickupConfirmed: true,
+            state: 'upcoming' as const,
+        },
+    ];
+
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 21 }), 1);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 22 }), 1);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 31 }), 2);
+});
+
+test('customer progress treats the current stop as next and counts retry checkpoints once', () => {
+    const progress = [
+        {
+            kind: 'delivery' as const,
+            itinerarySequence: 4,
+            stopKey: 'current',
+            stopIds: [41],
+            actionableStopIds: [41],
+            pickupConfirmed: true,
+            state: 'current' as const,
+        },
+        {
+            kind: 'delivery' as const,
+            itinerarySequence: 5,
+            stopKey: 'retry-bulk',
+            stopIds: [51, 52],
+            actionableStopIds: [51, 52],
+            pickupConfirmed: true,
+            retryLaneRank: 1,
+            retryAttempt: 1,
+            state: 'upcoming' as const,
+        },
+    ];
+
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 41 }), 0);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 51 }), 1);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 52 }), 1);
+});
+
+test('customer progress is unavailable for completed, unknown, or missing stops', () => {
+    const progress = [
+        {
+            kind: 'delivery' as const,
+            itinerarySequence: 1,
+            stopKey: 'completed',
+            stopIds: [61],
+            actionableStopIds: [],
+            pickupConfirmed: true,
+            state: 'completed' as const,
+        },
+    ];
+
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 61 }), null);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: 99 }), null);
+    assert.equal(customerDeliveryStopsAhead({ progress, stopId: null }), null);
 });
 
 test('pickup manifest advertises only persisted trace provenance', () => {
