@@ -1,0 +1,4 @@
+CREATE INDEX "notification_delivery_attempts_attempted_at_idx" ON "notification_delivery_attempts" USING btree ("attempted_at");--> statement-breakpoint
+CREATE INDEX "notification_delivery_attempts_queued_attempted_at_idx" ON "notification_delivery_attempts" USING btree ("attempted_at") WHERE "notification_delivery_attempts"."status" = 'queued';--> statement-breakpoint
+CREATE INDEX "notification_delivery_events_occurred_at_idx" ON "notification_delivery_events" USING btree ("occurred_at");--> statement-breakpoint
+CREATE INDEX "notification_delivery_events_retry_exhausted_at_idx" ON "notification_delivery_events" USING btree ("occurred_at") WHERE "notification_delivery_events"."type" = 'failed' and "notification_delivery_events"."metadata"->>'reason' = 'attempts_exhausted';
