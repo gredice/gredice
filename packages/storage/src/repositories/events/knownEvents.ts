@@ -13,7 +13,8 @@ import type {
     DeliveryRequestCreatePayload,
     DeliveryRequestExceptionRecordedPayload,
     DeliveryRequestExceptionRecoveredPayload,
-    DeliveryRequestFulfilledPayload,
+    DeliveryRequestFulfilledPayloadV1,
+    DeliveryRequestFulfilledPayloadV2,
     DeliveryRequestReadyEmailProcessedPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
@@ -499,7 +500,7 @@ export const knownEvents = {
         }),
         requestFulfilledV1: (
             aggregateId: string,
-            data: DeliveryRequestFulfilledPayload,
+            data: DeliveryRequestFulfilledPayloadV1,
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 1,
@@ -508,7 +509,7 @@ export const knownEvents = {
         }),
         requestFulfilledV2: (
             aggregateId: string,
-            data: DeliveryRequestFulfilledPayload,
+            data: DeliveryRequestFulfilledPayloadV2,
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 2,

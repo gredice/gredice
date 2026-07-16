@@ -48,7 +48,7 @@ import {
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
-    type DeliveryRequestFulfilledPayload,
+    type DeliveryRequestHandoffVerificationPayload,
     getAllEvents,
     knownEvents,
     knownEventTypes,
@@ -107,6 +107,149 @@ interface DeliveryEventData {
     accountId?: string;
     exceptionOutcome?: 'deferred' | 'failed' | 'cancelled';
     exceptionRetryable?: boolean;
+}
+
+export type DeliveryCustomerHandoffVerification =
+    | 'verified'
+    | 'no-label'
+    | 'skipped'
+    | 'not-recorded';
+
+export type DeliveryCustomerHandoffReceipt = {
+    fulfilledAt: Date;
+    verification: DeliveryCustomerHandoffVerification;
+};
+
+const deliveryHandoffResults = new Set([
+    'unverified',
+    'scanned',
+    'no-label',
+    'missing',
+    'skipped',
+]);
+const deliveryHandoffReasons = new Set([
+    'scanner-unavailable',
+    'label-unreadable',
+    'manual-verification',
+    'other-operational',
+]);
+const customerReceiptMaximumOfflineAgeMs = 36 * 60 * 60 * 1000;
+const customerReceiptMaximumFutureSkewMs = 5 * 60 * 1000;
+
+function customerFulfilledAt(event: DbEvent) {
+    if (
+        event.version !== 2 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        return event.createdAt;
+    }
+
+    const value = (event.data as Record<string, unknown>).fulfilledAt;
+    if (typeof value !== 'string' || value.length === 0 || value.length > 64) {
+        return event.createdAt;
+    }
+
+    const fulfilledAt = new Date(value);
+    const ageMs = event.createdAt.getTime() - fulfilledAt.getTime();
+    return Number.isFinite(fulfilledAt.getTime()) &&
+        ageMs <= customerReceiptMaximumOfflineAgeMs &&
+        ageMs >= -customerReceiptMaximumFutureSkewMs
+        ? fulfilledAt
+        : event.createdAt;
+}
+
+function customerHandoffVerification(
+    event: DbEvent,
+): DeliveryCustomerHandoffVerification {
+    if (
+        event.version !== 2 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        return 'not-recorded';
+    }
+
+    const eventData = event.data as Record<string, unknown>;
+    const handoff = eventData.handoffVerification;
+    if (
+        eventData.status !== DeliveryRequestStates.FULFILLED ||
+        !handoff ||
+        typeof handoff !== 'object' ||
+        Array.isArray(handoff)
+    ) {
+        return 'not-recorded';
+    }
+
+    const value = handoff as Record<string, unknown>;
+    const validTraceLinkId =
+        value.traceLinkId === null ||
+        (typeof value.traceLinkId === 'number' &&
+            Number.isSafeInteger(value.traceLinkId) &&
+            value.traceLinkId > 0);
+    const hasValidVerifiedAt =
+        typeof value.verifiedAt === 'string' &&
+        value.verifiedAt.length > 0 &&
+        value.verifiedAt.length <= 64 &&
+        Number.isFinite(Date.parse(value.verifiedAt));
+    const validVerifiedAt =
+        value.verifiedAt === undefined || hasValidVerifiedAt;
+    const validReason =
+        value.reason === undefined ||
+        (typeof value.reason === 'string' &&
+            deliveryHandoffReasons.has(value.reason));
+    const validResult =
+        typeof value.result === 'string' &&
+        deliveryHandoffResults.has(value.result);
+    const validReasonForResult =
+        value.result === 'skipped'
+            ? typeof value.reason === 'string'
+            : value.reason === undefined;
+    const validEvidenceForResult =
+        value.result === 'scanned'
+            ? value.qrAvailable === true &&
+              value.traceLinkId !== null &&
+              hasValidVerifiedAt
+            : value.result === 'unverified'
+              ? value.verifiedAt === undefined
+              : value.result === 'no-label'
+                ? value.qrAvailable === false || hasValidVerifiedAt
+                : value.result === 'missing' || value.result === 'skipped'
+                  ? hasValidVerifiedAt
+                  : false;
+
+    if (
+        value.version !== 1 ||
+        typeof value.runId !== 'string' ||
+        value.runId.trim().length === 0 ||
+        value.runId.length > 200 ||
+        typeof value.stopId !== 'number' ||
+        !Number.isSafeInteger(value.stopId) ||
+        value.stopId <= 0 ||
+        typeof value.retryAttempt !== 'number' ||
+        !Number.isSafeInteger(value.retryAttempt) ||
+        value.retryAttempt < 0 ||
+        typeof value.clientOperationId !== 'string' ||
+        value.clientOperationId.trim().length === 0 ||
+        value.clientOperationId.length > 200 ||
+        !validTraceLinkId ||
+        typeof value.qrAvailable !== 'boolean' ||
+        (value.qrAvailable && value.traceLinkId === null) ||
+        !validResult ||
+        !validReason ||
+        !validReasonForResult ||
+        !validEvidenceForResult ||
+        !validVerifiedAt
+    ) {
+        return 'not-recorded';
+    }
+
+    if (value.result === 'scanned') return 'verified';
+    if (value.result === 'no-label') return 'no-label';
+    if (value.result === 'skipped') return 'skipped';
+    return 'not-recorded';
 }
 
 function parseDeliveryEventData(value: unknown): DeliveryEventData {
@@ -227,6 +370,7 @@ interface DeliveryRequestStateProjection {
     deliveryNotes?: string;
     accountId?: string;
     surveySent: boolean;
+    customerHandoffReceipt?: DeliveryCustomerHandoffReceipt;
     deliveryException?: {
         outcome: 'deferred' | 'failed' | 'cancelled';
         retryable: boolean;
@@ -308,6 +452,7 @@ function reconstructDeliveryRequestState(
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
     let surveySent = false;
+    let customerHandoffReceipt: DeliveryCustomerHandoffReceipt | undefined;
     let deliveryException:
         | {
               outcome: 'deferred' | 'failed' | 'cancelled';
@@ -346,6 +491,7 @@ function reconstructDeliveryRequestState(
             requestNotes = asString(data.requestNotes);
             state = DeliveryRequestStates.PENDING;
             accountId = asString(data.accountId);
+            customerHandoffReceipt = undefined;
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
@@ -357,19 +503,26 @@ function reconstructDeliveryRequestState(
             state = DeliveryRequestStates.CONFIRMED;
             cancelReason = undefined;
             deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
             state = DeliveryRequestStates.PREPARING;
             cancelReason = undefined;
             deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestReady) {
             state = DeliveryRequestStates.READY;
             cancelReason = undefined;
             deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
             cancelReason = undefined;
             deliveryException = undefined;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
+            customerHandoffReceipt = {
+                fulfilledAt: customerFulfilledAt(event),
+                verification: customerHandoffVerification(event),
+            };
         } else if (
             event.type === knownEventTypes.delivery.requestExceptionRecorded &&
             data.exceptionOutcome &&
@@ -400,10 +553,12 @@ function reconstructDeliveryRequestState(
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             cancelReason = asString(data.cancelReason);
             deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }
@@ -420,6 +575,7 @@ function reconstructDeliveryRequestState(
         deliveryNotes,
         accountId,
         surveySent,
+        customerHandoffReceipt,
         deliveryException,
     };
 }
@@ -797,6 +953,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        customerHandoffReceipt,
         deliveryException,
         surveySent,
     } = reconstructDeliveryRequestState(request.createdAt, events);
@@ -910,6 +1067,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        customerHandoffReceipt,
         deliveryException,
         surveySent,
         routeRevision: getDeliveryRequestDispatchEventId(events),
@@ -1004,6 +1162,7 @@ async function getDeliveryRequestsSummaryUncached(
             deliveryException: projection.deliveryException,
             requestNotes: projection.requestNotes,
             deliveryNotes: projection.deliveryNotes,
+            customerHandoffReceipt: projection.customerHandoffReceipt,
             surveySent: projection.surveySent,
             createdAt: request.createdAt,
             updatedAt: request.updatedAt,
@@ -1233,6 +1392,7 @@ export async function getDeliveryRequestsWithEvents(
                 deliveryException: projection.deliveryException,
                 requestNotes: projection.requestNotes,
                 deliveryNotes: projection.deliveryNotes,
+                customerHandoffReceipt: projection.customerHandoffReceipt,
                 surveySent: projection.surveySent,
                 routeRevision,
                 trace: traceLink
@@ -1784,9 +1944,8 @@ export async function fulfillDeliveryRequest(
     requestId: string,
     deliveryNotes?: string,
     db?: DatabaseClient,
-    handoffVerification?: NonNullable<
-        DeliveryRequestFulfilledPayload['handoffVerification']
-    >,
+    handoffVerification?: DeliveryRequestHandoffVerificationPayload,
+    fulfilledAt?: Date,
 ): Promise<void> {
     if (!db) {
         await withDeliveryDispatchTransaction(async (tx) => {
@@ -1795,6 +1954,7 @@ export async function fulfillDeliveryRequest(
                 deliveryNotes,
                 tx,
                 handoffVerification,
+                fulfilledAt,
             );
         });
         return;
@@ -1832,15 +1992,18 @@ export async function fulfillDeliveryRequest(
     }
 
     // Create the fulfillment event
-    const payload: DeliveryRequestFulfilledPayload = {
-        status: DeliveryRequestStates.FULFILLED,
-        deliveryNotes,
-        ...(handoffVerification ? { handoffVerification } : {}),
-    };
     await createEvent(
         handoffVerification
-            ? knownEvents.delivery.requestFulfilledV2(requestId, payload)
-            : knownEvents.delivery.requestFulfilledV1(requestId, payload),
+            ? knownEvents.delivery.requestFulfilledV2(requestId, {
+                  status: DeliveryRequestStates.FULFILLED,
+                  deliveryNotes,
+                  fulfilledAt: (fulfilledAt ?? new Date()).toISOString(),
+                  handoffVerification,
+              })
+            : knownEvents.delivery.requestFulfilledV1(requestId, {
+                  status: DeliveryRequestStates.FULFILLED,
+                  deliveryNotes,
+              }),
         db,
     );
 }

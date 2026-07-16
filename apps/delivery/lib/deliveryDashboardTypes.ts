@@ -36,6 +36,19 @@ export type DeliveryHarvestSummary = {
     tracePath: string | null;
 };
 
+export type CustomerHandoffVerification =
+    | 'verified'
+    | 'no-label'
+    | 'skipped'
+    | 'not-recorded';
+
+export type CustomerDeliveryReceiptSummary = {
+    requestReference: string;
+    deliveredAt: string;
+    verification: CustomerHandoffVerification;
+    harvest: DeliveryHarvestSummary;
+};
+
 export type DeliveryExceptionOutcome = DeliveryRunExceptionOutcome;
 
 export type DeliveryExceptionReason = DeliveryRunExceptionReason;
@@ -96,6 +109,8 @@ export type DeliveryStopSummary = {
     arrivedAt: string | null;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
+    /** Present only on the account-owned, fulfilled customer projection. */
+    receipt?: CustomerDeliveryReceiptSummary | null;
     recovery: CustomerDeliveryRecoverySummary | null;
     tracking: CustomerDeliveryTrackingSummary | null;
     runId: string | null;

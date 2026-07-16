@@ -415,26 +415,43 @@ export type DeliveryRequestStatusPayload = {
     status: string;
 };
 
-export type DeliveryRequestFulfilledPayload = {
+type DeliveryRequestFulfilledPayloadBase = {
     status: string;
     deliveryNotes?: string;
-    handoffVerification?: {
-        version: 1;
-        runId: string;
-        stopId: number;
-        retryAttempt: number;
-        clientOperationId: string;
-        traceLinkId: number | null;
-        qrAvailable: boolean;
-        result: 'unverified' | 'scanned' | 'no-label' | 'missing' | 'skipped';
-        reason?:
-            | 'scanner-unavailable'
-            | 'label-unreadable'
-            | 'manual-verification'
-            | 'other-operational';
-        verifiedAt?: string;
-    };
 };
+
+export type DeliveryRequestHandoffVerificationPayload = {
+    version: 1;
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    clientOperationId: string;
+    traceLinkId: number | null;
+    qrAvailable: boolean;
+    result: 'unverified' | 'scanned' | 'no-label' | 'missing' | 'skipped';
+    reason?:
+        | 'scanner-unavailable'
+        | 'label-unreadable'
+        | 'manual-verification'
+        | 'other-operational';
+    verifiedAt?: string;
+};
+
+export type DeliveryRequestFulfilledPayloadV1 =
+    DeliveryRequestFulfilledPayloadBase & {
+        handoffVerification?: never;
+    };
+
+export type DeliveryRequestFulfilledPayloadV2 =
+    DeliveryRequestFulfilledPayloadBase & {
+        fulfilledAt?: string;
+        handoffVerification: DeliveryRequestHandoffVerificationPayload;
+    };
+
+export type DeliveryRequestFulfilledPayload =
+    DeliveryRequestFulfilledPayloadBase & {
+        handoffVerification?: DeliveryRequestHandoffVerificationPayload;
+    };
 
 export type DeliveryRequestExceptionRecordedPayload = {
     runId: string;

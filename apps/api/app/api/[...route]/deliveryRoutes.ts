@@ -22,6 +22,7 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { createDeliveryRequestCalendarEvent } from '../../../lib/delivery/calendarSync';
 import { cancelDeliveryRequestForCurrentAccount } from '../../../lib/delivery/cancelDeliveryRequestForAccount';
+import { customerDeliveryRequest } from '../../../lib/delivery/customerDeliveryRequest';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -313,7 +314,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const requests = await getDeliveryRequestsWithEvents(accountId);
-            return context.json(requests);
+            return context.json(requests.map(customerDeliveryRequest));
         },
     )
     // POST /requests - create delivery request
