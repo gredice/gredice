@@ -35,6 +35,7 @@ interface FarmSchedulePlantingsSectionProps {
     raisedBedPhotoPreviewByIdPromise: Promise<
         Map<number, FarmScheduleRaisedBedPhotoPreview>
     >;
+    selectedDateKey: string;
 }
 
 function buildFieldLabel(
@@ -74,6 +75,7 @@ export function FarmSchedulePlantingsSection({
     userId,
     assignedUserByFieldIdPromise,
     raisedBedPhotoPreviewByIdPromise,
+    selectedDateKey,
 }: FarmSchedulePlantingsSectionProps) {
     if (scheduledFields.length === 0) {
         return null;
@@ -193,6 +195,7 @@ export function FarmSchedulePlantingsSection({
                                             field={field}
                                             label={field.label}
                                             plantSort={plantSort}
+                                            selectedDateKey={selectedDateKey}
                                             userId={userId}
                                             assignedUserByFieldIdPromise={
                                                 assignedUserByFieldIdPromise

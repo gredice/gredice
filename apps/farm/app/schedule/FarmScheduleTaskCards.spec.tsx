@@ -2,15 +2,23 @@ import type { EntityStandardized } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
+import { ScheduleTaskReturnFocusHarness } from '../../playwright/ScheduleTaskReturnFocusHarness';
 import '../globals.css';
+import { CompleteOperationModal } from './CompleteOperationModal';
 import {
     type FarmOperationCardData,
     FarmScheduleOperationTaskCard,
 } from './FarmScheduleOperationTaskCard';
 import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
+import { ScheduleTaskReturnFocus } from './ScheduleTaskReturnFocus';
 
 const scheduledDate = new Date('2026-07-15T08:00:00.000Z');
+const selectedDateKey = '2026-07-20';
 const assignedUserByFieldIdPromise = Promise.resolve(new Map());
+const plantSort = {
+    id: 501,
+    information: { name: 'Salata' },
+} satisfies EntityStandardized;
 
 const operationLabels = {
     pending:
@@ -39,10 +47,14 @@ function buildOperation(
     };
 }
 
-function buildOperationDefinition(id: number): EntityStandardized {
+function buildOperationDefinition(
+    id: number,
+    conditions?: EntityStandardized['conditions'],
+): EntityStandardized {
     return {
         id,
         attributes: { duration: 15 },
+        conditions,
         information: { label: `Radnja ${id}` },
     };
 }
@@ -124,6 +136,7 @@ test('locks array-only work assigned to another farmer on a phone', async ({
                     assignedUserIds: ['farmer-2'],
                 }}
                 operationData={buildOperationDefinition(1010)}
+                selectedDateKey={selectedDateKey}
                 userId="farmer-1"
             />
             <FarmSchedulePlantingTaskCard
@@ -139,7 +152,8 @@ test('locks array-only work assigned to another farmer on a phone', async ({
                     sowingLocation: 'direct',
                 }}
                 label="Posij salatu"
-                plantSort={undefined}
+                plantSort={plantSort}
+                selectedDateKey={selectedDateKey}
                 userId="farmer-1"
                 assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
             />
@@ -177,6 +191,7 @@ test('keeps details before completion in keyboard order without nesting actions'
                 'Vrlo duga radnja koju farmer otvara prije završetka',
             )}
             operationData={buildOperationDefinition(1020)}
+            selectedDateKey={selectedDateKey}
             userId="farmer-1"
         />,
     );
@@ -195,6 +210,118 @@ test('keeps details before completion in keyboard order without nesting actions'
     await assertPrimaryTargetsAreTouchable(component);
 });
 
+for (const width of [320, 375, 390, 430]) {
+    test(`shows required and optional proof before completion at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 720 });
+        const operation = buildOperation(
+            width,
+            'planned',
+            'Vrlo duga radnja s obaveznim dokazom završetka na telefonu',
+        );
+        const conditions = {
+            completionAttachImagesRequired: true,
+            completionAttachNotes: true,
+        };
+        const component = await mount(
+            <FarmScheduleOperationTaskCard
+                completionAction={
+                    <CompleteOperationModal
+                        conditions={conditions}
+                        label={operation.label}
+                        operationId={operation.id}
+                    />
+                }
+                operation={operation}
+                operationData={buildOperationDefinition(
+                    operation.entityId,
+                    conditions,
+                )}
+                selectedDateKey={selectedDateKey}
+                userId="farmer-1"
+            />,
+        );
+
+        const requirements = component.getByRole('note', {
+            name: 'Zahtjevi dokaza završetka',
+        });
+        await expect(requirements.getByText('Dokaz završetka')).toBeVisible();
+        await expect(
+            requirements.getByText('Dodaj fotografiju (obavezno)'),
+        ).toBeVisible();
+        await expect(
+            requirements.getByText('Dodaj napomenu (opcionalno)'),
+        ).toBeVisible();
+        const completionButton = component.getByRole('button', {
+            name: /Dovrši radnju/,
+        });
+        await expect(completionButton).toHaveAttribute(
+            'aria-describedby',
+            `schedule-operation-${operation.id}-proof-requirements`,
+        );
+        await expect(completionButton).toHaveAccessibleDescription(
+            /Dodaj fotografiju \(obavezno\).*Dodaj napomenu \(opcionalno\)/,
+        );
+        await assertCardsStayWithinViewport(component);
+        await assertPrimaryTargetsAreTouchable(component);
+    });
+}
+
+test('restores focus to the exact task and yields one logical keyboard focus', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await mount(
+        <>
+            <ScheduleTaskReturnFocus />
+            <FarmScheduleOperationTaskCard
+                completionAction={completionAction('Dovrši radnju')}
+                operation={buildOperation(40, 'planned', 'Zalij salatu')}
+                operationData={buildOperationDefinition(1040)}
+                selectedDateKey={selectedDateKey}
+                userId="farmer-1"
+            />
+        </>,
+    );
+    const task = page.locator('#schedule-task-operation-40');
+    await expect(task).toHaveAccessibleName('Zalij salatu');
+    await page.evaluate(() => {
+        window.history.replaceState(null, '', '#schedule-task-operation-40');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    await expect(task).toBeFocused();
+    await expect(task).toHaveAttribute('data-schedule-task-restored', 'true');
+
+    await page.keyboard.press('Tab');
+    await expect(
+        task.getByRole('link', { name: /Otvori upute/ }),
+    ).toBeFocused();
+    await expect(task).not.toHaveAttribute('data-schedule-task-restored');
+});
+
+test('waits beyond the initial settle window for a streamed task target', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <ScheduleTaskReturnFocusHarness
+            delay={3000}
+            id="schedule-task-operation-91"
+        />,
+    );
+    await page.evaluate(() => {
+        window.history.replaceState(null, '', '#schedule-task-operation-91');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    const target = page.getByRole('article', { name: 'Odgođeni zadatak' });
+    await expect(target).toBeFocused({ timeout: 6000 });
+    await expect(target).toHaveAttribute('data-schedule-task-restored', 'true');
+});
+
 test('does not link unavailable operation guidance to a guaranteed 404', async ({
     mount,
 }) => {
@@ -207,17 +334,65 @@ test('does not link unavailable operation guidance to a guaranteed 404', async (
                 'Radnja sa zastarjelim uputama',
             )}
             operationData={undefined}
+            selectedDateKey={selectedDateKey}
             userId="farmer-1"
         />,
     );
 
     await expect(component.getByRole('link')).toHaveCount(0);
     await expect(
-        component.getByText('Upute trenutno nisu dostupne.'),
+        component.getByText('Upute za radnju trenutno nisu dostupne.'),
     ).toBeVisible();
     await expect(
-        component.getByRole('button', { name: 'Dovrši radnju' }),
+        component.getByText('Zahtjevi za dovršetak trenutno nisu dostupni.'),
     ).toBeVisible();
+    await expect(
+        component.getByRole('button', { name: /Dovrši radnju/ }),
+    ).toBeDisabled();
+    await expect(
+        component.getByText(
+            'Radnja se ne može dovršiti dok zahtjevi za dovršetak nisu dostupni.',
+        ),
+    ).toBeVisible();
+});
+
+test('uses the raised bed as a safe fallback when plant guidance is missing', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    const component = await mount(
+        <FarmSchedulePlantingTaskCard
+            completionAction={completionAction('Dovrši sijanje')}
+            field={{
+                assignedUserId: null,
+                assignedUserIds: [],
+                id: 92,
+                plantScheduledDate: scheduledDate,
+                plantStatus: 'planned',
+                positionIndex: 0,
+                raisedBedId: 10,
+                sowingLocation: 'direct',
+            }}
+            label="Posij nepoznatu sortu"
+            plantSort={undefined}
+            selectedDateKey={selectedDateKey}
+            userId="farmer-1"
+            assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
+        />,
+    );
+
+    await expect(
+        component.getByText('Upute za biljku trenutno nisu dostupne.'),
+    ).toBeVisible();
+    await expect(
+        component.getByRole('link', { name: 'Otvori gredicu' }),
+    ).toHaveAttribute('href', '/raised-beds/10');
+    await expect(
+        component.getByRole('link', { name: /Otvori upute za biljku/ }),
+    ).toHaveCount(0);
+    await assertCardsStayWithinViewport(component);
+    await assertPrimaryTargetsAreTouchable(component);
 });
 
 test('keeps loading completion explicit, disabled, and phone-sized', async ({
@@ -239,7 +414,8 @@ test('keeps loading completion explicit, disabled, and phone-sized', async ({
                 sowingLocation: 'direct',
             }}
             label="Sijanje vrlo duge sorte povrća"
-            plantSort={undefined}
+            plantSort={plantSort}
+            selectedDateKey={selectedDateKey}
             userId="farmer-1"
             assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
         />,
@@ -268,6 +444,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                         operationLabels.pending,
                     )}
                     operationData={buildOperationDefinition(1001)}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                 />
                 <FarmScheduleOperationTaskCard
@@ -285,12 +462,14 @@ for (const width of [320, 375, 390, 430, 1280]) {
                         ],
                     }}
                     operationData={buildOperationDefinition(1002)}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                 />
                 <FarmScheduleOperationTaskCard
                     completionAction={completionAction('Dovrši radnju')}
                     operation={buildOperation(3, 'planned', 'Zalij salatu')}
                     operationData={buildOperationDefinition(1003)}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                 />
             </div>,
@@ -306,7 +485,10 @@ for (const width of [320, 375, 390, 430, 1280]) {
         await expect(pendingCard.getByRole('button')).toHaveCount(0);
         await expect(
             pendingCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute('href', '/operations/1001');
+        ).toHaveAttribute(
+            'href',
+            '/operations/1001?scheduleDate=2026-07-20&scheduleTask=1',
+        );
         await expect(
             pendingCard.getByText(operationLabels.pending),
         ).toBeVisible();
@@ -330,7 +512,10 @@ for (const width of [320, 375, 390, 430, 1280]) {
         ).toBeVisible();
         await expect(
             completedCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute('href', '/operations/1002');
+        ).toHaveAttribute(
+            'href',
+            '/operations/1002?scheduleDate=2026-07-20&scheduleTask=2',
+        );
 
         const actionableCard = component.locator(
             '[data-task-state="actionable"]',
@@ -340,7 +525,10 @@ for (const width of [320, 375, 390, 430, 1280]) {
         ).toBeVisible();
         await expect(
             actionableCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute('href', '/operations/1003');
+        ).toHaveAttribute(
+            'href',
+            '/operations/1003?scheduleDate=2026-07-20&scheduleTask=3',
+        );
         await expect(
             actionableCard
                 .getByRole('link', { name: /Otvori upute/ })
@@ -371,7 +559,8 @@ for (const width of [320, 375, 390, 430, 1280]) {
                         sowingLocation: 'direct',
                     }}
                     label={plantingLabels.pending}
-                    plantSort={undefined}
+                    plantSort={plantSort}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
                 />
@@ -388,7 +577,8 @@ for (const width of [320, 375, 390, 430, 1280]) {
                         sowingLocation: 'direct',
                     }}
                     label={plantingLabels.completed}
-                    plantSort={undefined}
+                    plantSort={plantSort}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
                 />
@@ -405,7 +595,8 @@ for (const width of [320, 375, 390, 430, 1280]) {
                         sowingLocation: 'direct',
                     }}
                     label="Posij salatu"
-                    plantSort={undefined}
+                    plantSort={plantSort}
+                    selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
                 />
@@ -421,8 +612,13 @@ for (const width of [320, 375, 390, 430, 1280]) {
         await expect(pendingCard.getByRole('checkbox')).toHaveCount(0);
         await expect(pendingCard.getByRole('button')).toHaveCount(0);
         await expect(
-            pendingCard.getByRole('link', { name: /Otvori gredicu/ }),
-        ).toHaveAttribute('href', '/raised-beds/10');
+            pendingCard.getByRole('link', {
+                name: /Otvori upute za biljku/,
+            }),
+        ).toHaveAttribute(
+            'href',
+            '/plants/501?scheduleDate=2026-07-20&scheduleTask=1',
+        );
         await expect(
             pendingCard.getByText(plantingLabels.pending),
         ).toBeVisible();
@@ -436,8 +632,13 @@ for (const width of [320, 375, 390, 430, 1280]) {
         await expect(completedCard.getByRole('checkbox')).toHaveCount(0);
         await expect(completedCard.getByRole('button')).toHaveCount(0);
         await expect(
-            completedCard.getByRole('link', { name: /Otvori gredicu/ }),
-        ).toHaveAttribute('href', '/raised-beds/10');
+            completedCard.getByRole('link', {
+                name: /Otvori upute za biljku/,
+            }),
+        ).toHaveAttribute(
+            'href',
+            '/plants/501?scheduleDate=2026-07-20&scheduleTask=2',
+        );
 
         const actionableCard = component.locator(
             '[data-task-state="actionable"]',
@@ -446,11 +647,16 @@ for (const width of [320, 375, 390, 430, 1280]) {
             actionableCard.getByRole('button', { name: 'Dovrši sijanje' }),
         ).toBeVisible();
         await expect(
-            actionableCard.getByRole('link', { name: /Otvori gredicu/ }),
-        ).toHaveAttribute('href', '/raised-beds/10');
+            actionableCard.getByRole('link', {
+                name: /Otvori upute za biljku/,
+            }),
+        ).toHaveAttribute(
+            'href',
+            '/plants/501?scheduleDate=2026-07-20&scheduleTask=3',
+        );
         await expect(
             actionableCard
-                .getByRole('link', { name: /Otvori gredicu/ })
+                .getByRole('link', { name: /Otvori upute za biljku/ })
                 .getByRole('button'),
         ).toHaveCount(0);
 

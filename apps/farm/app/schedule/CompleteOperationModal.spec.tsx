@@ -71,6 +71,7 @@ for (const width of [320, 375, 390, 430]) {
         page,
     }) => {
         await page.setViewportSize({ width, height: 720 });
+        await holdCompletionActions(page);
         await mount(
             <CompleteOperationModal
                 conditions={{ completionAttachImagesRequired: true }}
@@ -113,8 +114,100 @@ for (const width of [320, 375, 390, 430]) {
                 }),
         );
         expect(undersizedOrClipped).toEqual([]);
+        const confirmButton = dialog.getByRole('button', { name: 'Potvrdi' });
+        await expect(confirmButton).toBeDisabled();
+        await confirmButton.evaluate((button) => {
+            button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () =>
+                        window.__farmScheduleActionTestState?.operationCalls ??
+                        -1,
+                ),
+            )
+            .toBe(0);
     });
 }
+
+test('caps phone gallery selection before upload and lets farmers remove a photo', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await mount(
+        <CompleteOperationModal
+            conditions={{ completionAttachImages: true }}
+            defaultOpen
+            label="Fotografiraj završenu radnju"
+            operationId={42}
+        />,
+    );
+    await settleResponsiveModal(page);
+
+    await page.locator('input[type="file"][multiple]').setInputFiles(
+        Array.from({ length: 21 }, (_, index) => ({
+            buffer: Buffer.from([index]),
+            mimeType: 'image/jpeg',
+            name: 'dokaz.jpg',
+        })),
+    );
+
+    const limitAlert = page.getByRole('alert');
+    await expect(limitAlert).toHaveText(
+        'Možeš dodati najviše 20 fotografija. Višak nije dodan.',
+    );
+    await expect(limitAlert).toHaveAttribute('aria-live', 'assertive');
+    await expect(
+        page.getByText('Odabrano 20 od najviše 20 fotografija'),
+    ).toBeVisible();
+    const uploadItems = page.locator('[data-operation-upload-item]');
+    await expect(uploadItems).toHaveCount(20);
+    expect(
+        await limitAlert.evaluate((alert) => {
+            const firstUploadItem = document.querySelector(
+                '[data-operation-upload-item]',
+            );
+            return Boolean(
+                firstUploadItem &&
+                    alert.compareDocumentPosition(firstUploadItem) &
+                        Node.DOCUMENT_POSITION_FOLLOWING,
+            );
+        }),
+    ).toBe(true);
+    await expect(
+        page.getByText('Fotografija 1', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', {
+            name: 'Ukloni fotografiju 1: dokaz.jpg',
+        }),
+    ).toHaveCount(1);
+    await expect(
+        page.getByRole('button', {
+            name: 'Ukloni fotografiju 20: dokaz.jpg',
+        }),
+    ).toHaveCount(1);
+    await expect(
+        page.getByRole('button', { name: 'Dodaj još slika' }),
+    ).toBeDisabled();
+    await expect(
+        page.getByRole('button', { name: 'Uslikaj fotografiju' }),
+    ).toBeDisabled();
+
+    await page
+        .getByRole('button', { name: 'Ukloni fotografiju 1: dokaz.jpg' })
+        .click();
+    await expect(uploadItems).toHaveCount(19);
+    await expect(limitAlert).toHaveCount(0);
+    await expect(
+        page.getByText('Odabrano 19 od najviše 20 fotografija'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj još slika' }),
+    ).toBeEnabled();
+});
 
 test('keeps operation completion open for server confirmation and ignores rapid repeat input', async ({
     mount,

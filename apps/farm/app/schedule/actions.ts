@@ -3,6 +3,8 @@
 import {
     buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
+    type EntityStandardized,
+    getEntitiesFormatted,
     getFarmUserAcceptedOperationById,
     getFarmUserPrintableHarvestTraceLinkIds,
     getFarmUserRaisedBeds,
@@ -11,12 +13,26 @@ import {
     knownEvents,
     markHarvestTraceLinksPrinted,
 } from '@gredice/storage';
+import { head } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import {
-    getScheduleOperationTaskAssignment,
+    assertFarmOperationCompletionImagesStored,
+    normalizeFarmOperationCompletionImageUrls,
+} from './operationCompletionProof';
+import {
+    assertScheduleOperationCompletionProof,
+    assertScheduleOperationCompletionRequirementsAvailable,
+    getScheduleOperationCompletionRequirements,
+} from './scheduleOperationRequirements';
+import {
+    assertScheduleOperationTaskAvailableToUser,
     getSchedulePlantingTaskAssignment,
 } from './scheduleTaskAssignment';
+import {
+    assertNonNegativeSafeInteger,
+    assertPositiveSafeInteger,
+} from './scheduleTaskInput';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
@@ -45,9 +61,7 @@ async function assertFarmerCanCompleteOperation(
         throw new Error('Nemaš dozvolu za označavanje ove radnje.');
     }
 
-    if (getScheduleOperationTaskAssignment(operation, userId) === 'other') {
-        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
-    }
+    assertScheduleOperationTaskAvailableToUser(operation, userId);
 
     return operation;
 }
@@ -88,12 +102,20 @@ export async function completeFarmOperation(
         user: { role },
         userId,
     } = await auth(['admin', 'farmer']);
+    const validOperationId = assertPositiveSafeInteger(
+        operationId,
+        'ID radnje nije ispravan.',
+    );
+    const completionImageUrls = normalizeFarmOperationCompletionImageUrls(
+        imageUrls,
+        validOperationId,
+    );
     const completionNotes = normalizeCompletionNotes(notes);
 
     const operation =
         role === 'admin'
-            ? await getOperationById(operationId)
-            : await assertFarmerCanCompleteOperation(userId, operationId);
+            ? await getOperationById(validOperationId)
+            : await assertFarmerCanCompleteOperation(userId, validOperationId);
 
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
@@ -116,10 +138,34 @@ export async function completeFarmOperation(
         );
     }
 
+    const operationDefinitions =
+        await getEntitiesFormatted<EntityStandardized>('operation');
+    const operationDefinition = operationDefinitions?.find(
+        (candidate) => candidate.id === operation.entityId,
+    );
+    const availableOperationDefinition =
+        assertScheduleOperationCompletionRequirementsAvailable(
+            operationDefinition,
+        );
+    assertScheduleOperationCompletionProof(
+        getScheduleOperationCompletionRequirements(
+            availableOperationDefinition,
+        ),
+        {
+            imageUrls: completionImageUrls,
+            notes: completionNotes,
+        },
+    );
+    await assertFarmOperationCompletionImagesStored(
+        completionImageUrls,
+        validOperationId,
+        head,
+    );
+
     await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
+        knownEvents.operations.completedV1(validOperationId.toString(), {
             completedBy: userId,
-            images: imageUrls,
+            images: completionImageUrls,
             notes: completionNotes,
         }),
     );
@@ -134,10 +180,6 @@ export async function completeFarmOperationWithImageUrls(
     imageUrls: string[],
     notes?: string,
 ) {
-    if (!operationId) {
-        throw new Error('Operation ID is required');
-    }
-
     return completeFarmOperation(operationId, imageUrls, notes);
 }
 
@@ -149,14 +191,22 @@ export async function completeFarmPlanting(
         user: { role },
         userId,
     } = await auth(['admin', 'farmer']);
+    const validRaisedBedId = assertPositiveSafeInteger(
+        raisedBedId,
+        'ID gredice nije ispravan.',
+    );
+    const validPositionIndex = assertNonNegativeSafeInteger(
+        positionIndex,
+        'Pozicija sijanja nije ispravna.',
+    );
 
-    const raisedBed = await getRaisedBed(raisedBedId);
+    const raisedBed = await getRaisedBed(validRaisedBedId);
     if (!raisedBed) {
-        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+        throw new Error(`Raised bed with ID ${validRaisedBedId} not found.`);
     }
 
     const field = raisedBed.fields.find(
-        (item) => item.positionIndex === positionIndex && item.active,
+        (item) => item.positionIndex === validPositionIndex && item.active,
     );
     if (!field?.plantSortId) {
         throw new Error('Field or plant sort not found.');
@@ -165,8 +215,8 @@ export async function completeFarmPlanting(
     if (role === 'farmer') {
         await assertFarmerCanCompletePlanting(
             userId,
-            raisedBedId,
-            positionIndex,
+            validRaisedBedId,
+            validPositionIndex,
         );
     }
 
@@ -185,7 +235,7 @@ export async function completeFarmPlanting(
 
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
-            `${raisedBedId}|${positionIndex}`,
+            `${validRaisedBedId}|${validPositionIndex}`,
             buildRaisedBedFieldPlantUpdatePayload(
                 nextStatus,
                 field.assignedUserIds,

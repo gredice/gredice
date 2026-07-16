@@ -21,6 +21,7 @@ interface FarmScheduleDayProps {
     >;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
     groupWateringOperations: boolean;
+    selectedDateKey: string;
     userId: string;
 }
 
@@ -31,6 +32,7 @@ export function FarmScheduleDay({
     plantingsDayDataPromise,
     plantSortsPromise,
     groupWateringOperations,
+    selectedDateKey,
     userId,
 }: FarmScheduleDayProps) {
     const raisedBedPhotoPreviewByIdPromise =
@@ -51,6 +53,7 @@ export function FarmScheduleDay({
                             raisedBedPhotoPreviewByIdPromise
                         }
                         mode="watering"
+                        selectedDateKey={selectedDateKey}
                         userId={userId}
                     />
                 </Suspense>
@@ -62,6 +65,7 @@ export function FarmScheduleDay({
                     raisedBedPhotoPreviewByIdPromise={
                         raisedBedPhotoPreviewByIdPromise
                     }
+                    selectedDateKey={selectedDateKey}
                     userId={userId}
                 />
             </Suspense>
@@ -74,6 +78,7 @@ export function FarmScheduleDay({
                         raisedBedPhotoPreviewByIdPromise
                     }
                     mode={groupWateringOperations ? 'withoutWatering' : 'all'}
+                    selectedDateKey={selectedDateKey}
                     userId={userId}
                 />
             </Suspense>
