@@ -43,7 +43,7 @@
         "@types/three": "0.185.1",
         "@use-gesture/react": "10.3.1",
         "chroma-js": "3.2.0",
-        "next": "16.2.10",
+        "next": "16.3.0-preview.6",
         "next-themes": "0.4.6",
         "react": "19.2.7",
         "react-confetti-boom": "2.0.1",
@@ -57,7 +57,7 @@
         "three-custom-shader-material": "6.4.0",
         "three-stdlib": "2.36.1",
         "tsx": "4.23.0",
-        "typescript": "6.0.3",
+        "typescript": "7.0.2",
         "uuid": "14.0.1",
         "zustand": "5.0.14"
     },

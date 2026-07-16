@@ -24,7 +24,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
-- Framework: Next.js 16 with React 19 and TypeScript 6.
+- Framework: Next.js 16 with React 19 and TypeScript 7.
 - Styling: Tailwind CSS 3 where applicable.
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
@@ -98,7 +98,9 @@ Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src
 
 ## Type checking
 
-Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before `tsc`, so route, page, and layout types are generated without running a full production build.
+Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before the native TypeScript 7 CLI, so route, page, and layout types are generated without running a full production build. Production builds opt into Next.js' experimental `useTypeScriptCli` integration for the same compiler.
+
+TypeScript 7 does not expose the compiler API yet. `openapi-typescript` and Storybook's transitive tsconfig and React docgen tooling still require that API, so `pnpm-workspace.yaml` gives those tools the official `@typescript/typescript6` compatibility package and applies the matching patches from `patches/`. Remove that bridge once those dependencies support the TypeScript 7 API.
 
 For ordinary `@gredice/game` package changes, this is the default consumer compatibility check:
 

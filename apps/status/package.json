@@ -13,7 +13,7 @@
         "test": "pnpm run build"
     },
     "dependencies": {
-        "next": "16.2.10",
+        "next": "16.3.0-preview.6",
         "react": "19.2.7",
         "react-dom": "19.2.7",
         "server-only": "0.0.1"
@@ -28,6 +28,6 @@
         "babel-plugin-react-compiler": "19.1.0-rc.3",
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
-        "typescript": "6.0.3"
+        "typescript": "7.0.2"
     }
 }

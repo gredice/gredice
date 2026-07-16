@@ -33,7 +33,7 @@
         "@vvo/tzdb": "6.198.0",
         "@xyflow/react": "12.11.2",
         "drizzle-orm": "0.45.2",
-        "next": "16.2.10",
+        "next": "16.3.0-preview.6",
         "next-themes": "0.4.6",
         "pg": "8.22.0",
         "prettier": "3.9.5",
@@ -74,6 +74,6 @@
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
         "tsx": "4.23.0",
-        "typescript": "6.0.3"
+        "typescript": "7.0.2"
     }
 }

@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     productionBrowserSourceMaps: !process.env.CI,
     allowedDevOrigins: getAppAllowedDevOrigins(app),

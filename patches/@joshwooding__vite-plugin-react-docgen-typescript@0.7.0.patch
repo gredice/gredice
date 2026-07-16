@@ -1,0 +1,43 @@
+diff --git a/dist/chunks/typescript.mjs b/dist/chunks/typescript.mjs
+index c8d0c71..85da2d2 100644
+--- a/dist/chunks/typescript.mjs
++++ b/dist/chunks/typescript.mjs
+@@ -2 +2 @@ import { dirname } from 'node:path';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index 709db24..255618e 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -3 +3 @@ import { ParserOptions } from 'react-docgen-typescript';
+-import { CompilerOptions } from 'typescript';
++import { CompilerOptions } from '@typescript/typescript6';
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 709db24..255618e 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -3 +3 @@ import { ParserOptions } from 'react-docgen-typescript';
+-import { CompilerOptions } from 'typescript';
++import { CompilerOptions } from '@typescript/typescript6';
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 321bc48..b920bb6 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -171 +171 @@ function createFileSystemCacheNamespace(options, rootDir) {
+-    typescript: resolvePackageVersion("typescript", [rootDir, moduleDirectory])
++    typescript: resolvePackageVersion("@typescript/typescript6", [rootDir, moduleDirectory])
+@@ -503 +503 @@ const resolveTypescriptProject = async (config, rootDir) => {
+-  const { default: ts } = await import('typescript');
++  const { default: ts } = await import('@typescript/typescript6');
+@@ -564 +564 @@ const createProgram = async (project, oldProgram) => {
+-  const { default: ts } = await import('typescript');
++  const { default: ts } = await import('@typescript/typescript6');
+@@ -584 +584 @@ const createProjectService = async (project) => {
+-  const { default: tsserver } = await import('typescript/lib/tsserverlibrary.js');
++  const { default: tsserver } = await import('@typescript/typescript6/lib/tsserverlibrary.js');
+@@ -632 +632 @@ const startWatch = async (project, onProgramCreatedOrUpdated) => {
+-  const { default: ts } = await import('typescript');
++  const { default: ts } = await import('@typescript/typescript6');
+@@ -1249 +1249 @@ function reactDocgenTypescript(config = {}) {
+-      typescriptModule ??= (await import('typescript')).default;
++      typescriptModule ??= (await import('@typescript/typescript6')).default;

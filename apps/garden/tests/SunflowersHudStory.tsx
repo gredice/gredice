@@ -140,6 +140,7 @@ const sunflowerPackageCatalog = {
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'garden-test',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,

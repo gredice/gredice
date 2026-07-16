@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import sharp from 'sharp';
+import sharp, { type OverlayOptions } from 'sharp';
 
 type ParsedArgs = Map<string, string | boolean>;
 
@@ -559,7 +559,7 @@ async function createPaddingComposites(
     padding: number,
 ) {
     if (padding <= 0) {
-        return [] as sharp.OverlayOptions[];
+        return [] as OverlayOptions[];
     }
 
     const image = sharp(spriteBuffer);
@@ -634,7 +634,7 @@ async function createPaddingComposites(
         { input: topRightCorner, left: x + width, top: y - padding },
         { input: bottomLeftCorner, left: x - padding, top: y + height },
         { input: bottomRightCorner, left: x + width, top: y + height },
-    ] satisfies sharp.OverlayOptions[];
+    ] satisfies OverlayOptions[];
 }
 
 function getPreviousAssignment(
@@ -836,7 +836,7 @@ async function main() {
     const pageCount = highestPageIndex + 1;
     const pageComposites = Array.from(
         { length: pageCount },
-        () => [] as sharp.OverlayOptions[],
+        () => [] as OverlayOptions[],
     );
     const pageSpriteCounts = Array.from({ length: pageCount }, () => 0);
     const sprites: Record<string, SpriteFrame> = {};

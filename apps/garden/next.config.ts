@@ -79,6 +79,7 @@ const nextConfig: NextConfig = {
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
+        useTypeScriptCli: true,
         optimizePackageImports: [
             'three',
             '@react-three/drei',

@@ -71,6 +71,7 @@ const nextConfig: NextConfig = {
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     expireTime: 10800,
     images: {

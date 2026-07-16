@@ -11,6 +11,13 @@ const date = new Date('2026-07-05T10:00:00.000Z');
 
 type SendBillingDocumentsArgs = Parameters<typeof sendBillingDocuments>;
 
+function emailSendResponse(): Awaited<ReturnType<typeof sendBillingDocuments>> {
+    return {
+        id: 'test-email-operation',
+        status: 'Succeeded',
+    };
+}
+
 function emailMessage(
     overrides: Partial<SelectEmailMessage> = {},
 ): SelectEmailMessage {
@@ -56,6 +63,7 @@ test('notifyBillingDocumentsEmail skips missing recipient', async () => {
             getEmailMessageByTemplateAndMetadata: async () => undefined,
             sendBillingDocuments: async () => {
                 sendCount += 1;
+                return emailSendResponse();
             },
         },
     );
@@ -80,6 +88,7 @@ test('notifyBillingDocumentsEmail skips active duplicate delivery log', async ()
                 emailMessage({ id: 123 }),
             sendBillingDocuments: async () => {
                 sendCount += 1;
+                return emailSendResponse();
             },
         },
     );
@@ -112,6 +121,7 @@ test('notifyBillingDocumentsEmail sends invoice and receipt links with idempoten
             },
             sendBillingDocuments: async (...args: SendBillingDocumentsArgs) => {
                 sends.push(args);
+                return emailSendResponse();
             },
         },
     );
