@@ -589,7 +589,10 @@ function isDeliveryOperationalExceptionOutcome(
 
 function relevantDeliveryRunCondition(from: Date, to: Date) {
     return or(
-        eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+        and(
+            eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+            lte(deliveryRuns.startedAt, to),
+        ),
         and(
             inArray(deliveryRuns.state, [
                 DeliveryRunStates.COMPLETED,
