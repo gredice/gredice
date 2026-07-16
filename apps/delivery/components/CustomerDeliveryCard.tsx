@@ -1,8 +1,19 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import { Calendar, ExternalLink, Leaf, Timer, Truck } from '@gredice/ui/icons';
+import {
+    Calendar,
+    ExternalLink,
+    Info,
+    Leaf,
+    Mail,
+    MapPin,
+    Timer,
+    Truck,
+    User,
+} from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { customerDeliveryRequestSupportHref } from '../lib/deliveryCustomerReceipt';
 import type { CustomerDeliveryRequestSummary } from '../lib/deliveryDashboardTypes';
 import {
     formatDeliveryDateTime,
@@ -36,8 +47,12 @@ function statusColor(
 
 export function CustomerDeliveryCard({
     delivery,
+    emphasized = false,
+    headingLevel = 'h3',
 }: {
     delivery: CustomerDeliveryRequestSummary;
+    emphasized?: boolean;
+    headingLevel?: 'h3' | 'h4';
 }) {
     const showDeliveryPromise =
         delivery.status !== 'fulfilled' &&
@@ -54,9 +69,23 @@ export function CustomerDeliveryCard({
     ]
         .filter(Boolean)
         .join(' · ');
+    const supportHref = customerDeliveryRequestSupportHref({
+        kind: 'support',
+        delivery: {
+            requestReference: delivery.requestId,
+            harvest: delivery.harvest,
+        },
+    });
 
     return (
-        <Card data-testid="customer-delivery-card" className="min-w-0">
+        <Card
+            data-testid="customer-delivery-card"
+            className={
+                emphasized
+                    ? 'min-w-0 border-primary/40 shadow-md ring-1 ring-primary/20'
+                    : 'min-w-0'
+            }
+        >
             <CardContent noHeader className="min-w-0 space-y-4 p-4">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
@@ -65,7 +94,7 @@ export function CustomerDeliveryCard({
                         </div>
                         <div className="min-w-0">
                             <Typography
-                                component="h3"
+                                component={headingLevel}
                                 level="body1"
                                 semiBold
                                 className="break-words"
@@ -117,8 +146,90 @@ export function CustomerDeliveryCard({
                 ) : null}
 
                 {delivery.recovery ? (
-                    <DeliveryCustomerRecovery recovery={delivery.recovery} />
+                    <DeliveryCustomerRecovery
+                        recovery={delivery.recovery}
+                        requestReference={delivery.requestId}
+                        harvest={delivery.harvest}
+                    />
                 ) : null}
+
+                <div className="space-y-3 rounded-lg bg-muted/70 p-3">
+                    <div className="flex items-start gap-2 text-sm">
+                        <User className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Primatelj
+                            </Typography>
+                            <Typography
+                                level="body2"
+                                semiBold
+                                className="break-words"
+                            >
+                                {delivery.destination.recipientName}
+                            </Typography>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                        <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Odredište
+                            </Typography>
+                            {delivery.destination.addressLabel ? (
+                                <Typography
+                                    level="body2"
+                                    semiBold
+                                    className="break-words"
+                                >
+                                    {delivery.destination.addressLabel}
+                                </Typography>
+                            ) : null}
+                            <Typography level="body3" className="break-words">
+                                {delivery.destination.address}
+                            </Typography>
+                        </div>
+                    </div>
+                    {delivery.requestNotes ? (
+                        <div className="flex items-start gap-2 text-sm">
+                            <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    Upute za dostavu
+                                </Typography>
+                                <Typography
+                                    level="body3"
+                                    className="break-words"
+                                >
+                                    {delivery.requestNotes}
+                                </Typography>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-start gap-2 text-sm">
+                            <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    Upute za dostavu
+                                </Typography>
+                                <Typography level="body3">
+                                    Nema posebnih uputa.
+                                </Typography>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {!delivery.receipt ? (
                     <div className="flex items-start gap-2 text-sm">
@@ -126,12 +237,6 @@ export function CustomerDeliveryCard({
                         <span className="break-words">
                             {harvestDescription}
                         </span>
-                    </div>
-                ) : null}
-
-                {delivery.requestNotes ? (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                        <strong>Napomena:</strong> {delivery.requestNotes}
                     </div>
                 ) : null}
 
@@ -151,10 +256,23 @@ export function CustomerDeliveryCard({
                     </div>
                 ) : null}
 
+                {!delivery.receipt && !delivery.recovery ? (
+                    <Button
+                        aria-label={`Prijavi problem za dostavu: ${delivery.harvest.plantName}`}
+                        href={supportHref}
+                        size="sm"
+                        variant="outlined"
+                        className="min-h-11 min-w-0 justify-start whitespace-normal"
+                        startDecorator={<Mail className="size-4" />}
+                    >
+                        Prijavi problem
+                    </Button>
+                ) : null}
+
                 {delivery.receipt ? (
                     <DeliveryCustomerReceipt
                         receipt={delivery.receipt}
-                        headingLevel="h4"
+                        headingLevel={headingLevel === 'h4' ? 'h5' : 'h4'}
                     />
                 ) : null}
 

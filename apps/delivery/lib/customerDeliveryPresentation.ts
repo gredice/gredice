@@ -14,6 +14,9 @@ type CustomerDeliveryProjectionSource = Pick<
     | 'requestId'
     | 'requestState'
     | 'statusLabel'
+    | 'contactName'
+    | 'address'
+    | 'addressLabel'
     | 'requestNotes'
     | 'slotStartAt'
     | 'slotEndAt'
@@ -40,6 +43,45 @@ export type CustomerDeliveryProjectionContext = Pick<
     | 'trackingLastAcceptedAt'
 >;
 
+export function customerDeliveryLifecycle({
+    requestState,
+    runState,
+    deliveredAt,
+    recovery,
+}: {
+    requestState: string;
+    runState: string | null;
+    deliveredAt: string | null;
+    recovery: CustomerDeliveryRequestSummary['recovery'];
+}): CustomerDeliveryRequestSummary['lifecycle'] {
+    if (
+        deliveredAt ||
+        requestState === 'fulfilled' ||
+        requestState === 'cancelled'
+    ) {
+        return 'history';
+    }
+    if (requestState === 'failed') {
+        return recovery?.kind === 'hq-pickup' ? 'upcoming' : 'history';
+    }
+    return runState === 'active' ? 'active' : 'upcoming';
+}
+
+export function customerPickupLifecycle({
+    status,
+    pickedUpAt,
+}: Pick<
+    CustomerPickupRequestSummary,
+    'status' | 'pickedUpAt'
+>): CustomerPickupRequestSummary['lifecycle'] {
+    return pickedUpAt ||
+        status === 'fulfilled' ||
+        status === 'failed' ||
+        status === 'cancelled'
+        ? 'history'
+        : 'upcoming';
+}
+
 export function customerDeliveryRequestSummary(
     source: CustomerDeliveryProjectionSource,
     context: CustomerDeliveryProjectionContext,
@@ -55,6 +97,12 @@ export function customerDeliveryRequestSummary(
     });
     return {
         mode: 'delivery',
+        lifecycle: customerDeliveryLifecycle({
+            requestState: source.requestState,
+            runState: context.runState,
+            deliveredAt: source.deliveredAt,
+            recovery: source.recovery,
+        }),
         requestId: source.requestId,
         status: source.requestState,
         statusLabel: source.statusLabel,
@@ -65,6 +113,11 @@ export function customerDeliveryRequestSummary(
         progress,
         deliveredAt: source.deliveredAt,
         harvest: source.harvest,
+        destination: {
+            recipientName: source.contactName,
+            address: source.address,
+            addressLabel: source.addressLabel,
+        },
         receipt: source.receipt ?? null,
         recovery: source.recovery,
         tracking,
@@ -120,9 +173,10 @@ export function customerPickupRequestSummary({
     harvest,
     location,
     pickedUpAt,
-}: Omit<CustomerPickupRequestSummary, 'mode' | 'statusLabel'>) {
+}: Omit<CustomerPickupRequestSummary, 'mode' | 'lifecycle' | 'statusLabel'>) {
     return {
         mode: 'pickup',
+        lifecycle: customerPickupLifecycle({ status, pickedUpAt }),
         requestId,
         status,
         statusLabel: customerPickupStatusLabel(status),

@@ -92,8 +92,17 @@ export type CustomerDeliveryRecoverySummary =
     | { kind: 'support' }
     | { kind: 'cancelled' };
 
+export type CustomerDeliveryDestinationSummary = {
+    recipientName: string;
+    address: string;
+    addressLabel: string | null;
+};
+
+export type CustomerDeliveryLifecycle = 'active' | 'upcoming' | 'history';
+
 export type CustomerDeliveryRequestSummary = {
     mode: 'delivery';
+    lifecycle: CustomerDeliveryLifecycle;
     requestId: string;
     status: string;
     statusLabel: string;
@@ -104,6 +113,7 @@ export type CustomerDeliveryRequestSummary = {
     progress: CustomerDeliveryProgressSummary;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
+    destination: CustomerDeliveryDestinationSummary;
     receipt: CustomerDeliveryReceiptSummary | null;
     recovery: CustomerDeliveryRecoverySummary | null;
     tracking: CustomerDeliveryTrackingSummary | null;
@@ -118,6 +128,7 @@ export type CustomerPickupLocationSummary = {
 
 export type CustomerPickupRequestSummary = {
     mode: 'pickup';
+    lifecycle: Exclude<CustomerDeliveryLifecycle, 'active'>;
     requestId: string;
     status: string;
     statusLabel: string;

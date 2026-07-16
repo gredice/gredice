@@ -15,7 +15,7 @@ export function DeliveryCustomerReceipt({
     headingLevel = 'h3',
 }: {
     receipt: CustomerDeliveryReceiptSummary;
-    headingLevel?: 'h3' | 'h4';
+    headingLevel?: 'h3' | 'h4' | 'h5';
 }) {
     const headingId = useId();
     const harvestDescription = [
