@@ -20,7 +20,6 @@ import type { DriverTrackingState } from '../hooks/useDriverTracking';
 import {
     deliveryActionAcknowledgementBlocksRoute,
     deliveryActionCompletionMessage,
-    deliveryActionLocallyCompletesStop,
     deliveryActionPermanentFailureMessage,
     deliveryRouteStepsWithLocalActions,
 } from '../lib/deliveryActionPresentation';
@@ -49,6 +48,10 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import {
+    type DeliveryMapSelection,
+    deliveryMapSelectionKey,
+} from '../lib/deliveryMapData';
 import { resolveRemainingPickupManifest } from '../lib/deliveryPickupCommand';
 import { scanPickupManifest } from '../lib/deliveryPickupScan';
 import {
@@ -56,6 +59,10 @@ import {
     deliveryRouteSelectionCandidatesFromBatches,
     inspectDeliveryRouteSelection,
 } from '../lib/deliveryRouteSelection';
+import {
+    deliveryRouteStepIdentity,
+    deliveryRouteTimelineItems,
+} from '../lib/deliveryRouteTimelinePresentation';
 import { groupByDeliveryStop } from '../lib/deliveryStopGrouping';
 import { deliveryTrackingMapVersion } from '../lib/deliveryTrackingPresentation';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
@@ -67,13 +74,11 @@ import type {
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DeliveryBatchCard } from './DeliveryBatchCard';
 import { DeliveryMap } from './DeliveryMap';
-import {
-    DeliveryPickupCard,
-    type PickupManifestSyncSummary,
-} from './DeliveryPickupCard';
-import { DeliveryStopCard } from './DeliveryStopCard';
+import type { PickupManifestSyncSummary } from './DeliveryPickupCard';
 import { DriverCurrentStopCommandCenter } from './DriverCurrentStopCommandCenter';
 import { DriverRouteContinuity } from './DriverRouteContinuity';
+import { DriverRouteProgressTimeline } from './DriverRouteProgressTimeline';
+import { DriverRouteStepDetails } from './DriverRouteStepDetails';
 import { DriverTrackingStatus } from './DriverTrackingStatus';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
 
@@ -590,6 +595,9 @@ export function DriverDashboard({
     onReconcileDeliverySync: () => unknown | Promise<unknown>;
 }) {
     const run = dashboard.activeRun;
+    const [selectedRouteStepId, setSelectedRouteStepId] = useState<
+        string | null
+    >(null);
     const displayedRouteSteps = run
         ? deliveryRouteStepsWithLocalActions(run.routeSteps, deliveryQueue)
         : [];
@@ -607,6 +615,60 @@ export function DriverDashboard({
                     deliveryActionAcknowledgementBlocksRoute(entry),
             ),
     );
+    const syncingRouteStepIds = new Set(
+        run
+            ? displayedRouteSteps.flatMap((step) => {
+                  const serverStep = run.routeSteps.find(
+                      (candidate) =>
+                          deliveryRouteStepIdentity(candidate) ===
+                          deliveryRouteStepIdentity(step),
+                  );
+                  return step.actionState === 'completed' &&
+                      serverStep?.actionState !== 'completed'
+                      ? [deliveryRouteStepIdentity(step)]
+                      : [];
+              })
+            : [],
+    );
+    const displayedTimelineItems = deliveryRouteTimelineItems(
+        displayedRouteSteps,
+        syncingRouteStepIds,
+    ).map((item) => {
+        if (item.state !== 'syncing') return item;
+        const stepIndex = displayedRouteSteps.findIndex(
+            (step) => deliveryRouteStepIdentity(step) === item.id,
+        );
+        const step = displayedRouteSteps[stepIndex];
+        const entry =
+            step?.kind === 'delivery' && step.stop.id
+                ? deliveryActionPendingEntryForStop(deliveryQueue, step.stop.id)
+                : undefined;
+        return {
+            ...item,
+            statusMessage: deliveryActionCompletionMessage(
+                entry,
+                !deliveryRouteSyncBlocked &&
+                    displayedRouteSteps.some(
+                        (candidate, candidateIndex) =>
+                            candidateIndex > stepIndex &&
+                            candidate.actionState === 'current',
+                    ),
+            ),
+        };
+    });
+    const selectedTimelineItem =
+        displayedTimelineItems.find(
+            (item) => item.id === selectedRouteStepId,
+        ) ?? null;
+    const selectMapNode = (selection: DeliveryMapSelection) => {
+        const selectionKey = deliveryMapSelectionKey(selection);
+        const item = displayedTimelineItems.find(
+            (candidate) =>
+                deliveryMapSelectionKey(candidate.mapSelection ?? null) ===
+                selectionKey,
+        );
+        setSelectedRouteStepId(item?.id ?? null);
+    };
     const currentPickup =
         currentRouteStep?.kind === 'pickup'
             ? queuedPickup(currentRouteStep.pickup, pickupQueue?.entries ?? [])
@@ -1042,6 +1104,10 @@ export function DriverDashboard({
                                     run.estimatesUpdatedAt,
                                 )}
                                 title="Karta aktivne dostavne rute"
+                                selectedNode={
+                                    selectedTimelineItem?.mapSelection ?? null
+                                }
+                                onSelectedNodeChange={selectMapNode}
                             />
                             <Card>
                                 <CardContent
@@ -1147,85 +1213,38 @@ export function DriverDashboard({
                                     Tijek rute
                                 </Typography>
                             </div>
-                            <div className="grid gap-3 lg:grid-cols-2">
-                                {displayedRouteSteps.map((step, stepIndex) => {
+                            <DriverRouteProgressTimeline
+                                items={displayedTimelineItems}
+                                selectedId={selectedRouteStepId}
+                                onSelectionChange={(item) =>
+                                    setSelectedRouteStepId(item?.id ?? null)
+                                }
+                                renderDetails={(item) => {
+                                    const stepIndex =
+                                        displayedRouteSteps.findIndex(
+                                            (candidate) =>
+                                                deliveryRouteStepIdentity(
+                                                    candidate,
+                                                ) === item.id,
+                                        );
+                                    const step = displayedRouteSteps[stepIndex];
+                                    if (!step) return null;
                                     if (step.kind === 'pickup') {
                                         const pickup = queuedPickup(
                                             step.pickup,
                                             pickupQueue?.entries ?? [],
                                         );
                                         return (
-                                            <DeliveryPickupCard
-                                                key={`pickup:${pickup.id}`}
-                                                pickup={pickup}
-                                                actionState={step.actionState}
-                                                pendingAction={pendingAction}
-                                                sync={pickupSyncSummary(
-                                                    pickup.id,
-                                                    pickupQueue,
-                                                )}
-                                                onScan={(scanValue) =>
-                                                    scanPickupManifest(
-                                                        pickup,
-                                                        scanValue,
-                                                        onPickupScan,
-                                                    )
-                                                }
-                                                onSetItemState={(
-                                                    pickupNodeId,
-                                                    manifestId,
-                                                    stopId,
-                                                    outcome,
-                                                ) =>
-                                                    onPickupItemState(
-                                                        pickupNodeId,
-                                                        manifestId,
-                                                        stopId,
-                                                        outcome,
-                                                    )
-                                                }
-                                                onResolveRemaining={(
-                                                    pickupNodeId,
-                                                    manifest,
-                                                ) =>
-                                                    resolveRemainingPickupManifest(
-                                                        pickupNodeId,
-                                                        manifest,
-                                                        onPickupItemState,
-                                                    )
-                                                }
-                                                onConfirmManifest={
-                                                    onConfirmPickupManifest
-                                                }
-                                                onRetrySync={onRetryPickupSync}
-                                                onDiscardSync={
-                                                    onDiscardPickupSync
-                                                }
-                                                showCurrentCommand={
-                                                    step.actionState !==
-                                                    'current'
-                                                }
+                                            <DriverRouteStepDetails
+                                                step={{
+                                                    ...step,
+                                                    pickup,
+                                                }}
                                             />
                                         );
                                     }
-                                    const stop = {
-                                        ...step.stop,
-                                        actionState: step.actionState,
-                                        lockedReason: step.lockedReason,
-                                        isCurrent:
-                                            step.actionState === 'current',
-                                    };
-                                    const deliverySyncEntry = stop.id
-                                        ? deliveryActionPendingEntryForStop(
-                                              deliveryQueue,
-                                              stop.id,
-                                          )
-                                        : undefined;
                                     return (
-                                        <div
-                                            key={`delivery:${stop.id ?? stop.requestId}`}
-                                            className="space-y-2"
-                                        >
+                                        <div className="space-y-2">
                                             {step.retryLaneRank !== null ? (
                                                 <Chip color="warning" size="sm">
                                                     Ponovni pokušaj #
@@ -1235,110 +1254,13 @@ export function DriverDashboard({
                                                         : null}
                                                 </Chip>
                                             ) : null}
-                                            {deliveryActionLocallyCompletesStop(
-                                                deliverySyncEntry,
-                                            ) ? (
-                                                <Alert color="info">
-                                                    {deliveryActionCompletionMessage(
-                                                        deliverySyncEntry,
-                                                        !deliveryRouteSyncBlocked &&
-                                                            displayedRouteSteps.some(
-                                                                (
-                                                                    candidate,
-                                                                    candidateIndex,
-                                                                ) =>
-                                                                    candidateIndex >
-                                                                        stepIndex &&
-                                                                    candidate.actionState ===
-                                                                        'current',
-                                                            ),
-                                                    )}
-                                                </Alert>
-                                            ) : null}
-                                            <DeliveryStopCard
-                                                stop={stop}
-                                                mode="driver"
-                                                routeRevision={
-                                                    run.routeRevision
-                                                }
-                                                pendingAction={pendingStopAction(
-                                                    pendingAction,
-                                                    stop.id,
-                                                )}
-                                                onRetry={() =>
-                                                    stop.id &&
-                                                    onRetry(
-                                                        run.id,
-                                                        stop.id,
-                                                        run.routeRevision,
-                                                    )
-                                                }
-                                                onArrive={() =>
-                                                    stop.id &&
-                                                    onArrive(
-                                                        run.id,
-                                                        stop.id,
-                                                        run.routeRevision,
-                                                    )
-                                                }
-                                                onDeliver={(notes) =>
-                                                    stop.id &&
-                                                    onDeliver(
-                                                        run.id,
-                                                        stop.id,
-                                                        run.routeRevision,
-                                                        notes,
-                                                    )
-                                                }
-                                                onException={(mutation) =>
-                                                    stop.id
-                                                        ? onException(
-                                                              run.id,
-                                                              stop.id,
-                                                              mutation,
-                                                          )
-                                                        : Promise.resolve({
-                                                              status: 'review-required',
-                                                              message:
-                                                                  'Stanica više nije dostupna. Osvježi rutu i provjeri odabir.',
-                                                          })
-                                                }
-                                                syncEntry={deliverySyncEntry}
-                                                verifiedTracePaths={
-                                                    stop.id
-                                                        ? deliveryActionVerifiedTracePaths(
-                                                              deliveryQueue,
-                                                              stop.id,
-                                                          )
-                                                        : []
-                                                }
-                                                onVerificationScan={(
-                                                    tracePath,
-                                                ) =>
-                                                    stop.id &&
-                                                    onVerificationScan(
-                                                        stop.id,
-                                                        tracePath,
-                                                    )
-                                                }
-                                                onRetrySync={
-                                                    onRetryDeliverySync
-                                                }
-                                                onDiscardSync={
-                                                    onDiscardDeliverySync
-                                                }
-                                                routeSyncBlocked={
-                                                    deliveryRouteSyncBlocked
-                                                }
-                                                showDriverCommand={
-                                                    step.actionState !==
-                                                    'current'
-                                                }
+                                            <DriverRouteStepDetails
+                                                step={step}
                                             />
                                         </div>
                                     );
-                                })}
-                            </div>
+                                }}
+                            />
                         </section>
                     </>
                 ) : (

@@ -160,8 +160,13 @@ test('restored offline route keeps pending actions visible and supports ordered 
     page,
 }) => {
     await mount(<OfflineRouteArrivalStory />);
+    const nextRouteRow = page
+        .getByRole('list', { name: 'Izvanmrežni tijek dostavne rute' })
+        .getByRole('listitem')
+        .nth(1);
+    await nextRouteRow.getByRole('button').click();
     await expect(
-        page.getByRole('button', {
+        nextRouteRow.getByRole('button', {
             name: 'Navigacija do sljedeće stanice čeka završetak trenutačne dostave',
         }),
     ).toBeDisabled();
@@ -223,7 +228,13 @@ test('server-required reroute blocks stale cached continuation until reconciliat
             'Poslužitelj je potvrdio radnju, ali novi plan rute još nije sigurno učitan.',
         ),
     ).toBeVisible();
-    await expect(page.getByText('Trenutačni korak')).toBeVisible();
+    await expect(
+        page
+            .getByRole('list', {
+                name: 'Izvanmrežni tijek dostavne rute',
+            })
+            .getByText('Trenutačna stanica', { exact: true }),
+    ).toBeVisible();
     await expect(
         page.getByRole('button', {
             name: 'Navigacija do trenutačne stanice čeka novi plan',
@@ -279,8 +290,13 @@ test('restored exception remains a route barrier and memory fallback is truthful
             /Radnje su spremljene samo dok je ova stranica otvorena/,
         ),
     ).toBeVisible();
+    const nextRouteRow = page
+        .getByRole('list', { name: 'Izvanmrežni tijek dostavne rute' })
+        .getByRole('listitem')
+        .nth(1);
+    await nextRouteRow.getByRole('button').click();
     await expect(
-        page.getByRole('button', {
+        nextRouteRow.getByRole('button', {
             name: 'Navigacija do sljedeće stanice čeka novi plan',
         }),
     ).toBeDisabled();

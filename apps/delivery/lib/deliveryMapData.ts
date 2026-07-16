@@ -3,13 +3,17 @@ export type DeliveryMapCoordinate = {
     longitude: number;
 };
 
-export type DeliveryMapStop = DeliveryMapCoordinate & {
+export type DeliveryMapNode = DeliveryMapCoordinate & {
+    selectionId: string | null;
+};
+
+export type DeliveryMapStop = DeliveryMapNode & {
     sequence: number;
 };
 
 export type DeliveryMapData = {
     driverLocation: DeliveryMapCoordinate | null;
-    pickupNodes: DeliveryMapCoordinate[];
+    pickupNodes: DeliveryMapNode[];
     stops: DeliveryMapStop[];
     encodedPolyline: string | null;
 };
@@ -18,6 +22,24 @@ export type DeliveryMapPosition = {
     lat: number;
     lng: number;
 };
+
+export type DeliveryMapSelection =
+    | { kind: 'pickup'; id: string }
+    | { kind: 'delivery'; id: string };
+
+export function deliveryMapSelectionKey(
+    selection: DeliveryMapSelection | null,
+) {
+    if (!selection) return null;
+    return `${selection.kind}:${selection.id}`;
+}
+
+export function deliveryMapStopGroupSelectionId(stopIds: readonly number[]) {
+    const uniqueStopIds = [...new Set(stopIds)]
+        .filter((stopId) => Number.isInteger(stopId) && stopId > 0)
+        .sort((first, second) => first - second);
+    return uniqueStopIds[0]?.toString() ?? null;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -41,9 +63,24 @@ function parseCoordinate(value: unknown): DeliveryMapCoordinate | null {
     return { latitude, longitude };
 }
 
-function parseStop(value: unknown): DeliveryMapStop | null {
+function parseNode(value: unknown): DeliveryMapNode | null {
     const coordinate = parseCoordinate(value);
     if (!coordinate || !isRecord(value)) return null;
+    const { selectionId } = value;
+    if (
+        selectionId !== null &&
+        (typeof selectionId !== 'string' ||
+            selectionId.length === 0 ||
+            selectionId.length > 512)
+    ) {
+        return null;
+    }
+    return { ...coordinate, selectionId };
+}
+
+function parseStop(value: unknown): DeliveryMapStop | null {
+    const node = parseNode(value);
+    if (!node || !isRecord(value)) return null;
     const { sequence } = value;
     if (
         typeof sequence !== 'number' ||
@@ -52,7 +89,7 @@ function parseStop(value: unknown): DeliveryMapStop | null {
     ) {
         return null;
     }
-    return { ...coordinate, sequence };
+    return { ...node, sequence };
 }
 
 function parseArray<T>(
@@ -75,7 +112,7 @@ export function parseDeliveryMapData(value: unknown): DeliveryMapData | null {
         value.driverLocation === null
             ? null
             : parseCoordinate(value.driverLocation);
-    const pickupNodes = parseArray(value.pickupNodes, parseCoordinate);
+    const pickupNodes = parseArray(value.pickupNodes, parseNode);
     const stops = parseArray(value.stops, parseStop);
     const encodedPolyline = value.encodedPolyline;
     if (
@@ -97,7 +134,7 @@ export function buildDeliveryMapData({
     customerView,
 }: {
     driverLocation: DeliveryMapCoordinate | null;
-    pickupNodes: DeliveryMapCoordinate[];
+    pickupNodes: DeliveryMapNode[];
     stops: DeliveryMapStop[];
     encodedPolyline?: string | null;
     customerView: boolean;
@@ -105,7 +142,9 @@ export function buildDeliveryMapData({
     return {
         driverLocation,
         pickupNodes: customerView ? [] : pickupNodes,
-        stops,
+        stops: customerView
+            ? stops.map((stop) => ({ ...stop, selectionId: null }))
+            : stops,
         encodedPolyline: customerView ? null : (encodedPolyline ?? null),
     };
 }
