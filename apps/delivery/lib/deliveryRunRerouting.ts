@@ -240,6 +240,68 @@ function remainingRouteNodes({
     return { nodes, stopIdsByNodeKey };
 }
 
+/**
+ * Returns the remaining checkpoints in the persisted execution order. This is
+ * intentionally separate from the reroute planner input above: a periodic ETA
+ * refresh may update travel metrics, but it must not optimize the itinerary.
+ */
+export function remainingDeliveryRouteNodesInExecutionOrder({
+    run,
+    progress,
+}: {
+    run: DeliveryRun;
+    progress: DeliveryRunProgress;
+}) {
+    const remaining = remainingRouteNodes({ run, progress });
+    const nodesByKey = new Map(
+        remaining.nodes.map((node) => [node.nodeKey, node]),
+    );
+    const pickupNodeIdsByNodeKey = new Map(
+        progress.flatMap((step) =>
+            step.kind === 'pickup'
+                ? [
+                      [
+                          pickupNodeKey(step.pickupNodeId),
+                          step.pickupNodeId,
+                      ] as const,
+                  ]
+                : [],
+        ),
+    );
+    const orderedNodes = progress.flatMap((step) => {
+        if (step.state === 'completed') return [];
+        if (step.kind === 'pickup') {
+            const node = nodesByKey.get(pickupNodeKey(step.pickupNodeId));
+            return node ? [node] : [];
+        }
+        const representative = run.stops.find(
+            (stop) =>
+                step.stopIds.includes(stop.id) &&
+                !isDeliveryRunStopTerminal(stop.state),
+        );
+        if (!representative) return [];
+        const node = nodesByKey.get(
+            deliveryNodeKey({
+                stopKey: step.stopKey,
+                stopId: representative.id,
+                retryLaneRank: step.retryLaneRank,
+            }),
+        );
+        return node ? [node] : [];
+    });
+    if (orderedNodes.length !== remaining.nodes.length) {
+        rerouteError(
+            DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+            'Delivery execution checkpoints cannot be refreshed',
+        );
+    }
+    return {
+        nodes: orderedNodes,
+        pickupNodeIdsByNodeKey,
+        stopIdsByNodeKey: remaining.stopIdsByNodeKey,
+    };
+}
+
 export async function rerouteDeliveryRun({
     actorUserId,
     runId,

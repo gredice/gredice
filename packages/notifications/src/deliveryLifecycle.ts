@@ -181,6 +181,28 @@ export type DeliveryLifecycleEvent = DeliveryLifecycleEventBase &
           }
     );
 
+type DeliveryLifecycleEventInputBase = {
+    context: DeliveryLifecycleContext;
+    occurredAt: string;
+    retryAttempt: number;
+    source: DeliveryLifecycleSource;
+};
+
+export type DeliveryLifecycleEventInput = DeliveryLifecycleEventInputBase &
+    (
+        | {
+              exception?: never;
+              milestone: Exclude<DeliveryLifecycleMilestone, 'exception'>;
+          }
+        | {
+              exception: {
+                  outcome: DeliveryRunExceptionOutcome;
+                  reason: DeliveryRunExceptionReason;
+              };
+              milestone: 'exception';
+          }
+    );
+
 export type DeliveryLifecycleState = {
     context: DeliveryLifecycleContext;
     delayActive: boolean;
@@ -234,6 +256,42 @@ function expectedSourceKind(
     }
 }
 
+function expectedSourceKindForMilestone(
+    milestone: DeliveryLifecycleMilestone,
+): DeliveryLifecycleSource['kind'] {
+    switch (milestone) {
+        case 'route-started':
+            return 'run-state';
+        case 'near-arrival':
+        case 'next-stop':
+        case 'delayed':
+            return 'route-progress';
+        case 'arrived':
+        case 'delivered':
+            return 'stop-operation';
+        case 'exception':
+            return 'exception-operation';
+        case 'recovery':
+            return 'retry-state';
+    }
+}
+
+function assertBoundedException(exception: {
+    outcome: DeliveryRunExceptionOutcome;
+    reason: DeliveryRunExceptionReason;
+}) {
+    if (
+        !Object.values(DeliveryRunExceptionOutcomes).includes(exception.outcome)
+    ) {
+        throw new Error('exception.outcome must be a bounded outcome.');
+    }
+    if (
+        !Object.values(DeliveryRunExceptionReasons).includes(exception.reason)
+    ) {
+        throw new Error('exception.reason must be a bounded reason.');
+    }
+}
+
 function encoded(value: string) {
     return encodeURIComponent(value);
 }
@@ -258,6 +316,42 @@ export function deliveryLifecycleIdempotencyKey(
         encoded(context.requestId),
         attempt,
     ].join(':');
+}
+
+export function createDeliveryLifecycleEvent(
+    input: DeliveryLifecycleEventInput,
+): DeliveryLifecycleEvent {
+    assertDeliveryLifecycleContext(input.context);
+    assertCanonicalTimestamp(input.occurredAt);
+    assertSafeInteger(input.retryAttempt, 'retryAttempt');
+    assertSource(input.source);
+    const requiredSourceKind = expectedSourceKindForMilestone(input.milestone);
+    if (input.source.kind !== requiredSourceKind) {
+        throw new Error(
+            `${input.milestone} requires an authoritative ${requiredSourceKind} source.`,
+        );
+    }
+    const base: DeliveryLifecycleEventBase = {
+        ...input.context,
+        eventVersion: 1,
+        idempotencyKey: deliveryLifecycleIdempotencyKey(
+            input.context,
+            input.milestone,
+            input.retryAttempt,
+        ),
+        occurredAt: input.occurredAt,
+        retryAttempt: input.retryAttempt,
+        source: { ...input.source },
+    };
+    if (input.milestone === 'exception') {
+        assertBoundedException(input.exception);
+        return {
+            ...base,
+            exception: { ...input.exception },
+            milestone: input.milestone,
+        };
+    }
+    return { ...base, milestone: input.milestone };
 }
 
 export function assertDeliveryLifecycleContext(
@@ -301,20 +395,7 @@ function validateObservation(observation: DeliveryLifecycleObservation) {
         assertSafeInteger(observation.stopsAhead, 'stopsAhead');
     }
     if (observation.kind === 'exception') {
-        if (
-            !Object.values(DeliveryRunExceptionOutcomes).includes(
-                observation.outcome,
-            )
-        ) {
-            throw new Error('exception.outcome must be a bounded outcome.');
-        }
-        if (
-            !Object.values(DeliveryRunExceptionReasons).includes(
-                observation.reason,
-            )
-        ) {
-            throw new Error('exception.reason must be a bounded reason.');
-        }
+        assertBoundedException(observation);
     }
     if (observation.kind !== 'route-started') {
         assertSafeInteger(observation.retryAttempt, 'retryAttempt');

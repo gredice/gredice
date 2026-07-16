@@ -27,6 +27,14 @@
             "schedule": "*/5 * * * *"
         },
         {
+            "path": "/api/internal/cron/delivery-lifecycle-emails",
+            "schedule": "* * * * *"
+        },
+        {
+            "path": "/api/internal/cron/delivery-lifecycle-reconciliation",
+            "schedule": "* * * * *"
+        },
+        {
             "path": "/api/internal/cron/delivery-tracking-retention",
             "schedule": "* * * * *"
         },

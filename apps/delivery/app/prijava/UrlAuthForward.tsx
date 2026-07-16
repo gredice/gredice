@@ -1,17 +1,33 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import {
+    buildDeliveryLoginFailureReturnTarget,
+    type DeliveryLoginFailure,
+    safeDeliveryReturnTarget,
+} from '../../lib/deliveryDeepLink';
 import { publishDeliverySessionResumed } from '../../lib/deliveryOfflineEvents';
 
-export function UrlAuthForward() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
+export function UrlAuthForward({
+    returnTarget,
+    hasError = false,
+}: {
+    returnTarget: string;
+    hasError?: boolean;
+}) {
     useEffect(() => {
         const forward = async () => {
-            if (searchParams.get('error')) {
-                router.replace('/');
+            const safeReturnTarget = safeDeliveryReturnTarget(returnTarget);
+            const forwardFailure = (failure: DeliveryLoginFailure) => {
+                window.location.replace(
+                    buildDeliveryLoginFailureReturnTarget(
+                        safeReturnTarget,
+                        failure,
+                    ),
+                );
+            };
+            if (hasError) {
+                forwardFailure('oauth-provider');
                 return;
             }
             const hash = window.location.hash.substring(1);
@@ -26,24 +42,27 @@ export function UrlAuthForward() {
                 );
             }
             if (token) {
-                const response = await fetch('/api/oauth-callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, refreshToken }),
-                });
-                if (!response.ok) {
-                    router.replace('/');
-                    return;
+                try {
+                    const response = await fetch('/api/oauth-callback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, refreshToken }),
+                    });
+                    if (response.ok) {
+                        publishDeliverySessionResumed();
+                        window.location.replace(safeReturnTarget);
+                        return;
+                    }
+                } catch {
+                    // The validated target is also the safe recovery path.
                 }
-                publishDeliverySessionResumed();
-                window.location.replace('/');
+                forwardFailure('oauth-token-exchange');
                 return;
             }
-            router.replace('/');
-            router.refresh();
+            forwardFailure('oauth-missing-token');
         };
         void forward();
-    }, [router, searchParams]);
+    }, [hasError, returnTarget]);
 
     return null;
 }

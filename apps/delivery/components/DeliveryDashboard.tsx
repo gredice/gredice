@@ -7,7 +7,7 @@ import { LoaderSpinner, Reset, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
@@ -45,6 +45,12 @@ import type {
     DeliveryDashboard as DeliveryDashboardData,
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
+import {
+    buildDeliveryDashboardRequestPath,
+    createDeliveryDashboardRequestPathTracker,
+    type DeliveryDeepLinkTarget,
+    deliveryDeepLinkUnavailableMessage,
+} from '../lib/deliveryDeepLink';
 import { createWebStorageDeliveryHandoffManifestCachePersistence } from '../lib/deliveryHandoffManifestCache';
 import { performDeliveryLogout } from '../lib/deliveryLogout';
 import {
@@ -111,13 +117,19 @@ async function clearOtherStoredDriverRuns(userId: string, activeRunId: string) {
     }
 }
 
-async function readDashboard({ signal }: { signal: AbortSignal }) {
+async function readDashboard({
+    requestPath,
+    signal,
+}: {
+    requestPath: string;
+    signal: AbortSignal;
+}) {
     assertDeliveryOfflineWritesAllowed();
     const requestTiming = {
         monotonicMs: performance.now(),
         wallMs: Date.now(),
     };
-    const response = await fetch('/api/dashboard', {
+    const response = await fetch(requestPath, {
         cache: 'no-store',
         signal,
     });
@@ -702,9 +714,11 @@ function ActiveDriverDashboardWithPickupSync({
 export function DeliveryDashboard({
     authenticatedUserId,
     authenticatedRole,
+    deliveryTarget = { kind: 'none' },
 }: {
     authenticatedUserId: string;
     authenticatedRole: string;
+    deliveryTarget?: DeliveryDeepLinkTarget;
 }) {
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -727,9 +741,27 @@ export function DeliveryDashboard({
     >(null);
     const offlineSessionReady = offlineSessionUserId === authenticatedUserId;
     const sessionOperational = offlineSessionReady && logoutState === 'idle';
+    const targetedDashboardRequestPath =
+        buildDeliveryDashboardRequestPath(deliveryTarget);
+    const dashboardRequestPathTracker = useMemo(
+        () =>
+            createDeliveryDashboardRequestPathTracker(
+                targetedDashboardRequestPath,
+            ),
+        [targetedDashboardRequestPath],
+    );
     const query = useQuery({
-        queryKey: ['delivery-dashboard', authenticatedUserId],
-        queryFn: readDashboard,
+        queryKey: [
+            'delivery-dashboard',
+            authenticatedUserId,
+            targetedDashboardRequestPath,
+        ],
+        queryFn: async ({ signal }) => {
+            const requestPath = dashboardRequestPathTracker.current();
+            const result = await readDashboard({ requestPath, signal });
+            dashboardRequestPathTracker.recordSuccess(requestPath);
+            return result;
+        },
         enabled: sessionOperational,
         refetchInterval: 10_000,
     });
@@ -1349,6 +1381,17 @@ export function DeliveryDashboard({
                     </Alert>
                 </div>
             ) : null}
+            {dashboard.kind === 'driver' && deliveryTarget.kind !== 'none' ? (
+                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-40 mx-auto max-w-xl">
+                    <Alert
+                        color="warning"
+                        data-testid="customer-delivery-deep-link-unavailable"
+                        startDecorator={<Warning className="size-5" />}
+                    >
+                        {deliveryDeepLinkUnavailableMessage}
+                    </Alert>
+                </div>
+            ) : null}
             {dashboard.kind === 'driver' ? (
                 <DriverDashboardWithPickupSync
                     dashboard={dashboard}
@@ -1374,6 +1417,7 @@ export function DeliveryDashboard({
             ) : (
                 <CustomerDashboard
                     dashboard={dashboard}
+                    deliveryTarget={deliveryTarget}
                     requestTiming={query.data?.requestTiming ?? null}
                     freshness={{
                         failure: renderedCustomerFreshnessFailure,

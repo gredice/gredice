@@ -3,6 +3,7 @@ import type {
     CustomerDeliveryProgressSummary,
     CustomerDeliveryRequestSummary,
 } from './deliveryDashboardTypes';
+import type { DeliveryDeepLinkTarget } from './deliveryDeepLink';
 
 export const customerDeliveryInitialHistoryCount = 6;
 
@@ -11,6 +12,16 @@ export type CustomerDeliverySections = {
     upcoming: CustomerDeliveryDashboardRequest[];
     history: CustomerDeliveryDashboardRequest[];
 };
+
+export type CustomerDeliveryDeepLinkSelection =
+    | { kind: 'none' }
+    | { kind: 'unavailable' }
+    | {
+          kind: 'selected';
+          section: keyof CustomerDeliverySections;
+          index: number;
+          request: CustomerDeliveryDashboardRequest;
+      };
 
 type IndexedRequest<TRequest extends CustomerDeliveryDashboardRequest> = {
     index: number;
@@ -156,4 +167,22 @@ export function organizeCustomerDeliverySections(
             );
         }),
     };
+}
+
+export function selectCustomerDeliveryDeepLink(
+    sections: CustomerDeliverySections,
+    target: DeliveryDeepLinkTarget,
+): CustomerDeliveryDeepLinkSelection {
+    if (target.kind === 'none') return { kind: 'none' };
+    if (target.kind === 'invalid') return { kind: 'unavailable' };
+
+    for (const section of ['active', 'upcoming', 'history'] as const) {
+        const index = sections[section].findIndex(
+            ({ requestId }) => requestId === target.requestId,
+        );
+        const request = sections[section][index];
+        if (request) return { kind: 'selected', section, index, request };
+    }
+
+    return { kind: 'unavailable' };
 }

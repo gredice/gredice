@@ -1338,6 +1338,87 @@ function formatRemainingRoutePlan({
     };
 }
 
+/**
+ * Refreshes live ETAs for an already accepted itinerary. The caller supplies
+ * remaining checkpoints in their persisted execution order; this path only
+ * refreshes travel metrics and must never optimize that order again.
+ */
+export async function refreshFixedPickupAwareDeliveryRoute({
+    origin,
+    nodes,
+    departureTime = new Date(),
+}: {
+    origin: DeliveryCoordinates;
+    nodes: RemainingDeliveryRouteNode[];
+    departureTime?: Date;
+}): Promise<RemainingDeliveryRoutePlan> {
+    if (nodes.length === 0) {
+        return {
+            estimateSource: 'local',
+            totalDistanceMeters: 0,
+            totalDurationSeconds: 0,
+            visits: [],
+        };
+    }
+
+    const { originKey, graphNodes, candidatesByNodeKey } =
+        remainingRouteGraphNodes({ origin, nodes });
+    // A live route may already be late. Preserve future window starts (and the
+    // associated wait time), but do not reject an accepted itinerary because
+    // a delivery window has elapsed.
+    const fixedNodes = graphNodes.map((node) =>
+        node.kind === 'customer' && node.windowEndAt
+            ? { ...node, windowEndAt: undefined }
+            : node,
+    );
+    const localPlan = evaluateFixedRouteGraph({
+        nodes: fixedNodes,
+        originKey,
+        departureTime,
+        legs: fixedNodes.slice(1).map((node, index) => {
+            const previous = fixedNodes[index];
+            if (!previous) {
+                throw new DeliveryRoutePlanningError(
+                    'Nedostaje dionica preostale rute.',
+                    'invalid-route-graph',
+                    node.kind === 'customer'
+                        ? node.deliveryRequestId
+                        : undefined,
+                    node.key,
+                );
+            }
+            return localRouteLeg(previous, node);
+        }),
+        candidatesByNodeKey,
+    });
+
+    try {
+        const fixedRoute = await computeFixedGoogleRoute({
+            graphPlan: localPlan,
+            departureTime,
+            candidatesByNodeKey,
+            softenMissedWindows: true,
+        });
+        return formatRemainingRoutePlan({
+            plan: fixedRoute.plan,
+            originKey,
+            estimateSource: 'google',
+            encodedPolyline: fixedRoute.encodedPolyline,
+        });
+    } catch (error) {
+        if (!(error instanceof GoogleRouteServiceError)) throw error;
+        console.warn(
+            'Google live ETA refresh failed; using fixed-order local fallback',
+            { nodeCount: fixedNodes.length, error },
+        );
+        return formatRemainingRoutePlan({
+            plan: localPlan,
+            originKey,
+            estimateSource: 'local',
+        });
+    }
+}
+
 async function calculateRemainingRoutePlan({
     graphNodes,
     originKey,

@@ -1,8 +1,6 @@
-import {
-    applyDeliveryRunPickupMutations,
-    DeliveryRunExecutionError,
-} from '@gredice/storage';
+import { DeliveryRunExecutionError } from '@gredice/storage';
 import { withAuth } from '../../../../../../../../lib/auth/auth';
+import { applyDriverDeliveryRunPickupMutations } from '../../../../../../../../lib/deliveryDashboard';
 import { parseDeliveryPickupMutationRequest } from '../../../../../../../../lib/deliveryPickupMutationRequest';
 
 const privateNoStoreHeaders = {
@@ -63,7 +61,7 @@ export async function POST(
         }
 
         try {
-            const results = await applyDeliveryRunPickupMutations({
+            const results = await applyDriverDeliveryRunPickupMutations({
                 driverUserId: userId,
                 runId,
                 pickupNodeId,

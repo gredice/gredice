@@ -6,7 +6,8 @@
     "type": "module",
     "license": "MIT",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./customer-delivery": "./src/customerDeliveryNotifications.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

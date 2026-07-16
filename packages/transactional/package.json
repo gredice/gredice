@@ -26,6 +26,7 @@
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
+        "@gredice/notifications": "workspace:*",
         "react": "19.2.7",
         "react-email": "6.6.9"
     }

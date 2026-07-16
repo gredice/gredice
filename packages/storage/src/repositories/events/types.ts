@@ -471,6 +471,25 @@ export type DeliveryRequestExceptionRecordedPayload = {
     occurredAt: string;
     recordedByUserId: string;
     routeRevision: number;
+    retryAttempt?: number;
+};
+
+export type DeliveryRequestLifecycleTransitionPayload = {
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    clientOperationId: string;
+    occurredAt: string;
+    routeRevision: number;
+};
+
+export type DeliveryRequestRouteProgressPayload = {
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    milestone: 'near-arrival' | 'next-stop' | 'delayed';
+    occurredAt: string;
+    routeRevision: number;
 };
 
 export type DeliveryRequestExceptionRecoveredPayload = {
@@ -480,6 +499,7 @@ export type DeliveryRequestExceptionRecoveredPayload = {
     recoveredAt: string;
     recoveredByUserId: string;
     routeRevision: number;
+    retryAttempt?: number;
 };
 
 export type DeliveryRequestSurveySentPayload = {
@@ -492,6 +512,19 @@ export type DeliveryRequestReadyEmailProcessedPayload = {
     batchRequestIds: string[];
     completed?: boolean;
     skipped?: boolean;
+};
+
+export type DeliveryRequestLifecycleNotificationProcessedPayload = {
+    completed: boolean;
+    notificationId?: string;
+    processedAt: string;
+    reason:
+        | 'already-published'
+        | 'invalid-source-event'
+        | 'owner-unavailable'
+        | 'published';
+    skipped: boolean;
+    sourceEventId: number;
 };
 
 export type DeliveryRunReassignedPayload = {
@@ -517,10 +550,13 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestCancelledPayload
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
+    | DeliveryRequestLifecycleTransitionPayload
+    | DeliveryRequestRouteProgressPayload
     | DeliveryRequestExceptionRecordedPayload
     | DeliveryRequestExceptionRecoveredPayload
     | DeliveryRequestSurveySentPayload
-    | DeliveryRequestReadyEmailProcessedPayload;
+    | DeliveryRequestReadyEmailProcessedPayload
+    | DeliveryRequestLifecycleNotificationProcessedPayload;
 
 export type DeliveryRequestEventsAnyPayload = Partial<
     DeliveryRequestCreatePayload &
@@ -529,10 +565,12 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestCancelledPayload &
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
+        DeliveryRequestRouteProgressPayload &
         DeliveryRequestExceptionRecordedPayload &
         DeliveryRequestExceptionRecoveredPayload &
         DeliveryRequestSurveySentPayload &
-        DeliveryRequestReadyEmailProcessedPayload
+        DeliveryRequestReadyEmailProcessedPayload &
+        DeliveryRequestLifecycleNotificationProcessedPayload
 >;
 
 // ============================================================================

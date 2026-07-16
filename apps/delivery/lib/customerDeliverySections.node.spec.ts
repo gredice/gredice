@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     customerDeliveryInitialHistoryCount,
     organizeCustomerDeliverySections,
+    selectCustomerDeliveryDeepLink,
 } from './customerDeliverySections';
 import type {
     CustomerDeliveryDashboardRequest,
@@ -364,4 +365,76 @@ test('preserves input order when every section sort key ties', () => {
         'upcoming-b',
     ]);
     assert.deepEqual(requestIds(sections.history), ['history-a', 'history-b']);
+});
+
+test('selects active, upcoming, and history delivery links from account-scoped sections', () => {
+    const sections = organizeCustomerDeliverySections([
+        delivery({
+            requestId: 'account-active',
+            status: 'ready',
+            lifecycle: 'active',
+            phase: 'next',
+        }),
+        pickup({ requestId: 'account-upcoming' }),
+        delivery({
+            requestId: 'account-history',
+            status: 'fulfilled',
+            lifecycle: 'history',
+        }),
+    ]);
+
+    assert.deepEqual(
+        selectCustomerDeliveryDeepLink(sections, {
+            kind: 'request',
+            requestId: 'account-active',
+        }),
+        {
+            kind: 'selected',
+            section: 'active',
+            index: 0,
+            request: sections.active[0],
+        },
+    );
+    assert.deepEqual(
+        selectCustomerDeliveryDeepLink(sections, {
+            kind: 'request',
+            requestId: 'account-upcoming',
+        }),
+        {
+            kind: 'selected',
+            section: 'upcoming',
+            index: 0,
+            request: sections.upcoming[0],
+        },
+    );
+    assert.deepEqual(
+        selectCustomerDeliveryDeepLink(sections, {
+            kind: 'request',
+            requestId: 'account-history',
+        }),
+        {
+            kind: 'selected',
+            section: 'history',
+            index: 0,
+            request: sections.history[0],
+        },
+    );
+});
+
+test('returns one generic unavailable selection for malformed and unowned IDs', () => {
+    const sections = organizeCustomerDeliverySections([
+        pickup({ requestId: 'account-owned' }),
+    ]);
+
+    assert.deepEqual(
+        selectCustomerDeliveryDeepLink(sections, { kind: 'invalid' }),
+        { kind: 'unavailable' },
+    );
+    assert.deepEqual(
+        selectCustomerDeliveryDeepLink(sections, {
+            kind: 'request',
+            requestId: 'another-account-request',
+        }),
+        { kind: 'unavailable' },
+    );
 });

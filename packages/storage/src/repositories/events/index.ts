@@ -53,6 +53,7 @@ export type {
     DeliveryRequestFulfilledPayloadV1,
     DeliveryRequestFulfilledPayloadV2,
     DeliveryRequestHandoffVerificationPayload,
+    DeliveryRequestRouteProgressPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,

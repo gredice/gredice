@@ -21,6 +21,7 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
 import { NoNotificationsPlaceholder } from '../shared-ui/NoNotificationsPlaceholder';
+import { navigateNotificationLink } from './notificationNavigation';
 
 interface NotificationProps {
     read?: boolean;
@@ -114,7 +115,12 @@ function NotificationListItem({
         }
 
         if (computedLinkUrl !== '#') {
-            router.push(computedLinkUrl as Route);
+            navigateNotificationLink({
+                assign: (url) => window.location.assign(url),
+                currentOrigin: window.location.origin,
+                href: computedLinkUrl,
+                push: (url) => router.push(url as Route),
+            });
         }
 
         onNotificationSelected?.();

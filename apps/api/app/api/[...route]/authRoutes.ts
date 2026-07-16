@@ -211,6 +211,7 @@ const allowedLocalRedirectHosts = new Set([
     'app.gredice.test',
     'vrt.gredice.test',
     'farma.gredice.test',
+    'dostava.gredice.test',
     'www.gredice.test',
 ]);
 

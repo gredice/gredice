@@ -14,9 +14,32 @@ import { Mail, Truck, Warning } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useCallback, useState } from 'react';
+import {
+    buildDeliveryOAuthCallbackPath,
+    type DeliveryLoginFailure,
+    safeDeliveryReturnTarget,
+} from '../../lib/deliveryDeepLink';
 import { publishDeliverySessionResumed } from '../../lib/deliveryOfflineEvents';
 
-export function LoginPanel() {
+function deliveryLoginFailureMessage(failure: DeliveryLoginFailure) {
+    switch (failure) {
+        case 'oauth-provider':
+            return 'Prijava putem odabranog računa nije uspjela. Pokušaj ponovno ili odaberi email prijavu.';
+        case 'oauth-missing-token':
+            return 'Prijavu nije moguće dovršiti jer nedostaju potrebni podaci. Pokušaj ponovno ili odaberi email prijavu.';
+        case 'oauth-token-exchange':
+            return 'Prijavu trenutačno nije moguće dovršiti. Pokušaj ponovno ili odaberi email prijavu.';
+    }
+}
+
+export function LoginPanel({
+    returnTarget,
+    loginFailure = null,
+}: {
+    returnTarget: string;
+    loginFailure?: DeliveryLoginFailure | null;
+}) {
+    const safeReturnTarget = safeDeliveryReturnTarget(returnTarget);
     const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
@@ -42,7 +65,7 @@ export function LoginPanel() {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
             publishDeliverySessionResumed();
-            window.location.replace('/');
+            window.location.replace(safeReturnTarget);
             return null;
         } catch {
             return 'Aplikacija za prijavu trenutačno nije dostupna.';
@@ -50,10 +73,10 @@ export function LoginPanel() {
     }, null);
 
     const oauth = (provider: 'google' | 'facebook') => {
-        const callbackPath =
-            provider === 'google'
-                ? '/prijava/google-prijava/povratak'
-                : '/prijava/facebook-prijava/povratak';
+        const callbackPath = buildDeliveryOAuthCallbackPath(
+            provider,
+            safeReturnTarget,
+        );
         const authUrl = new URL(
             `/api/auth/${provider}`,
             getBrowserGrediceAppOrigin('api'),
@@ -82,6 +105,15 @@ export function LoginPanel() {
                                 Prati svoju dostavu ili otvori vozačku rutu.
                             </Typography>
                         </Stack>
+                        {loginFailure ? (
+                            <Alert
+                                color="danger"
+                                data-testid="delivery-login-failure"
+                                startDecorator={<Warning className="size-5" />}
+                            >
+                                {deliveryLoginFailureMessage(loginFailure)}
+                            </Alert>
+                        ) : null}
                         {!emailExpanded ? (
                             <Stack spacing={2}>
                                 <GoogleLoginButton

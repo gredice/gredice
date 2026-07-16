@@ -19,6 +19,7 @@ import {
     type OperationSchedulePayload,
 } from '@gredice/storage';
 
+export * from './customerDeliveryNotifications';
 export * from './deliveryLifecycle';
 
 type OperationEventType =
