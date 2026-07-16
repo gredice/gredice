@@ -6,13 +6,14 @@ import {
     promoteDeferredWebPushDeliveryAttempts,
     type QueuedWebPushDeliveryRevalidation,
     recordNotificationDeliveryEvent,
+    recordWebPushDeliveryFailure,
     revalidateQueuedWebPushDeliveryAttempt,
     storage,
     webPushDeliveryClaimLeaseMs,
     webPushDeliveryClaimProviderCode,
     webPushSubscriptions,
 } from '@gredice/storage';
-import { and, asc, eq, isNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, ne, or } from 'drizzle-orm';
 import webPush, {
     type PushSubscription,
     type SendResult,
@@ -370,60 +371,12 @@ async function recordFailedAttempt(
     attempt: QueuedWebPushAttempt,
     failure: WebPushFailure,
 ) {
-    const now = new Date();
-    const subscriptionUpdate = {
-        failCount: sql`${webPushSubscriptions.failCount} + 1`,
-        lastFailureAt: now,
-        lastFailureCode: failure.providerResponseCode,
-        lastFailureReason: failure.message.slice(0, 512),
-        updatedAt: now,
-        ...(failure.invalidSubscription
-            ? {
-                  enabled: false,
-                  revokedAt: now,
-                  revokedReason: 'web_push_endpoint_invalid',
-              }
-            : {}),
-    };
-
-    const recorded = await storage()
-        .update(notificationDeliveryAttempts)
-        .set({
-            attemptedAt: now,
-            failedAt: failure.willRetry ? null : now,
-            providerResponseBody: failure.body,
-            providerResponseCode: failure.providerResponseCode,
-            status: failure.willRetry ? 'queued' : 'failed',
-        })
-        .where(
-            and(
-                eq(notificationDeliveryAttempts.id, attempt.attemptId),
-                eq(notificationDeliveryAttempts.status, 'queued'),
-                eq(
-                    notificationDeliveryAttempts.providerResponseCode,
-                    webPushDeliveryClaimProviderCode,
-                ),
-            ),
-        )
-        .returning({ id: notificationDeliveryAttempts.id });
-    if (!recorded[0]) return;
-    await storage()
-        .update(webPushSubscriptions)
-        .set(subscriptionUpdate)
-        .where(eq(webPushSubscriptions.id, attempt.pushSubscriptionId));
-    for (const type of webPushFailureEventTypes(failure)) {
-        await recordNotificationDeliveryEvent({
-            deliveryAttemptId: attempt.attemptId,
-            metadata: {
-                invalidSubscription: failure.invalidSubscription,
-                provider: 'web_push',
-                statusCode: failure.statusCode,
-                willRetry: failure.willRetry,
-            },
-            notificationId: attempt.notificationId,
-            type,
-        });
-    }
+    await recordWebPushDeliveryFailure({
+        attemptId: attempt.attemptId,
+        ...failure,
+        notificationId: attempt.notificationId,
+        pushSubscriptionId: attempt.pushSubscriptionId,
+    });
 }
 
 export async function processWebPushAttempts({
@@ -448,6 +401,7 @@ export async function processWebPushAttempts({
         retried: 0,
         skipped: 0,
     };
+    const recordingFailures: unknown[] = [];
 
     for (const attempt of attempts) {
         const revalidation = revalidate ? await revalidate(attempt) : undefined;
@@ -464,7 +418,26 @@ export async function processWebPushAttempts({
                 attempt,
                 maxRetryFailures,
             );
-            await (recorders?.failed ?? recordFailedAttempt)(attempt, failure);
+            try {
+                await (recorders?.failed ?? recordFailedAttempt)(
+                    attempt,
+                    failure,
+                );
+            } catch (recordingError) {
+                recordingFailures.push(recordingError);
+                console.warn('Web Push failure recording failed', {
+                    attemptId: attempt.attemptId,
+                    errorName:
+                        recordingError instanceof Error
+                            ? recordingError.name
+                            : 'Unknown',
+                    invalidSubscription: failure.invalidSubscription,
+                    providerResponseCode: failure.providerResponseCode,
+                    statusCode: failure.statusCode,
+                    willRetry: failure.willRetry,
+                });
+                continue;
+            }
             if (failure.invalidSubscription) {
                 result.invalidated += 1;
                 result.failed += 1;
@@ -489,6 +462,13 @@ export async function processWebPushAttempts({
             sendResult,
         );
         result.accepted += 1;
+    }
+
+    if (recordingFailures.length > 0) {
+        throw new AggregateError(
+            recordingFailures,
+            'One or more Web Push failures could not be recorded.',
+        );
     }
 
     return result;

@@ -34,6 +34,7 @@ import {
     previewNotificationCampaignAudience,
     promoteDeferredWebPushDeliveryAttempts,
     recordNotificationDeliveryEvent,
+    recordWebPushDeliveryFailure,
     revalidateQueuedWebPushDeliveryAttempt,
     routeNotificationDelivery,
     setAllNotificationsRead,
@@ -42,6 +43,7 @@ import {
     storage,
     userNotificationSettings,
     users,
+    webPushDeliveryClaimProviderCode,
     webPushSubscriptions,
 } from '@gredice/storage';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -709,6 +711,188 @@ test('queued Web Push uses a durable send lease before provider submission', asy
             now: new Date('2026-07-16T13:06:00.000Z'),
         }),
         { reason: 'eligible_immediate', status: 'eligible' },
+    );
+});
+
+test('invalid Web Push finalization rolls back atomically and remains retryable when unsubscribe evidence fails', async () => {
+    createTestDb();
+    const { accountId, subscriptionId, userId } =
+        await createDeliveryPushRecipient('push-invalid-atomic');
+    const notificationId = await createDeliveryLifecyclePushNotification({
+        accountId,
+        now: new Date('2026-07-16T12:00:00.000Z'),
+        userId,
+    });
+    const attempt = await getQueuedPushAttempt(notificationId);
+    const claimAt = new Date('2026-07-16T12:05:00.000Z');
+    const failedAt = new Date('2026-07-16T12:06:00.000Z');
+    assert.deepEqual(
+        await revalidateQueuedWebPushDeliveryAttempt({
+            attemptId: attempt.id,
+            now: claimAt,
+        }),
+        { reason: 'eligible_immediate', status: 'eligible' },
+    );
+
+    const failure = {
+        attemptId: attempt.id,
+        body: 'expired endpoint',
+        invalidSubscription: true,
+        message: 'gone',
+        notificationId,
+        now: failedAt,
+        providerResponseCode: 'invalid_410',
+        pushSubscriptionId: subscriptionId,
+        statusCode: 410,
+        willRetry: false,
+    };
+    const dropInjectedFailure = async () => {
+        await storage().execute(
+            sql.raw(
+                'drop trigger if exists notification_unsubscribe_failure_test on notification_delivery_events',
+            ),
+        );
+        await storage().execute(
+            sql.raw(
+                'drop function if exists notification_unsubscribe_failure_test()',
+            ),
+        );
+    };
+    await dropInjectedFailure();
+    await storage().execute(
+        sql.raw(`
+            create function notification_unsubscribe_failure_test()
+            returns trigger
+            language plpgsql
+            as $function$
+            begin
+                if new.type::text = 'unsubscribed' then
+                    raise exception 'injected unsubscribe event failure';
+                end if;
+                return new;
+            end;
+            $function$
+        `),
+    );
+    await storage().execute(
+        sql.raw(`
+            create trigger notification_unsubscribe_failure_test
+            before insert on notification_delivery_events
+            for each row execute function notification_unsubscribe_failure_test()
+        `),
+    );
+    try {
+        await assert.rejects(
+            recordWebPushDeliveryFailure(failure),
+            (error: unknown) => {
+                assert.ok(error instanceof Error);
+                assert.ok(error.cause instanceof Error);
+                assert.match(
+                    error.cause.message,
+                    /injected unsubscribe event failure/u,
+                );
+                return true;
+            },
+        );
+    } finally {
+        await dropInjectedFailure();
+    }
+
+    const rolledBackAttempt = await getQueuedPushAttempt(notificationId);
+    assert.equal(rolledBackAttempt.status, 'queued');
+    assert.equal(
+        rolledBackAttempt.providerResponseCode,
+        webPushDeliveryClaimProviderCode,
+    );
+    assert.equal(rolledBackAttempt.failedAt, null);
+    assert.equal(rolledBackAttempt.attemptedAt.getTime(), claimAt.getTime());
+    const rolledBackSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, subscriptionId),
+        });
+    assert.ok(rolledBackSubscription);
+    assert.equal(rolledBackSubscription.enabled, true);
+    assert.equal(rolledBackSubscription.failCount, 0);
+    assert.equal(rolledBackSubscription.revokedAt, null);
+    assert.equal(rolledBackSubscription.revokedReason, null);
+    const partialEvents = await storage()
+        .select({ type: notificationDeliveryEvents.type })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(notificationDeliveryEvents.deliveryAttemptId, attempt.id),
+                inArray(notificationDeliveryEvents.type, [
+                    'failed',
+                    'unsubscribed',
+                ]),
+            ),
+        );
+    assert.deepEqual(partialEvents, []);
+
+    assert.equal(await recordWebPushDeliveryFailure(failure), true);
+    assert.equal(await recordWebPushDeliveryFailure(failure), false);
+    const finalizedAttempt = await getQueuedPushAttempt(notificationId);
+    assert.equal(finalizedAttempt.status, 'failed');
+    assert.equal(finalizedAttempt.providerResponseCode, 'invalid_410');
+    assert.equal(finalizedAttempt.failedAt?.getTime(), failedAt.getTime());
+    const finalizedSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, subscriptionId),
+        });
+    assert.ok(finalizedSubscription);
+    assert.equal(finalizedSubscription.enabled, false);
+    assert.equal(finalizedSubscription.failCount, 1);
+    assert.equal(
+        finalizedSubscription.revokedAt?.getTime(),
+        failedAt.getTime(),
+    );
+    assert.equal(
+        finalizedSubscription.revokedReason,
+        'web_push_endpoint_invalid',
+    );
+    const events = await storage()
+        .select({
+            metadata: notificationDeliveryEvents.metadata,
+            occurredAt: notificationDeliveryEvents.occurredAt,
+            type: notificationDeliveryEvents.type,
+        })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(notificationDeliveryEvents.deliveryAttemptId, attempt.id),
+                inArray(notificationDeliveryEvents.type, [
+                    'failed',
+                    'unsubscribed',
+                ]),
+            ),
+        )
+        .orderBy(asc(notificationDeliveryEvents.id));
+    assert.deepEqual(
+        events.map((event) => event.type),
+        ['failed', 'unsubscribed'],
+    );
+    assert.deepEqual(
+        events.map((event) => event.metadata),
+        [
+            {
+                invalidSubscription: true,
+                provider: 'web_push',
+                statusCode: 410,
+                willRetry: false,
+            },
+            {
+                invalidSubscription: true,
+                provider: 'web_push',
+                statusCode: 410,
+                willRetry: false,
+            },
+        ],
+    );
+    assert.equal(
+        events.every(
+            (event) => event.occurredAt.getTime() === failedAt.getTime(),
+        ),
+        true,
     );
 });
 

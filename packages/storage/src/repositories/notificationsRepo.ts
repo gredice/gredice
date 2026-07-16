@@ -2256,6 +2256,105 @@ export async function revalidateQueuedWebPushDeliveryAttempt({
     });
 }
 
+export async function recordWebPushDeliveryFailure({
+    attemptId,
+    body,
+    invalidSubscription,
+    message,
+    notificationId,
+    now = new Date(),
+    providerResponseCode,
+    pushSubscriptionId,
+    statusCode,
+    willRetry,
+}: {
+    attemptId: number;
+    body: string | null;
+    invalidSubscription: boolean;
+    message: string;
+    notificationId: string;
+    now?: Date;
+    providerResponseCode: string;
+    pushSubscriptionId: string;
+    statusCode: number | null;
+    willRetry: boolean;
+}) {
+    if (invalidSubscription && willRetry) {
+        throw new Error('Invalid Web Push subscriptions cannot be retried.');
+    }
+    return await storage().transaction(async (tx) => {
+        const recorded = await tx
+            .update(notificationDeliveryAttempts)
+            .set({
+                attemptedAt: now,
+                failedAt: willRetry ? null : now,
+                providerResponseBody: body?.slice(0, 512) ?? null,
+                providerResponseCode: providerResponseCode.slice(0, 64),
+                status: willRetry ? 'queued' : 'failed',
+            })
+            .where(
+                and(
+                    eq(notificationDeliveryAttempts.id, attemptId),
+                    eq(
+                        notificationDeliveryAttempts.notificationId,
+                        notificationId,
+                    ),
+                    eq(notificationDeliveryAttempts.channel, 'push'),
+                    eq(notificationDeliveryAttempts.provider, 'web_push_queue'),
+                    eq(
+                        notificationDeliveryAttempts.pushSubscriptionId,
+                        pushSubscriptionId,
+                    ),
+                    eq(notificationDeliveryAttempts.status, 'queued'),
+                    eq(
+                        notificationDeliveryAttempts.providerResponseCode,
+                        webPushDeliveryClaimProviderCode,
+                    ),
+                ),
+            )
+            .returning({ id: notificationDeliveryAttempts.id });
+        if (!recorded[0]) return false;
+
+        await tx
+            .update(webPushSubscriptions)
+            .set({
+                failCount: sql`${webPushSubscriptions.failCount} + 1`,
+                lastFailureAt: now,
+                lastFailureCode: providerResponseCode.slice(0, 64),
+                lastFailureReason: message.slice(0, 512),
+                updatedAt: now,
+                ...(invalidSubscription
+                    ? {
+                          enabled: false,
+                          revokedAt: now,
+                          revokedReason: 'web_push_endpoint_invalid',
+                      }
+                    : {}),
+            })
+            .where(eq(webPushSubscriptions.id, pushSubscriptionId));
+
+        const metadata = {
+            invalidSubscription,
+            provider: 'web_push',
+            statusCode,
+            willRetry,
+        };
+        await tx.insert(notificationDeliveryEvents).values(
+            (invalidSubscription
+                ? (['failed', 'unsubscribed'] as const)
+                : (['failed'] as const)
+            ).map((type) => ({
+                deliveryAttemptId: attemptId,
+                metadata,
+                notificationId,
+                occurredAt: now,
+                type,
+            })),
+        );
+        return true;
+    });
+}
+
 function boundedPositiveInteger(
     value: number,
     fallback: number,
