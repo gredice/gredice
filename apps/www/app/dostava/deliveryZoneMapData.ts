@@ -1,5 +1,3 @@
-export const deliveryAreaRadiusMeters = 100_000;
-
 export const grediceHqPosition = {
     lat: 45.778683,
     lng: 15.9837396,
