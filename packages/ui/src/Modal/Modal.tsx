@@ -120,7 +120,7 @@ function DesktopModal({
             <DialogPrimitive.Portal>
                 <DialogPrimitive.Overlay
                     className={cx(
-                        'fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+                        'fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none motion-reduce:transition-none',
                         overlayClassName,
                     )}
                 />
@@ -129,7 +129,7 @@ function DesktopModal({
                         ? {}
                         : { 'aria-describedby': undefined })}
                     className={cx(
-                        'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg min-w-0 -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-auto overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 [overflow-wrap:anywhere] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg',
+                        'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg min-w-0 -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-auto overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 [overflow-wrap:anywhere] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 motion-reduce:animate-none motion-reduce:transition-none sm:rounded-lg',
                         className,
                     )}
                     onEscapeKeyDown={preventDismiss}
@@ -146,7 +146,7 @@ function DesktopModal({
                     ) : null}
                     {children}
                     {dismissible && !hideClose ? (
-                        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                        <DialogPrimitive.Close className="absolute right-1 top-1 inline-flex size-11 items-center justify-center rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground motion-reduce:transition-none">
                             <Close aria-hidden className="size-4" />
                             <span className="sr-only">Zatvori</span>
                         </DialogPrimitive.Close>
@@ -187,7 +187,7 @@ function MobileModal({
             <Drawer.Portal>
                 <Drawer.Overlay
                     className={cx(
-                        'fixed inset-0 z-50 bg-black/50',
+                        'fixed inset-0 z-50 bg-black/50 motion-reduce:!animate-none motion-reduce:!transition-none motion-reduce:!duration-0',
                         overlayClassName,
                     )}
                 />
@@ -196,7 +196,7 @@ function MobileModal({
                         ? {}
                         : { 'aria-describedby': undefined })}
                     className={cx(
-                        'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-full min-w-0 flex-col overflow-hidden rounded-t-[10px] border bg-background',
+                        'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-full min-w-0 flex-col overflow-hidden rounded-t-[10px] border bg-background motion-reduce:!animate-none motion-reduce:!transition-none motion-reduce:!duration-0',
                         className,
                     )}
                     ref={drawerRef}

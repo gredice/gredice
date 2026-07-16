@@ -6,7 +6,9 @@ The delivery handoff check is an advisory record of what the driver observed at
 the customer stop. It helps the driver confirm that every expected harvest left
 the vehicle, while keeping delivery possible when a sticker is missing, a QR
 code cannot be read, or another operational exception occurs. QR verification
-never blocks arrival or fulfillment.
+never blocks arrival or fulfillment. If fulfillment bypasses the recorded
+arrival or leaves a manifest item unreviewed, the driver explicitly selects a
+bounded operational reason; scanning itself is still optional.
 
 The expected manifest comes from the immutable per-harvest trace snapshot on
 `delivery_run_stops`. The server does not trust the device to define which
@@ -43,6 +45,15 @@ The audit has two layers:
    attempt. Results distinguish scanned, already-scanned, no-label, missing,
    skipped, stale, invalid, wrong-stop, and unknown-item attempts without
    exposing data from a mismatched trace.
+3. The final stop-operation receipt records a bounded completion override reason
+   and the server-derived checks it bypassed (`arrival`, `handoff-review`) when
+   delivery proceeds without a recorded arrival or with an unreviewed item. The
+   receipt already binds that choice to the driver, run, stop, operation ID, and
+   audit timestamps; it stores no free-text override details.
+
+The bulk confirmation receives only a server-derived aggregate recipient count;
+the stable address or account identity used to calculate that count is not sent
+to the browser or stored in the offline route cache.
 
 The client supplies a stable operation identifier. Retrying the same operation
 with the same payload returns the original receipt; it does not create another
@@ -81,7 +92,9 @@ idempotency and support. Logs and cron responses contain aggregate counts only.
 4. The UI can rebuild the latest manifest from the server after a refresh. A
    lost device cache therefore does not erase successful or skipped results.
 5. The driver can fulfill the stop with zero, partial, or complete QR coverage.
-   Handoff verification is evidence, not a delivery gate.
+   An unreviewed item requires an explicit completion override reason, not a QR
+   scan. No-label, missing, and skipped outcomes count as reviewed advisory
+   outcomes and do not themselves require a stop-level override.
 6. The final per-stop advisory state and the delivery fulfillment event follow
    the normal delivery and account-history lifecycle. They remain available as
    long as the corresponding operational delivery history remains available.
@@ -115,7 +128,8 @@ Use focused storage and API coverage for:
 - every advisory result and attempt outcome;
 - exact idempotent replay, conflicting reuse, bulk partial results, and retry
   after a lost response;
-- refresh reconstruction from persisted state and fulfillment with zero scans;
+- refresh reconstruction from persisted state and fulfillment with zero scans,
+  including the required bounded override when items remain unreviewed;
 - 90-day boundary behavior, bounded cleanup, and counts-only cron responses;
 - proof that operation receipts and logs contain no raw QR value.
 

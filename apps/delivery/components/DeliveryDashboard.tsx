@@ -485,12 +485,19 @@ function ActiveDriverDashboardWithPickupSync({
                 if (runId !== activeRunId) return;
                 await deliverySync.enqueueArrive(stopId, routeRevision);
             }}
-            onDeliver={async (runId, stopId, routeRevision, notes) => {
+            onDeliver={async (
+                runId,
+                stopId,
+                routeRevision,
+                notes,
+                completionOverride,
+            ) => {
                 if (runId !== activeRunId) return;
                 await deliverySync.enqueueDelivery(
                     stopId,
                     routeRevision,
                     notes,
+                    completionOverride,
                 );
             }}
             onException={async (runId, stopId, mutation) => {

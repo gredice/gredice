@@ -1,4 +1,6 @@
 import {
+    type DeliveryRunCompletionOverrideInput,
+    DeliveryRunCompletionOverrideReasons,
     type DeliveryRunExceptionOutcome,
     DeliveryRunExceptionOutcomes,
     type DeliveryRunExceptionReason,
@@ -13,6 +15,31 @@ export class DeliveryMutationRequestError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+}
+
+function completionOverride(
+    value: unknown,
+): DeliveryRunCompletionOverrideInput {
+    if (
+        !isRecord(value) ||
+        Object.keys(value).length !== 1 ||
+        !('reason' in value)
+    ) {
+        throw new DeliveryMutationRequestError(
+            'Razlog dovršetka bez pune provjere nije valjan.',
+        );
+    }
+    switch (value.reason) {
+        case DeliveryRunCompletionOverrideReasons.DEVICE_UNAVAILABLE:
+        case DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY:
+        case DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF:
+        case DeliveryRunCompletionOverrideReasons.OTHER_OPERATIONAL:
+            return { reason: value.reason };
+        default:
+            throw new DeliveryMutationRequestError(
+                'Razlog dovršetka bez pune provjere nije valjan.',
+            );
+    }
 }
 
 export function expectedRouteRevision(value: unknown) {
@@ -65,7 +92,9 @@ export function parseDeliveryStopMutation(
         'clientOperationId',
         'expectedRouteRevision',
         'occurredAt',
-        ...(kind === DeliveryRunStopOperationKinds.DELIVER ? ['notes'] : []),
+        ...(kind === DeliveryRunStopOperationKinds.DELIVER
+            ? ['notes', 'completionOverride']
+            : []),
     ]);
     if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
         throw new DeliveryMutationRequestError(
@@ -75,6 +104,14 @@ export function parseDeliveryStopMutation(
     if (kind === DeliveryRunStopOperationKinds.ARRIVE && 'notes' in value) {
         throw new DeliveryMutationRequestError(
             'Napomena nije dopuštena za potvrdu dolaska.',
+        );
+    }
+    if (
+        kind === DeliveryRunStopOperationKinds.ARRIVE &&
+        'completionOverride' in value
+    ) {
+        throw new DeliveryMutationRequestError(
+            'Razlog dovršetka nije dopušten za potvrdu dolaska.',
         );
     }
     let notes: string | undefined;
@@ -89,12 +126,20 @@ export function parseDeliveryStopMutation(
             );
         }
     }
+    const parsedCompletionOverride =
+        kind === DeliveryRunStopOperationKinds.DELIVER &&
+        'completionOverride' in value
+            ? completionOverride(value.completionOverride)
+            : undefined;
     return {
         kind,
         expectedRouteRevision: routeRevision,
         clientOperationId: value.clientOperationId.trim(),
         occurredAt,
         ...(notes ? { notes } : {}),
+        ...(parsedCompletionOverride
+            ? { completionOverride: parsedCompletionOverride }
+            : {}),
     };
 }
 

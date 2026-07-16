@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DeliveryRunStopOperationKinds } from '@gredice/storage';
+import {
+    DeliveryRunCompletionOverrideReasons,
+    DeliveryRunStopOperationKinds,
+} from '@gredice/storage';
 import {
     DeliveryMutationRequestError,
     expectedRouteRevision,
@@ -82,6 +85,9 @@ test('parses strict arrive and deliver stop operation payloads', () => {
             clientOperationId: ' deliver-1 ',
             occurredAt: '2026-07-15T10:05:00.000Z',
             notes: '  Predano susjedu  ',
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF,
+            },
         },
         DeliveryRunStopOperationKinds.DELIVER,
     );
@@ -91,6 +97,9 @@ test('parses strict arrive and deliver stop operation payloads', () => {
         clientOperationId: 'deliver-1',
         occurredAt: new Date('2026-07-15T10:05:00.000Z'),
         notes: 'Predano susjedu',
+        completionOverride: {
+            reason: DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF,
+        },
     });
 });
 
@@ -108,6 +117,12 @@ test('rejects incomplete or unsupported stop operation payloads', () => {
         { ...valid, occurredAt: 'not-a-date' },
         { ...valid, extra: true },
         { ...valid, notes: 'not allowed' },
+        {
+            ...valid,
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.DEVICE_UNAVAILABLE,
+            },
+        },
     ]) {
         assert.throws(
             () =>
@@ -123,6 +138,20 @@ test('rejects incomplete or unsupported stop operation payloads', () => {
         { ...valid, notes: 42 },
         { ...valid, notes: 'x'.repeat(1_001) },
         { ...valid, unexpected: 'field' },
+        { ...valid, completionOverride: null },
+        { ...valid, completionOverride: [] },
+        { ...valid, completionOverride: {} },
+        {
+            ...valid,
+            completionOverride: { reason: 'unsupported-reason' },
+        },
+        {
+            ...valid,
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.OTHER_OPERATIONAL,
+                extra: true,
+            },
+        },
     ]) {
         assert.throws(
             () =>

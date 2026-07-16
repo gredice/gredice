@@ -3,6 +3,7 @@ import {
     DriverCurrentDeferredCommandStory,
     DriverCurrentDeliveryCommandStory,
     DriverCurrentPickupCommandStory,
+    DriverSingleDeliveryCommandStory,
     HarvestTraceScannerSessionStory,
 } from './DriverCurrentStopCommandCenterStory';
 import {
@@ -177,19 +178,28 @@ test.describe('320px current-stop command center', () => {
             name: 'Potvrdi dostavu',
         });
         await expect(confirmation).toContainText('1 provjereno');
-        await expect(confirmation).toContainText('1 bez provjere');
+        await expect(confirmation).toContainText(
+            '3 primatelja · 3 očekivana uroda',
+        );
+        await expect(confirmation).not.toContainText('4 očekivana uroda');
+        await expect(confirmation).toContainText('1 neskenirano');
         await expect(confirmation).toContainText('1 bez etikete');
+        await expect(confirmation).toContainText('0 iznimki');
         await expect(page.getByTestId('current-stop-result')).toHaveText(
             'none',
         );
 
         const confirm = confirmation.getByRole('button', {
-            name: 'Potvrdi dostavu i nastavi',
+            name: 'Potvrdi iznimku i dostavu',
         });
+        await expect(confirm).toBeDisabled();
+        await confirmation
+            .getByLabel('Razlog operativne iznimke')
+            .selectOption('manual-handoff');
         await expect(confirm).toBeEnabled();
         await confirm.click();
         await expect(page.getByTestId('current-stop-result')).toHaveText(
-            'delivered:',
+            'delivered::manual-handoff',
         );
     });
 
@@ -227,6 +237,20 @@ test.describe('320px current-stop command center', () => {
         page,
     }) => {
         const component = await mount(<DriverCurrentPickupCommandStory />);
+        const pickupControls = [
+            page.getByRole('link', {
+                name: 'Navigacija do trenutačne stanice preuzimanja',
+            }),
+            page.getByRole('button', { name: 'Skeniraj urode' }),
+            page.getByRole('button', { name: 'Preuzeto bez QR etikete' }),
+            page.getByRole('button', { name: 'Nije spremno' }),
+        ];
+        for (const control of pickupControls) {
+            const box = await control.boundingBox();
+            expect(box).not.toBeNull();
+            expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+            expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+        }
         for (const buttonName of [
             'Skeniraj urode',
             'Preuzeto bez QR etikete',
@@ -234,7 +258,6 @@ test.describe('320px current-stop command center', () => {
             const box = await page
                 .getByRole('button', { name: buttonName })
                 .boundingBox();
-            expect(box).not.toBeNull();
             expect((box?.y ?? 568) + (box?.height ?? 0)).toBeLessThanOrEqual(
                 568,
             );
@@ -249,6 +272,8 @@ test.describe('320px current-stop command center', () => {
             })
             .boundingBox();
         expect(confirmBox).not.toBeNull();
+        expect(confirmBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(confirmBox?.width ?? 0).toBeGreaterThanOrEqual(44);
         expect(
             (confirmBox?.y ?? 568) + (confirmBox?.height ?? 0),
         ).toBeLessThanOrEqual(568);
@@ -266,6 +291,9 @@ test.describe('320px current-stop command center', () => {
         });
         const retry = page.getByRole('button', { name: 'Pokušaj ponovno' });
         await expect(retry).toBeInViewport();
+        const retryBox = await retry.boundingBox();
+        expect(retryBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(retryBox?.width ?? 0).toBeGreaterThanOrEqual(44);
         await retry.click();
 
         const recoveryError = page.getByRole('alert').filter({
@@ -281,6 +309,111 @@ test.describe('320px current-stop command center', () => {
         expect(errorBox?.y ?? 0).toBeGreaterThanOrEqual(syncBottom);
         expect((errorBox?.y ?? 0) - syncBottom).toBeLessThanOrEqual(12);
     });
+
+    test('uses 44px delivery targets, reduced motion, and returns focus after cancelling an override', async ({
+        mount,
+        page,
+    }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await mount(<DriverCurrentDeliveryCommandStory />);
+        const command = page.getByRole('region', { name: /skupna dostava/ });
+        const trigger = command.getByRole('button', {
+            name: 'Dostavi bez potvrde dolaska',
+        });
+        const controls = [
+            command.getByRole('button', { name: 'Prijavi problem' }),
+            command.getByRole('button', { name: 'Stigao sam' }),
+            trigger,
+            command.getByRole('link', {
+                name: 'Navigacija do trenutačne stanice',
+            }),
+            command.getByRole('link', { name: /^Nazovi / }).first(),
+        ];
+        for (const control of controls) {
+            const box = await control.boundingBox();
+            expect(box).not.toBeNull();
+            expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+            expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+        }
+
+        await trigger.click();
+        const dialog = page.getByRole('dialog', { name: 'Potvrdi dostavu' });
+        const reason = dialog.getByLabel('Razlog operativne iznimke');
+        const confirm = dialog.getByRole('button', {
+            name: 'Potvrdi iznimku i dostavu',
+        });
+        await expect(dialog).toContainText('dolazak nije potvrđen');
+        await expect(confirm).toBeDisabled();
+        for (const control of [
+            reason,
+            confirm,
+            dialog.getByRole('button', { name: 'Natrag' }),
+        ]) {
+            const box = await control.boundingBox();
+            expect(box).not.toBeNull();
+            expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+        }
+        const motion = await dialog.evaluate((element) => {
+            const style = getComputedStyle(element);
+            return {
+                animationName: style.animationName,
+                transitionDuration: style.transitionDuration,
+            };
+        });
+        expect(motion.animationName).toBe('none');
+        expect(motion.transitionDuration).toBe('0s');
+
+        await dialog.getByRole('button', { name: 'Natrag' }).click();
+        await expect(trigger).toBeFocused();
+    });
+});
+
+test('completes a reviewed single delivery directly without a repeated dialog', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DriverSingleDeliveryCommandStory />);
+    await page.getByRole('button', { name: 'Dostavljeno · dalje' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByTestId('single-delivery-calls')).toHaveText('1');
+    await expect(page.getByTestId('single-override-reason')).toHaveText('none');
+});
+
+test('requires an intentional reason for an unreviewed single while keeping QR optional', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DriverSingleDeliveryCommandStory unverified />);
+    await page.getByRole('button', { name: 'Dostavljeno · dalje' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Potvrdi dostavu' });
+    const confirm = dialog.getByRole('button', {
+        name: 'Potvrdi iznimku i dostavu',
+    });
+    await expect(dialog).toContainText('1 neskenirano');
+    await expect(confirm).toBeDisabled();
+    await dialog
+        .getByLabel('Razlog operativne iznimke')
+        .selectOption('manual-handoff');
+    await confirm.click();
+    await expect(page.getByTestId('single-delivery-calls')).toHaveText('1');
+    await expect(page.getByTestId('single-override-reason')).toHaveText(
+        'manual-handoff',
+    );
+});
+
+test('guards a direct single completion against same-frame repeat taps', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DriverSingleDeliveryCommandStory pendingDelivery />);
+    const deliver = page.getByRole('button', { name: 'Dostavljeno · dalje' });
+    await deliver.evaluate((element) => {
+        if (!(element instanceof HTMLButtonElement)) return;
+        element.click();
+        element.click();
+    });
+    await expect(page.getByTestId('single-delivery-calls')).toHaveText('1');
+    await expect(deliver).toBeDisabled();
 });
 
 test('uses section-level current-command headings in live and offline route views', async ({
@@ -363,6 +496,10 @@ test('arrived stop exposes advisory scanning and delivers with its local note', 
     ).toBeVisible();
     await page.getByLabel('Napomena o predaji').fill('Predano susjedu');
     await page.getByRole('button', { name: /Dostavi 3 · dalje/ }).click();
+    await page
+        .getByRole('dialog', { name: 'Potvrdi dostavu' })
+        .getByRole('button', { name: 'Potvrdi dostavu i nastavi' })
+        .click();
     await expect(page.getByTestId('current-stop-result')).toHaveText(
         'delivered:Predano susjedu',
     );

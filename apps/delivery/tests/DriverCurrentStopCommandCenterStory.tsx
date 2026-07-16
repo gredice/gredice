@@ -28,6 +28,7 @@ const currentStop: DeliveryStopSummary = {
     stopState: 'pending',
     statusLabel: 'U dostavi',
     arrivedAt: null,
+    recipientCount: 3,
     addressLabel: 'Ulaz iz dvorišta',
     requestNotes: null,
     deliveries: [
@@ -80,9 +81,24 @@ const arrivedStop: DeliveryStopSummary = {
     })),
 };
 
+const singleArrivedDelivery = arrivedStop.deliveries[0];
+if (!singleArrivedDelivery) {
+    throw new Error('Current-stop story requires one actionable delivery.');
+}
+
+const singleArrivedStop: DeliveryStopSummary = {
+    ...arrivedStop,
+    requestId: singleArrivedDelivery.requestId,
+    contactName: singleArrivedDelivery.contactName,
+    phone: singleArrivedDelivery.phone,
+    harvest: singleArrivedDelivery.harvest,
+    deliveryCount: 1,
+    deliveries: [singleArrivedDelivery],
+};
+
 function handoffController(): DeliveryHandoffCommandController {
     const items = arrivedStop.deliveries.flatMap((delivery, index) =>
-        delivery.stopId === null || delivery.stopState !== 'arrived'
+        delivery.stopId === null
             ? []
             : [
                   {
@@ -98,7 +114,9 @@ function handoffController(): DeliveryHandoffCommandController {
                               ? ('scanned' as const)
                               : index === 1
                                 ? ('unverified' as const)
-                                : ('no-label' as const),
+                                : index === 2
+                                  ? ('no-label' as const)
+                                  : ('unverified' as const),
                       reason: null,
                       verifiedAt:
                           index === 0 ? '2026-07-15T08:32:00.000Z' : null,
@@ -125,6 +143,48 @@ function handoffController(): DeliveryHandoffCommandController {
     };
     return {
         view,
+        feedback: [],
+        scan: () => ({ status: 'verification-invalid' }),
+        markItem: () => undefined,
+        markRemainingReviewed: () => undefined,
+    };
+}
+
+function singleHandoffController(
+    state: 'scanned' | 'unverified',
+): DeliveryHandoffCommandController {
+    const stopId = singleArrivedDelivery.stopId;
+    if (stopId === null) {
+        throw new Error('Single delivery story requires a persisted stop.');
+    }
+    const item = {
+        stopId,
+        deliveryRequestId: singleArrivedDelivery.requestId,
+        retryAttempt: 0,
+        traceLinkId: 1,
+        qrAvailable: true,
+        state,
+        reason: null,
+        verifiedAt: state === 'scanned' ? '2026-07-15T08:32:00.000Z' : null,
+        syncState: 'persisted' as const,
+    };
+    return {
+        view: {
+            runId: 'run-component-4127',
+            targetStopId: stopId,
+            version: 1,
+            retryAttempt: 0,
+            items: [item],
+            expectedCount: 1,
+            scannedCount: state === 'scanned' ? 1 : 0,
+            unverifiedCount: state === 'unverified' ? 1 : 0,
+            noLabelCount: 0,
+            missingCount: 0,
+            skippedCount: 0,
+            syncState: 'ready',
+            pendingCount: 0,
+            error: null,
+        },
         feedback: [],
         scan: () => ({ status: 'verification-invalid' }),
         markItem: () => undefined,
@@ -203,7 +263,15 @@ export function DriverCurrentDeliveryCommandStory({
                         }
                         setResult('arrived');
                     }}
-                    onDeliver={(notes) => setResult(`delivered:${notes ?? ''}`)}
+                    onDeliver={(notes, completionOverride) =>
+                        setResult(
+                            `delivered:${notes ?? ''}${
+                                completionOverride
+                                    ? `:${completionOverride.reason}`
+                                    : ''
+                            }`,
+                        )
+                    }
                     onException={async () => ({ status: 'saved' })}
                     onVerificationScan={(tracePath) =>
                         setResult(`verified:${tracePath}`)
@@ -215,6 +283,42 @@ export function DriverCurrentDeliveryCommandStory({
                 <div className="h-96" aria-hidden="true" />
             </main>
         </div>
+    );
+}
+
+export function DriverSingleDeliveryCommandStory({
+    pendingDelivery = false,
+    unverified = false,
+}: {
+    pendingDelivery?: boolean;
+    unverified?: boolean;
+}) {
+    const [deliveryCalls, setDeliveryCalls] = useState(0);
+    const [overrideReason, setOverrideReason] = useState('none');
+    return (
+        <main className="min-h-[100dvh] bg-muted/30 p-4">
+            <output data-testid="single-delivery-calls">{deliveryCalls}</output>
+            <output data-testid="single-override-reason">
+                {overrideReason}
+            </output>
+            <DriverCurrentStopCommandCenter
+                kind="delivery"
+                stop={singleArrivedStop}
+                routeRevision={12}
+                handoff={singleHandoffController(
+                    unverified ? 'unverified' : 'scanned',
+                )}
+                onArrive={() => undefined}
+                onDeliver={async (_notes, completionOverride) => {
+                    setDeliveryCalls((current) => current + 1);
+                    setOverrideReason(completionOverride?.reason ?? 'none');
+                    if (pendingDelivery) {
+                        await new Promise<void>(() => undefined);
+                    }
+                }}
+                onException={async () => ({ status: 'saved' })}
+            />
+        </main>
     );
 }
 

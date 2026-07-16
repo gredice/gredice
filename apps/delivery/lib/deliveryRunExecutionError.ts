@@ -63,6 +63,12 @@ export function deliveryRunExecutionErrorDetails(
                 message:
                     'Stanje dostave promijenilo se. Osvježi rutu prije nastavka.',
             };
+        case 'completion-override-required':
+            return {
+                code: error.code,
+                message:
+                    'Za dostavu bez potvrđenog dolaska ili pregleda uroda odaberi razlog i ponovno potvrdi dostavu.',
+            };
         default:
             return {
                 code: error.code,

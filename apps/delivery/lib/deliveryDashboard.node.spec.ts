@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
     deliveryMutationRouteState,
+    deliveryRecipientCount,
     deliveryStatusLabel,
     deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
@@ -15,6 +16,29 @@ import {
 
 const pending = 'pending';
 const delivered = 'delivered';
+
+test('counts actionable recipients by stable server identity', () => {
+    assert.equal(
+        deliveryRecipientCount([
+            {
+                requestId: 'harvest-1',
+                recipientIdentity: 71,
+                actionable: true,
+            },
+            {
+                requestId: 'harvest-2',
+                recipientIdentity: 71,
+                actionable: true,
+            },
+            {
+                requestId: 'terminal-history',
+                recipientIdentity: 99,
+                actionable: false,
+            },
+        ]),
+        1,
+    );
+});
 
 function group(
     items: Array<{

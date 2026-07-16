@@ -1,5 +1,6 @@
 'use client';
 
+import type { DeliveryRunCompletionOverrideReason } from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
@@ -567,6 +568,7 @@ export function DriverDashboard({
         stopId: number,
         expectedRouteRevision: number,
         notes?: string,
+        completionOverride?: { reason: DeliveryRunCompletionOverrideReason },
     ) => unknown | Promise<unknown>;
     onException: (
         runId: string,
@@ -1048,12 +1050,13 @@ export function DriverDashboard({
                                 }
                                 onDeliver={
                                     currentDeliveryStopId
-                                        ? (notes) =>
+                                        ? (notes, completionOverride) =>
                                               onDeliver(
                                                   run.id,
                                                   currentDeliveryStopId,
                                                   run.routeRevision,
                                                   notes,
+                                                  completionOverride,
                                               )
                                         : undefined
                                 }

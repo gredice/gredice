@@ -16,6 +16,7 @@ import {
     OfflineRouteAcknowledgedDeliveryStory,
     OfflineRouteArrivalStory,
     OfflineRouteBlockedContinuationStory,
+    OfflineRouteBulkRecipientCountStory,
     OfflineRouteExceptionBarrierStory,
     OfflineRoutePendingRerouteStory,
 } from './OfflineRoutePanelStory';
@@ -216,6 +217,22 @@ test('restored server acknowledgement is not mislabeled as waiting for confirmat
     await expect(
         page.getByRole('link', { name: 'Navigacija do trenutačne stanice' }),
     ).toBeEnabled();
+});
+
+test('offline bulk timeline uses the server recipient count with Croatian singular', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OfflineRouteBulkRecipientCountStory />);
+    const timeline = page.getByRole('list', {
+        name: 'Izvanmrežni tijek dostavne rute',
+    });
+    await expect(
+        timeline.getByText('1 primatelj', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        timeline.getByText('1 primatelja', { exact: true }),
+    ).toHaveCount(0);
 });
 
 test('server-required reroute blocks stale cached continuation until reconciliation', async ({

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     abandonDeliveryRun,
@@ -20,6 +20,7 @@ import {
     DeliveryRequestStates,
     DeliveryRunAssignmentError,
     DeliveryRunAssignmentErrorCodes,
+    DeliveryRunCompletionOverrideReasons,
     DeliveryRunEstimateSources,
     DeliveryRunExceptionOutcomes,
     DeliveryRunExceptionReasons,
@@ -5081,6 +5082,254 @@ test('a partially cancelled stop is released for explicit admin reactivation', a
     );
 });
 
+test('a legacy no-override delivery receipt keeps its exact replay hash', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    assert.ok(targetStop);
+    const input = {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: run.routeRevision,
+        clientOperationId: 'legacy-no-override-delivery',
+        occurredAt: new Date(Date.now() - 1_000),
+        deliveryNotes: 'Legacy receipt replay',
+    } as const;
+    const legacyPayloadHash = createHash('sha256')
+        .update(
+            JSON.stringify({
+                clientOperationId: input.clientOperationId,
+                kind: input.kind,
+                targetStopId: input.targetStopId,
+                expectedRouteRevision: input.expectedRouteRevision,
+                occurredAt: input.occurredAt.toISOString(),
+                deliveryNotes: input.deliveryNotes,
+            }),
+        )
+        .digest('hex');
+    const legacyResult = {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        targetStopId: targetStop.id,
+        affectedStopIds: run.stops.map((stop) => stop.id),
+        routeRevision: run.routeRevision + 1,
+        reroutePending: false,
+        runCompleted: true,
+    } as const;
+    await storage().insert(deliveryRunStopOperations).values({
+        runId: run.id,
+        targetStopId: targetStop.id,
+        driverUserId,
+        clientOperationId: input.clientOperationId,
+        kind: input.kind,
+        payloadHash: legacyPayloadHash,
+        result: legacyResult,
+        occurredAt: input.occurredAt,
+        appliedAt: new Date(),
+    });
+
+    const replayed = await recordDeliveryRunStopOperation(input);
+
+    assert.equal(replayed.replayed, true);
+    assert.deepEqual(replayed.result, legacyResult);
+    assert.deepEqual(replayed.newlyFulfilledRequestIds, []);
+});
+
+test('arrived and reviewed bulk completion does not require an override', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    assert.ok(targetStop);
+
+    const arrival = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: run.routeRevision,
+        clientOperationId: 'reviewed-bulk-arrival',
+        occurredAt: new Date(Date.now() - 2_000),
+    });
+    await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: run.stops.map((stop, index) => ({
+            clientOperationId: `reviewed-bulk-handoff-${index}`,
+            occurredAt: new Date(Date.now() - 1_500 + index),
+            kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+            stopId: stop.id,
+            outcome: DeliveryRunHandoffItemStates.SKIPPED,
+            reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+        })),
+    });
+
+    const completion = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: arrival.result.routeRevision,
+        clientOperationId: 'reviewed-bulk-delivery',
+        occurredAt: new Date(Date.now() - 500),
+    });
+
+    assert.equal(completion.replayed, false);
+    assert.equal(completion.result.override, undefined);
+    assert.equal(completion.result.handoff?.unverifiedCount, 0);
+    assert.equal(completion.result.handoff?.skippedCount, run.stops.length);
+    await storage()
+        .delete(deliveryRunHandoffOperations)
+        .where(eq(deliveryRunHandoffOperations.runId, run.id));
+});
+
+test('an explicit completion override persists the server-computed empty bypass list', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    assert.ok(targetStop);
+
+    const arrival = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: run.routeRevision,
+        clientOperationId: 'concurrent-review-arrival',
+        occurredAt: new Date(Date.now() - 2_000),
+    });
+    await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: run.stops.map((stop, index) => ({
+            clientOperationId: `concurrent-review-handoff-${index}`,
+            occurredAt: new Date(Date.now() - 1_500 + index),
+            kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+            stopId: stop.id,
+            outcome: DeliveryRunHandoffItemStates.SKIPPED,
+            reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+        })),
+    });
+
+    const completion = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: arrival.result.routeRevision,
+        clientOperationId: 'concurrent-review-delivery',
+        occurredAt: new Date(Date.now() - 500),
+        completionOverride: {
+            reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+        },
+    });
+
+    assert.deepEqual(completion.result.override, {
+        reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+        bypassed: [],
+    });
+    await storage()
+        .delete(deliveryRunHandoffOperations)
+        .where(eq(deliveryRunHandoffOperations.runId, run.id));
+});
+
+test('missing arrival and handoff review require an auditable completion override', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    assert.ok(targetStop);
+    const occurredAt = new Date(Date.now() - 1_000);
+
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            kind: DeliveryRunStopOperationKinds.DELIVER,
+            driverUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+            expectedRouteRevision: run.routeRevision,
+            clientOperationId: 'unguarded-bulk-delivery',
+            occurredAt,
+        }),
+        DeliveryRunExecutionErrorCodes.COMPLETION_OVERRIDE_REQUIRED,
+    );
+    const unchangedRun = await getDeliveryRun(run.id);
+    assert.ok(
+        unchangedRun?.stops.every(
+            (stop) => stop.state === DeliveryRunStopStates.PENDING,
+        ),
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunStopOperations)
+                .where(eq(deliveryRunStopOperations.runId, run.id))
+        ).length,
+        0,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(events)
+                .where(
+                    and(
+                        eq(
+                            events.type,
+                            knownEventTypes.delivery.requestFulfilled,
+                        ),
+                        inArray(
+                            events.aggregateId,
+                            run.stops.map((stop) => stop.deliveryRequestId),
+                        ),
+                    ),
+                )
+        ).length,
+        0,
+    );
+
+    const overrideInput = {
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRouteRevision: run.routeRevision,
+        clientOperationId: 'overridden-bulk-delivery',
+        occurredAt,
+        completionOverride: {
+            reason: DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF,
+        },
+    } as const;
+    const applied = await recordDeliveryRunStopOperation(overrideInput);
+    assert.equal(applied.replayed, false);
+    assert.deepEqual(applied.result.override, {
+        reason: DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF,
+        bypassed: ['arrival', 'handoff-review'],
+    });
+
+    const replayed = await recordDeliveryRunStopOperation(overrideInput);
+    assert.equal(replayed.replayed, true);
+    assert.deepEqual(replayed.result, applied.result);
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...overrideInput,
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.DEVICE_UNAVAILABLE,
+            },
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+    );
+    const [receipt] = await storage()
+        .select({ result: deliveryRunStopOperations.result })
+        .from(deliveryRunStopOperations)
+        .where(eq(deliveryRunStopOperations.runId, run.id));
+    assert.deepEqual(receipt?.result.override, applied.result.override);
+});
+
 test('stop operation receipts replay exact bulk arrival and delivery results after completion', async () => {
     const { run, driverUserId } =
         await startPreparedBulkRunWithConfirmedPickup();
@@ -5143,6 +5392,9 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
         clientOperationId: 'offline-bulk-delivery',
         occurredAt: deliveryOccurredAt,
         deliveryNotes: privateNote,
+        completionOverride: {
+            reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+        },
     } as const;
     const deliveryAttempts = await Promise.all([
         recordDeliveryRunStopOperation(deliveryInput),
@@ -5174,6 +5426,10 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
         reroutePending: false,
         runCompleted: true,
         handoff: expectedHandoff,
+        override: {
+            reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+            bypassed: ['handoff-review'],
+        },
     });
 
     const completedRun = await getDeliveryRun(run.id);
@@ -5240,6 +5496,15 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
     assert.deepEqual(arrivalReplay.result, arrival.result);
     assert.deepEqual(deliveryReplay.result, appliedDelivery.result);
     assert.deepEqual(deliveryReplay.newlyFulfilledRequestIds, []);
+    await assertExecutionError(
+        recordDeliveryRunStopOperation({
+            ...deliveryInput,
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.DEVICE_UNAVAILABLE,
+            },
+        }),
+        DeliveryRunExecutionErrorCodes.STOP_OPERATION_CONFLICT,
+    );
 
     const fulfillmentEventsAfterReplay = await storage()
         .select({
@@ -5388,6 +5653,9 @@ test('bulk delivery command rolls back fulfillment events, stop state, and recei
             expectedRouteRevision: run.routeRevision,
             clientOperationId: 'rollback-bulk-delivery',
             occurredAt: new Date(),
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+            },
         }),
         DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
     );
@@ -5481,6 +5749,9 @@ test('bulk delivery command treats deferred and failed request races as state co
                 expectedRouteRevision: run.routeRevision,
                 clientOperationId: `rollback-bulk-${outcome}`,
                 occurredAt: new Date(),
+                completionOverride: {
+                    reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+                },
             }),
             DeliveryRunExecutionErrorCodes.STOP_OPERATION_STATE_CONFLICT,
         );

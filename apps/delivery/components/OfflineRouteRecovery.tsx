@@ -98,8 +98,15 @@ export function OfflineRouteRecovery({
                 onArrive={(stopId, routeRevision) =>
                     report(sync.enqueueArrive(stopId, routeRevision))
                 }
-                onDeliver={(stopId, routeRevision, notes) =>
-                    report(sync.enqueueDelivery(stopId, routeRevision, notes))
+                onDeliver={(stopId, routeRevision, notes, completionOverride) =>
+                    report(
+                        sync.enqueueDelivery(
+                            stopId,
+                            routeRevision,
+                            notes,
+                            completionOverride,
+                        ),
+                    )
                 }
                 onException={async (stopId, mutation) => {
                     try {

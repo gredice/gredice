@@ -1,4 +1,7 @@
 import type {
+    DeliveryRunCompletionOverrideInput,
+    DeliveryRunCompletionOverrideReason,
+    DeliveryRunCompletionOverrideStoredResult,
     DeliveryRunHandoffItemState,
     DeliveryRunHandoffSkipReason,
 } from '@gredice/storage';
@@ -29,6 +32,7 @@ export type DeliveryArriveCommand = DeliveryRouteCommandBase & {
 export type DeliveryCompleteCommand = DeliveryRouteCommandBase & {
     kind: 'deliver';
     notes?: string;
+    completionOverride?: DeliveryRunCompletionOverrideInput;
 };
 
 export type DeliveryExceptionCommand = DeliveryRouteCommandBase & {
@@ -92,6 +96,7 @@ export type DeliveryRouteActionAcknowledgement = {
     routeRevision?: number;
     reroutePending?: boolean;
     runCompleted?: boolean;
+    override?: DeliveryRunCompletionOverrideStoredResult;
 };
 
 export type DeliveryHandoffOperationOutcome =
@@ -157,12 +162,14 @@ export type DeliveryActionTransportResult =
           routeRevision: number;
           reroutePending: boolean;
           runCompleted: boolean;
+          override?: DeliveryRunCompletionOverrideStoredResult;
       }
     | {
           status: 'exact-duplicate';
           routeRevision: number;
           reroutePending: boolean;
           runCompleted: boolean;
+          override?: DeliveryRunCompletionOverrideStoredResult;
       }
     | {
           status: 'handoff-acknowledged';
@@ -298,6 +305,49 @@ function validNote(value: unknown): value is string | undefined {
     );
 }
 
+function validCompletionOverrideReason(
+    value: unknown,
+): value is DeliveryRunCompletionOverrideReason {
+    return (
+        value === 'device-unavailable' ||
+        value === 'workflow-recovery' ||
+        value === 'manual-handoff' ||
+        value === 'other-operational'
+    );
+}
+
+function validCompletionOverride(
+    value: unknown,
+): value is DeliveryRunCompletionOverrideInput | undefined {
+    return (
+        value === undefined ||
+        (isRecord(value) &&
+            Object.keys(value).length === 1 &&
+            validCompletionOverrideReason(value.reason))
+    );
+}
+
+function validCompletionOverrideResult(
+    value: unknown,
+): value is DeliveryRunCompletionOverrideStoredResult | undefined {
+    if (value === undefined) return true;
+    if (
+        !isRecord(value) ||
+        Object.keys(value).some(
+            (key) => key !== 'reason' && key !== 'bypassed',
+        ) ||
+        !validCompletionOverrideReason(value.reason) ||
+        !Array.isArray(value.bypassed) ||
+        value.bypassed.length > 2 ||
+        value.bypassed.some(
+            (bypass) => bypass !== 'arrival' && bypass !== 'handoff-review',
+        )
+    ) {
+        return false;
+    }
+    return new Set(value.bypassed).size === value.bypassed.length;
+}
+
 function validReason(value: unknown): value is DeliveryExceptionReason {
     return (
         value === 'customer-unavailable' ||
@@ -417,8 +467,15 @@ function isDeliveryActionCommand(
     }
     if (isDeliveryHandoffCommand(value)) return true;
     if (!validRevision(value.expectedRouteRevision)) return false;
-    if (value.kind === 'arrive') return true;
-    if (value.kind === 'deliver') return validNote(value.notes);
+    if (value.kind === 'arrive') {
+        return value.completionOverride === undefined;
+    }
+    if (value.kind === 'deliver') {
+        return (
+            validNote(value.notes) &&
+            validCompletionOverride(value.completionOverride)
+        );
+    }
     return (
         value.kind === 'exception' &&
         Array.isArray(value.exceptions) &&
@@ -501,7 +558,8 @@ function isAcknowledgement(
         (value.reroutePending === undefined ||
             typeof value.reroutePending === 'boolean') &&
         (value.runCompleted === undefined ||
-            typeof value.runCompleted === 'boolean')
+            typeof value.runCompleted === 'boolean') &&
+        validCompletionOverrideResult(value.override)
     );
 }
 
@@ -543,6 +601,21 @@ function isEntry(value: unknown): value is DeliveryActionQueueEntry {
     }
     if (isDeliveryHandoffCommand(value.command)) {
         return value.state !== 'synced' && value.acknowledgement === undefined;
+    }
+    if (value.acknowledgement?.kind === 'server') {
+        const commandOverride =
+            value.command.kind === 'deliver'
+                ? value.command.completionOverride
+                : undefined;
+        const acknowledgementOverride = value.acknowledgement.override;
+        if (
+            (commandOverride === undefined) !==
+                (acknowledgementOverride === undefined) ||
+            (commandOverride &&
+                acknowledgementOverride?.reason !== commandOverride.reason)
+        ) {
+            return false;
+        }
     }
     return (
         value.acknowledgement?.kind !== 'server' ||
@@ -641,16 +714,27 @@ export function createDeliveryArriveCommand({
 
 export function createDeliveryCompleteCommand({
     notes,
+    completionOverride,
     occurredAt,
     now = () => new Date(),
     ...input
-}: DeliveryRouteCommandInput & { notes?: string }): DeliveryCompleteCommand {
+}: DeliveryRouteCommandInput & {
+    notes?: string;
+    completionOverride?: DeliveryRunCompletionOverrideInput;
+}): DeliveryCompleteCommand {
     const normalizedNotes = notes?.trim();
     return validatedCommand({
         ...input,
         kind: 'deliver',
         occurredAt: resolvedOccurredAt(occurredAt, now),
         ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+        ...(completionOverride
+            ? {
+                  completionOverride: {
+                      reason: completionOverride.reason,
+                  },
+              }
+            : {}),
     });
 }
 
@@ -1628,6 +1712,9 @@ export class DeliveryActionQueue {
                             routeRevision: result.routeRevision,
                             reroutePending: result.reroutePending,
                             runCompleted: result.runCompleted,
+                            ...(result.override
+                                ? { override: cloneValue(result.override) }
+                                : {}),
                         };
                         delete entry.errorCode;
                     }
