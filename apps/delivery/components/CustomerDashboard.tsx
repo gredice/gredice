@@ -1,17 +1,36 @@
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { History, Hourglass, ShoppingCart, Truck } from '@gredice/ui/icons';
+import {
+    History,
+    Hourglass,
+    ShoppingCart,
+    Truck,
+    Warning,
+} from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    type Ref,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+} from 'react';
 import {
     customerDeliveryInitialHistoryCount,
     organizeCustomerDeliverySections,
+    selectCustomerDeliveryDeepLink,
 } from '../lib/customerDeliverySections';
 import type {
     CustomerDeliveryDashboard,
     CustomerDeliveryDashboardRequest,
     CustomerDeliveryRequestSummary,
 } from '../lib/deliveryDashboardTypes';
+import {
+    type DeliveryDeepLinkTarget,
+    deliveryDeepLinkUnavailableMessage,
+} from '../lib/deliveryDeepLink';
 import {
     CustomerDashboardFreshness,
     type CustomerDashboardFreshnessFailure,
@@ -45,6 +64,62 @@ function CustomerRequestCard({
     );
 }
 
+const deepLinkTargetClassName =
+    'scroll-mt-24 rounded-xl ring-2 ring-primary ring-offset-4 ring-offset-background';
+
+function CustomerRequestArticle({
+    children,
+    className,
+    focusLabel,
+    focusRef,
+    isDeepLinkTarget,
+    requestLabel,
+    targetRef,
+}: {
+    children: ReactNode;
+    className?: string;
+    focusLabel?: string;
+    focusRef?: Ref<HTMLElement>;
+    isDeepLinkTarget: boolean;
+    requestLabel: string;
+    targetRef: Ref<HTMLElement>;
+}) {
+    const accessibleLabelId = useId();
+    const resolvedClassName = [
+        className,
+        isDeepLinkTarget ? deepLinkTargetClassName : undefined,
+    ]
+        .filter(Boolean)
+        .join(' ');
+
+    return (
+        <article
+            ref={isDeepLinkTarget ? targetRef : focusRef}
+            aria-current={isDeepLinkTarget ? 'true' : undefined}
+            aria-labelledby={accessibleLabelId}
+            className={resolvedClassName || undefined}
+            data-testid={
+                isDeepLinkTarget
+                    ? 'customer-delivery-deep-link-target'
+                    : undefined
+            }
+            tabIndex={isDeepLinkTarget || focusRef ? -1 : undefined}
+        >
+            <span id={accessibleLabelId} className="sr-only">
+                {focusLabel ?? requestLabel}
+            </span>
+            {children}
+        </article>
+    );
+}
+
+function customerRequestAccessibleLabel(
+    request: CustomerDeliveryDashboardRequest,
+) {
+    const requestKind = request.mode === 'delivery' ? 'Dostava' : 'Preuzimanje';
+    return `${requestKind}: ${request.harvest.plantName}`;
+}
+
 function CustomerSectionEmpty({ children }: { children: string }) {
     return (
         <div
@@ -62,6 +137,7 @@ export function CustomerDashboard({
     dashboard,
     requestTiming,
     freshness,
+    deliveryTarget = { kind: 'none' },
 }: {
     dashboard: CustomerDeliveryDashboard;
     requestTiming: CustomerDeliveryTrackingRequestTiming | null;
@@ -69,6 +145,7 @@ export function CustomerDashboard({
         failure: CustomerDashboardFreshnessFailure;
         onRetry: () => Promise<boolean>;
     };
+    deliveryTarget?: DeliveryDeepLinkTarget;
 }) {
     const hasDelivery = dashboard.deliveries.some(
         (request) => request.mode === 'delivery',
@@ -77,11 +154,34 @@ export function CustomerDashboard({
         (request) => request.mode === 'pickup',
     );
     const sections = organizeCustomerDeliverySections(dashboard.deliveries);
-    const hasActiveDelivery = sections.active.length > 0;
-    const trackedDelivery = sections.active.find(
-        (request): request is CustomerDeliveryRequestSummary =>
-            Boolean(request.mapPath) && Boolean(request.tracking),
+    const deepLinkSelection = selectCustomerDeliveryDeepLink(
+        sections,
+        deliveryTarget,
     );
+    const deepLinkRequestId =
+        deepLinkSelection.kind === 'selected'
+            ? deepLinkSelection.request.requestId
+            : null;
+    const deepLinkHistoryIndex =
+        deepLinkSelection.kind === 'selected' &&
+        deepLinkSelection.section === 'history'
+            ? deepLinkSelection.index
+            : null;
+    const hasActiveDelivery = sections.active.length > 0;
+    const selectedActiveDelivery =
+        deepLinkSelection.kind === 'selected' &&
+        deepLinkSelection.section === 'active' &&
+        deepLinkSelection.request.mode === 'delivery' &&
+        deepLinkSelection.request.mapPath &&
+        deepLinkSelection.request.tracking
+            ? deepLinkSelection.request
+            : null;
+    const trackedDelivery =
+        selectedActiveDelivery ??
+        sections.active.find(
+            (request): request is CustomerDeliveryRequestSummary =>
+                Boolean(request.mapPath) && Boolean(request.tracking),
+        );
     const [visibleHistoryCount, setVisibleHistoryCount] = useState(
         customerDeliveryInitialHistoryCount,
     );
@@ -90,6 +190,8 @@ export function CustomerDashboard({
     );
     const [historyAnnouncement, setHistoryAnnouncement] = useState('');
     const revealedHistoryRef = useRef<HTMLElement>(null);
+    const deepLinkTargetRef = useRef<HTMLElement>(null);
+    const focusedDeepLinkRequestIdRef = useRef<string | null>(null);
     const activeHeadingId = useId();
     const upcomingHeadingId = useId();
     const historyHeadingId = useId();
@@ -101,6 +203,27 @@ export function CustomerDashboard({
     );
     const historyCanCollapse =
         visibleHistory.length > customerDeliveryInitialHistoryCount;
+    useEffect(() => {
+        if (deepLinkHistoryIndex === null) return;
+        setVisibleHistoryCount((current) =>
+            Math.max(current, deepLinkHistoryIndex + 1),
+        );
+    }, [deepLinkHistoryIndex]);
+    useEffect(() => {
+        if (
+            !deepLinkRequestId ||
+            focusedDeepLinkRequestIdRef.current === deepLinkRequestId ||
+            (deepLinkHistoryIndex !== null &&
+                visibleHistoryCount <= deepLinkHistoryIndex)
+        ) {
+            return;
+        }
+        const target = deepLinkTargetRef.current;
+        if (!target) return;
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: 'center' });
+        focusedDeepLinkRequestIdRef.current = deepLinkRequestId;
+    }, [deepLinkHistoryIndex, deepLinkRequestId, visibleHistoryCount]);
     useEffect(() => {
         if (historyFocusIndex === null) return;
         revealedHistoryRef.current?.focus();
@@ -166,6 +289,15 @@ export function CustomerDashboard({
                         onRetry={freshness.onRetry}
                     />
                 ) : null}
+                {deepLinkSelection.kind === 'unavailable' ? (
+                    <Alert
+                        color="warning"
+                        data-testid="customer-delivery-deep-link-unavailable"
+                        startDecorator={<Warning className="size-5" />}
+                    >
+                        {deliveryDeepLinkUnavailableMessage}
+                    </Alert>
+                ) : null}
                 <div>
                     <Typography level="h2" semiBold>
                         {heading}
@@ -222,26 +354,44 @@ export function CustomerDashboard({
                                         ) : null}
                                         <div className="grid gap-3 lg:grid-cols-2">
                                             {sections.active.map(
-                                                (request, index) => (
-                                                    <div
-                                                        key={request.requestId}
-                                                        className={
-                                                            index === 0
-                                                                ? 'lg:col-span-2'
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        <CustomerRequestCard
-                                                            announceArrival={
-                                                                index === 0
+                                                (request, index) => {
+                                                    const isDeepLinkTarget =
+                                                        request.requestId ===
+                                                        deepLinkRequestId;
+                                                    return (
+                                                        <CustomerRequestArticle
+                                                            key={
+                                                                request.requestId
                                                             }
-                                                            request={request}
-                                                            emphasized={
+                                                            className={
                                                                 index === 0
+                                                                    ? 'lg:col-span-2'
+                                                                    : undefined
                                                             }
-                                                        />
-                                                    </div>
-                                                ),
+                                                            isDeepLinkTarget={
+                                                                isDeepLinkTarget
+                                                            }
+                                                            requestLabel={customerRequestAccessibleLabel(
+                                                                request,
+                                                            )}
+                                                            targetRef={
+                                                                deepLinkTargetRef
+                                                            }
+                                                        >
+                                                            <CustomerRequestCard
+                                                                announceArrival={
+                                                                    index === 0
+                                                                }
+                                                                request={
+                                                                    request
+                                                                }
+                                                                emphasized={
+                                                                    index === 0
+                                                                }
+                                                            />
+                                                        </CustomerRequestArticle>
+                                                    );
+                                                },
                                             )}
                                         </div>
                                     </>
@@ -271,12 +421,27 @@ export function CustomerDashboard({
                             </div>
                             {sections.upcoming.length > 0 ? (
                                 <div className="grid gap-3 lg:grid-cols-2">
-                                    {sections.upcoming.map((request) => (
-                                        <CustomerRequestCard
-                                            key={request.requestId}
-                                            request={request}
-                                        />
-                                    ))}
+                                    {sections.upcoming.map((request) => {
+                                        const isDeepLinkTarget =
+                                            request.requestId ===
+                                            deepLinkRequestId;
+                                        return (
+                                            <CustomerRequestArticle
+                                                key={request.requestId}
+                                                isDeepLinkTarget={
+                                                    isDeepLinkTarget
+                                                }
+                                                requestLabel={customerRequestAccessibleLabel(
+                                                    request,
+                                                )}
+                                                targetRef={deepLinkTargetRef}
+                                            >
+                                                <CustomerRequestCard
+                                                    request={request}
+                                                />
+                                            </CustomerRequestArticle>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <CustomerSectionEmpty>
@@ -322,29 +487,36 @@ export function CustomerDashboard({
                                             (request, index) => {
                                                 const isFirstRevealed =
                                                     index === historyFocusIndex;
+                                                const isDeepLinkTarget =
+                                                    request.requestId ===
+                                                    deepLinkRequestId;
                                                 return (
-                                                    <article
+                                                    <CustomerRequestArticle
                                                         key={request.requestId}
-                                                        ref={
-                                                            isFirstRevealed
-                                                                ? revealedHistoryRef
-                                                                : undefined
-                                                        }
-                                                        aria-label={
+                                                        focusLabel={
                                                             isFirstRevealed
                                                                 ? `Nova stavka povijesti: ${request.harvest.plantName}`
                                                                 : undefined
                                                         }
-                                                        tabIndex={
+                                                        focusRef={
                                                             isFirstRevealed
-                                                                ? -1
+                                                                ? revealedHistoryRef
                                                                 : undefined
+                                                        }
+                                                        isDeepLinkTarget={
+                                                            isDeepLinkTarget
+                                                        }
+                                                        requestLabel={customerRequestAccessibleLabel(
+                                                            request,
+                                                        )}
+                                                        targetRef={
+                                                            deepLinkTargetRef
                                                         }
                                                     >
                                                         <CustomerRequestCard
                                                             request={request}
                                                         />
-                                                    </article>
+                                                    </CustomerRequestArticle>
                                                 );
                                             },
                                         )}

@@ -15,11 +15,31 @@ type MockEndpoint<T> = {
 
 type RecordedNotificationRequests = {
     deviceDeletes: string[];
+    devicePatchIds: string[];
     devicePatches: unknown[];
+    deviceReads: number;
     notificationReads: Array<string | null>;
     preferencesUpdates: unknown[];
+    pushStatusReads: number;
     testSends: number;
     userPatches: unknown[];
+};
+
+type MockPushDevice = {
+    createdAt: string;
+    deviceId: string;
+    deviceLabel: string;
+    enabled: boolean;
+    id: string;
+    lastSeenAt: string;
+    locale: string;
+    permissionState: 'default' | 'denied' | 'granted';
+    platform: string;
+    revokedAt: string | null;
+    revokedReason: string | null;
+    timezone: string;
+    updatedAt: string;
+    userAgent: string;
 };
 
 const defaultPreferences = [
@@ -71,7 +91,7 @@ const defaultPreferences = [
     },
 ];
 
-const defaultDevices = [
+const defaultDevices: MockPushDevice[] = [
     {
         createdAt: '2026-05-20T08:00:00.000Z',
         deviceId: 'current-device',
@@ -122,6 +142,7 @@ async function resolveEndpoint<T>(endpoint: MockEndpoint<T>) {
 async function mockNotificationSettingsApi(
     page: Page,
     options: {
+        devicePatchStatuses?: number[];
         devices?: MockEndpoint<{ devices: typeof defaultDevices }>;
         preferences?: MockEndpoint<{ preferences: typeof defaultPreferences }>;
         pushStatus?: MockEndpoint<{ hasDevices: boolean; status: string }>;
@@ -130,15 +151,19 @@ async function mockNotificationSettingsApi(
 ) {
     const recorded: RecordedNotificationRequests = {
         deviceDeletes: [],
+        devicePatchIds: [],
         devicePatches: [],
+        deviceReads: 0,
         notificationReads: [],
         preferencesUpdates: [],
+        pushStatusReads: 0,
         testSends: 0,
         userPatches: [],
     };
     const preferences = options.preferences ?? {
         body: { preferences: defaultPreferences },
     };
+    const devicePatchStatuses = [...(options.devicePatchStatuses ?? [])];
     const devices = options.devices ?? { body: { devices: defaultDevices } };
     const pushStatus = options.pushStatus ?? {
         body: { hasDevices: true, status: 'subscribed' },
@@ -216,6 +241,7 @@ async function mockNotificationSettingsApi(
             !pathname.includes('/api/notifications/devices/device-1') &&
             method === 'GET'
         ) {
+            recorded.deviceReads += 1;
             const response = await resolveEndpoint(devices);
             await fulfillJson(route, response.body, response.status);
             return;
@@ -225,17 +251,26 @@ async function mockNotificationSettingsApi(
             pathname.includes('/api/notifications/push-status') &&
             method === 'GET'
         ) {
+            recorded.pushStatusReads += 1;
             const response = await resolveEndpoint(pushStatus);
             await fulfillJson(route, response.body, response.status);
             return;
         }
 
-        if (
-            pathname.includes('/api/notifications/devices/device-1') &&
-            method === 'PATCH'
-        ) {
+        const patchedDeviceId = pathname.match(
+            /\/api\/notifications\/devices\/([^/]+)$/u,
+        )?.[1];
+        if (patchedDeviceId && method === 'PATCH') {
+            recorded.devicePatchIds.push(patchedDeviceId);
             recorded.devicePatches.push(request.postDataJSON());
-            await fulfillJson(route, { success: true });
+            const status = devicePatchStatuses.shift() ?? 200;
+            await fulfillJson(
+                route,
+                status >= 400
+                    ? { error: 'Mock notification settings failure' }
+                    : { success: true },
+                status,
+            );
             return;
         }
 
@@ -356,7 +391,7 @@ test('notification settings explains required groups and hydrates saved preferen
         page.getByText('Plaćanja, računi i potvrde narudžbi'),
     ).toBeVisible();
     await expect(page.getByText('Vrste obavijesti')).toBeVisible();
-    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(0);
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(3);
     await expect(
         page.getByRole('switch', {
             name: /Obavezna obavijest sigurnost računa/u,
@@ -380,7 +415,77 @@ test('notification settings explains required groups and hydrates saved preferen
     await expect(page.getByText('Tjedno')).toBeVisible();
 });
 
-test('global quiet hours include hidden delivery channels without exposing their controls', async ({
+test('delivery controls are always available independently of producer rollout', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(3);
+    await expect(
+        page.getByRole('switch', {
+            name: 'Isključi ažuriranja dostave u aplikaciji',
+        }),
+    ).toBeChecked();
+    await expect(
+        page.getByRole('switch', {
+            name: 'Isključi ažuriranja dostave e-poštom',
+        }),
+    ).toBeChecked();
+    await expect(
+        page.getByRole('switch', {
+            name: 'Isključi push ažuriranja dostave',
+        }),
+    ).toBeChecked();
+});
+
+test('delivery controls remain available when broader premium controls are disabled', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        preferences: { body: { preferences: [] } },
+    });
+
+    await mount(
+        <NotificationsTabStory premiumNotificationControlsEnabled={false} />,
+    );
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(3);
+    await expect(
+        page.getByText(/kanale dostave i dalje možeš prilagoditi/i),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Promotivne ponude i sezonske preporuke'),
+    ).toHaveCount(0);
+
+    await page
+        .getByRole('switch', {
+            name: 'Isključi ažuriranja dostave e-poštom',
+        })
+        .click();
+    await expect.poll(() => recorded.preferencesUpdates.length).toBe(1);
+    expect(recorded.preferencesUpdates[0]).toEqual({
+        preferences: [
+            {
+                category: 'delivery_updates',
+                channel: 'email',
+                digestFrequency: 'off',
+                enabled: false,
+                quietHoursEndMinute: null,
+                quietHoursStartMinute: null,
+                scope: 'global',
+                timezone: null,
+            },
+        ],
+    });
+});
+
+test('delivery preference channels save independently', async ({
     mount,
     page,
 }) => {
@@ -391,7 +496,55 @@ test('global quiet hours include hidden delivery channels without exposing their
     await mount(<NotificationsTabStory />);
     await page.getByRole('tab', { name: 'Postavke' }).click();
 
-    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(0);
+    const controls = [
+        {
+            channel: 'in_app',
+            name: 'Isključi ažuriranja dostave u aplikaciji',
+        },
+        {
+            channel: 'email',
+            name: 'Isključi ažuriranja dostave e-poštom',
+        },
+        {
+            channel: 'push',
+            name: 'Isključi push ažuriranja dostave',
+        },
+    ];
+
+    for (const [index, control] of controls.entries()) {
+        await page.getByRole('switch', { name: control.name }).click();
+        await expect
+            .poll(() => recorded.preferencesUpdates.length)
+            .toBe(index + 1);
+        expect(recorded.preferencesUpdates[index]).toEqual({
+            preferences: [
+                {
+                    category: 'delivery_updates',
+                    channel: control.channel,
+                    digestFrequency: 'off',
+                    enabled: false,
+                    quietHoursEndMinute: null,
+                    quietHoursStartMinute: null,
+                    scope: 'global',
+                    timezone: null,
+                },
+            ],
+        });
+    }
+});
+
+test('global quiet hours include visible delivery channels', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        preferences: { body: { preferences: [] } },
+    });
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(3);
     const timeZone = await page.evaluate(
         () => Intl.DateTimeFormat().resolvedOptions().timeZone,
     );
@@ -581,6 +734,197 @@ test('notification settings keeps current device off without a local device id',
         page.getByRole('switch', { name: 'Isključi Ovaj uređaj' }),
     ).toHaveAttribute('aria-checked', 'true');
     await expect.poll(() => recorded.devicePatches.length).toBe(0);
+});
+
+test('notification settings disables and reconciles the current device when browser permission is denied', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    const component = await mount(
+        <NotificationsTabStory pushSetupStatus="subscribed" />,
+    );
+    await expect.poll(() => recorded.deviceReads).toBeGreaterThan(0);
+    expect(recorded.devicePatches).toEqual([]);
+
+    await component.update(<NotificationsTabStory pushSetupStatus="denied" />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Uključi obavijesti na ovom uređaju',
+    });
+    await expect(currentDeviceSwitch).not.toBeChecked();
+    await expect(currentDeviceSwitch).toBeDisabled();
+    await expect(
+        page.getByText('Obavijesti su blokirane u pregledniku.'),
+    ).toBeVisible();
+    await expect
+        .poll(() => recorded.devicePatches)
+        .toEqual([{ enabled: false, permissionState: 'denied' }]);
+    expect(recorded.devicePatchIds).toEqual(['device-1']);
+    await expect.poll(() => recorded.deviceReads).toBeGreaterThan(1);
+    await expect.poll(() => recorded.pushStatusReads).toBeGreaterThan(1);
+});
+
+test('notification settings retries a transient current-device permission reconciliation failure', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        devicePatchStatuses: [500, 200],
+    });
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(<NotificationsTabStory pushSetupStatus="denied" />);
+
+    await expect
+        .poll(() => recorded.devicePatches)
+        .toEqual([
+            { enabled: false, permissionState: 'denied' },
+            { enabled: false, permissionState: 'denied' },
+        ]);
+    expect(recorded.devicePatchIds).toEqual(['device-1', 'device-1']);
+    await expect.poll(() => recorded.deviceReads).toBeGreaterThan(1);
+    await expect.poll(() => recorded.pushStatusReads).toBeGreaterThan(1);
+});
+
+test('notification settings does not offer enabled-only recovery for an invalid secondary device', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        devices: {
+            body: {
+                devices: [
+                    {
+                        ...defaultDevices[0],
+                        deviceId: 'old-phone',
+                        deviceLabel: 'Stari telefon',
+                        enabled: true,
+                        permissionState: 'denied',
+                        revokedAt: '2026-05-21T10:00:00.000Z',
+                    },
+                ],
+            },
+        },
+    });
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText('Potrebno ponovno povezivanje')).toBeVisible();
+    const invalidDeviceSwitch = page.getByRole('switch', {
+        name: 'Ponovno poveži Stari telefon na tom uređaju',
+    });
+    await expect(invalidDeviceSwitch).not.toBeChecked();
+    await expect(invalidDeviceSwitch).toBeDisabled();
+    expect(recorded.devicePatches).toEqual([]);
+});
+
+test('notification settings announces an asynchronous push recovery failure', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(<NotificationsTabStory pushSetupStatus="failed" />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const alert = page.getByRole('alert').filter({
+        hasText: 'Push obavijesti nisu ponovno povezane.',
+    });
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveAttribute('aria-atomic', 'true');
+});
+
+test('notification settings disables recovery when browser push is unsupported', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(<NotificationsTabStory pushSetupStatus="unsupported" />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Uključi obavijesti na ovom uređaju',
+    });
+    await expect(currentDeviceSwitch).not.toBeChecked();
+    await expect(currentDeviceSwitch).toBeDisabled();
+});
+
+test('notification settings reconciles default permission without touching a secondary device', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        devices: {
+            body: {
+                devices: [
+                    defaultDevices[0],
+                    {
+                        ...defaultDevices[0],
+                        deviceId: 'secondary-device',
+                        deviceLabel: 'Drugi uređaj',
+                        id: 'device-2',
+                    },
+                ],
+            },
+        },
+    });
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(<NotificationsTabStory pushSetupStatus="default" />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Uključi obavijesti na ovom uređaju',
+    });
+    await expect(currentDeviceSwitch).not.toBeChecked();
+    await expect(currentDeviceSwitch).toBeEnabled();
+    await expect
+        .poll(() => recorded.devicePatches)
+        .toEqual([{ enabled: false, permissionState: 'default' }]);
+    expect(recorded.devicePatchIds).toEqual(['device-1']);
+});
+
+test('notification settings keeps an unverified granted subscription in loading state', async ({
+    mount,
+    page,
+}) => {
+    await mockNotificationSettingsApi(page);
+    await page.evaluate(() =>
+        window.localStorage.setItem('game:push:device-id', 'current-device'),
+    );
+
+    await mount(
+        <NotificationsTabStory
+            pushSetupStatus="granted"
+            pushSubscriptionChecked={false}
+        />,
+    );
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    const currentDeviceSwitch = page.getByRole('switch', {
+        name: 'Isključi obavijesti na ovom uređaju',
+    });
+    await expect(page.getByText('Učitavanje', { exact: true })).toBeVisible();
+    await expect(currentDeviceSwitch).toBeChecked();
+    await expect(currentDeviceSwitch).toBeDisabled();
 });
 
 test('notification settings shows endpoint errors without hiding the settings tab', async ({

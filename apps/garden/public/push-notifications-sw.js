@@ -1,6 +1,7 @@
 const DEFAULT_ICON = '/icon.svg';
 const DEFAULT_BADGE = '/badge.svg';
 const ALLOWED_PROTOCOLS = new Set(['https:', 'http:']);
+const DELIVERY_TRACKER_ORIGIN = 'https://dostava.gredice.com';
 
 function isObject(value) {
     return typeof value === 'object' && value !== null;
@@ -24,17 +25,48 @@ function safePositiveInteger(value) {
         : undefined;
 }
 
-function normalizeUrl(rawUrl) {
+function hasExplicitPort(rawUrl) {
+    const authority = rawUrl.match(
+        /^(?:[a-z][a-z\d+.-]*:)?\/\/([^/?#]*)/i,
+    )?.[1];
+    if (!authority) return false;
+    const host = authority.split('@').at(-1);
+    return typeof host === 'string' && /:\d+$/.test(host);
+}
+
+function parseHttpUrl(rawUrl) {
     const safe = safeString(rawUrl);
     if (!safe) return undefined;
     try {
         const url = new URL(safe, self.location.origin);
         if (!ALLOWED_PROTOCOLS.has(url.protocol)) return undefined;
-        if (url.origin !== self.location.origin) return undefined;
-        return url.toString();
+        if (url.username || url.password) return undefined;
+        return { safe, url };
     } catch {
         return undefined;
     }
+}
+
+function normalizeMediaUrl(rawUrl) {
+    const parsed = parseHttpUrl(rawUrl);
+    if (!parsed || parsed.url.origin !== self.location.origin) return undefined;
+    return parsed.url.toString();
+}
+
+function normalizeNavigationUrl(rawUrl) {
+    const parsed = parseHttpUrl(rawUrl);
+    if (!parsed) return undefined;
+    if (parsed.url.origin === self.location.origin) {
+        return parsed.url.toString();
+    }
+    if (
+        parsed.url.protocol !== 'https:' ||
+        parsed.url.origin !== DELIVERY_TRACKER_ORIGIN ||
+        hasExplicitPort(parsed.safe)
+    ) {
+        return undefined;
+    }
+    return parsed.url.toString();
 }
 
 function normalizeActions(actions) {
@@ -46,8 +78,8 @@ function normalizeActions(actions) {
         .map((action) => ({
             action: safeString(action.action),
             title: safeString(action.title),
-            icon: normalizeUrl(action.icon),
-            url: normalizeUrl(action.url),
+            icon: normalizeMediaUrl(action.icon),
+            url: normalizeNavigationUrl(action.url),
         }))
         .filter((action) => action.action && action.title)
         .slice(0, Number(self.Notification?.maxActions ?? 2));
@@ -93,10 +125,12 @@ function createPayload(rawData) {
     const title = safeString(source.title) ?? 'Gredice';
     const body = safeString(source.body) ?? '';
     const icon =
-        normalizeUrl(source.icon) ?? normalizeUrl(source.image) ?? DEFAULT_ICON;
-    const image = normalizeUrl(source.image);
-    const badge = normalizeUrl(source.badge) ?? DEFAULT_BADGE;
-    const url = normalizeUrl(source.url) ?? self.location.origin;
+        normalizeMediaUrl(source.icon) ??
+        normalizeMediaUrl(source.image) ??
+        DEFAULT_ICON;
+    const image = normalizeMediaUrl(source.image);
+    const badge = normalizeMediaUrl(source.badge) ?? DEFAULT_BADGE;
+    const url = normalizeNavigationUrl(source.url) ?? self.location.origin;
     const tag =
         safeString(source.tag) ??
         safeString(source.collapseKey) ??
@@ -174,8 +208,8 @@ self.addEventListener('notificationclick', (event) => {
         ? safeString(actionUrls[actionCandidate])
         : undefined;
     const targetUrl =
-        normalizeUrl(actionUrl) ??
-        normalizeUrl(data?.url) ??
+        normalizeNavigationUrl(actionUrl) ??
+        normalizeNavigationUrl(data?.url) ??
         self.location.origin;
     event.notification.close();
 
@@ -189,7 +223,8 @@ self.addEventListener('notificationclick', (event) => {
             for (const client of allClients) {
                 if (
                     'focus' in client &&
-                    normalizeUrl(client.url) === normalizeUrl(targetUrl)
+                    normalizeNavigationUrl(client.url) ===
+                        normalizeNavigationUrl(targetUrl)
                 ) {
                     await client.focus();
                     return;

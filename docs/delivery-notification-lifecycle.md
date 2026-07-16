@@ -1,8 +1,8 @@
 # Delivery notification lifecycle
 
-This contract defines the customer-safe facts that can become delivery updates.
-It does not send customer messages by itself. Croatian templates, deep links,
-and channel producers consume these events in the next implementation slice.
+This contract defines the customer-safe facts that become delivery updates.
+The delivery producer and API reconciliation worker publish them to Croatian
+in-app, email, and push templates with authenticated tracker deep links.
 Internal Slack notifications remain a separate workflow.
 
 ## Milestones and authoritative triggers
@@ -21,8 +21,12 @@ Internal Slack notifications remain a separate workflow.
 Every event uses the optional `delivery_updates` preference category. Its
 in-app, email, and push defaults are enabled, non-required, and non-digestible.
 Configured quiet hours defer delivery through the existing notification router.
-Customer-facing controls remain hidden until the templates and producers ship,
-so this contract does not promise messages before the next slice is enabled.
+Deferred outbound attempts retain a durable next-evaluation cursor so a large
+quiet-hours backlog cannot starve newly eligible recipients.
+Customer-facing in-app, email, and push controls are always available in Garden,
+even while lifecycle producers remain disabled. Keeping controls independent of
+the producer rollout structurally prevents notifications from being enabled in
+an environment where customers cannot set their channel preferences.
 
 ## Ordering, thresholds, and retries
 
@@ -66,10 +70,19 @@ delivery boundary.
 Notification delivery attempts and delivery events use the existing 180-day
 cleanup policy. Notification rows continue to follow the platform's existing
 notification-retention behavior; this contract does not claim or add a new row
-deletion schedule.
+deletion schedule. Outbound delivery is bounded by each lifecycle
+notification's 24-hour TTL, so removing old terminal attempt audit rows cannot
+resurrect an obsolete email or push message.
 
 Before producers are enabled, the rollout must materialize the new defaults for
 existing users. Newly inserted delivery preferences inherit the user's newest
 complete global quiet-hours window, while existing delivery overrides remain
 untouched. The backfill also preserves legacy master email opt-outs; runtime
 fallback defaults alone do not consult the legacy email setting.
+
+`GREDICE_DELIVERY_NOTIFICATIONS_ENABLED` remains `false` by default in both the
+delivery and API projects until the coordinated rollout. The email and
+reconciliation workers have separate default-off flags, but Garden has no
+delivery-channel visibility flag: channel controls cannot accidentally remain
+hidden when either producer is enabled. Delivery-only preference updates remain
+writable when the broader premium-controls rollout is disabled.

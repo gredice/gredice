@@ -7,6 +7,7 @@ import {
     type QueuedWebPushAttempt,
     WebPushDeliveryError,
     type WebPushFailure,
+    webPushTimeToLiveSeconds,
 } from './webPushSender';
 
 function queuedAttempt(
@@ -34,6 +35,7 @@ function queuedAttempt(
         safeLinkUrl: null,
         subscriptionFailCount: 0,
         threadKey: null,
+        timestamp: new Date('2026-07-20T12:00:00.000Z'),
         ttlSeconds: null,
         urgency: null,
         userId: 'user-1',
@@ -70,6 +72,35 @@ test('buildWebPushPayload serializes notification content without subscription s
         title: 'Title',
         url: '/obavijesti',
     });
+});
+
+test('web push provider TTL never extends a notification expiry', () => {
+    const now = new Date('2026-07-21T11:59:00.000Z');
+    assert.equal(
+        webPushTimeToLiveSeconds(
+            queuedAttempt({ ttlSeconds: 24 * 60 * 60 }),
+            now,
+        ),
+        60,
+    );
+    assert.equal(
+        webPushTimeToLiveSeconds(
+            queuedAttempt({ ttlSeconds: 24 * 60 * 60 }),
+            new Date('2026-07-21T12:00:00.000Z'),
+        ),
+        0,
+    );
+    assert.equal(
+        webPushTimeToLiveSeconds(
+            queuedAttempt({
+                timestamp: new Date('2026-07-21T11:57:59.500Z'),
+                ttlSeconds: 62,
+            }),
+            now,
+        ),
+        1,
+    );
+    assert.equal(webPushTimeToLiveSeconds(queuedAttempt(), now), 24 * 60 * 60);
 });
 
 test('buildWebPushPayload strips unsupported Markdown from browser-visible text', () => {
@@ -124,6 +155,74 @@ test('processWebPushAttempts records accepted provider success', async () => {
     assert.equal(result.retried, 0);
     assert.equal(accepted.length, 1);
     assert.equal(failed.length, 0);
+});
+
+test('processWebPushAttempts does not reinterpret accepted finalization errors as provider failures', async () => {
+    let failedCalls = 0;
+    await assert.rejects(
+        processWebPushAttempts({
+            attempts: [queuedAttempt()],
+            recorders: {
+                accepted: async () => {
+                    throw new Error('delivery state unavailable');
+                },
+                failed: async () => {
+                    failedCalls += 1;
+                },
+            },
+            send: async () => ({ body: '', headers: {}, statusCode: 201 }),
+        }),
+        /delivery state unavailable/,
+    );
+    assert.equal(failedCalls, 0);
+});
+
+test('processWebPushAttempts revalidates each queued attempt immediately before provider send', async () => {
+    const events: string[] = [];
+    const attempts = [
+        queuedAttempt({ attemptId: 1 }),
+        queuedAttempt({ attemptId: 2 }),
+        queuedAttempt({ attemptId: 3 }),
+    ];
+    const result = await processWebPushAttempts({
+        attempts,
+        recorders: {
+            accepted: async (attempt) => {
+                events.push(`accepted-${attempt.attemptId}`);
+            },
+        },
+        revalidate: async (attempt) => {
+            events.push(`revalidate-${attempt.attemptId}`);
+            if (attempt.attemptId === 1) {
+                return { reason: 'eligible_immediate', status: 'eligible' };
+            }
+            if (attempt.attemptId === 2) {
+                return { reason: 'quiet_hours', status: 'deferred' };
+            }
+            return { reason: 'preference_disabled', status: 'dropped' };
+        },
+        send: async (attempt) => {
+            events.push(`send-${attempt.attemptId}`);
+            return { body: '', headers: {}, statusCode: 201 };
+        },
+    });
+
+    assert.deepEqual(events, [
+        'revalidate-1',
+        'send-1',
+        'accepted-1',
+        'revalidate-2',
+        'revalidate-3',
+    ]);
+    assert.deepEqual(result, {
+        accepted: 1,
+        candidates: 3,
+        configured: true,
+        failed: 0,
+        invalidated: 0,
+        retried: 0,
+        skipped: 2,
+    });
 });
 
 test('processWebPushAttempts keeps retryable provider failures queued below retry limit', async () => {
@@ -208,7 +307,7 @@ test('createAndSendTestWebPushNotification creates a test notification and repor
             assert.equal(notification.primaryChannel, 'push');
             return 'notification-1';
         },
-        sendQueued: async ({ limit, notificationId }) => {
+        sendQueued: async ({ limit, notificationId } = {}) => {
             assert.equal(limit, 10);
             assert.equal(notificationId, 'notification-1');
             return {

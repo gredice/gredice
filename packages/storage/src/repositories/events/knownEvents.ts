@@ -15,7 +15,10 @@ import type {
     DeliveryRequestExceptionRecoveredPayload,
     DeliveryRequestFulfilledPayloadV1,
     DeliveryRequestFulfilledPayloadV2,
+    DeliveryRequestLifecycleNotificationProcessedPayload,
+    DeliveryRequestLifecycleTransitionPayload,
     DeliveryRequestReadyEmailProcessedPayload,
+    DeliveryRequestRouteProgressPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
@@ -498,6 +501,16 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        requestLifecycleNotificationProcessedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleNotificationProcessedPayload,
+        ) => ({
+            type: knownEventTypes.delivery
+                .requestLifecycleNotificationProcessed,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         requestFulfilledV1: (
             aggregateId: string,
             data: DeliveryRequestFulfilledPayloadV1,
@@ -513,6 +526,33 @@ export const knownEvents = {
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 2,
+            aggregateId,
+            data,
+        }),
+        requestRouteStartedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleTransitionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestRouteStarted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestRouteProgressV1: (
+            aggregateId: string,
+            data: DeliveryRequestRouteProgressPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestRouteProgress,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestArrivedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleTransitionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestArrived,
+            version: 1,
             aggregateId,
             data,
         }),

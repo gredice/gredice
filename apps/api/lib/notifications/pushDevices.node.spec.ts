@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { pushDeviceResponse, pushDeviceUpsertSchema } from './pushDevices';
+import {
+    normalizePushDevicePatch,
+    pushDeviceResponse,
+    pushDeviceUpsertSchema,
+} from './pushDevices';
 
 const validPayload = {
     endpoint: 'https://updates.push.services.mozilla.com/push/v1/example',
@@ -42,6 +46,54 @@ test('pushDeviceUpsertSchema rejects malformed key material', () => {
     });
 
     assert.equal(result.success, false);
+});
+
+test('normalizePushDevicePatch requires a live granted subscription before enabling', () => {
+    assert.deepEqual(
+        normalizePushDevicePatch(
+            { permissionState: 'granted', revokedAt: null },
+            { enabled: true },
+        ),
+        { enabled: true },
+    );
+    assert.equal(
+        normalizePushDevicePatch(
+            { permissionState: 'denied', revokedAt: null },
+            { enabled: true },
+        ),
+        null,
+    );
+    assert.equal(
+        normalizePushDevicePatch(
+            { permissionState: 'denied', revokedAt: null },
+            { enabled: true, permissionState: 'granted' },
+        ),
+        null,
+    );
+    assert.equal(
+        normalizePushDevicePatch(
+            { permissionState: 'default', revokedAt: null },
+            { permissionState: 'granted' },
+        ),
+        null,
+    );
+    assert.equal(
+        normalizePushDevicePatch(
+            {
+                permissionState: 'granted',
+                revokedAt: new Date('2026-05-20T10:00:00.000Z'),
+            },
+            { enabled: true },
+        ),
+        null,
+    );
+    assert.deepEqual(
+        normalizePushDevicePatch(
+            { permissionState: 'granted', revokedAt: null },
+            { permissionState: 'denied' },
+        ),
+        { enabled: false, permissionState: 'denied' },
+    );
 });
 
 test('pushDeviceResponse omits endpoint and subscription keys', () => {

@@ -75,8 +75,13 @@ export const knownEventTypes = {
         requestPreparing: 'delivery.request.preparing',
         requestReady: 'delivery.request.ready',
         requestReadyEmailProcessed: 'delivery.request.ready.email_processed',
+        requestLifecycleNotificationProcessed:
+            'delivery.request.lifecycle_notification.processed',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
+        requestRouteStarted: 'delivery.request.route_started',
+        requestRouteProgress: 'delivery.request.route_progress',
+        requestArrived: 'delivery.request.arrived',
         requestExceptionRecorded: 'delivery.request.exception.recorded',
         requestExceptionRecovered: 'delivery.request.exception.recovered',
         requestSurveySent: 'delivery.request.survey_sent',

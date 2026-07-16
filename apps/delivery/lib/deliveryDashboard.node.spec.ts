@@ -6,16 +6,44 @@ import {
     customerDeliveryStopsAhead,
     deliveryDashboardKindForRole,
     deliveryMutationRouteState,
+    deliveryProgressMilestoneOccurredAt,
     deliveryRecipientCount,
     deliveryStatusLabel,
     deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
+    isolateCustomerDeliveryPostCommitNotification,
     pickupManifestTracePath,
     recordedExceptionNeedsReroute,
     visibleDeliveryNotes,
     visibleDeliveryRunTotals,
     visibleDeliveryStopEstimates,
 } from './deliveryDashboard';
+
+test('route progress cannot occur before refreshed estimates', () => {
+    const refreshedAt = new Date('2026-07-16T10:00:02.000Z');
+    assert.deepEqual(
+        deliveryProgressMilestoneOccurredAt({
+            acceptedAt: new Date('2026-07-16T10:00:00.000Z'),
+            estimatesUpdatedAt: refreshedAt,
+            observedAt: new Date('2026-07-16T10:00:01.000Z'),
+        }),
+        refreshedAt,
+    );
+});
+
+test('post-commit notification failures are isolated from driver mutations', async () => {
+    const failures: unknown[] = [];
+    const completed = await isolateCustomerDeliveryPostCommitNotification(
+        async () => {
+            throw new Error('notification read unavailable');
+        },
+        (error) => failures.push(error),
+    );
+
+    assert.equal(completed, false);
+    assert.equal(failures.length, 1);
+    assert.match(String(failures[0]), /notification read unavailable/u);
+});
 
 const pending = 'pending';
 const delivered = 'delivered';

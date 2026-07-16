@@ -18,15 +18,23 @@ import { Switch } from '@gredice/ui/Switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import {
+    browserPushNeedsSubscriptionRecovery,
+    currentPushDevicePermissionReconciliation,
+    pushDeviceNeedsSubscriptionRecovery,
+} from '../../hooks/pushSubscription';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
 import {
     type NotificationPreferenceUpdate,
     useNotificationPreferences,
     useSaveNotificationPreferences,
 } from '../../hooks/useNotificationPreferences';
-import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
+import {
+    type PushSetupStatus,
+    usePushPermissionOnboarding,
+} from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
 import {
     isNotificationsView,
@@ -53,6 +61,7 @@ type NotificationDeviceListItem = {
     id: string;
     permissionState?: string | null;
     platform?: string | null;
+    revokedAt?: string | null;
     userAgent?: string | null;
 };
 
@@ -107,7 +116,7 @@ function readCurrentTimeZone() {
     }
 }
 
-const premiumNotificationControlsEnabled = readBooleanFlag(
+const premiumNotificationControlsRolloutEnabled = readBooleanFlag(
     process.env.NEXT_PUBLIC_GREDICE_NOTIFICATIONS_PREMIUM_CONTROLS_ENABLED,
     true,
 );
@@ -184,33 +193,42 @@ const categoryPreferences: NotificationPreferenceItem[] = [
     },
 ];
 
-const hiddenDeliveryPreferencePolicies: NotificationPreferencePolicy[] = [
+const deliveryPreferenceItems: NotificationPreferenceItem[] = [
     {
         category: 'delivery_updates',
         channel: 'in_app',
         defaultEnabled: true,
+        description:
+            'Status dostave i poveznice za praćenje u popisu obavijesti.',
         digestEligible: false,
+        label: 'Ažuriranja dostave u aplikaciji',
         quietHoursEligible: true,
     },
     {
         category: 'delivery_updates',
         channel: 'email',
         defaultEnabled: true,
+        description:
+            'E-pošta o važnim promjenama statusa i očekivanom vremenu dolaska.',
         digestEligible: false,
+        label: 'Ažuriranja dostave e-poštom',
         quietHoursEligible: true,
     },
     {
         category: 'delivery_updates',
         channel: 'push',
         defaultEnabled: true,
+        description:
+            'Push obavijesti kada dostava krene, približi se ili završi.',
         digestEligible: false,
+        label: 'Push ažuriranja dostave',
         quietHoursEligible: true,
     },
 ];
 
 const globalPreferencePolicies: NotificationPreferencePolicy[] = [
     ...categoryPreferences,
-    ...hiddenDeliveryPreferencePolicies,
+    ...deliveryPreferenceItems,
 ];
 
 const digestFrequencyItems: Array<{
@@ -283,11 +301,18 @@ function deviceIcon(device: NotificationDeviceListItem) {
 type NotificationsTabProps = {
     initialFilter?: NotificationsFilter;
     initialView?: NotificationsView;
+    premiumNotificationControlsEnabled?: boolean;
+    pushSetupState?: {
+        status: PushSetupStatus;
+        subscriptionChecked: boolean;
+    };
 };
 
 export function NotificationsTab({
     initialFilter = 'unread',
     initialView = 'notifications',
+    premiumNotificationControlsEnabled = premiumNotificationControlsRolloutEnabled,
+    pushSetupState,
 }: NotificationsTabProps = {}) {
     const [activeView, setActiveView] =
         useState<NotificationsView>(initialView);
@@ -312,7 +337,12 @@ export function NotificationsTab({
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
     const pushOnboarding = usePushPermissionOnboarding();
+    const pushSetupStatus = pushSetupState?.status ?? pushOnboarding.status;
+    const pushSubscriptionChecked =
+        pushSetupState?.subscriptionChecked ??
+        pushOnboarding.subscriptionChecked;
     const queryClient = useQueryClient();
+    const lastPermissionReconciliationKey = useRef<string | null>(null);
 
     useEffect(() => {
         setNotificationsFilter(initialFilter);
@@ -366,13 +396,74 @@ export function NotificationsTab({
                 });
             if (!response.ok) throw new Error('Uređaj nije ažuriran');
         },
+        onError: (_error, { id, payload }) => {
+            if (
+                payload.permissionState !== 'default' &&
+                payload.permissionState !== 'denied'
+            ) {
+                return;
+            }
+            const reconciliationKey = `${id}:${payload.permissionState}`;
+            if (lastPermissionReconciliationKey.current === reconciliationKey) {
+                lastPermissionReconciliationKey.current = null;
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
                 queryKey: notificationPushStatusKey,
             });
         },
+        retry: 1,
+        retryDelay: 0,
     });
+
+    const currentPushDeviceId = readCurrentPushDeviceId();
+    const browserPermissionToReconcile =
+        pushSetupStatus === 'denied'
+            ? 'denied'
+            : pushSetupStatus === 'default' ||
+                pushSetupStatus === 'prompt-dismissed'
+              ? 'default'
+              : null;
+    const permissionReconciliation = browserPermissionToReconcile
+        ? currentPushDevicePermissionReconciliation({
+              browserPermission: browserPermissionToReconcile,
+              currentDeviceId: currentPushDeviceId,
+              devices: devicesQuery.data ?? [],
+          })
+        : null;
+    const permissionReconciliationDeviceId = permissionReconciliation?.id;
+    const permissionReconciliationState =
+        permissionReconciliation?.permissionState;
+    const reconcileCurrentDevicePermission = updateDeviceMutation.mutate;
+
+    useEffect(() => {
+        if (
+            !permissionReconciliationDeviceId ||
+            !permissionReconciliationState
+        ) {
+            lastPermissionReconciliationKey.current = null;
+            return;
+        }
+
+        const reconciliationKey = `${permissionReconciliationDeviceId}:${permissionReconciliationState}`;
+        if (lastPermissionReconciliationKey.current === reconciliationKey) {
+            return;
+        }
+        lastPermissionReconciliationKey.current = reconciliationKey;
+        reconcileCurrentDevicePermission({
+            id: permissionReconciliationDeviceId,
+            payload: {
+                enabled: false,
+                permissionState: permissionReconciliationState,
+            },
+        });
+    }, [
+        permissionReconciliationDeviceId,
+        permissionReconciliationState,
+        reconcileCurrentDevicePermission,
+    ]);
 
     const sendTestMutation = useMutation({
         mutationFn: async () => {
@@ -519,12 +610,14 @@ export function NotificationsTab({
         return true;
     }
 
-    const handleEnablePush = async () => {
+    const handleEnablePush = async (replaceExistingSubscription = false) => {
         track('game_push_enable_clicked', {
             source: 'overview_notifications_tab',
-            status: pushOnboarding.status,
+            status: pushSetupStatus,
         });
-        const result = await pushOnboarding.requestPermission();
+        const result = await pushOnboarding.requestPermission({
+            replaceExistingSubscription,
+        });
         if (result === 'subscribed') {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
@@ -548,34 +641,52 @@ export function NotificationsTab({
         preferencesQuery.isError;
     const deviceMutationBusy = updateDeviceMutation.isPending;
     const testNotificationResult = sendTestMutation.data;
-    const currentPushDeviceId = readCurrentPushDeviceId();
     const currentNotificationDevice = currentPushDeviceId
         ? devicesQuery.data?.find(
               (device) => device.deviceId === currentPushDeviceId,
           )
         : undefined;
+    const browserSubscriptionNeedsRecovery =
+        browserPushNeedsSubscriptionRecovery({
+            status: pushSetupStatus,
+            subscriptionChecked: pushSubscriptionChecked,
+        });
+    const currentDeviceNeedsRecovery = currentNotificationDevice
+        ? pushDeviceNeedsSubscriptionRecovery(currentNotificationDevice) ||
+          browserSubscriptionNeedsRecovery
+        : false;
     const currentDeviceNotificationsEnabled =
         Boolean(currentNotificationDevice?.enabled) &&
-        currentNotificationDevice?.permissionState !== 'denied';
-    const currentDeviceStatusLabel = devicesQuery.isPending
-        ? 'Učitavanje'
-        : currentDeviceNotificationsEnabled
-          ? 'Uključeno'
-          : 'Isključeno';
+        !currentDeviceNeedsRecovery;
+    const currentDeviceSubscriptionChecking =
+        Boolean(currentNotificationDevice) &&
+        pushSetupStatus === 'granted' &&
+        !pushSubscriptionChecked;
+    const currentDeviceStatusLabel =
+        devicesQuery.isPending || currentDeviceSubscriptionChecking
+            ? 'Učitavanje'
+            : currentDeviceNotificationsEnabled
+              ? 'Uključeno'
+              : 'Isključeno';
     const canRequestPush =
-        pushOnboarding.status !== 'denied' &&
-        pushOnboarding.status !== 'unsupported' &&
-        pushOnboarding.status !== 'unconfigured';
+        pushSetupStatus !== 'denied' &&
+        pushSetupStatus !== 'unsupported' &&
+        pushSetupStatus !== 'unconfigured';
     const currentDeviceToggleDisabled =
         pushStatusQuery.isPending ||
         devicesQuery.isPending ||
         devicesQuery.isError ||
         pushStatusQuery.isError ||
         deviceMutationBusy ||
-        (!currentNotificationDevice && !canRequestPush);
+        currentDeviceSubscriptionChecking ||
+        ((!currentNotificationDevice || currentDeviceNeedsRecovery) &&
+            !canRequestPush);
+    const visibleCategoryPreferences = premiumNotificationControlsEnabled
+        ? [...categoryPreferences, ...deliveryPreferenceItems]
+        : deliveryPreferenceItems;
 
     function handleCurrentDeviceToggle() {
-        if (currentNotificationDevice) {
+        if (currentNotificationDevice && !currentDeviceNeedsRecovery) {
             updateDeviceMutation.mutate({
                 id: currentNotificationDevice.id,
                 payload: { enabled: !currentDeviceNotificationsEnabled },
@@ -583,7 +694,7 @@ export function NotificationsTab({
             return;
         }
 
-        void handleEnablePush();
+        void handleEnablePush(true);
     }
 
     return (
@@ -697,48 +808,111 @@ export function NotificationsTab({
                                         Status obavijesti nije učitan.
                                     </Typography>
                                 )}
-                                {pushOnboarding.status === 'denied' && (
+                                {pushSetupStatus === 'denied' && (
                                     <Typography level="body3" secondary>
                                         Obavijesti su blokirane u pregledniku.
                                         Otvori postavke preglednika i omogući
                                         obavijesti za ovu stranicu.
                                     </Typography>
                                 )}
+                                {pushSetupStatus === 'failed' && (
+                                    <div role="alert" aria-atomic="true">
+                                        <Typography level="body3" secondary>
+                                            Push obavijesti nisu ponovno
+                                            povezane. Provjeri vezu i pokušaj
+                                            ponovno.
+                                        </Typography>
+                                    </div>
+                                )}
                             </Stack>
                         </Card>
 
-                        {premiumNotificationControlsEnabled ? (
-                            <>
-                                <Card className="bg-card p-2">
-                                    <Stack spacing={2}>
-                                        <Row justifyContent="space-between">
-                                            <Typography level="body1" semiBold>
-                                                Vrste obavijesti
-                                            </Typography>
-                                            <Button
-                                                size="sm"
-                                                variant="plain"
-                                                disabled={settingsBusy}
-                                                onClick={() =>
-                                                    savePreferencesMutation.mutate(
-                                                        categoryPreferences.map(
-                                                            (item) =>
-                                                                buildPreferenceUpdate(
-                                                                    item,
-                                                                    true,
-                                                                ),
+                        <Card className="bg-card p-2">
+                            <Stack spacing={2}>
+                                <Row justifyContent="space-between">
+                                    <Typography level="body1" semiBold>
+                                        Vrste obavijesti
+                                    </Typography>
+                                    <Button
+                                        size="sm"
+                                        variant="plain"
+                                        disabled={settingsBusy}
+                                        onClick={() =>
+                                            savePreferencesMutation.mutate(
+                                                visibleCategoryPreferences.map(
+                                                    (item) =>
+                                                        buildPreferenceUpdate(
+                                                            item,
+                                                            true,
                                                         ),
-                                                    )
-                                                }
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        Omogući sve
+                                    </Button>
+                                </Row>
+                                <Stack spacing={0.5}>
+                                    {requiredNotificationGroups.map((item) => (
+                                        <Row
+                                            key={item.category}
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                            className="py-2"
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
                                             >
-                                                Omogući sve
-                                            </Button>
+                                                <Typography semiBold>
+                                                    {item.label}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {item.description}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                spacing={0.5}
+                                                alignItems="center"
+                                                className="shrink-0"
+                                            >
+                                                <Switch
+                                                    aria-label={`Obavezna obavijest ${item.label.toLowerCase()}`}
+                                                    checked
+                                                    readOnly
+                                                />
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    Obavezno
+                                                </Typography>
+                                            </Stack>
                                         </Row>
-                                        <Stack spacing={0.5}>
-                                            {requiredNotificationGroups.map(
-                                                (item) => (
+                                    ))}
+                                    {preferencesQuery.isPending ? (
+                                        <Typography level="body2" secondary>
+                                            Postavke se učitavaju.
+                                        </Typography>
+                                    ) : preferencesQuery.isError ? (
+                                        <Typography level="body2" secondary>
+                                            Postavke obavijesti nisu učitane.
+                                        </Typography>
+                                    ) : (
+                                        visibleCategoryPreferences.map(
+                                            (item) => {
+                                                const preference =
+                                                    findPreference(item);
+                                                const checked =
+                                                    preference?.enabled ??
+                                                    item.defaultEnabled;
+                                                return (
                                                     <Row
-                                                        key={item.category}
+                                                        key={`${item.category}:${item.channel}`}
                                                         justifyContent="space-between"
                                                         alignItems="start"
                                                         spacing={4}
@@ -762,123 +936,44 @@ export function NotificationsTab({
                                                                 }
                                                             </Typography>
                                                         </Stack>
-                                                        <Stack
-                                                            spacing={0.5}
-                                                            alignItems="center"
-                                                            className="shrink-0"
-                                                        >
-                                                            <Switch
-                                                                aria-label={`Obavezna obavijest ${item.label.toLowerCase()}`}
+                                                        <Switch
+                                                            aria-label={`${
                                                                 checked
-                                                                readOnly
-                                                            />
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                Obavezno
-                                                            </Typography>
-                                                        </Stack>
+                                                                    ? 'Isključi'
+                                                                    : 'Uključi'
+                                                            } ${item.label.toLowerCase()}`}
+                                                            checked={checked}
+                                                            disabled={
+                                                                settingsBusy
+                                                            }
+                                                            onCheckedChange={(
+                                                                checked,
+                                                            ) =>
+                                                                savePreferencesMutation.mutate(
+                                                                    [
+                                                                        buildPreferenceUpdate(
+                                                                            item,
+                                                                            checked,
+                                                                        ),
+                                                                    ],
+                                                                )
+                                                            }
+                                                        />
                                                     </Row>
-                                                ),
-                                            )}
-                                            {preferencesQuery.isPending ? (
-                                                <Typography
-                                                    level="body2"
-                                                    secondary
-                                                >
-                                                    Postavke se učitavaju.
-                                                </Typography>
-                                            ) : preferencesQuery.isError ? (
-                                                <Typography
-                                                    level="body2"
-                                                    secondary
-                                                >
-                                                    Postavke obavijesti nisu
-                                                    učitane.
-                                                </Typography>
-                                            ) : (
-                                                categoryPreferences.map(
-                                                    (item) => {
-                                                        const preference =
-                                                            findPreference(
-                                                                item,
-                                                            );
-                                                        const checked =
-                                                            preference?.enabled ??
-                                                            item.defaultEnabled;
-                                                        return (
-                                                            <Row
-                                                                key={
-                                                                    item.category
-                                                                }
-                                                                justifyContent="space-between"
-                                                                alignItems="start"
-                                                                spacing={4}
-                                                                className="py-2"
-                                                            >
-                                                                <Stack
-                                                                    spacing={
-                                                                        0.5
-                                                                    }
-                                                                    className="min-w-0 flex-1"
-                                                                >
-                                                                    <Typography
-                                                                        semiBold
-                                                                    >
-                                                                        {
-                                                                            item.label
-                                                                        }
-                                                                    </Typography>
-                                                                    <Typography
-                                                                        level="body3"
-                                                                        secondary
-                                                                    >
-                                                                        {
-                                                                            item.description
-                                                                        }
-                                                                    </Typography>
-                                                                </Stack>
-                                                                <Switch
-                                                                    aria-label={`${
-                                                                        checked
-                                                                            ? 'Isključi'
-                                                                            : 'Uključi'
-                                                                    } ${item.label.toLowerCase()}`}
-                                                                    checked={
-                                                                        checked
-                                                                    }
-                                                                    disabled={
-                                                                        settingsBusy
-                                                                    }
-                                                                    onCheckedChange={(
-                                                                        checked,
-                                                                    ) =>
-                                                                        savePreferencesMutation.mutate(
-                                                                            [
-                                                                                buildPreferenceUpdate(
-                                                                                    item,
-                                                                                    checked,
-                                                                                ),
-                                                                            ],
-                                                                        )
-                                                                    }
-                                                                />
-                                                            </Row>
-                                                        );
-                                                    },
-                                                )
-                                            )}
-                                        </Stack>
-                                        {savePreferencesMutation.isError && (
-                                            <Typography level="body3" secondary>
-                                                Postavke obavijesti nisu
-                                                spremljene.
-                                            </Typography>
-                                        )}
-                                    </Stack>
-                                </Card>
-
+                                                );
+                                            },
+                                        )
+                                    )}
+                                </Stack>
+                                {savePreferencesMutation.isError && (
+                                    <Typography level="body3" secondary>
+                                        Postavke obavijesti nisu spremljene.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Card>
+                        {premiumNotificationControlsEnabled ? (
+                            <>
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
                                         <Row
@@ -1094,7 +1189,8 @@ export function NotificationsTab({
                             <Card className="bg-card p-2">
                                 <Typography level="body2" secondary>
                                     Napredne postavke obavijesti trenutno nisu
-                                    dostupne.
+                                    dostupne. Kanale dostave i dalje možeš
+                                    prilagoditi iznad.
                                 </Typography>
                             </Card>
                         )}
@@ -1145,6 +1241,27 @@ export function NotificationsTab({
                                 ) : devicesQuery.data?.length ? (
                                     devicesQuery.data.map((device) => {
                                         const label = deviceDisplayName(device);
+                                        const isCurrentDevice =
+                                            device.deviceId ===
+                                            currentPushDeviceId;
+                                        const subscriptionChecking =
+                                            isCurrentDevice &&
+                                            currentDeviceSubscriptionChecking;
+                                        const needsRecovery =
+                                            pushDeviceNeedsSubscriptionRecovery(
+                                                device,
+                                            ) ||
+                                            (isCurrentDevice &&
+                                                browserSubscriptionNeedsRecovery);
+                                        const notificationsEnabled =
+                                            device.enabled && !needsRecovery;
+                                        const statusLabel = subscriptionChecking
+                                            ? 'Provjera veze'
+                                            : needsRecovery
+                                              ? 'Potrebno ponovno povezivanje'
+                                              : notificationsEnabled
+                                                ? 'Uključeno'
+                                                : 'Isključeno';
 
                                         return (
                                             <div
@@ -1165,32 +1282,43 @@ export function NotificationsTab({
                                                         level="body3"
                                                         secondary
                                                     >
-                                                        {device.enabled
-                                                            ? 'Uključeno'
-                                                            : 'Isključeno'}
+                                                        {statusLabel}
                                                     </Typography>
                                                 </Stack>
                                                 <Switch
                                                     aria-label={`${
-                                                        device.enabled
-                                                            ? 'Isključi'
-                                                            : 'Uključi'
-                                                    } ${label}`}
-                                                    checked={device.enabled}
-                                                    disabled={
-                                                        deviceMutationBusy
+                                                        needsRecovery
+                                                            ? 'Ponovno poveži'
+                                                            : notificationsEnabled
+                                                              ? 'Isključi'
+                                                              : 'Uključi'
+                                                    } ${label}${
+                                                        needsRecovery
+                                                            ? ' na tom uređaju'
+                                                            : ''
+                                                    }`}
+                                                    checked={
+                                                        notificationsEnabled
                                                     }
-                                                    onCheckedChange={() =>
+                                                    disabled={
+                                                        deviceMutationBusy ||
+                                                        needsRecovery ||
+                                                        subscriptionChecking
+                                                    }
+                                                    onCheckedChange={() => {
+                                                        if (needsRecovery) {
+                                                            return;
+                                                        }
                                                         updateDeviceMutation.mutate(
                                                             {
                                                                 id: device.id,
                                                                 payload: {
                                                                     enabled:
-                                                                        !device.enabled,
+                                                                        !notificationsEnabled,
                                                                 },
                                                             },
-                                                        )
-                                                    }
+                                                        );
+                                                    }}
                                                 />
                                             </div>
                                         );

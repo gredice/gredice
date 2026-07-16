@@ -8,6 +8,7 @@ import type {
     CustomerDeliveryRequestSummary,
     CustomerPickupRequestSummary,
 } from '../lib/deliveryDashboardTypes';
+import type { DeliveryDeepLinkTarget } from '../lib/deliveryDeepLink';
 
 const harvestBase = {
     operationName: 'Berba',
@@ -169,8 +170,10 @@ function dashboard(
 
 function StoryDashboard({
     deliveries,
+    deliveryTarget,
 }: {
     deliveries: CustomerDeliveryDashboardRequest[];
+    deliveryTarget?: DeliveryDeepLinkTarget;
 }) {
     const [requestTiming] = useState(() => ({
         monotonicMs: performance.now(),
@@ -179,6 +182,7 @@ function StoryDashboard({
     return (
         <CustomerDashboard
             dashboard={dashboard(deliveries)}
+            deliveryTarget={deliveryTarget}
             requestTiming={requestTiming}
         />
     );
@@ -331,4 +335,73 @@ export function CustomerDeliveryUpcomingEmptyStory() {
 
 export function CustomerDeliveryLongHistoryStory() {
     return <StoryDashboard deliveries={longHistory} />;
+}
+
+const deepLinkDeliveries = [
+    delivery({
+        requestId: 'upcoming-delivery-4137',
+        plantName: 'Nadolazeći peršin',
+        lifecycle: 'upcoming',
+        slotStartAt: '2026-07-17T11:00:00.000Z',
+    }),
+    activeArrived,
+    activeBulkSibling,
+    ...history,
+];
+
+export function CustomerDeliveryActiveDeepLinkStory() {
+    return (
+        <StoryDashboard
+            deliveries={deepLinkDeliveries}
+            deliveryTarget={{
+                kind: 'request',
+                requestId: 'active-bulk-sibling-4137',
+            }}
+        />
+    );
+}
+
+export function CustomerDeliveryUpcomingDeepLinkStory() {
+    return (
+        <StoryDashboard
+            deliveries={deepLinkDeliveries}
+            deliveryTarget={{
+                kind: 'request',
+                requestId: 'upcoming-delivery-4137',
+            }}
+        />
+    );
+}
+
+export function CustomerDeliveryHiddenHistoryDeepLinkStory() {
+    return (
+        <StoryDashboard
+            deliveries={deepLinkDeliveries}
+            deliveryTarget={{
+                kind: 'request',
+                requestId: 'history-delivery-hidden-4137',
+            }}
+        />
+    );
+}
+
+export function CustomerDeliveryUnownedDeepLinkStory() {
+    return (
+        <StoryDashboard
+            deliveries={deepLinkDeliveries}
+            deliveryTarget={{
+                kind: 'request',
+                requestId: 'another-account-request-4137',
+            }}
+        />
+    );
+}
+
+export function CustomerDeliveryMalformedDeepLinkStory() {
+    return (
+        <StoryDashboard
+            deliveries={deepLinkDeliveries}
+            deliveryTarget={{ kind: 'invalid' }}
+        />
+    );
 }

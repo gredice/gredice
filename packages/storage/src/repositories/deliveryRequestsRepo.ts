@@ -1446,6 +1446,33 @@ export async function getDeliveryRequest(
     return reconstructDeliveryRequestFromEvents(request, events);
 }
 
+export async function getDeliveryRequestOwners(
+    requestIds: string[],
+    db: DatabaseClient = storage(),
+) {
+    const uniqueRequestIds = Array.from(new Set(requestIds));
+    if (uniqueRequestIds.length === 0) return [];
+    const requests = await db.query.deliveryRequests.findMany({
+        columns: { id: true },
+        where: inArray(deliveryRequests.id, uniqueRequestIds),
+        with: {
+            operation: {
+                columns: { accountId: true },
+            },
+        },
+    });
+    return requests.flatMap((request) =>
+        request.operation?.accountId
+            ? [
+                  {
+                      accountId: request.operation.accountId,
+                      requestId: request.id,
+                  },
+              ]
+            : [],
+    );
+}
+
 // Get delivery requests by operation ID
 export async function getDeliveryRequestByOperation(
     operationId: number,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
     applyDeliveryLifecycleObservation,
+    createDeliveryLifecycleEvent,
     createDeliveryLifecycleState,
     type DeliveryLifecycleContext,
     type DeliveryLifecycleObservation,
@@ -122,6 +123,71 @@ describe('delivery lifecycle contract', () => {
         assert.equal(
             deliveryLifecycleIdempotencyKey(context, 'delivered', 0),
             deliveryLifecycleIdempotencyKey(context, 'delivered', 4),
+        );
+    });
+
+    test('creates validated events directly from authoritative durable milestones', () => {
+        const first = createDeliveryLifecycleEvent({
+            context,
+            milestone: 'arrived',
+            occurredAt,
+            retryAttempt: 2,
+            source: {
+                id: 'stop-operation:42',
+                kind: 'stop-operation',
+                version: 7,
+            },
+        });
+        const replay = createDeliveryLifecycleEvent({
+            context,
+            milestone: 'arrived',
+            occurredAt: '2026-07-16T10:01:00.000Z',
+            retryAttempt: 2,
+            source: {
+                id: 'stop-operation:42-replay',
+                kind: 'stop-operation',
+                version: 8,
+            },
+        });
+        assert.equal(first.idempotencyKey, replay.idempotencyKey);
+        assert.equal(first.milestone, 'arrived');
+        assert.equal(first.retryAttempt, 2);
+
+        const exception = createDeliveryLifecycleEvent({
+            context,
+            exception: {
+                outcome: 'deferred',
+                reason: 'customer-unavailable',
+            },
+            milestone: 'exception',
+            occurredAt,
+            retryAttempt: 2,
+            source: {
+                id: 'exception-operation:42',
+                kind: 'exception-operation',
+                version: 1,
+            },
+        });
+        assert.equal(exception.milestone, 'exception');
+        assert.deepEqual(exception.exception, {
+            outcome: 'deferred',
+            reason: 'customer-unavailable',
+        });
+
+        assert.throws(
+            () =>
+                createDeliveryLifecycleEvent({
+                    context,
+                    milestone: 'delayed',
+                    occurredAt,
+                    retryAttempt: 0,
+                    source: {
+                        id: 'wrong-source',
+                        kind: 'stop-operation',
+                        version: 1,
+                    },
+                }),
+            /authoritative route-progress source/,
         );
     });
 

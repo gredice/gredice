@@ -1542,6 +1542,9 @@ importers:
       '@gredice/js':
         specifier: workspace:*
         version: link:../js
+      '@gredice/notifications':
+        specifier: workspace:*
+        version: link:../notifications
       react:
         specifier: 19.2.7
         version: 19.2.7

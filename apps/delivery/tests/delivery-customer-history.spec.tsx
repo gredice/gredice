@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
     CustomerDeliveryActiveAndHistoryEmptyStory,
+    CustomerDeliveryActiveDeepLinkStory,
+    CustomerDeliveryHiddenHistoryDeepLinkStory,
     CustomerDeliveryLongHistoryStory,
+    CustomerDeliveryMalformedDeepLinkStory,
     CustomerDeliverySectionsStory,
+    CustomerDeliveryUnownedDeepLinkStory,
+    CustomerDeliveryUpcomingDeepLinkStory,
     CustomerDeliveryUpcomingEmptyStory,
 } from './CustomerDeliveryHistoryStory';
 import '../app/globals.css';
@@ -238,5 +243,70 @@ test('can collapse a multi-page history before loading every remaining receipt',
     ).toBeVisible();
     await expect(
         history.getByRole('button', { name: 'Prikaži manje' }),
+    ).toHaveCount(0);
+});
+
+test('focuses and highlights active and upcoming account-owned deep links', async ({
+    mount,
+    page,
+}) => {
+    const activeStory = await mount(<CustomerDeliveryActiveDeepLinkStory />);
+    const activeTarget = page.getByTestId('customer-delivery-deep-link-target');
+    await expect(activeTarget).toBeFocused();
+    await expect(activeTarget).toHaveAccessibleName(
+        'Dostava: Aktivni bosiljak',
+    );
+    await expect(activeTarget).toHaveAttribute('aria-current', 'true');
+    await expect(activeTarget).toContainText('Aktivni bosiljak');
+
+    await activeStory.unmount();
+    await mount(<CustomerDeliveryUpcomingDeepLinkStory />);
+    const upcomingTarget = page.getByTestId(
+        'customer-delivery-deep-link-target',
+    );
+    await expect(upcomingTarget).toBeFocused();
+    await expect(upcomingTarget).toHaveAccessibleName(
+        'Dostava: Nadolazeći peršin',
+    );
+    await expect(upcomingTarget).toHaveAttribute('aria-current', 'true');
+    await expect(upcomingTarget).toContainText('Nadolazeći peršin');
+});
+
+test('reveals, focuses, and highlights a deep-linked hidden history delivery', async ({
+    mount,
+    page,
+}) => {
+    await mount(<CustomerDeliveryHiddenHistoryDeepLinkStory />);
+
+    const history = page.getByTestId('customer-history-section');
+    await expect(history.getByText('8 od 8', { exact: true })).toBeVisible();
+    const target = page.getByTestId('customer-delivery-deep-link-target');
+    await expect(target).toBeFocused();
+    await expect(target).toHaveAttribute('aria-current', 'true');
+    await expect(target).toContainText('Skriveni dostavljeni kelj');
+});
+
+test('uses the same unavailable state for malformed and unowned delivery IDs', async ({
+    mount,
+    page,
+}) => {
+    const malformedStory = await mount(
+        <CustomerDeliveryMalformedDeepLinkStory />,
+    );
+    const malformedMessage = await page
+        .getByTestId('customer-delivery-deep-link-unavailable')
+        .textContent();
+    expect(malformedMessage).toBeTruthy();
+    await expect(
+        page.getByTestId('customer-delivery-deep-link-target'),
+    ).toHaveCount(0);
+
+    await malformedStory.unmount();
+    await mount(<CustomerDeliveryUnownedDeepLinkStory />);
+    await expect(
+        page.getByTestId('customer-delivery-deep-link-unavailable'),
+    ).toHaveText(malformedMessage ?? '');
+    await expect(
+        page.getByTestId('customer-delivery-deep-link-target'),
     ).toHaveCount(0);
 });

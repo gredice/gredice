@@ -304,6 +304,8 @@ export type DeliveryRunExceptionOperationStoredResult = {
         deliveryRequestId: string;
         outcome: DeliveryRunExceptionOutcome;
         reason: DeliveryRunExceptionReason;
+        /** Attempt that received the exception; absent on legacy receipts. */
+        retryAttempt?: number;
     }>;
     runCompleted: boolean;
     routeRevision: number;
