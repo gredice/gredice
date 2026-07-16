@@ -13,6 +13,7 @@ import { PlantingAssignedUserAvatar } from './PlantingAssignedUserAvatar';
 import { SchedulePlantVisual } from './SchedulePlantVisual';
 import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
+import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
 import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
@@ -72,26 +73,21 @@ export function FarmSchedulePlantingTaskCard({
         <div
             data-task-state={taskState}
             className={cx(
-                'rounded-lg border px-3 py-2 transition-opacity',
-                taskPresentation.isCompleted
-                    ? 'bg-white/70 opacity-70'
-                    : 'bg-white',
+                'rounded-lg border px-3 py-2',
+                taskPresentation.isCompleted ? 'bg-muted/30' : 'bg-white',
                 lockedByAssignment &&
                     !taskPresentation.isCompleted &&
-                    'opacity-70',
+                    'bg-muted/20',
             )}
         >
-            <Row
-                spacing={2}
-                className="min-w-0 items-start justify-between gap-3"
+            <ScheduleTaskDetailsLink
+                actionLabel="Otvori gredicu"
+                href={`/raised-beds/${field.raisedBedId}`}
             >
-                <Row spacing={2} className="min-w-0 grow items-start">
-                    <ScheduleTaskStateControl
-                        action={canComplete ? completionAction : undefined}
-                        label={label}
-                        state={taskState}
-                        unavailableTitle="Sijanje je dodijeljeno drugom korisniku."
-                    />
+                <Row
+                    spacing={2}
+                    className="min-w-0 items-start justify-between gap-3"
+                >
                     <SchedulePlantVisual plantSort={plantSort} label={label} />
                     <Stack spacing={1} className="min-w-0 grow">
                         <Typography
@@ -126,22 +122,29 @@ export function FarmSchedulePlantingTaskCard({
                             )}
                         </Row>
                     </Stack>
-                </Row>
-                {field.assignedUserId && (
-                    <Suspense
-                        fallback={
-                            <Skeleton className="size-7 shrink-0 rounded-full" />
-                        }
-                    >
-                        <PlantingAssignedUserAvatar
-                            assignedUserByFieldIdPromise={
-                                assignedUserByFieldIdPromise
+                    {field.assignedUserId && (
+                        <Suspense
+                            fallback={
+                                <Skeleton className="size-7 shrink-0 rounded-full" />
                             }
-                            fieldId={field.id}
-                        />
-                    </Suspense>
-                )}
-            </Row>
+                        >
+                            <PlantingAssignedUserAvatar
+                                assignedUserByFieldIdPromise={
+                                    assignedUserByFieldIdPromise
+                                }
+                                fieldId={field.id}
+                            />
+                        </Suspense>
+                    )}
+                </Row>
+            </ScheduleTaskDetailsLink>
+            <ScheduleTaskStateControl
+                action={canComplete ? completionAction : undefined}
+                actionLabel="Dovrši sijanje"
+                label={label}
+                state={taskState}
+                unavailableTitle="Sijanje je dodijeljeno drugom korisniku."
+            />
         </div>
     );
 }
