@@ -375,6 +375,62 @@ test('queries an empty operational window through the real storage schema', asyn
     assert.deepEqual(health.diagnostics, { items: [], truncated: false });
 });
 
+test('excludes active routes that start after a historical operational window', async () => {
+    createTestDb();
+    const futureStart = new Date(now.getTime() + 60 * 60 * 1000);
+    const driverUserId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: driverUserId,
+            userName: `future-driver-${driverUserId}@example.test`,
+            role: 'driver',
+        });
+    const [pickupLocation] = await storage()
+        .insert(pickupLocations)
+        .values({
+            city: 'Future City',
+            countryCode: 'HR',
+            name: 'Future HQ',
+            postalCode: '10000',
+            street1: 'Future Street 12',
+        })
+        .returning({ id: pickupLocations.id });
+    assert.ok(pickupLocation);
+    const [timeSlot] = await storage()
+        .insert(timeSlots)
+        .values({
+            endAt: new Date(now.getTime() + 2 * 60 * 60 * 1000),
+            locationId: pickupLocation.id,
+            startAt: futureStart,
+            type: 'delivery',
+        })
+        .returning({ id: timeSlots.id });
+    assert.ok(timeSlot);
+    await storage().insert(deliveryRuns).values({
+        currentLocationReceivedAt: futureStart,
+        driverUserId,
+        estimateSource: 'local',
+        id: randomUUID(),
+        routePlanVersion: 2,
+        startedAt: futureStart,
+        timeSlotId: timeSlot.id,
+        updatedAt: futureStart,
+    });
+
+    const historicalTo = new Date(now.getTime() - 60 * 60 * 1000);
+    const health = await getDeliveryOperationalHealth({
+        from,
+        now: historicalTo,
+        to: historicalTo,
+    });
+
+    assert.equal(health.runs.activeCount, 0);
+    assert.equal(health.runs.localFallbackCount, 0);
+    assert.equal(health.tracking.liveCount, 0);
+    assert.deepEqual(health.diagnostics, { items: [], truncated: false });
+});
+
 test('rejects invalid and unbounded operational windows before reading storage', async () => {
     await assert.rejects(
         getDeliveryOperationalHealth({
