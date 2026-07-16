@@ -7,6 +7,7 @@ import type { ScheduleTaskState } from './scheduleTaskState';
 interface ScheduleTaskStateControlProps {
     action?: ReactNode;
     actionLabel: string;
+    blockerAction?: ReactNode;
     label: string;
     state: ScheduleTaskState;
     unavailableTitle: string;
@@ -15,6 +16,7 @@ interface ScheduleTaskStateControlProps {
 export function ScheduleTaskStateControl({
     action,
     actionLabel,
+    blockerAction,
     label,
     state,
     unavailableTitle,
@@ -23,22 +25,8 @@ export function ScheduleTaskStateControl({
         return null;
     }
 
-    if (action) {
-        return (
-            <div
-                className="mt-2 border-t pt-2 [&>*]:w-full"
-                data-schedule-task-completion="available"
-            >
-                {action}
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className="mt-2 space-y-1 border-t pt-2"
-            data-schedule-task-completion="locked"
-        >
+    const unavailableAction = (
+        <div className="space-y-1">
             <Button
                 aria-label={`Nije dostupno: ${actionLabel} za ${label}. ${unavailableTitle}`}
                 className="h-auto min-h-11 whitespace-normal py-2 [overflow-wrap:anywhere]"
@@ -57,6 +45,27 @@ export function ScheduleTaskStateControl({
             >
                 {unavailableTitle}
             </Typography>
+        </div>
+    );
+
+    if (action || blockerAction) {
+        return (
+            <div
+                className="mt-2 grid grid-cols-1 gap-2 border-t pt-2 [&>*]:w-full"
+                data-schedule-task-completion="available"
+            >
+                {action ?? unavailableAction}
+                {blockerAction}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className="mt-2 space-y-1 border-t pt-2"
+            data-schedule-task-completion="locked"
+        >
+            {unavailableAction}
         </div>
     );
 }

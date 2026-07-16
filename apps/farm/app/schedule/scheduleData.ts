@@ -7,6 +7,7 @@ import {
     getEntitiesFormatted,
     getFarmUserAcceptedOperations,
     getFarmUserAcceptedOperationsByScheduleRange,
+    getFarmUserBlockedOperations,
     getFarmUserPendingVerificationOperations,
     getFarmUserRaisedBeds,
     getRaisedBedPhotoPreviews,
@@ -17,6 +18,7 @@ import {
 } from '@gredice/storage';
 import { cache } from 'react';
 import {
+    filterUnavailableRaisedBedOperations,
     getCarryoverOperationsForToday,
     getScheduledFieldsForDay,
     getSelectedDateOperationsForDay,
@@ -146,21 +148,26 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
     return cacheScheduleRead(
         scheduleCacheKeys.farmUserActiveOperations(userId, from),
         async () => {
-            const [newOrScheduledOperations, completedOperationsTodayOrLater] =
-                await Promise.all([
-                    getFarmUserAcceptedOperations(userId, {
-                        from,
-                        status: ['new', 'planned'],
-                    }),
-                    getFarmUserAcceptedOperations(userId, {
-                        completedFrom: from,
-                        status: ['pendingVerification', 'completed'],
-                    }),
-                ]);
+            const [
+                newOrScheduledOperations,
+                completedOperationsTodayOrLater,
+                blockedOperationsTodayOrLater,
+            ] = await Promise.all([
+                getFarmUserAcceptedOperations(userId, {
+                    from,
+                    status: ['new', 'planned'],
+                }),
+                getFarmUserAcceptedOperations(userId, {
+                    completedFrom: from,
+                    status: ['pendingVerification', 'completed'],
+                }),
+                getFarmUserBlockedOperations(userId),
+            ]);
 
             const operations = [
                 ...newOrScheduledOperations,
                 ...completedOperationsTodayOrLater,
+                ...blockedOperationsTodayOrLater,
             ].sort(
                 (left, right) =>
                     right.timestamp.getTime() - left.timestamp.getTime(),
@@ -201,23 +208,29 @@ export const getFarmScheduleSelectedDateOperationsForDay = cache(
             dateKey,
             FARM_SCHEDULE_TIME_ZONE,
         );
-        const [scheduledOperations, completedOperations] = await Promise.all([
-            getFarmUserAcceptedOperationsByScheduleRange({
-                userId,
-                from,
-                to,
-            }),
-            getFarmUserAcceptedOperations(userId, {
-                completedFrom: from,
-                completedTo: to,
-                status: ['pendingVerification', 'completed'],
-            }),
-        ]);
+        const [scheduledOperations, completedOperations, blockedOperations] =
+            await Promise.all([
+                getFarmUserAcceptedOperationsByScheduleRange({
+                    userId,
+                    from,
+                    to,
+                }),
+                getFarmUserAcceptedOperations(userId, {
+                    completedFrom: from,
+                    completedTo: to,
+                    status: ['pendingVerification', 'completed'],
+                }),
+                getFarmUserBlockedOperations(userId, { from, to }),
+            ]);
 
         return getSelectedDateOperationsForDay(
             dateKey,
             sortOperationsNewestFirst(
-                dedupeById([...scheduledOperations, ...completedOperations]),
+                dedupeById([
+                    ...scheduledOperations,
+                    ...completedOperations,
+                    ...blockedOperations,
+                ]),
             ),
         );
     },
@@ -267,7 +280,10 @@ export const getFarmScheduleOperationsDayData = cache(
 
         return {
             raisedBeds,
-            scheduledOperations,
+            scheduledOperations: filterUnavailableRaisedBedOperations(
+                scheduledOperations,
+                raisedBeds,
+            ),
         };
     },
 );
@@ -298,7 +314,10 @@ export const getFarmScheduleDayData = cache(
                 return {
                     raisedBeds: plantingsDayData.raisedBeds,
                     scheduledFields: plantingsDayData.scheduledFields,
-                    scheduledOperations,
+                    scheduledOperations: filterUnavailableRaisedBedOperations(
+                        scheduledOperations,
+                        plantingsDayData.raisedBeds,
+                    ),
                 };
             },
             scheduleCacheTtls.day,

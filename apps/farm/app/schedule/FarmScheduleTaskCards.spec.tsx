@@ -13,12 +13,18 @@ import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
 import { ScheduleTaskReturnFocus } from './ScheduleTaskReturnFocus';
 
 const scheduledDate = new Date('2026-07-15T08:00:00.000Z');
+const blockedAt = new Date('2026-07-15T10:35:00.000Z');
 const selectedDateKey = '2026-07-20';
 const assignedUserByFieldIdPromise = Promise.resolve(new Map());
 const plantSort = {
     id: 501,
     information: { name: 'Salata' },
 } satisfies EntityStandardized;
+const plantingIdentity = {
+    expectedPlantCycleEventId: 801,
+    expectedPlantCycleVersionEventId: 802,
+    expectedPlantSortId: plantSort.id,
+};
 
 const operationLabels = {
     pending:
@@ -44,6 +50,7 @@ function buildOperation(
         label,
         scheduledDate,
         status,
+        taskVersionEventId: id + 2000,
     };
 }
 
@@ -122,6 +129,26 @@ async function assertPrimaryTargetsAreTouchable(component: Locator) {
     expect(undersizedTargets).toEqual([]);
 }
 
+async function assertTaskActionsAreFullWidth(card: Locator) {
+    const actionArea = card.locator(
+        '[data-schedule-task-completion="available"]',
+    );
+    const actionButtons = actionArea.getByRole('button');
+
+    await expect(actionButtons).toHaveCount(2);
+    expect(
+        await actionArea.evaluate((area) => {
+            const availableWidth = area.getBoundingClientRect().width;
+            return Array.from(area.querySelectorAll('button')).every(
+                (button) =>
+                    Math.abs(
+                        button.getBoundingClientRect().width - availableWidth,
+                    ) <= 1,
+            );
+        }),
+    ).toBe(true);
+}
+
 test('locks array-only work assigned to another farmer on a phone', async ({
     mount,
     page,
@@ -153,6 +180,7 @@ test('locks array-only work assigned to another farmer on a phone', async ({
                 }}
                 label="Posij salatu"
                 plantSort={plantSort}
+                plantingIdentity={plantingIdentity}
                 selectedDateKey={selectedDateKey}
                 userId="farmer-1"
                 assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
@@ -202,10 +230,16 @@ test('keeps details before completion in keyboard order without nesting actions'
     const completionButton = component.getByRole('button', {
         name: 'Dovrši radnju',
     });
+    const blockerButton = component.getByRole('button', {
+        name: /Ne mogu dovršiti radnju/,
+    });
     await expect(detailsLink.getByRole('button')).toHaveCount(0);
     await detailsLink.focus();
     await page.keyboard.press('Tab');
     await expect(completionButton).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(blockerButton).toBeFocused();
+    await assertTaskActionsAreFullWidth(component);
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
@@ -230,6 +264,10 @@ for (const width of [320, 375, 390, 430]) {
                 completionAction={
                     <CompleteOperationModal
                         conditions={conditions}
+                        expectedEntityId={operation.entityId}
+                        expectedTaskVersionEventId={
+                            operation.taskVersionEventId
+                        }
                         label={operation.label}
                         operationId={operation.id}
                     />
@@ -350,6 +388,11 @@ test('does not link unavailable operation guidance to a guaranteed 404', async (
         component.getByRole('button', { name: /Dovrši radnju/ }),
     ).toBeDisabled();
     await expect(
+        component.getByRole('button', {
+            name: 'Ne mogu dovršiti radnju: Radnja sa zastarjelim uputama',
+        }),
+    ).toBeEnabled();
+    await expect(
         component.getByText(
             'Radnja se ne može dovršiti dok zahtjevi za dovršetak nisu dostupni.',
         ),
@@ -376,6 +419,7 @@ test('uses the raised bed as a safe fallback when plant guidance is missing', as
             }}
             label="Posij nepoznatu sortu"
             plantSort={undefined}
+            plantingIdentity={plantingIdentity}
             selectedDateKey={selectedDateKey}
             userId="farmer-1"
             assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
@@ -391,6 +435,48 @@ test('uses the raised bed as a safe fallback when plant guidance is missing', as
     await expect(
         component.getByRole('link', { name: /Otvori upute za biljku/ }),
     ).toHaveCount(0);
+    await assertCardsStayWithinViewport(component);
+    await assertPrimaryTargetsAreTouchable(component);
+});
+
+test('does not expose planting mutations when the current task identity is unavailable', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    const component = await mount(
+        <FarmSchedulePlantingTaskCard
+            completionAction={completionAction('Dovrši sijanje')}
+            field={{
+                assignedUserId: null,
+                assignedUserIds: [],
+                id: 93,
+                plantScheduledDate: scheduledDate,
+                plantStatus: 'planned',
+                positionIndex: 0,
+                raisedBedId: 10,
+                sowingLocation: 'direct',
+            }}
+            label="Posij salatu"
+            plantingIdentity={null}
+            plantSort={plantSort}
+            selectedDateKey={selectedDateKey}
+            userId="farmer-1"
+            assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
+        />,
+    );
+
+    await expect(
+        component.getByRole('button', { name: 'Dovrši sijanje' }),
+    ).toBeDisabled();
+    await expect(
+        component.getByRole('button', { name: /Ne mogu dovršiti sijanje/ }),
+    ).toHaveCount(0);
+    await expect(
+        component.getByText(
+            'Sijanje se ne može dovršiti dok podaci zadatka nisu dostupni.',
+        ),
+    ).toBeVisible();
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
@@ -415,18 +501,124 @@ test('keeps loading completion explicit, disabled, and phone-sized', async ({
             }}
             label="Sijanje vrlo duge sorte povrća"
             plantSort={plantSort}
+            plantingIdentity={plantingIdentity}
             selectedDateKey={selectedDateKey}
             userId="farmer-1"
             assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
         />,
     );
 
-    const completionButton = component.getByRole('button');
+    const completionButton = component.getByRole('button', {
+        name: 'Dovrši sijanje',
+    });
     await expect(completionButton).toBeDisabled();
     await expect(completionButton).toHaveAttribute('aria-busy', 'true');
+    await expect(
+        component.getByRole('button', {
+            name: /Ne mogu dovršiti sijanje/,
+        }),
+    ).toBeVisible();
+    await assertTaskActionsAreFullWidth(component);
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
+
+for (const width of [320, 375, 390, 430]) {
+    test(`keeps blocked operation and planting tasks visibly unresolved at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 720 });
+        const operationLabel = 'Zalijevanje blokirano zbog opreme';
+        const plantingLabel = 'Sijanje blokirano zbog lokacije';
+        const component = await mount(
+            <div className="space-y-2">
+                <FarmScheduleOperationTaskCard
+                    completionAction={completionAction('Dovrši radnju')}
+                    operation={{
+                        ...buildOperation(
+                            width + 100,
+                            'blocked',
+                            operationLabel,
+                        ),
+                        blockedAt,
+                        blockNote: 'Crijevo je oštećeno.',
+                        blockReasonLabel: 'Nedostaje materijal ili alat',
+                    }}
+                    operationData={buildOperationDefinition(width + 1100)}
+                    selectedDateKey={selectedDateKey}
+                    userId="farmer-1"
+                />
+                <FarmSchedulePlantingTaskCard
+                    completionAction={completionAction('Dovrši sijanje')}
+                    field={{
+                        assignedUserId: null,
+                        assignedUserIds: [],
+                        blockedAt,
+                        blockNote: 'Pristup gredici je zatvoren.',
+                        blockReasonLabel: 'Lokacija nije dostupna',
+                        id: width + 200,
+                        plantScheduledDate: scheduledDate,
+                        plantStatus: 'blocked',
+                        positionIndex: 0,
+                        raisedBedId: width + 20,
+                        sowingLocation: 'direct',
+                    }}
+                    label={plantingLabel}
+                    plantSort={plantSort}
+                    plantingIdentity={plantingIdentity}
+                    selectedDateKey={selectedDateKey}
+                    userId="farmer-1"
+                    assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
+                />
+            </div>,
+        );
+
+        const operationCard = component.getByRole('article', {
+            name: operationLabel,
+        });
+        const plantingCard = component.getByRole('article', {
+            name: plantingLabel,
+        });
+
+        for (const card of [operationCard, plantingCard]) {
+            await expect(
+                card.getByText('Blokirano', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                card.getByText('Prijavljeno administratorima'),
+            ).toBeVisible();
+            await expect(card.locator('time')).toHaveAttribute(
+                'datetime',
+                blockedAt.toISOString(),
+            );
+            await expect(
+                card.locator('[data-schedule-task-completion]'),
+            ).toHaveCount(0);
+            await expect(
+                card.getByRole('button', {
+                    name: /Dovrši|Ne mogu dovršiti/,
+                }),
+            ).toHaveCount(0);
+        }
+
+        await expect(
+            operationCard.getByText('Nedostaje materijal ili alat'),
+        ).toBeVisible();
+        await expect(
+            plantingCard.getByText('Lokacija nije dostupna'),
+        ).toBeVisible();
+        await expect(operationCard.getByText(operationLabel)).not.toHaveClass(
+            /line-through/,
+        );
+        await expect(plantingCard.getByText(plantingLabel)).not.toHaveClass(
+            /line-through/,
+        );
+
+        await assertCardsStayWithinViewport(component);
+        await assertPrimaryTargetsAreTouchable(component);
+    });
+}
 
 for (const width of [320, 375, 390, 430, 1280]) {
     test(`renders operation pending and verified states within ${width}px`, async ({
@@ -524,6 +716,11 @@ for (const width of [320, 375, 390, 430, 1280]) {
             actionableCard.getByRole('button', { name: 'Dovrši radnju' }),
         ).toBeVisible();
         await expect(
+            actionableCard.getByRole('button', {
+                name: /Ne mogu dovršiti radnju/,
+            }),
+        ).toBeVisible();
+        await expect(
             actionableCard.getByRole('link', { name: /Otvori upute/ }),
         ).toHaveAttribute(
             'href',
@@ -534,6 +731,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                 .getByRole('link', { name: /Otvori upute/ })
                 .getByRole('button'),
         ).toHaveCount(0);
+        await assertTaskActionsAreFullWidth(actionableCard);
 
         await assertCardsStayWithinViewport(component);
         await assertPrimaryTargetsAreTouchable(component);
@@ -560,6 +758,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                     }}
                     label={plantingLabels.pending}
                     plantSort={plantSort}
+                    plantingIdentity={plantingIdentity}
                     selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
@@ -578,6 +777,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                     }}
                     label={plantingLabels.completed}
                     plantSort={plantSort}
+                    plantingIdentity={plantingIdentity}
                     selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
@@ -596,6 +796,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                     }}
                     label="Posij salatu"
                     plantSort={plantSort}
+                    plantingIdentity={plantingIdentity}
                     selectedDateKey={selectedDateKey}
                     userId="farmer-1"
                     assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
@@ -647,6 +848,11 @@ for (const width of [320, 375, 390, 430, 1280]) {
             actionableCard.getByRole('button', { name: 'Dovrši sijanje' }),
         ).toBeVisible();
         await expect(
+            actionableCard.getByRole('button', {
+                name: /Ne mogu dovršiti sijanje/,
+            }),
+        ).toBeVisible();
+        await expect(
             actionableCard.getByRole('link', {
                 name: /Otvori upute za biljku/,
             }),
@@ -659,6 +865,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                 .getByRole('link', { name: /Otvori upute za biljku/ })
                 .getByRole('button'),
         ).toHaveCount(0);
+        await assertTaskActionsAreFullWidth(actionableCard);
 
         await assertCardsStayWithinViewport(component);
         await assertPrimaryTargetsAreTouchable(component);

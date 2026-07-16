@@ -36,6 +36,10 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
+    getSowingGardenOperationStatus,
+    hasAssignedSowingUser,
+} from '../hooks/gardenOperationStatus';
+import {
     getDiaryCancelDisabledReason,
     isDiaryCancelTargetEligible,
 } from '../hooks/useCancelDiaryEntry';
@@ -59,6 +63,7 @@ import {
 } from '../hooks/useShoppingCart';
 import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { buildGardenOperationDiaryTarget } from './gardenOperationDiaryTargets';
 import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
@@ -72,6 +77,15 @@ type CurrentGardenData = NonNullable<
 >;
 type RaisedBedData = CurrentGardenData['raisedBeds'][number];
 type RaisedBedFieldData = RaisedBedData['fields'][number];
+type GardenOperationTargetGarden = {
+    raisedBeds: {
+        fields: {
+            id: number;
+            plantSortId?: number | null;
+            positionIndex: number;
+        }[];
+    }[];
+};
 type GardenOperationHudItem = GardenOperationItem;
 type OperationTargetDetails =
     | {
@@ -92,8 +106,13 @@ type SowingPlantLifecycleEntry = {
     assignedUserIds?: string[] | null;
     cancellationReason?: string | null;
     cancelReason?: string | null;
+    blockedAt?: string | Date | null;
+    blockImageUrls?: string[] | null;
+    blockNote?: string | null;
+    blockReasonLabel?: string | null;
     createdAt?: string | Date | null;
     endedAt?: string | Date | null;
+    endedEventId?: number | null;
     plantPlaceEventId?: number | null;
     plantScheduledDate?: string | Date | null;
     plantSowDate?: string | Date | null;
@@ -120,35 +139,26 @@ const uiPipeline: GardenOperationStatus[] = [
 ];
 
 const terminalFailureStatuses = new Set<GardenOperationStatus>([
+    'blocked',
     'failed',
     'canceled',
 ]);
 
 const hiddenFromActive = new Set<GardenOperationStatus>([
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ]);
 const nonEditableStatuses = new Set<GardenOperationStatus>([
     'completed',
+    'blocked',
     'canceled',
 ]);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
 const plantSortFallbackLabel = 'Sorta';
-const sowingCompletedStatuses = new Set([
-    'sowed',
-    'sprouted',
-    'firstFlowers',
-    'firstFruitSet',
-    'ready',
-    'harvested',
-    'notSprouted',
-    'died',
-    'removed',
-]);
-
 type StatusConfig = {
     label: string;
     icon: ComponentType<{ className?: string }>;
@@ -190,6 +200,11 @@ const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
         label: 'Završeno',
         icon: Approved,
         colorClass: 'text-green-600',
+    },
+    blocked: {
+        label: 'Blokirano',
+        icon: ErrorIcon,
+        colorClass: 'text-amber-700',
     },
     failed: {
         label: 'Neuspjelo',
@@ -327,45 +342,6 @@ function getSowingEntryCancellationReason(entry: SowingPlantLifecycleEntry) {
     return entry.cancellationReason ?? entry.cancelReason ?? null;
 }
 
-function hasAssignedSowingUser(entry: SowingPlantLifecycleEntry) {
-    return (
-        (entry.assignedUserIds?.length ?? 0) > 0 ||
-        Boolean(entry.assignedUserId)
-    );
-}
-
-function getSowingOperationStatus(
-    entry: SowingPlantLifecycleEntry,
-): GardenOperationStatus | null {
-    const status = entry.plantStatus ?? 'new';
-
-    if (status === 'deleted' || status === 'canceled') {
-        return 'canceled';
-    }
-
-    if (sowingCompletedStatuses.has(status)) {
-        return 'completed';
-    }
-
-    if (status === 'pendingVerification') {
-        return 'confirmed';
-    }
-
-    if (hasAssignedSowingUser(entry)) {
-        return 'assigned';
-    }
-
-    if (status === 'planned' || entry.plantScheduledDate) {
-        return 'planned';
-    }
-
-    if (status === 'new') {
-        return 'new';
-    }
-
-    return null;
-}
-
 function buildSowingStatusHistory(
     entry: SowingPlantLifecycleEntry,
     field: RaisedBedFieldData,
@@ -433,6 +409,16 @@ function buildSowingStatusHistory(
         });
     }
 
+    if (status === 'blocked') {
+        history.push({
+            status: 'blocked',
+            changedAt:
+                toIsoString(entry.blockedAt) ??
+                toIsoString(entry.updatedAt) ??
+                createdAt,
+        });
+    }
+
     return history;
 }
 
@@ -460,7 +446,7 @@ export function buildSowingOperationItems(
                     return [];
                 }
 
-                const status = getSowingOperationStatus(entry);
+                const status = getSowingGardenOperationStatus(entry);
                 if (!status) {
                     return [];
                 }
@@ -482,6 +468,10 @@ export function buildSowingOperationItems(
                     {
                         id: -sourceId,
                         entityId: entry.plantSortId,
+                        taskVersionEventId:
+                            typeof entry.endedEventId === 'number'
+                                ? entry.endedEventId
+                                : null,
                         entityTypeName: cartPlantSortEntityType,
                         raisedBedId: raisedBed.id,
                         raisedBedFieldId: field.id,
@@ -499,6 +489,23 @@ export function buildSowingOperationItems(
                             status === 'canceled'
                                 ? getSowingEntryCancellationReason(entry)
                                 : null,
+                        blockedAt:
+                            status === 'blocked'
+                                ? (toIsoString(entry.blockedAt) ??
+                                  toIsoString(entry.updatedAt))
+                                : null,
+                        blockReasonLabel:
+                            status === 'blocked'
+                                ? (entry.blockReasonLabel ?? null)
+                                : null,
+                        blockNote:
+                            status === 'blocked'
+                                ? (entry.blockNote ?? null)
+                                : null,
+                        blockImageUrls:
+                            status === 'blocked'
+                                ? (entry.blockImageUrls ?? [])
+                                : [],
                         imageUrls: [],
                         completionNotes: null,
                         targetLabel: formatRaisedBedTargetLabel(
@@ -563,7 +570,7 @@ function getOperationTargetDetails(
 
 function getOperationFieldPositionIndex(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     if (operation.raisedBedFieldId == null) {
         return undefined;
@@ -583,7 +590,7 @@ function getOperationFieldPositionIndex(
 
 function getOperationField(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     if (operation.raisedBedFieldId == null) {
         return null;
@@ -603,83 +610,33 @@ function getOperationField(
 
 function getOperationFieldPlantSortId(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     return getOperationField(operation, garden)?.plantSortId ?? null;
 }
 
 export function getGardenOperationRescheduleTarget(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ): DiaryRescheduleTarget | null {
     if (isFinishedOperation(operation)) {
         return null;
     }
 
     const positionIndex = getOperationFieldPositionIndex(operation, garden);
-
-    if (operation.entityTypeName === cartOperationEntityType) {
-        return {
-            type: 'operation',
-            operationId: operation.id,
-            raisedBedId: operation.raisedBedId,
-            raisedBedFieldId: operation.raisedBedFieldId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    if (
-        operation.entityTypeName === cartPlantSortEntityType &&
-        operation.raisedBedId &&
-        typeof positionIndex === 'number'
-    ) {
-        return {
-            type: 'raisedBedFieldPlant',
-            raisedBedId: operation.raisedBedId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    return null;
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
 }
 
 export function getGardenOperationCancelTarget(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ): DiaryRescheduleTarget | null {
     if (isFinishedOperation(operation) || !operation.scheduledDate) {
         return null;
     }
 
     const positionIndex = getOperationFieldPositionIndex(operation, garden);
-
-    if (operation.entityTypeName === cartOperationEntityType) {
-        return {
-            type: 'operation',
-            operationId: operation.id,
-            raisedBedId: operation.raisedBedId,
-            raisedBedFieldId: operation.raisedBedFieldId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    if (
-        operation.entityTypeName === cartPlantSortEntityType &&
-        operation.raisedBedId &&
-        typeof positionIndex === 'number'
-    ) {
-        return {
-            type: 'raisedBedFieldPlant',
-            raisedBedId: operation.raisedBedId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    return null;
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
 }
 
 function getOperationDisplayStatus(
@@ -721,6 +678,7 @@ function getOperationDisplayStatusDate(
     return (
         matchingHistoryDate ??
         operation.verifiedAt ??
+        operation.blockedAt ??
         operation.completedAt ??
         operation.canceledAt ??
         operation.scheduledAt ??
@@ -1019,6 +977,7 @@ function buildStatusProgressSteps(
             status: operation.status,
             date:
                 historyByStatus.get(operation.status) ??
+                operation.blockedAt ??
                 operation.canceledAt ??
                 operation.completedAt ??
                 displayStatusDate,
@@ -1048,7 +1007,12 @@ function OperationStatusProgressIndicator({
                 step.pending &&
                     'animate-pulse border-green-500 bg-green-500/20',
                 step.skipped && 'border-muted-foreground/30 bg-muted',
-                step.failed && 'border-red-500 bg-red-500/20',
+                step.failed &&
+                    step.status === 'blocked' &&
+                    'border-amber-600 bg-amber-500/20',
+                step.failed &&
+                    step.status !== 'blocked' &&
+                    'border-red-500 bg-red-500/20',
                 step.current && 'size-2.5 border-2',
             )}
         />
@@ -1143,9 +1107,11 @@ function OperationStatusTooltipContent({
     );
 }
 
-function OperationCancellationReasonTooltipContent({
+function OperationTerminalReasonTooltipContent({
+    title,
     reason,
 }: {
+    title: string;
     reason: string;
 }) {
     return (
@@ -1156,7 +1122,7 @@ function OperationCancellationReasonTooltipContent({
                 component="span"
                 className="text-popover-foreground"
             >
-                Razlog otkazivanja
+                {title}
             </Typography>
             <Typography
                 level="body3"
@@ -1181,15 +1147,22 @@ function OperationStatusSummary({
         () => buildStatusProgressSteps(operation, status),
         [operation, status],
     );
-    const cancellationReason =
+    const terminalReason =
         status === 'canceled'
             ? operation.cancellationReason?.trim()
-            : undefined;
-    const hasCancellationReason = Boolean(cancellationReason);
+            : status === 'blocked'
+              ? [operation.blockReasonLabel, operation.blockNote]
+                    .map((value) => value?.trim())
+                    .filter(Boolean)
+                    .join(': ')
+              : undefined;
+    const terminalReasonTitle =
+        status === 'blocked' ? 'Razlog prepreke' : 'Razlog otkazivanja';
+    const hasTerminalReason = Boolean(terminalReason);
     const isTerminalFailureStatus =
         status !== 'scheduled' && terminalFailureStatuses.has(status);
     const showProgressIndicator =
-        !hasCancellationReason &&
+        !hasTerminalReason &&
         status !== 'confirmed' &&
         status !== 'completed' &&
         !isTerminalFailureStatus;
@@ -1224,8 +1197,8 @@ function OperationStatusSummary({
                 <button
                     type="button"
                     aria-label={
-                        hasCancellationReason
-                            ? `Status radnje: ${config.label}. Razlog otkazivanja`
+                        hasTerminalReason
+                            ? `Status radnje: ${config.label}. ${terminalReasonTitle}`
                             : `Status radnje: ${config.label}`
                     }
                     className="flex max-w-full shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -1259,11 +1232,16 @@ function OperationStatusSummary({
                 >
                     <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
                         <StatusBadge status={status} className="justify-end" />
-                        {hasCancellationReason ? (
+                        {hasTerminalReason ? (
                             <Info
                                 aria-hidden
-                                className="size-3.5 shrink-0 text-red-600"
-                                data-operation-cancellation-reason
+                                className={cx(
+                                    'size-3.5 shrink-0',
+                                    status === 'blocked'
+                                        ? 'text-amber-700'
+                                        : 'text-red-600',
+                                )}
+                                data-operation-terminal-reason
                             />
                         ) : showProgressIndicator ? (
                             <OperationStatusProgressIndicator
@@ -1275,9 +1253,10 @@ function OperationStatusSummary({
                 </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
-                {hasCancellationReason && cancellationReason ? (
-                    <OperationCancellationReasonTooltipContent
-                        reason={cancellationReason}
+                {hasTerminalReason && terminalReason ? (
+                    <OperationTerminalReasonTooltipContent
+                        reason={terminalReason}
+                        title={terminalReasonTitle}
                     />
                 ) : (
                     <OperationStatusTooltipContent steps={steps} />
@@ -1363,8 +1342,13 @@ function OperationSchedule({
 }
 
 function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
-    const imageUrls = operation.imageUrls;
-    const completionNotes = operation.completionNotes?.trim();
+    const isBlocked = operation.status === 'blocked';
+    const imageUrls = isBlocked
+        ? operation.blockImageUrls
+        : operation.imageUrls;
+    const completionNotes = isBlocked
+        ? operation.blockNote?.trim()
+        : operation.completionNotes?.trim();
 
     if (!imageUrls.length && !completionNotes) {
         return null;

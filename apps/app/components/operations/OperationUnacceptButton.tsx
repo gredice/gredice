@@ -9,14 +9,21 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { unacceptOperationAction } from '../../app/(actions)/operationActions';
+import { canUnacceptOperationTask } from '../../app/admin/schedule/scheduleShared';
 
 interface OperationUnacceptButtonProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
+    operationStatus: string;
     operationLabel: string;
 }
 
 export function OperationUnacceptButton({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
+    operationStatus,
     operationLabel,
 }: OperationUnacceptButtonProps) {
     const [open, setOpen] = useState(false);
@@ -25,7 +32,11 @@ export function OperationUnacceptButton({
     async function handleConfirm() {
         try {
             setIsSubmitting(true);
-            await unacceptOperationAction(operationId);
+            await unacceptOperationAction(
+                operationId,
+                expectedEntityId,
+                expectedTaskVersionEventId,
+            );
             setOpen(false);
         } catch (error) {
             console.error('Error unaccepting operation:', error);
@@ -35,6 +46,10 @@ export function OperationUnacceptButton({
         } finally {
             setIsSubmitting(false);
         }
+    }
+
+    if (!canUnacceptOperationTask(operationStatus)) {
+        return null;
     }
 
     return (

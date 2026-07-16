@@ -93,6 +93,9 @@ export function ScheduleDaySummaryView({
             {summary.failed.count > 0 && (
                 <SummaryItem label="Neuspjelo" value={summary.failed.count} />
             )}
+            {summary.blocked.count > 0 && (
+                <SummaryItem label="Blokirano" value={summary.blocked.count} />
+            )}
             {summary.canceled.count > 0 && (
                 <SummaryItem label="Otkazano" value={summary.canceled.count} />
             )}

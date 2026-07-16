@@ -23,11 +23,17 @@ type FieldApprovalTarget = {
     id: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
 type FieldAssignmentTarget = {
     id: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     farmUsers: RaisedBedFieldAssignableFarmUser[];
 };
 
@@ -35,6 +41,9 @@ type FieldCancelTarget = {
     id: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
@@ -79,6 +88,9 @@ export function ScheduleDayPlantingsBulkActions({
                                     acceptRaisedBedFieldAction(
                                         field.raisedBedId,
                                         field.positionIndex,
+                                        field.expectedPlantCycleEventId,
+                                        field.expectedPlantSortId,
+                                        field.expectedPlantCycleVersionEventId,
                                     ),
                                 ),
                             ),
@@ -107,6 +119,9 @@ export function ScheduleDayPlantingsBulkActions({
                                 visibleFieldsToAssign.map((field) =>
                                     assignRaisedBedFieldUserAction(
                                         field.id,
+                                        field.expectedPlantCycleEventId,
+                                        field.expectedPlantSortId,
+                                        field.expectedPlantCycleVersionEventId,
                                         assignedUserIds,
                                     ),
                                 ),

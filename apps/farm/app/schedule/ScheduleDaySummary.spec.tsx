@@ -7,6 +7,7 @@ const summary = getScheduleTaskSummary([
     { state: 'actionable', durationMinutes: 75 },
     { state: 'pendingVerification', durationMinutes: 5 },
     { state: 'completed', durationMinutes: 5 },
+    { state: 'blocked', durationMinutes: 5 },
     { state: 'failed', durationMinutes: 5 },
     { state: 'canceled', durationMinutes: 5 },
 ]);
@@ -32,6 +33,7 @@ for (const width of [320, 390]) {
         await expect(component.getByText('Čeka potvrdu')).toBeVisible();
         await expect(component.getByText('Potvrđeno')).toBeVisible();
         await expect(component.getByText('Preostalo vrijeme')).toBeVisible();
+        await expect(component.getByText('Blokirano')).toBeVisible();
         await expect(component.getByText('Neuspjelo')).toBeVisible();
         await expect(component.getByText('Otkazano')).toBeVisible();
 

@@ -1,3 +1,5 @@
+import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
+
 // ============================================================================
 // Account event payload types
 // ============================================================================
@@ -186,6 +188,11 @@ export type RaisedBedFieldCreatePayload = {
 };
 export type RaisedBedFieldDeletePayload = {
     canceledBy?: string;
+    expectedPlantCycleEventId?: number;
+    expectedPlantCycleVersionEventId?: number;
+    expectedPlantSortId?: number;
+    notificationRequested?: boolean;
+    refundAmount?: number;
     reason?: string;
 };
 
@@ -268,12 +275,14 @@ export type RaisedBedFieldPlantEventsPayload =
     | RaisedBedFieldPlantPlacePayload
     | RaisedBedFieldPlantSchedulePayload
     | RaisedBedFieldPlantUpdatePayload
+    | ScheduleTaskBlockPayload
     | RaisedBedFieldPlantReplaceSortPayload
     | RaisedBedFieldAiAnalysisPayload;
 export type RaisedBedFieldPlantEventsAnyPayload = Partial<
     RaisedBedFieldPlantPlacePayload &
         RaisedBedFieldPlantSchedulePayload &
         RaisedBedFieldPlantUpdatePayload &
+        ScheduleTaskBlockPayload &
         RaisedBedFieldPlantReplaceSortPayload &
         RaisedBedFieldAiAnalysisPayload
 >;
@@ -283,6 +292,15 @@ export type RaisedBedFieldPlantEventsAnyPayload = Partial<
 // ============================================================================
 export type OperationSchedulePayload = {
     scheduledDate: string;
+};
+
+export type OperationAcceptancePayload = {
+    accepted: boolean;
+};
+
+export type OperationEntityChangePayload = {
+    entityId: number;
+    entityTypeName: string;
 };
 
 export type OperationAssignPayload =
@@ -308,6 +326,9 @@ export type OperationCompletePayload = {
     notes?: string;
 };
 
+export type OperationBlockPayload = ScheduleTaskBlockPayload;
+export type RaisedBedFieldPlantBlockPayload = ScheduleTaskBlockPayload;
+
 export type OperationCompletionEvidenceUpdatePayload = {
     updatedBy: string;
     images: string[];
@@ -325,21 +346,31 @@ export type OperationFailPayload = {
 
 export type OperationCancelPayload = {
     canceledBy: string;
+    expectedEntityId?: number;
+    expectedTaskVersionEventId?: number;
+    notificationRequested?: boolean;
+    operatorNotificationRequested?: boolean;
+    refundAmount?: number;
     reason: string;
 };
 
 /** Union of all operation event payloads */
 export type OperationEventsPayload =
+    | OperationAcceptancePayload
     | OperationAssignPayload
+    | OperationEntityChangePayload
     | OperationSchedulePayload
     | OperationCompletePayload
+    | OperationBlockPayload
     | OperationCompletionEvidenceUpdatePayload
     | OperationVerifyPayload
     | OperationFailPayload
     | OperationCancelPayload;
 
 export type OperationEventsAnyPayload = Partial<
-    OperationAssignPayload &
+    OperationAcceptancePayload &
+        OperationAssignPayload &
+        OperationEntityChangePayload &
         OperationSchedulePayload &
         OperationCompletePayload &
         OperationCompletionEvidenceUpdatePayload &
@@ -356,6 +387,8 @@ export type PlantStatusApprovalTarget = {
     raisedBedId: number;
     positionIndex: number;
     raisedBedFieldId?: number | null;
+    plantCycleEventId?: number | null;
+    plantCycleVersionEventId?: number | null;
     accountId?: string | null;
     gardenId?: number | null;
     plantSortId?: number | null;

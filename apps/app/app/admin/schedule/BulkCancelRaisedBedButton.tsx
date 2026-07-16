@@ -13,11 +13,16 @@ export type FieldCancelTarget = {
     id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
 export type OperationCancelTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
@@ -55,6 +60,15 @@ export function buildFieldCancelFormData(
     const formData = new FormData();
     formData.set('raisedBedId', field.raisedBedId.toString());
     formData.set('positionIndex', field.positionIndex.toString());
+    formData.set(
+        'expectedPlantCycleEventId',
+        field.expectedPlantCycleEventId.toString(),
+    );
+    formData.set(
+        'expectedPlantCycleVersionEventId',
+        field.expectedPlantCycleVersionEventId.toString(),
+    );
+    formData.set('expectedPlantSortId', field.expectedPlantSortId.toString());
     copyCancelOptions(source, formData);
     return formData;
 }
@@ -65,6 +79,11 @@ export function buildOperationCancelFormData(
 ) {
     const formData = new FormData();
     formData.set('operationId', operation.id.toString());
+    formData.set('expectedEntityId', operation.entityId.toString());
+    formData.set(
+        'expectedTaskVersionEventId',
+        operation.taskVersionEventId.toString(),
+    );
     copyCancelOptions(source, formData);
     return formData;
 }

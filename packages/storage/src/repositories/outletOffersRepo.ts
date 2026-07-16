@@ -512,8 +512,9 @@ export async function releaseOutletReservationsForCart(
 export async function convertOutletReservationForCartItem(
     cartItemId: number,
     now = new Date(),
+    db?: DatabaseClient,
 ) {
-    return storage().transaction(async (tx) => {
+    const convert = async (tx: DatabaseClient) => {
         const reservation = await tx.query.outletOfferReservations.findFirst({
             where: and(
                 eq(outletOfferReservations.cartItemId, cartItemId),
@@ -551,7 +552,9 @@ export async function convertOutletReservationForCartItem(
             .returning();
 
         return updated;
-    });
+    };
+
+    return db ? convert(db) : storage().transaction(convert);
 }
 
 export async function expireOutletReservations(

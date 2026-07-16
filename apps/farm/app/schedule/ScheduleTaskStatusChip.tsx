@@ -4,6 +4,7 @@ import {
     Error as ErrorIcon,
     Hourglass,
     Verified,
+    Warning,
 } from '@gredice/ui/icons';
 import type { ComponentType } from 'react';
 import type { ScheduleTaskState } from './scheduleTaskState';
@@ -30,6 +31,11 @@ const statusConfig: Record<
         color: 'success',
         icon: Verified,
         label: 'Potvrđeno',
+    },
+    blocked: {
+        color: 'warning',
+        icon: Warning,
+        label: 'Blokirano',
     },
     failed: {
         color: 'error',

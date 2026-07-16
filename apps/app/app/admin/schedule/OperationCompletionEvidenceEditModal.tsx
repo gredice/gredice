@@ -23,6 +23,7 @@ import {
     type ImageUploadManagerState,
 } from '../../../components/shared/media/ImageUploadManager';
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
+import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
 
 const MAX_COMPLETION_IMAGE_COUNT = 20;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
@@ -35,6 +36,7 @@ type EditOperationCompletionEvidenceTriggerProps = {
 
 type EditOperationCompletionEvidenceModalBaseProps = {
     operationId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     initialNotes?: string | null;
     initialImageUrls?: string[] | null;
@@ -67,6 +69,7 @@ function normalizeImageUrls(imageUrls?: string[] | null) {
 
 export function OperationCompletionEvidenceEditModal({
     operationId,
+    expectedTaskVersionEventId,
     label,
     initialNotes,
     initialImageUrls,
@@ -176,9 +179,12 @@ export function OperationCompletionEvidenceEditModal({
             }
 
             await updateOperationCompletionEvidenceAction(
-                operationId,
-                nextImageUrls,
-                trimmedNotes,
+                ...buildOperationCompletionEvidenceActionArguments({
+                    operationId,
+                    expectedTaskVersionEventId,
+                    imageUrls: nextImageUrls,
+                    notes: trimmedNotes,
+                }),
             );
             setOpen(false);
             resetForm();

@@ -23,6 +23,8 @@ const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
 type CompleteOperationModalProps = {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     raisedBedPhysicalId?: string;
     conditions?: EntityStandardized['conditions'];
@@ -34,6 +36,8 @@ type CompleteOperationModalProps = {
 
 export function CompleteOperationModal({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
     label,
     raisedBedPhysicalId,
     conditions,
@@ -132,6 +136,8 @@ export function CompleteOperationModal({
                 } else {
                     await completeOperationWithImageUrls(
                         operationId,
+                        expectedEntityId,
+                        expectedTaskVersionEventId,
                         imageUrls,
                         completionNotes,
                     );
@@ -144,6 +150,8 @@ export function CompleteOperationModal({
                 } else {
                     await completeOperation(
                         operationId,
+                        expectedEntityId,
+                        expectedTaskVersionEventId,
                         undefined,
                         completionNotes,
                     );

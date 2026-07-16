@@ -10,7 +10,9 @@ import {
     createNotification,
     createNotificationCampaign,
     createNotificationWithOutcome,
+    createNotificationWithStatus,
     createUserWithPassword,
+    deliverNotificationOperatorAlert,
     dropDeliveryLifecycleEmailAttempt,
     enqueueNotificationCampaign,
     enqueuePushDeliveryAttemptsForNotification,
@@ -182,6 +184,79 @@ test('createNotificationWithOutcome distinguishes new rows from idempotent reuse
         attempts.filter((attempt) => attempt.provider === 'router').length,
         3,
     );
+});
+
+test('createNotificationWithStatus reports only the first idempotent insert as created', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const idempotencyKey = `checkout-fulfillment:${randomUUID()}`;
+    const notification = {
+        accountId,
+        header: 'Checkout fulfillment incident',
+        content: 'Operator action is required',
+        timestamp: new Date('2026-07-15T08:00:00.000Z'),
+    };
+
+    const first = await createNotificationWithStatus(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+    const retry = await createNotificationWithStatus(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+
+    assert.equal(first.created, true);
+    assert.equal(retry.created, false);
+    assert.equal(retry.notificationId, first.notificationId);
+});
+
+test('operator alert delivery retries a failure and skips after success', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const notificationId = await createNotification(
+        {
+            accountId,
+            header: 'Checkout fulfillment incident',
+            content: 'Operator action is required',
+            timestamp: new Date('2026-07-15T08:00:00.000Z'),
+        },
+        {
+            idempotencyKey: `checkout-fulfillment:${randomUUID()}`,
+            routeDelivery: false,
+        },
+    );
+    let deliveryCalls = 0;
+
+    const failed = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+            throw new Error('transient Slack failure');
+        },
+    );
+    assert.equal(failed.status, 'failed');
+
+    const retried = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+        },
+    );
+    assert.equal(retried.status, 'sent');
+
+    const repeated = await deliverNotificationOperatorAlert(
+        notificationId,
+        async () => {
+            deliveryCalls += 1;
+            throw new Error('successful delivery must not run again');
+        },
+    );
+    assert.deepEqual(repeated, {
+        attempted: false,
+        status: 'already_sent',
+    });
+    assert.equal(deliveryCalls, 2);
 });
 
 test('createNotification rejects empty or cross-target idempotency key reuse', async () => {

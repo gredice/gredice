@@ -26,11 +26,17 @@ function formatStatusChangeDate(date: string) {
 }
 
 export function RaisedBedFieldStatusChange({
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     raisedBedId,
     positionIndex,
     currentStatus,
     trigger,
 }: {
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     raisedBedId: number;
     positionIndex: number;
     currentStatus: string | undefined;
@@ -72,6 +78,9 @@ export function RaisedBedFieldStatusChange({
 
         const timestamp = localDate.toISOString();
         await updateStatusMutation.mutateAsync({
+            expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId,
+            expectedPlantSortId,
             raisedBedId,
             positionIndex,
             status: newStatus,

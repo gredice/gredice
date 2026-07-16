@@ -6,6 +6,7 @@ import {
     getScheduleTaskPresentation,
     getScheduleTaskSummary,
     isActionableTaskState,
+    isBlockedTaskState,
     isCompletedTaskState,
     isPendingTaskState,
     type SchedulePlantingStatus,
@@ -21,6 +22,7 @@ const operationStateCases = [
         expectedState: 'pendingVerification',
     },
     { status: 'completed', expectedState: 'completed' },
+    { status: 'blocked', expectedState: 'blocked' },
     { status: 'failed', expectedState: 'failed' },
     { status: 'canceled', expectedState: 'canceled' },
 ] satisfies Array<{
@@ -35,6 +37,7 @@ const plantingStateCases = [
         expectedState: 'pendingVerification',
     },
     { status: 'sowed', expectedState: 'completed' },
+    { status: 'blocked', expectedState: 'blocked' },
 ] satisfies Array<{
     status: SchedulePlantingStatus;
     expectedState: ScheduleTaskState;
@@ -83,12 +86,34 @@ test('keeps submitted work pending instead of treating it as completed', () => {
     });
 });
 
+test('keeps blocked work distinct from actionable and completed work', () => {
+    const operationState = getOperationTaskState('blocked');
+    const plantingState = getPlantingTaskState('blocked');
+
+    for (const state of [operationState, plantingState]) {
+        expect(isBlockedTaskState(state)).toBe(true);
+        expect(isActionableTaskState(state)).toBe(false);
+        expect(isPendingTaskState(state)).toBe(false);
+        expect(isCompletedTaskState(state)).toBe(false);
+        expect(getScheduleTaskPresentation(state)).toEqual({
+            isActionable: false,
+            isCompleted: false,
+            isPendingVerification: false,
+            showAgeIndicator: false,
+            showCompletionAttachments: true,
+            showCompletionControl: false,
+            showRequirementIndicators: false,
+        });
+    }
+});
+
 test('summarizes task counts and duration with consistent state totals', () => {
     const items = [
         { state: 'actionable', durationMinutes: 15 },
         { state: 'actionable', durationMinutes: 5 },
         { state: 'pendingVerification', durationMinutes: 10 },
         { state: 'completed', durationMinutes: 7 },
+        { state: 'blocked', durationMinutes: 12 },
         { state: 'failed', durationMinutes: 3 },
         { state: 'canceled', durationMinutes: -2 },
     ] satisfies ScheduleTaskSummaryItem[];
@@ -98,6 +123,7 @@ test('summarizes task counts and duration with consistent state totals', () => {
         summary.actionable,
         summary.pendingVerification,
         summary.completed,
+        summary.blocked,
         summary.failed,
         summary.canceled,
     ];
@@ -108,9 +134,10 @@ test('summarizes task counts and duration with consistent state totals', () => {
         durationMinutes: 10,
     });
     expect(summary.completed).toEqual({ count: 1, durationMinutes: 7 });
+    expect(summary.blocked).toEqual({ count: 1, durationMinutes: 12 });
     expect(summary.failed).toEqual({ count: 1, durationMinutes: 3 });
     expect(summary.canceled).toEqual({ count: 1, durationMinutes: 0 });
-    expect(summary.total).toEqual({ count: 6, durationMinutes: 40 });
+    expect(summary.total).toEqual({ count: 7, durationMinutes: 52 });
     expect(
         stateMetrics.reduce((total, metrics) => total + metrics.count, 0),
     ).toBe(summary.total.count);

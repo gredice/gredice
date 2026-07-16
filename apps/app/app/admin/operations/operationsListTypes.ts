@@ -20,6 +20,7 @@ export type OperationsListStatus =
     | 'planned'
     | 'pendingVerification'
     | 'completed'
+    | 'blocked'
     | 'failed'
     | 'canceled';
 
@@ -51,6 +52,7 @@ export type OperationsListOperationRow = OperationsListRowBase & {
     kind: 'operation';
     entityId: number;
     entityTypeName: string;
+    taskVersionEventId: number;
 };
 
 export type OperationsListSowingTask = OperationsListRowBase & {
@@ -78,6 +80,12 @@ export type OperationsListSowingTaskDetails = OperationsListSowingTask & {
     assignedAt: string | null;
     canceledAt: string | null;
     cancellationReason: string | null;
+    blockedAt: string | null;
+    blockedBy: string | null;
+    blockReasonCode: string | null;
+    blockReasonLabel: string | null;
+    blockNote: string | null;
+    blockImageUrls: string[];
     endedAt: string;
     eventIds: number[];
     endedEventId: number;

@@ -29,6 +29,7 @@ export type RaisedBedFieldPlantHistoryEntry =
 
 type RaisedBedFieldPlantCycleLike = RaisedBedFieldPlantLifecycleLike & {
     active?: boolean | null;
+    endedEventId?: number | null;
     plantPlaceEventId?: number | null;
     plantSortId?: number | null;
     positionIndex?: number | null;
@@ -37,9 +38,32 @@ type RaisedBedFieldPlantCycleLike = RaisedBedFieldPlantLifecycleLike & {
 type RaisedBedFieldLike = RaisedBedFieldPlantLifecycleLike & {
     active?: boolean | null;
     plantCycles?: RaisedBedFieldPlantCycleLike[] | null;
+    plantPlaceEventId?: number | null;
     plantSortId?: number | null;
     positionIndex: number;
 };
+
+export function getRaisedBedFieldActivePlantIdentity(
+    field: RaisedBedFieldLike | null | undefined,
+) {
+    const activePlantCycle = field?.plantCycles?.find(
+        (plantCycle) => plantCycle.active,
+    );
+    const plantPlaceEventId =
+        activePlantCycle?.plantPlaceEventId ?? field?.plantPlaceEventId;
+    const plantSortId = activePlantCycle?.plantSortId ?? field?.plantSortId;
+    const plantCycleVersionEventId = activePlantCycle?.endedEventId;
+
+    if (
+        typeof plantPlaceEventId !== 'number' ||
+        typeof plantSortId !== 'number' ||
+        typeof plantCycleVersionEventId !== 'number'
+    ) {
+        return null;
+    }
+
+    return { plantCycleVersionEventId, plantPlaceEventId, plantSortId };
+}
 
 export function isRaisedBedFieldOccupied(
     field: Omit<RaisedBedFieldLike, 'positionIndex'> | null | undefined,

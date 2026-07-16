@@ -43,6 +43,8 @@ function createField(
         isDeleted: false,
         plantCycles: [createPlantCycle()],
         plantStatus: 'sowed',
+        plantStatusEventId: undefined,
+        plantStatusChangedAt: undefined,
         plantSortId: 7,
         plantScheduledDate: undefined,
         sowingLocation: 'direct',
@@ -61,6 +63,13 @@ function createField(
         assignedAt: new Date('2026-06-01T07:30:00.000Z'),
         cancellationReason: undefined,
         weedState: null,
+        blockedAt: undefined,
+        blockedBy: undefined,
+        blockedEventId: undefined,
+        blockReasonCode: undefined,
+        blockReasonLabel: undefined,
+        blockNote: undefined,
+        blockImageUrls: undefined,
         ...overrides,
     };
 }

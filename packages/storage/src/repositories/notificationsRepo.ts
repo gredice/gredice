@@ -1506,6 +1506,118 @@ export async function createNotificationWithOutcome(
     });
 }
 
+export async function createNotificationWithStatus(
+    notification: InsertNotification,
+    options: CreateNotificationOptions & { idempotencyKey: string },
+) {
+    const result = await createNotificationWithOutcome(notification, options);
+    return {
+        notificationId: result.notificationId,
+        created: result.outcome === 'created',
+    };
+}
+
+export type NotificationOperatorAlertDeliveryResult =
+    | {
+          attempted: false;
+          status: 'already_sent';
+      }
+    | {
+          attempted: true;
+          status: 'failed';
+          error: unknown;
+      }
+    | {
+          attempted: true;
+          status: 'sent';
+      };
+
+function operatorAlertAttemptCount(metadata: Record<string, unknown>) {
+    const delivery = metadata.operatorAlertDelivery;
+    if (
+        delivery &&
+        typeof delivery === 'object' &&
+        'attemptCount' in delivery &&
+        typeof delivery.attemptCount === 'number'
+    ) {
+        return delivery.attemptCount;
+    }
+    return 0;
+}
+
+function operatorAlertAlreadySent(metadata: Record<string, unknown>) {
+    const delivery = metadata.operatorAlertDelivery;
+    return (
+        delivery !== null &&
+        typeof delivery === 'object' &&
+        'status' in delivery &&
+        delivery.status === 'sent'
+    );
+}
+
+function notificationDeliveryFailureReason(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
+}
+
+export async function deliverNotificationOperatorAlert(
+    notificationId: string,
+    deliver: () => Promise<void>,
+): Promise<NotificationOperatorAlertDeliveryResult> {
+    return await storage().transaction(async (tx) => {
+        await acquireNotificationDeliveryLock(tx, notificationId);
+        const notification = await getNotificationWithDatabase(
+            tx,
+            notificationId,
+        );
+        if (!notification) {
+            throw new Error('Notification operator alert target not found.');
+        }
+        if (operatorAlertAlreadySent(notification.metadata)) {
+            return { attempted: false, status: 'already_sent' };
+        }
+
+        const attemptCount =
+            operatorAlertAttemptCount(notification.metadata) + 1;
+        const attemptedAt = new Date();
+        try {
+            await deliver();
+        } catch (error) {
+            await tx
+                .update(notifications)
+                .set({
+                    metadata: {
+                        ...notification.metadata,
+                        operatorAlertDelivery: {
+                            attemptCount,
+                            lastAttemptAt: attemptedAt.toISOString(),
+                            lastFailureReason:
+                                notificationDeliveryFailureReason(error),
+                            status: 'failed',
+                        },
+                    },
+                })
+                .where(eq(notifications.id, notificationId));
+            return { attempted: true, status: 'failed', error };
+        }
+
+        await tx
+            .update(notifications)
+            .set({
+                metadata: {
+                    ...notification.metadata,
+                    operatorAlertDelivery: {
+                        attemptCount,
+                        lastAttemptAt: attemptedAt.toISOString(),
+                        sentAt: new Date().toISOString(),
+                        status: 'sent',
+                    },
+                },
+            })
+            .where(eq(notifications.id, notificationId));
+        return { attempted: true, status: 'sent' };
+    });
+}
+
 export async function createNotification(
     notification: InsertNotification,
     options: CreateNotificationOptions = {},

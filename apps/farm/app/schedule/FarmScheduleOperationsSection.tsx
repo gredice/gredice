@@ -213,6 +213,10 @@ export function FarmScheduleOperationsSection({
                             key={operation.id}
                             completionAction={
                                 <CompleteOperationModal
+                                    expectedEntityId={operation.entityId}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
                                     operationId={operation.id}
                                     label={operation.label}
                                     conditions={
@@ -325,6 +329,12 @@ export function FarmScheduleOperationsSection({
                                         key={operation.id}
                                         completionAction={
                                             <CompleteOperationModal
+                                                expectedEntityId={
+                                                    operation.entityId
+                                                }
+                                                expectedTaskVersionEventId={
+                                                    operation.taskVersionEventId
+                                                }
                                                 operationId={operation.id}
                                                 label={operation.label}
                                                 conditions={
@@ -363,6 +373,10 @@ export function FarmScheduleOperationsSection({
                                 key={operation.id}
                                 completionAction={
                                     <CompleteOperationModal
+                                        expectedEntityId={operation.entityId}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
                                         operationId={operation.id}
                                         label={operation.label}
                                         conditions={

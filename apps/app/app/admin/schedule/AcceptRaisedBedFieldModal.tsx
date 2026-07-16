@@ -8,6 +8,9 @@ import { AcceptRequestModal } from './AcceptRequestModal';
 interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
     raisedBedPhysicalId?: string;
     disabled?: boolean;
@@ -17,6 +20,9 @@ interface AcceptRaisedBedFieldModalProps {
 export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
     raisedBedPhysicalId,
     disabled = false,
@@ -28,7 +34,13 @@ export function AcceptRaisedBedFieldModal({
             return;
         }
 
-        await acceptRaisedBedFieldAction(raisedBedId, positionIndex);
+        await acceptRaisedBedFieldAction(
+            raisedBedId,
+            positionIndex,
+            expectedPlantCycleEventId,
+            expectedPlantSortId,
+            expectedPlantCycleVersionEventId,
+        );
     };
 
     return (

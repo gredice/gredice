@@ -15,6 +15,7 @@ import { KnownPages } from '../../knownPages';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    getRaisedBedFieldActivePlantIdentity,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
 import {
@@ -87,13 +88,20 @@ export function RaisedBedFieldLifecycleTab({
         return null;
     }
 
+    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
+
     const handleRemovePlant = async () => {
-        if (!field.toBeRemoved) {
+        if (!field.toBeRemoved || !currentPlantIdentity) {
             return;
         }
 
         try {
             await removeFieldMutation.mutateAsync({
+                expectedPlantCycleEventId:
+                    currentPlantIdentity.plantPlaceEventId,
+                expectedPlantCycleVersionEventId:
+                    currentPlantIdentity.plantCycleVersionEventId,
+                expectedPlantSortId: currentPlantIdentity.plantSortId,
                 raisedBedId,
                 positionIndex,
             });
@@ -107,7 +115,8 @@ export function RaisedBedFieldLifecycleTab({
         field.plantStatus ?? undefined,
     );
     const canChangeStatus = Boolean(
-        field.plantStatus &&
+        currentPlantIdentity &&
+            field.plantStatus &&
             userAllowedPlantStatusTransitions[field.plantStatus]?.length,
     );
 
@@ -132,26 +141,27 @@ export function RaisedBedFieldLifecycleTab({
             </Typography>
         </>
     );
-    const statusTrigger = field.active ? (
-        <button
-            type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
-            aria-label={
-                canChangeStatus
-                    ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
-                    : `Stanje biljke: ${localizedStatus.shortLabel}`
-            }
-        >
-            {statusContent}
-        </button>
-    ) : (
-        <Stack
-            alignItems="center"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
-        >
-            {statusContent}
-        </Stack>
-    );
+    const statusTrigger =
+        field.active && currentPlantIdentity ? (
+            <button
+                type="button"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                aria-label={
+                    canChangeStatus
+                        ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                        : `Stanje biljke: ${localizedStatus.shortLabel}`
+                }
+            >
+                {statusContent}
+            </button>
+        ) : (
+            <Stack
+                alignItems="center"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+            >
+                {statusContent}
+            </Stack>
+        );
 
     return (
         <Stack spacing={4}>
@@ -161,8 +171,17 @@ export function RaisedBedFieldLifecycleTab({
                 lifecycleData={lifecycleData}
                 plantDetailsUrl={plantDetailsUrl}
                 statusTrigger={
-                    field.active ? (
+                    field.active && currentPlantIdentity ? (
                         <RaisedBedFieldStatusChange
+                            expectedPlantCycleEventId={
+                                currentPlantIdentity.plantPlaceEventId
+                            }
+                            expectedPlantCycleVersionEventId={
+                                currentPlantIdentity.plantCycleVersionEventId
+                            }
+                            expectedPlantSortId={
+                                currentPlantIdentity.plantSortId
+                            }
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
                             currentStatus={field.plantStatus ?? undefined}
@@ -187,7 +206,7 @@ export function RaisedBedFieldLifecycleTab({
                     />
                 )}
 
-            {field.active && field.toBeRemoved && (
+            {field.active && field.toBeRemoved && currentPlantIdentity && (
                 <Row>
                     <Button
                         variant="solid"

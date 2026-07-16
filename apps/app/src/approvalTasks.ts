@@ -32,10 +32,15 @@ export type AdminApprovalTask =
     | (ApprovalTaskBase & {
           kind: 'scheduleOperationVerification';
           operationId: number;
+          expectedEntityId: number;
+          expectedTaskVersionEventId: number;
           completedBy?: string | null;
       })
     | (ApprovalTaskBase & {
           kind: 'schedulePlantingVerification';
+          expectedPlantCycleEventId: number;
+          expectedPlantCycleVersionEventId: number;
+          expectedPlantSortId: number;
           raisedBedId: number;
           positionIndex: number;
       });
@@ -162,6 +167,8 @@ export async function getPendingAdminApprovalTasks() {
                 id: `operation:${operation.id}`,
                 kind: 'scheduleOperationVerification',
                 operationId: operation.id,
+                expectedEntityId: operation.entityId,
+                expectedTaskVersionEventId: operation.taskVersionEventId,
                 title: 'Verifikacija radnje',
                 description:
                     operation.raisedBedId != null
@@ -187,21 +194,34 @@ export async function getPendingAdminApprovalTasks() {
                 (field) =>
                     field.active && field.plantStatus === 'pendingVerification',
             )
-            .map((field) => {
+            .flatMap((field) => {
+                const activePlantCycle = field.plantCycles.find(
+                    (plantCycle) => plantCycle.active,
+                );
+                if (!activePlantCycle || !field.plantSortId) {
+                    return [];
+                }
                 const fieldLabel = raisedBedFieldLabel(field.positionIndex);
 
-                return {
-                    id: `planting:${field.id}`,
-                    kind: 'schedulePlantingVerification',
-                    raisedBedId: raisedBed.id,
-                    positionIndex: field.positionIndex,
-                    title: 'Verifikacija sijanja',
-                    description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
-                    receivedAt: field.plantSowDate ?? field.updatedAt,
-                    accountId: raisedBed.accountId,
-                    gardenId: raisedBed.gardenId,
-                    raisedBedPhysicalId: raisedBed.physicalId,
-                };
+                return [
+                    {
+                        id: `planting:${field.id}`,
+                        kind: 'schedulePlantingVerification' as const,
+                        expectedPlantCycleEventId:
+                            activePlantCycle.plantPlaceEventId,
+                        expectedPlantCycleVersionEventId:
+                            activePlantCycle.endedEventId,
+                        expectedPlantSortId: field.plantSortId,
+                        raisedBedId: raisedBed.id,
+                        positionIndex: field.positionIndex,
+                        title: 'Verifikacija sijanja',
+                        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
+                        receivedAt: field.plantSowDate ?? field.updatedAt,
+                        accountId: raisedBed.accountId,
+                        gardenId: raisedBed.gardenId,
+                        raisedBedPhysicalId: raisedBed.physicalId,
+                    },
+                ];
             }),
     );
 

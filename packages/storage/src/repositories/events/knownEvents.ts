@@ -33,10 +33,13 @@ import type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAcceptancePayload,
     OperationAssignPayload,
+    OperationBlockPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationCompletionEvidenceUpdatePayload,
+    OperationEntityChangePayload,
     OperationFailPayload,
     OperationSchedulePayload,
     OperationVerifyPayload,
@@ -49,6 +52,7 @@ import type {
     RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
     RaisedBedFieldDeletePayload,
+    RaisedBedFieldPlantBlockPayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
@@ -325,6 +329,15 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        plantBlockedV1: (
+            aggregateId: string,
+            data: RaisedBedFieldPlantBlockPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.plantBlock,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         plantReplaceSortV1: (
             aggregateId: string,
             data: RaisedBedFieldPlantReplaceSortPayload,
@@ -354,8 +367,26 @@ export const knownEvents = {
         }),
     },
     operations: {
+        acceptanceChangedV1: (
+            aggregateId: string,
+            data: OperationAcceptancePayload,
+        ) => ({
+            type: knownEventTypes.operations.acceptance,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         assignedV1: (aggregateId: string, data: OperationAssignPayload) => ({
             type: knownEventTypes.operations.assign,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        entityChangedV1: (
+            aggregateId: string,
+            data: OperationEntityChangePayload,
+        ) => ({
+            type: knownEventTypes.operations.entityChange,
             version: 1,
             aggregateId,
             data,
@@ -368,6 +399,12 @@ export const knownEvents = {
         }),
         completedV1: (aggregateId: string, data: OperationCompletePayload) => ({
             type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        blockedV1: (aggregateId: string, data: OperationBlockPayload) => ({
+            type: knownEventTypes.operations.block,
             version: 1,
             aggregateId,
             data,

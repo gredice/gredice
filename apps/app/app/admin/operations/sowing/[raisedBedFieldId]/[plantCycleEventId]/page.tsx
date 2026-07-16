@@ -1,6 +1,13 @@
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
@@ -86,6 +93,9 @@ export default async function SowingTaskDetailsPage({
     );
     const assignedByUser = task.assignedBy
         ? context.users.find((user) => user.id === task.assignedBy)
+        : undefined;
+    const blockedByUser = task.blockedBy
+        ? context.users.find((user) => user.id === task.blockedBy)
         : undefined;
     const statusChip = (
         <Chip className="w-fit" color={operationListStatusColor(task.status)}>
@@ -266,6 +276,59 @@ export default async function SowingTaskDetailsPage({
     }
 
     const outcomeItems: EntityDetailsPropertyListItem[] = [];
+    if (task.blockReasonLabel) {
+        outcomeItems.push({
+            id: 'block-reason',
+            label: 'Razlog blokade',
+            value: task.blockReasonLabel,
+        });
+    }
+    if (task.blockReasonCode) {
+        outcomeItems.push({
+            id: 'block-reason-code',
+            label: 'Kod razloga',
+            value: task.blockReasonCode,
+            mono: true,
+        });
+    }
+    if (task.blockedBy) {
+        outcomeItems.push({
+            id: 'blocked-by',
+            label: 'Prijavio',
+            value: blockedByUser ? (
+                <Link href={KnownPages.User(blockedByUser.id)}>
+                    {blockedByUser.displayName ??
+                        blockedByUser.userName ??
+                        blockedByUser.id}
+                </Link>
+            ) : (
+                task.blockedBy
+            ),
+        });
+    }
+    if (task.blockedAt) {
+        outcomeItems.push({
+            id: 'blocked-at',
+            label: 'Prijavljeno',
+            value: dateValue(task.blockedAt),
+        });
+    }
+    if (task.blockNote) {
+        outcomeItems.push({
+            id: 'block-note',
+            label: 'Napomena prepreke',
+            value: (
+                <span className="whitespace-pre-wrap">{task.blockNote}</span>
+            ),
+        });
+    }
+    if (task.blockImageUrls.length > 0) {
+        outcomeItems.push({
+            id: 'block-image-count',
+            label: 'Fotografije prepreke',
+            value: task.blockImageUrls.length,
+        });
+    }
     if (task.completedAt) {
         outcomeItems.push({
             id: 'completed-at',
@@ -424,6 +487,30 @@ export default async function SowingTaskDetailsPage({
                                         {plantSort.information.description}
                                     </Typography>
                                 </CardContent>
+                            </Card>
+                        ) : null}
+                        {task.blockImageUrls.length > 0 ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">
+                                        Fotografije prepreke
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardOverflow>
+                                    <Row className="w-full" spacing={4}>
+                                        <ImageGallery
+                                            images={task.blockImageUrls.map(
+                                                (url, index) => ({
+                                                    src: url,
+                                                    alt: `Fotografija prepreke ${index + 1} za sijanje ${task.plantCycleEventId}`,
+                                                }),
+                                            )}
+                                            previewWidth={200}
+                                            previewHeight={150}
+                                            previewVariant="carousel"
+                                        />
+                                    </Row>
+                                </CardOverflow>
                             </Card>
                         ) : null}
                     </Stack>

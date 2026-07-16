@@ -8,17 +8,21 @@ import {
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
 import {
+    notifyCheckoutFulfillmentIncident,
     notifyDeliveryRequestEvent,
     notifyOperationUpdate,
     notifyPurchase,
 } from '@gredice/notifications';
 import {
+    type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
     createDeliveryRequest,
     createEvent,
+    createNotificationWithStatus,
     createOperation,
     createTransaction,
+    deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
     getCompletedTransactionByStripePaymentId,
@@ -33,16 +37,18 @@ import {
     type InvoiceForTransactionLineItem,
     isCartItemDeliverable,
     knownEvents,
+    lockAndActivateRaisedBedForCheckoutPlanting,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    processReferralRewardsForAccount,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
     spendSunflowers,
     sunflowerPackageEntityTypeName,
     topUpSunflowerPackage,
-    updateRaisedBed,
     upsertRaisedBedField,
+    withPlantingScheduleTaskTransaction,
     withStripePaymentProcessingLock,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
@@ -68,14 +74,17 @@ import { getPostHogClient } from '../posthog-server';
 export type ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned: typeof isRaisedBedAbandoned;
     notifyDeliveryRequestEvent: typeof notifyDeliveryRequestEvent;
+    notifyCheckoutFulfillmentIncident: typeof notifyCheckoutFulfillmentIncident;
     notifyOperationUpdate: typeof notifyOperationUpdate;
     notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
     createDeliveryRequest: typeof createDeliveryRequest;
     createEvent: typeof createEvent;
+    createNotificationWithStatus: typeof createNotificationWithStatus;
     createOperation: typeof createOperation;
     createTransaction: typeof createTransaction;
+    deliverNotificationOperatorAlert: typeof deliverNotificationOperatorAlert;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
     ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
     getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
@@ -89,14 +98,16 @@ export type ProcessCheckoutSessionDependencies = {
     getUser: typeof getUser;
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
+    lockAndActivateRaisedBedForCheckoutPlanting: typeof lockAndActivateRaisedBedForCheckoutPlanting;
     markCartPaidIfAllItemsPaid: typeof markCartPaidIfAllItemsPaid;
     normalizeShoppingCartInventoryUsage: typeof normalizeShoppingCartInventoryUsage;
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
+    processReferralRewardsForAccount: typeof processReferralRewardsForAccount;
     setCartItemPaid: typeof setCartItemPaid;
     spendSunflowers: typeof spendSunflowers;
     topUpSunflowerPackage: typeof topUpSunflowerPackage;
-    updateRaisedBed: typeof updateRaisedBed;
     upsertRaisedBedField: typeof upsertRaisedBedField;
+    withPlantingScheduleTaskTransaction: typeof withPlantingScheduleTaskTransaction;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
     isBillingAutomationEnabled: typeof isBillingAutomationEnabled;
@@ -117,14 +128,17 @@ export type ProcessCheckoutSessionDependencies = {
 const realDependencies: ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned,
     notifyDeliveryRequestEvent,
+    notifyCheckoutFulfillmentIncident,
     notifyOperationUpdate,
     notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
     createDeliveryRequest,
     createEvent,
+    createNotificationWithStatus,
     createOperation,
     createTransaction,
+    deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
     getSunflowerPackageByCode,
@@ -138,14 +152,16 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getUser,
     isCartItemDeliverable,
     knownEvents,
+    lockAndActivateRaisedBedForCheckoutPlanting,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    processReferralRewardsForAccount,
     setCartItemPaid,
     spendSunflowers,
     topUpSunflowerPackage,
-    updateRaisedBed,
     upsertRaisedBedField,
+    withPlantingScheduleTaskTransaction,
     withStripePaymentProcessingLock,
     getStripeCheckoutSession,
     isBillingAutomationEnabled,
@@ -918,6 +934,19 @@ async function processSunflowerPackageCheckoutSession({
     }
 }
 
+type CheckoutPlantingRaisedBedUnavailableReason = Extract<
+    CheckoutPlantingRaisedBedActivation,
+    { available: false }
+>['reason'];
+
+class CheckoutPlantingRaisedBedUnavailableError extends Error {
+    override readonly name = 'CheckoutPlantingRaisedBedUnavailableError';
+
+    constructor(readonly reason: CheckoutPlantingRaisedBedUnavailableReason) {
+        super(`Checkout planting raised bed is unavailable (${reason}).`);
+    }
+}
+
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
@@ -1076,8 +1105,8 @@ async function processPaidCheckoutSession(
         }
 
         // Process cart item
+        let resolvedAccountId: string | undefined;
         try {
-            let resolvedAccountId: string | undefined;
             const cart = await dependencies.getShoppingCart(itemData.cartId);
             if (!cart) {
                 console.warn(
@@ -1108,12 +1137,6 @@ async function processPaidCheckoutSession(
                 (i) => i.id === itemData.cartItemId,
             );
 
-            if (cartItem?.status === 'paid') {
-                console.warn(
-                    `Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`,
-                );
-                continue;
-            }
             if (!cartItem) {
                 console.warn(
                     `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`,
@@ -1131,17 +1154,6 @@ async function processPaidCheckoutSession(
                 );
                 continue;
             }
-            if (
-                !(await assertRaisedBedAllowsCheckoutItem(
-                    cartItem.raisedBedId,
-                    dependencies,
-                ))
-            ) {
-                continue;
-            }
-
-            await dependencies.setCartItemPaid(cartItem.id);
-            affectedCartIds.push(cart.id);
 
             if (typeof item.amount_total !== 'number') {
                 console.warn(
@@ -1150,17 +1162,7 @@ async function processPaidCheckoutSession(
                 continue;
             }
 
-            await processItem(
-                {
-                    ...itemData,
-                    accountId: resolvedAccountId,
-                    amount_total: item.amount_total,
-                    scheduledDeliveryEmailKeys,
-                    checkoutSessionId: session.id,
-                },
-                dependencies,
-            );
-
+            affectedCartIds.push(cart.id);
             const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
                 amountTotalCents: item.amount_total,
                 entityId: itemData.entityId,
@@ -1179,11 +1181,69 @@ async function processPaidCheckoutSession(
                     `Missing invoice line amount for Stripe line item ${item.id} in session ${checkoutSessionId}.`,
                 );
             }
+
+            if (cartItem.status === 'paid') {
+                console.warn(
+                    `Cart item ${cartItem.id} is already paid. Skipping fulfillment replay.`,
+                );
+                continue;
+            }
+            const isPlantingItem = itemData.entityTypeName === 'plantSort';
+            if (
+                !(await assertRaisedBedAllowsCheckoutItem(
+                    cartItem.raisedBedId,
+                    dependencies,
+                ))
+            ) {
+                if (isPlantingItem) {
+                    throw new CheckoutPlantingRaisedBedUnavailableError(
+                        'abandoned',
+                    );
+                }
+                continue;
+            }
+
+            if (!isPlantingItem) {
+                await dependencies.setCartItemPaid(cartItem.id);
+            }
+
+            await processItem(
+                {
+                    ...itemData,
+                    accountId: resolvedAccountId,
+                    amount_total: item.amount_total,
+                    scheduledDeliveryEmailKeys,
+                    checkoutSessionId: session.id,
+                },
+                dependencies,
+            );
+            if (isPlantingItem) {
+                await dependencies.setCartItemPaid(cartItem.id);
+            }
         } catch (error) {
+            if (
+                error instanceof CheckoutPlantingRaisedBedUnavailableError &&
+                resolvedAccountId &&
+                itemData.cartItemId
+            ) {
+                await recordCheckoutPlantingRaisedBedUnavailable({
+                    accountId: resolvedAccountId,
+                    cartItemId: itemData.cartItemId,
+                    checkoutSessionId: session.id,
+                    dependencies,
+                    gardenId: itemData.gardenId,
+                    positionIndex: itemData.positionIndex,
+                    raisedBedId: itemData.raisedBedId,
+                    reason: error.reason,
+                });
+            }
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
             );
+            if (itemData.entityTypeName === 'plantSort') {
+                throw error;
+            }
         }
 
         // TODO: Send invoice to customer
@@ -1414,6 +1474,107 @@ async function assertRaisedBedAllowsCheckoutItem(
     return true;
 }
 
+async function recordCheckoutPlantingRaisedBedUnavailable({
+    accountId,
+    cartItemId,
+    checkoutSessionId,
+    dependencies,
+    gardenId,
+    positionIndex,
+    raisedBedId,
+    reason,
+}: {
+    accountId: string;
+    cartItemId: number;
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    gardenId?: number | null;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+    reason: CheckoutPlantingRaisedBedUnavailableReason;
+}) {
+    const incident = await dependencies.createNotificationWithStatus(
+        {
+            accountId,
+            gardenId,
+            raisedBedId,
+            header: 'Plaćena sadnja čeka provjeru',
+            content:
+                'Plaćenu sadnju nismo postavili jer je odabrana gredica napuštena ili više nije dostupna. Zadatak ostaje otvoren za ponovni pokušaj, ručno postavljanje ili povrat sredstava.',
+            category: 'checkout_fulfillment',
+            type: 'checkout_planting_raised_bed_unavailable',
+            primaryChannel: 'in_app',
+            priority: 'critical',
+            metadata: {
+                cartItemId,
+                checkoutSessionId,
+                fulfillmentStatus: 'open',
+                operatorOwner: 'farm_operations',
+                recovery: 'stripe_retry_then_manual_placement_or_refund',
+                positionIndex: positionIndex ?? null,
+                raisedBedId: raisedBedId ?? null,
+                reason,
+            },
+            timestamp: new Date(),
+        },
+        {
+            idempotencyKey: `checkout-planting-raised-bed-unavailable:${checkoutSessionId}:${cartItemId.toString()}`,
+            routeDelivery: false,
+        },
+    );
+
+    if (typeof raisedBedId === 'number' && typeof positionIndex === 'number') {
+        const operatorAlert =
+            await dependencies.deliverNotificationOperatorAlert(
+                incident.notificationId,
+                () =>
+                    dependencies.notifyCheckoutFulfillmentIncident({
+                        accountId,
+                        cartItemId,
+                        checkoutSessionId,
+                        incidentId: incident.notificationId,
+                        positionIndex,
+                        raisedBedId,
+                    }),
+            );
+        if (operatorAlert.status === 'failed') {
+            console.error(
+                'Checkout raised-bed fulfillment incident operator alert failed and will be retried',
+                {
+                    cartItemId,
+                    checkoutSessionId,
+                    error: operatorAlert.error,
+                    incidentId: incident.notificationId,
+                },
+            );
+        }
+    } else {
+        console.error(
+            'Checkout raised-bed fulfillment incident is missing placement metadata for an operator alert',
+            {
+                cartItemId,
+                checkoutSessionId,
+                incidentId: incident.notificationId,
+                positionIndex,
+                raisedBedId,
+            },
+        );
+    }
+
+    (await dependencies.getPostHogClient()).capture({
+        distinctId: accountId,
+        event: 'checkout_planting_raised_bed_unavailable',
+        properties: {
+            $insert_id: `checkout-planting-raised-bed-unavailable:${checkoutSessionId}:${cartItemId.toString()}`,
+            cart_item_id: cartItemId,
+            checkout_session_id: checkoutSessionId,
+            position_index: positionIndex ?? null,
+            raised_bed_id: raisedBedId ?? null,
+            reason,
+        },
+    });
+}
+
 async function outletReservationForCheckout(
     itemData: {
         cartItemId?: number | null;
@@ -1462,7 +1623,6 @@ async function outletReservationForCheckout(
         );
     }
 
-    await dependencies.convertOutletReservationForCartItem(itemData.cartItemId);
     return reservation;
 }
 
@@ -1551,6 +1711,24 @@ function plantingPurchaseFromCheckoutItem(itemData: {
     }
 
     return undefined;
+}
+
+function isSameCheckoutPlanting(
+    plantCycle: Awaited<
+        ReturnType<typeof getRaisedBedFieldsWithEvents>
+    >[number]['plantCycles'][number],
+    plantSortId: string,
+    purchase: ReturnType<typeof plantingPurchaseFromCheckoutItem>,
+) {
+    return (
+        purchase !== undefined &&
+        plantCycle.purchase?.cartItemId === purchase.cartItemId &&
+        plantCycle.plantSortId?.toString() === plantSortId
+    );
+}
+
+class CheckoutPlantingTargetConflictError extends Error {
+    override readonly name = 'CheckoutPlantingTargetConflictError';
 }
 
 export async function processItem(
@@ -1796,82 +1974,274 @@ export async function processItem(
         itemData.raisedBedId &&
         typeof itemData.positionIndex === 'number'
     ) {
-        if (
-            !(await assertRaisedBedAllowsCheckoutItem(
-                itemData.raisedBedId,
-                dependencies,
-            ))
-        ) {
-            return;
-        }
-
+        const plantSortId = itemData.entityId;
+        const positionIndex = itemData.positionIndex;
+        const raisedBedId = itemData.raisedBedId;
         const outletReservation = await outletReservationForCheckout(
             itemData,
             dependencies,
         );
-        const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
-        const purchase = plantingPurchaseFromCheckoutItem(itemData);
-
-        await dependencies.upsertRaisedBedField({
-            positionIndex: itemData.positionIndex,
-            raisedBedId: itemData.raisedBedId,
-        });
-        await dependencies.createEvent(
-            dependencies.knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
-                plantSortId: itemData.entityId,
-                scheduledDate: outletReservation
-                    ? null
-                    : checkoutScheduledDateFromAdditionalData(
-                          itemData.additionalData,
-                          dependencies,
-                      ),
-                sowingLocation: outletReservation
-                    ? 'greenhouse'
-                    : greenhouseSowingLocationFromAdditionalData(
-                          itemData.additionalData,
-                      ),
-                ...(purchase ? { purchase } : {}),
-            }),
-        );
-        if (outletReservation) {
-            await dependencies.createEvent(
-                dependencies.knownEvents.raisedBedFields.plantUpdateV1(
-                    aggregateId,
-                    {
-                        status: 'sowed',
-                        effectiveDate:
-                            outletReservation.heldSowingDate.toISOString(),
-                    },
-                ),
-            );
-
-            if (outletReservation.heldInitialPlantStatus !== 'sowed') {
-                await dependencies.createEvent(
-                    dependencies.knownEvents.raisedBedFields.plantUpdateV1(
-                        aggregateId,
-                        {
-                            status: outletReservation.heldInitialPlantStatus,
-                        },
-                    ),
+        const outletCartItemId = (() => {
+            if (!outletReservation) return undefined;
+            if (!itemData.cartItemId) {
+                throw new Error(
+                    'Outlet checkout planting requires a cart item ID.',
                 );
             }
-        }
+            return itemData.cartItemId;
+        })();
+        const aggregateId = `${raisedBedId}|${positionIndex}`;
+        const purchase = plantingPurchaseFromCheckoutItem(itemData);
 
-        await Promise.all([
-            dependencies.updateRaisedBed({
-                id: itemData.raisedBedId,
-                status: 'active',
-            }),
-            earnSunflowersFunc(),
-        ]);
+        let placementResult: 'already-placed' | 'placed';
+        try {
+            placementResult =
+                await dependencies.withPlantingScheduleTaskTransaction(
+                    raisedBedId,
+                    positionIndex,
+                    async (transaction) => {
+                        const raisedBedActivation =
+                            await dependencies.lockAndActivateRaisedBedForCheckoutPlanting(
+                                raisedBedId,
+                                transaction,
+                            );
+                        if (!raisedBedActivation.available) {
+                            throw new CheckoutPlantingRaisedBedUnavailableError(
+                                raisedBedActivation.reason,
+                            );
+                        }
+                        if (raisedBedActivation.activatedAccountId) {
+                            await dependencies.processReferralRewardsForAccount(
+                                raisedBedActivation.activatedAccountId,
+                                transaction,
+                            );
+                        }
+
+                        await dependencies.upsertRaisedBedField(
+                            {
+                                positionIndex,
+                                raisedBedId,
+                            },
+                            transaction,
+                        );
+                        const fields =
+                            await dependencies.getRaisedBedFieldsWithEvents(
+                                raisedBedId,
+                                transaction,
+                            );
+                        const targetField = fields.find(
+                            (field) => field.positionIndex === positionIndex,
+                        );
+                        const existingCheckoutPlanting = fields
+                            .flatMap((field) => field.plantCycles)
+                            .find((plantCycle) =>
+                                isSameCheckoutPlanting(
+                                    plantCycle,
+                                    plantSortId,
+                                    purchase,
+                                ),
+                            );
+                        if (existingCheckoutPlanting) {
+                            if (outletCartItemId) {
+                                await dependencies.convertOutletReservationForCartItem(
+                                    outletCartItemId,
+                                    new Date(),
+                                    transaction,
+                                );
+                            }
+                            return 'already-placed';
+                        }
+
+                        const activePlantCycle = targetField?.plantCycles.find(
+                            (plantCycle) => plantCycle.active,
+                        );
+                        if (activePlantCycle) {
+                            throw new CheckoutPlantingTargetConflictError(
+                                'Checkout planting target has an active plant cycle.',
+                            );
+                        }
+
+                        if (outletCartItemId) {
+                            await dependencies.convertOutletReservationForCartItem(
+                                outletCartItemId,
+                                new Date(),
+                                transaction,
+                            );
+                        }
+
+                        await dependencies.createEvent(
+                            dependencies.knownEvents.raisedBedFields.plantPlaceV1(
+                                aggregateId,
+                                {
+                                    plantSortId,
+                                    scheduledDate: outletReservation
+                                        ? null
+                                        : checkoutScheduledDateFromAdditionalData(
+                                              itemData.additionalData,
+                                              dependencies,
+                                          ),
+                                    sowingLocation: outletReservation
+                                        ? 'greenhouse'
+                                        : greenhouseSowingLocationFromAdditionalData(
+                                              itemData.additionalData,
+                                          ),
+                                    ...(purchase ? { purchase } : {}),
+                                },
+                            ),
+                            transaction,
+                        );
+                        if (outletReservation) {
+                            await dependencies.createEvent(
+                                dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                                    aggregateId,
+                                    {
+                                        status: 'sowed',
+                                        effectiveDate:
+                                            outletReservation.heldSowingDate.toISOString(),
+                                    },
+                                ),
+                                transaction,
+                            );
+
+                            if (
+                                outletReservation.heldInitialPlantStatus !==
+                                'sowed'
+                            ) {
+                                await dependencies.createEvent(
+                                    dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                                        aggregateId,
+                                        {
+                                            status: outletReservation.heldInitialPlantStatus,
+                                        },
+                                    ),
+                                    transaction,
+                                );
+                            }
+                        }
+
+                        if (itemData.accountId && itemData.currency === 'eur') {
+                            const earnedSunflowers = Math.round(
+                                itemData.amount_total / 10,
+                            );
+                            if (earnedSunflowers > 0) {
+                                await dependencies.createEvent(
+                                    dependencies.knownEvents.accounts.sunflowersEarnedV1(
+                                        itemData.accountId,
+                                        {
+                                            amount: earnedSunflowers,
+                                            reason: 'payment',
+                                        },
+                                    ),
+                                    transaction,
+                                );
+                            }
+                        }
+
+                        return 'placed';
+                    },
+                );
+        } catch (error) {
+            if (error instanceof CheckoutPlantingTargetConflictError) {
+                console.error('Checkout planting target is occupied', {
+                    accountId: itemData.accountId,
+                    cartItemId: itemData.cartItemId,
+                    checkoutSessionId: itemData.checkoutSessionId,
+                    error,
+                    positionIndex,
+                    raisedBedId,
+                });
+                if (
+                    itemData.accountId &&
+                    itemData.cartItemId &&
+                    itemData.checkoutSessionId
+                ) {
+                    const accountId = itemData.accountId;
+                    const cartItemId = itemData.cartItemId;
+                    const checkoutSessionId = itemData.checkoutSessionId;
+                    const incident =
+                        await dependencies.createNotificationWithStatus(
+                            {
+                                accountId,
+                                gardenId: itemData.gardenId,
+                                raisedBedId,
+                                header: 'Plaćena sadnja čeka provjeru',
+                                content:
+                                    'Plaćenu sadnju nismo postavili jer je odabrano polje u međuvremenu zauzeto. Zadatak je evidentiran za ponovni pokušaj i pregled tima farme.',
+                                category: 'checkout_fulfillment',
+                                type: 'checkout_planting_target_conflict',
+                                primaryChannel: 'in_app',
+                                priority: 'critical',
+                                metadata: {
+                                    cartItemId,
+                                    checkoutSessionId,
+                                    fulfillmentStatus: 'open',
+                                    operatorOwner: 'farm_operations',
+                                    recovery:
+                                        'stripe_retry_then_manual_placement_or_refund',
+                                    positionIndex,
+                                    raisedBedId,
+                                },
+                                timestamp: new Date(),
+                            },
+                            {
+                                idempotencyKey: `checkout-planting-target-conflict:${checkoutSessionId}:${cartItemId.toString()}`,
+                                routeDelivery: false,
+                            },
+                        );
+                    const operatorAlert =
+                        await dependencies.deliverNotificationOperatorAlert(
+                            incident.notificationId,
+                            () =>
+                                dependencies.notifyCheckoutFulfillmentIncident({
+                                    accountId,
+                                    cartItemId,
+                                    checkoutSessionId,
+                                    incidentId: incident.notificationId,
+                                    positionIndex,
+                                    raisedBedId,
+                                }),
+                        );
+                    if (operatorAlert.status === 'failed') {
+                        console.error(
+                            'Checkout fulfillment incident operator alert failed and will be retried',
+                            {
+                                cartItemId,
+                                checkoutSessionId,
+                                error: operatorAlert.error,
+                                incidentId: incident.notificationId,
+                            },
+                        );
+                    }
+                }
+                if (itemData.accountId) {
+                    (await dependencies.getPostHogClient()).capture({
+                        distinctId: itemData.accountId,
+                        event: 'checkout_planting_target_conflict',
+                        properties: {
+                            $insert_id: `checkout-planting-target-conflict:${itemData.checkoutSessionId ?? 'unknown'}:${itemData.cartItemId?.toString() ?? 'unknown'}`,
+                            cart_item_id: itemData.cartItemId ?? null,
+                            checkout_session_id:
+                                itemData.checkoutSessionId ?? null,
+                            position_index: positionIndex,
+                            raised_bed_id: raisedBedId,
+                        },
+                    });
+                }
+            }
+            throw error;
+        }
         console.debug(
-            `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
+            placementResult === 'already-placed'
+                ? `Plant sort ${itemData.entityId} was already placed in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`
+                : `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
         if (outletReservation && itemData.accountId) {
             (await dependencies.getPostHogClient()).capture({
                 distinctId: itemData.accountId,
                 event: 'outlet_reservation_converted',
                 properties: {
+                    $insert_id: `outlet-reservation-converted:${itemData.cartItemId?.toString() ?? outletReservation.id.toString()}`,
+                    checkout_session_id: itemData.checkoutSessionId ?? null,
                     outlet_offer_id: outletReservation.outletOfferId,
                     outlet_reservation_id: outletReservation.id,
                     cart_item_id: itemData.cartItemId,
