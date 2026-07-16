@@ -9,7 +9,7 @@ overrides:
   '@types/react-dom': 19.2.3
   '@hono/node-server': 1.19.14
   '@xmldom/xmldom': 0.8.13
-  fast-uri: 3.1.2
+  fast-uri: 3.1.3
   ip-address: 10.2.0
   minimatch@10>brace-expansion: 5.0.6
   postcss: 8.5.15
@@ -130,7 +130,7 @@ importers:
         version: 1.4.2(typescript@6.0.3)
       web-push:
         specifier: 3.6.7
-        version: 3.6.7
+        version: 3.6.7(supports-color@10.2.2)
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -436,7 +436,7 @@ importers:
         version: link:../../packages/ui
       '@playwright/experimental-ct-react':
         specifier: 1.61.1
-        version: 1.61.1(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(supports-color@8.1.1)(tsx@4.23.0)(vite@8.1.4(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.101.0)(tsx@4.23.0)(yaml@2.9.0))(yaml@2.9.0)
+        version: 1.61.1(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.101.0)(tsx@4.23.0)(vite@8.1.4(@types/node@24.12.4)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.101.0)(tsx@4.23.0)(yaml@2.9.0))(yaml@2.9.0)
       '@playwright/test':
         specifier: 1.61.1
         version: 1.61.1
@@ -7460,8 +7460,8 @@ packages:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
 
-  fast-uri@3.1.2:
-    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
+  fast-uri@3.1.3:
+    resolution: {integrity: sha512-i70LwGWUduXqzicKXWshooq+sWL1K3WUU5rKZNG/0i3a1OSoX3HqhH5WbWwTmqWfor4urUakGPiRQcleRZTwOg==}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -13967,7 +13967,7 @@ snapshots:
   '@redocly/ajv@8.17.3':
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.2
+      fast-uri: 3.1.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -15614,7 +15614,7 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  agent-base@6.0.2(supports-color@10.2.2):
+  agent-base@6.0.2:
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
@@ -15652,14 +15652,14 @@ snapshots:
   ajv@8.18.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.2
+      fast-uri: 3.1.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.2
+      fast-uri: 3.1.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -15802,17 +15802,7 @@ snapshots:
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
       form-data: 4.0.6
-      https-proxy-agent: 5.0.1(supports-color@10.2.2)
-      proxy-from-env: 2.1.0
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  axios@1.16.1(debug@4.4.3(supports-color@8.1.1))(supports-color@10.2.2):
-    dependencies:
-      follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
-      form-data: 4.0.6
-      https-proxy-agent: 5.0.1(supports-color@10.2.2)
+      https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
@@ -16933,7 +16923,7 @@ snapshots:
       merge2: 1.4.1
       micromatch: 4.0.8
 
-  fast-uri@3.1.2: {}
+  fast-uri@3.1.3: {}
 
   fastq@1.19.1:
     dependencies:
@@ -17438,9 +17428,9 @@ snapshots:
 
   http_ece@1.2.0: {}
 
-  https-proxy-agent@5.0.1(supports-color@10.2.2):
+  https-proxy-agent@5.0.1:
     dependencies:
-      agent-base: 6.0.2(supports-color@10.2.2)
+      agent-base: 6.0.2
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -19644,7 +19634,7 @@ snapshots:
 
   soap@1.9.3(supports-color@8.1.1):
     dependencies:
-      axios: 1.16.1(debug@4.4.3(supports-color@8.1.1))(supports-color@10.2.2)
+      axios: 1.16.1(debug@4.4.3(supports-color@8.1.1))
       axios-ntlm: 1.4.6(debug@4.4.3(supports-color@8.1.1))
       debug: 4.4.3(supports-color@8.1.1)
       follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
@@ -20332,7 +20322,7 @@ snapshots:
 
   web-namespaces@2.0.1: {}
 
-  web-push@3.6.7:
+  web-push@3.6.7(supports-color@10.2.2):
     dependencies:
       asn1.js: 5.4.1
       http_ece: 1.2.0
