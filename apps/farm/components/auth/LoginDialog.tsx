@@ -1,7 +1,6 @@
 'use client';
 
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
-import { Alert } from '@gredice/ui/Alert';
 import {
     authCurrentUserQueryKeys,
     FacebookLoginButton,
@@ -9,40 +8,60 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
-import { Input } from '@gredice/ui/Input';
-import { Mail, Warning } from '@gredice/ui/icons';
+import { Mail } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useRouter } from 'next/navigation';
-import { useActionState, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getFarmLoginErrorCode } from '../../lib/auth/farmLoginContract';
 import {
     type FarmOAuthProvider,
     getFarmOAuthStartUrl,
 } from '../../lib/auth/safeFarmReturnPath';
 import { queryClient } from '../providers/ClientAppProvider';
+import { EmailLoginForm, type FarmLoginFailure } from './EmailLoginForm';
 import { FarmSignInShell } from './FarmSignInShell';
 
 export function LoginDialog() {
     const posthog = usePostHog();
     const router = useRouter();
     const [emailExpanded, setEmailExpanded] = useState(false);
+    const [emailFailure, setEmailFailure] = useState<FarmLoginFailure | null>(
+        null,
+    );
+    const [emailSubmitting, setEmailSubmitting] = useState(false);
+    const emailAttemptRef = useRef(0);
+    const restoreEmailTriggerFocusRef = useRef(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
         [],
     );
     const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
-    const [error, submitAction, isPending] = useActionState<
-        string | null,
-        FormData
-    >(async (_previousState, formData) => {
-        const email = formData.get('email');
-        const password = formData.get('password');
-
-        if (typeof email !== 'string' || typeof password !== 'string') {
-            return 'Unesi korisničko ime i zaporku.';
+    useEffect(() => {
+        if (!emailExpanded && restoreEmailTriggerFocusRef.current) {
+            restoreEmailTriggerFocusRef.current = false;
+            document.getElementById('farm-email-login-trigger')?.focus();
         }
+    }, [emailExpanded]);
 
+    const setBoundedEmailFailure = (
+        code: ReturnType<typeof getFarmLoginErrorCode>,
+        status?: number,
+    ) => {
+        emailAttemptRef.current += 1;
+        setEmailFailure({ attempt: emailAttemptRef.current, code });
+        posthog?.capture('user_login_failed', {
+            provider: 'password',
+            reason: code,
+            status,
+            surface: 'farm',
+        });
+    };
+
+    const handleEmailLogin = async (email: string, password: string) => {
+        setEmailSubmitting(true);
+        setEmailFailure(null);
         try {
             posthog?.capture('user_login_started', {
                 provider: 'password',
@@ -55,50 +74,38 @@ export function LoginDialog() {
                 },
                 body: JSON.stringify({ email, password }),
             });
+            const responseBody: unknown = await response
+                .json()
+                .catch(() => null);
 
             if (!response.ok) {
-                posthog?.capture('user_login_failed', {
-                    provider: 'password',
-                    reason: 'invalid_credentials_or_access',
+                const code = getFarmLoginErrorCode(responseBody);
+                console.warn('Farm email login rejected', {
+                    reason: code,
                     status: response.status,
-                    surface: 'farm',
                 });
-                console.error('Login failed with status', response.status);
-                return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
-            }
-
-            // Tokens are now in httpOnly cookies set by the API
-            // No need to store them in localStorage
-            await response.json();
-
-            const currentUserResponse = await fetch(
-                '/api/users/current-claims',
-            );
-            if (!currentUserResponse.ok) {
-                posthog?.capture('user_login_failed', {
-                    provider: 'password',
-                    reason: 'no_farm_access',
-                    status: currentUserResponse.status,
-                    surface: 'farm',
-                });
-                return 'Tvoj korisnički račun nema pristup Gredice farmi.';
+                setBoundedEmailFailure(code, response.status);
+                return;
             }
 
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
             router.refresh();
-            return null;
-        } catch (cause) {
-            posthog?.capture('user_login_failed', {
-                provider: 'password',
-                reason: 'unexpected_error',
-                surface: 'farm',
-            });
-            console.error('Login request failed', cause);
-            return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
+        } catch {
+            console.error('Farm email login request failed');
+            setBoundedEmailFailure('service_unavailable');
+        } finally {
+            setEmailSubmitting(false);
         }
-    }, null);
+    };
+
+    const handleEmailBack = () => {
+        restoreEmailTriggerFocusRef.current = true;
+        setEmailFailure(null);
+        setEmailExpanded(false);
+    };
+
     const handleOAuthLogin = (provider: FarmOAuthProvider) => {
         posthog?.capture('user_oauth_started', {
             provider,
@@ -171,7 +178,11 @@ export function LoginDialog() {
                         <Button
                             color="neutral"
                             fullWidth
-                            onClick={() => setEmailExpanded(true)}
+                            id="farm-email-login-trigger"
+                            onClick={() => {
+                                setEmailFailure(null);
+                                setEmailExpanded(true);
+                            }}
                             size="lg"
                             startDecorator={
                                 <Mail
@@ -186,54 +197,12 @@ export function LoginDialog() {
                         </Button>
                     </Stack>
                 ) : (
-                    <form action={submitAction} className="w-full space-y-4">
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Input
-                                    autoComplete="email"
-                                    className="h-11 [&>input]:h-full"
-                                    fullWidth
-                                    label="Email"
-                                    name="email"
-                                    placeholder="ime@primjer.com"
-                                    required
-                                    type="email"
-                                />
-                                <Input
-                                    autoComplete="current-password"
-                                    className="h-11 [&>input]:h-full"
-                                    fullWidth
-                                    label="Zaporka"
-                                    name="password"
-                                    required
-                                    type="password"
-                                />
-                            </Stack>
-                            <Button
-                                fullWidth
-                                loading={isPending}
-                                size="lg"
-                                type="submit"
-                                variant="solid"
-                            >
-                                Prijavi se
-                            </Button>
-                            {error && (
-                                <Alert
-                                    color="danger"
-                                    role="alert"
-                                    startDecorator={
-                                        <Warning
-                                            aria-hidden="true"
-                                            className="size-5"
-                                        />
-                                    }
-                                >
-                                    {error}
-                                </Alert>
-                            )}
-                        </Stack>
-                    </form>
+                    <EmailLoginForm
+                        failure={emailFailure}
+                        loading={emailSubmitting}
+                        onBack={handleEmailBack}
+                        onSubmit={handleEmailLogin}
+                    />
                 )}
             </Stack>
         </FarmSignInShell>
