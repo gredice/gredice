@@ -1,22 +1,55 @@
 import { Card, CardContent } from '@gredice/ui/Card';
 import { ShoppingCart, Truck } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import type { CustomerDeliveryDashboard } from '../lib/deliveryDashboardTypes';
+import type {
+    CustomerDeliveryDashboard,
+    CustomerDeliveryRequestSummary,
+} from '../lib/deliveryDashboardTypes';
+import { CustomerDeliveryCard } from './CustomerDeliveryCard';
 import { CustomerDeliveryTracking } from './CustomerDeliveryTracking';
+import { CustomerPickupCard } from './CustomerPickupCard';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
-import { DeliveryStopCard } from './DeliveryStopCard';
 
 export function CustomerDashboard({
     dashboard,
 }: {
     dashboard: CustomerDeliveryDashboard;
 }) {
-    const trackedDelivery = dashboard.deliveries.find(
-        (delivery) =>
-            delivery.runId &&
-            delivery.tracking &&
-            delivery.statusLabel !== 'Dostavljeno',
+    const hasDelivery = dashboard.deliveries.some(
+        (request) => request.mode === 'delivery',
     );
+    const hasPickup = dashboard.deliveries.some(
+        (request) => request.mode === 'pickup',
+    );
+    const trackedDelivery = dashboard.deliveries.find(
+        (request): request is CustomerDeliveryRequestSummary =>
+            request.mode === 'delivery' &&
+            Boolean(request.mapPath) &&
+            Boolean(request.tracking) &&
+            request.status !== 'fulfilled',
+    );
+    const heading = hasDelivery
+        ? hasPickup
+            ? 'Moje dostave i preuzimanja'
+            : 'Moje dostave'
+        : hasPickup
+          ? 'Moja preuzimanja'
+          : 'Moje dostave i preuzimanja';
+    const headerContext = hasDelivery
+        ? hasPickup
+            ? 'mixed'
+            : 'delivery'
+        : hasPickup
+          ? 'pickup'
+          : 'mixed';
+    const description =
+        !hasDelivery && !hasPickup
+            ? 'Statusi uroda i planirani termini dostava i preuzimanja na jednom mjestu.'
+            : hasDelivery
+              ? hasPickup
+                  ? 'Statusi uroda, planirani termini, lokacije preuzimanja i praćenje aktivne dostave na jednom mjestu.'
+                  : 'Statusi uroda, planirani termini i praćenje aktivne dostave na jednom mjestu.'
+              : 'Statusi uroda, lokacije i planirani termini preuzimanja na jednom mjestu.';
 
     return (
         <div className="min-h-[100dvh] bg-background">
@@ -24,34 +57,40 @@ export function CustomerDashboard({
                 userId={dashboard.user.id}
                 displayName={dashboard.user.displayName}
                 role={dashboard.user.role}
+                context={headerContext}
             />
             <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-5 sm:py-8">
                 <div>
                     <Typography level="h2" semiBold>
-                        Moje dostave
+                        {heading}
                     </Typography>
                     <Typography className="mt-1 text-muted-foreground">
-                        Statusi uroda, planirani termini i praćenje aktivne
-                        dostave na jednom mjestu.
+                        {description}
                     </Typography>
                 </div>
 
-                {trackedDelivery?.runId && trackedDelivery.tracking ? (
+                {trackedDelivery?.mapPath && trackedDelivery.tracking ? (
                     <CustomerDeliveryTracking
-                        runId={trackedDelivery.runId}
+                        mapPath={trackedDelivery.mapPath}
                         tracking={trackedDelivery.tracking}
                     />
                 ) : null}
 
                 {dashboard.deliveries.length > 0 ? (
                     <section className="grid gap-3 lg:grid-cols-2">
-                        {dashboard.deliveries.map((delivery) => (
-                            <DeliveryStopCard
-                                key={delivery.requestId}
-                                stop={delivery}
-                                mode="customer"
-                            />
-                        ))}
+                        {dashboard.deliveries.map((request) =>
+                            request.mode === 'delivery' ? (
+                                <CustomerDeliveryCard
+                                    key={request.requestId}
+                                    delivery={request}
+                                />
+                            ) : (
+                                <CustomerPickupCard
+                                    key={request.requestId}
+                                    pickup={request}
+                                />
+                            ),
+                        )}
                     </section>
                 ) : (
                     <Card>
@@ -64,11 +103,12 @@ export function CustomerDashboard({
                                 <Truck className="absolute -bottom-1 -right-4 size-7 text-primary" />
                             </div>
                             <Typography level="h3" semiBold>
-                                Još nema dostava
+                                Još nema dostava ni preuzimanja
                             </Typography>
                             <Typography className="max-w-md text-muted-foreground">
-                                Kada zatražiš dostavu uroda, ovdje ćeš vidjeti
-                                njezin termin, status i praćenje vozača.
+                                Kada zatražiš dostavu ili preuzimanje uroda,
+                                ovdje ćeš vidjeti termin, status i dostupne
+                                informacije o preuzimanju.
                             </Typography>
                         </CardContent>
                     </Card>

@@ -3,17 +3,14 @@
 import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
 import { CustomerDashboard } from '../components/CustomerDashboard';
-import { DeliveryStopCard } from '../components/DeliveryStopCard';
+import { CustomerDeliveryCard } from '../components/CustomerDeliveryCard';
 import type {
     CustomerDeliveryDashboard,
+    CustomerDeliveryRequestSummary,
     CustomerHandoffVerification,
-    DeliveryStopSummary,
 } from '../lib/deliveryDashboardTypes';
 
-const privateDriverNote = 'PRIVATE DRIVER NOTE 4144';
-const foreignBulkRecipient = 'FOREIGN BULK RECIPIENT 4144';
-
-function customerStop({
+function customerDelivery({
     verification,
     index,
     trace = true,
@@ -23,7 +20,7 @@ function customerStop({
     index: number;
     trace?: boolean;
     longName?: boolean;
-}): DeliveryStopSummary {
+}): CustomerDeliveryRequestSummary {
     const requestReference = `customer-owned-request-${index}-4144`;
     const plantName = longName
         ? 'Vrlo dugačka sorta ekološke rajčice za provjeru prijeloma teksta na malom zaslonu'
@@ -38,26 +35,17 @@ function customerStop({
     };
 
     return {
-        id: 700 + index,
+        mode: 'delivery',
         requestId: requestReference,
-        sequence: null,
-        stopState: 'delivered',
-        requestState: 'fulfilled',
+        status: 'fulfilled',
         statusLabel: 'Dostavljeno',
-        isCurrent: false,
-        contactName: 'Kupac',
-        phone: null,
-        address: 'Adresa kupca',
-        addressLabel: null,
         requestNotes: null,
-        deliveryNotes: privateDriverNote,
         slotStartAt: '2026-07-16T08:00:00.000Z',
         slotEndAt: '2026-07-16T10:00:00.000Z',
         estimatedArrivalAt: null,
         estimatedTravelSeconds: null,
         estimatedDistanceMeters: null,
         reroutePending: false,
-        arrivedAt: '2026-07-16T09:25:00.000Z',
         deliveredAt: '2026-07-16T09:30:00.000Z',
         harvest,
         receipt: {
@@ -68,66 +56,22 @@ function customerStop({
         },
         recovery: null,
         tracking: null,
-        runId: null,
-        deliveryCount: 1,
-        recipientCount: 1,
-        deliveries: [
-            {
-                stopId: 700 + index,
-                stopState: 'delivered',
-                requestId: requestReference,
-                requestState: 'fulfilled',
-                contactName: 'Kupac',
-                phone: null,
-                addressLabel: null,
-                requestNotes: null,
-                deliveryNotes: privateDriverNote,
-                harvest,
-                exception: null,
-            },
-            {
-                stopId: 9_999,
-                stopState: 'delivered',
-                requestId: 'foreign-bulk-request-4144',
-                requestState: 'fulfilled',
-                contactName: foreignBulkRecipient,
-                phone: '+385 91 999 9999',
-                addressLabel: 'FOREIGN ADDRESS 4144',
-                requestNotes: 'FOREIGN REQUEST NOTE 4144',
-                deliveryNotes: 'FOREIGN DRIVER NOTE 4144',
-                harvest: {
-                    plantName: 'FOREIGN HARVEST 4144',
-                    operationName: null,
-                    raisedBedName: null,
-                    fieldName: null,
-                    tracePath: '/trag/foreign-trace-4144',
-                },
-                exception: null,
-            },
-        ],
-        actionState: 'completed',
-        lockedReason: null,
+        mapPath: null,
     };
 }
 
-const activeBase = customerStop({ verification: 'not-recorded', index: 9 });
-const activePrimaryDelivery = activeBase.deliveries[0];
-if (!activePrimaryDelivery) {
-    throw new Error('The active customer receipt fixture needs one delivery.');
-}
-
-const activeStop: DeliveryStopSummary = {
+const activeBase = customerDelivery({
+    verification: 'not-recorded',
+    index: 9,
+});
+const activeDelivery: CustomerDeliveryRequestSummary = {
     ...activeBase,
-    id: 709,
     requestId: 'customer-owned-request-journey-4144',
-    stopState: 'pending',
-    requestState: 'ready',
+    status: 'ready',
     statusLabel: 'Vozač stiže',
-    isCurrent: true,
     estimatedArrivalAt: '2026-07-16T09:30:00.000Z',
     estimatedTravelSeconds: 600,
     estimatedDistanceMeters: 3_200,
-    arrivedAt: null,
     deliveredAt: null,
     receipt: null,
     tracking: {
@@ -135,44 +79,27 @@ const activeStop: DeliveryStopSummary = {
         lastAcceptedAt: '2026-07-16T09:20:00.000Z',
         mapAvailable: false,
     },
-    runId: 'customer-run-journey-4144',
-    actionState: 'current',
-    deliveries: [
-        {
-            ...activePrimaryDelivery,
-            requestId: 'customer-owned-request-journey-4144',
-            stopState: 'pending',
-            requestState: 'ready',
-        },
-    ],
+    mapPath: '/api/map/customer-run-journey-4144',
 };
 
-const deliveredJourneyBase = customerStop({
+const deliveredJourneyBase = customerDelivery({
     verification: 'verified',
     index: 9,
 });
 if (!deliveredJourneyBase.receipt) {
     throw new Error('The delivered customer fixture needs a receipt.');
 }
-const deliveredJourneyStop: DeliveryStopSummary = {
+const deliveredJourneyDelivery: CustomerDeliveryRequestSummary = {
     ...deliveredJourneyBase,
     requestId: 'customer-owned-request-journey-4144',
     receipt: {
         ...deliveredJourneyBase.receipt,
         requestReference: 'customer-owned-request-journey-4144',
     },
-    deliveries: deliveredJourneyBase.deliveries.map((delivery, index) =>
-        index === 0
-            ? {
-                  ...delivery,
-                  requestId: 'customer-owned-request-journey-4144',
-              }
-            : delivery,
-    ),
 };
 
 function dashboard(
-    deliveries: DeliveryStopSummary[],
+    deliveries: CustomerDeliveryRequestSummary[],
 ): CustomerDeliveryDashboard {
     return {
         kind: 'customer',
@@ -189,29 +116,31 @@ function dashboard(
 export function CustomerDeliveryReceiptStatesStory() {
     return (
         <div className="max-w-2xl space-y-4 p-4">
-            <DeliveryStopCard
-                stop={customerStop({
+            <CustomerDeliveryCard
+                delivery={customerDelivery({
                     verification: 'verified',
                     index: 1,
                     longName: true,
                 })}
-                mode="customer"
             />
-            <DeliveryStopCard
-                stop={customerStop({ verification: 'no-label', index: 2 })}
-                mode="customer"
+            <CustomerDeliveryCard
+                delivery={customerDelivery({
+                    verification: 'no-label',
+                    index: 2,
+                })}
             />
-            <DeliveryStopCard
-                stop={customerStop({ verification: 'skipped', index: 3 })}
-                mode="customer"
+            <CustomerDeliveryCard
+                delivery={customerDelivery({
+                    verification: 'skipped',
+                    index: 3,
+                })}
             />
-            <DeliveryStopCard
-                stop={customerStop({
+            <CustomerDeliveryCard
+                delivery={customerDelivery({
                     verification: 'not-recorded',
                     index: 4,
                     trace: false,
                 })}
-                mode="customer"
             />
         </div>
     );
@@ -228,7 +157,7 @@ export function CustomerDeliveryReceiptJourneyStory() {
             </div>
             <CustomerDashboard
                 dashboard={dashboard([
-                    delivered ? deliveredJourneyStop : activeStop,
+                    delivered ? deliveredJourneyDelivery : activeDelivery,
                 ])}
             />
         </div>

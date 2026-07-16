@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
     customerDeliveryReceiptSummary,
+    deliveryDashboardKindForRole,
     deliveryMutationRouteState,
     deliveryRecipientCount,
     deliveryStatusLabel,
@@ -446,6 +447,7 @@ test('customer receipt projection allowlists one completed request and harvest',
 
     const receipt = customerDeliveryReceiptSummary({
         audience: 'customer',
+        mode: 'delivery',
         requestState: 'fulfilled',
         requestId: 'customer-request-4144',
         handoffReceipt,
@@ -484,6 +486,7 @@ test('customer receipt projection excludes active and driver-facing requests', (
         customerDeliveryReceiptSummary({
             ...input,
             audience: 'customer',
+            mode: 'delivery',
             requestState: 'ready',
         }),
         null,
@@ -492,6 +495,7 @@ test('customer receipt projection excludes active and driver-facing requests', (
         customerDeliveryReceiptSummary({
             ...input,
             audience: 'driver',
+            mode: 'delivery',
             requestState: 'fulfilled',
         }),
         null,
@@ -499,12 +503,30 @@ test('customer receipt projection excludes active and driver-facing requests', (
     assert.equal(
         customerDeliveryReceiptSummary({
             audience: 'customer',
+            mode: 'delivery',
             requestState: 'fulfilled',
             requestId: input.requestId,
             harvest: input.harvest,
         }),
         null,
     );
+    assert.equal(
+        customerDeliveryReceiptSummary({
+            ...input,
+            audience: 'customer',
+            mode: 'pickup',
+            requestState: 'fulfilled',
+        }),
+        null,
+    );
+});
+
+test('delivery dashboard roles fail closed and preserve customer role boundaries', () => {
+    assert.equal(deliveryDashboardKindForRole('user'), 'customer');
+    assert.equal(deliveryDashboardKindForRole('farmer'), 'customer');
+    assert.equal(deliveryDashboardKindForRole('driver'), 'driver');
+    assert.equal(deliveryDashboardKindForRole('admin'), 'driver');
+    assert.equal(deliveryDashboardKindForRole('unknown'), null);
 });
 
 test('exception receipt replay returns current revision without rerouting a stale receipt', () => {

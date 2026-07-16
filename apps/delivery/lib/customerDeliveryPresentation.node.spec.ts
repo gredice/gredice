@@ -1,0 +1,244 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+    customerDeliveryRequestSummary,
+    customerPickupInstructions,
+    customerPickupRequestSummary,
+    customerPickupStatusLabel,
+} from './customerDeliveryPresentation';
+import type { DeliveryStopSummary } from './deliveryDashboardTypes';
+
+const harvest = {
+    plantName: 'Rajčica',
+    operationName: 'Berba',
+    raisedBedName: 'Gredica 4',
+    fieldName: 'Polje 2',
+    tracePath: '/trag/customer-owned',
+};
+
+test('projects a delivery to the exact customer-safe DTO', () => {
+    const privateSentinel = 'PRIVATE DRIVER DATA 4135';
+    const source: DeliveryStopSummary = {
+        id: 41,
+        requestId: 'request-delivery',
+        sequence: 7,
+        stopState: 'pending',
+        requestState: 'ready',
+        statusLabel: 'Vozač stiže',
+        isCurrent: true,
+        contactName: privateSentinel,
+        phone: privateSentinel,
+        address: privateSentinel,
+        addressLabel: privateSentinel,
+        requestNotes: 'Pozvoni na portafon.',
+        deliveryNotes: privateSentinel,
+        slotStartAt: '2026-07-16T10:00:00.000Z',
+        slotEndAt: '2026-07-16T12:00:00.000Z',
+        estimatedArrivalAt: '2026-07-16T10:30:00.000Z',
+        estimatedTravelSeconds: 900,
+        estimatedDistanceMeters: 5_000,
+        reroutePending: false,
+        arrivedAt: null,
+        deliveredAt: null,
+        harvest,
+        receipt: null,
+        recovery: null,
+        tracking: {
+            status: 'live',
+            lastAcceptedAt: '2026-07-16T10:15:00.000Z',
+            mapAvailable: true,
+        },
+        runId: 'safe-map-run',
+        deliveryCount: 2,
+        recipientCount: 2,
+        deliveries: [
+            {
+                stopId: 99,
+                stopState: 'pending',
+                requestId: privateSentinel,
+                requestState: 'ready',
+                contactName: privateSentinel,
+                phone: privateSentinel,
+                addressLabel: privateSentinel,
+                requestNotes: privateSentinel,
+                deliveryNotes: privateSentinel,
+                harvest,
+                exception: null,
+            },
+        ],
+        actionState: 'current',
+        lockedReason: privateSentinel,
+    };
+
+    const projected = customerDeliveryRequestSummary(source);
+
+    assert.deepEqual(projected, {
+        mode: 'delivery',
+        requestId: 'request-delivery',
+        status: 'ready',
+        statusLabel: 'Vozač stiže',
+        requestNotes: 'Pozvoni na portafon.',
+        slotStartAt: '2026-07-16T10:00:00.000Z',
+        slotEndAt: '2026-07-16T12:00:00.000Z',
+        estimatedArrivalAt: '2026-07-16T10:30:00.000Z',
+        estimatedTravelSeconds: 900,
+        estimatedDistanceMeters: 5_000,
+        reroutePending: false,
+        deliveredAt: null,
+        harvest,
+        receipt: null,
+        recovery: null,
+        tracking: {
+            status: 'live',
+            lastAcceptedAt: '2026-07-16T10:15:00.000Z',
+            mapAvailable: true,
+        },
+        mapPath: '/api/map/safe-map-run',
+    });
+    const serialized = JSON.stringify(projected);
+    assert.equal(serialized.includes(privateSentinel), false);
+    for (const privateKey of [
+        'id',
+        'sequence',
+        'stopState',
+        'contactName',
+        'phone',
+        'address',
+        'deliveryNotes',
+        'runId',
+        'deliveries',
+        'actionState',
+        'lockedReason',
+        'latitude',
+        'longitude',
+        'accuracy',
+        'heading',
+        'speed',
+    ]) {
+        assert.equal(privateKey in projected, false, privateKey);
+    }
+});
+
+test('projects pickup status, public location, and instructions without delivery fields', () => {
+    const privateSentinel = 'PRIVATE PICKUP DATA 4135';
+    const source = {
+        requestId: 'request-pickup',
+        status: 'ready',
+        requestNotes: 'Donijet ću svoju košaru.',
+        slotStartAt: '2026-07-16T14:00:00.000Z',
+        slotEndAt: '2026-07-16T16:00:00.000Z',
+        harvest,
+        location: {
+            name: 'Gredice HQ',
+            address: 'Vrtna 1, 10000 Zagreb, HR',
+            instructions: customerPickupInstructions('ready'),
+        },
+        pickedUpAt: null,
+        runId: privateSentinel,
+        tracking: privateSentinel,
+        deliveryNotes: privateSentinel,
+    };
+
+    const projected = customerPickupRequestSummary(source);
+
+    assert.deepEqual(projected, {
+        mode: 'pickup',
+        requestId: 'request-pickup',
+        status: 'ready',
+        statusLabel: 'Spremno za preuzimanje',
+        requestNotes: 'Donijet ću svoju košaru.',
+        slotStartAt: '2026-07-16T14:00:00.000Z',
+        slotEndAt: '2026-07-16T16:00:00.000Z',
+        harvest,
+        location: {
+            name: 'Gredice HQ',
+            address: 'Vrtna 1, 10000 Zagreb, HR',
+            instructions:
+                'Urod je spreman. Preuzmi ga na ovoj lokaciji tijekom odabranog termina.',
+        },
+        pickedUpAt: null,
+    });
+    const serialized = JSON.stringify(projected);
+    assert.equal(serialized.includes(privateSentinel), false);
+    for (const deliveryKey of [
+        'tracking',
+        'mapPath',
+        'estimatedArrivalAt',
+        'estimatedTravelSeconds',
+        'estimatedDistanceMeters',
+        'reroutePending',
+        'recovery',
+        'receipt',
+        'deliveredAt',
+    ]) {
+        assert.equal(deliveryKey in projected, false, deliveryKey);
+    }
+});
+
+test('does not expose a historical run path when delivery tracking is unavailable', () => {
+    const historicalRun = 'PRIVATE HISTORICAL RUN 4135';
+    const source: DeliveryStopSummary = {
+        id: 41,
+        requestId: 'request-history',
+        sequence: 7,
+        stopState: 'delivered',
+        requestState: 'fulfilled',
+        statusLabel: 'Dostavljeno',
+        isCurrent: false,
+        contactName: 'Kupac',
+        phone: null,
+        address: 'Adresa kupca',
+        addressLabel: null,
+        requestNotes: null,
+        deliveryNotes: null,
+        slotStartAt: '2026-07-16T10:00:00.000Z',
+        slotEndAt: '2026-07-16T12:00:00.000Z',
+        estimatedArrivalAt: null,
+        estimatedTravelSeconds: null,
+        estimatedDistanceMeters: null,
+        reroutePending: false,
+        arrivedAt: '2026-07-16T10:20:00.000Z',
+        deliveredAt: '2026-07-16T10:25:00.000Z',
+        harvest,
+        receipt: null,
+        recovery: null,
+        tracking: null,
+        runId: historicalRun,
+        deliveryCount: 1,
+        deliveries: [],
+    };
+
+    const projected = customerDeliveryRequestSummary(source);
+
+    assert.equal(projected.mapPath, null);
+    assert.equal(JSON.stringify(projected).includes(historicalRun), false);
+});
+
+test('uses pickup-safe copy for every request state', () => {
+    assert.deepEqual(
+        [
+            'pending',
+            'confirmed',
+            'preparing',
+            'ready',
+            'fulfilled',
+            'deferred',
+            'failed',
+            'cancelled',
+        ].map(customerPickupStatusLabel),
+        [
+            'Čeka potvrdu',
+            'Preuzimanje potvrđeno',
+            'Urod se priprema',
+            'Spremno za preuzimanje',
+            'Preuzeto',
+            'Preuzimanje je odgođeno',
+            'Preuzimanje trenutačno nije moguće',
+            'Preuzimanje je otkazano',
+        ],
+    );
+    assert.equal(
+        customerPickupInstructions('confirmed'),
+        'Pričekaj status „Spremno za preuzimanje” prije dolaska.',
+    );
+});

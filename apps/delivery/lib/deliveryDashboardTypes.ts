@@ -72,6 +72,49 @@ export type CustomerDeliveryRecoverySummary =
     | { kind: 'support' }
     | { kind: 'cancelled' };
 
+export type CustomerDeliveryRequestSummary = {
+    mode: 'delivery';
+    requestId: string;
+    status: string;
+    statusLabel: string;
+    requestNotes: string | null;
+    slotStartAt: string | null;
+    slotEndAt: string | null;
+    estimatedArrivalAt: string | null;
+    estimatedTravelSeconds: number | null;
+    estimatedDistanceMeters: number | null;
+    reroutePending: boolean;
+    deliveredAt: string | null;
+    harvest: DeliveryHarvestSummary;
+    receipt: CustomerDeliveryReceiptSummary | null;
+    recovery: CustomerDeliveryRecoverySummary | null;
+    tracking: CustomerDeliveryTrackingSummary | null;
+    mapPath: string | null;
+};
+
+export type CustomerPickupLocationSummary = {
+    name: string;
+    address: string;
+    instructions: string;
+};
+
+export type CustomerPickupRequestSummary = {
+    mode: 'pickup';
+    requestId: string;
+    status: string;
+    statusLabel: string;
+    requestNotes: string | null;
+    slotStartAt: string | null;
+    slotEndAt: string | null;
+    harvest: DeliveryHarvestSummary;
+    location: CustomerPickupLocationSummary | null;
+    pickedUpAt: string | null;
+};
+
+export type CustomerDeliveryDashboardRequest =
+    | CustomerDeliveryRequestSummary
+    | CustomerPickupRequestSummary;
+
 export type DeliveryStopDeliverySummary = {
     stopId: number | null;
     stopState: string | null;
@@ -258,7 +301,7 @@ export type CustomerDeliveryDashboard = {
         displayName: string;
         role: string;
     };
-    deliveries: DeliveryStopSummary[];
+    deliveries: CustomerDeliveryDashboardRequest[];
     refreshedAt: string;
 };
 

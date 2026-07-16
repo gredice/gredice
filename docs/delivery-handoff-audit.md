@@ -108,8 +108,11 @@ operation identifier is safe even if the first response was lost.
 The customer receipt starts from the operation-owner-scoped delivery request,
 not from the driver's physical-stop manifest. A bulk stop can contain requests
 for multiple accounts, but each account receives only its own request, harvest
-description, and public trace path. The customer requests API explicitly omits
-driver fulfillment notes before serialization.
+description, and public trace path. The customer requests API uses an explicit,
+mode-specific allowlist: delivery responses include only the customer's public
+address and bounded receipt, while pickup responses include only the public
+pickup location and never a delivery receipt. Driver notes, contacts, route
+state, account identifiers, and private trace identifiers are not serialized.
 
 The durable fulfillment event carries the validated recorded handoff time so
 an offline completion keeps the time it happened instead of the later sync
@@ -128,6 +131,14 @@ ID, numeric trace-link ID, driver identity, skip reason, raw QR value, address,
 phone number, or arbitrary delivery note. QR copy explicitly describes the
 check as supplemental evidence that does not affect the completed delivery
 status.
+
+The delivery dashboard has a separate discriminated customer contract. Pickup
+requests carry pickup status, location, and readiness instructions without ETA,
+driver-tracking, or delivery-recovery fields. Delivery requests carry only
+customer-facing ETA and tracking freshness. Exact driver coordinates remain
+behind the authenticated map proxy, which returns only the server-confirmed
+current physical destination for the owning account; it does not reveal later
+stops for the same account or their route sequence.
 
 Missing-harvest, damaged-harvest, and general-support actions open a prefilled
 message to `podrska@gredice.com`. The message contains only the owned delivery

@@ -314,7 +314,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const requests = await getDeliveryRequestsWithEvents(accountId);
-            return context.json(requests.map(customerDeliveryRequest));
+            return context.json(
+                requests.flatMap((request) => {
+                    const customerRequest = customerDeliveryRequest(request);
+                    return customerRequest ? [customerRequest] : [];
+                }),
+            );
         },
     )
     // POST /requests - create delivery request

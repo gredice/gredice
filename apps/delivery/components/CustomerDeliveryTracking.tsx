@@ -28,10 +28,10 @@ function trackingMessage(tracking: CustomerDeliveryTrackingSummary) {
 }
 
 export function CustomerDeliveryTracking({
-    runId,
+    mapPath,
     tracking,
 }: {
-    runId: string;
+    mapPath: string;
     tracking: CustomerDeliveryTrackingSummary;
 }) {
     const showMap =
@@ -60,7 +60,7 @@ export function CustomerDeliveryTracking({
             </Alert>
             {showMap ? (
                 <DeliveryMap
-                    mapUrl={`/api/map/${runId}`}
+                    mapUrl={mapPath}
                     version={deliveryTrackingMapVersion(tracking)}
                     title={
                         tracking.status === 'live'

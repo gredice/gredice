@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildDeliveryMapData,
+    customerCurrentDeliveryMapStops,
     decodeDeliveryMapPolyline,
+    deliveryMapAudience,
     deliveryMapSelectionKey,
     deliveryMapStopGroupSelectionId,
     parseDeliveryMapData,
@@ -121,4 +123,104 @@ test('uses stable pickup and delivery keys for map timeline selection', () => {
         '1',
     );
     assert.equal(deliveryMapStopGroupSelectionId([]), null);
+});
+
+test('customer map includes only the server-confirmed current physical stop', () => {
+    const currentCoordinates = { latitude: 45.81, longitude: 16.01 };
+    const groups = [
+        {
+            items: [
+                {
+                    stop: {
+                        id: 11,
+                        latitude: 45.7,
+                        longitude: 15.9,
+                    },
+                    request: { accountId: 'account-a' },
+                },
+            ],
+        },
+        {
+            items: [
+                {
+                    stop: { id: 21, ...currentCoordinates },
+                    request: { accountId: 'account-a' },
+                },
+                {
+                    stop: { id: 22, ...currentCoordinates },
+                    request: { accountId: 'account-b' },
+                },
+            ],
+        },
+        {
+            items: [
+                {
+                    stop: {
+                        id: 31,
+                        latitude: 45.9,
+                        longitude: 16.2,
+                    },
+                    request: { accountId: 'account-a' },
+                },
+            ],
+        },
+    ];
+    const input = {
+        groups,
+        currentDeliveryStopIds: new Set([21, 22]),
+    };
+
+    const accountAStops = customerCurrentDeliveryMapStops({
+        accountId: 'account-a',
+        ...input,
+    });
+    assert.deepEqual(accountAStops, [
+        { ...currentCoordinates, sequence: 1, selectionId: null },
+    ]);
+    assert.deepEqual(
+        customerCurrentDeliveryMapStops({
+            accountId: 'account-b',
+            ...input,
+        }),
+        accountAStops,
+    );
+    assert.deepEqual(
+        customerCurrentDeliveryMapStops({
+            accountId: 'account-c',
+            ...input,
+        }),
+        [],
+    );
+    assert.equal(JSON.stringify(accountAStops).includes('45.9'), false);
+});
+
+test('map roles expose driver data only to the assigned driver or admin', () => {
+    for (const role of ['user', 'farmer']) {
+        assert.equal(
+            deliveryMapAudience({
+                role,
+                userId: 'customer',
+                driverUserId: 'assigned-driver',
+            }),
+            'customer',
+        );
+    }
+    for (const role of ['driver', 'admin']) {
+        assert.equal(
+            deliveryMapAudience({
+                role,
+                userId: 'assigned-driver',
+                driverUserId: 'assigned-driver',
+            }),
+            'driver',
+        );
+        assert.equal(
+            deliveryMapAudience({
+                role,
+                userId: 'other-operator',
+                driverUserId: 'assigned-driver',
+            }),
+            'customer',
+        );
+    }
 });
