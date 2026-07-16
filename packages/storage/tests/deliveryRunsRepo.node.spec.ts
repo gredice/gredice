@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     abandonDeliveryRun,
     accountCanTrackDeliveryRun,
+    applyDeliveryRunHandoffMutations,
     applyDeliveryRunPickupMutations,
     applyDeliveryRunReroute,
     type CreatePreparedDeliveryRunInput,
@@ -16,6 +17,7 @@ import {
     createDeliveryRun,
     createEvent,
     DeliveryAddressMutationError,
+    DeliveryRequestStates,
     DeliveryRunAssignmentError,
     DeliveryRunAssignmentErrorCodes,
     DeliveryRunEstimateSources,
@@ -23,6 +25,9 @@ import {
     DeliveryRunExceptionReasons,
     DeliveryRunExecutionError,
     DeliveryRunExecutionErrorCodes,
+    DeliveryRunHandoffItemStates,
+    DeliveryRunHandoffOperationKinds,
+    DeliveryRunHandoffSkipReasons,
     DeliveryRunManifestItemStates,
     DeliveryRunManifestStates,
     DeliveryRunPersistenceError,
@@ -39,6 +44,8 @@ import {
     deliveryRequests,
     deliveryRunExactLocationTtlMs,
     deliveryRunExceptionOperations,
+    deliveryRunHandoffOperationRetentionMs,
+    deliveryRunHandoffOperations,
     deliveryRunPickupNodes,
     deliveryRunPickupOperations,
     deliveryRunPreparations,
@@ -59,6 +66,7 @@ import {
     getDeliveryRequestDispatchSnapshots,
     getDeliveryRun,
     getDeliveryRunExecutionProgress,
+    getDeliveryRunHandoffManifest,
     getDeliveryRunStopsForRequestIds,
     harvestTraceLinks,
     knownEvents,
@@ -67,6 +75,7 @@ import {
     markDeliveryRunStopsArrived,
     operations,
     pickupLocations,
+    pruneExpiredDeliveryRunHandoffOperations,
     type RecordDeliveryRunStopExceptionsInput,
     raisedBedFields,
     raisedBeds,
@@ -5039,6 +5048,17 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
             (stop) => stop.arrivedAt?.getTime() === arrivalOccurredAt.getTime(),
         ),
     );
+    const {
+        runId: handoffRunId,
+        targetStopId: handoffTargetStopId,
+        ...expectedHandoff
+    } = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: secondStop.id,
+    });
+    assert.equal(handoffRunId, run.id);
+    assert.equal(handoffTargetStopId, secondStop.id);
 
     const deliveryOccurredAt = new Date(Date.now() - 1_000);
     const privateNote = 'Kupac je preuzeo obje gredice na stražnjem ulazu.';
@@ -5081,6 +5101,7 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
         routeRevision: arrival.result.routeRevision + 1,
         reroutePending: false,
         runCompleted: true,
+        handoff: expectedHandoff,
     });
 
     const completedRun = await getDeliveryRun(run.id);
@@ -5098,7 +5119,11 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
     );
 
     const fulfillmentEventsBeforeReplay = await storage()
-        .select({ aggregateId: events.aggregateId })
+        .select({
+            aggregateId: events.aggregateId,
+            version: events.version,
+            data: events.data,
+        })
         .from(events)
         .where(
             and(
@@ -5110,6 +5135,31 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
             ),
         );
     assert.equal(fulfillmentEventsBeforeReplay.length, 2);
+    for (const stop of [firstStop, secondStop]) {
+        const fulfillmentEvent = fulfillmentEventsBeforeReplay.find(
+            ({ aggregateId }) => aggregateId === stop.deliveryRequestId,
+        );
+        assert.equal(fulfillmentEvent?.version, 2);
+        assert.deepEqual(fulfillmentEvent?.data, {
+            status: DeliveryRequestStates.FULFILLED,
+            deliveryNotes: privateNote,
+            handoffVerification: {
+                version: 1,
+                runId: run.id,
+                stopId: stop.id,
+                retryAttempt: stop.retryAttempt,
+                clientOperationId: deliveryInput.clientOperationId,
+                traceLinkId: stop.pickupTraceLinkId,
+                qrAvailable: true,
+                result: DeliveryRunHandoffItemStates.UNVERIFIED,
+            },
+        });
+        assert.ok(
+            !JSON.stringify(fulfillmentEvent).includes(
+                stop.pickupTraceToken ?? 'unexpected-missing-trace-token',
+            ),
+        );
+    }
 
     const arrivalReplay = await recordDeliveryRunStopOperation(arrivalInput);
     const deliveryReplay = await recordDeliveryRunStopOperation(deliveryInput);
@@ -5120,7 +5170,11 @@ test('stop operation receipts replay exact bulk arrival and delivery results aft
     assert.deepEqual(deliveryReplay.newlyFulfilledRequestIds, []);
 
     const fulfillmentEventsAfterReplay = await storage()
-        .select({ aggregateId: events.aggregateId })
+        .select({
+            aggregateId: events.aggregateId,
+            version: events.version,
+            data: events.data,
+        })
         .from(events)
         .where(
             and(
@@ -5473,4 +5527,713 @@ test('stop operation occurrence bounds and run-target integrity are enforced', a
                 error.cause instanceof Error ? error.cause.message : ''
             }`.includes('delivery_run_stop_operations_run_target_stop_fk'),
     );
+});
+
+test('handoff scans persist, replay idempotently, and retain one receipt per operation', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    const [trace, otherTrace] = prepared.traceLinks;
+    assert.ok(targetStop);
+    assert.ok(trace);
+    assert.ok(otherTrace);
+    const occurredAt = new Date();
+    const mutation = {
+        clientOperationId: 'handoff-scan-persist',
+        occurredAt,
+        kind: DeliveryRunHandoffOperationKinds.SCAN,
+        tracePath: `/trag/${trace.publicToken}`,
+    } as const;
+
+    const [applied] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [mutation],
+    });
+    assert.equal(applied?.replayed, false);
+    assert.equal(applied?.retryAttempt, 0);
+    assert.deepEqual(applied?.result, {
+        kind: DeliveryRunHandoffOperationKinds.SCAN,
+        outcome: 'applied',
+        affectedStopIds: [targetStop.id],
+        itemState: DeliveryRunHandoffItemStates.SCANNED,
+    });
+
+    const persisted = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+    });
+    assert.equal(persisted.expectedCount, 2);
+    assert.equal(persisted.scannedCount, 1);
+    assert.equal(persisted.unverifiedCount, 1);
+    assert.equal(
+        persisted.items.find((item) => item.stopId === targetStop.id)?.state,
+        DeliveryRunHandoffItemStates.SCANNED,
+    );
+
+    const [replay] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [mutation],
+    });
+    assert.equal(replay?.replayed, true);
+    assert.equal(replay?.retryAttempt, 0);
+    assert.deepEqual(replay?.result, applied?.result);
+
+    const [semanticReplay] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                ...mutation,
+                clientOperationId: 'handoff-scan-second-id',
+            },
+        ],
+    });
+    assert.equal(semanticReplay?.replayed, false);
+    assert.equal(semanticReplay?.result.outcome, 'already-applied');
+    assert.deepEqual(semanticReplay?.result.affectedStopIds, [targetStop.id]);
+
+    await assertExecutionError(
+        applyDeliveryRunHandoffMutations({
+            driverUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+            expectedRetryAttempt: 0,
+            mutations: [
+                {
+                    ...mutation,
+                    tracePath: `/trag/${otherTrace.publicToken}`,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_CONFLICT,
+    );
+
+    const receipts = await storage()
+        .select()
+        .from(deliveryRunHandoffOperations)
+        .where(eq(deliveryRunHandoffOperations.runId, run.id));
+    assert.equal(receipts.length, 2);
+    assert.ok(
+        receipts.every((receipt) => /^[a-f0-9]{64}$/.test(receipt.payloadHash)),
+    );
+    assert.ok(!JSON.stringify(receipts).includes(trace.publicToken));
+    const reread = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+    });
+    assert.deepEqual(reread, persisted);
+});
+
+test('handoff scan receipts record invalid and wrong-stop attempts without mutating items', async () => {
+    const invalidFixture = await startPreparedBulkRunWithConfirmedPickup();
+    const [invalidTarget] = invalidFixture.run.stops;
+    assert.ok(invalidTarget);
+    const beforeInvalid = await getDeliveryRunHandoffManifest({
+        readerUserId: invalidFixture.driverUserId,
+        runId: invalidFixture.run.id,
+        targetStopId: invalidTarget.id,
+    });
+    const invalidPayload = 'not a trace QR payload';
+    const [invalid] = await applyDeliveryRunHandoffMutations({
+        driverUserId: invalidFixture.driverUserId,
+        runId: invalidFixture.run.id,
+        targetStopId: invalidTarget.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-invalid-scan',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: invalidPayload,
+            },
+        ],
+    });
+    assert.equal(invalid?.result.outcome, 'invalid');
+    assert.deepEqual(invalid?.result.affectedStopIds, []);
+    assert.deepEqual(
+        await getDeliveryRunHandoffManifest({
+            readerUserId: invalidFixture.driverUserId,
+            runId: invalidFixture.run.id,
+            targetStopId: invalidTarget.id,
+        }),
+        beforeInvalid,
+    );
+    const invalidReceipts = await storage()
+        .select()
+        .from(deliveryRunHandoffOperations)
+        .where(eq(deliveryRunHandoffOperations.runId, invalidFixture.run.id));
+    assert.equal(invalidReceipts.length, 1);
+    assert.ok(!JSON.stringify(invalidReceipts).includes(invalidPayload));
+
+    const [missingItem] = await applyDeliveryRunHandoffMutations({
+        driverUserId: invalidFixture.driverUserId,
+        runId: invalidFixture.run.id,
+        targetStopId: invalidTarget.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-item-not-found',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: 2_147_483_647,
+                outcome: DeliveryRunHandoffItemStates.MISSING,
+            },
+        ],
+    });
+    assert.equal(missingItem?.result.outcome, 'item-not-found');
+    assert.deepEqual(missingItem?.result.affectedStopIds, []);
+
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const [firstPickup] = run.pickupNodes;
+    const [firstManifest] = run.runSlots;
+    const [firstStop] = run.stops;
+    const [firstTrace, futureTrace] = prepared.traceLinks;
+    assert.ok(firstPickup);
+    assert.ok(firstManifest);
+    assert.ok(firstStop);
+    assert.ok(firstTrace);
+    assert.ok(futureTrace);
+    await applyDeliveryRunPickupMutations({
+        driverUserId,
+        runId: run.id,
+        pickupNodeId: firstPickup.id,
+        mutations: [
+            {
+                clientOperationId: 'handoff-wrong-stop-pickup-scan',
+                occurredAt: new Date('2026-07-13T08:01:00.000Z'),
+                kind: DeliveryRunPickupOperationKinds.SCAN,
+                traceToken: firstTrace.publicToken,
+            },
+            {
+                clientOperationId: 'handoff-wrong-stop-pickup-confirm',
+                occurredAt: new Date('2026-07-13T08:02:00.000Z'),
+                kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
+                manifestId: firstManifest.manifestId,
+            },
+        ],
+    });
+    const beforeWrongStop = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+    });
+    const [wrongStop] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-wrong-stop-scan',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: `/trag/${futureTrace.publicToken}`,
+            },
+        ],
+    });
+    assert.equal(wrongStop?.result.outcome, 'wrong-stop');
+    assert.deepEqual(wrongStop?.result.affectedStopIds, []);
+    assert.deepEqual(
+        await getDeliveryRunHandoffManifest({
+            readerUserId: driverUserId,
+            runId: run.id,
+            targetStopId: firstStop.id,
+        }),
+        beforeWrongStop,
+    );
+});
+
+test('bulk handoff item outcomes persist independently with a required skip reason', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop, secondStop] = run.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+
+    const initial = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-mark-no-label',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: firstStop.id,
+                outcome: DeliveryRunHandoffItemStates.NO_LABEL,
+            },
+            {
+                clientOperationId: 'handoff-mark-missing',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: secondStop.id,
+                outcome: DeliveryRunHandoffItemStates.MISSING,
+            },
+        ],
+    });
+    assert.deepEqual(
+        initial.map(({ result }) => ({
+            outcome: result.outcome,
+            affectedStopIds: result.affectedStopIds,
+            itemState: result.itemState,
+        })),
+        [
+            {
+                outcome: 'applied',
+                affectedStopIds: [firstStop.id],
+                itemState: DeliveryRunHandoffItemStates.NO_LABEL,
+            },
+            {
+                outcome: 'applied',
+                affectedStopIds: [secondStop.id],
+                itemState: DeliveryRunHandoffItemStates.MISSING,
+            },
+        ],
+    );
+    const afterInitial = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+    });
+    assert.equal(afterInitial.noLabelCount, 1);
+    assert.equal(afterInitial.missingCount, 1);
+
+    const [skipped] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-mark-skipped',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: firstStop.id,
+                outcome: DeliveryRunHandoffItemStates.SKIPPED,
+                reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+            },
+        ],
+    });
+    assert.deepEqual(skipped?.result, {
+        kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+        outcome: 'applied',
+        affectedStopIds: [firstStop.id],
+        itemState: DeliveryRunHandoffItemStates.SKIPPED,
+        reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+    });
+    const persisted = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+    });
+    assert.equal(persisted.skippedCount, 1);
+    assert.equal(persisted.missingCount, 1);
+    assert.equal(persisted.noLabelCount, 0);
+    assert.equal(
+        persisted.items.find((item) => item.stopId === firstStop.id)?.reason,
+        DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, run.id))
+        ).length,
+        3,
+    );
+});
+
+test('handoff access is owner-scoped, privileged reads are explicit, and zero scans do not block fulfillment', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup({ driverCount: 3 });
+    const regularReaderUserId = prepared.fixture.driverUserIds[1];
+    const adminReaderUserId = prepared.fixture.driverUserIds[2];
+    const [targetStop] = run.stops;
+    assert.ok(regularReaderUserId);
+    assert.ok(adminReaderUserId);
+    assert.ok(targetStop);
+    await storage()
+        .update(users)
+        .set({ role: 'admin' })
+        .where(eq(users.id, adminReaderUserId));
+
+    await assertExecutionError(
+        getDeliveryRunHandoffManifest({
+            readerUserId: regularReaderUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+        }),
+        DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+    );
+    const adminManifest = await getDeliveryRunHandoffManifest({
+        readerUserId: adminReaderUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        allowAnyRun: true,
+    });
+    assert.equal(adminManifest.expectedCount, run.stops.length);
+    assert.equal(adminManifest.unverifiedCount, run.stops.length);
+    await assertExecutionError(
+        applyDeliveryRunHandoffMutations({
+            driverUserId: regularReaderUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+            expectedRetryAttempt: 0,
+            mutations: [
+                {
+                    clientOperationId: 'handoff-wrong-owner',
+                    occurredAt: new Date(),
+                    kind: DeliveryRunHandoffOperationKinds.SCAN,
+                    tracePath: 'not a trace QR payload',
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+    );
+
+    await fulfillDeliveryRunStops({
+        driverUserId,
+        runId: run.id,
+        stopIds: run.stops.map((stop) => stop.id),
+    });
+    const completed = await getDeliveryRun(run.id);
+    assert.equal(completed?.state, DeliveryRunStates.COMPLETED);
+    assert.ok(
+        completed?.stops.every(
+            (stop) => stop.state === DeliveryRunStopStates.DELIVERED,
+        ),
+    );
+    const completedAdminManifest = await getDeliveryRunHandoffManifest({
+        readerUserId: adminReaderUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        allowAnyRun: true,
+    });
+    assert.deepEqual(completedAdminManifest, adminManifest);
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, run.id))
+        ).length,
+        0,
+    );
+});
+
+test('handoff receipt retention includes the 90-day boundary and deletes in bounded batches', async () => {
+    const fixture = await createDeliveryRunFixture({
+        accountIndexes: [0, 0],
+        driverCount: 2,
+    });
+    const [firstDriverUserId, secondDriverUserId] = fixture.driverUserIds;
+    const [firstRequestId, secondRequestId] = fixture.requestIds;
+    assert.ok(firstDriverUserId);
+    assert.ok(secondDriverUserId);
+    assert.ok(firstRequestId);
+    assert.ok(secondRequestId);
+    const firstRun = await createRun({
+        fixture,
+        driverUserId: firstDriverUserId,
+        requestIds: [firstRequestId],
+    });
+    const secondRun = await createRun({
+        fixture,
+        driverUserId: secondDriverUserId,
+        requestIds: [secondRequestId],
+    });
+    const [firstStop] = firstRun.stops;
+    const [secondStop] = secondRun.stops;
+    assert.ok(firstStop);
+    assert.ok(secondStop);
+    const occurredAt = new Date();
+    await applyDeliveryRunHandoffMutations({
+        driverUserId: firstDriverUserId,
+        runId: firstRun.id,
+        targetStopId: firstStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [1, 2, 3].map((index) => ({
+            clientOperationId: `handoff-retention-old-${index}`,
+            occurredAt,
+            kind: DeliveryRunHandoffOperationKinds.SCAN,
+            tracePath: `invalid handoff payload ${index}`,
+        })),
+    });
+    await applyDeliveryRunHandoffMutations({
+        driverUserId: secondDriverUserId,
+        runId: secondRun.id,
+        targetStopId: secondStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-retention-new',
+                occurredAt,
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: 'invalid handoff payload newer',
+            },
+        ],
+    });
+    await fulfillDeliveryRunStops({
+        driverUserId: firstDriverUserId,
+        runId: firstRun.id,
+        stopIds: [firstStop.id],
+    });
+    await fulfillDeliveryRunStops({
+        driverUserId: secondDriverUserId,
+        runId: secondRun.id,
+        stopIds: [secondStop.id],
+    });
+
+    const boundary = new Date();
+    const retentionNow = new Date(
+        boundary.getTime() + deliveryRunHandoffOperationRetentionMs,
+    );
+    await storage()
+        .update(deliveryRuns)
+        .set({ completedAt: boundary })
+        .where(eq(deliveryRuns.id, firstRun.id));
+    await storage()
+        .update(deliveryRuns)
+        .set({ completedAt: new Date(boundary.getTime() + 1) })
+        .where(eq(deliveryRuns.id, secondRun.id));
+
+    assert.equal(
+        await pruneExpiredDeliveryRunHandoffOperations(retentionNow, 2),
+        2,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, firstRun.id))
+        ).length,
+        1,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, secondRun.id))
+        ).length,
+        1,
+    );
+    assert.equal(
+        await pruneExpiredDeliveryRunHandoffOperations(retentionNow, 0),
+        1,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, firstRun.id))
+        ).length,
+        0,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, secondRun.id))
+        ).length,
+        1,
+    );
+});
+
+test('handoff evidence follows occurrence time when offline mutations arrive out of order', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    const [trace] = prepared.traceLinks;
+    assert.ok(targetStop);
+    assert.ok(trace);
+    const newerOccurredAt = new Date(Date.now() - 1_000);
+    const olderOccurredAt = new Date(newerOccurredAt.getTime() - 1_000);
+
+    const [newerMissing] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-newer-missing',
+                occurredAt: newerOccurredAt,
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: targetStop.id,
+                outcome: DeliveryRunHandoffItemStates.MISSING,
+            },
+        ],
+    });
+    assert.equal(newerMissing?.result.outcome, 'applied');
+
+    const [staleScan] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-older-offline-scan',
+                occurredAt: olderOccurredAt,
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: trace.tracePath,
+            },
+        ],
+    });
+    assert.equal(staleScan?.result.outcome, 'stale');
+    const afterStaleScan = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+    });
+    const targetItem = afterStaleScan.items.find(
+        ({ stopId }) => stopId === targetStop.id,
+    );
+    assert.equal(targetItem?.state, DeliveryRunHandoffItemStates.MISSING);
+    assert.equal(targetItem?.verifiedAt, newerOccurredAt.toISOString());
+});
+
+test('handoff scan trusts the immutable picked-up trace after its public link is revoked', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    const [trace] = prepared.traceLinks;
+    assert.ok(targetStop);
+    assert.ok(trace);
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ status: 'revoked', revokedAt: new Date() })
+        .where(eq(harvestTraceLinks.id, trace.id));
+
+    const [scan] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-revoked-frozen-trace',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: trace.tracePath,
+            },
+        ],
+    });
+    assert.equal(scan?.result.outcome, 'applied');
+    assert.deepEqual(scan?.result.affectedStopIds, [targetStop.id]);
+});
+
+test('a late handoff mutation from the first visit cannot repopulate a retry manifest', async () => {
+    const { prepared, run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [targetStop] = run.stops;
+    const [trace] = prepared.traceLinks;
+    assert.ok(targetStop);
+    assert.ok(trace);
+
+    const deferred = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'handoff-defer-first-visit',
+        occurredAt: new Date(Date.now() - 2_000),
+        exceptions: run.stops.map((stop) => ({
+            stopId: stop.id,
+            outcome: DeliveryRunExceptionOutcomes.DEFERRED,
+            reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
+        })),
+    });
+    await retryDeliveryRunStop({
+        driverUserId,
+        runId: run.id,
+        stopId: targetStop.id,
+        expectedRouteRevision: deferred.result.routeRevision,
+    });
+    const retryManifest = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+    });
+    assert.equal(retryManifest.retryAttempt, 1);
+    assert.equal(retryManifest.unverifiedCount, run.stops.length);
+
+    await assertExecutionError(
+        applyDeliveryRunHandoffMutations({
+            driverUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+            expectedRetryAttempt: 0,
+            mutations: [
+                {
+                    clientOperationId: 'handoff-late-first-visit-scan',
+                    occurredAt: new Date(Date.now() - 1_000),
+                    kind: DeliveryRunHandoffOperationKinds.SCAN,
+                    tracePath: trace.tracePath,
+                },
+            ],
+        }),
+        DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+    );
+    assert.deepEqual(
+        await getDeliveryRunHandoffManifest({
+            readerUserId: driverUserId,
+            runId: run.id,
+            targetStopId: targetStop.id,
+        }),
+        retryManifest,
+    );
+    assert.equal(
+        (
+            await storage()
+                .select()
+                .from(deliveryRunHandoffOperations)
+                .where(eq(deliveryRunHandoffOperations.runId, run.id))
+        ).length,
+        0,
+    );
+
+    const [currentVisitScan] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 1,
+        mutations: [
+            {
+                clientOperationId: 'handoff-current-retry-scan',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.SCAN,
+                tracePath: trace.tracePath,
+            },
+        ],
+    });
+    assert.equal(currentVisitScan?.result.outcome, 'applied');
+    assert.equal(currentVisitScan?.retryAttempt, 1);
+    const [receipt] = await storage()
+        .select()
+        .from(deliveryRunHandoffOperations)
+        .where(eq(deliveryRunHandoffOperations.runId, run.id));
+    assert.equal(receipt?.retryAttempt, 1);
 });
