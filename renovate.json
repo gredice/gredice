@@ -31,6 +31,9 @@
     ],
     "minimumReleaseAge": "5 days",
     "prHourlyLimit": 6,
+    "toolSettings": {
+        "nodeMaxMemory": 2048
+    },
     "platformAutomerge": true,
     "platformCommit": "enabled"
 }
