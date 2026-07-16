@@ -104,17 +104,8 @@ export default function DeliveryPage() {
                             .
                         </figcaption>
                     </figure>
-                    <table
-                        style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            borderStyle: 'hidden',
-                            boxShadow: '0 0 0 1px #ddd',
-                            borderRadius: '12px',
-                            marginBottom: '1rem',
-                        }}
-                    >
-                        <caption>
+                    <table className="not-prose mb-4 w-full overflow-hidden rounded-xl border border-border border-separate border-spacing-0 bg-card text-sm text-card-foreground">
+                        <caption className="caption-top pb-1 text-foreground">
                             <strong>Cijena dostave</strong> -{' '}
                             <em>
                                 udaljenost će biti točno izračunata prilikom
@@ -123,64 +114,26 @@ export default function DeliveryPage() {
                         </caption>
                         <thead>
                             <tr>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                        borderTopLeftRadius: '12px',
-                                    }}
-                                >
+                                <th className="border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Mjesto
                                 </th>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                    }}
-                                >
+                                <th className="border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Cijena dostave
                                 </th>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                        borderTopRightRadius: '12px',
-                                    }}
-                                >
+                                <th className="bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Formula
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>Zagreb</strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>🎉 Besplatna dostava 🎉</strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t px-2 py-2">
                                     <strong>0 €</strong>
                                 </td>
                             </tr>
@@ -189,31 +142,16 @@ export default function DeliveryPage() {
                                     location.distance * distanceSurchargePerKm;
                                 return (
                                     <tr key={location.name}>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t border-r px-2 py-2">
                                             <strong>{location.name}</strong> (
                                             {location.distance} km)
                                         </td>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t border-r px-2 py-2">
                                             <strong>
                                                 {formatPrice(distanceFee)}
                                             </strong>
                                         </td>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t px-2 py-2">
                                             <strong>
                                                 {location.distance} km ×{' '}
                                                 {formatPrice(
@@ -226,12 +164,7 @@ export default function DeliveryPage() {
                                 );
                             })}
                             <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>Ostala mjesta</strong>
                                     <br />(
                                     <em>
@@ -240,23 +173,13 @@ export default function DeliveryPage() {
                                     </em>
                                     )
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>
                                         {formatPrice(distanceSurchargePerKm)}
                                         /km
                                     </strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t px-2 py-2">
                                     <strong>
                                         udaljenost ×{' '}
                                         {formatPrice(distanceSurchargePerKm)}
