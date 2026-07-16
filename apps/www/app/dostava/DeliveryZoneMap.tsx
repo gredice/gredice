@@ -6,23 +6,21 @@ import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import { Button } from '@gredice/ui/Button';
 import { MyLocation } from '@gredice/ui/icons';
 import { useEffect, useRef, useState } from 'react';
-import {
-    deliveryAreaRadiusMeters,
-    grediceHqPosition,
-    zagrebBoundary,
-} from './deliveryZoneMapData';
+import { deliveryRoadAreaPaths } from './deliveryRoadAreaData';
+import { grediceHqPosition, zagrebBoundary } from './deliveryZoneMapData';
 
 type MapState = 'loading' | 'ready' | 'fallback';
 
 type GoogleMapsClient = {
-    Circle: typeof google.maps.Circle;
+    LatLngBounds: typeof google.maps.LatLngBounds;
     Map: typeof google.maps.Map;
     Marker: typeof google.maps.Marker;
     Polygon: typeof google.maps.Polygon;
 };
 
 type MapLayers = {
-    deliveryArea: google.maps.Circle | null;
+    deliveryArea: google.maps.Polygon[];
+    deliveryBounds: google.maps.LatLngBounds | null;
     hqMarker: google.maps.Marker | null;
     zagrebArea: google.maps.Polygon | null;
 };
@@ -63,9 +61,13 @@ function loadGoogleMaps(apiKey: string) {
         region: 'HR',
         authReferrerPolicy: 'origin',
     });
-    mapsPromise = Promise.all([importLibrary('maps'), importLibrary('marker')])
-        .then(([maps, marker]) => ({
-            Circle: maps.Circle,
+    mapsPromise = Promise.all([
+        importLibrary('maps'),
+        importLibrary('marker'),
+        importLibrary('core'),
+    ])
+        .then(([maps, marker, core]) => ({
+            LatLngBounds: core.LatLngBounds,
             Map: maps.Map,
             Marker: marker.Marker,
             Polygon: maps.Polygon,
@@ -78,23 +80,30 @@ function loadGoogleMaps(apiKey: string) {
 }
 
 function clearLayers(layers: MapLayers) {
-    layers.deliveryArea?.setMap(null);
+    for (const area of layers.deliveryArea) area.setMap(null);
     layers.hqMarker?.setMap(null);
     layers.zagrebArea?.setMap(null);
 }
 
 function drawDeliveryZones(map: google.maps.Map, maps: GoogleMapsClient) {
-    const deliveryArea = new maps.Circle({
-        map,
-        center: grediceHqPosition,
-        radius: deliveryAreaRadiusMeters,
-        clickable: false,
-        fillColor: '#166534',
-        fillOpacity: 0.1,
-        strokeColor: '#166534',
-        strokeOpacity: 0.9,
-        strokeWeight: 2,
-        zIndex: 1,
+    const deliveryBounds = new maps.LatLngBounds();
+    const deliveryArea = deliveryRoadAreaPaths.map((path) => {
+        const paths = path.map(([longitude, latitude]) => {
+            const position = { lat: latitude, lng: longitude };
+            deliveryBounds.extend(position);
+            return position;
+        });
+        return new maps.Polygon({
+            map,
+            paths,
+            clickable: false,
+            fillColor: '#166534',
+            fillOpacity: 0.1,
+            strokeColor: '#166534',
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            zIndex: 1,
+        });
     });
     const zagrebArea = new maps.Polygon({
         map,
@@ -122,22 +131,22 @@ function drawDeliveryZones(map: google.maps.Map, maps: GoogleMapsClient) {
         },
         zIndex: 3,
     });
-    return { deliveryArea, hqMarker, zagrebArea };
+    return { deliveryArea, deliveryBounds, hqMarker, zagrebArea };
 }
 
 function fitDeliveryArea(
     map: google.maps.Map,
-    deliveryArea: google.maps.Circle,
+    bounds: google.maps.LatLngBounds,
 ) {
-    const bounds = deliveryArea.getBounds();
-    if (bounds) map.fitBounds(bounds, 32);
+    map.fitBounds(bounds, 32);
 }
 
 export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
     const containerRef = useRef<HTMLElement>(null);
     const mapRef = useRef<google.maps.Map>(null);
     const layersRef = useRef<MapLayers>({
-        deliveryArea: null,
+        deliveryArea: [],
+        deliveryBounds: null,
         hqMarker: null,
         zagrebArea: null,
     });
@@ -171,7 +180,7 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
                 const layers = drawDeliveryZones(map, maps);
                 mapRef.current = map;
                 layersRef.current = layers;
-                fitDeliveryArea(map, layers.deliveryArea);
+                fitDeliveryArea(map, layers.deliveryBounds);
                 setState('ready');
             } catch {
                 if (active) setState('fallback');
@@ -191,8 +200,8 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
 
     const recenter = () => {
         const map = mapRef.current;
-        const deliveryArea = layersRef.current.deliveryArea;
-        if (map && deliveryArea) fitDeliveryArea(map, deliveryArea);
+        const bounds = layersRef.current.deliveryBounds;
+        if (map && bounds) fitDeliveryArea(map, bounds);
     };
 
     return (
@@ -221,8 +230,8 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
                     </strong>
                     <span>
                         Besplatna dostava vrijedi na području Grada Zagreba, a
-                        dostava uz nadoplatu unutar 100 km od Gredice HQ-a i
-                        unutar Hrvatske.
+                        dostava uz nadoplatu unutar 100 km vožnje cestom od
+                        Gredice HQ-a i unutar Hrvatske.
                     </span>
                     <a
                         href="https://maps.app.goo.gl/hJbidDQzhHWGCZwS6"
@@ -250,7 +259,7 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
                                     aria-hidden="true"
                                     className="size-3 rounded-full border-2 border-green-800 bg-green-700/20"
                                 />
-                                Do 100 km – uz nadoplatu, samo Hrvatska
+                                Do 100 km vožnje – uz nadoplatu, samo Hrvatska
                             </li>
                         </ul>
                     </div>

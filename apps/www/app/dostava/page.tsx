@@ -91,8 +91,26 @@ export default function DeliveryPage() {
                         <DeliveryZoneMap apiKey={googleMapsApiKey} />
                         <figcaption className="mt-2 text-sm text-foreground">
                             <strong>Zone dostave</strong> – područje do 100 km
-                            odnosi se samo na adrese u Hrvatskoj. Granica Grada
-                            Zagreba prikazana je prema{' '}
+                            izračunato je prema udaljenosti vožnje cestom i
+                            ograničeno na Hrvatsku. Podaci o cestama:{' '}
+                            <a
+                                href="https://www.openstreetmap.org/copyright"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                © OpenStreetMap contributors
+                            </a>
+                            , izračun{' '}
+                            <a
+                                href="https://valhalla.github.io/valhalla/api/isochrone/api-reference/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                Valhalla
+                            </a>
+                            . Granica Grada Zagreba prikazana je prema{' '}
                             <a
                                 href="https://geohub-zagreb.hub.arcgis.com/"
                                 target="_blank"
