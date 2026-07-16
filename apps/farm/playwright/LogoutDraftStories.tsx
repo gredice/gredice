@@ -11,6 +11,7 @@ import { OperationCompletionDraftStoreHarness } from './OperationCompletionDraft
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-logout-draft-story',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,

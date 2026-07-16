@@ -20,6 +20,7 @@ import { LogoutButton } from './LogoutButton';
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-logout-test',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,
