@@ -501,6 +501,7 @@ export function HarvestTraceScanner({
     return (
         <>
             <Button
+                size="lg"
                 variant="outlined"
                 disabled={disabled || availableTraceCount === 0}
                 onClick={openScanner}
@@ -634,6 +635,7 @@ export function HarvestTraceScanner({
                                         .length > 0 ? (
                                         <Button
                                             size="sm"
+                                            className="min-h-11 min-w-11"
                                             variant="outlined"
                                             onClick={() =>
                                                 replacePickupSelection(
@@ -648,6 +650,7 @@ export function HarvestTraceScanner({
                                         .length > 0 ? (
                                         <Button
                                             size="sm"
+                                            className="min-h-11 min-w-11"
                                             variant="plain"
                                             onClick={() =>
                                                 replacePickupSelection(
@@ -708,6 +711,7 @@ export function HarvestTraceScanner({
                         />
                         <Button
                             type="submit"
+                            size="lg"
                             variant="outlined"
                             disabled={!manualValue.trim()}
                             className="sm:mb-5"
@@ -717,6 +721,7 @@ export function HarvestTraceScanner({
                     </form>
 
                     <Button
+                        size="lg"
                         className="w-full"
                         onClick={() => changeScannerOpen(false)}
                     >

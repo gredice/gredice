@@ -98,6 +98,32 @@ const routeSnapshot: OfflineRouteSnapshot = {
     ],
 };
 
+const bulkRecipientRouteSnapshot: OfflineRouteSnapshot = {
+    ...routeSnapshot,
+    steps: routeSnapshot.steps.map((step, index) => {
+        if (index !== 0 || step.kind !== 'delivery') return step;
+        const [item] = step.items;
+        if (!item) return step;
+        return {
+            ...step,
+            recipientCount: 1,
+            items: [
+                ...step.items,
+                {
+                    ...item,
+                    stopId: 73,
+                    requestId: 'request-73',
+                    harvest: {
+                        ...item.harvest,
+                        plantName: 'Paprika',
+                        tracePath: '/trag/offline-pepper-0001',
+                    },
+                },
+            ],
+        };
+    }),
+};
+
 function queueSnapshot(
     entries: DeliveryActionQueueEntry[],
     durability: DeliveryActionQueueSnapshot['durability'] = 'durable',
@@ -162,6 +188,22 @@ export function OfflineRouteAcknowledgedDeliveryStory() {
             actionQueue={queueSnapshot([
                 routeEntry('deliver', 0, 71, 'synced'),
             ])}
+            onArrive={() => undefined}
+            onDeliver={() => undefined}
+            onException={async () => ({ status: 'saved' })}
+            onVerificationScan={() => undefined}
+            onRetry={() => undefined}
+            onRecoverConflict={() => undefined}
+            onReconcile={() => undefined}
+        />
+    );
+}
+
+export function OfflineRouteBulkRecipientCountStory() {
+    return (
+        <OfflineRoutePanel
+            snapshot={bulkRecipientRouteSnapshot}
+            actionQueue={queueSnapshot([])}
             onArrive={() => undefined}
             onDeliver={() => undefined}
             onException={async () => ({ status: 'saved' })}

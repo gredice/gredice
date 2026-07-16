@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { DeliveryRunCompletionOverrideReasons } from '@gredice/storage';
 import {
     deliveryRunCompletedMessage,
     deliveryRunCompletionFromSnapshot,
@@ -117,6 +118,89 @@ test('normalizes immutable route commands and rejects malformed payloads', () =>
                 now,
             }),
         TypeError,
+    );
+
+    const completionOverride = {
+        reason: DeliveryRunCompletionOverrideReasons.DEVICE_UNAVAILABLE,
+    };
+    const overridden = createDeliveryCompleteCommand({
+        operationId: 'deliver-with-override',
+        runId: scope.runId,
+        stopId: 101,
+        expectedRouteRevision: 5,
+        completionOverride,
+        now,
+    });
+    assert.deepEqual(overridden.completionOverride, completionOverride);
+    assert.notEqual(overridden.completionOverride, completionOverride);
+    assert.throws(
+        () =>
+            Reflect.apply(createDeliveryCompleteCommand, undefined, [
+                {
+                    operationId: 'deliver-invalid-override',
+                    runId: scope.runId,
+                    stopId: 101,
+                    expectedRouteRevision: 5,
+                    completionOverride: {
+                        reason: 'unsupported-reason',
+                    },
+                    now,
+                },
+            ]),
+        TypeError,
+    );
+});
+
+test('persists a completion override and its bounded server acknowledgement', async () => {
+    const persistence = createMemoryDeliveryActionQueuePersistence();
+    const command = createDeliveryCompleteCommand({
+        operationId: 'deliver-override-persisted',
+        runId: scope.runId,
+        stopId: 101,
+        expectedRouteRevision: 5,
+        completionOverride: {
+            reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+        },
+        now,
+    });
+    const actionQueue = queue({
+        persistence,
+        transport: async () => ({
+            status: 'applied',
+            routeRevision: 6,
+            reroutePending: false,
+            runCompleted: false,
+            override: {
+                reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+                bypassed: ['arrival', 'handoff-review'],
+            },
+        }),
+    });
+
+    await actionQueue.enqueue(command);
+    await actionQueue.replay();
+    const restored = await queue({ persistence }).restore();
+
+    assert.deepEqual(restored.entries[0]?.command, command);
+    assert.deepEqual(restored.entries[0]?.acknowledgement, {
+        kind: 'server',
+        replayed: false,
+        routeRevision: 6,
+        reroutePending: false,
+        runCompleted: false,
+        override: {
+            reason: DeliveryRunCompletionOverrideReasons.WORKFLOW_RECOVERY,
+            bypassed: ['arrival', 'handoff-review'],
+        },
+    });
+    await assert.rejects(
+        actionQueue.enqueue({
+            ...command,
+            completionOverride: {
+                reason: DeliveryRunCompletionOverrideReasons.MANUAL_HANDOFF,
+            },
+        }),
+        DeliveryActionOperationConflictError,
     );
 });
 

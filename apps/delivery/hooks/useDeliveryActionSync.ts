@@ -1,6 +1,9 @@
 'use client';
 
-import type { DeliveryRunHandoffSkipReason } from '@gredice/storage';
+import type {
+    DeliveryRunCompletionOverrideInput,
+    DeliveryRunHandoffSkipReason,
+} from '@gredice/storage';
 import {
     useCallback,
     useEffect,
@@ -442,6 +445,7 @@ export function useDeliveryActionSync({
             stopId: number,
             serverRouteRevision: number,
             notes?: string,
+            completionOverride?: DeliveryRunCompletionOverrideInput,
         ) =>
             enqueueRouteAction(serverRouteRevision, (expectedRouteRevision) =>
                 createDeliveryCompleteCommand({
@@ -450,6 +454,7 @@ export function useDeliveryActionSync({
                     stopId,
                     expectedRouteRevision,
                     notes,
+                    completionOverride,
                 }),
             ),
         enqueueException: (

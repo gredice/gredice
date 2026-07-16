@@ -24,6 +24,20 @@ test('maps typed stop operation failures to conflict responses', () => {
     }
 });
 
+test('maps a missing completion override to actionable recovery copy', () => {
+    const error = new DeliveryRunExecutionError(
+        DeliveryRunExecutionErrorCodes.COMPLETION_OVERRIDE_REQUIRED,
+        'internal detail',
+    );
+
+    assert.deepEqual(deliveryRunExecutionErrorDetails(error), {
+        code: 'completion-override-required',
+        message:
+            'Za dostavu bez potvrđenog dolaska ili pregleda uroda odaberi razlog i ponovno potvrdi dostavu.',
+    });
+    assert.equal(deliveryRunExecutionErrorStatus(error), 409);
+});
+
 test('maps unknown failures to internal server errors without details', () => {
     const error = new Error('database unavailable');
 

@@ -1,6 +1,8 @@
 'use client';
 
 import type {
+    DeliveryRunCompletionBypass,
+    DeliveryRunCompletionOverrideReason,
     DeliveryRunHandoffItemSnapshot,
     DeliveryRunHandoffItemState,
     DeliveryRunHandoffManifest,
@@ -11,7 +13,7 @@ import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Check, Info, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { useId, useState } from 'react';
+import { type RefObject, useId, useState } from 'react';
 import type { DeliveryStopDeliverySummary } from '../lib/deliveryDashboardTypes';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
 import {
@@ -70,8 +72,14 @@ export type DeliveryHandoffCompletionConfirmation = {
     open: boolean;
     pending?: boolean;
     disabled?: boolean;
+    arrived: boolean;
+    overrideBypasses: DeliveryRunCompletionBypass[];
+    recipientCount?: number;
+    returnFocusRef?: RefObject<HTMLButtonElement | null>;
     onOpenChange: (open: boolean) => void;
-    onConfirm: () => unknown | Promise<unknown>;
+    onConfirm: (completionOverride?: {
+        reason: DeliveryRunCompletionOverrideReason;
+    }) => unknown | Promise<unknown>;
 };
 
 export type DeliveryHandoffSummary = {
@@ -81,6 +89,7 @@ export type DeliveryHandoffSummary = {
     noLabelCount: number;
     missingCount: number;
     skippedCount: number;
+    exceptionCount: number;
     pendingCount: number;
 };
 
@@ -131,6 +140,9 @@ function handoffSummaryFromItems(
         noLabelCount: handoffItemCount(items, 'no-label'),
         missingCount: handoffItemCount(items, 'missing'),
         skippedCount: handoffItemCount(items, 'skipped'),
+        exceptionCount:
+            handoffItemCount(items, 'missing') +
+            handoffItemCount(items, 'skipped'),
         pendingCount,
     };
 }
@@ -478,7 +490,7 @@ export function DeliveryHarvestVerification({
                 <div className="space-y-1 rounded-md border border-dashed p-3">
                     <Button
                         type="button"
-                        size="sm"
+                        size="lg"
                         variant="outlined"
                         loading={pendingAction === 'manual-review'}
                         disabled={disabled || Boolean(pendingAction)}

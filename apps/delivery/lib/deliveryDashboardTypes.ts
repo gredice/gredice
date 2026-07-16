@@ -100,6 +100,8 @@ export type DeliveryStopSummary = {
     tracking: CustomerDeliveryTrackingSummary | null;
     runId: string | null;
     deliveryCount: number;
+    /** Server-derived unique recipient count for the actionable physical stop. */
+    recipientCount?: number;
     deliveries: DeliveryStopDeliverySummary[];
     actionState?: 'locked' | 'upcoming' | 'current' | 'completed';
     lockedReason?: string | null;

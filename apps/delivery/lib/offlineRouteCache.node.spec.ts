@@ -70,6 +70,7 @@ function deliveryStep({
         tracking: null,
         runId: 'run-one',
         deliveryCount: 1,
+        recipientCount: 1,
         deliveries: [
             {
                 stopId: id,
@@ -317,6 +318,7 @@ test('projects only the current and immediate next non-completed route steps', (
     assert.equal(current?.kind, 'delivery');
     if (current?.kind === 'delivery') {
         assert.equal(current.address, 'CURRENT_ESSENTIAL door address');
+        assert.equal(current.recipientCount, 1);
         assert.equal(
             current.items[0]?.contactName,
             'CURRENT_ESSENTIAL contact',
@@ -371,6 +373,32 @@ test('serialized projection is an allowlist and excludes privacy canaries', () =
     }
     assert.match(serialized, /CURRENT_ESSENTIAL/);
     assert.match(serialized, /NEXT_PICKUP/);
+});
+
+test('recipient count remains aggregate-only and legacy caches stay readable', () => {
+    const current = firstStep(jsonRecord(snapshot()));
+    assert.equal(current.recipientCount, 1);
+
+    const legacy = jsonRecord(snapshot());
+    delete firstStep(legacy).recipientCount;
+    assert.ok(
+        parseOfflineRouteSnapshot(legacy, {
+            userId: 'driver-one',
+            runId: 'run-one',
+            now,
+        }),
+    );
+
+    const invalid = jsonRecord(snapshot());
+    firstStep(invalid).recipientCount = 0;
+    assert.equal(
+        parseOfflineRouteSnapshot(invalid, {
+            userId: 'driver-one',
+            runId: 'run-one',
+            now,
+        }),
+        null,
+    );
 });
 
 test('parser validates every cached nullable time as a timestamp', () => {

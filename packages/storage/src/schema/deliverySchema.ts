@@ -318,6 +318,27 @@ export const DeliveryRunStopOperationKinds = {
 export type DeliveryRunStopOperationKind =
     (typeof DeliveryRunStopOperationKinds)[keyof typeof DeliveryRunStopOperationKinds];
 
+export const DeliveryRunCompletionOverrideReasons = {
+    DEVICE_UNAVAILABLE: 'device-unavailable',
+    WORKFLOW_RECOVERY: 'workflow-recovery',
+    MANUAL_HANDOFF: 'manual-handoff',
+    OTHER_OPERATIONAL: 'other-operational',
+} as const;
+
+export type DeliveryRunCompletionOverrideReason =
+    (typeof DeliveryRunCompletionOverrideReasons)[keyof typeof DeliveryRunCompletionOverrideReasons];
+
+export type DeliveryRunCompletionBypass = 'arrival' | 'handoff-review';
+
+export type DeliveryRunCompletionOverrideInput = {
+    reason: DeliveryRunCompletionOverrideReason;
+};
+
+export type DeliveryRunCompletionOverrideStoredResult =
+    DeliveryRunCompletionOverrideInput & {
+        bypassed: DeliveryRunCompletionBypass[];
+    };
+
 export type DeliveryRunStopOperationStoredResult = {
     kind: DeliveryRunStopOperationKind;
     targetStopId: number;
@@ -326,6 +347,7 @@ export type DeliveryRunStopOperationStoredResult = {
     reroutePending: boolean;
     runCompleted: boolean;
     handoff?: DeliveryRunHandoffSnapshot;
+    override?: DeliveryRunCompletionOverrideStoredResult;
 };
 
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.

@@ -50,6 +50,7 @@ export async function POST(
                 runId,
                 stopId,
                 notes: mutation.notes,
+                completionOverride: mutation.completionOverride,
                 expectedRouteRevision: mutation.expectedRouteRevision,
                 clientOperationId: mutation.clientOperationId,
                 occurredAt: mutation.occurredAt,

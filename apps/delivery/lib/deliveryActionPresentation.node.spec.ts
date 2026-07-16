@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     deliveryActionCompletionMessage,
+    deliveryActionPermanentFailureMessage,
     deliveryRouteStepsWithLocalActions,
 } from './deliveryActionPresentation';
 import type {
@@ -15,6 +16,23 @@ import type {
 } from './deliveryDashboardTypes';
 
 const occurredAt = '2026-07-15T12:00:00.000Z';
+
+test('explains how to recover when completion requires an override reason', () => {
+    assert.match(
+        deliveryActionPermanentFailureMessage(
+            'completion-override-required',
+            'stop',
+        ),
+        /Učitaj stanje poslužitelja, zatim odaberi razlog/,
+    );
+    assert.match(
+        deliveryActionPermanentFailureMessage(
+            'completion-override-required',
+            'global',
+        ),
+        /ponovno potvrdi dostavu s razlogom/,
+    );
+});
 
 function stop(id: number, isCurrent: boolean): DeliveryStopSummary {
     return {

@@ -22,6 +22,10 @@ import 'server-only';
 import {
     accountUsers,
     DeliveryRequestStates,
+    type DeliveryRunCompletionBypass,
+    type DeliveryRunCompletionOverrideInput,
+    type DeliveryRunCompletionOverrideReason,
+    DeliveryRunCompletionOverrideReasons,
     type DeliveryRunEstimateSource,
     DeliveryRunEstimateSources,
     type DeliveryRunExceptionOperationStoredResult,
@@ -298,6 +302,7 @@ export const DeliveryRunExecutionErrorCodes = {
     EXCEPTION_OPERATION_CONFLICT: 'exception-operation-conflict',
     EXCEPTION_INVALID: 'exception-invalid',
     EXCEPTION_TRANSITION_INVALID: 'exception-transition-invalid',
+    COMPLETION_OVERRIDE_REQUIRED: 'completion-override-required',
     STOP_OPERATION_CONFLICT: 'stop-operation-conflict',
     STOP_OPERATION_INVALID: 'stop-operation-invalid',
     STOP_OPERATION_STATE_CONFLICT: 'stop-operation-state-conflict',
@@ -437,6 +442,7 @@ export type RecordDeliveryRunStopOperationInput =
     | (RecordDeliveryRunStopOperationBase & {
           kind: 'deliver';
           deliveryNotes?: string;
+          completionOverride?: DeliveryRunCompletionOverrideInput;
       });
 
 export type RecordDeliveryRunStopOperationResult = {
@@ -5397,7 +5403,13 @@ type NormalizedRecordDeliveryRunStopOperationInput =
     RecordDeliveryRunStopOperationBase & {
         kind: DeliveryRunStopOperationKind;
         deliveryNotes?: string;
+        completionOverride?: DeliveryRunCompletionOverrideInput;
     };
+
+const deliveryRunCompletionOverrideReasons =
+    new Set<DeliveryRunCompletionOverrideReason>(
+        Object.values(DeliveryRunCompletionOverrideReasons),
+    );
 
 function invalidDeliveryRunStopOperation(message: string): never {
     throw new DeliveryRunExecutionError(
@@ -5465,6 +5477,18 @@ function normalizeDeliveryRunStopOperationInput(
             'Delivery notes must not exceed 1000 characters',
         );
     }
+    const completionOverride =
+        input.kind === DeliveryRunStopOperationKinds.DELIVER
+            ? input.completionOverride
+            : undefined;
+    if (
+        completionOverride &&
+        !deliveryRunCompletionOverrideReasons.has(completionOverride.reason)
+    ) {
+        invalidDeliveryRunStopOperation(
+            'Delivery completion override reason is invalid',
+        );
+    }
     return {
         driverUserId: input.driverUserId,
         runId: input.runId,
@@ -5474,6 +5498,13 @@ function normalizeDeliveryRunStopOperationInput(
         occurredAt: input.occurredAt,
         kind: input.kind,
         ...(deliveryNotes ? { deliveryNotes } : {}),
+        ...(completionOverride
+            ? {
+                  completionOverride: {
+                      reason: completionOverride.reason,
+                  },
+              }
+            : {}),
     };
 }
 
@@ -5488,6 +5519,11 @@ function deliveryRunStopOperationPayloadHash(
             expectedRouteRevision: input.expectedRouteRevision,
             occurredAt: input.occurredAt.toISOString(),
             deliveryNotes: input.deliveryNotes ?? null,
+            ...(input.completionOverride
+                ? {
+                      completionOverrideReason: input.completionOverride.reason,
+                  }
+                : {}),
         }),
     );
 }
@@ -6114,6 +6150,30 @@ async function recordDeliveryRunStopOperationInDatabase(
         input.kind === DeliveryRunStopOperationKinds.DELIVER
             ? deliveryRunHandoffSnapshot(stops)
             : undefined;
+    const completionBypasses: DeliveryRunCompletionBypass[] = [];
+    if (input.kind === DeliveryRunStopOperationKinds.DELIVER) {
+        const newlyFulfilledStopIds = new Set(
+            newlyFulfilledStops.map((stop) => stop.id),
+        );
+        if (newlyFulfilledStops.some((stop) => !stop.arrivedAt)) {
+            completionBypasses.push('arrival');
+        }
+        if (
+            handoff?.items.some(
+                (item) =>
+                    newlyFulfilledStopIds.has(item.stopId) &&
+                    item.state === DeliveryRunHandoffItemStates.UNVERIFIED,
+            )
+        ) {
+            completionBypasses.push('handoff-review');
+        }
+        if (completionBypasses.length > 0 && !input.completionOverride) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.COMPLETION_OVERRIDE_REQUIRED,
+                'Delivery completion override is required when arrival or handoff review is missing',
+            );
+        }
+    }
     if (input.kind === DeliveryRunStopOperationKinds.DELIVER) {
         for (const stop of newlyFulfilledStops) {
             try {
@@ -6191,6 +6251,14 @@ async function recordDeliveryRunStopOperationInDatabase(
             !runCompleted && Boolean(runAfterMutation.rerouteRequiredAt),
         runCompleted,
         ...(handoff ? { handoff } : {}),
+        ...(input.completionOverride
+            ? {
+                  override: {
+                      reason: input.completionOverride.reason,
+                      bypassed: completionBypasses,
+                  },
+              }
+            : {}),
     };
     await db.insert(deliveryRunStopOperations).values({
         runId: input.runId,

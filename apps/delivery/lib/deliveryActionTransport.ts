@@ -1,4 +1,9 @@
 import type {
+    DeliveryRunCompletionBypass,
+    DeliveryRunCompletionOverrideReason,
+    DeliveryRunCompletionOverrideStoredResult,
+} from '@gredice/storage';
+import type {
     DeliveryActionTransportResult,
     DeliveryHandoffCommand,
     DeliveryHandoffOperationResult,
@@ -53,6 +58,48 @@ function validHandoffSkipReason(value: unknown) {
         value === 'manual-verification' ||
         value === 'other-operational'
     );
+}
+
+function validCompletionOverrideReason(
+    value: unknown,
+): value is DeliveryRunCompletionOverrideReason {
+    return (
+        value === 'device-unavailable' ||
+        value === 'workflow-recovery' ||
+        value === 'manual-handoff' ||
+        value === 'other-operational'
+    );
+}
+
+function validCompletionBypass(
+    value: unknown,
+): value is DeliveryRunCompletionBypass {
+    return value === 'arrival' || value === 'handoff-review';
+}
+
+function completionOverrideResult(
+    value: unknown,
+    command: DeliveryRouteActionCommand,
+): DeliveryRunCompletionOverrideStoredResult | null | undefined {
+    const expected =
+        command.kind === 'deliver' ? command.completionOverride : undefined;
+    if (!expected) return value === undefined ? undefined : null;
+    if (
+        !isRecord(value) ||
+        !hasOnlyKeys(value, ['reason', 'bypassed']) ||
+        value.reason !== expected.reason ||
+        !validCompletionOverrideReason(value.reason) ||
+        !Array.isArray(value.bypassed) ||
+        value.bypassed.length > 2 ||
+        !value.bypassed.every(validCompletionBypass) ||
+        new Set(value.bypassed).size !== value.bypassed.length
+    ) {
+        return null;
+    }
+    return {
+        reason: value.reason,
+        bypassed: [...value.bypassed],
+    };
 }
 
 function responseCode(value: unknown) {
@@ -122,6 +169,10 @@ export function deliveryActionAcknowledgement(
         };
     }
     const result = value.result;
+    const override =
+        isRecord(result) && 'override' in result
+            ? completionOverrideResult(result.override, command)
+            : completionOverrideResult(undefined, command);
     if (
         !isRecord(result) ||
         result.kind !== command.kind ||
@@ -131,7 +182,8 @@ export function deliveryActionAcknowledgement(
         !result.affectedStopIds.every(validStopId) ||
         !validRevision(result.routeRevision) ||
         typeof result.reroutePending !== 'boolean' ||
-        typeof result.runCompleted !== 'boolean'
+        typeof result.runCompleted !== 'boolean' ||
+        override === null
     ) {
         return {
             status: 'retryable-failure',
@@ -143,6 +195,7 @@ export function deliveryActionAcknowledgement(
         routeRevision: result.routeRevision,
         reroutePending: result.reroutePending,
         runCompleted: result.runCompleted,
+        ...(override ? { override } : {}),
     };
 }
 
@@ -322,6 +375,13 @@ function requestBody(command: DeliveryServerActionCommand) {
         return {
             ...common,
             ...(command.notes ? { notes: command.notes } : {}),
+            ...(command.completionOverride
+                ? {
+                      completionOverride: {
+                          reason: command.completionOverride.reason,
+                      },
+                  }
+                : {}),
         };
     }
     return common;

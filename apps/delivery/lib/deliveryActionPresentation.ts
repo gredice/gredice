@@ -17,6 +17,11 @@ export function deliveryActionPermanentFailureMessage(
     errorCode: string | undefined,
     scope: 'global' | 'stop',
 ) {
+    if (errorCode === 'completion-override-required') {
+        return scope === 'global'
+            ? 'Dostava traži razlog za nastavak bez potvrđenog dolaska ili pregleda uroda. Učitaj trenutačno stanje i ponovno potvrdi dostavu s razlogom.'
+            : 'Učitaj stanje poslužitelja, zatim odaberi razlog za dostavu bez pune provjere i ponovno potvrdi dostavu.';
+    }
     if (changedRouteCodes.has(errorCode ?? '')) {
         return scope === 'global'
             ? 'Ruta na poslužitelju se promijenila. Lokalna radnja i sve ovisne radnje ostaju blokirane.'

@@ -1,5 +1,9 @@
 'use client';
 
+import type {
+    DeliveryRunCompletionBypass,
+    DeliveryRunCompletionOverrideReason,
+} from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
@@ -52,11 +56,13 @@ import {
 import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
 import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
+import { DeliveryHandoffCompletionDialog } from './DeliveryHandoffCompletionDialog';
 import {
     type DeliveryHandoffFeedbackView,
     type DeliveryHandoffManifestView,
     type DeliveryHandoffMarkItemInput,
     DeliveryHarvestVerification,
+    deliveryHandoffSummary,
 } from './DeliveryHarvestVerification';
 import type { PickupManifestSyncSummary } from './DeliveryPickupCard';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
@@ -87,7 +93,10 @@ type DeliveryCommandCenterProps = {
     focusOnMount?: boolean;
     onRetry?: () => unknown | Promise<unknown>;
     onArrive?: () => unknown | Promise<unknown>;
-    onDeliver?: (notes?: string) => unknown | Promise<unknown>;
+    onDeliver?: (
+        notes?: string,
+        completionOverride?: { reason: DeliveryRunCompletionOverrideReason },
+    ) => unknown | Promise<unknown>;
     onException?: (
         mutation: DeliveryExceptionMutation,
     ) => Promise<DeliveryExceptionSubmitResult>;
@@ -232,6 +241,8 @@ function DeliveryCurrentStopCommandCenter({
     const syncStatusId = useId();
     const headingRef = useRef<HTMLElement>(null);
     const actionRef = useRef<HTMLFieldSetElement>(null);
+    const completionTriggerRef = useRef<HTMLButtonElement>(null);
+    const pendingCommandRef = useRef(false);
     const [notes, setNotes] = useState('');
     const [localPendingAction, setLocalPendingAction] = useState<
         'retry' | 'arrive' | 'deliver' | null
@@ -261,16 +272,20 @@ function DeliveryCurrentStopCommandCenter({
         actionableDeliveryExceptionItems(commandDeliveries);
     const commandStop = { ...stop, deliveries: commandDeliveries };
     const primaryCommandDelivery = commandDeliveries[0];
+    const displayedCommandDeliveries =
+        stop.stopState === 'deferred'
+            ? commandDeliveries
+            : actionableDeliveries;
     const recipientNames = Array.from(
         new Set(
-            commandDeliveries
+            displayedCommandDeliveries
                 .map((delivery) => delivery.contactName.trim())
                 .filter(Boolean),
         ),
     );
     const contacts = deliveryCurrentStopContacts(commandStop);
     const criticalNotes = deliveryCurrentStopCriticalNotes(commandStop);
-    const groupedDelivery = commandDeliveries.length > 1;
+    const groupedDelivery = displayedCommandDeliveries.length > 1;
     const acknowledgedArrival =
         syncEntry?.command.kind === 'arrive' && syncEntry.state === 'synced';
     const pendingArrival =
@@ -289,8 +304,74 @@ function DeliveryCurrentStopCommandCenter({
         checkpointPending ||
         Boolean(pendingCompletion) ||
         offlineConflict;
+    const allActionableDeliveriesArrived =
+        actionableDeliveries.length > 0 &&
+        actionableDeliveries.every(
+            (delivery) => delivery.stopState === 'arrived',
+        );
     const arrived =
-        stop.stopState === 'arrived' || pendingArrival || acknowledgedArrival;
+        allActionableDeliveriesArrived || pendingArrival || acknowledgedArrival;
+    const handoffView = handoff?.view ?? null;
+    const actionableStopIds = new Set(
+        actionableDeliveries.map((delivery) => delivery.stopId),
+    );
+    const completionHandoffItems =
+        handoffView?.items.filter((item) =>
+            actionableStopIds.has(item.stopId),
+        ) ?? [];
+    const completionPendingCount = completionHandoffItems.filter(
+        (item) =>
+            item.syncState !== undefined && item.syncState !== 'persisted',
+    ).length;
+    const knownActionableStopIds = new Set(
+        completionHandoffItems.map((item) => item.stopId),
+    );
+    const missingHandoffItemCount = Math.max(
+        0,
+        actionableStopIds.size - knownActionableStopIds.size,
+    );
+    const persistedCompletionSummary = handoffView
+        ? deliveryHandoffSummary({
+              ...handoffView,
+              items: completionHandoffItems,
+              pendingCount: completionPendingCount,
+          })
+        : null;
+    const completionSummary = persistedCompletionSummary
+        ? {
+              ...persistedCompletionSummary,
+              expectedCount: actionableDeliveries.length,
+              unverifiedCount:
+                  persistedCompletionSummary.unverifiedCount +
+                  missingHandoffItemCount,
+          }
+        : {
+              expectedCount: actionableDeliveries.length,
+              scannedCount: 0,
+              unverifiedCount: actionableDeliveries.length,
+              noLabelCount: 0,
+              missingCount: 0,
+              skippedCount: 0,
+              exceptionCount: 0,
+              pendingCount: 0,
+          };
+    const handoffReviewBypassed = Boolean(
+        handoff !== undefined &&
+            (!handoffView ||
+                handoffView.syncState === 'loading' ||
+                completionHandoffItems.some(
+                    (item) => item.syncState === 'failed',
+                ) ||
+                completionPendingCount > 0 ||
+                completionSummary.unverifiedCount > 0),
+    );
+    const completionOverrideBypasses: DeliveryRunCompletionBypass[] = [];
+    if (!arrived) completionOverrideBypasses.push('arrival');
+    if (handoffReviewBypassed) {
+        completionOverrideBypasses.push('handoff-review');
+    }
+    const completionDialogRequired =
+        groupedDelivery || completionOverrideBypasses.length > 0;
     const deferred = stop.stopState === 'deferred';
     const estimatedOutsideWindow = Boolean(
         stop.estimatedArrivalAt &&
@@ -303,7 +384,8 @@ function DeliveryCurrentStopCommandCenter({
         kind: 'retry' | 'arrive' | 'deliver',
         action: (() => unknown | Promise<unknown>) | undefined,
     ) => {
-        if (!action || localPendingAction) return;
+        if (!action || pendingCommandRef.current || localPendingAction) return;
+        pendingCommandRef.current = true;
         setLocalError(null);
         setLocalPendingAction(kind);
         try {
@@ -317,6 +399,7 @@ function DeliveryCurrentStopCommandCenter({
             setLocalError(message);
             return { status: 'failed' as const, message };
         } finally {
+            pendingCommandRef.current = false;
             setLocalPendingAction(null);
         }
     };
@@ -337,6 +420,16 @@ function DeliveryCurrentStopCommandCenter({
             setSyncRecoveryPending(false);
         }
     };
+    const openCompletionDialog = (trigger: HTMLButtonElement) => {
+        completionTriggerRef.current = trigger;
+        setDeliveryConfirmationOpen(true);
+    };
+    const confirmDelivery = (completionOverride?: {
+        reason: DeliveryRunCompletionOverrideReason;
+    }) =>
+        runCommand('deliver', () =>
+            onDeliver?.(notes || undefined, completionOverride),
+        );
 
     useEffect(() => {
         if (!focusOnMount) return;
@@ -370,7 +463,7 @@ function DeliveryCurrentStopCommandCenter({
                             </Typography>
                             {syncEntry.state === 'failed' ? (
                                 <Button
-                                    size="sm"
+                                    size="lg"
                                     color="warning"
                                     loading={syncRecoveryPending}
                                     disabled={
@@ -393,7 +486,7 @@ function DeliveryCurrentStopCommandCenter({
                             ) : null}
                             {syncEntry.state === 'conflicted' ? (
                                 <Button
-                                    size="sm"
+                                    size="lg"
                                     color="danger"
                                     variant="outlined"
                                     loading={syncRecoveryPending}
@@ -419,7 +512,7 @@ function DeliveryCurrentStopCommandCenter({
                             syncEntry.acknowledgement?.reroutePending ||
                             syncEntry.acknowledgement?.runCompleted ? (
                                 <Button
-                                    size="sm"
+                                    size="lg"
                                     color="warning"
                                     variant="outlined"
                                     loading={syncRecoveryPending}
@@ -451,6 +544,7 @@ function DeliveryCurrentStopCommandCenter({
         <div className="grid min-w-0 grid-cols-2 gap-2 max-[340px]:grid-cols-1">
             {routeSyncBlocked || stop.reroutePending || deferred ? (
                 <Button
+                    size="lg"
                     aria-label={
                         offline
                             ? 'Navigacija do trenutačne stanice čeka novi plan'
@@ -465,6 +559,7 @@ function DeliveryCurrentStopCommandCenter({
                 </Button>
             ) : (
                 <Button
+                    size="lg"
                     aria-label="Navigacija do trenutačne stanice"
                     className="min-w-0"
                     href={navigationUrl}
@@ -479,6 +574,7 @@ function DeliveryCurrentStopCommandCenter({
             {contacts.map((contact) => (
                 <Button
                     key={contact.phone}
+                    size="lg"
                     aria-label={`Nazovi ${contact.label}`}
                     className="min-w-0"
                     href={`tel:${contact.phone}`}
@@ -571,6 +667,7 @@ function DeliveryCurrentStopCommandCenter({
                 >
                     <Button
                         className="w-full"
+                        size="lg"
                         color="warning"
                         loading={effectivePendingAction === 'retry'}
                         disabled={
@@ -614,6 +711,7 @@ function DeliveryCurrentStopCommandCenter({
                         {arrived && (pendingArrival || acknowledgedArrival) ? (
                             <Button
                                 variant="outlined"
+                                size="lg"
                                 disabled
                                 aria-describedby={
                                     syncEntry?.command.kind === 'arrive'
@@ -633,9 +731,10 @@ function DeliveryCurrentStopCommandCenter({
                             <Button
                                 className={
                                     pendingArrival || acknowledgedArrival
-                                        ? 'col-span-2'
-                                        : undefined
+                                        ? 'col-span-2 motion-reduce:transition-none'
+                                        : 'motion-reduce:transition-none'
                                 }
+                                size="lg"
                                 color="success"
                                 loading={effectivePendingAction === 'deliver'}
                                 disabled={
@@ -650,13 +749,15 @@ function DeliveryCurrentStopCommandCenter({
                                         ? syncStatusId
                                         : undefined
                                 }
-                                onClick={() =>
-                                    !handoff
-                                        ? void runCommand('deliver', () =>
-                                              onDeliver?.(notes || undefined),
-                                          )
-                                        : setDeliveryConfirmationOpen(true)
-                                }
+                                onClick={(event) => {
+                                    if (completionDialogRequired) {
+                                        openCompletionDialog(
+                                            event.currentTarget,
+                                        );
+                                        return;
+                                    }
+                                    void confirmDelivery();
+                                }}
                                 startDecorator={<Approved className="size-4" />}
                             >
                                 {syncEntry?.command.kind === 'deliver'
@@ -670,6 +771,8 @@ function DeliveryCurrentStopCommandCenter({
                         ) : (
                             <Button
                                 variant="outlined"
+                                size="lg"
+                                className="motion-reduce:transition-none"
                                 loading={effectivePendingAction === 'arrive'}
                                 disabled={
                                     Boolean(effectivePendingAction) ||
@@ -694,6 +797,28 @@ function DeliveryCurrentStopCommandCenter({
                             </Button>
                         )}
                     </div>
+                    {!arrived && onDeliver ? (
+                        <Button
+                            type="button"
+                            size="lg"
+                            fullWidth
+                            variant="outlined"
+                            color="warning"
+                            className="motion-reduce:transition-none"
+                            loading={effectivePendingAction === 'deliver'}
+                            disabled={
+                                Boolean(effectivePendingAction) ||
+                                routeCommandBlocked ||
+                                deliveryQueued ||
+                                actionableDeliveries.length === 0
+                            }
+                            onClick={(event) =>
+                                openCompletionDialog(event.currentTarget)
+                            }
+                        >
+                            Dostavi bez potvrde dolaska
+                        </Button>
+                    ) : null}
                     {commandStatus}
                 </fieldset>
             )}
@@ -777,30 +902,6 @@ function DeliveryCurrentStopCommandCenter({
                             onMarkRemainingReviewed={
                                 handoff?.markRemainingReviewed
                             }
-                            completionConfirmation={
-                                !handoff
-                                    ? undefined
-                                    : {
-                                          open: deliveryConfirmationOpen,
-                                          pending:
-                                              effectivePendingAction ===
-                                              'deliver',
-                                          disabled:
-                                              routeCommandBlocked ||
-                                              deliveryQueued ||
-                                              actionableDeliveries.length ===
-                                                  0 ||
-                                              !onDeliver,
-                                          onOpenChange:
-                                              setDeliveryConfirmationOpen,
-                                          onConfirm: () =>
-                                              runCommand('deliver', () =>
-                                                  onDeliver?.(
-                                                      notes || undefined,
-                                                  ),
-                                              ),
-                                      }
-                            }
                             verifiedTracePaths={verifiedTracePaths}
                             onVerifiedTrace={onVerificationScan}
                         />
@@ -831,6 +932,31 @@ function DeliveryCurrentStopCommandCenter({
                     </label>
                 </>
             )}
+            <DeliveryHandoffCompletionDialog
+                confirmation={{
+                    open: deliveryConfirmationOpen,
+                    pending: effectivePendingAction === 'deliver',
+                    disabled:
+                        routeCommandBlocked ||
+                        deliveryQueued ||
+                        actionableDeliveries.length === 0 ||
+                        !onDeliver,
+                    arrived,
+                    overrideBypasses: completionOverrideBypasses,
+                    recipientCount: stop.recipientCount,
+                    returnFocusRef: completionTriggerRef,
+                    onOpenChange: setDeliveryConfirmationOpen,
+                    onConfirm: confirmDelivery,
+                }}
+                deliveries={actionableDeliveries}
+                handoffSyncState={
+                    handoff === undefined
+                        ? 'ready'
+                        : (handoffView?.syncState ?? 'loading')
+                }
+                items={completionHandoffItems}
+                summary={completionSummary}
+            />
         </section>
     );
 }
@@ -986,7 +1112,7 @@ function PickupCurrentStopCommandCenter({
                                 <div className="flex flex-wrap gap-2">
                                     {sync.state === 'failed' ? (
                                         <Button
-                                            size="sm"
+                                            size="lg"
                                             variant="outlined"
                                             loading={recoveryPending}
                                             disabled={
@@ -1009,7 +1135,7 @@ function PickupCurrentStopCommandCenter({
                                     ) : null}
                                     {sync.state === 'conflicted' ? (
                                         <Button
-                                            size="sm"
+                                            size="lg"
                                             variant="plain"
                                             loading={recoveryPending}
                                             disabled={
@@ -1131,6 +1257,7 @@ function PickupCurrentStopCommandCenter({
             <div className="grid grid-cols-2 gap-2 max-[340px]:grid-cols-1">
                 {routeSyncBlocked ? (
                     <Button
+                        size="lg"
                         aria-label="Navigacija do trenutačne stanice preuzimanja čeka novi plan"
                         disabled
                         variant="outlined"
@@ -1140,6 +1267,7 @@ function PickupCurrentStopCommandCenter({
                     </Button>
                 ) : (
                     <Button
+                        size="lg"
                         aria-label="Navigacija do trenutačne stanice preuzimanja"
                         href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.address)}`}
                         target="_blank"
@@ -1160,6 +1288,7 @@ function PickupCurrentStopCommandCenter({
                     />
                 ) : (
                     <Button
+                        size="lg"
                         disabled
                         startDecorator={<Timer className="size-4" />}
                     >
@@ -1225,7 +1354,7 @@ function PickupCurrentStopCommandCenter({
                                     {item.state === 'ready' ? (
                                         <div className="grid gap-2 sm:grid-cols-2">
                                             <Button
-                                                size="sm"
+                                                size="lg"
                                                 variant="outlined"
                                                 loading={
                                                     effectivePendingAction ===
@@ -1251,7 +1380,7 @@ function PickupCurrentStopCommandCenter({
                                                 Preuzeto bez QR etikete
                                             </Button>
                                             <Button
-                                                size="sm"
+                                                size="lg"
                                                 color="warning"
                                                 variant="outlined"
                                                 loading={
@@ -1280,7 +1409,7 @@ function PickupCurrentStopCommandCenter({
                                         </div>
                                     ) : (
                                         <Button
-                                            size="sm"
+                                            size="lg"
                                             variant="outlined"
                                             loading={
                                                 effectivePendingAction ===
@@ -1313,6 +1442,7 @@ function PickupCurrentStopCommandCenter({
 
                     {unresolvedReady.length > 1 ? (
                         <Button
+                            size="lg"
                             variant="outlined"
                             loading={
                                 effectivePendingAction === 'resolve-remaining'
@@ -1340,6 +1470,7 @@ function PickupCurrentStopCommandCenter({
                     ) : null}
 
                     <Button
+                        size="lg"
                         className="w-full"
                         color="success"
                         loading={effectivePendingAction === 'confirm-manifest'}

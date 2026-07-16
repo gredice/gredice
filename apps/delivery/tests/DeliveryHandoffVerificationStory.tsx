@@ -1,5 +1,6 @@
 'use client';
 
+import type { DeliveryRunCompletionBypass } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
 import {
@@ -18,11 +19,17 @@ if (!tomatoDelivery || !basilDelivery || !lettuceDelivery) {
     throw new Error('The handoff story requires three bulk deliveries.');
 }
 
-const pepperDelivery: DeliveryStopDeliverySummary = {
+const lettuceDeliveryWithoutPhone: DeliveryStopDeliverySummary = {
     ...lettuceDelivery,
+    phone: null,
+};
+
+const pepperDelivery: DeliveryStopDeliverySummary = {
+    ...lettuceDeliveryWithoutPhone,
     stopId: 104,
     requestId: 'request-pepper',
-    contactName: 'Davor Dostavić',
+    contactName: `${lettuceDelivery.contactName} – ažurirano`,
+    phone: '+385 (91) 333-3333',
     harvest: {
         ...lettuceDelivery.harvest,
         plantName: 'Paprika babura',
@@ -34,7 +41,7 @@ const pepperDelivery: DeliveryStopDeliverySummary = {
 const deliveries = [
     tomatoDelivery,
     basilDelivery,
-    lettuceDelivery,
+    lettuceDeliveryWithoutPhone,
     pepperDelivery,
 ];
 
@@ -122,7 +129,18 @@ export function DeliveryHandoffVerificationStory({
     const [completionOpen, setCompletionOpen] = useState(false);
     const [events, setEvents] = useState<string[]>([]);
     const [completionResult, setCompletionResult] = useState('none');
+    const [completionCalls, setCompletionCalls] = useState(0);
     const handoff = manifestView(items, syncState);
+    const completionOverrideBypasses: DeliveryRunCompletionBypass[] = [];
+    if (
+        handoffUnavailable ||
+        handoff.unverifiedCount > 0 ||
+        handoff.pendingCount > 0 ||
+        syncState === 'failed' ||
+        syncState === 'loading'
+    ) {
+        completionOverrideBypasses.push('handoff-review');
+    }
     const storyDeliveries = sharedTrace
         ? deliveries.map((delivery) =>
               delivery.requestId === basilDelivery.requestId
@@ -258,6 +276,7 @@ export function DeliveryHandoffVerificationStory({
         <main className="mx-auto max-w-2xl space-y-4 p-4">
             <output data-testid="handoff-events">{events.join('|')}</output>
             <output data-testid="completion-result">{completionResult}</output>
+            <output data-testid="completion-calls">{completionCalls}</output>
             <div className="flex flex-wrap gap-2">
                 <Button
                     type="button"
@@ -297,8 +316,14 @@ export function DeliveryHandoffVerificationStory({
                 onMarkRemainingReviewed={markRemainingReviewed}
                 completionConfirmation={{
                     open: completionOpen,
+                    arrived: true,
+                    overrideBypasses: completionOverrideBypasses,
+                    recipientCount: 3,
                     onOpenChange: setCompletionOpen,
-                    onConfirm: () => setCompletionResult('delivered'),
+                    onConfirm: () => {
+                        setCompletionCalls((current) => current + 1);
+                        setCompletionResult('delivered');
+                    },
                 }}
             />
         </main>

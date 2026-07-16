@@ -106,15 +106,21 @@ test('records nonblocking outcomes and keeps bulk completion enabled with unreso
     const confirmation = page.getByRole('dialog', {
         name: 'Potvrdi dostavu',
     });
-    await expect(confirmation).toContainText('1 bez provjere');
+    await expect(confirmation).toContainText(
+        '3 primatelja · 4 očekivana uroda',
+    );
+    await expect(confirmation).toContainText('1 neskenirano');
+    await expect(confirmation).toContainText('2 iznimke');
     await expect(confirmation).toContainText(
         'Sinkronizacija nekih provjera nije uspjela. Dostavu i dalje možeš potvrditi.',
     );
-    await expect(
-        confirmation.getByRole('button', {
-            name: 'Potvrdi dostavu i nastavi',
-        }),
-    ).toBeEnabled();
+    const overrideReason = confirmation.getByLabel('Razlog operativne iznimke');
+    const confirmOverride = confirmation.getByRole('button', {
+        name: 'Potvrdi iznimku i dostavu',
+    });
+    await expect(confirmOverride).toBeDisabled();
+    await overrideReason.selectOption('manual-handoff');
+    await expect(confirmOverride).toBeEnabled();
     await confirmation.getByRole('button', { name: 'Natrag' }).click();
 
     await page
@@ -127,16 +133,35 @@ test('records nonblocking outcomes and keeps bulk completion enabled with unreso
     );
 
     await page.getByRole('button', { name: 'Dostavi 4 uroda · dalje' }).click();
-    await expect(confirmation).toContainText('0 bez provjere');
+    await expect(confirmation).toContainText('0 neskenirano');
+    await expect(confirmation).toContainText('3 iznimke');
     await expect(confirmation).toContainText('2 preskočeno');
-    await expect(
-        confirmation.getByRole('button', {
-            name: 'Potvrdi dostavu i nastavi',
-        }),
-    ).toBeEnabled();
+    await overrideReason.selectOption('workflow-recovery');
     await confirmation
-        .getByRole('button', { name: 'Potvrdi dostavu i nastavi' })
+        .getByRole('button', { name: 'Potvrdi iznimku i dostavu' })
         .click();
+    await expect(page.getByTestId('completion-result')).toHaveText('delivered');
+});
+
+test('submits one irreversible bulk completion for same-frame repeat submits', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DeliveryHandoffVerificationStory />);
+    await page.getByRole('button', { name: 'Dostavi 4 uroda · dalje' }).click();
+    const confirmation = page.getByRole('dialog', {
+        name: 'Potvrdi dostavu',
+    });
+    await confirmation
+        .getByLabel('Razlog operativne iznimke')
+        .selectOption('manual-handoff');
+    await confirmation.locator('form').evaluate((element) => {
+        if (!(element instanceof HTMLFormElement)) return;
+        element.requestSubmit();
+        element.requestSubmit();
+    });
+
+    await expect(page.getByTestId('completion-calls')).toHaveText('1');
     await expect(page.getByTestId('completion-result')).toHaveText('delivered');
 });
 
@@ -202,7 +227,15 @@ test('keeps verification controls hidden while persisted progress loads without 
     );
     await expect(
         confirmation.getByRole('button', {
-            name: 'Potvrdi dostavu i nastavi',
+            name: 'Potvrdi iznimku i dostavu',
+        }),
+    ).toBeDisabled();
+    await confirmation
+        .getByLabel('Razlog operativne iznimke')
+        .selectOption('device-unavailable');
+    await expect(
+        confirmation.getByRole('button', {
+            name: 'Potvrdi iznimku i dostavu',
         }),
     ).toBeEnabled();
 });

@@ -3,6 +3,7 @@ import {
     abandonDeliveryRun,
     consumeDeliveryRunPreparation,
     DeliveryRequestStates,
+    type DeliveryRunCompletionOverrideInput,
     DeliveryRunManifestItemStates,
     DeliveryRunManifestStates,
     DeliveryRunStates,
@@ -369,6 +370,24 @@ function deliverySummaryItem(
     };
 }
 
+export function deliveryRecipientCount(
+    items: readonly {
+        requestId: string;
+        recipientIdentity: string | number | null;
+        actionable: boolean;
+    }[],
+) {
+    const actionableItems = items.filter((item) => item.actionable);
+    const countedItems = actionableItems.length > 0 ? actionableItems : items;
+    return new Set(
+        countedItems.map((item) =>
+            item.recipientIdentity === null
+                ? `request:${item.requestId}`
+                : `recipient:${typeof item.recipientIdentity}:${item.recipientIdentity}`,
+        ),
+    ).size;
+}
+
 function deliveryStopSummary({
     items,
     run,
@@ -489,6 +508,17 @@ function deliveryStopSummary({
                 : null,
         runId: run?.id ?? null,
         deliveryCount: items.length,
+        recipientCount: deliveryRecipientCount(
+            items.map(({ request: itemRequest, stop }) => ({
+                requestId: itemRequest.id,
+                recipientIdentity:
+                    stop?.deliveryAddressId ??
+                    itemRequest.address?.id ??
+                    itemRequest.accountId ??
+                    null,
+                actionable: !stop || isDeliveryRunStopActionable(stop.state),
+            })),
+        ),
         deliveries: items.map((item) =>
             deliverySummaryItem(item.request, item.stop, audience),
         ),
@@ -1159,6 +1189,7 @@ export async function deliverDeliveryStop({
     runId,
     stopId,
     notes,
+    completionOverride,
     expectedRouteRevision,
     clientOperationId,
     occurredAt,
@@ -1167,6 +1198,7 @@ export async function deliverDeliveryStop({
     runId: string;
     stopId: number;
     notes?: string;
+    completionOverride?: DeliveryRunCompletionOverrideInput;
     expectedRouteRevision: number;
     clientOperationId: string;
     occurredAt: Date;
@@ -1177,6 +1209,7 @@ export async function deliverDeliveryStop({
         runId,
         targetStopId: stopId,
         deliveryNotes: notes,
+        completionOverride,
         expectedRouteRevision,
         clientOperationId,
         occurredAt,

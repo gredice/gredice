@@ -1,11 +1,13 @@
 'use client';
 
+import type { DeliveryRunCompletionOverrideReason } from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Navigate, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import { croatianCountLabel } from '../lib/croatianCount';
 import {
     deliveryActionAcknowledgementBlocksRoute,
     deliveryActionCompletionMessage,
@@ -133,7 +135,12 @@ function offlineTimelineItems(
                 ? step.name
                 : step.items.length === 1
                   ? (step.items[0]?.contactName ?? step.statusLabel)
-                  : `${step.items.length} primatelja`,
+                  : croatianCountLabel(
+                        step.recipientCount ?? step.items.length,
+                        'primatelj',
+                        'primatelja',
+                        'primatelja',
+                    ),
         destination: step.address,
         deliveryCount:
             step.kind === 'pickup' ? step.expectedCount : step.items.length,
@@ -238,6 +245,9 @@ function offlineDeliveryStop(
         tracking: null,
         runId,
         deliveryCount: step.items.length,
+        ...(step.recipientCount !== undefined
+            ? { recipientCount: step.recipientCount }
+            : {}),
         deliveries: offlineDeliveryItems(step),
         actionState: 'current',
         lockedReason: step.lockedReason,
@@ -294,6 +304,7 @@ export function OfflineRoutePanel({
         stopId: number,
         routeRevision: number,
         notes?: string,
+        completionOverride?: { reason: DeliveryRunCompletionOverrideReason },
     ) => unknown | Promise<unknown>;
     onException: (
         stopId: number,
@@ -374,11 +385,12 @@ export function OfflineRoutePanel({
                                 snapshot.source.routeRevision,
                             )
                         }
-                        onDeliver={(notes) =>
+                        onDeliver={(notes, completionOverride) =>
                             onDeliver(
                                 currentDeliveryStop.id,
                                 snapshot.source.routeRevision,
                                 notes,
+                                completionOverride,
                             )
                         }
                         onException={(mutation) =>

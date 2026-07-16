@@ -85,6 +85,7 @@ export type OfflineRouteDeliveryStep = OfflineRouteStepBase & {
     retryLaneRank: number | null;
     retryAttempt: number;
     lockedReason: string | null;
+    recipientCount?: number;
     items: OfflineRouteDeliveryItem[];
 };
 
@@ -191,6 +192,9 @@ function projectDeliveryStep(
         retryLaneRank: step.retryLaneRank,
         retryAttempt: step.retryAttempt,
         lockedReason: step.lockedReason,
+        ...(stop.recipientCount !== undefined
+            ? { recipientCount: stop.recipientCount }
+            : {}),
         items: stop.deliveries.flatMap((delivery) =>
             delivery.stopId === null
                 ? []
@@ -544,6 +548,7 @@ function parseDeliveryStep(value: Record<string, unknown>) {
             'retryLaneRank',
             'retryAttempt',
             'lockedReason',
+            'recipientCount',
             'items',
         ]) ||
         !common ||
@@ -564,6 +569,11 @@ function parseDeliveryStep(value: Record<string, unknown>) {
         ) ||
         !validNonNegativeInteger(value.retryAttempt) ||
         !nullableString(value.lockedReason) ||
+        !(
+            value.recipientCount === undefined ||
+            (validNonNegativeInteger(value.recipientCount) &&
+                value.recipientCount > 0)
+        ) ||
         !Array.isArray(value.items)
     ) {
         return null;
@@ -583,6 +593,9 @@ function parseDeliveryStep(value: Record<string, unknown>) {
         retryLaneRank: value.retryLaneRank,
         retryAttempt: value.retryAttempt,
         lockedReason: value.lockedReason,
+        ...(value.recipientCount !== undefined
+            ? { recipientCount: value.recipientCount }
+            : {}),
         items: items.flatMap((item) => (item ? [item] : [])),
     };
 }

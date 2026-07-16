@@ -165,6 +165,7 @@ export function DeliveryExceptionSheet({
             className="md:max-w-2xl"
             trigger={
                 <Button
+                    size="lg"
                     color="warning"
                     variant="outlined"
                     disabled={disabled || actionableDeliveries.length === 0}
@@ -203,6 +204,7 @@ export function DeliveryExceptionSheet({
                                 <Button
                                     type="button"
                                     size="sm"
+                                    className="min-h-11 min-w-11"
                                     variant="plain"
                                     onClick={() => {
                                         invalidatePendingOperation();
@@ -220,6 +222,7 @@ export function DeliveryExceptionSheet({
                                     <Button
                                         type="button"
                                         size="sm"
+                                        className="min-h-11 min-w-11"
                                         variant="plain"
                                         onClick={() => {
                                             invalidatePendingOperation();
@@ -270,6 +273,7 @@ export function DeliveryExceptionSheet({
                                         <Button
                                             href={`tel:${delivery.phone}`}
                                             size="sm"
+                                            className="min-h-11 min-w-11"
                                             variant="plain"
                                             aria-label={`Nazovi kontakt za ${identityLabel}`}
                                             startDecorator={
@@ -476,6 +480,7 @@ export function DeliveryExceptionSheet({
 
                 <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <Button
+                        size="lg"
                         href={deliveryDispatchContactHref({
                             runId,
                             stopId: stop.id,
@@ -488,6 +493,7 @@ export function DeliveryExceptionSheet({
                     <div className="flex flex-col-reverse gap-2 sm:flex-row">
                         <Button
                             type="button"
+                            size="lg"
                             variant="plain"
                             disabled={mutationPending}
                             onClick={() => handleOpenChange(false)}
@@ -496,6 +502,7 @@ export function DeliveryExceptionSheet({
                         </Button>
                         <Button
                             type="submit"
+                            size="lg"
                             color={
                                 effectiveOutcome === 'deferred'
                                     ? 'warning'
