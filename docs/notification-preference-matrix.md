@@ -14,7 +14,7 @@ schema/API/UI/router/bulk implementation for:
 
 Every notification must carry the following dimensions:
 
-- `domain`: `garden` | `weather_alerts` | `account_security` | `billing_order_delivery` | `reminders` | `digests` | `admin_campaigns` | `promotional`
+- `domain`: `garden` | `weather_alerts` | `account_security` | `billing_order_delivery` | `delivery_updates` | `reminders` | `digests` | `admin_campaigns` | `promotional`
 - `eventType`: stable machine key for a concrete trigger.
 - `priority`: `critical` | `high` | `normal` | `low`.
 - `audienceType`: `single_user` | `segment` | `all_users`.
@@ -48,7 +48,7 @@ Per eventType, each channel gets one of:
 | `account_security` | `auth_new_sign_in`, `auth_password_changed`, `auth_recovery_used`, `auth_mfa_changed` | critical | ✅ | ❌ | ❌ | ❌ | required | required | required | never | never |
 | `account_security` | `legal_policy_update`, `privacy_incident_notice` | high | ✅ | ❌ | ❌ | ❌ | required | required | default_on | never | never |
 | `billing_order_delivery` | `payment_failed`, `payment_refund_issued`, `invoice_ready` | high | ✅ | ❌ | ❌ | ❌ | required | required | default_on | never | never |
-| `billing_order_delivery` | `delivery_status_changed`, `delivery_delay`, `delivery_ready` | high | ❌ | ✅ | ❌ | ✅ | default_on | default_on | default_on | never | never |
+| `delivery_updates` | `route-started`, `near-arrival`, `next-stop`, `delayed`, `arrived`, `delivered`, `exception`, `recovery` | high | ❌ | ✅ | ❌ | ✅ | default_on | default_on | default_on | never | never |
 | `billing_order_delivery` | `order_confirmation` | high | ✅ | ❌ | ❌ | ❌ | required | required | default_on | never | never |
 | `garden` | `operation_scheduled`, `operation_rescheduled`, `operation_completed`, `operation_canceled` | high | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
 | `garden` | `garden_health_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
@@ -82,11 +82,14 @@ preference categories that are safe to adjust from the customer UI:
 - `admin_campaigns`
 - `promotional`
 
-`account_security` and the required portions of `billing_order_delivery` are
-shown as always-on explanatory rows instead of toggles. Event-level controls for
-mixed domains, such as delivery-status updates versus required billing/order
-messages, should be added only after the storage/API contract supports
-event-level overrides.
+`account_security` and `billing_order_delivery` are shown as always-on
+explanatory rows for required account, payment, invoice, refund, and order
+messages. Optional delivery progress is kept in the separate
+`delivery_updates` category. Its in-app, email, and push policy is registered
+before producers are enabled, but customer-facing controls stay hidden until
+the lifecycle templates and channel producers ship. Delivery updates never
+enter a digest; global quiet-hour changes still propagate to the hidden
+delivery channels and produce a distinct deferred routing outcome.
 
 Weather risk alerts are opt-in before notification creation. The weather alert
 producer must create user-scoped notification rows only for users with an enabled

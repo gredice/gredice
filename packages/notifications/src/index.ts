@@ -19,6 +19,8 @@ import {
     type OperationSchedulePayload,
 } from '@gredice/storage';
 
+export * from './deliveryLifecycle';
+
 type OperationEventType =
     | 'scheduled'
     | 'rescheduled'

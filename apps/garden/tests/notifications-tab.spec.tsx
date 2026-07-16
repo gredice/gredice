@@ -49,6 +49,7 @@ const defaultPreferences = [
         quietHoursEndMinute: 7 * 60,
         quietHoursStartMinute: 22 * 60,
         scope: 'global',
+        timezone: 'Europe/Zagreb',
     },
     {
         category: 'admin_campaigns',
@@ -355,6 +356,7 @@ test('notification settings explains required groups and hydrates saved preferen
         page.getByText('Plaćanja, računi i potvrde narudžbi'),
     ).toBeVisible();
     await expect(page.getByText('Vrste obavijesti')).toBeVisible();
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(0);
     await expect(
         page.getByRole('switch', {
             name: /Obavezna obavijest sigurnost računa/u,
@@ -376,6 +378,94 @@ test('notification settings explains required groups and hydrates saved preferen
         '07:00',
     );
     await expect(page.getByText('Tjedno')).toBeVisible();
+});
+
+test('global quiet hours include hidden delivery channels without exposing their controls', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        preferences: { body: { preferences: [] } },
+    });
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+
+    await expect(page.getByText(/ažuriranja dostave/i)).toHaveCount(0);
+    const timeZone = await page.evaluate(
+        () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
+    await page.getByRole('switch', { name: 'Uključi ne ometaj' }).click();
+
+    await expect.poll(() => recorded.preferencesUpdates.length).toBe(1);
+    expect(recorded.preferencesUpdates[0]).toEqual({
+        preferences: expect.arrayContaining([
+            {
+                category: 'delivery_updates',
+                channel: 'email',
+                digestFrequency: 'off',
+                enabled: true,
+                quietHoursEndMinute: 420,
+                quietHoursStartMinute: 1320,
+                scope: 'global',
+                timezone: timeZone,
+            },
+            {
+                category: 'delivery_updates',
+                channel: 'in_app',
+                digestFrequency: 'off',
+                enabled: true,
+                quietHoursEndMinute: 420,
+                quietHoursStartMinute: 1320,
+                scope: 'global',
+                timezone: timeZone,
+            },
+            {
+                category: 'delivery_updates',
+                channel: 'push',
+                digestFrequency: 'off',
+                enabled: true,
+                quietHoursEndMinute: 420,
+                quietHoursStartMinute: 1320,
+                scope: 'global',
+                timezone: timeZone,
+            },
+        ]),
+    });
+});
+
+test('quiet hours stay disabled when the browser time zone is unavailable', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page, {
+        preferences: { body: { preferences: [] } },
+    });
+
+    await mount(<NotificationsTabStory />);
+    await page.getByRole('tab', { name: 'Postavke' }).click();
+    await page.evaluate(() => {
+        const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+        Intl.DateTimeFormat.prototype.resolvedOptions = function () {
+            return {
+                ...resolvedOptions.call(this),
+                timeZone: '',
+            };
+        };
+    });
+
+    const quietHoursSwitch = page.getByRole('switch', {
+        name: 'Uključi ne ometaj',
+    });
+    await quietHoursSwitch.click();
+
+    await expect(
+        page.getByRole('alert').filter({
+            hasText: 'Vremenska zona preglednika nije dostupna.',
+        }),
+    ).toBeVisible();
+    await expect(quietHoursSwitch).not.toBeChecked();
+    expect(recorded.preferencesUpdates).toEqual([]);
 });
 
 test('notification settings keeps switch thumbs inside their tracks', async ({
@@ -557,6 +647,7 @@ test('notification settings calls preference, device, and test notification APIs
                 quietHoursEndMinute: 420,
                 quietHoursStartMinute: 1320,
                 scope: 'global',
+                timezone: 'Europe/Zagreb',
             },
         ],
     });
