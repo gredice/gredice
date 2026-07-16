@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    customerDeliveryRequestSupportHref,
     customerDeliverySupportHref,
     customerHandoffAdvisory,
     customerHandoffVerificationLabel,
+    customerPickupSupportHref,
 } from './deliveryCustomerReceipt';
 import type { CustomerDeliveryReceiptSummary } from './deliveryDashboardTypes';
 
@@ -88,4 +90,35 @@ test('customer support action handles a receipt without a public trace', () => {
         new URL(href).searchParams.get('body') ?? '',
         /Trag uroda nije dostupan/,
     );
+});
+
+test('active and recovery support actions identify the exact request without destination data', () => {
+    const href = customerDeliveryRequestSupportHref({
+        kind: 'support',
+        delivery: {
+            requestReference: 'active-customer-request-4137',
+            harvest: receipt.harvest,
+        },
+    });
+    const body = new URL(href).searchParams.get('body') ?? '';
+
+    assert.match(body, /active-customer-request-4137/);
+    assert.match(body, /Rajčica & bosiljak/);
+    assert.doesNotMatch(body, /Ilica|Primatelj|PRIVATE DRIVER/);
+});
+
+test('pickup support action uses pickup-safe copy and its exact request reference', () => {
+    const href = customerPickupSupportHref({
+        requestId: 'pickup-customer-request-4137',
+        harvest: receipt.harvest,
+    });
+    const url = new URL(href);
+    const subject = url.searchParams.get('subject') ?? '';
+    const body = url.searchParams.get('body') ?? '';
+
+    assert.match(subject, /Pitanje o preuzimanju/);
+    assert.doesNotMatch(subject, /dostava/i);
+    assert.match(body, /Vrsta zahtjeva: Preuzimanje/);
+    assert.match(body, /Referenca preuzimanja: pickup-customer-request-4137/);
+    assert.doesNotMatch(body, /Vozač|PRIVATE DRIVER/);
 });

@@ -249,7 +249,11 @@ export function DeliveryStopCard({
                 ) : null}
 
                 {!driverMode && stop.recovery ? (
-                    <DeliveryCustomerRecovery recovery={stop.recovery} />
+                    <DeliveryCustomerRecovery
+                        recovery={stop.recovery}
+                        requestReference={stop.requestId}
+                        harvest={stop.harvest}
+                    />
                 ) : null}
 
                 {driverMode && showDriverCommand ? (

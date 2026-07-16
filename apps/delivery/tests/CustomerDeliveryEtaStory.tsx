@@ -3,6 +3,7 @@ import type { CustomerDeliveryRequestSummary } from '../lib/deliveryDashboardTyp
 
 const baseDelivery: CustomerDeliveryRequestSummary = {
     mode: 'delivery',
+    lifecycle: 'active',
     requestId: 'customer-eta-4136',
     status: 'ready',
     statusLabel: 'U dostavi',
@@ -31,6 +32,11 @@ const baseDelivery: CustomerDeliveryRequestSummary = {
         raisedBedName: 'Gredica 4',
         fieldName: 'Polje 2',
         tracePath: '/trag/customer-eta-4136',
+    },
+    destination: {
+        recipientName: 'Korisnik Korina',
+        address: 'Ilica 1, 10000 Zagreb, HR',
+        addressLabel: 'Dom',
     },
     receipt: null,
     recovery: null,

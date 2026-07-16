@@ -36,6 +36,7 @@ function customerDelivery({
 
     return {
         mode: 'delivery',
+        lifecycle: 'history',
         requestId: requestReference,
         status: 'fulfilled',
         statusLabel: 'Dostavljeno',
@@ -59,6 +60,11 @@ function customerDelivery({
         },
         deliveredAt: '2026-07-16T09:30:00.000Z',
         harvest,
+        destination: {
+            recipientName: 'Korisnik Korina',
+            address: 'Ilica 1, 10000 Zagreb, HR',
+            addressLabel: 'Dom',
+        },
         receipt: {
             requestReference,
             deliveredAt: '2026-07-16T09:30:00.000Z',
@@ -77,6 +83,7 @@ const activeBase = customerDelivery({
 });
 const activeDelivery: CustomerDeliveryRequestSummary = {
     ...activeBase,
+    lifecycle: 'active',
     requestId: 'customer-owned-request-journey-4144',
     status: 'ready',
     statusLabel: 'Vozač stiže',

@@ -9,6 +9,7 @@ import type {
 
 const delivery: CustomerDeliveryRequestSummary = {
     mode: 'delivery',
+    lifecycle: 'active',
     requestId: 'customer-delivery-4135',
     status: 'ready',
     statusLabel: 'Vozač stiže',
@@ -38,6 +39,11 @@ const delivery: CustomerDeliveryRequestSummary = {
         fieldName: 'Polje 2',
         tracePath: '/trag/customer-delivery-4135',
     },
+    destination: {
+        recipientName: 'Korisnik Korina',
+        address: 'Ilica 1, 10000 Zagreb, HR',
+        addressLabel: 'Dom',
+    },
     receipt: null,
     recovery: null,
     tracking: {
@@ -51,6 +57,7 @@ const delivery: CustomerDeliveryRequestSummary = {
 
 const readyPickup: CustomerPickupRequestSummary = {
     mode: 'pickup',
+    lifecycle: 'upcoming',
     requestId: 'customer-pickup-ready-4135',
     status: 'ready',
     statusLabel: 'Spremno za preuzimanje',
@@ -76,6 +83,7 @@ const readyPickup: CustomerPickupRequestSummary = {
 
 const fulfilledPickup: CustomerPickupRequestSummary = {
     ...readyPickup,
+    lifecycle: 'history',
     requestId: 'customer-pickup-fulfilled-4135',
     status: 'fulfilled',
     statusLabel: 'Preuzeto',

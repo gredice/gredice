@@ -7,11 +7,13 @@ import {
     ExternalLink,
     Info,
     Leaf,
+    Mail,
     MapPin,
     ShoppingCart,
     Timer,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { customerPickupSupportHref } from '../lib/deliveryCustomerReceipt';
 import type { CustomerPickupRequestSummary } from '../lib/deliveryDashboardTypes';
 import {
     formatDeliveryDateTime,
@@ -30,8 +32,10 @@ function statusColor(
 
 export function CustomerPickupCard({
     pickup,
+    headingLevel = 'h3',
 }: {
     pickup: CustomerPickupRequestSummary;
+    headingLevel?: 'h3' | 'h4';
 }) {
     const harvestDescription = [
         pickup.harvest.plantName,
@@ -43,6 +47,7 @@ export function CustomerPickupCard({
     const navigationUrl = pickup.location
         ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.location.address)}`
         : null;
+    const supportHref = customerPickupSupportHref(pickup);
 
     return (
         <Card data-testid="customer-pickup-card" className="min-w-0">
@@ -54,7 +59,7 @@ export function CustomerPickupCard({
                         </div>
                         <div className="min-w-0">
                             <Typography
-                                component="h3"
+                                component={headingLevel}
                                 level="body1"
                                 semiBold
                                 className="break-words"
@@ -148,8 +153,8 @@ export function CustomerPickupCard({
                     </div>
                 ) : null}
 
-                {pickup.harvest.tracePath ? (
-                    <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
+                    {pickup.harvest.tracePath ? (
                         <Button
                             aria-label={`Otvori trag uroda: ${pickup.harvest.plantName}`}
                             href={`https://www.gredice.com${pickup.harvest.tracePath}`}
@@ -161,8 +166,18 @@ export function CustomerPickupCard({
                         >
                             Trag uroda
                         </Button>
-                    </div>
-                ) : null}
+                    ) : null}
+                    <Button
+                        aria-label={`Kontaktiraj podršku za preuzimanje: ${pickup.harvest.plantName}`}
+                        href={supportHref}
+                        size="sm"
+                        variant="outlined"
+                        className="min-h-11 min-w-0 justify-start whitespace-normal"
+                        startDecorator={<Mail className="size-4" />}
+                    >
+                        Kontaktiraj podršku
+                    </Button>
+                </div>
 
                 {pickup.pickedUpAt ? (
                     <Typography

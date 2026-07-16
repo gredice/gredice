@@ -163,7 +163,7 @@ test('keeps the user delivery-only heading and tracking experience', async ({
         page.getByRole('heading', { level: 2, name: 'Moje dostave' }),
     ).toBeVisible();
     await expect(
-        page.getByText('Korisnik Korina', { exact: true }),
+        page.getByRole('banner').getByText('Korisnik Korina', { exact: true }),
     ).toBeVisible();
     await expect(page.getByTestId('customer-delivery-card')).toHaveCount(1);
     await expect(page.getByTestId('customer-pickup-card')).toHaveCount(0);

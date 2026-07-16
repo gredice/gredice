@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    customerDeliveryLifecycle,
     customerDeliveryRequestSummary,
     customerPickupInstructions,
+    customerPickupLifecycle,
     customerPickupRequestSummary,
     customerPickupStatusLabel,
 } from './customerDeliveryPresentation';
@@ -26,10 +28,10 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         requestState: 'ready',
         statusLabel: 'Vozač stiže',
         isCurrent: true,
-        contactName: privateSentinel,
+        contactName: 'Korina Kupac',
         phone: privateSentinel,
-        address: privateSentinel,
-        addressLabel: privateSentinel,
+        address: 'Ilica 1, 10000 Zagreb, HR',
+        addressLabel: 'Dom',
         requestNotes: 'Pozvoni na portafon.',
         deliveryNotes: privateSentinel,
         slotStartAt: '2026-07-16T10:00:00.000Z',
@@ -86,6 +88,7 @@ test('projects a delivery to the exact customer-safe DTO', () => {
 
     assert.deepEqual(projected, {
         mode: 'delivery',
+        lifecycle: 'active',
         requestId: 'request-delivery',
         status: 'ready',
         statusLabel: 'Vozač stiže',
@@ -109,6 +112,11 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         },
         deliveredAt: null,
         harvest,
+        destination: {
+            recipientName: 'Korina Kupac',
+            address: 'Ilica 1, 10000 Zagreb, HR',
+            addressLabel: 'Dom',
+        },
         receipt: null,
         recovery: null,
         tracking: {
@@ -125,9 +133,7 @@ test('projects a delivery to the exact customer-safe DTO', () => {
         'id',
         'sequence',
         'stopState',
-        'contactName',
         'phone',
-        'address',
         'deliveryNotes',
         'runId',
         'deliveries',
@@ -180,6 +186,7 @@ test('projects pickup status, public location, and instructions without delivery
 
     assert.deepEqual(projected, {
         mode: 'pickup',
+        lifecycle: 'upcoming',
         requestId: 'request-pickup',
         status: 'ready',
         statusLabel: 'Spremno za preuzimanje',
@@ -289,5 +296,51 @@ test('uses pickup-safe copy for every request state', () => {
     assert.equal(
         customerPickupInstructions('confirmed'),
         'Pričekaj status „Spremno za preuzimanje” prije dolaska.',
+    );
+});
+
+test('derives a server-authoritative customer lifecycle when progress fails closed', () => {
+    assert.equal(
+        customerDeliveryLifecycle({
+            requestState: 'ready',
+            runState: 'active',
+            deliveredAt: null,
+            recovery: null,
+        }),
+        'active',
+    );
+    assert.equal(
+        customerDeliveryLifecycle({
+            requestState: 'failed',
+            runState: 'active',
+            deliveredAt: null,
+            recovery: {
+                kind: 'hq-pickup',
+                pickupAddress: 'Gredice HQ',
+                pickupDeadlineAt: '2026-07-19T10:00:00.000Z',
+                pickupWindowHours: 72,
+            },
+        }),
+        'upcoming',
+    );
+    assert.equal(
+        customerDeliveryLifecycle({
+            requestState: 'fulfilled',
+            runState: 'active',
+            deliveredAt: '2026-07-16T10:00:00.000Z',
+            recovery: null,
+        }),
+        'history',
+    );
+    assert.equal(
+        customerPickupLifecycle({ status: 'ready', pickedUpAt: null }),
+        'upcoming',
+    );
+    assert.equal(
+        customerPickupLifecycle({
+            status: 'ready',
+            pickedUpAt: '2026-07-16T10:00:00.000Z',
+        }),
+        'history',
     );
 });

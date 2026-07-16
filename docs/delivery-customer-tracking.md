@@ -11,6 +11,36 @@ The UI must not present an incoming route leg as the remaining time to a
 customer. Driver-only distance and leg-duration fields stay outside the
 customer DTO.
 
+## Dashboard organization and owned context
+
+Each customer request carries a server-derived `lifecycle` value. Deliveries
+on an active run remain `active` even when their detailed progress fails closed
+to unavailable; unresolved requests are `upcoming`; completed, cancelled, and
+non-recoverable failed requests are `history`. A failed request with an active
+HQ pickup window remains upcoming so its deadline is not buried. Pickup
+requests are upcoming or history and never create live-driver expectations.
+
+The dashboard renders the sections in this order:
+
+1. active delivery, including every account-owned harvest at the current bulk
+   stop and the authorized map when available;
+2. upcoming requests and required recovery actions, earliest first;
+3. completed history, newest first, while request-specific recovery entries
+   remain ahead of ordinary receipts.
+
+Only the first six full history cards are mounted initially. The customer can
+progressively reveal the remainder and collapse back to the initial page.
+Empty states are scoped to their section instead of replacing useful content
+from the other sections.
+
+The customer delivery DTO includes only the account-owned recipient name,
+formatted destination address and optional address label. Customer-entered
+delivery instructions remain visible. Phone numbers, driver notes, other
+recipients in a bulk stop, stop identifiers, and run identifiers remain
+excluded. Delivery, pickup, receipt, and recovery support links prefill the
+exact owned request and harvest/trace reference without adding destination or
+recipient data to the message.
+
 ## Promised window
 
 Every delivery card renders the complete `slotStartAt`–`slotEndAt` window. A

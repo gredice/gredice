@@ -198,6 +198,9 @@ function isCustomerDashboardRequest(value: unknown) {
     if (
         !isRecord(value) ||
         typeof value.requestId !== 'string' ||
+        (value.lifecycle !== 'active' &&
+            value.lifecycle !== 'upcoming' &&
+            value.lifecycle !== 'history') ||
         typeof value.status !== 'string' ||
         typeof value.statusLabel !== 'string' ||
         !isNullableString(value.requestNotes) ||
@@ -209,6 +212,7 @@ function isCustomerDashboardRequest(value: unknown) {
     }
     if (value.mode === 'pickup') {
         return (
+            value.lifecycle !== 'active' &&
             isNullableString(value.pickedUpAt) &&
             (value.location === null ||
                 (isRecord(value.location) &&
@@ -222,6 +226,10 @@ function isCustomerDashboardRequest(value: unknown) {
         isCustomerDeliveryEtaSummary(value.eta) &&
         isCustomerProgress(value.progress) &&
         isNullableString(value.deliveredAt) &&
+        isRecord(value.destination) &&
+        typeof value.destination.recipientName === 'string' &&
+        typeof value.destination.address === 'string' &&
+        isNullableString(value.destination.addressLabel) &&
         isCustomerDeliveryTrackingSummary(value.tracking) &&
         isNullableString(value.mapPath) &&
         (value.receipt === null || isRecord(value.receipt)) &&
