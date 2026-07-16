@@ -25,7 +25,7 @@
         "@vercel/blob": "2.6.1",
         "@vercel/toolbar": "0.2.6",
         "flags": "4.2.0",
-        "next": "16.2.10",
+        "next": "16.3.0-preview.6",
         "pg": "8.22.0",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -52,6 +52,6 @@
         "babel-plugin-react-compiler": "19.1.0-rc.3",
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
-        "typescript": "6.0.3"
+        "typescript": "7.0.2"
     }
 }
