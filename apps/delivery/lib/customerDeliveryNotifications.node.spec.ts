@@ -351,6 +351,121 @@ test('safe milestone publishing contains notification storage failures', async (
     assert.deepEqual(result, { outcome: 'failed' });
 });
 
+test('producer preserves opaque source IDs and deterministically hashes accepted unsafe operation IDs', async () => {
+    const sourceIdsByRequestId = new Map<string, string>();
+    const unsafeSourceIds = [
+        'operation with spaces',
+        'operation/with/slash',
+        'operacija-žetva',
+        'ž'.repeat(128),
+    ];
+    const inputs = [
+        { requestId: 'request-safe', sourceId: 'legacy-operation:1_2' },
+        {
+            requestId: 'request-safe-trimmed',
+            sourceId: ' legacy-operation:trimmed ',
+        },
+        { requestId: 'request-safe-max', sourceId: 'x'.repeat(128) },
+        ...unsafeSourceIds.map((sourceId, index) => ({
+            requestId: `request-unsafe-${index}`,
+            sourceId,
+        })),
+        {
+            requestId: 'request-unsafe-replay',
+            sourceId: unsafeSourceIds[0] ?? '',
+        },
+    ].map(({ requestId, sourceId }, index) => ({
+        ...customerDeliveryMilestoneInput(requestId, index + 1),
+        source: {
+            id: sourceId,
+            kind: 'stop-operation' as const,
+            version: 1,
+        },
+    }));
+
+    const results = await withDeliveryNotificationsEnabled(async () =>
+        publishCustomerDeliveryMilestonesSafely(inputs, {
+            createNotificationWithOutcome: async (notification) => {
+                const metadata = notification.metadata;
+                if (!metadata || typeof metadata !== 'object') {
+                    assert.fail('Expected bounded lifecycle metadata.');
+                }
+                const requestId = Reflect.get(metadata, 'requestId');
+                const source = Reflect.get(metadata, 'source');
+                if (
+                    typeof requestId !== 'string' ||
+                    !source ||
+                    typeof source !== 'object'
+                ) {
+                    assert.fail('Expected lifecycle source metadata.');
+                }
+                const sourceId = Reflect.get(source, 'id');
+                if (typeof sourceId !== 'string') {
+                    assert.fail('Expected a lifecycle source ID.');
+                }
+                sourceIdsByRequestId.set(requestId, sourceId);
+                return {
+                    notificationId: `notification:${requestId}`,
+                    outcome: 'created',
+                };
+            },
+            getDeliveryAccountContacts: async () => [
+                {
+                    accountId: 'account-1',
+                    avatarUrl: null,
+                    displayName: 'Customer',
+                    id: 'user-1',
+                    role: 'user',
+                    userName: 'customer@example.test',
+                },
+            ],
+            getDeliveryRequestOwners: async (requestIds) =>
+                requestIds.map((requestId) => ({
+                    accountId: 'account-1',
+                    requestId,
+                })),
+        }),
+    );
+
+    assert.equal(
+        results.every((result) => result.outcome === 'published'),
+        true,
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-safe'),
+        'legacy-operation:1_2',
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-safe-trimmed'),
+        'legacy-operation:trimmed',
+    );
+    assert.equal(sourceIdsByRequestId.get('request-safe-max'), 'x'.repeat(128));
+    const hashedSourceIds = unsafeSourceIds.map((_, index) => {
+        const sourceId = sourceIdsByRequestId.get(`request-unsafe-${index}`);
+        assert.ok(sourceId);
+        assert.match(sourceId, /^sha256:[A-Za-z0-9_-]{43}$/u);
+        assert.ok(sourceId.length <= 128);
+        return sourceId;
+    });
+    assert.equal(new Set(hashedSourceIds).size, unsafeSourceIds.length);
+    assert.equal(
+        hashedSourceIds[0],
+        'sha256:NjNiCYbYgIsggPrWEQaupQ3SPcZowQbXugTXPPzP5w8',
+    );
+    assert.equal(
+        sourceIdsByRequestId.get('request-unsafe-replay'),
+        hashedSourceIds[0],
+    );
+    for (const unsafeSourceId of unsafeSourceIds) {
+        assert.equal(
+            JSON.stringify([...sourceIdsByRequestId.values()]).includes(
+                unsafeSourceId,
+            ),
+            false,
+        );
+    }
+});
+
 test('milestone publishing fans out one recipient-scoped row per customer-capable account user', async () => {
     const created: Array<{ idempotencyKey: string; userId: string | null }> =
         [];

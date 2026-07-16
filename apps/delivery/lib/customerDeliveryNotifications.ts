@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
     createDeliveryLifecycleEvent,
     customerDeliveryLifecycleNotification,
@@ -6,6 +7,7 @@ import {
     type DeliveryLifecycleMilestone,
     type DeliveryLifecycleSource,
     deliveryLifecycleThresholds,
+    isDeliveryLifecycleSourceId,
 } from '@gredice/notifications';
 import {
     createDeliveryLifecycleNotificationDecisionOnce,
@@ -205,7 +207,7 @@ async function deliveryLifecycleEvent(
         context,
         occurredAt: input.occurredAt.toISOString(),
         retryAttempt: input.retryAttempt,
-        source: input.source,
+        source: normalizedDeliveryLifecycleSource(input.source),
     };
     return input.milestone === 'exception'
         ? createDeliveryLifecycleEvent({
@@ -217,6 +219,24 @@ async function deliveryLifecycleEvent(
               ...common,
               milestone: input.milestone,
           });
+}
+
+function normalizedDeliveryLifecycleSource(
+    source: DeliveryLifecycleSource,
+): DeliveryLifecycleSource {
+    const sourceId = source.id.trim();
+    if (sourceId.length === 0) {
+        throw new Error('Delivery lifecycle source ID is required.');
+    }
+    if (isDeliveryLifecycleSourceId(sourceId)) {
+        return { ...source, id: sourceId };
+    }
+    return {
+        ...source,
+        id: `sha256:${createHash('sha256')
+            .update(sourceId)
+            .digest('base64url')}`,
+    };
 }
 
 export async function publishCustomerDeliveryMilestone(
