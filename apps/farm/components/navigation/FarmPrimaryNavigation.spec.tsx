@@ -33,6 +33,7 @@ const expectedLabels = [
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-navigation-test',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,

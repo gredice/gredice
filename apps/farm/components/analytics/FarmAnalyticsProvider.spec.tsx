@@ -24,6 +24,7 @@ declare global {
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-analytics-test',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,
