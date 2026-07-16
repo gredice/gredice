@@ -11,6 +11,7 @@ import { FarmPrimaryNavigation } from '../components/navigation/FarmPrimaryNavig
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-pwa-preview',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,
