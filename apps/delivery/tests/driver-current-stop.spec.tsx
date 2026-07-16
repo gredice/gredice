@@ -401,6 +401,38 @@ test('requires an intentional reason for an unreviewed single while keeping QR o
     );
 });
 
+test('requires an arrival override when any actionable bulk sibling has not arrived', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <DriverCurrentDeliveryCommandStory
+            mixedArrival
+            withHandoff
+            fullyReviewedHandoff
+        />,
+    );
+    await page
+        .getByRole('button', { name: 'Dostavi bez potvrde dolaska' })
+        .click();
+    const dialog = page.getByRole('dialog', { name: 'Potvrdi dostavu' });
+    await expect(dialog).toContainText('dolazak nije potvrđen');
+    await expect(dialog).not.toContainText(
+        'Manifest nije u potpunosti pregledan ili potvrđen.',
+    );
+    const confirm = dialog.getByRole('button', {
+        name: 'Potvrdi iznimku i dostavu',
+    });
+    await expect(confirm).toBeDisabled();
+    await dialog
+        .getByLabel('Razlog operativne iznimke')
+        .selectOption('manual-handoff');
+    await confirm.click();
+    await expect(page.getByTestId('current-stop-result')).toHaveText(
+        'delivered::manual-handoff',
+    );
+});
+
 test('guards a direct single completion against same-frame repeat taps', async ({
     mount,
     page,

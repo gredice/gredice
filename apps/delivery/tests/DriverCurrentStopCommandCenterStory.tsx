@@ -81,6 +81,19 @@ const arrivedStop: DeliveryStopSummary = {
     })),
 };
 
+const mixedArrivalStop: DeliveryStopSummary = {
+    ...arrivedStop,
+    deliveries: arrivedStop.deliveries.map((delivery, index) => ({
+        ...delivery,
+        stopState:
+            delivery.requestId === 'request-terminal-history'
+                ? 'failed'
+                : index === 1
+                  ? 'pending'
+                  : 'arrived',
+    })),
+};
+
 const singleArrivedDelivery = arrivedStop.deliveries[0];
 if (!singleArrivedDelivery) {
     throw new Error('Current-stop story requires one actionable delivery.');
@@ -96,7 +109,9 @@ const singleArrivedStop: DeliveryStopSummary = {
     deliveries: [singleArrivedDelivery],
 };
 
-function handoffController(): DeliveryHandoffCommandController {
+function handoffController(
+    fullyReviewed = false,
+): DeliveryHandoffCommandController {
     const items = arrivedStop.deliveries.flatMap((delivery, index) =>
         delivery.stopId === null
             ? []
@@ -109,17 +124,20 @@ function handoffController(): DeliveryHandoffCommandController {
                           ? index + 1
                           : null,
                       qrAvailable: Boolean(delivery.harvest.tracePath),
-                      state:
-                          index === 0
-                              ? ('scanned' as const)
-                              : index === 1
-                                ? ('unverified' as const)
-                                : index === 2
-                                  ? ('no-label' as const)
-                                  : ('unverified' as const),
+                      state: fullyReviewed
+                          ? ('scanned' as const)
+                          : index === 0
+                            ? ('scanned' as const)
+                            : index === 1
+                              ? ('unverified' as const)
+                              : index === 2
+                                ? ('no-label' as const)
+                                : ('unverified' as const),
                       reason: null,
                       verifiedAt:
-                          index === 0 ? '2026-07-15T08:32:00.000Z' : null,
+                          fullyReviewed || index === 0
+                              ? '2026-07-15T08:32:00.000Z'
+                              : null,
                       syncState: 'persisted' as const,
                   },
               ],
@@ -219,21 +237,29 @@ function actionEntry(
 
 export function DriverCurrentDeliveryCommandStory({
     arrived = false,
+    mixedArrival = false,
     syncState,
     syncKind = 'arrive',
     throwOnArrive = false,
     late = false,
     withHandoff = false,
+    fullyReviewedHandoff = false,
 }: {
     arrived?: boolean;
+    mixedArrival?: boolean;
     syncState?: DeliveryActionQueueEntry['state'];
     syncKind?: 'arrive' | 'deliver';
     throwOnArrive?: boolean;
     late?: boolean;
     withHandoff?: boolean;
+    fullyReviewedHandoff?: boolean;
 }) {
     const [result, setResult] = useState('none');
-    const selectedStop = arrived ? arrivedStop : currentStop;
+    const selectedStop = mixedArrival
+        ? mixedArrivalStop
+        : arrived
+          ? arrivedStop
+          : currentStop;
     const stop = late
         ? {
               ...selectedStop,
@@ -251,7 +277,11 @@ export function DriverCurrentDeliveryCommandStory({
                     kind="delivery"
                     stop={stop}
                     routeRevision={12}
-                    handoff={withHandoff ? handoffController() : undefined}
+                    handoff={
+                        withHandoff
+                            ? handoffController(fullyReviewedHandoff)
+                            : undefined
+                    }
                     syncEntry={
                         syncState ? actionEntry(syncKind, syncState) : undefined
                     }

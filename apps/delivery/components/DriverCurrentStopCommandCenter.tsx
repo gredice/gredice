@@ -304,8 +304,13 @@ function DeliveryCurrentStopCommandCenter({
         checkpointPending ||
         Boolean(pendingCompletion) ||
         offlineConflict;
+    const allActionableDeliveriesArrived =
+        actionableDeliveries.length > 0 &&
+        actionableDeliveries.every(
+            (delivery) => delivery.stopState === 'arrived',
+        );
     const arrived =
-        stop.stopState === 'arrived' || pendingArrival || acknowledgedArrival;
+        allActionableDeliveriesArrived || pendingArrival || acknowledgedArrival;
     const handoffView = handoff?.view ?? null;
     const actionableStopIds = new Set(
         actionableDeliveries.map((delivery) => delivery.stopId),
