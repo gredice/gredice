@@ -32,6 +32,7 @@
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts"
     },
     "dependencies": {
+        "@googlemaps/js-api-loader": "2.1.1",
         "@mdxeditor/editor": "4.0.4",
         "@opentelemetry/api-logs": "0.220.0",
         "@opentelemetry/exporter-logs-otlp-http": "0.220.0",
@@ -56,6 +57,7 @@
         "@gredice/js": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
+        "@types/google.maps": "3.65.2",
         "@playwright/experimental-ct-react": "1.61.1",
         "@playwright/test": "1.61.1",
         "@tailwindcss/postcss": "4.3.2",
