@@ -48,6 +48,7 @@ export default async function AdminDeliveryNotificationsPage({
         );
         const healthFilters = {
             channel: parsed.filters.channel,
+            milestone: parsed.filters.milestone,
             requestId: parsed.filters.requestId,
             sourceId: parsed.filters.sourceId,
             to: now,

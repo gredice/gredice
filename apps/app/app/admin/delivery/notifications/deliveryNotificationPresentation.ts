@@ -16,6 +16,7 @@ export type DeliveryNotificationSearchParams = Record<
 
 export type DeliveryNotificationFilterValues = {
     channel: DeliveryLifecycleNotificationChannel | '';
+    milestone: DeliveryLifecycleNotificationMilestone | '';
     outcome: DeliveryLifecycleNotificationOutcome | '';
     requestId: string;
     sourceId: string;
@@ -24,6 +25,7 @@ export type DeliveryNotificationFilterValues = {
 export type ParsedDeliveryNotificationFilters = {
     filters: {
         channel?: DeliveryLifecycleNotificationChannel;
+        milestone?: DeliveryLifecycleNotificationMilestone;
         outcome?: DeliveryLifecycleNotificationOutcome;
         requestId?: string;
         sourceId?: string;
@@ -117,20 +119,49 @@ function parseOutcome(value: string | string[] | undefined) {
     }
 }
 
+function parseMilestone(value: string | string[] | undefined) {
+    const param = singleSearchParam(value);
+    if (param.invalid || !param.value) {
+        return {
+            invalid: param.invalid,
+            value: undefined,
+        };
+    }
+    switch (param.value) {
+        case 'arrived':
+        case 'delayed':
+        case 'delivered':
+        case 'exception':
+        case 'near-arrival':
+        case 'next-stop':
+        case 'recovery':
+        case 'route-started':
+            return { invalid: false, value: param.value };
+        default:
+            return { invalid: true, value: undefined };
+    }
+}
+
 export function parseDeliveryNotificationFilters(
     searchParams: DeliveryNotificationSearchParams,
 ): ParsedDeliveryNotificationFilters {
     const requestId = parseOpaqueIdentifier(searchParams.requestId);
     const sourceId = parseOpaqueIdentifier(searchParams.sourceId);
     const channel = parseChannel(searchParams.channel);
+    const milestone = parseMilestone(searchParams.milestone);
     const outcome = parseOutcome(searchParams.outcome);
-    const hasInvalidFilter = [requestId, sourceId, channel, outcome].some(
-        (result) => result.invalid,
-    );
+    const hasInvalidFilter = [
+        requestId,
+        sourceId,
+        channel,
+        milestone,
+        outcome,
+    ].some((result) => result.invalid);
 
     return {
         filters: {
             channel: channel.value,
+            milestone: milestone.value,
             outcome: outcome.value,
             requestId: requestId.value,
             sourceId: sourceId.value,
@@ -138,6 +169,7 @@ export function parseDeliveryNotificationFilters(
         hasInvalidFilter,
         values: {
             channel: channel.value ?? '',
+            milestone: milestone.value ?? '',
             outcome: outcome.value ?? '',
             requestId: requestId.value ?? '',
             sourceId: sourceId.value ?? '',

@@ -129,6 +129,30 @@ function isMilestone(value: unknown): value is DeliveryLifecycleMilestone {
     );
 }
 
+function isDeliveryLifecycleSource(value: unknown) {
+    if (
+        !isRecord(value) ||
+        !hasExactKeys(value, ['id', 'kind', 'version']) ||
+        !isOpaqueIdentifier(value.id) ||
+        typeof value.version !== 'number' ||
+        !Number.isSafeInteger(value.version) ||
+        value.version < 0 ||
+        value.version > 10_000
+    ) {
+        return false;
+    }
+    switch (value.kind) {
+        case 'exception-operation':
+        case 'retry-state':
+        case 'route-progress':
+        case 'run-state':
+        case 'stop-operation':
+            return true;
+        default:
+            return false;
+    }
+}
+
 function isExceptionOutcome(
     value: unknown,
 ): value is DeliveryRunExceptionOutcome {
@@ -167,6 +191,7 @@ export function parseDeliveryLifecycleEmailMetadata(
         'requestId',
         'retryAttempt',
         'runId',
+        ...(Object.hasOwn(value, 'source') ? ['source'] : []),
         'stopId',
         ...(value.milestone === 'exception' ? ['exception'] : []),
     ];
@@ -176,6 +201,8 @@ export function parseDeliveryLifecycleEmailMetadata(
         !isOpaqueIdentifier(value.requestId) ||
         !isOpaqueIdentifier(value.runId) ||
         !isOpaqueIdentifier(value.stopId) ||
+        (Object.hasOwn(value, 'source') &&
+            !isDeliveryLifecycleSource(value.source)) ||
         typeof value.retryAttempt !== 'number' ||
         !Number.isSafeInteger(value.retryAttempt) ||
         value.retryAttempt < 0 ||

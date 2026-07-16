@@ -35,6 +35,7 @@ function diagnostic(
 test('parses exact bounded identifiers and allowlisted channel filters', () => {
     const result = parseDeliveryNotificationFilters({
         channel: 'push',
+        milestone: 'near-arrival',
         outcome: 'retrying',
         requestId: `request:${'a'.repeat(120)}`,
         sourceId: 'delivery.run_42~stop-3',
@@ -43,6 +44,7 @@ test('parses exact bounded identifiers and allowlisted channel filters', () => {
     assert.equal(result.hasInvalidFilter, false);
     assert.deepEqual(result.filters, {
         channel: 'push',
+        milestone: 'near-arrival',
         outcome: 'retrying',
         requestId: `request:${'a'.repeat(120)}`,
         sourceId: 'delivery.run_42~stop-3',
@@ -52,6 +54,7 @@ test('parses exact bounded identifiers and allowlisted channel filters', () => {
 test('rejects ambiguous, oversized, or potentially private filter values without echoing them', () => {
     const result = parseDeliveryNotificationFilters({
         channel: ['push', 'email'],
+        milestone: 'private-address',
         outcome: 'provider-specific-result',
         requestId: 'customer@example.com',
         sourceId: '45.8150,15.9819'.repeat(10),
@@ -60,12 +63,14 @@ test('rejects ambiguous, oversized, or potentially private filter values without
     assert.equal(result.hasInvalidFilter, true);
     assert.deepEqual(result.filters, {
         channel: undefined,
+        milestone: undefined,
         outcome: undefined,
         requestId: undefined,
         sourceId: undefined,
     });
     assert.deepEqual(result.values, {
         channel: '',
+        milestone: '',
         outcome: '',
         requestId: '',
         sourceId: '',

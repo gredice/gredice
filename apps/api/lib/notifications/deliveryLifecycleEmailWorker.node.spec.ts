@@ -31,6 +31,11 @@ function metadata(
         requestId,
         retryAttempt: 0,
         runId: 'run:1',
+        source: {
+            id: `source:${milestone}`,
+            kind: 'stop-operation',
+            version: 1,
+        },
         stopId: 'stop:1',
         ...(milestone === 'exception'
             ? {
@@ -164,7 +169,7 @@ test('provider failures after submission begins are uncertain until a terminal f
     );
 });
 
-test('delivery lifecycle email metadata parser accepts only the flat bounded allowlist', () => {
+test('delivery lifecycle email metadata parser accepts bounded source metadata and legacy rows', () => {
     const milestones = [
         'route-started',
         'near-arrival',
@@ -192,6 +197,10 @@ test('delivery lifecycle email metadata parser accepts only the flat bounded all
         );
     }
 
+    const legacyMetadata = metadata();
+    delete legacyMetadata.source;
+    assert.ok(parseDeliveryLifecycleEmailMetadata(legacyMetadata));
+
     for (const invalid of [
         null,
         {},
@@ -200,6 +209,27 @@ test('delivery lifecycle email metadata parser accepts only the flat bounded all
         { ...metadata(), retryAttempt: -1 },
         { ...metadata(), retryAttempt: 10_001 },
         { ...metadata(), runId: 'x'.repeat(129) },
+        {
+            ...metadata(),
+            source: { id: 'unsafe/id', kind: 'stop-operation', version: 1 },
+        },
+        {
+            ...metadata(),
+            source: { id: 'source:1', kind: 'private-kind', version: 1 },
+        },
+        {
+            ...metadata(),
+            source: {
+                id: 'source:1',
+                kind: 'stop-operation',
+                privateNote: 'no',
+                version: 1,
+            },
+        },
+        {
+            ...metadata(),
+            source: { id: 'source:1', kind: 'stop-operation', version: -1 },
+        },
         { ...metadata(), privateNote: 'must-not-pass' },
         {
             ...metadata('exception'),

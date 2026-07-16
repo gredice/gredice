@@ -6,10 +6,21 @@ import { KnownPages } from '../../../../src/KnownPages';
 import {
     type DeliveryNotificationFilterValues,
     deliveryNotificationChannelLabel,
+    deliveryNotificationMilestoneLabel,
     deliveryNotificationOutcomeLabel,
 } from './deliveryNotificationPresentation';
 
 const channels = ['in_app', 'email', 'push', 'sms'] as const;
+const milestones = [
+    'route-started',
+    'near-arrival',
+    'next-stop',
+    'delayed',
+    'arrived',
+    'delivered',
+    'exception',
+    'recovery',
+] as const;
 const outcomes = [
     'suppressed',
     'deferred',
@@ -35,7 +46,7 @@ export function DeliveryNotificationFilters({
     return (
         <form
             action={KnownPages.DeliveryNotifications}
-            className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_14rem_auto]"
+            className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_12rem_14rem_auto]"
             method="get"
         >
             <Input
@@ -74,6 +85,24 @@ export function DeliveryNotificationFilters({
                     {channels.map((channel) => (
                         <option key={channel} value={channel}>
                             {deliveryNotificationChannelLabel(channel)}
+                        </option>
+                    ))}
+                </select>
+            </Stack>
+            <Stack spacing={1}>
+                <label className="text-sm font-medium" htmlFor="milestone">
+                    Prekretnica
+                </label>
+                <select
+                    className={selectClassName}
+                    defaultValue={values.milestone}
+                    id="milestone"
+                    name="milestone"
+                >
+                    <option value="">Sve prekretnice</option>
+                    {milestones.map((milestone) => (
+                        <option key={milestone} value={milestone}>
+                            {deliveryNotificationMilestoneLabel(milestone)}
                         </option>
                     ))}
                 </select>
