@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    isCanonicalIsoTimestamp,
     isCustomerDeliveryEtaSummary,
     isCustomerDeliveryTrackingSummary,
 } from './customerDeliveryValidation';
+
+test('accepts only canonical ISO timestamps for customer dashboard data', () => {
+    assert.equal(isCanonicalIsoTimestamp('2026-07-16T09:59:00.000Z'), true);
+    for (const value of [
+        1,
+        '1',
+        '2026-07-16',
+        '2026-07-16T09:59:00Z',
+        '2026-02-30T09:59:00.000Z',
+        'not-a-date',
+    ]) {
+        assert.equal(isCanonicalIsoTimestamp(value), false);
+    }
+});
 
 const validTrafficEta = {
     source: 'traffic-route',

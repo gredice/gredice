@@ -21,6 +21,13 @@ import { useDriverTracking } from '../hooks/useDriverTracking';
 import { useOfflineRouteCache } from '../hooks/useOfflineRouteCache';
 import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
 import {
+    customerDashboardFreshnessFailureForRender,
+    initialCustomerDashboardFreshnessState,
+    nextCustomerDashboardFreshnessState,
+    shouldShowDeliveryDashboardLoading,
+} from '../lib/customerDashboardFreshness';
+import {
+    isCanonicalIsoTimestamp,
     isCustomerDeliveryEtaSummary,
     isCustomerDeliveryTrackingSummary,
 } from '../lib/customerDeliveryValidation';
@@ -63,6 +70,7 @@ import {
     createWebStoragePickupManifestQueuePersistence,
 } from '../lib/pickupManifestQueue';
 import { CustomerDashboard } from './CustomerDashboard';
+import { DeliveryDashboardInitialError } from './DeliveryDashboardInitialError';
 import { DriverDashboard } from './DriverDashboard';
 import { OfflineRouteRecovery } from './OfflineRouteRecovery';
 
@@ -139,7 +147,9 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
         !('displayName' in value.user) ||
         typeof value.user.displayName !== 'string' ||
         !('role' in value.user) ||
-        typeof value.user.role !== 'string'
+        typeof value.user.role !== 'string' ||
+        !('refreshedAt' in value) ||
+        !isCanonicalIsoTimestamp(value.refreshedAt)
     ) {
         return false;
     }
@@ -705,6 +715,9 @@ export function DeliveryDashboard({
     );
     const [networkOnline, setNetworkOnline] = useState(true);
     const [offlineFallbackReady, setOfflineFallbackReady] = useState(false);
+    const [customerFreshnessState, setCustomerFreshnessState] = useState(
+        initialCustomerDashboardFreshnessState,
+    );
     const [logoutState, setLogoutState] = useState<
         'idle' | 'pending' | 'failed'
     >('idle');
@@ -715,13 +728,21 @@ export function DeliveryDashboard({
     const offlineSessionReady = offlineSessionUserId === authenticatedUserId;
     const sessionOperational = offlineSessionReady && logoutState === 'idle';
     const query = useQuery({
-        queryKey: ['delivery-dashboard'],
+        queryKey: ['delivery-dashboard', authenticatedUserId],
         queryFn: readDashboard,
         enabled: sessionOperational,
         refetchInterval: 10_000,
     });
     const refetchDashboard = query.refetch;
     const dashboardData = query.data?.dashboard;
+    const customerSuccessVersion = query.data?.requestTiming.monotonicMs ?? 0;
+    const hasCustomerDashboard = dashboardData?.kind === 'customer';
+    const renderedCustomerFreshnessFailure =
+        customerDashboardFreshnessFailureForRender(customerFreshnessState, {
+            scopeKey: authenticatedUserId,
+            networkOnline,
+            isRefetchError: query.isRefetchError,
+        });
     const driverDashboard: DriverDeliveryDashboard | null =
         dashboardData?.kind === 'driver' ? dashboardData : null;
     const authenticatedDriverUserId =
@@ -827,6 +848,26 @@ export function DeliveryDashboard({
             window.removeEventListener('offline', update);
         };
     }, []);
+
+    useEffect(() => {
+        setCustomerFreshnessState((current) =>
+            nextCustomerDashboardFreshnessState(current, {
+                scopeKey: authenticatedUserId,
+                hasCustomerDashboard,
+                networkOnline,
+                isRefetchError: query.isRefetchError,
+                isSuccess: query.isSuccess,
+                successVersion: customerSuccessVersion,
+            }),
+        );
+    }, [
+        authenticatedUserId,
+        customerSuccessVersion,
+        hasCustomerDashboard,
+        networkOnline,
+        query.isRefetchError,
+        query.isSuccess,
+    ]);
 
     useEffect(() => {
         const clearVisibleSession = () => {
@@ -1209,8 +1250,13 @@ export function DeliveryDashboard({
     }
 
     if (
-        query.isPending &&
-        !(offlineRoute && (!networkOnline || offlineFallbackReady))
+        shouldShowDeliveryDashboardLoading({
+            isPending: query.isPending,
+            networkOnline,
+            waitForOfflineRoute: authenticatedDriverUserId !== null,
+            hasOfflineRoute: Boolean(offlineRoute),
+            offlineFallbackReady,
+        })
     ) {
         return (
             <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
@@ -1235,34 +1281,34 @@ export function DeliveryDashboard({
             );
         }
         return (
-            <main className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
-                <Card className="w-full max-w-md">
-                    <CardContent noHeader className="space-y-4 p-6 text-center">
-                        <Warning className="mx-auto size-9 text-warning" />
-                        <Typography level="h3" semiBold>
-                            Dostave nisu dostupne
-                        </Typography>
-                        <Typography className="text-muted-foreground">
-                            {query.error instanceof Error
-                                ? query.error.message
-                                : 'Pokušaj ponovno za nekoliko trenutaka.'}
-                        </Typography>
-                        <Button
-                            startDecorator={<Reset className="size-4" />}
-                            onClick={() => void query.refetch()}
-                        >
-                            Pokušaj ponovno
-                        </Button>
-                    </CardContent>
-                </Card>
-            </main>
+            <DeliveryDashboardInitialError
+                message={
+                    !networkOnline
+                        ? 'Uređaj je izvan mreže. Za prvi prikaz potrebna je internetska veza.'
+                        : query.error instanceof Error
+                          ? query.error.message
+                          : 'Pokušaj ponovno za nekoliko trenutaka.'
+                }
+                retrying={query.isFetching}
+                retryUnavailableMessage={
+                    !networkOnline
+                        ? 'Ponovni pokušaj bit će dostupan kada se internetska veza obnovi.'
+                        : null
+                }
+                onRetry={async () => {
+                    if (!networkOnline) return;
+                    await query.refetch();
+                }}
+            />
         );
     }
 
     const dashboard = dashboardData;
+    const showDriverConnectionWarning =
+        dashboard.kind === 'driver' && (!networkOnline || query.isError);
     return (
         <>
-            {!networkOnline || query.isError ? (
+            {showDriverConnectionWarning ? (
                 <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-xl">
                     <Alert
                         color="warning"
@@ -1329,9 +1375,24 @@ export function DeliveryDashboard({
                 <CustomerDashboard
                     dashboard={dashboard}
                     requestTiming={query.data?.requestTiming ?? null}
+                    freshness={{
+                        failure: renderedCustomerFreshnessFailure,
+                        onRetry: async () => {
+                            if (!networkOnline) return false;
+                            const previousSuccessVersion =
+                                query.data?.requestTiming.monotonicMs ?? 0;
+                            const result = await refetchDashboard();
+                            const nextSuccessVersion =
+                                result.data?.requestTiming.monotonicMs ?? 0;
+                            return (
+                                result.isSuccess &&
+                                nextSuccessVersion > previousSuccessVersion
+                            );
+                        },
+                    }}
                 />
             )}
-            {!networkOnline || query.isError ? (
+            {showDriverConnectionWarning ? (
                 <div aria-hidden="true" className="h-32 sm:h-24" />
             ) : null}
         </>

@@ -199,7 +199,7 @@ const activeBulkSibling = delivery({
     plantName: 'Aktivni bosiljak',
     lifecycle: 'active',
     slotStartAt: '2026-07-16T09:00:00.000Z',
-    phase: 'next',
+    phase: 'arrived',
 });
 
 const history = [
@@ -283,7 +283,6 @@ export function CustomerDeliverySectionsStory() {
                     lifecycle: 'upcoming',
                     slotStartAt: '2026-07-17T11:00:00.000Z',
                 }),
-                activeBulkSibling,
                 pickup({
                     requestId: 'upcoming-pickup-4137',
                     plantName: 'Nadolazeća blitva',
@@ -291,6 +290,7 @@ export function CustomerDeliverySectionsStory() {
                     slotStartAt: '2026-07-17T09:00:00.000Z',
                 }),
                 activeArrived,
+                activeBulkSibling,
                 ...history,
             ]}
         />
