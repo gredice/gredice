@@ -49,6 +49,9 @@ async function FarmTodayDashboard({
             headerActions={
                 <>
                     <IconButton
+                        data-farm-analytics="navigation"
+                        data-farm-navigation-destination="settings"
+                        data-farm-navigation-source="today_tools"
                         href="/settings"
                         size="lg"
                         title="Postavke"

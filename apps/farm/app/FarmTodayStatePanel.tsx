@@ -33,7 +33,14 @@ export function FarmTodayUnavailableState() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <FarmTodayRefreshButton />
-                    <Button href="/schedule" size="lg" variant="outlined">
+                    <Button
+                        data-farm-analytics="navigation"
+                        data-farm-navigation-destination="schedule"
+                        data-farm-navigation-source="today_tools"
+                        href="/schedule"
+                        size="lg"
+                        variant="outlined"
+                    >
                         Otvori raspored
                     </Button>
                 </div>
@@ -59,6 +66,9 @@ export function FarmTodayNoFarmState() {
                     </div>
                     <Button
                         className="w-fit"
+                        data-farm-analytics="navigation"
+                        data-farm-navigation-destination="settings"
+                        data-farm-navigation-source="today_tools"
                         href="/settings"
                         size="lg"
                         variant="outlined"
@@ -96,6 +106,9 @@ export function FarmTodayAvailableStatePanel({
                         </div>
                         <Button
                             className="w-fit"
+                            data-farm-analytics="navigation"
+                            data-farm-navigation-destination="schedule"
+                            data-farm-navigation-source="today_tools"
                             href={scheduleHref}
                             size="lg"
                             variant="outlined"
@@ -171,6 +184,9 @@ export function FarmTodayAvailableStatePanel({
                     </div>
                     <Button
                         className="w-fit"
+                        data-farm-analytics="navigation"
+                        data-farm-navigation-destination="schedule"
+                        data-farm-navigation-source="today_tools"
                         href={scheduleHref}
                         size="lg"
                         variant="outlined"

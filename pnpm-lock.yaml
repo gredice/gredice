@@ -527,6 +527,9 @@ importers:
       '@posthog/next':
         specifier: 0.8.0
         version: 0.8.0(@types/react@19.2.17)(next@16.3.0-preview.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.101.0))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@posthog/react':
+        specifier: 1.10.3
+        version: 1.10.3(@types/react@19.2.17)(posthog-js@1.399.1)(react@19.2.7)
       '@vercel/blob':
         specifier: 2.6.1
         version: 2.6.1
@@ -542,6 +545,9 @@ importers:
       pg:
         specifier: 8.22.0
         version: 8.22.0
+      posthog-js:
+        specifier: 1.399.1
+        version: 1.399.1
       react:
         specifier: 19.2.7
         version: 19.2.7

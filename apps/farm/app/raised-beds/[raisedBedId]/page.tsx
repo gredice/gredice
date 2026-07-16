@@ -123,8 +123,11 @@ async function RaisedBedDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 items-center">
+            <div className="flex min-w-0 items-center gap-2">
                 <HomeButton href="/raised-beds" title="Povratak na gredice" />
+                <Typography component="h1" level="h5" semiBold>
+                    Gredica {raisedBed.physicalId ?? raisedBed.id}
+                </Typography>
             </div>
 
             <Card>
