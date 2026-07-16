@@ -17,7 +17,7 @@ import {
     parseOfflineRouteSnapshot,
 } from './offlineRouteCache';
 
-const now = new Date('2026-07-15T12:00:00.000Z');
+const now = new Date();
 
 type DeliveryStep = Extract<DeliveryRouteStepSummary, { kind: 'delivery' }>;
 type PickupStep = Extract<DeliveryRouteStepSummary, { kind: 'pickup' }>;
