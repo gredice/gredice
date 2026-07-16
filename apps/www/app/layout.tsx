@@ -1,3 +1,4 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
@@ -90,6 +91,7 @@ export default async function RootLayout({
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <ClientAppProvider>
+            <ImpersonationBanner />
             <Stack>
                 <PublicHeader />
                 <main className="mt-16 relative">

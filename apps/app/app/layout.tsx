@@ -1,9 +1,9 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import type { ReactNode } from 'react';
-import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { adminAppTitle } from '../src/adminDocumentTitle';
 

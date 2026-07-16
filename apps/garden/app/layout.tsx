@@ -1,3 +1,4 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
@@ -6,7 +7,6 @@ import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
-import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 const montserrat = Montserrat({

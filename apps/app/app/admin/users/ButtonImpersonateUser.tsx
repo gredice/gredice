@@ -1,13 +1,8 @@
 'use client';
 
-import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Ghost } from '@gredice/ui/icons';
 import { useRouter } from 'next/navigation';
-
-function getGardenUrl() {
-    return getBrowserGrediceAppOrigin('garden');
-}
 
 export function ButtonImpersonateUser({ userId }: { userId: string }) {
     const router = useRouter();
@@ -23,7 +18,7 @@ export function ButtonImpersonateUser({ userId }: { userId: string }) {
             console.error(`Failed to impersonate user ${userId}`);
             return;
         }
-        router.push(getGardenUrl());
+        router.push('/impersonation');
     };
 
     return (
