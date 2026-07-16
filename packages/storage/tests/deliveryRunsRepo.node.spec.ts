@@ -6227,6 +6227,37 @@ test('a late handoff mutation from the first visit cannot repopulate a retry man
     assert.ok(targetStop);
     assert.ok(trace);
 
+    const [firstVisitEvidence] = await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-first-visit-evidence',
+                occurredAt: new Date(Date.now() - 3_000),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: targetStop.id,
+                outcome: DeliveryRunHandoffItemStates.SKIPPED,
+                reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+            },
+        ],
+    });
+    assert.equal(firstVisitEvidence?.result.outcome, 'applied');
+    const firstVisitStop = await storage().query.deliveryRunStops.findFirst({
+        where: eq(deliveryRunStops.id, targetStop.id),
+    });
+    assert.equal(
+        firstVisitStop?.handoffVerificationState,
+        DeliveryRunHandoffItemStates.SKIPPED,
+    );
+    assert.equal(
+        firstVisitStop?.handoffVerificationReason,
+        DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+    );
+    assert.ok(firstVisitStop?.handoffVerifiedAt instanceof Date);
+    assert.equal(firstVisitStop?.handoffVerifiedByUserId, driverUserId);
+
     const deferred = await recordDeliveryRunStopExceptions({
         driverUserId,
         runId: run.id,
@@ -6238,6 +6269,30 @@ test('a late handoff mutation from the first visit cannot repopulate a retry man
             reason: DeliveryRunExceptionReasons.CUSTOMER_UNAVAILABLE,
         })),
     });
+    const deferredStop = await storage().query.deliveryRunStops.findFirst({
+        where: eq(deliveryRunStops.id, targetStop.id),
+    });
+    assert.equal(deferredStop?.retryAttempt, 1);
+    assert.equal(
+        deferredStop?.handoffVerificationState,
+        DeliveryRunHandoffItemStates.UNVERIFIED,
+    );
+    assert.equal(deferredStop?.handoffVerificationReason, null);
+    assert.equal(deferredStop?.handoffVerifiedAt, null);
+    assert.equal(deferredStop?.handoffVerifiedByUserId, null);
+    const deferredManifest = await getDeliveryRunHandoffManifest({
+        readerUserId: driverUserId,
+        runId: run.id,
+        targetStopId: targetStop.id,
+    });
+    assert.equal(deferredManifest.retryAttempt, 1);
+    assert.equal(deferredManifest.unverifiedCount, run.stops.length);
+    assert.equal(
+        deferredManifest.items.find(({ stopId }) => stopId === targetStop.id)
+            ?.state,
+        DeliveryRunHandoffItemStates.UNVERIFIED,
+    );
+
     await retryDeliveryRunStop({
         driverUserId,
         runId: run.id,
@@ -6251,6 +6306,7 @@ test('a late handoff mutation from the first visit cannot repopulate a retry man
     });
     assert.equal(retryManifest.retryAttempt, 1);
     assert.equal(retryManifest.unverifiedCount, run.stops.length);
+    assert.deepEqual(retryManifest, deferredManifest);
 
     await assertExecutionError(
         applyDeliveryRunHandoffMutations({
@@ -6284,7 +6340,7 @@ test('a late handoff mutation from the first visit cannot repopulate a retry man
                 .from(deliveryRunHandoffOperations)
                 .where(eq(deliveryRunHandoffOperations.runId, run.id))
         ).length,
-        0,
+        1,
     );
 
     const [currentVisitScan] = await applyDeliveryRunHandoffMutations({
@@ -6306,6 +6362,14 @@ test('a late handoff mutation from the first visit cannot repopulate a retry man
     const [receipt] = await storage()
         .select()
         .from(deliveryRunHandoffOperations)
-        .where(eq(deliveryRunHandoffOperations.runId, run.id));
+        .where(
+            and(
+                eq(deliveryRunHandoffOperations.runId, run.id),
+                eq(
+                    deliveryRunHandoffOperations.clientOperationId,
+                    'handoff-current-retry-scan',
+                ),
+            ),
+        );
     assert.equal(receipt?.retryAttempt, 1);
 });

@@ -3852,6 +3852,11 @@ async function recordDeliveryRunStopExceptionsInDatabase(
                     ? {
                           retryLaneRank,
                           retryAttempt: stop.retryAttempt + 1,
+                          handoffVerificationState:
+                              DeliveryRunHandoffItemStates.UNVERIFIED,
+                          handoffVerificationReason: null,
+                          handoffVerifiedAt: null,
+                          handoffVerifiedByUserId: null,
                       }
                     : exception.outcome ===
                         DeliveryRunExceptionOutcomes.CANCELLED
