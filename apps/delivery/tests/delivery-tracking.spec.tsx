@@ -10,7 +10,7 @@ test('customer sees a live server-acknowledged location and map', async ({
 }) => {
     await mount(
         <CustomerDeliveryTracking
-            runId="run-live"
+            mapPath="/api/map/run-live"
             tracking={{
                 status: 'live',
                 lastAcceptedAt,
@@ -35,7 +35,7 @@ test('customer sees delayed copy while the last exact location remains available
 }) => {
     await mount(
         <CustomerDeliveryTracking
-            runId="run-delayed"
+            mapPath="/api/map/run-delayed"
             tracking={{
                 status: 'delayed',
                 lastAcceptedAt,
@@ -58,7 +58,7 @@ test('customer sees offline state without a stale exact-location map', async ({
 }) => {
     await mount(
         <CustomerDeliveryTracking
-            runId="run-offline"
+            mapPath="/api/map/run-offline"
             tracking={{
                 status: 'offline',
                 lastAcceptedAt,
@@ -79,7 +79,7 @@ test('customer sees unavailable state before the first accepted location', async
 }) => {
     await mount(
         <CustomerDeliveryTracking
-            runId="run-unavailable"
+            mapPath="/api/map/run-unavailable"
             tracking={{
                 status: 'unavailable',
                 lastAcceptedAt: null,

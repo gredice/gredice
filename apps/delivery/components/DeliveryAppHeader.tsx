@@ -1,5 +1,5 @@
 import { Chip } from '@gredice/ui/Chip';
-import { Shield, Truck, User } from '@gredice/ui/icons';
+import { Leaf, Shield, ShoppingCart, Truck, User } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { LogoutButton } from './auth/LogoutButton';
 
@@ -7,22 +7,38 @@ export function DeliveryAppHeader({
     userId,
     displayName,
     role,
+    context = 'delivery',
 }: {
     userId: string;
     displayName: string;
     role: string;
+    context?: 'delivery' | 'pickup' | 'mixed';
 }) {
     const isDriver = role === 'driver' || role === 'admin';
+    const productName =
+        context === 'pickup'
+            ? 'Gredice preuzimanje'
+            : context === 'mixed'
+              ? 'Gredice urodi'
+              : 'Gredice dostava';
+    const productIcon =
+        context === 'pickup' ? (
+            <ShoppingCart className="size-5" />
+        ) : context === 'mixed' ? (
+            <Leaf className="size-5" />
+        ) : (
+            <Truck className="size-5" />
+        );
     return (
         <header className="sticky top-0 z-20 border-b bg-background/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                        <Truck className="size-5" />
+                        {productIcon}
                     </div>
                     <div className="min-w-0">
                         <Typography level="body1" semiBold className="truncate">
-                            Gredice dostava
+                            {productName}
                         </Typography>
                         <Typography
                             level="body3"

@@ -13,7 +13,7 @@ export async function GET() {
                     userId,
                     role: user.role,
                 }),
-                { headers: { 'Cache-Control': 'no-store' } },
+                { headers: { 'Cache-Control': 'private, no-store' } },
             ),
     );
 }

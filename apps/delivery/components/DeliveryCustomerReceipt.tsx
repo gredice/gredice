@@ -12,8 +12,10 @@ import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
 
 export function DeliveryCustomerReceipt({
     receipt,
+    headingLevel = 'h3',
 }: {
     receipt: CustomerDeliveryReceiptSummary;
+    headingLevel?: 'h3' | 'h4';
 }) {
     const headingId = useId();
     const harvestDescription = [
@@ -35,7 +37,7 @@ export function DeliveryCustomerReceipt({
                 <div className="min-w-0">
                     <Typography
                         id={headingId}
-                        component="h3"
+                        component={headingLevel}
                         level="body2"
                         semiBold
                     >

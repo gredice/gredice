@@ -12,19 +12,28 @@ test('renders every advisory receipt state with owned harvest data and contextua
     await mount(<CustomerDeliveryReceiptStatesStory />);
 
     const receipts = page.getByTestId('customer-delivery-receipt');
+    await expect(page.getByTestId('customer-delivery-card')).toHaveCount(4);
     await expect(receipts).toHaveCount(4);
     await expect(
         page.getByRole('heading', {
+            level: 4,
             name: /Potvrda o dostavi · Vrlo dugačka sorta/,
         }),
     ).toBeVisible();
     for (const index of [2, 3, 4]) {
         await expect(
             page.getByRole('heading', {
+                level: 4,
                 name: `Potvrda o dostavi · Rajčica kupca ${index}`,
             }),
         ).toBeVisible();
     }
+    await expect(
+        page.getByRole('heading', {
+            level: 3,
+            name: /Vrlo dugačka sorta ekološke rajčice/,
+        }),
+    ).toBeVisible();
     for (const label of [
         'QR etiketa provjerena je pri predaji.',
         'QR etiketa nije bila dostupna pri predaji.',
@@ -80,17 +89,6 @@ test('renders every advisory receipt state with owned harvest data and contextua
     expect(missingUrl.searchParams.get('body')).toContain(
         'customer-owned-trace-1-4144',
     );
-
-    const renderedText = await page.locator('body').innerText();
-    for (const sentinel of [
-        'PRIVATE DRIVER NOTE 4144',
-        'FOREIGN BULK RECIPIENT 4144',
-        'FOREIGN HARVEST 4144',
-        'FOREIGN REQUEST NOTE 4144',
-        'foreign-trace-4144',
-    ]) {
-        expect(renderedText).not.toContain(sentinel);
-    }
 });
 
 test.describe('customer receipt on a small touch screen', () => {

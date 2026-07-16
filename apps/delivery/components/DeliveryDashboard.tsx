@@ -147,7 +147,81 @@ function isDeliveryDashboard(value: unknown): value is DeliveryDashboardData {
               typeof value.maximumRouteWindowHours === 'number'
         : value.kind === 'customer' &&
               'deliveries' in value &&
-              Array.isArray(value.deliveries);
+              Array.isArray(value.deliveries) &&
+              value.deliveries.every(isCustomerDashboardRequest);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isNullableString(value: unknown) {
+    return value === null || typeof value === 'string';
+}
+
+function isNullableNumber(value: unknown) {
+    return value === null || typeof value === 'number';
+}
+
+function isCustomerHarvest(value: unknown) {
+    return (
+        isRecord(value) &&
+        typeof value.plantName === 'string' &&
+        isNullableString(value.operationName) &&
+        isNullableString(value.raisedBedName) &&
+        isNullableString(value.fieldName) &&
+        isNullableString(value.tracePath)
+    );
+}
+
+function isCustomerTracking(value: unknown) {
+    return (
+        value === null ||
+        (isRecord(value) &&
+            (value.status === 'live' ||
+                value.status === 'delayed' ||
+                value.status === 'offline' ||
+                value.status === 'unavailable') &&
+            isNullableString(value.lastAcceptedAt) &&
+            typeof value.mapAvailable === 'boolean')
+    );
+}
+
+function isCustomerDashboardRequest(value: unknown) {
+    if (
+        !isRecord(value) ||
+        typeof value.requestId !== 'string' ||
+        typeof value.status !== 'string' ||
+        typeof value.statusLabel !== 'string' ||
+        !isNullableString(value.requestNotes) ||
+        !isNullableString(value.slotStartAt) ||
+        !isNullableString(value.slotEndAt) ||
+        !isCustomerHarvest(value.harvest)
+    ) {
+        return false;
+    }
+    if (value.mode === 'pickup') {
+        return (
+            isNullableString(value.pickedUpAt) &&
+            (value.location === null ||
+                (isRecord(value.location) &&
+                    typeof value.location.name === 'string' &&
+                    typeof value.location.address === 'string' &&
+                    typeof value.location.instructions === 'string'))
+        );
+    }
+    return (
+        value.mode === 'delivery' &&
+        isNullableString(value.estimatedArrivalAt) &&
+        isNullableNumber(value.estimatedTravelSeconds) &&
+        isNullableNumber(value.estimatedDistanceMeters) &&
+        typeof value.reroutePending === 'boolean' &&
+        isNullableString(value.deliveredAt) &&
+        isCustomerTracking(value.tracking) &&
+        isNullableString(value.mapPath) &&
+        (value.receipt === null || isRecord(value.receipt)) &&
+        (value.recovery === null || isRecord(value.recovery))
+    );
 }
 
 function isSafeActiveRun(value: unknown) {

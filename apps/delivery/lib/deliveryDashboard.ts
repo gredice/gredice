@@ -29,6 +29,11 @@ import {
     updateDeliveryRunLocation,
 } from '@gredice/storage';
 import 'server-only';
+import {
+    customerDeliveryRequestSummary,
+    customerPickupInstructions,
+    customerPickupRequestSummary,
+} from './customerDeliveryPresentation';
 import type {
     ActiveDeliveryRunSummary,
     CustomerDeliveryReceiptSummary,
@@ -90,7 +95,6 @@ type DeliveryRunExecutionStep = Awaited<
     ReturnType<typeof getDeliveryRunExecutionProgress>
 >[number];
 
-const driverRoles = new Set(['driver', 'admin']);
 const batchStates: ReadonlySet<string> = new Set([
     DeliveryRequestStates.CONFIRMED,
     DeliveryRequestStates.PREPARING,
@@ -147,12 +151,14 @@ function harvestSummary(request: DeliveryRequest): DeliveryHarvestSummary {
 
 export function customerDeliveryReceiptSummary({
     audience,
+    mode,
     requestState,
     requestId,
     handoffReceipt,
     harvest,
 }: {
     audience: 'driver' | 'customer';
+    mode: 'delivery' | 'pickup';
     requestState: string;
     requestId: string;
     handoffReceipt?: {
@@ -163,6 +169,7 @@ export function customerDeliveryReceiptSummary({
 }): CustomerDeliveryReceiptSummary | null {
     if (
         audience !== 'customer' ||
+        mode !== 'delivery' ||
         requestState !== DeliveryRequestStates.FULFILLED ||
         !handoffReceipt
     ) {
@@ -495,6 +502,7 @@ function deliveryStopSummary({
     });
     const receipt = customerDeliveryReceiptSummary({
         audience,
+        mode: request.mode ?? 'delivery',
         requestState: request.state,
         requestId: request.id,
         handoffReceipt: request.customerHandoffReceipt,
@@ -1026,8 +1034,11 @@ async function customerDashboard({
         throw new Error('Korisnik nije pronađen.');
     }
 
+    const deliveryRequests = requests.filter(
+        (request) => request.mode !== 'pickup',
+    );
     const runRows = await getDeliveryRunStopsForRequestIds(
-        requests.map((request) => request.id),
+        deliveryRequests.map((request) => request.id),
     );
     const rowsByRequestId = new Map(
         runRows.map((row) => [row.stop.deliveryRequestId, row]),
@@ -1062,6 +1073,31 @@ async function customerDashboard({
     const projectedAt = new Date();
     const deliveries = requests
         .map((request) => {
+            if (request.mode === 'pickup') {
+                const location = request.slot?.location ?? request.location;
+                return customerPickupRequestSummary({
+                    requestId: request.id,
+                    status: request.state,
+                    requestNotes: request.requestNotes ?? null,
+                    slotStartAt: iso(request.slot?.startAt),
+                    slotEndAt: iso(request.slot?.endAt),
+                    harvest: harvestSummary(request),
+                    location: location
+                        ? {
+                              name: location.name,
+                              address:
+                                  formatDeliveryDestinationAddress(location),
+                              instructions: customerPickupInstructions(
+                                  request.state,
+                              ),
+                          }
+                        : null,
+                    pickedUpAt:
+                        request.state === DeliveryRequestStates.FULFILLED
+                            ? iso(request.customerHandoffReceipt?.fulfilledAt)
+                            : null,
+                });
+            }
             const historicalRow = rowsByRequestId.get(request.id);
             const row =
                 historicalRow?.stop.releasedAt !== null &&
@@ -1072,17 +1108,19 @@ async function customerDashboard({
                 ? (currentStopIdsByRunId.get(row.run.id)?.has(row.stop.id) ??
                   false)
                 : false;
-            return deliveryStopSummary({
-                items: [{ request, stop: row?.stop }],
-                run: row?.run,
-                isCurrent,
-                audience: 'customer',
-                now: projectedAt,
-                includeTracking:
-                    row?.run.state === DeliveryRunStates.ACTIVE &&
-                    isDeliveryRunStopActionable(row.stop.state) &&
+            return customerDeliveryRequestSummary(
+                deliveryStopSummary({
+                    items: [{ request, stop: row?.stop }],
+                    run: row?.run,
                     isCurrent,
-            });
+                    audience: 'customer',
+                    now: projectedAt,
+                    includeTracking:
+                        row?.run.state === DeliveryRunStates.ACTIVE &&
+                        isDeliveryRunStopActionable(row.stop.state) &&
+                        isCurrent,
+                }),
+            );
         })
         .sort((first, second) => {
             const firstTime = first.slotStartAt ?? '';
@@ -1143,6 +1181,19 @@ export function deliveryTrackingStopIds({
         : new Set(currentStopIds);
 }
 
+export function deliveryDashboardKindForRole(role: string) {
+    switch (role) {
+        case 'driver':
+        case 'admin':
+            return 'driver';
+        case 'user':
+        case 'farmer':
+            return 'customer';
+        default:
+            return null;
+    }
+}
+
 export async function getDeliveryDashboard({
     accountId,
     userId,
@@ -1152,7 +1203,11 @@ export async function getDeliveryDashboard({
     userId: string;
     role: string;
 }) {
-    return driverRoles.has(role)
+    const kind = deliveryDashboardKindForRole(role);
+    if (!kind) {
+        throw new Error('Uloga nema pristup dostavnoj aplikaciji.');
+    }
+    return kind === 'driver'
         ? await driverDashboard({ userId, role })
         : await customerDashboard({ accountId, userId, role });
 }
@@ -1440,9 +1495,18 @@ export async function accountCanTrackDeliveryRun({
     runId: string;
 }) {
     const run = await getDeliveryRun(runId);
-    if (!run || run.state !== DeliveryRunStates.ACTIVE) {
-        return false;
-    }
+    if (!run) return false;
+    return Boolean(await customerDeliveryTrackingContext({ accountId, run }));
+}
+
+export async function customerDeliveryTrackingContext({
+    accountId,
+    run,
+}: {
+    accountId: string;
+    run: DeliveryRun;
+}) {
+    if (run.state !== DeliveryRunStates.ACTIVE) return null;
     const [groups, progress] = await Promise.all([
         resolveDeliveryRunStopGroups(run),
         getDeliveryRunExecutionProgress(run.id),
@@ -1456,12 +1520,21 @@ export async function accountCanTrackDeliveryRun({
                   groups,
               })
             : null;
-    return accountCanTrackCurrentDeliveryGroup({
-        accountId,
-        runState: run.state,
+    if (
+        !currentDeliveryStopIds ||
+        !accountCanTrackCurrentDeliveryGroup({
+            accountId,
+            runState: run.state,
+            groups,
+            currentDeliveryStopIds,
+        })
+    ) {
+        return null;
+    }
+    return {
         groups,
         currentDeliveryStopIds,
-    });
+    };
 }
 
 export function accountCanTrackCurrentDeliveryGroup({
