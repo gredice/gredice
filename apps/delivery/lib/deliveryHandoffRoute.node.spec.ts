@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDeliveryHandoffRouteHandlers } from './deliveryHandoffRoute';
 
-const runId = 'delivery-run-1';
+const runId = '123e4567-e89b-42d3-a456-426614174000';
 const targetStopId = 42;
 const expectedRetryAttempt = 3;
 const occurredAt = '2026-07-16T08:30:00.000Z';
@@ -210,14 +210,17 @@ test('POST keeps admins constrained to the assigned-driver mutation contract and
         [
             'Delivery handoff mutation rejected',
             {
-                code: 'active-run-not-found',
+                errorCode: 'active-run-not-found',
                 runId,
                 stopId: targetStopId,
                 mutationCount: 1,
-                userId: 'admin-user',
             },
         ],
     ]);
+    assert.doesNotMatch(
+        JSON.stringify(warnings),
+        /admin-user|private-user-id/u,
+    );
 });
 
 test('POST maps a retry-attempt mismatch to a localized conflict', async () => {
@@ -286,11 +289,15 @@ test('GET maps unexpected failures to a sanitized private response and safe log 
         [
             'Delivery handoff manifest failed',
             {
-                errorType: 'Error',
+                errorCode: 'unclassified',
+                errorName: 'Error',
                 runId,
                 stopId: targetStopId,
-                userId: 'driver-user',
             },
         ],
     ]);
+    assert.doesNotMatch(
+        JSON.stringify(errors),
+        /driver-user|secret-user|secret-password/u,
+    );
 });

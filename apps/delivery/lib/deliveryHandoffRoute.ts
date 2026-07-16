@@ -1,4 +1,9 @@
 import { parseDeliveryHandoffMutationRequest } from './deliveryHandoffMutationRequest';
+import {
+    deliveryOperationalOpaqueId,
+    deliveryOperationFailureLogContext,
+    deliveryOperationRejectionLogContext,
+} from './deliveryOperationalLogging';
 
 const privateNoStoreHeaders = {
     'Cache-Control': 'private, no-store',
@@ -145,18 +150,17 @@ export function createDeliveryHandoffRouteHandlers({
                 const code = executionErrorCode(error);
                 if (code) {
                     logger.warn('Delivery handoff manifest rejected', {
-                        code,
-                        runId,
+                        ...deliveryOperationRejectionLogContext({
+                            errorCode: code,
+                        }),
+                        runId: deliveryOperationalOpaqueId(runId),
                         stopId,
-                        userId,
                     });
                 } else {
                     logger.error('Delivery handoff manifest failed', {
-                        errorType:
-                            error instanceof Error ? error.name : typeof error,
-                        runId,
+                        ...deliveryOperationFailureLogContext({ error }),
+                        runId: deliveryOperationalOpaqueId(runId),
                         stopId,
-                        userId,
                     });
                 }
                 return executionErrorResponse(code, 'handoff-manifest-failed');
@@ -198,20 +202,21 @@ export function createDeliveryHandoffRouteHandlers({
                 const code = executionErrorCode(error);
                 if (code) {
                     logger.warn('Delivery handoff mutation rejected', {
-                        code,
-                        runId,
+                        ...deliveryOperationRejectionLogContext({
+                            errorCode: code,
+                            mutationCount: mutations.length,
+                        }),
+                        runId: deliveryOperationalOpaqueId(runId),
                         stopId,
-                        mutationCount: mutations.length,
-                        userId,
                     });
                 } else {
                     logger.error('Delivery handoff mutation failed', {
-                        errorType:
-                            error instanceof Error ? error.name : typeof error,
-                        runId,
+                        ...deliveryOperationFailureLogContext({
+                            error,
+                            mutationCount: mutations.length,
+                        }),
+                        runId: deliveryOperationalOpaqueId(runId),
                         stopId,
-                        mutationCount: mutations.length,
-                        userId,
                     });
                 }
                 return executionErrorResponse(code, 'handoff-mutation-failed');

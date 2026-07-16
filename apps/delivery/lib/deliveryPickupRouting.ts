@@ -1,5 +1,9 @@
 import 'server-only';
 import {
+    deliveryRouteFallbackLogContext,
+    deliveryRouteFallbackLogMessage,
+} from './deliveryOperationalLogging';
+import {
     type DeliveryRouteGraphLeg,
     type DeliveryRouteGraphNode,
     type DeliveryRouteGraphPlan,
@@ -1085,8 +1089,12 @@ export async function planPickupAwareDeliveryRoute({
         if (error instanceof DeliveryRoutePlanningError) throw error;
         if (!(error instanceof GoogleRouteServiceError)) throw error;
         console.warn(
-            'Google pickup-aware route planning failed; using local fallback',
-            { nodeCount: nodes.length, error },
+            deliveryRouteFallbackLogMessage,
+            deliveryRouteFallbackLogContext({
+                error,
+                nodeCount: nodes.length,
+                phase: 'initial-route',
+            }),
         );
     }
 
@@ -1408,8 +1416,12 @@ export async function refreshFixedPickupAwareDeliveryRoute({
     } catch (error) {
         if (!(error instanceof GoogleRouteServiceError)) throw error;
         console.warn(
-            'Google live ETA refresh failed; using fixed-order local fallback',
-            { nodeCount: fixedNodes.length, error },
+            deliveryRouteFallbackLogMessage,
+            deliveryRouteFallbackLogContext({
+                error,
+                nodeCount: fixedNodes.length,
+                phase: 'live-eta',
+            }),
         );
         return formatRemainingRoutePlan({
             plan: localPlan,
@@ -1510,8 +1522,12 @@ export async function recalculatePickupAwareDeliveryRoute({
         if (error instanceof DeliveryRoutePlanningError) throw error;
         if (!(error instanceof GoogleRouteServiceError)) throw error;
         console.warn(
-            'Google delivery reroute failed; using persisted-coordinate fallback',
-            { nodeCount: baseGraph.graphNodes.length, error },
+            deliveryRouteFallbackLogMessage,
+            deliveryRouteFallbackLogContext({
+                error,
+                nodeCount: baseGraph.graphNodes.length,
+                phase: 'reroute',
+            }),
         );
         estimateSource = 'local';
         legs = localRouteLegs(normalGraphNodes);
@@ -1548,8 +1564,12 @@ export async function recalculatePickupAwareDeliveryRoute({
         } catch (error) {
             if (error instanceof GoogleRouteServiceError) {
                 console.warn(
-                    'Google delivery reroute failed; using persisted-coordinate fallback',
-                    { nodeCount: baseGraph.graphNodes.length, error },
+                    deliveryRouteFallbackLogMessage,
+                    deliveryRouteFallbackLogContext({
+                        error,
+                        nodeCount: baseGraph.graphNodes.length,
+                        phase: 'reroute',
+                    }),
                 );
                 estimateSource = 'local';
                 legs = localRouteLegs(normalGraphNodes);

@@ -181,6 +181,10 @@ const breadcrumbSections: {
                 icon: <Truck className="size-4" />,
             },
             {
+                ...adminPages.DeliveryOperations,
+                icon: <Graph className="size-4" />,
+            },
+            {
                 ...adminPages.DeliveryNotifications,
                 icon: <Graph className="size-4" />,
             },

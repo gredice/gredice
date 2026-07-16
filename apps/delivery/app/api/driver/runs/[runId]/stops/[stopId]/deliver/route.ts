@@ -6,6 +6,11 @@ import {
     parseDeliveryStopMutation,
 } from '../../../../../../../../lib/deliveryMutationRequest';
 import {
+    deliveryOperationalOpaqueId,
+    deliveryOperationFailureLogContext,
+    deliveryOperationRejectionLogContext,
+} from '../../../../../../../../lib/deliveryOperationalLogging';
+import {
     deliveryRunExecutionErrorDetails,
     deliveryRunExecutionErrorStatus,
 } from '../../../../../../../../lib/deliveryRunExecutionError';
@@ -58,17 +63,21 @@ export async function POST(
             return Response.json(result, { headers: privateNoStore });
         } catch (error) {
             const executionError = deliveryRunExecutionErrorDetails(error);
-            const logContext = { runId, stopId, userId };
+            const logContext = {
+                runId: deliveryOperationalOpaqueId(runId),
+                stopId,
+            };
             if (executionError) {
                 console.warn('Delivery stop completion rejected', {
                     ...logContext,
-                    code: executionError.code,
+                    ...deliveryOperationRejectionLogContext({
+                        errorCode: executionError.code,
+                    }),
                 });
             } else {
                 console.error('Failed to deliver stop', {
                     ...logContext,
-                    errorType:
-                        error instanceof Error ? error.name : typeof error,
+                    ...deliveryOperationFailureLogContext({ error }),
                 });
             }
             return Response.json(

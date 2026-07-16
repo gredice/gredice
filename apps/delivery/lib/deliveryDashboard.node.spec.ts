@@ -8,6 +8,7 @@ import {
     deliveryMutationRouteState,
     deliveryProgressMilestoneOccurredAt,
     deliveryRecipientCount,
+    deliveryRunStartErrorLogContext,
     deliveryStatusLabel,
     deliveryTrackingStopIds,
     expandLegacyCurrentDeliveryStopIds,
@@ -18,6 +19,38 @@ import {
     visibleDeliveryRunTotals,
     visibleDeliveryStopEstimates,
 } from './deliveryDashboard';
+import { DeliveryRoutePlanningError } from './deliveryRouting';
+import { DeliveryRunPreparationError } from './deliveryRunPlanning';
+
+test('route start log context excludes request, user, address, and raw error data', () => {
+    const planningContext = deliveryRunStartErrorLogContext(
+        new DeliveryRoutePlanningError(
+            'Private Street 12 cannot be routed',
+            'delivery-address-not-found',
+            'private-request-id',
+        ),
+    );
+    const preparationContext = deliveryRunStartErrorLogContext(
+        new DeliveryRunPreparationError('Private preparation failed', {
+            code: 'delivery-not-ready',
+            deliveryAddress: 'Private Street 12',
+            deliveryRequestId: 'private-request-id',
+        }),
+    );
+
+    assert.deepEqual(planningContext, {
+        errorCode: 'delivery-address-not-found',
+        errorName: 'DeliveryRoutePlanningError',
+    });
+    assert.deepEqual(preparationContext, {
+        errorCode: 'delivery-not-ready',
+        errorName: 'DeliveryRunPreparationError',
+    });
+    assert.doesNotMatch(
+        JSON.stringify({ planningContext, preparationContext }),
+        /Private Street|private-request-id/u,
+    );
+});
 
 test('route progress cannot occur before refreshed estimates', () => {
     const refreshedAt = new Date('2026-07-16T10:00:02.000Z');

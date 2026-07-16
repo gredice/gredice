@@ -150,6 +150,7 @@ test('falls back to a local route estimate when Google Routes is unavailable', a
     const originalHqAddress = process.env.GREDICE_DELIVERY_HQ_ADDRESS;
     let routesRequestCount = 0;
     let fallbackWarningCount = 0;
+    let fallbackContext: unknown;
     process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'test-key';
     process.env.GREDICE_DELIVERY_HQ_ADDRESS =
         'Ulica Julija Knifera 3, 10000 Zagreb, HR';
@@ -180,11 +181,10 @@ test('falls back to a local route estimate when Google Routes is unavailable', a
         }
         return new Response(null, { status: 404 });
     };
-    console.warn = (message) => {
-        if (
-            message === 'Google route optimization failed; using local fallback'
-        ) {
+    console.warn = (message, context) => {
+        if (message === 'Delivery route fallback selected') {
             fallbackWarningCount += 1;
+            fallbackContext = context;
         }
     };
 
@@ -203,6 +203,14 @@ test('falls back to a local route estimate when Google Routes is unavailable', a
 
         assert.equal(routesRequestCount, 1);
         assert.equal(fallbackWarningCount, 1);
+        assert.deepEqual(fallbackContext, {
+            errorCode: 'google-initial-route-failed',
+            errorName: 'Error',
+            fallback: 'local',
+            nodeCount: 1,
+            phase: 'initial-route',
+            provider: 'google',
+        });
         assert.equal(plan.encodedPolyline, undefined);
         assert.ok(plan.totalDistanceMeters > 0);
         assert.equal(plan.stops[0]?.deliveryRequestId, 'delivery-1');
