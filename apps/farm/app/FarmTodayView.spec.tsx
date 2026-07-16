@@ -23,6 +23,7 @@ const phoneViewports = [
 
 const nextNavigationRouter = {
     back: () => undefined,
+    bfcacheId: 'farm-today-test',
     forward: () => undefined,
     prefetch: () => undefined,
     push: () => undefined,
