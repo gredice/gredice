@@ -41,6 +41,7 @@ import {
     clearDeliveryUserStoredState,
     createBrowserDeliveryUserStoredState,
 } from '../lib/deliveryRunStoredState';
+import type { DriverCommandResult } from '../lib/driverCommandResult';
 import {
     clearOtherOfflineRouteCacheScopes,
     createBrowserOfflineRouteCachePersistence,
@@ -269,8 +270,6 @@ function DriverDashboardWithPickupSync({
     onSelectionChange,
     onStartRun,
     onRetry,
-    onActionError,
-    onActionQueued,
     onServerStateChanged,
 }: {
     dashboard: DriverDeliveryDashboard;
@@ -283,9 +282,7 @@ function DriverDashboardWithPickupSync({
         runId: string,
         stopId: number,
         expectedRouteRevision: number,
-    ) => void;
-    onActionError: (error: unknown) => void;
-    onActionQueued: (message: string) => void;
+    ) => DriverCommandResult | Promise<DriverCommandResult>;
     onServerStateChanged: (
         expectation?: DeliveryServerStateExpectation,
     ) => Promise<boolean>;
@@ -332,8 +329,6 @@ function DriverDashboardWithPickupSync({
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
             onRetry={onRetry}
-            onActionError={onActionError}
-            onActionQueued={onActionQueued}
             onServerStateChanged={onServerStateChanged}
         />
     );
@@ -348,8 +343,6 @@ function ActiveDriverDashboardWithPickupSync({
     onSelectionChange,
     onStartRun,
     onRetry,
-    onActionError,
-    onActionQueued,
     onServerStateChanged,
 }: {
     dashboard: DriverDeliveryDashboard;
@@ -363,9 +356,7 @@ function ActiveDriverDashboardWithPickupSync({
         runId: string,
         stopId: number,
         expectedRouteRevision: number,
-    ) => void;
-    onActionError: (error: unknown) => void;
-    onActionQueued: (message: string) => void;
+    ) => DriverCommandResult | Promise<DriverCommandResult>;
     onServerStateChanged: (
         expectation?: DeliveryServerStateExpectation,
     ) => Promise<boolean>;
@@ -418,25 +409,22 @@ function ActiveDriverDashboardWithPickupSync({
         reconcileDeliveryServerState,
         serverAcknowledgementCount,
     ]);
-    const report = async (action: Promise<unknown>) => {
-        try {
-            await action;
-        } catch (error) {
-            onActionError(error);
-        }
-    };
-    const reportQueued = async (
+    const report = async (
         action: Promise<unknown>,
-        confirmation: string,
-    ) => {
+    ): Promise<DriverCommandResult> => {
         try {
             await action;
-            onActionQueued(confirmation);
+            return { status: 'saved' };
         } catch (error) {
-            onActionError(error);
+            return {
+                status: 'failed',
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Radnju nije moguće sigurno spremiti.',
+            };
         }
     };
-
     return (
         <DriverDashboard
             dashboard={dashboard}
@@ -446,18 +434,16 @@ function ActiveDriverDashboardWithPickupSync({
             onSelectionChange={onSelectionChange}
             onStartRun={onStartRun}
             onRetry={onRetry}
-            onArrive={(runId, stopId, routeRevision) => {
+            onArrive={async (runId, stopId, routeRevision) => {
                 if (runId !== activeRunId) return;
-                void reportQueued(
-                    deliverySync.enqueueArrive(stopId, routeRevision),
-                    'Dolazak je spremljen. Oznaka čekanja nestat će nakon potvrde poslužitelja.',
-                );
+                await deliverySync.enqueueArrive(stopId, routeRevision);
             }}
-            onDeliver={(runId, stopId, routeRevision, notes) => {
+            onDeliver={async (runId, stopId, routeRevision, notes) => {
                 if (runId !== activeRunId) return;
-                void reportQueued(
-                    deliverySync.enqueueDelivery(stopId, routeRevision, notes),
-                    'Dostava je spremljena. Oznaka čekanja nestat će nakon potvrde poslužitelja.',
+                await deliverySync.enqueueDelivery(
+                    stopId,
+                    routeRevision,
+                    notes,
                 );
             }}
             onException={async (runId, stopId, mutation) => {
@@ -470,12 +456,8 @@ function ActiveDriverDashboardWithPickupSync({
                 }
                 try {
                     await deliverySync.enqueueException(stopId, mutation);
-                    onActionQueued(
-                        'Problem je spremljen na uređaju. Ruta se neće nastaviti dok poslužitelj ne potvrdi novi plan.',
-                    );
                     return { status: 'saved' };
                 } catch (error) {
-                    onActionError(error);
                     return deliverySync.isBarrierError(error)
                         ? {
                               status: 'review-required',
@@ -514,9 +496,7 @@ function ActiveDriverDashboardWithPickupSync({
                 report(pickupSync.discardEntry(operationId))
             }
             onVerificationScan={(stopId, tracePath) =>
-                void report(
-                    deliverySync.enqueueVerificationScan(stopId, tracePath),
-                )
+                report(deliverySync.enqueueVerificationScan(stopId, tracePath))
             }
             onRetryDeliverySync={(operationId) =>
                 report(deliverySync.retry(operationId))
@@ -887,7 +867,6 @@ export function DeliveryDashboard({
                 error instanceof Error
                     ? error.message
                     : 'Radnju nije moguće dovršiti.';
-            setActionError(message);
             return { status: 'failed', code, statusCode, message };
         } finally {
             setPendingAction(null);
@@ -1179,24 +1158,12 @@ export function DeliveryDashboard({
                         void startRun(deliveryRequestIds)
                     }
                     onRetry={(runId, stopId, expectedRouteRevision) =>
-                        void perform(
+                        perform(
                             `${stopId}:retry`,
                             `/api/driver/runs/${runId}/stops/${stopId}/retry`,
                             { expectedRouteRevision },
                         )
                     }
-                    onActionError={(error) => {
-                        setActionConfirmation(null);
-                        setActionError(
-                            error instanceof Error
-                                ? error.message
-                                : 'Promjenu dostave nije moguće spremiti.',
-                        );
-                    }}
-                    onActionQueued={(message) => {
-                        setActionError(null);
-                        setActionConfirmation(message);
-                    }}
                     onServerStateChanged={refreshDriverServerState}
                 />
             ) : (

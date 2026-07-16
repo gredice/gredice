@@ -4,16 +4,9 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import {
-    Approved,
-    MapPin,
-    Mobile,
-    MyLocation,
-    Navigate,
-    Warning,
-} from '@gredice/ui/icons';
+import { MapPin, Navigate, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
     deliveryActionAcknowledgementBlocksRoute,
     deliveryActionCompletionMessage,
@@ -24,7 +17,11 @@ import {
     deliveryActionPendingEntryForStop,
     deliveryActionVerifiedTracePaths,
 } from '../lib/deliveryActionQueue';
-import type { DeliveryStopDeliverySummary } from '../lib/deliveryDashboardTypes';
+import type {
+    DeliveryPickupStepSummary,
+    DeliveryStopDeliverySummary,
+    DeliveryStopSummary,
+} from '../lib/deliveryDashboardTypes';
 import type {
     DeliveryExceptionMutation,
     DeliveryExceptionSubmitResult,
@@ -37,11 +34,11 @@ import {
 } from '../lib/deliveryFormatting';
 import type {
     OfflineRouteDeliveryStep,
+    OfflineRoutePickupStep,
     OfflineRouteSnapshot,
     OfflineRouteStep,
 } from '../lib/offlineRouteCache';
-import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
-import { DeliveryHarvestVerification } from './DeliveryHarvestVerification';
+import { DriverCurrentStopCommandCenter } from './DriverCurrentStopCommandCenter';
 import { DeliveryActionSyncStatus } from './DriverDashboard';
 
 function stepTitle(step: OfflineRouteStep) {
@@ -89,28 +86,6 @@ function hasDeliveryStopId(
     return step.kind === 'delivery' && step.id !== null;
 }
 
-function OfflineDeliveryContacts({ step }: { step: OfflineRouteDeliveryStep }) {
-    const phoneNumbers = Array.from(
-        new Set(step.items.flatMap((item) => (item.phone ? [item.phone] : []))),
-    );
-    if (phoneNumbers.length === 0) return null;
-    return (
-        <div className="flex flex-wrap gap-2">
-            {phoneNumbers.map((phone) => (
-                <Button
-                    key={phone}
-                    href={`tel:${phone}`}
-                    size="sm"
-                    variant="plain"
-                    startDecorator={<Mobile className="size-4" />}
-                >
-                    {phone}
-                </Button>
-            ))}
-        </div>
-    );
-}
-
 function offlineDeliveryItems(
     step: OfflineRouteDeliveryStep,
 ): DeliveryStopDeliverySummary[] {
@@ -132,6 +107,75 @@ function offlineDeliveryItems(
     }));
 }
 
+function offlineDeliveryStop(
+    step: OfflineRouteDeliveryStep & { id: number },
+    runId: string,
+): DeliveryStopSummary & { id: number } {
+    const firstItem = step.items[0];
+    return {
+        id: step.id,
+        requestId: firstItem?.requestId ?? `stop-${step.id}`,
+        sequence: step.itinerarySequence,
+        stopState: step.stopState,
+        requestState: firstItem?.requestState ?? 'in_delivery',
+        statusLabel: step.statusLabel,
+        isCurrent: true,
+        contactName: firstItem?.contactName ?? 'Skupna dostava',
+        phone: firstItem?.phone ?? null,
+        address: step.address,
+        addressLabel: null,
+        requestNotes: firstItem?.requestNotes ?? null,
+        deliveryNotes: null,
+        slotStartAt: step.slotStartAt,
+        slotEndAt: step.slotEndAt,
+        estimatedArrivalAt: step.estimatedArrivalAt,
+        estimatedTravelSeconds: step.estimatedTravelSeconds,
+        estimatedDistanceMeters: step.estimatedDistanceMeters,
+        reroutePending: false,
+        arrivedAt: step.arrivedAt,
+        deliveredAt: step.deliveredAt,
+        harvest: {
+            plantName: firstItem?.harvest.plantName ?? 'Urod za dostavu',
+            operationName: null,
+            raisedBedName: firstItem?.harvest.raisedBedName ?? null,
+            fieldName: firstItem?.harvest.fieldName ?? null,
+            tracePath: firstItem?.harvest.tracePath ?? null,
+        },
+        recovery: null,
+        tracking: null,
+        runId,
+        deliveryCount: step.items.length,
+        deliveries: offlineDeliveryItems(step),
+        actionState: 'current',
+        lockedReason: step.lockedReason,
+    };
+}
+
+function offlinePickup(
+    step: OfflineRoutePickupStep,
+): DeliveryPickupStepSummary {
+    return {
+        id: step.id,
+        pickupLocationId: null,
+        sequence: step.itinerarySequence,
+        itinerarySequence: step.itinerarySequence,
+        name: step.name,
+        address: step.address,
+        estimatedArrivalAt: step.estimatedArrivalAt,
+        estimatedTravelSeconds: step.estimatedTravelSeconds,
+        estimatedDistanceMeters: step.estimatedDistanceMeters,
+        serviceDurationSeconds: null,
+        state: step.state,
+        isCurrent: true,
+        expectedCount: step.expectedCount,
+        scannedCount: step.scannedCount,
+        missingLabelCount: step.missingLabelCount,
+        notReadyCount: step.notReadyCount,
+        remainingCount: step.remainingCount,
+        manifests: [],
+    };
+}
+
 export function OfflineRoutePanel({
     snapshot,
     actionQueue,
@@ -147,22 +191,27 @@ export function OfflineRoutePanel({
     snapshot: OfflineRouteSnapshot;
     actionQueue: DeliveryActionQueueSnapshot;
     routeContinuity?: ReactNode;
-    onArrive: (stopId: number, routeRevision: number) => void | Promise<void>;
+    onArrive: (
+        stopId: number,
+        routeRevision: number,
+    ) => unknown | Promise<unknown>;
     onDeliver: (
         stopId: number,
         routeRevision: number,
         notes?: string,
-    ) => void | Promise<void>;
+    ) => unknown | Promise<unknown>;
     onException: (
         stopId: number,
         mutation: DeliveryExceptionMutation,
     ) => Promise<DeliveryExceptionSubmitResult>;
-    onVerificationScan: (stopId: number, tracePath: string) => void;
-    onRetry: (operationId: string) => void | Promise<void>;
-    onRecoverConflict: (operationId: string) => void | Promise<void>;
-    onReconcile: () => void | Promise<void>;
+    onVerificationScan: (
+        stopId: number,
+        tracePath: string,
+    ) => unknown | Promise<unknown>;
+    onRetry: (operationId: string) => unknown | Promise<unknown>;
+    onRecoverConflict: (operationId: string) => unknown | Promise<unknown>;
+    onReconcile: () => unknown | Promise<unknown>;
 }) {
-    const [notesByStop, setNotesByStop] = useState<Record<number, string>>({});
     const firstStep = snapshot.steps[0];
     const firstStopId = firstStep?.kind === 'delivery' ? firstStep.id : null;
     const firstEntry = firstStopId
@@ -179,16 +228,7 @@ export function OfflineRoutePanel({
     const currentEntry = currentStopId
         ? deliveryActionPendingEntryForStop(actionQueue, currentStopId)
         : undefined;
-    const acknowledgedArrival =
-        currentEntry?.command.kind === 'arrive' &&
-        currentEntry.state === 'synced';
-    const pendingArrival =
-        currentEntry?.command.kind === 'arrive' &&
-        currentEntry.state !== 'conflicted' &&
-        currentEntry.state !== 'synced';
     const deliveryQueued = deliveryActionLocallyCompletesStop(currentEntry);
-    const deliveryAcknowledged =
-        deliveryQueued && currentEntry?.state === 'synced';
     const routeBarrier =
         snapshot.source.reroutePending ||
         actionQueue.entries.some(
@@ -199,22 +239,71 @@ export function OfflineRoutePanel({
                 deliveryActionAcknowledgementBlocksRoute(entry),
         ) ||
         actionQueue.conflictedCount > 0;
-    const currentActionBlocked =
-        routeBarrier ||
-        Boolean(
-            currentEntry &&
-                (currentEntry.command.kind !== 'arrive' ||
-                    currentEntry.state === 'conflicted'),
-        );
-    const currentDeliveryReady = Boolean(
-        currentStep?.kind === 'delivery' &&
-            (currentStep.stopState === 'arrived' ||
-                pendingArrival ||
-                acknowledgedArrival),
-    );
+    const currentDeliveryStop =
+        currentStep && hasDeliveryStopId(currentStep)
+            ? offlineDeliveryStop(currentStep, snapshot.scope.runId)
+            : null;
     return (
         <main className="min-h-[100dvh] bg-muted/30 p-4">
             <div className="mx-auto max-w-3xl space-y-4">
+                {currentDeliveryStop && currentStep?.kind === 'delivery' ? (
+                    <DriverCurrentStopCommandCenter
+                        key={`${snapshot.scope.runId}:delivery:${currentDeliveryStop.id}`}
+                        kind="delivery"
+                        offline
+                        focusOnMount={activeStepIndex > 0}
+                        stop={currentDeliveryStop}
+                        routeRevision={snapshot.source.routeRevision}
+                        syncEntry={currentEntry}
+                        verifiedTracePaths={deliveryActionVerifiedTracePaths(
+                            actionQueue,
+                            currentDeliveryStop.id,
+                        )}
+                        routeSyncBlocked={routeBarrier}
+                        onArrive={() =>
+                            onArrive(
+                                currentDeliveryStop.id,
+                                snapshot.source.routeRevision,
+                            )
+                        }
+                        onDeliver={(notes) =>
+                            onDeliver(
+                                currentDeliveryStop.id,
+                                snapshot.source.routeRevision,
+                                notes,
+                            )
+                        }
+                        onException={(mutation) =>
+                            onException(currentDeliveryStop.id, mutation)
+                        }
+                        onVerificationScan={(tracePath) =>
+                            onVerificationScan(
+                                currentDeliveryStop.id,
+                                tracePath,
+                            )
+                        }
+                        onRetrySync={onRetry}
+                        onDiscardSync={onRecoverConflict}
+                        onReconcileSync={onReconcile}
+                    />
+                ) : currentStep?.kind === 'pickup' ? (
+                    <DriverCurrentStopCommandCenter
+                        key={`${snapshot.scope.runId}:pickup:${currentStep.id}`}
+                        kind="pickup"
+                        offline
+                        focusOnMount={activeStepIndex > 0}
+                        pickup={offlinePickup(currentStep)}
+                        pendingAction={null}
+                        routeSyncBlocked={routeBarrier}
+                        sync={{
+                            state: 'idle',
+                            pendingCount: 0,
+                            durability: actionQueue.durability,
+                            coordination: actionQueue.coordination,
+                            blockingOperationId: null,
+                        }}
+                    />
+                ) : null}
                 {routeContinuity}
                 <Alert
                     color="warning"
@@ -227,6 +316,7 @@ export function OfflineRoutePanel({
                 </Alert>
                 <DeliveryActionSyncStatus
                     snapshot={actionQueue}
+                    currentStopId={currentStopId}
                     onRetry={onRetry}
                     onRecoverConflict={onRecoverConflict}
                     onReconcile={onReconcile}
@@ -291,50 +381,58 @@ export function OfflineRoutePanel({
                                         )}
                                     </Alert>
                                 ) : null}
-                                <Typography className="flex items-start gap-2">
-                                    <MapPin className="mt-0.5 size-4 shrink-0" />
-                                    {step.address}
-                                </Typography>
-                                <div className="flex flex-wrap gap-2">
-                                    {step.kind === 'delivery' &&
-                                    step.slotStartAt ? (
-                                        <Chip size="sm">
-                                            Termin{' '}
-                                            {formatDeliveryTime(
-                                                step.slotStartAt,
-                                            )}
-                                            {step.slotEndAt
-                                                ? `–${formatDeliveryTime(step.slotEndAt)}`
-                                                : ''}
-                                        </Chip>
-                                    ) : null}
-                                    {step.estimatedArrivalAt ? (
-                                        <Chip size="sm">
-                                            Dolazak{' '}
-                                            {formatDeliveryDateTime(
-                                                step.estimatedArrivalAt,
-                                            )}
-                                        </Chip>
-                                    ) : null}
-                                    {step.estimatedTravelSeconds !== null ? (
-                                        <Chip size="sm">
-                                            {formatTravelDuration(
-                                                step.estimatedTravelSeconds,
-                                            )}
-                                        </Chip>
-                                    ) : null}
-                                    {step.estimatedDistanceMeters !== null ? (
-                                        <Chip size="sm">
-                                            {formatDistance(
-                                                step.estimatedDistanceMeters,
-                                            )}
-                                        </Chip>
-                                    ) : null}
-                                </div>
-                                {routeBarrier ||
-                                actionState === 'locked' ||
-                                index < activeStepIndex ||
-                                (index > activeStepIndex && !deliveryQueued) ? (
+                                {index !== activeStepIndex ? (
+                                    <>
+                                        <Typography className="flex items-start gap-2">
+                                            <MapPin className="mt-0.5 size-4 shrink-0" />
+                                            {step.address}
+                                        </Typography>
+                                        <div className="flex flex-wrap gap-2">
+                                            {step.kind === 'delivery' &&
+                                            step.slotStartAt ? (
+                                                <Chip size="sm">
+                                                    Termin{' '}
+                                                    {formatDeliveryTime(
+                                                        step.slotStartAt,
+                                                    )}
+                                                    {step.slotEndAt
+                                                        ? `–${formatDeliveryTime(step.slotEndAt)}`
+                                                        : ''}
+                                                </Chip>
+                                            ) : null}
+                                            {step.estimatedArrivalAt ? (
+                                                <Chip size="sm">
+                                                    Dolazak{' '}
+                                                    {formatDeliveryDateTime(
+                                                        step.estimatedArrivalAt,
+                                                    )}
+                                                </Chip>
+                                            ) : null}
+                                            {step.estimatedTravelSeconds !==
+                                            null ? (
+                                                <Chip size="sm">
+                                                    {formatTravelDuration(
+                                                        step.estimatedTravelSeconds,
+                                                    )}
+                                                </Chip>
+                                            ) : null}
+                                            {step.estimatedDistanceMeters !==
+                                            null ? (
+                                                <Chip size="sm">
+                                                    {formatDistance(
+                                                        step.estimatedDistanceMeters,
+                                                    )}
+                                                </Chip>
+                                            ) : null}
+                                        </div>
+                                    </>
+                                ) : null}
+                                {index ===
+                                activeStepIndex ? null : routeBarrier ||
+                                  actionState === 'locked' ||
+                                  index < activeStepIndex ||
+                                  (index > activeStepIndex &&
+                                      !deliveryQueued) ? (
                                     <Button
                                         disabled
                                         variant="outlined"
@@ -377,135 +475,6 @@ export function OfflineRoutePanel({
                                         Navigacija
                                     </Button>
                                 )}
-                                {step.kind === 'delivery' ? (
-                                    <OfflineDeliveryContacts step={step} />
-                                ) : null}
-                                {hasDeliveryStopId(step) &&
-                                index === activeStepIndex ? (
-                                    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                                        <label
-                                            className="block text-sm font-medium"
-                                            htmlFor={`offline-notes-${step.id}`}
-                                        >
-                                            Napomena o dostavi
-                                        </label>
-                                        <textarea
-                                            id={`offline-notes-${step.id}`}
-                                            value={notesByStop[step.id] ?? ''}
-                                            onChange={(event) =>
-                                                setNotesByStop((current) => ({
-                                                    ...current,
-                                                    [step.id]:
-                                                        event.target.value,
-                                                }))
-                                            }
-                                            disabled={currentActionBlocked}
-                                            rows={2}
-                                            maxLength={1_000}
-                                            className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60"
-                                        />
-                                        <DeliveryExceptionSheet
-                                            runId={snapshot.scope.runId}
-                                            routeRevision={
-                                                snapshot.source.routeRevision
-                                            }
-                                            stop={{
-                                                id: step.id,
-                                                requestId:
-                                                    step.items[0]?.requestId ??
-                                                    `stop-${step.id}`,
-                                                deliveries:
-                                                    offlineDeliveryItems(step),
-                                            }}
-                                            disabled={currentActionBlocked}
-                                            onSubmit={(mutation) =>
-                                                onException(step.id, mutation)
-                                            }
-                                        />
-                                        {currentDeliveryReady ? (
-                                            <DeliveryHarvestVerification
-                                                deliveries={offlineDeliveryItems(
-                                                    step,
-                                                )}
-                                                disabled={
-                                                    routeBarrier ||
-                                                    deliveryQueued
-                                                }
-                                                verifiedTracePaths={deliveryActionVerifiedTracePaths(
-                                                    actionQueue,
-                                                    step.id,
-                                                )}
-                                                onVerifiedTrace={(tracePath) =>
-                                                    onVerificationScan(
-                                                        step.id,
-                                                        tracePath,
-                                                    )
-                                                }
-                                            />
-                                        ) : null}
-                                        <div className="grid gap-2 sm:grid-cols-2">
-                                            <Button
-                                                variant="outlined"
-                                                disabled={
-                                                    step.stopState ===
-                                                        'arrived' ||
-                                                    acknowledgedArrival ||
-                                                    pendingArrival ||
-                                                    currentActionBlocked
-                                                }
-                                                onClick={() =>
-                                                    onArrive(
-                                                        step.id,
-                                                        snapshot.source
-                                                            .routeRevision,
-                                                    )
-                                                }
-                                                startDecorator={
-                                                    <MyLocation className="size-4" />
-                                                }
-                                            >
-                                                {pendingArrival
-                                                    ? 'Dolazak čeka potvrdu'
-                                                    : step.stopState ===
-                                                            'arrived' ||
-                                                        acknowledgedArrival
-                                                      ? 'Dolazak potvrđen'
-                                                      : 'Stigao sam'}
-                                            </Button>
-                                            <Button
-                                                color="success"
-                                                disabled={
-                                                    currentActionBlocked ||
-                                                    deliveryQueued ||
-                                                    !(
-                                                        step.stopState ===
-                                                            'arrived' ||
-                                                        pendingArrival ||
-                                                        acknowledgedArrival
-                                                    )
-                                                }
-                                                onClick={() =>
-                                                    onDeliver(
-                                                        step.id,
-                                                        snapshot.source
-                                                            .routeRevision,
-                                                        notesByStop[step.id] ||
-                                                            undefined,
-                                                    )
-                                                }
-                                                startDecorator={
-                                                    <Approved className="size-4" />
-                                                }
-                                            >
-                                                {deliveryAcknowledged
-                                                    ? 'Dostava potvrđena'
-                                                    : deliveryQueued
-                                                      ? 'Dostava čeka potvrdu'
-                                                      : 'Dostavljeno · dalje'}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : null}
                                 {step.kind === 'delivery' &&
                                 actionState === 'locked' &&
                                 step.lockedReason ? (

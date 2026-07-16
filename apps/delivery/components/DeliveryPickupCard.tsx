@@ -28,10 +28,9 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
-import {
-    HarvestTraceScanner,
-    type PickupManifestScanResult,
-} from './HarvestTraceScanner';
+import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
+import { isDriverCommandResult } from '../lib/driverCommandResult';
+import { HarvestTraceScanner } from './HarvestTraceScanner';
 
 export type PickupManifestSyncSummary = {
     state: 'idle' | 'queued' | 'sending' | 'failed' | 'conflicted';
@@ -39,6 +38,7 @@ export type PickupManifestSyncSummary = {
     durability: 'durable' | 'memory';
     coordination: 'coordinated' | 'best-effort';
     blockingOperationId: string | null;
+    blocksCurrentPickup?: boolean;
     message?: string | null;
 };
 
@@ -105,28 +105,32 @@ export function DeliveryPickupCard({
     onConfirmManifest,
     onRetrySync,
     onDiscardSync,
+    showCurrentCommand = true,
 }: {
     pickup: DeliveryPickupStepSummary;
     actionState: 'locked' | 'current' | 'completed';
     pendingAction: string | null;
     sync: PickupManifestSyncSummary;
-    onScan: (value: string) => PickupManifestScanResult;
+    onScan: (
+        value: string,
+    ) => PickupManifestScanResult | Promise<PickupManifestScanResult>;
     onSetItemState: (
         pickupNodeId: string,
         manifestId: string,
         stopId: number,
         state: 'missing-label' | 'not-ready' | 'ready',
-    ) => void;
+    ) => unknown | Promise<unknown>;
     onResolveRemaining: (
         pickupNodeId: string,
         manifest: DeliveryPickupManifestSummary,
-    ) => void;
+    ) => unknown | Promise<unknown>;
     onConfirmManifest: (
         pickupNodeId: string,
         manifestId: string,
-    ) => void | Promise<void>;
-    onRetrySync: (operationId: string) => void | Promise<void>;
-    onDiscardSync: (operationId: string) => void | Promise<void>;
+    ) => unknown | Promise<unknown>;
+    onRetrySync: (operationId: string) => unknown | Promise<unknown>;
+    onDiscardSync: (operationId: string) => unknown | Promise<unknown>;
+    showCurrentCommand?: boolean;
 }) {
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.address)}`;
     const current = actionState === 'current';
@@ -146,6 +150,35 @@ export function DeliveryPickupCard({
     const [confirmingManifestIds, setConfirmingManifestIds] = useState(
         () => new Set<string>(),
     );
+    const [syncRecoveryPending, setSyncRecoveryPending] = useState<
+        'retry' | 'discard' | null
+    >(null);
+    const [syncRecoveryError, setSyncRecoveryError] = useState<string | null>(
+        null,
+    );
+
+    async function recoverSync(
+        key: 'retry' | 'discard',
+        action: () => unknown | Promise<unknown>,
+    ) {
+        if (syncRecoveryPending) return;
+        setSyncRecoveryError(null);
+        setSyncRecoveryPending(key);
+        try {
+            const result = await action();
+            if (isDriverCommandResult(result) && result.status === 'failed') {
+                setSyncRecoveryError(result.message);
+            }
+        } catch (error) {
+            setSyncRecoveryError(
+                error instanceof Error
+                    ? error.message
+                    : 'Oporavak nije uspio. Pokušaj ponovno.',
+            );
+        } finally {
+            setSyncRecoveryPending(null);
+        }
+    }
 
     async function confirmManifest(manifestId: string) {
         if (
@@ -292,7 +325,7 @@ export function DeliveryPickupCard({
                     </Chip>
                 </div>
 
-                {syncMessage ? (
+                {syncMessage && (!current || showCurrentCommand) ? (
                     <Alert
                         color={syncMessage.color}
                         startDecorator={<Reset className="size-5" />}
@@ -307,10 +340,18 @@ export function DeliveryPickupCard({
                                         <Button
                                             size="sm"
                                             variant="outlined"
+                                            loading={
+                                                syncRecoveryPending === 'retry'
+                                            }
+                                            disabled={
+                                                syncRecoveryPending !== null
+                                            }
                                             onClick={() =>
-                                                void onRetrySync(
-                                                    sync.blockingOperationId ??
-                                                        '',
+                                                void recoverSync('retry', () =>
+                                                    onRetrySync(
+                                                        sync.blockingOperationId ??
+                                                            '',
+                                                    ),
                                                 )
                                             }
                                         >
@@ -320,9 +361,16 @@ export function DeliveryPickupCard({
                                     <Button
                                         size="sm"
                                         variant="plain"
+                                        loading={
+                                            syncRecoveryPending === 'discard'
+                                        }
+                                        disabled={syncRecoveryPending !== null}
                                         onClick={() =>
-                                            void onDiscardSync(
-                                                sync.blockingOperationId ?? '',
+                                            void recoverSync('discard', () =>
+                                                onDiscardSync(
+                                                    sync.blockingOperationId ??
+                                                        '',
+                                                ),
                                             )
                                         }
                                     >
@@ -330,11 +378,21 @@ export function DeliveryPickupCard({
                                     </Button>
                                 </div>
                             ) : null}
+                            {syncRecoveryError ? (
+                                <Typography
+                                    level="body3"
+                                    className="text-destructive"
+                                >
+                                    {syncRecoveryError}
+                                </Typography>
+                            ) : null}
                         </div>
                     </Alert>
                 ) : null}
 
-                {sync.durability === 'memory' && current ? (
+                {sync.durability === 'memory' &&
+                current &&
+                showCurrentCommand ? (
                     <Alert
                         color="warning"
                         startDecorator={<Warning className="size-5" />}
@@ -344,7 +402,9 @@ export function DeliveryPickupCard({
                     </Alert>
                 ) : null}
 
-                {sync.coordination === 'best-effort' && current ? (
+                {sync.coordination === 'best-effort' &&
+                current &&
+                showCurrentCommand ? (
                     <Alert
                         color="info"
                         startDecorator={<Warning className="size-5" />}
@@ -355,7 +415,7 @@ export function DeliveryPickupCard({
                     </Alert>
                 ) : null}
 
-                {current ? (
+                {current && showCurrentCommand ? (
                     <div className="flex flex-wrap gap-2">
                         <Button
                             href={navigationUrl}
@@ -467,6 +527,7 @@ export function DeliveryPickupCard({
                                                     {itemStateLabel(item.state)}
                                                 </Chip>
                                                 {current &&
+                                                showCurrentCommand &&
                                                 manifest.state === 'pending' &&
                                                 item.state === 'ready' ? (
                                                     <>
@@ -509,6 +570,7 @@ export function DeliveryPickupCard({
                                                     </>
                                                 ) : null}
                                                 {current &&
+                                                showCurrentCommand &&
                                                 manifest.state === 'pending' &&
                                                 item.state === 'not-ready' ? (
                                                     <Button
@@ -534,7 +596,9 @@ export function DeliveryPickupCard({
                                     ))}
                                 </ul>
 
-                                {current && manifest.state === 'pending' ? (
+                                {current &&
+                                showCurrentCommand &&
+                                manifest.state === 'pending' ? (
                                     <div className="space-y-2 border-t pt-3">
                                         {unresolvedReady.length > 0 ? (
                                             <Button

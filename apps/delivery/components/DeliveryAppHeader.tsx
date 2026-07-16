@@ -14,7 +14,7 @@ export function DeliveryAppHeader({
 }) {
     const isDriver = role === 'driver' || role === 'admin';
     return (
-        <header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b bg-background/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">

@@ -4,9 +4,14 @@ import {
     DeliveryQueuedArrivalStory,
 } from './DeliveryStopCardStory';
 import {
+    DriverDashboardBulkRecipientAdvanceStory,
     DriverDashboardOfflineContinuationStory,
     DriverDashboardPendingRerouteStory,
 } from './DriverDashboardOfflineStory';
+import {
+    NonCurrentDeliveryRecoveryFailureStory,
+    NonCurrentPickupRecoveryFailureStory,
+} from './DriverRecoveryFailureStory';
 import {
     OfflineRouteAcknowledgedDeliveryStory,
     OfflineRouteArrivalStory,
@@ -50,7 +55,7 @@ test('already loaded dashboard exposes the next stop after a locally queued deli
             'Dostava je spremljena na uređaju i čeka potvrdu poslužitelja. Možeš nastaviti na sljedeću stanicu.',
         ),
     ).toBeVisible();
-    await expect(page.getByText('Vukovarska 42, Zagreb')).toBeVisible();
+    await expect(page.getByTitle('Vukovarska 42, Zagreb')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Navigacija' })).toHaveCount(1);
     await expect(
         page.getByRole('button', { name: 'Stigao sam' }),
@@ -71,6 +76,22 @@ test('already loaded dashboard blocks its stale next stop while rerouting', asyn
         page.getByRole('button', { name: 'Navigacija čeka novi plan' }),
     ).toBeDisabled();
     await expect(page.getByRole('link', { name: 'Navigacija' })).toHaveCount(0);
+});
+
+test('clears private handoff notes when the actionable bulk recipients change', async ({
+    mount,
+    page,
+}) => {
+    await mount(<DriverDashboardBulkRecipientAdvanceStory />);
+    const note = page.getByLabel('Napomena o predaji');
+    await note.fill('Privatna napomena za početnu skupinu');
+    await page
+        .getByRole('button', { name: 'Simuliraj djelomičnu iznimku' })
+        .click();
+    await expect(note).toHaveValue('');
+    await expect(
+        page.getByRole('heading', { name: /2 uroda · skupna dostava/ }),
+    ).toBeVisible();
 });
 
 test('offers an explicit retry for a durable failed action', async ({
@@ -106,6 +127,32 @@ test('preserves newer server truth and requires explicit local conflict recovery
     await expect(page.getByTestId('offline-action-result')).toHaveText(
         'discarded',
     );
+});
+
+test('keeps non-current delivery recovery failures beside the recovery command', async ({
+    mount,
+    page,
+}) => {
+    await mount(<NonCurrentDeliveryRecoveryFailureStory />);
+    await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+    await expect(
+        page.getByText('Ponovno slanje dostave nije uspjelo.', {
+            exact: true,
+        }),
+    ).toBeVisible();
+});
+
+test('keeps non-current pickup recovery failures beside the recovery command', async ({
+    mount,
+    page,
+}) => {
+    await mount(<NonCurrentPickupRecoveryFailureStory />);
+    await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+    await expect(
+        page.getByText('Ponovno slanje preuzimanja nije uspjelo.', {
+            exact: true,
+        }),
+    ).toBeVisible();
 });
 
 test('restored offline route keeps pending actions visible and supports ordered arrival then delivery', async ({

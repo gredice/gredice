@@ -6,22 +6,28 @@ import { Check, Info } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useId, useRef, useState } from 'react';
 import type { DeliveryStopDeliverySummary } from '../lib/deliveryDashboardTypes';
+import { isDriverCommandResult } from '../lib/driverCommandResult';
 import {
     normalizeHarvestTraceScanValue,
     verifyDeliveryStopHarvestTrace,
 } from '../lib/harvestTraceScan';
-import { HarvestTraceScanner } from './HarvestTraceScanner';
+import {
+    type HarvestTraceScanFailureResult,
+    HarvestTraceScanner,
+} from './HarvestTraceScanner';
 
 export function DeliveryHarvestVerification({
     deliveries,
     disabled,
+    compact = false,
     verifiedTracePaths: persistedVerifiedTracePaths = [],
     onVerifiedTrace,
 }: {
     deliveries: DeliveryStopDeliverySummary[];
     disabled: boolean;
+    compact?: boolean;
     verifiedTracePaths?: string[];
-    onVerifiedTrace?: (tracePath: string) => void;
+    onVerifiedTrace?: (tracePath: string) => unknown | Promise<unknown>;
 }) {
     const headingId = useId();
     const [localVerifiedTracePaths, setLocalVerifiedTracePaths] = useState<
@@ -51,7 +57,12 @@ export function DeliveryHarvestVerification({
     const allExpectedTracesVerified =
         expectedTraceCount > 0 && verifiedTraceCount === expectedTraceCount;
 
-    const verifyTrace = (value: string) => {
+    const verifyTrace = async (
+        value: string,
+    ): Promise<
+        | ReturnType<typeof verifyDeliveryStopHarvestTrace>
+        | HarvestTraceScanFailureResult
+    > => {
         const result = verifyDeliveryStopHarvestTrace({
             deliveries,
             verifiedTracePaths: verifiedTracePathsRef.current,
@@ -59,23 +70,37 @@ export function DeliveryHarvestVerification({
         });
 
         if (result.status === 'verified') {
+            const persistenceResult = await onVerifiedTrace?.(result.tracePath);
+            if (
+                isDriverCommandResult(persistenceResult) &&
+                persistenceResult.status === 'failed'
+            ) {
+                return {
+                    status: 'scan-failed',
+                    message: persistenceResult.message,
+                };
+            }
             verifiedTracePathsRef.current = result.nextVerifiedTracePaths;
             setLocalVerifiedTracePaths(result.nextVerifiedTracePaths);
-            onVerifiedTrace?.(result.tracePath);
         }
 
         return result;
     };
 
     return (
-        <section className="space-y-3" aria-labelledby={headingId}>
+        <section
+            className={compact ? 'space-y-2' : 'space-y-3'}
+            aria-labelledby={headingId}
+        >
             <div>
                 <Typography id={headingId} level="body2" semiBold>
                     QR provjera predaje
                 </Typography>
                 <Typography
                     level="body3"
-                    className="mt-0.5 text-muted-foreground"
+                    className={
+                        compact ? 'sr-only' : 'mt-0.5 text-muted-foreground'
+                    }
                 >
                     Provjeri urode dok ih predaješ korisniku kako ništa ne bi
                     ostalo u vozilu.
@@ -109,7 +134,10 @@ export function DeliveryHarvestVerification({
                 />
             ) : null}
 
-            <ul className="space-y-2" aria-label="Urodi na ovoj stanici">
+            <ul
+                className={compact ? 'sr-only' : 'space-y-2'}
+                aria-label="Urodi na ovoj stanici"
+            >
                 {deliveries.map((delivery) => {
                     const tracePath = tracePathByRequestId.get(
                         delivery.requestId,
@@ -154,8 +182,9 @@ export function DeliveryHarvestVerification({
             </ul>
 
             <Typography level="body3" className="text-muted-foreground">
-                Ova provjera nije obavezna. Dostavu možeš potvrditi i ako
-                etiketa nedostaje ili skeniranje nije moguće.
+                {compact
+                    ? 'Provjera nije obavezna i ne blokira potvrdu dostave.'
+                    : 'Ova provjera nije obavezna. Dostavu možeš potvrditi i ako etiketa nedostaje ili skeniranje nije moguće.'}
             </Typography>
         </section>
     );

@@ -259,6 +259,45 @@ test('durably enqueues rapid scans while an earlier transport request is in flig
     assert.equal(manifestQueue.getSnapshot().status, 'synced');
 });
 
+test('does not publish or retain a scan whose durable save fails', async () => {
+    const stored = createMemoryPickupManifestQueuePersistence();
+    let rejectSave = true;
+    const persistence: PickupManifestQueuePersistence = {
+        ...stored,
+        durability: 'durable',
+        async save(scope, entries) {
+            if (rejectSave) throw new Error('durable save failed');
+            await stored.save(scope, entries);
+        },
+    };
+    const manifestQueue = queue({ persistence });
+    const publishedStatuses: string[] = [];
+    manifestQueue.subscribe(() => {
+        publishedStatuses.push(manifestQueue.getSnapshot().status);
+    });
+
+    await assert.rejects(
+        manifestQueue.enqueue(scanCommand('failed-durable-scan')),
+        /durable save failed/,
+    );
+
+    assert.equal(manifestQueue.getSnapshot().status, 'idle');
+    assert.equal(manifestQueue.getSnapshot().entries.length, 0);
+    assert.equal(publishedStatuses.includes('queued'), false);
+    assert.equal(await stored.load(defaultScope), undefined);
+
+    rejectSave = false;
+    const saved = await manifestQueue.enqueue(
+        scanCommand('saved-after-failure', { token: `${traceToken}-retry` }),
+    );
+    assert.equal(saved.sequence, 0);
+    assert.equal(manifestQueue.getSnapshot().status, 'queued');
+    assert.equal(
+        manifestQueue.getSnapshot().entries[0]?.command.operationId,
+        'saved-after-failure',
+    );
+});
+
 test('exact duplicate enqueue is harmless and a reused operation ID with another payload is rejected', async () => {
     const persistence = createMemoryPickupManifestQueuePersistence();
     const manifestQueue = queue({
