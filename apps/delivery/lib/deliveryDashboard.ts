@@ -71,6 +71,7 @@ import {
     driverDeliveryExceptionSummary,
 } from './deliveryExceptionPresentation';
 import { deliveryMapStopGroupSelectionId } from './deliveryMapData';
+import { deliveryOperationalErrorContext } from './deliveryOperationalLogging';
 import { refreshFixedPickupAwareDeliveryRoute } from './deliveryPickupRouting';
 import {
     configuredDeliveryHqAddress,
@@ -2338,15 +2339,13 @@ export function deliveryRunStartErrorLogContext(error: unknown) {
         return {
             errorName: error.name,
             errorCode: error.code,
-            deliveryRequestId: error.deliveryRequestId,
         };
     }
     if (error instanceof DeliveryRunPreparationError) {
         return {
             errorName: error.name,
             errorCode: error.code,
-            deliveryRequestId: error.conflict.deliveryRequestId,
         };
     }
-    return { error };
+    return deliveryOperationalErrorContext(error);
 }

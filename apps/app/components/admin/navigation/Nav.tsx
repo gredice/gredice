@@ -98,6 +98,7 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.DeliveryRequests:
         case KnownPages.DeliverySlots:
             return <Truck className="size-5" />;
+        case KnownPages.DeliveryOperations:
         case KnownPages.DeliveryNotifications:
             return <Graph className="size-5" />;
         case KnownPages.FarmerPayouts:
@@ -696,6 +697,7 @@ export function Nav({
                     forceOpen={includesSelectedPath(pathname, [
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
+                        adminPages.DeliveryOperations.href,
                         adminPages.DeliveryNotifications.href,
                     ])}
                     compact={compact}
@@ -712,6 +714,14 @@ export function Nav({
                         href={adminPages.DeliveryRequests.href}
                         label={adminPages.DeliveryRequests.label}
                         icon={<Truck className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.DeliveryOperations.href}
+                        label={adminPages.DeliveryOperations.label}
+                        icon={<Graph className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

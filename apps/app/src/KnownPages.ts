@@ -145,6 +145,7 @@ export const KnownPages = {
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
+    DeliveryOperations: '/admin/delivery/operations',
     DeliveryNotifications: '/admin/delivery/notifications',
 
     // External links
