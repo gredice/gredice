@@ -4280,6 +4280,11 @@ export async function recoverDeliveryRunStop({
                     exceptionNote: null,
                     exceptionOccurredAt: null,
                     exceptionRecordedByUserId: null,
+                    handoffVerificationState:
+                        DeliveryRunHandoffItemStates.UNVERIFIED,
+                    handoffVerificationReason: null,
+                    handoffVerifiedAt: null,
+                    handoffVerifiedByUserId: null,
                     releasedAt: null,
                 })
                 .where(

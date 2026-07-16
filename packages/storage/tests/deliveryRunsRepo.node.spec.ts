@@ -4084,6 +4084,78 @@ test('database constraints reject mismatched cancellation outcomes and reasons',
     }
 });
 
+test('active failed-stop recovery clears handoff evidence for the new attempt', async () => {
+    const { run, driverUserId } =
+        await startPreparedBulkRunWithConfirmedPickup();
+    const [firstStop] = run.stops;
+    assert.ok(firstStop);
+
+    await applyDeliveryRunHandoffMutations({
+        driverUserId,
+        runId: run.id,
+        targetStopId: firstStop.id,
+        expectedRetryAttempt: 0,
+        mutations: [
+            {
+                clientOperationId: 'handoff-before-failed-recovery',
+                occurredAt: new Date(),
+                kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+                stopId: firstStop.id,
+                outcome: DeliveryRunHandoffItemStates.SKIPPED,
+                reason: DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+            },
+        ],
+    });
+    const beforeFailure = await storage().query.deliveryRunStops.findFirst({
+        where: eq(deliveryRunStops.id, firstStop.id),
+    });
+    assert.equal(
+        beforeFailure?.handoffVerificationState,
+        DeliveryRunHandoffItemStates.SKIPPED,
+    );
+    assert.equal(
+        beforeFailure?.handoffVerificationReason,
+        DeliveryRunHandoffSkipReasons.MANUAL_VERIFICATION,
+    );
+    assert.ok(beforeFailure?.handoffVerifiedAt instanceof Date);
+    assert.equal(beforeFailure?.handoffVerifiedByUserId, driverUserId);
+
+    const failed = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId: run.id,
+        clientOperationId: 'fail-stop-with-handoff-evidence',
+        occurredAt: new Date(),
+        exceptions: [
+            {
+                stopId: firstStop.id,
+                outcome: DeliveryRunExceptionOutcomes.FAILED,
+                reason: DeliveryRunExceptionReasons.OPERATIONAL_OTHER,
+            },
+        ],
+    });
+    assert.equal(failed.result.runCompleted, false);
+
+    const recovered = await recoverDeliveryRunStop({
+        adminUserId: driverUserId,
+        runId: run.id,
+        stopId: firstStop.id,
+        expectedRouteRevision: failed.result.routeRevision,
+    });
+    assert.equal(recovered.resumedInRun, true);
+    const recoveredStop = await storage().query.deliveryRunStops.findFirst({
+        where: eq(deliveryRunStops.id, firstStop.id),
+    });
+    assert.equal(recoveredStop?.state, DeliveryRunStopStates.PENDING);
+    assert.equal(recoveredStop?.retryAttempt, 1);
+    assert.equal(
+        recoveredStop?.handoffVerificationState,
+        DeliveryRunHandoffItemStates.UNVERIFIED,
+    );
+    assert.equal(recoveredStop?.handoffVerificationReason, null);
+    assert.equal(recoveredStop?.handoffVerifiedAt, null);
+    assert.equal(recoveredStop?.handoffVerifiedByUserId, null);
+});
+
 test('completed failed recovery can be reassigned once without reopening newer fulfillment', async () => {
     const { prepared, run, driverUserId } =
         await startPreparedBulkRunWithConfirmedPickup({ driverCount: 2 });
