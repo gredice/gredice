@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { validate as isUuid, version as uuidVersion } from 'uuid';
 import {
     events,
     farms,
@@ -55,7 +56,8 @@ export type ScheduleTaskSubmissionErrorCode =
     | 'not_authorized'
     | 'assignment_changed'
     | 'task_changed'
-    | 'invalid_status';
+    | 'invalid_status'
+    | 'submission_conflict';
 
 export class ScheduleTaskSubmissionError extends Error {
     constructor(
@@ -74,6 +76,24 @@ export type OperationTaskSubmissionResult = {
     eventId: number;
     occurredAt: Date;
     created: boolean;
+};
+
+export type OperationTaskCompletionInput = {
+    actor: ScheduleTaskActor;
+    expectedAccountId?: string;
+    expectedEntityId?: number;
+    expectedTaskVersionEventId?: number;
+    imageUrls?: readonly string[];
+    notes?: string;
+    operationId: number;
+    submissionId?: string;
+};
+
+export type OperationTaskCompletionReplayInput = Omit<
+    OperationTaskCompletionInput,
+    'submissionId'
+> & {
+    submissionId: string;
 };
 
 export type PlantingTaskSubmissionResult = {
@@ -149,6 +169,51 @@ function assertTaskVersionEventId(value: number) {
     return value;
 }
 
+function normalizeExpectedAccountId(value: string | undefined) {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (typeof value !== 'string') {
+        throw new ScheduleTaskSubmissionError(
+            'invalid_input',
+            'ID računa nije ispravan.',
+        );
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+        throw new ScheduleTaskSubmissionError(
+            'invalid_input',
+            'ID računa ne smije biti prazan.',
+        );
+    }
+    return normalized;
+}
+
+function isOperationCompletionSubmissionId(value: string) {
+    if (!isUuid(value)) {
+        return false;
+    }
+    const version = uuidVersion(value);
+    return version >= 1 && version <= 8;
+}
+
+function normalizeSubmissionId(value: unknown) {
+    if (typeof value !== 'string') {
+        throw new ScheduleTaskSubmissionError(
+            'invalid_input',
+            'ID predaje nije ispravan.',
+        );
+    }
+    const normalized = value.trim().toLowerCase();
+    if (!isOperationCompletionSubmissionId(normalized)) {
+        throw new ScheduleTaskSubmissionError(
+            'invalid_input',
+            'ID predaje nije ispravan.',
+        );
+    }
+    return normalized;
+}
+
 function normalizeUserIds(userIds: readonly string[]) {
     return normalizeAssignedUserIds(
         userIds.map((userId) => userId.trim()),
@@ -206,6 +271,55 @@ function sameStrings(left: readonly string[], right: readonly string[]) {
         left.length === right.length &&
         left.every((value, index) => value === right[index])
     );
+}
+
+function normalizeOperationTaskCompletionTarget(
+    input: OperationTaskCompletionInput,
+) {
+    const operationId = assertPositiveSafeInteger(
+        input.operationId,
+        'ID radnje',
+    );
+    const expectedEntityId =
+        input.expectedEntityId === undefined
+            ? undefined
+            : assertPositiveSafeInteger(
+                  input.expectedEntityId,
+                  'ID vrste radnje',
+              );
+    const expectedTaskVersionEventId =
+        input.expectedTaskVersionEventId === undefined
+            ? undefined
+            : assertTaskVersionEventId(input.expectedTaskVersionEventId);
+    if (
+        input.actor.role === 'farmer' &&
+        (expectedEntityId === undefined ||
+            expectedTaskVersionEventId === undefined)
+    ) {
+        throw new ScheduleTaskSubmissionError(
+            'invalid_input',
+            'Nedostaje identitet zadatka. Osvježi zadatke i pokušaj ponovno.',
+        );
+    }
+
+    return {
+        actor: input.actor,
+        expectedAccountId: normalizeExpectedAccountId(input.expectedAccountId),
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        operationId,
+    };
+}
+
+function normalizeOperationTaskCompletionReplayInput(
+    input: OperationTaskCompletionReplayInput,
+) {
+    return {
+        ...normalizeOperationTaskCompletionTarget(input),
+        imageUrls: normalizeImageUrls(input.imageUrls, maxCompletionImageCount),
+        notes: normalizeOptionalNote(input.notes),
+        submissionId: normalizeSubmissionId(input.submissionId),
+    };
 }
 
 function buildBlockPayload({
@@ -410,6 +524,131 @@ function existingOperationTerminalResult(
             created: false,
         };
     }
+    return null;
+}
+
+function assertExpectedOperationAccount(
+    operation: Awaited<ReturnType<typeof getAuthorizedOperation>>,
+    expectedAccountId: string | undefined,
+) {
+    if (
+        expectedAccountId !== undefined &&
+        operation.accountId !== expectedAccountId
+    ) {
+        throw new ScheduleTaskSubmissionError(
+            'not_authorized',
+            'Odabrani račun nema pristup ovom zadatku.',
+        );
+    }
+}
+
+function persistedSubmissionId(value: unknown) {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+    const normalized = value.trim().toLowerCase();
+    return isOperationCompletionSubmissionId(normalized)
+        ? normalized
+        : undefined;
+}
+
+function operationCompletionEventMatches(
+    data: unknown,
+    input: ReturnType<typeof normalizeOperationTaskCompletionReplayInput>,
+    accountId: string | null,
+) {
+    if (!isRecord(data)) {
+        return false;
+    }
+    const images = data.images;
+    if (
+        !Array.isArray(images) ||
+        !images.every((imageUrl) => typeof imageUrl === 'string')
+    ) {
+        return false;
+    }
+
+    return (
+        persistedSubmissionId(data.submissionId) === input.submissionId &&
+        data.completedBy === input.actor.userId &&
+        data.expectedAccountId === (accountId ?? undefined) &&
+        data.expectedEntityId === input.expectedEntityId &&
+        data.expectedTaskVersionEventId === input.expectedTaskVersionEventId &&
+        sameStrings(images, input.imageUrls) &&
+        data.notes === input.notes
+    );
+}
+
+async function resolveOperationTaskCompletionSubmissionInTransaction(
+    input: ReturnType<typeof normalizeOperationTaskCompletionReplayInput>,
+    operation: Awaited<ReturnType<typeof getAuthorizedOperation>>,
+    transaction: ScheduleTaskTransaction,
+): Promise<OperationTaskSubmissionResult | null> {
+    const completionEvents = await transaction
+        .select({
+            createdAt: events.createdAt,
+            data: events.data,
+            id: events.id,
+        })
+        .from(events)
+        .where(
+            and(
+                eq(events.aggregateId, input.operationId.toString()),
+                eq(events.type, knownEventTypes.operations.complete),
+            ),
+        )
+        .orderBy(asc(events.id));
+    const submissionEvents = completionEvents.filter(
+        (event) =>
+            persistedSubmissionId(
+                isRecord(event.data) ? event.data.submissionId : undefined,
+            ) === input.submissionId,
+    );
+
+    if (submissionEvents.length > 0) {
+        const [event] = submissionEvents;
+        if (
+            submissionEvents.length !== 1 ||
+            !event ||
+            !operationCompletionEventMatches(
+                event.data,
+                input,
+                operation.accountId,
+            )
+        ) {
+            throw new ScheduleTaskSubmissionError(
+                'submission_conflict',
+                'Ova je predaja već iskorištena s drukčijim podacima.',
+            );
+        }
+
+        const terminalResult = existingOperationTerminalResult(operation);
+        if (
+            terminalResult?.outcome === 'completed' &&
+            terminalResult.eventId === event.id
+        ) {
+            return terminalResult;
+        }
+        return {
+            kind: 'operation',
+            outcome: 'completed',
+            status:
+                input.actor.role === 'admin'
+                    ? 'completed'
+                    : 'pendingVerification',
+            eventId: event.id,
+            occurredAt: event.createdAt,
+            created: false,
+        };
+    }
+
+    if (existingOperationTerminalResult(operation)) {
+        throw new ScheduleTaskSubmissionError(
+            'submission_conflict',
+            'Zadatak već ima drugu završnu predaju.',
+        );
+    }
+
     return null;
 }
 
@@ -645,103 +884,124 @@ function assertPlantingAssignment(
     }
 }
 
-export async function submitOperationTaskCompletion(
-    {
-        actor,
-        expectedEntityId,
-        expectedTaskVersionEventId,
-        imageUrls,
-        notes,
-        operationId,
-    }: {
-        actor: ScheduleTaskActor;
-        expectedEntityId?: number;
-        expectedTaskVersionEventId?: number;
-        imageUrls?: readonly string[];
-        notes?: string;
-        operationId: number;
-    },
+export async function resolveOperationTaskCompletionSubmission(
+    input: OperationTaskCompletionReplayInput,
     transaction?: ScheduleTaskTransaction,
-): Promise<OperationTaskSubmissionResult> {
-    const validOperationId = assertPositiveSafeInteger(
-        operationId,
-        'ID radnje',
-    );
-    const validExpectedEntityId =
-        expectedEntityId === undefined
-            ? undefined
-            : assertPositiveSafeInteger(expectedEntityId, 'ID vrste radnje');
-    const validExpectedTaskVersionEventId =
-        expectedTaskVersionEventId === undefined
-            ? undefined
-            : assertTaskVersionEventId(expectedTaskVersionEventId);
-    if (
-        actor.role === 'farmer' &&
-        (validExpectedEntityId === undefined ||
-            validExpectedTaskVersionEventId === undefined)
-    ) {
-        throw new ScheduleTaskSubmissionError(
-            'invalid_input',
-            'Nedostaje identitet zadatka. Osvježi zadatke i pokušaj ponovno.',
-        );
-    }
+): Promise<OperationTaskSubmissionResult | null> {
+    const normalizedInput = normalizeOperationTaskCompletionReplayInput(input);
     return withOperationScheduleTaskTransaction(
-        validOperationId,
+        normalizedInput.operationId,
         async (transaction) => {
             const operation = await getAuthorizedOperation(
                 transaction,
-                actor,
-                validOperationId,
+                normalizedInput.actor,
+                normalizedInput.operationId,
             );
+            assertExpectedOperationAccount(
+                operation,
+                normalizedInput.expectedAccountId,
+            );
+            return resolveOperationTaskCompletionSubmissionInTransaction(
+                normalizedInput,
+                operation,
+                transaction,
+            );
+        },
+        transaction,
+    );
+}
+
+export async function submitOperationTaskCompletion(
+    input: OperationTaskCompletionInput,
+    transaction?: ScheduleTaskTransaction,
+): Promise<OperationTaskSubmissionResult> {
+    const normalizedTarget = normalizeOperationTaskCompletionTarget(input);
+    const normalizedReplayInput =
+        input.submissionId === undefined
+            ? undefined
+            : normalizeOperationTaskCompletionReplayInput({
+                  ...input,
+                  submissionId: input.submissionId,
+              });
+    return withOperationScheduleTaskTransaction(
+        normalizedTarget.operationId,
+        async (transaction) => {
+            const operation = await getAuthorizedOperation(
+                transaction,
+                normalizedTarget.actor,
+                normalizedTarget.operationId,
+            );
+            assertExpectedOperationAccount(
+                operation,
+                normalizedTarget.expectedAccountId,
+            );
+            if (normalizedReplayInput) {
+                const replay =
+                    await resolveOperationTaskCompletionSubmissionInTransaction(
+                        normalizedReplayInput,
+                        operation,
+                        transaction,
+                    );
+                if (replay) {
+                    return replay;
+                }
+            }
             if (
-                validExpectedEntityId !== undefined &&
-                operation.entityId !== validExpectedEntityId
+                normalizedTarget.expectedEntityId !== undefined &&
+                operation.entityId !== normalizedTarget.expectedEntityId
             ) {
                 throw new ScheduleTaskSubmissionError(
                     'task_changed',
                     'Radnja se u međuvremenu promijenila. Osvježi zadatke i pokušaj ponovno.',
                 );
             }
-            const existing = existingOperationTerminalResult(operation);
-            if (existing) {
-                if (existing.outcome === 'completed') {
-                    if (
-                        actor.role === 'admin' &&
-                        operation.status === 'pendingVerification'
-                    ) {
+            if (!normalizedReplayInput) {
+                const existing = existingOperationTerminalResult(operation);
+                if (existing) {
+                    if (existing.outcome === 'completed') {
                         if (
-                            validExpectedTaskVersionEventId !== undefined &&
-                            operation.taskVersionEventId !==
-                                validExpectedTaskVersionEventId
+                            normalizedTarget.actor.role === 'admin' &&
+                            operation.status === 'pendingVerification'
                         ) {
-                            throw new ScheduleTaskSubmissionError(
-                                'task_changed',
-                                'Zadatak je u međuvremenu promijenjen. Osvježi zadatke i pokušaj ponovno.',
+                            if (
+                                normalizedTarget.expectedTaskVersionEventId !==
+                                    undefined &&
+                                operation.taskVersionEventId !==
+                                    normalizedTarget.expectedTaskVersionEventId
+                            ) {
+                                throw new ScheduleTaskSubmissionError(
+                                    'task_changed',
+                                    'Zadatak je u međuvremenu promijenjen. Osvježi zadatke i pokušaj ponovno.',
+                                );
+                            }
+                            await createEvent(
+                                knownEvents.operations.verifiedV1(
+                                    normalizedTarget.operationId.toString(),
+                                    {
+                                        verifiedBy:
+                                            normalizedTarget.actor.userId,
+                                    },
+                                ),
+                                transaction,
                             );
+                            return {
+                                ...existing,
+                                status: 'completed' as const,
+                                created: true,
+                            };
                         }
-                        await createEvent(
-                            knownEvents.operations.verifiedV1(
-                                validOperationId.toString(),
-                                { verifiedBy: actor.userId },
-                            ),
-                            transaction,
-                        );
-                        return {
-                            ...existing,
-                            status: 'completed' as const,
-                            created: true,
-                        };
+                        return existing;
                     }
-                    return existing;
+                    throw new ScheduleTaskSubmissionError(
+                        'invalid_status',
+                        'Radnja je već označena kao blokirana.',
+                    );
                 }
-                throw new ScheduleTaskSubmissionError(
-                    'invalid_status',
-                    'Radnja je već označena kao blokirana.',
-                );
             }
             if (
-                validExpectedTaskVersionEventId !== undefined &&
-                operation.taskVersionEventId !== validExpectedTaskVersionEventId
+                normalizedTarget.expectedTaskVersionEventId !== undefined &&
+                operation.taskVersionEventId !==
+                    normalizedTarget.expectedTaskVersionEventId
             ) {
                 throw new ScheduleTaskSubmissionError(
                     'task_changed',
@@ -757,27 +1017,48 @@ export async function submitOperationTaskCompletion(
                     `Radnja sa stanjem ${operation.status} ne može biti dovršena.`,
                 );
             }
-            assertOperationAssignment(operation, actor);
+            assertOperationAssignment(operation, normalizedTarget.actor);
 
             const event = await createEvent(
                 knownEvents.operations.completedV1(
-                    validOperationId.toString(),
+                    normalizedTarget.operationId.toString(),
                     {
-                        completedBy: actor.userId,
-                        images: normalizeImageUrls(
-                            imageUrls,
-                            maxCompletionImageCount,
-                        ),
-                        notes: normalizeOptionalNote(notes),
+                        completedBy: normalizedTarget.actor.userId,
+                        ...(normalizedReplayInput
+                            ? {
+                                  ...(operation.accountId !== null
+                                      ? {
+                                            expectedAccountId:
+                                                operation.accountId,
+                                        }
+                                      : {}),
+                                  expectedEntityId:
+                                      normalizedReplayInput.expectedEntityId,
+                                  expectedTaskVersionEventId:
+                                      normalizedReplayInput.expectedTaskVersionEventId,
+                                  submissionId:
+                                      normalizedReplayInput.submissionId,
+                              }
+                            : {}),
+                        images:
+                            normalizedReplayInput?.imageUrls ??
+                            normalizeImageUrls(
+                                input.imageUrls,
+                                maxCompletionImageCount,
+                            ),
+                        notes:
+                            normalizedReplayInput !== undefined
+                                ? normalizedReplayInput.notes
+                                : normalizeOptionalNote(input.notes),
                     },
                 ),
                 transaction,
             );
-            if (actor.role === 'admin') {
+            if (normalizedTarget.actor.role === 'admin') {
                 await createEvent(
                     knownEvents.operations.verifiedV1(
-                        validOperationId.toString(),
-                        { verifiedBy: actor.userId },
+                        normalizedTarget.operationId.toString(),
+                        { verifiedBy: normalizedTarget.actor.userId },
                     ),
                     transaction,
                 );
@@ -786,7 +1067,7 @@ export async function submitOperationTaskCompletion(
                 kind: 'operation',
                 outcome: 'completed',
                 status:
-                    actor.role === 'admin'
+                    normalizedTarget.actor.role === 'admin'
                         ? 'completed'
                         : 'pendingVerification',
                 eventId: event.id,

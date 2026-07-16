@@ -5,6 +5,7 @@ import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
 import { FarmSchedulePreferences } from './_components/FarmSchedulePreferences';
 import { NotificationSettings } from './_components/NotificationSettings';
+import { OperationCompletionSyncSettings } from './_components/OperationCompletionSyncSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ async function FarmSettingsContent() {
                     user?.farmScheduleGroupedWateringEnabled ?? true
                 }
             />
+            <OperationCompletionSyncSettings />
             <NotificationSettings />
         </div>
     );

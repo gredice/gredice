@@ -5,19 +5,24 @@ import {
     getEntitiesFormatted,
     getFarmUserPrintableHarvestTraceLinkIds,
     markHarvestTraceLinksPrinted,
+    resolveOperationTaskCompletionSubmission,
     ScheduleTaskSubmissionError,
     submitOperationTaskBlock,
     submitOperationTaskCompletion,
     submitPlantingTaskBlock,
     submitPlantingTaskCompletion,
 } from '@gredice/storage';
-import { head } from '@vercel/blob';
+import { BlobNotFoundError, head } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import {
     assertFarmOperationCompletionImagesStored,
+    FarmOperationCompletionImageMetadataUnavailableError,
     FarmOperationCompletionImagesValidationError,
+    getFarmOperationCompletionSubmissionImagePath,
     normalizeFarmOperationCompletionImageUrls,
+    parseFarmOperationCompletionAttachmentId,
+    parseFarmOperationCompletionSubmissionId,
 } from './operationCompletionProof';
 import {
     assertScheduleOperationCompletionProof,
@@ -26,6 +31,7 @@ import {
     parseScheduleOperationCompletionRequirementsFingerprint,
     type ScheduleOperationCompletionRequirementsFingerprint,
 } from './scheduleOperationRequirements';
+import { getExpectedScheduleTaskAccountId } from './scheduleTaskAccountScope';
 import {
     getScheduleTaskBlockerReason,
     parseScheduleTaskBlockerTarget,
@@ -130,6 +136,28 @@ function taskChangedFailure(message: string): ScheduleTaskSubmissionFailure {
     };
 }
 
+function invalidSubmissionFailure(
+    message: string,
+): ScheduleTaskSubmissionFailure {
+    return {
+        canRetry: false,
+        code: 'invalid_input',
+        message,
+        success: false,
+    };
+}
+
+function submissionConflictFailure(
+    message: string,
+): ScheduleTaskSubmissionFailure {
+    return {
+        canRetry: false,
+        code: 'submission_conflict',
+        message,
+        success: false,
+    };
+}
+
 function notAuthorizedFailure(): ScheduleTaskSubmissionFailure {
     return {
         canRetry: false,
@@ -185,6 +213,17 @@ function retryableProofFailure(
     };
 }
 
+async function loadFarmOperationCompletionImageMetadata(imageUrl: string) {
+    try {
+        return await head(imageUrl);
+    } catch (error) {
+        if (error instanceof BlobNotFoundError) {
+            throw error;
+        }
+        throw new FarmOperationCompletionImageMetadataUnavailableError();
+    }
+}
+
 export async function validateFarmOperationUploadTarget(
     operationId: number,
     expectedEntityId: number,
@@ -196,6 +235,7 @@ export async function validateFarmOperationUploadTarget(
         return authorization.failure;
     }
     const {
+        accountId,
         user: { role },
         userId,
     } = authorization.context;
@@ -230,9 +270,137 @@ export async function validateFarmOperationUploadTarget(
 
     return await validateScheduleOperationUploadTarget({
         actor: { role, userId },
+        expectedAccountId: getExpectedScheduleTaskAccountId(accountId, role),
         ...target,
         purpose: 'completion',
     });
+}
+
+export async function recoverFarmOperationCompletionImage(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    expectedRequirementsFingerprint: ScheduleOperationCompletionRequirementsFingerprint,
+    submissionId: string,
+    attachmentId: string,
+    fileName: string,
+) {
+    const authorization = await getScheduleTaskAuthContext();
+    if (authorization.failure) {
+        return authorization.failure;
+    }
+    const {
+        accountId,
+        user: { role },
+        userId,
+    } = authorization.context;
+
+    let target: {
+        attachmentId: string;
+        expectedEntityId: number;
+        expectedRequirementsFingerprint: ScheduleOperationCompletionRequirementsFingerprint;
+        expectedTaskVersionEventId: number;
+        fileName: string;
+        operationId: number;
+        submissionId: string;
+    };
+    try {
+        if (typeof fileName !== 'string') {
+            throw new Error('Invalid file name');
+        }
+        target = {
+            attachmentId:
+                parseFarmOperationCompletionAttachmentId(attachmentId),
+            expectedEntityId: assertPositiveSafeInteger(
+                expectedEntityId,
+                'ID vrste radnje nije ispravan.',
+            ),
+            expectedRequirementsFingerprint:
+                parseScheduleOperationCompletionRequirementsFingerprint(
+                    expectedRequirementsFingerprint,
+                ),
+            expectedTaskVersionEventId: assertNonNegativeSafeInteger(
+                expectedTaskVersionEventId,
+                'Verzija radnje nije ispravna.',
+            ),
+            fileName,
+            operationId: assertPositiveSafeInteger(
+                operationId,
+                'ID radnje nije ispravan.',
+            ),
+            submissionId:
+                parseFarmOperationCompletionSubmissionId(submissionId),
+        };
+    } catch {
+        return invalidSubmissionFailure(
+            'Podaci spremljene fotografije nisu ispravni. Odbaci pokušaj i ponovno odaberi fotografiju.',
+        );
+    }
+
+    const uploadTargetValidation = await validateScheduleOperationUploadTarget({
+        actor: { role, userId },
+        expectedAccountId: getExpectedScheduleTaskAccountId(accountId, role),
+        expectedEntityId: target.expectedEntityId,
+        expectedRequirementsFingerprint: target.expectedRequirementsFingerprint,
+        expectedTaskVersionEventId: target.expectedTaskVersionEventId,
+        operationId: target.operationId,
+        purpose: 'completion',
+    });
+    if (!uploadTargetValidation.success) {
+        return uploadTargetValidation;
+    }
+
+    const pathname = getFarmOperationCompletionSubmissionImagePath(
+        target.operationId,
+        target.expectedEntityId,
+        target.expectedTaskVersionEventId,
+        target.submissionId,
+        target.attachmentId,
+        target.fileName,
+    );
+    let metadata: Awaited<ReturnType<typeof head>>;
+    try {
+        metadata = await head(pathname);
+    } catch (error) {
+        if (error instanceof BlobNotFoundError) {
+            return { imageUrl: null, success: true as const };
+        }
+        throw error;
+    }
+
+    if (metadata.pathname !== pathname) {
+        return submissionConflictFailure(
+            'Spremljena fotografija ne odgovara ovom pokušaju. Pregledaj pokušaj prije ponovnog slanja.',
+        );
+    }
+    try {
+        const normalizedImageUrls = normalizeFarmOperationCompletionImageUrls(
+            [metadata.url],
+            target.operationId,
+            target.expectedEntityId,
+            target.expectedTaskVersionEventId,
+            target.submissionId,
+        );
+        if (normalizedImageUrls?.length !== 1) {
+            return submissionConflictFailure(
+                'Spremljena fotografija nije valjana za ovaj pokušaj. Pregledaj pokušaj prije ponovnog slanja.',
+            );
+        }
+        await assertFarmOperationCompletionImagesStored(
+            normalizedImageUrls,
+            target.operationId,
+            target.expectedEntityId,
+            target.expectedTaskVersionEventId,
+            async () => metadata,
+            target.submissionId,
+        );
+    } catch {
+        return submissionConflictFailure(
+            'Spremljena fotografija nije valjana za ovaj pokušaj. Pregledaj pokušaj prije ponovnog slanja.',
+        );
+    }
+
+    return { imageUrl: metadata.url, success: true as const };
 }
 
 export async function validateFarmScheduleBlockerUploadTarget(
@@ -268,27 +436,101 @@ export async function completeFarmOperation(
     expectedRequirementsFingerprint: ScheduleOperationCompletionRequirementsFingerprint,
     imageUrls?: string[],
     notes?: string,
+    submissionId?: string,
 ) {
     const authorization = await getScheduleTaskAuthContext();
     if (authorization.failure) {
         return authorization.failure;
     }
     const {
+        accountId,
         user: { role },
         userId,
     } = authorization.context;
-    const validOperationId = assertPositiveSafeInteger(
-        operationId,
-        'ID radnje nije ispravan.',
-    );
-    const validExpectedEntityId = assertPositiveSafeInteger(
-        expectedEntityId,
-        'ID vrste radnje nije ispravan.',
-    );
-    const validExpectedTaskVersionEventId = assertNonNegativeSafeInteger(
-        expectedTaskVersionEventId,
-        'Verzija radnje nije ispravna.',
-    );
+    const keyedSubmission = submissionId !== undefined;
+    let validOperationId: number;
+    let validExpectedEntityId: number;
+    let validExpectedTaskVersionEventId: number;
+    try {
+        validOperationId = assertPositiveSafeInteger(
+            operationId,
+            'ID radnje nije ispravan.',
+        );
+        validExpectedEntityId = assertPositiveSafeInteger(
+            expectedEntityId,
+            'ID vrste radnje nije ispravan.',
+        );
+        validExpectedTaskVersionEventId = assertNonNegativeSafeInteger(
+            expectedTaskVersionEventId,
+            'Verzija radnje nije ispravna.',
+        );
+    } catch (error) {
+        if (!keyedSubmission) {
+            throw error;
+        }
+        return invalidSubmissionFailure(
+            'Spremljeni pokušaj više nema ispravan identitet zadatka. Odbaci ga i pokušaj ponovno.',
+        );
+    }
+    let validSubmissionId: string | undefined;
+    try {
+        validSubmissionId = keyedSubmission
+            ? parseFarmOperationCompletionSubmissionId(submissionId)
+            : undefined;
+    } catch {
+        return invalidSubmissionFailure(
+            'Spremljeni pokušaj slanja nije ispravan. Odbaci ga i pokušaj ponovno.',
+        );
+    }
+    let completionImageUrls: string[] | undefined;
+    let completionNotes: string | undefined;
+    try {
+        completionImageUrls = normalizeFarmOperationCompletionImageUrls(
+            imageUrls,
+            validOperationId,
+            validExpectedEntityId,
+            validExpectedTaskVersionEventId,
+            validSubmissionId,
+        );
+        completionNotes = normalizeCompletionNotes(notes);
+    } catch (error) {
+        if (!validSubmissionId) {
+            throw error;
+        }
+        return invalidSubmissionFailure(
+            'Spremljeni pokušaj sadrži neispravne podatke. Pregledaj ga ili ga odbaci prije ponovnog slanja.',
+        );
+    }
+    const actor = getTaskActor(userId, role);
+    const expectedAccountId = getExpectedScheduleTaskAccountId(accountId, role);
+
+    if (validSubmissionId) {
+        try {
+            const replay = await resolveOperationTaskCompletionSubmission({
+                actor,
+                expectedAccountId,
+                expectedEntityId: validExpectedEntityId,
+                expectedTaskVersionEventId: validExpectedTaskVersionEventId,
+                imageUrls: completionImageUrls,
+                notes: completionNotes,
+                operationId: validOperationId,
+                submissionId: validSubmissionId,
+            });
+            if (replay) {
+                return actionResult(
+                    completionState(replay.status),
+                    replay.occurredAt,
+                );
+            }
+        } catch (error) {
+            const failure = submissionFailure(error);
+            if (failure) {
+                return failure;
+            }
+            throw error;
+        }
+    }
+
     let validExpectedRequirementsFingerprint: ScheduleOperationCompletionRequirementsFingerprint;
     try {
         validExpectedRequirementsFingerprint =
@@ -300,16 +542,10 @@ export async function completeFarmOperation(
             'Zahtjevi za dovršetak radnje promijenili su se. Osvježi zadatke.',
         );
     }
-    const completionImageUrls = normalizeFarmOperationCompletionImageUrls(
-        imageUrls,
-        validOperationId,
-        validExpectedEntityId,
-        validExpectedTaskVersionEventId,
-    );
-    const completionNotes = normalizeCompletionNotes(notes);
 
     const uploadTargetValidation = await validateScheduleOperationUploadTarget({
-        actor: { role, userId },
+        actor,
+        expectedAccountId,
         expectedEntityId: validExpectedEntityId,
         expectedRequirementsFingerprint: validExpectedRequirementsFingerprint,
         expectedTaskVersionEventId: validExpectedTaskVersionEventId,
@@ -347,13 +583,17 @@ export async function completeFarmOperation(
             notes: completionNotes,
         });
     } catch (error) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : 'Dokaz dovršetka nije ispravan.';
+        if (validSubmissionId) {
+            return invalidSubmissionFailure(message);
+        }
         return {
             canRetry: true,
             code: 'invalid_input' as const,
-            message:
-                error instanceof Error
-                    ? error.message
-                    : 'Dokaz dovršetka nije ispravan.',
+            message,
             success: false as const,
         };
     }
@@ -363,10 +603,16 @@ export async function completeFarmOperation(
             validOperationId,
             validExpectedEntityId,
             validExpectedTaskVersionEventId,
-            head,
+            loadFarmOperationCompletionImageMetadata,
+            validSubmissionId,
         );
     } catch (error) {
         if (error instanceof FarmOperationCompletionImagesValidationError) {
+            if (validSubmissionId && error.reason === 'invalid') {
+                return submissionConflictFailure(
+                    'Spremljena fotografija ne odgovara ovom pokušaju i ne može se sigurno zamijeniti. Odbaci pokušaj i pošalji ga ponovno.',
+                );
+            }
             return retryableProofFailure(error);
         }
         throw error;
@@ -375,12 +621,14 @@ export async function completeFarmOperation(
     let result: Awaited<ReturnType<typeof submitOperationTaskCompletion>>;
     try {
         result = await submitOperationTaskCompletion({
-            actor: getTaskActor(userId, role),
+            actor,
+            expectedAccountId,
             expectedEntityId: validExpectedEntityId,
             expectedTaskVersionEventId: validExpectedTaskVersionEventId,
             imageUrls: completionImageUrls,
             notes: completionNotes,
             operationId: validOperationId,
+            submissionId: validSubmissionId,
         });
     } catch (error) {
         const failure = submissionFailure(error);
@@ -400,6 +648,7 @@ export async function completeFarmOperationWithImageUrls(
     expectedRequirementsFingerprint: ScheduleOperationCompletionRequirementsFingerprint,
     imageUrls: string[],
     notes?: string,
+    submissionId?: string,
 ) {
     return completeFarmOperation(
         operationId,
@@ -408,6 +657,7 @@ export async function completeFarmOperationWithImageUrls(
         expectedRequirementsFingerprint,
         imageUrls,
         notes,
+        submissionId,
     );
 }
 

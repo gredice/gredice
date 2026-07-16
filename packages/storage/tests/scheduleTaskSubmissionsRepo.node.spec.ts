@@ -29,6 +29,7 @@ import {
     raisedBeds,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    resolveOperationTaskCompletionSubmission,
     ScheduleTaskSubmissionError,
     sql,
     storage,
@@ -292,6 +293,300 @@ test('concurrent operation completion creates one terminal event and one automat
                 automationDefinitionId: definition.id,
                 limit: 20,
             })
+        ).length,
+        1,
+    );
+});
+
+test('keyed operation completion stores one canonical command and replays it after verification', async () => {
+    const fixture = await createTaskFixture();
+    const submissionId = randomUUID();
+    const input = {
+        operationId: fixture.operationId,
+        expectedAccountId: ` ${fixture.accountId} `,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        submissionId: ` ${submissionId.toUpperCase()} `,
+        imageUrls: [
+            ' https://example.com/second.jpg ',
+            'https://example.com/first.jpg',
+            'https://example.com/second.jpg',
+            '   ',
+        ],
+        notes: '  Završeno na terenu  ',
+    };
+
+    assert.strictEqual(
+        await resolveOperationTaskCompletionSubmission(input),
+        null,
+    );
+    const created = await submitOperationTaskCompletion(input);
+    assert.strictEqual(created.created, true);
+
+    const replay = await resolveOperationTaskCompletionSubmission(input);
+    assert.ok(replay);
+    assert.strictEqual(replay.created, false);
+    assert.strictEqual(replay.eventId, created.eventId);
+    assert.deepStrictEqual(replay.occurredAt, created.occurredAt);
+    const replayWithoutExpectedAccount =
+        await resolveOperationTaskCompletionSubmission({
+            ...input,
+            expectedAccountId: undefined,
+        });
+    assert.strictEqual(replayWithoutExpectedAccount?.eventId, created.eventId);
+    assert.strictEqual(replayWithoutExpectedAccount?.created, false);
+
+    const [completionEvent] = await getAllEvents(
+        knownEventTypes.operations.complete,
+        [fixture.operationId.toString()],
+    );
+    assert.ok(completionEvent);
+    assert.deepStrictEqual(completionEvent.data, {
+        completedBy: fixture.farmerId,
+        expectedAccountId: fixture.accountId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        images: [
+            'https://example.com/second.jpg',
+            'https://example.com/first.jpg',
+        ],
+        notes: 'Završeno na terenu',
+        submissionId,
+    });
+
+    const pendingOperation = await getOperationById(fixture.operationId);
+    await verifyOperationTaskCompletion({
+        operationId: fixture.operationId,
+        expectedTaskVersionEventId: pendingOperation.taskVersionEventId,
+        verifiedBy: fixture.adminId,
+    });
+    const verifiedReplay =
+        await resolveOperationTaskCompletionSubmission(input);
+    assert.ok(verifiedReplay);
+    assert.strictEqual(verifiedReplay.created, false);
+    assert.strictEqual(verifiedReplay.eventId, created.eventId);
+    assert.deepStrictEqual(verifiedReplay.occurredAt, created.occurredAt);
+    assert.strictEqual(verifiedReplay.status, 'completed');
+});
+
+test('keyed operation completion rejects malformed IDs and selected-account mismatches', async () => {
+    const fixture = await createTaskFixture();
+    const baseInput = {
+        operationId: fixture.operationId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        imageUrls: ['https://example.com/proof.jpg'],
+        notes: 'Završeno',
+    };
+
+    for (const submissionId of [
+        'not-a-uuid',
+        '00000000-0000-0000-0000-000000000000',
+        'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    ]) {
+        await assertSubmissionError(
+            resolveOperationTaskCompletionSubmission({
+                ...baseInput,
+                submissionId,
+            }),
+            'invalid_input',
+        );
+    }
+    await assertSubmissionError(
+        submitOperationTaskCompletion({
+            ...baseInput,
+            expectedAccountId: randomUUID(),
+            submissionId: randomUUID(),
+        }),
+        'not_authorized',
+    );
+    assert.strictEqual(
+        (
+            await getAllEvents(knownEventTypes.operations.complete, [
+                fixture.operationId.toString(),
+            ])
+        ).length,
+        0,
+    );
+});
+
+test('same operation submission ID conflicts with any changed canonical command', async () => {
+    const fixture = await createTaskFixture();
+    const submissionId = randomUUID();
+    const baseInput = {
+        operationId: fixture.operationId,
+        expectedAccountId: fixture.accountId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        submissionId,
+        imageUrls: [
+            'https://example.com/first.jpg',
+            'https://example.com/second.jpg',
+        ],
+        notes: 'Završeno',
+    };
+    const created = await submitOperationTaskCompletion(baseInput);
+
+    const conflictingInputs = [
+        { ...baseInput, notes: 'Druga napomena' },
+        {
+            ...baseInput,
+            imageUrls: [
+                'https://example.com/second.jpg',
+                'https://example.com/first.jpg',
+            ],
+        },
+        {
+            ...baseInput,
+            imageUrls: [
+                'https://example.com/first.jpg',
+                'https://example.com/changed.jpg',
+            ],
+        },
+        {
+            ...baseInput,
+            actor: { userId: fixture.adminId, role: 'admin' as const },
+        },
+        {
+            ...baseInput,
+            expectedEntityId: fixture.operationEntityId + 1,
+        },
+        {
+            ...baseInput,
+            expectedTaskVersionEventId: fixture.operationTaskVersionEventId + 1,
+        },
+    ];
+    for (const conflictingInput of conflictingInputs) {
+        await assertSubmissionError(
+            submitOperationTaskCompletion(conflictingInput),
+            'submission_conflict',
+        );
+    }
+    await assertSubmissionError(
+        submitOperationTaskCompletion({
+            ...baseInput,
+            submissionId: randomUUID(),
+        }),
+        'submission_conflict',
+    );
+
+    const completionEvents = await getAllEvents(
+        knownEventTypes.operations.complete,
+        [fixture.operationId.toString()],
+    );
+    assert.strictEqual(completionEvents.length, 1);
+    assert.strictEqual(completionEvents[0]?.id, created.eventId);
+});
+
+test('keyed completion conflicts with an existing terminal block', async () => {
+    const fixture = await createTaskFixture();
+    await submitOperationTaskBlock({
+        operationId: fixture.operationId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' },
+        reasonCode: 'unsafe_conditions',
+    });
+
+    await assertSubmissionError(
+        resolveOperationTaskCompletionSubmission({
+            operationId: fixture.operationId,
+            expectedAccountId: fixture.accountId,
+            expectedEntityId: fixture.operationEntityId,
+            expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+            actor: { userId: fixture.farmerId, role: 'farmer' },
+            submissionId: randomUUID(),
+        }),
+        'submission_conflict',
+    );
+});
+
+test('concurrent retries of one keyed completion create one event and one automation run', async () => {
+    const fixture = await createTaskFixture();
+    const submissionId = randomUUID();
+    const definition = await createAutomationDefinition({
+        key: `test.keyed-operation-completion-${randomUUID()}`,
+        name: 'Keyed operation completion concurrency',
+        status: 'enabled',
+        graph: eventAutomationGraph(knownEventTypes.operations.complete),
+    });
+    const input = {
+        operationId: fixture.operationId,
+        expectedAccountId: fixture.accountId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        submissionId,
+        imageUrls: ['https://example.com/proof.jpg'],
+        notes: 'Završeno na terenu',
+    };
+
+    const results = await Promise.all(
+        Array.from({ length: 8 }, () => submitOperationTaskCompletion(input)),
+    );
+
+    assert.strictEqual(results.filter((result) => result.created).length, 1);
+    assert.strictEqual(
+        new Set(results.map((result) => result.eventId)).size,
+        1,
+    );
+    assert.strictEqual(
+        (
+            await getAllEvents(knownEventTypes.operations.complete, [
+                fixture.operationId.toString(),
+            ])
+        ).length,
+        1,
+    );
+    assert.strictEqual(
+        (
+            await listAutomationRuns({
+                automationDefinitionId: definition.id,
+                limit: 20,
+            })
+        ).length,
+        1,
+    );
+});
+
+test('concurrent different operation submission IDs create one event and one explicit conflict', async () => {
+    const fixture = await createTaskFixture();
+    const baseInput = {
+        operationId: fixture.operationId,
+        expectedAccountId: fixture.accountId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        imageUrls: ['https://example.com/proof.jpg'],
+        notes: 'Završeno na terenu',
+    };
+
+    const results = await Promise.allSettled([
+        submitOperationTaskCompletion({
+            ...baseInput,
+            submissionId: randomUUID(),
+        }),
+        submitOperationTaskCompletion({
+            ...baseInput,
+            submissionId: randomUUID(),
+        }),
+    ]);
+    const fulfilled = results.filter((result) => result.status === 'fulfilled');
+    const rejected = results.filter((result) => result.status === 'rejected');
+    assert.strictEqual(fulfilled.length, 1);
+    assert.strictEqual(rejected.length, 1);
+    const [conflict] = rejected;
+    assert.ok(conflict && conflict.status === 'rejected');
+    assert.ok(conflict.reason instanceof ScheduleTaskSubmissionError);
+    assert.strictEqual(conflict.reason.code, 'submission_conflict');
+    assert.strictEqual(
+        (
+            await getAllEvents(knownEventTypes.operations.complete, [
+                fixture.operationId.toString(),
+            ])
         ).length,
         1,
     );

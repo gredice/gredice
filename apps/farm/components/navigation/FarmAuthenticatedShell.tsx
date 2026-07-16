@@ -1,6 +1,7 @@
 'use client';
 
 import type { PropsWithChildren } from 'react';
+import { OperationCompletionSyncBanner } from '../offline/OperationCompletionSyncBanner';
 import { FarmAuthenticatedNavigation } from './FarmAuthenticatedNavigation';
 
 type FarmAuthenticatedShellProps = PropsWithChildren<{
@@ -23,6 +24,7 @@ export function FarmAuthenticatedShell({
                 }`}
                 data-farm-shell-content
             >
+                {authenticated ? <OperationCompletionSyncBanner /> : null}
                 {children}
             </div>
             {authenticated ? (

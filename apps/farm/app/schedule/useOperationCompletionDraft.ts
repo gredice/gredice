@@ -18,12 +18,22 @@ import {
     saveOperationCompletionDraft,
     subscribeToOperationCompletionDraftLogout,
 } from '../../lib/offline/operationCompletionDraftStore';
+import {
+    type HandoffOperationCompletionDraftToQueueResult,
+    handoffOperationCompletionDraftToQueue,
+    loadOperationCompletionQueueItem,
+    type OperationCompletionQueueSummary,
+    subscribeToOperationCompletionQueueChanges,
+    summarizeOperationCompletionQueueItem,
+} from '../../lib/offline/operationCompletionQueueStore';
 
 const NOTES_SAVE_DEBOUNCE_MS = 300;
 
 export type OperationCompletionDraftGate =
     | { kind: 'checking' }
     | { kind: 'found'; draft: OperationCompletionDraft }
+    | { kind: 'queued'; item: OperationCompletionQueueSummary }
+    | { kind: 'server_confirmed'; item: OperationCompletionQueueSummary }
     | { kind: 'none' }
     | { kind: 'session_changed' }
     | { kind: 'stale'; revisionId: string };
@@ -55,6 +65,11 @@ type UseOperationCompletionDraftInput = OperationCompletionDraftScope & {
 type RestoredOperationCompletionDraft = {
     notes: string;
     photos: OperationCompletionDraftPhotoInput[];
+};
+
+export type OperationCompletionDraftHandoffInput = {
+    operationLabel: string;
+    scheduleDateKey?: string;
 };
 
 function photoSignature(photos: OperationCompletionDraftPhotoInput[]) {
@@ -118,6 +133,7 @@ export function useOperationCompletionDraft({
     const [saveState, setSaveState] =
         useState<OperationCompletionDraftSaveState>({ kind: 'idle' });
     const activeRef = useRef(false);
+    const gateRef = useRef(gate);
     const generationRef = useRef(0);
     const leaseRef = useRef<OperationCompletionDraftLease | null>(null);
     const leasePromiseRef =
@@ -136,6 +152,7 @@ export function useOperationCompletionDraft({
     const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
 
     latestFormRef.current = { notes, photos };
+    gateRef.current = gate;
 
     const updateSaveState = useCallback(
         (
@@ -147,6 +164,22 @@ export function useOperationCompletionDraft({
             }
         },
         [],
+    );
+
+    const showQueueGate = useCallback(
+        (item: OperationCompletionQueueSummary) => {
+            activeRef.current = false;
+            persistedRevisionByScopeRef.current.delete(scopeIdentity);
+            setGate({
+                item,
+                kind:
+                    item.state === 'server_confirmed'
+                        ? 'server_confirmed'
+                        : 'queued',
+            });
+            setNotice(null);
+        },
+        [scopeIdentity],
     );
 
     const markSessionChanged = useCallback(() => {
@@ -279,6 +312,180 @@ export function useOperationCompletionDraft({
         return enqueueCurrentDraftWrite();
     }, [enqueueCurrentDraftWrite]);
 
+    const handoffToQueue = useCallback(
+        async ({
+            operationLabel,
+            scheduleDateKey,
+        }: OperationCompletionDraftHandoffInput): Promise<HandoffOperationCompletionDraftToQueueResult> => {
+            const generation = generationRef.current;
+            const lease = leaseRef.current;
+            activeRef.current = false;
+            if (saveTimerRef.current) {
+                clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+            if (!lease) {
+                markSessionChanged();
+                return { reason: 'session_changed', status: 'error' };
+            }
+
+            let handoffResult: HandoffOperationCompletionDraftToQueueResult = {
+                reason: 'storage_unavailable',
+                status: 'error',
+            };
+            writeQueueRef.current = writeQueueRef.current
+                .catch(() => undefined)
+                .then(async () => {
+                    if (generationRef.current !== generation) {
+                        handoffResult = {
+                            reason: 'session_changed',
+                            status: 'error',
+                        };
+                        return;
+                    }
+                    const currentForm = {
+                        notes: latestFormRef.current.notes,
+                        photos: [...latestFormRef.current.photos],
+                    };
+                    handoffResult =
+                        await handoffOperationCompletionDraftToQueue(
+                            {
+                                ...scope,
+                                notes: currentForm.notes,
+                                operationLabel,
+                                photos: currentForm.photos,
+                                ...(scheduleDateKey === undefined
+                                    ? {}
+                                    : { scheduleDateKey }),
+                            },
+                            {
+                                expectedDraftRevisionId:
+                                    persistedRevisionByScopeRef.current.get(
+                                        scopeIdentity,
+                                    ) ?? null,
+                                lease,
+                            },
+                        );
+                    if (generationRef.current !== generation) {
+                        handoffResult = {
+                            reason: 'session_changed',
+                            status: 'error',
+                        };
+                        return;
+                    }
+                    if (handoffResult.status !== 'error') {
+                        showQueueGate(handoffResult.item);
+                        setSaveState({ kind: 'idle' });
+                        return;
+                    }
+                    if (handoffResult.reason === 'session_changed') {
+                        markSessionChanged();
+                        return;
+                    }
+                    if (
+                        handoffResult.reason === 'server_confirmed' ||
+                        handoffResult.reason === 'draft_changed' ||
+                        handoffResult.reason === 'incompatible' ||
+                        handoffResult.reason === 'queue_conflict'
+                    ) {
+                        const queueResult =
+                            await loadOperationCompletionQueueItem(
+                                scope,
+                                lease,
+                            );
+                        if (generationRef.current !== generation) {
+                            handoffResult = {
+                                reason: 'session_changed',
+                                status: 'error',
+                            };
+                            return;
+                        }
+                        if (
+                            queueResult.status === 'found' ||
+                            queueResult.status === 'expired'
+                        ) {
+                            showQueueGate(
+                                summarizeOperationCompletionQueueItem(
+                                    queueResult.item,
+                                ),
+                            );
+                            return;
+                        }
+                        if (queueResult.status === 'session_changed') {
+                            handoffResult = {
+                                reason: 'session_changed',
+                                status: 'error',
+                            };
+                            markSessionChanged();
+                            return;
+                        }
+                        if (queueResult.status === 'unavailable') {
+                            setNotice('storage_unavailable');
+                            return;
+                        }
+                        const draftResult = await loadOperationCompletionDraft(
+                            scope,
+                            lease,
+                        );
+                        if (generationRef.current !== generation) {
+                            handoffResult = {
+                                reason: 'session_changed',
+                                status: 'error',
+                            };
+                            return;
+                        }
+                        if (draftResult.status === 'found') {
+                            persistedRevisionByScopeRef.current.set(
+                                scopeIdentity,
+                                draftResult.draft.revisionId,
+                            );
+                            setGate({
+                                draft: draftResult.draft,
+                                kind: 'found',
+                            });
+                            return;
+                        }
+                        if (
+                            draftResult.status === 'missing' &&
+                            draftResult.reason === 'incompatible'
+                        ) {
+                            persistedRevisionByScopeRef.current.set(
+                                scopeIdentity,
+                                draftResult.revisionId,
+                            );
+                            setGate({
+                                kind: 'stale',
+                                revisionId: draftResult.revisionId,
+                            });
+                            return;
+                        }
+                        if (draftResult.status === 'session_changed') {
+                            handoffResult = {
+                                reason: 'session_changed',
+                                status: 'error',
+                            };
+                            markSessionChanged();
+                            return;
+                        }
+                        if (draftResult.status === 'unavailable') {
+                            setNotice('storage_unavailable');
+                            return;
+                        }
+                        activeRef.current = true;
+                        setGate({ kind: 'none' });
+                        if (draftResult.status === 'expired') {
+                            setNotice('expired');
+                        }
+                        return;
+                    }
+                    activeRef.current = true;
+                });
+            await writeQueueRef.current;
+            return handoffResult;
+        },
+        [markSessionChanged, scope, scopeIdentity, showQueueGate],
+    );
+
     useEffect(() => {
         if (resetScopeIdentityRef.current === scopeIdentity) {
             return;
@@ -304,22 +511,60 @@ export function useOperationCompletionDraft({
         void writeQueueRef.current
             .catch(() => undefined)
             .then(() => leasePromiseRef.current)
-            .then((leaseResult) =>
-                leaseResult?.status === 'ready'
-                    ? loadOperationCompletionDraft(scope, leaseResult.lease)
-                    : Promise.resolve(
-                          leaseResult?.status === 'unavailable'
-                              ? ({
-                                    status: 'unavailable',
-                                } satisfies LoadOperationCompletionDraftResult)
-                              : sessionChangedLoadResult(),
-                      ),
-            )
-            .then((result) => {
+            .then(async (leaseResult) => {
+                if (leaseResult?.status !== 'ready') {
+                    return {
+                        kind: 'draft' as const,
+                        result:
+                            leaseResult?.status === 'unavailable'
+                                ? ({
+                                      status: 'unavailable',
+                                  } satisfies LoadOperationCompletionDraftResult)
+                                : sessionChangedLoadResult(),
+                    };
+                }
+                const queueResult = await loadOperationCompletionQueueItem(
+                    scope,
+                    leaseResult.lease,
+                );
+                if (queueResult.status !== 'missing') {
+                    return { kind: 'queue' as const, result: queueResult };
+                }
+                return {
+                    kind: 'draft' as const,
+                    result: await loadOperationCompletionDraft(
+                        scope,
+                        leaseResult.lease,
+                    ),
+                };
+            })
+            .then((loaded) => {
                 settled = true;
                 if (cancelled || generationRef.current !== generation) {
                     return;
                 }
+                if (loaded.kind === 'queue') {
+                    const result = loaded.result;
+                    if (
+                        result.status === 'found' ||
+                        result.status === 'expired'
+                    ) {
+                        showQueueGate(
+                            summarizeOperationCompletionQueueItem(result.item),
+                        );
+                        return;
+                    }
+                    if (result.status === 'session_changed') {
+                        markSessionChanged();
+                        return;
+                    }
+                    activeRef.current = false;
+                    persistedRevisionByScopeRef.current.delete(scopeIdentity);
+                    setGate({ kind: 'none' });
+                    setNotice('storage_unavailable');
+                    return;
+                }
+                const result = loaded.result;
                 if (result.status === 'found') {
                     persistedRevisionByScopeRef.current.set(
                         scopeIdentity,
@@ -364,7 +609,71 @@ export function useOperationCompletionDraft({
                 loadedScopeIdentityRef.current = null;
             }
         };
-    }, [enabled, markSessionChanged, scope, scopeIdentity]);
+    }, [enabled, markSessionChanged, scope, scopeIdentity, showQueueGate]);
+
+    useEffect(() => {
+        if (!enabled) {
+            return;
+        }
+        const generation = generationRef.current;
+        let cancelled = false;
+        let refreshSequence = 0;
+        const refreshQueueGate = () => {
+            const lease = leaseRef.current;
+            if (!lease || sessionChangedRef.current) {
+                return;
+            }
+            refreshSequence += 1;
+            const currentRefreshSequence = refreshSequence;
+            void loadOperationCompletionQueueItem(scope, lease).then(
+                (result) => {
+                    if (
+                        cancelled ||
+                        !mountedRef.current ||
+                        generationRef.current !== generation ||
+                        currentRefreshSequence !== refreshSequence
+                    ) {
+                        return;
+                    }
+                    if (
+                        result.status === 'found' ||
+                        result.status === 'expired'
+                    ) {
+                        showQueueGate(
+                            summarizeOperationCompletionQueueItem(result.item),
+                        );
+                        return;
+                    }
+                    if (result.status === 'session_changed') {
+                        markSessionChanged();
+                        return;
+                    }
+                    if (result.status === 'unavailable') {
+                        setNotice('storage_unavailable');
+                        return;
+                    }
+                    if (
+                        gateRef.current.kind !== 'queued' &&
+                        gateRef.current.kind !== 'server_confirmed'
+                    ) {
+                        return;
+                    }
+                    activeRef.current = result.status === 'missing';
+                    setGate({ kind: 'none' });
+                },
+            );
+        };
+        const unsubscribe = subscribeToOperationCompletionQueueChanges(
+            userId,
+            accountId,
+            refreshQueueGate,
+        );
+        return () => {
+            cancelled = true;
+            refreshSequence += 1;
+            unsubscribe();
+        };
+    }, [accountId, enabled, markSessionChanged, scope, showQueueGate, userId]);
 
     useEffect(() => {
         if (previousFormSignatureRef.current === currentFormSignature) {
@@ -571,6 +880,7 @@ export function useOperationCompletionDraft({
         discardAfterServerSuccess,
         flush,
         gate,
+        handoffToQueue,
         notice,
         resume,
         saveState,

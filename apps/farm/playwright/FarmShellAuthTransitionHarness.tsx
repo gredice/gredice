@@ -8,6 +8,12 @@ import { FarmTodayViewTracker } from '../components/analytics/FarmTodayViewTrack
 import type { FarmAnalyticsCapture } from '../components/analytics/farmAnalytics';
 import { FarmShellAuthGate } from '../components/navigation/FarmShellAuthGate';
 
+declare global {
+    interface Window {
+        __resolveFarmShellAuth?: () => void;
+    }
+}
+
 function TodayMountProbe() {
     const [mountMarker] = useState(() => crypto.randomUUID());
 
@@ -51,10 +57,17 @@ export function FarmShellAuthTransitionHarness({
         setCapturedEvents((current) => [...current, eventName]);
     }, []);
     const currentUserFactory = useCallback(async () => {
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        await new Promise<void>((resolve) => {
+            window.__resolveFarmShellAuth = resolve;
+        });
+        window.__resolveFarmShellAuth = undefined;
         return {
+            accountId: 'account-test',
+            accounts: [{ accountId: 'account-test' }],
             id: 'farmer-test',
+            operationCompletionSyncMode: 'off' as const,
             role: userRole,
+            sessionIncarnation: 'session-test',
             userName: 'Farmer Test',
         };
     }, [userRole]);

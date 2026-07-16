@@ -40,8 +40,12 @@ export const config: PlaywrightTestConfig = {
                     enforce: 'pre',
                     resolveId(source, importer) {
                         if (
-                            source === './actions' &&
-                            importer?.includes('/app/schedule/')
+                            (source === './actions' &&
+                                importer?.includes('/app/schedule/')) ||
+                            (source === '../../app/schedule/actions' &&
+                                importer?.includes(
+                                    '/lib/offline/operationCompletionQueueSync',
+                                ))
                         ) {
                             return scheduleActionsMockPath;
                         }

@@ -34,6 +34,41 @@ export type FarmTodayViewedProperties = {
     work_state?: FarmTodayWorkState;
 };
 
+export type FarmCompletionSyncState =
+    | 'saved_local'
+    | 'queued'
+    | 'syncing'
+    | 'failed'
+    | 'server_confirmed';
+
+export type FarmCompletionSyncTrigger =
+    | 'auth_mount'
+    | 'created'
+    | 'manual'
+    | 'online'
+    | 'pageshow'
+    | 'retry_timer'
+    | 'visibility';
+
+export type FarmCompletionSyncFailureCode =
+    | 'auth_changed'
+    | 'expired'
+    | 'network'
+    | 'server_unavailable'
+    | 'storage_unavailable'
+    | 'submission_conflict'
+    | 'task_changed'
+    | 'upload_unavailable';
+
+export type FarmCompletionSyncStateChangedProperties = {
+    age_bucket: 'under_5m' | 'under_1h' | 'under_1d' | 'older';
+    attempt_bucket: 'none' | 'one' | 'two' | 'three_plus';
+    failure_code?: FarmCompletionSyncFailureCode;
+    queue_size_bucket: 'one' | 'two_to_five' | 'six_plus';
+    state: FarmCompletionSyncState;
+    trigger: FarmCompletionSyncTrigger;
+};
+
 export type FarmTodayTaskOpenedProperties = {
     assignment: FarmTodayTaskAssignment;
     overdue: boolean;
@@ -60,6 +95,10 @@ export type FarmTodayFirstActionProperties =
       };
 
 export type FarmAnalyticsEvent =
+    | {
+          name: 'farm_completion_sync_state_changed';
+          properties: FarmCompletionSyncStateChangedProperties;
+      }
     | {
           name: 'farm_navigation_selected';
           properties: FarmNavigationSelectedProperties;

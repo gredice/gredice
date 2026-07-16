@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test';
 import {
     CompleteOperationModalAttemptStory,
     CompletePlantingModalAttemptStory,
+    OfflineQueueCompleteOperationModalStory,
     ScheduleTaskBlockerModalAttemptStory,
 } from '../../playwright/ScheduleTaskAttemptVersionStories';
 
@@ -42,6 +43,52 @@ async function settleResponsiveModal(page: Page) {
                     requestAnimationFrame(() => resolve()),
                 );
             }),
+    );
+}
+
+async function expireQueuedOperation(page: Page, operationId: number) {
+    await page.evaluate(
+        ({ databaseName, operationId: targetOperationId, queueStoreName }) =>
+            new Promise<void>((resolve, reject) => {
+                const openRequest = indexedDB.open(databaseName);
+                openRequest.onerror = () => reject(openRequest.error);
+                openRequest.onsuccess = () => {
+                    const database = openRequest.result;
+                    const transaction = database.transaction(
+                        queueStoreName,
+                        'readwrite',
+                    );
+                    const store = transaction.objectStore(queueStoreName);
+                    const getAllRequest = store.getAll();
+                    getAllRequest.onerror = () => reject(getAllRequest.error);
+                    getAllRequest.onsuccess = () => {
+                        const item = getAllRequest.result.find(
+                            (candidate: unknown) =>
+                                typeof candidate === 'object' &&
+                                candidate !== null &&
+                                'operationId' in candidate &&
+                                candidate.operationId === targetOperationId,
+                        );
+                        if (typeof item !== 'object' || item === null) {
+                            reject(new Error('Queued operation not found'));
+                            transaction.abort();
+                            return;
+                        }
+                        store.put({ ...item, expiresAt: Date.now() - 1 });
+                    };
+                    transaction.onabort = () => reject(transaction.error);
+                    transaction.onerror = () => reject(transaction.error);
+                    transaction.oncomplete = () => {
+                        database.close();
+                        resolve();
+                    };
+                };
+            }),
+        {
+            databaseName: 'gredice-farm-offline',
+            operationId,
+            queueStoreName: 'operation-completion-queue',
+        },
     );
 }
 
@@ -2145,6 +2192,270 @@ test('offers a phone draft after refresh and removes it only after server confir
     await expect(
         dialog.getByPlaceholder('Upišite napomenu o završetku...'),
     ).toHaveValue('');
+});
+
+test('queues a phone completion before network work and restores the waiting gate after refresh', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+    });
+    await mount(
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje bez veze"
+            operationId={246}
+        />,
+    );
+    await settleResponsiveModal(page);
+    await page.context().setOffline(true);
+
+    let dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog
+        .getByPlaceholder('Upišite napomenu o završetku...')
+        .fill('Završeno na udaljenom dijelu polja.');
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
+    );
+    await dialog.getByRole('button', { name: 'Potvrdi' }).click();
+    await expect(dialog.getByRole('status')).toContainText(
+        'sigurno je spremljena samo na ovom uređaju',
+    );
+    expect(
+        await page.evaluate(
+            () => window.__farmScheduleActionTestState?.operationCalls ?? -1,
+        ),
+    ).toBe(0);
+
+    const storedQueue = await page.evaluate(
+        () =>
+            new Promise<{
+                draftCount: number;
+                label: string | null;
+                notes: string | null;
+                state: string | null;
+                submissionId: string | null;
+            }>((resolve, reject) => {
+                const openRequest = indexedDB.open('gredice-farm-offline');
+                openRequest.onerror = () => reject(openRequest.error);
+                openRequest.onsuccess = () => {
+                    const database = openRequest.result;
+                    const transaction = database.transaction(
+                        [
+                            'operation-completion-drafts',
+                            'operation-completion-queue',
+                        ],
+                        'readonly',
+                    );
+                    const draftRequest = transaction
+                        .objectStore('operation-completion-drafts')
+                        .getAll();
+                    const queueRequest = transaction
+                        .objectStore('operation-completion-queue')
+                        .getAll();
+                    transaction.onerror = () => reject(transaction.error);
+                    transaction.oncomplete = () => {
+                        const queueItem = queueRequest.result.find(
+                            (candidate) =>
+                                typeof candidate === 'object' &&
+                                candidate !== null &&
+                                'operationId' in candidate &&
+                                candidate.operationId === 246,
+                        );
+                        const item =
+                            typeof queueItem === 'object' && queueItem !== null
+                                ? queueItem
+                                : null;
+                        resolve({
+                            draftCount: draftRequest.result.filter(
+                                (candidate) =>
+                                    typeof candidate === 'object' &&
+                                    candidate !== null &&
+                                    'operationId' in candidate &&
+                                    candidate.operationId === 246,
+                            ).length,
+                            label:
+                                item &&
+                                'operationLabel' in item &&
+                                typeof item.operationLabel === 'string'
+                                    ? item.operationLabel
+                                    : null,
+                            notes:
+                                item &&
+                                'notes' in item &&
+                                typeof item.notes === 'string'
+                                    ? item.notes
+                                    : null,
+                            state:
+                                item &&
+                                'state' in item &&
+                                typeof item.state === 'string'
+                                    ? item.state
+                                    : null,
+                            submissionId:
+                                item &&
+                                'submissionId' in item &&
+                                typeof item.submissionId === 'string'
+                                    ? item.submissionId
+                                    : null,
+                        });
+                        database.close();
+                    };
+                };
+            }),
+    );
+    expect(storedQueue).toMatchObject({
+        draftCount: 0,
+        label: 'Pregledaj navodnjavanje bez veze',
+        notes: 'Završeno na udaljenom dijelu polja.',
+        state: 'queued',
+    });
+    expect(storedQueue.submissionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    );
+
+    await dialog.getByRole('button', { name: 'U redu' }).click();
+    await expect(dialog).toBeHidden();
+    expect(
+        await page.evaluate(
+            () => window.__farmScheduleActionTestState?.refreshCalls ?? 0,
+        ),
+    ).toBe(0);
+
+    await page.context().setOffline(false);
+    await page.reload();
+    await mount(
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje bez veze"
+            operationId={246}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(
+        dialog.locator('[data-operation-completion-queue-gate]'),
+    ).toContainText('Radnja čeka slanje');
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveCount(0);
+    const reviewButton = dialog.getByRole('link', {
+        name: 'Pregledaj slanje',
+    });
+    const bounds = await reviewButton.boundingBox();
+    expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    expect(bounds?.x).toBeGreaterThanOrEqual(0);
+    expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(320);
+    const accessibilityResults = await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .analyze();
+    expect(
+        accessibilityResults.violations.filter(
+            ({ impact }) => impact === 'serious' || impact === 'critical',
+        ),
+    ).toEqual([]);
+
+    await expireQueuedOperation(page, 246);
+    await page.reload();
+    await mount(
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje bez veze"
+            operationId={246}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(
+        dialog.locator('[data-operation-completion-queue-gate]'),
+    ).toContainText('Potrebna je tvoja radnja');
+    await expect(
+        dialog.locator('[data-operation-completion-queue-gate]'),
+    ).toContainText('sadržaj uklonjen s uređaja');
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveCount(0);
+    await expect(dialog.getByText('Možeš započeti novu skicu.')).toHaveCount(0);
+});
+
+test('replaces the local-only success copy with a live server receipt', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    const story = (
+        items: NonNullable<
+            Parameters<
+                typeof OfflineQueueCompleteOperationModalStory
+            >[0]['syncContext']
+        >['items'] = [],
+    ) => (
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje"
+            operationId={247}
+            syncContext={{ items }}
+        />
+    );
+    const component = await mount(story());
+    await settleResponsiveModal(page);
+    const dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog
+        .getByPlaceholder('Upišite napomenu o završetku...')
+        .fill('Navodnjavanje je pregledano.');
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
+    );
+    await dialog.getByRole('button', { name: 'Potvrdi' }).click();
+    await expect(dialog.getByRole('status')).toContainText(
+        'čeka potvrdu farme',
+    );
+
+    await component.update(
+        story([
+            {
+                createdAt: Date.now(),
+                failureMessage: null,
+                key: 'operation-receipt-247',
+                label: null,
+                operationId: 247,
+                retryable: false,
+                serverState: 'pendingVerification',
+                state: 'server_confirmed',
+            },
+        ]),
+    );
+
+    await expect(
+        dialog.locator('[data-operation-completion-server-receipt]'),
+    ).toContainText('Radnja je spremljena na farmi');
+    await expect(
+        dialog.locator('[data-operation-completion-server-receipt]'),
+    ).toContainText('radnja sada čeka provjeru');
+    await expect(dialog.getByText('čeka potvrdu farme')).toHaveCount(0);
 });
 
 test('does not resurrect a cleared note while its first local save is in flight', async ({

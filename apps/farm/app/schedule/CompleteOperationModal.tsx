@@ -9,6 +9,8 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { upload } from '@vercel/blob/client';
 import { useEffect, useRef, useState } from 'react';
+import { useOperationCompletionSync } from '../../components/offline/OperationCompletionSyncContext';
+import type { HandoffOperationCompletionDraftToQueueResult } from '../../lib/offline/operationCompletionQueueStore';
 import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
@@ -90,6 +92,36 @@ function getLocalDraftSaveErrorMessage(
     }
 }
 
+function getQueueHandoffErrorMessage(
+    reason: Extract<
+        HandoffOperationCompletionDraftToQueueResult,
+        { status: 'error' }
+    >['reason'],
+) {
+    switch (reason) {
+        case 'draft_count_limit':
+            return 'Dosegnuto je ograničenje od 5 lokalnih unosa. Pregledaj spremljene radnje prije nastavka.';
+        case 'draft_size_limit':
+            return 'Lokalni unosi koriste dopuštenih 100 MB. Ukloni fotografije ili odbaci drugi unos.';
+        case 'quota_exceeded':
+            return 'Uređaj nema dovoljno prostora za sigurno spremanje radnje. Ukloni fotografije ili oslobodi prostor pa pokušaj ponovno.';
+        case 'draft_changed':
+            return 'Unos se promijenio u drugom prozoru. Zatvori i ponovno otvori zadatak prije nastavka.';
+        case 'incompatible':
+            return 'Zadatak se promijenio pa ovaj unos nije moguće poslati. Osvježi raspored.';
+        case 'queue_conflict':
+            return 'Za ovu radnju već postoji druga lokalna predaja. Ovaj unos nije zamijenio njezine napomene ili fotografije; pregledaj postojeće slanje.';
+        case 'server_confirmed':
+            return 'Ova radnja već je potvrđena na farmi. Osvježi raspored.';
+        case 'session_changed':
+            return 'Sesija je završila. Ponovno se prijavi prije spremanja radnje.';
+        case 'invalid_input':
+            return 'Lokalni unos nije ispravan. Pregledaj podatke i pokušaj ponovno.';
+        case 'storage_unavailable':
+            return 'Radnju nije moguće sigurno spremiti na ovom uređaju. Unos ostaje otvoren; provjeri prostor i pokušaj ponovno.';
+    }
+}
+
 function clampUploadProgress(progress: number) {
     return Math.max(0, Math.min(100, Math.round(progress)));
 }
@@ -158,6 +190,7 @@ export function CompleteOperationModal({
     defaultOpen = false,
     userId,
 }: CompleteOperationModalProps) {
+    const completionSync = useOperationCompletionSync();
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
     const [notes, setNotes] = useState('');
@@ -165,6 +198,8 @@ export function CompleteOperationModal({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [requiresRefresh, setRequiresRefresh] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [successNeedsScheduleRefresh, setSuccessNeedsScheduleRefresh] =
+        useState(false);
     const [imageSelectionMessage, setImageSelectionMessage] = useState<
         string | null
     >(null);
@@ -219,6 +254,27 @@ export function CompleteOperationModal({
     const imageLimitReached =
         uploadItems.length >= MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT;
     const localDraftBlocksEditing = localDraft.gate.kind !== 'none';
+    const currentQueueItem = completionSync?.items.find(
+        (item) => item.operationId === operationId,
+    );
+    const currentQueueState =
+        currentQueueItem?.state ??
+        (localDraft.gate.kind === 'queued' ||
+        localDraft.gate.kind === 'server_confirmed'
+            ? localDraft.gate.item.state
+            : null);
+    const currentQueueServerState =
+        currentQueueItem?.serverState ??
+        (localDraft.gate.kind === 'queued' ||
+        localDraft.gate.kind === 'server_confirmed'
+            ? localDraft.gate.item.serverState
+            : null);
+    const currentQueueFailureMessage =
+        currentQueueItem?.failureMessage ??
+        (localDraft.gate.kind === 'queued' &&
+        localDraft.gate.item.failureCode === 'expired'
+            ? 'Lokalni unos je istekao i njegov je sadržaj uklonjen s uređaja. Provjeri raspored pa odbaci ovaj zapis prije novog pokušaja.'
+            : null);
     const draftScopeIdentity = JSON.stringify([
         userId,
         accountId,
@@ -307,6 +363,7 @@ export function CompleteOperationModal({
 
     const resetCompletedDraft = () => {
         setSuccessMessage(null);
+        setSuccessNeedsScheduleRefresh(false);
         setErrorMessage(null);
         setRequiresRefresh(false);
         setImageSelectionMessage(null);
@@ -325,9 +382,12 @@ export function CompleteOperationModal({
     };
 
     const finishSuccess = () => {
+        const shouldRefreshSchedule = successNeedsScheduleRefresh;
         resetCompletedDraft();
         setIsOpen(false);
-        refreshAfterSuccess();
+        if (shouldRefreshSchedule) {
+            refreshAfterSuccess();
+        }
     };
 
     const handleOpenChange = (open: boolean) => {
@@ -570,6 +630,34 @@ export function CompleteOperationModal({
             submissionInFlightRef.current = true;
             setIsSubmitting(true);
             const completionNotes = attachNotes ? trimmedNotes : undefined;
+            if (completionSync?.mode === 'enabled') {
+                const handoff = await localDraft.handoffToQueue({
+                    operationLabel: label,
+                });
+                if (handoff.status === 'error') {
+                    setErrorMessage(
+                        getQueueHandoffErrorMessage(handoff.reason),
+                    );
+                    setRequiresRefresh(
+                        handoff.reason === 'server_confirmed' ||
+                            handoff.reason === 'incompatible' ||
+                            handoff.reason === 'queue_conflict' ||
+                            handoff.reason === 'draft_changed',
+                    );
+                    requestAnimationFrame(() => errorRef.current?.focus());
+                    return;
+                }
+                if (handoff.status === 'existing') {
+                    return;
+                }
+                setSuccessMessage(
+                    navigator.onLine
+                        ? `Radnja „${label}” sigurno je spremljena na ovom uređaju i čeka potvrdu farme.`
+                        : `Radnja „${label}” sigurno je spremljena samo na ovom uređaju. Poslat će se kada ponovno otvoriš aplikaciju uz internetsku vezu.`,
+                );
+                setSuccessNeedsScheduleRefresh(false);
+                return;
+            }
             let result: Awaited<ReturnType<typeof completeFarmOperation>>;
             if (attachImages && uploadItems.length > 0) {
                 const imageUrls: string[] = [];
@@ -634,6 +722,7 @@ export function CompleteOperationModal({
                     state: result.state,
                 }),
             );
+            setSuccessNeedsScheduleRefresh(true);
         } catch (error) {
             console.error('Error completing operation:', error);
             setErrorMessage(
@@ -678,7 +767,7 @@ export function CompleteOperationModal({
                 />
             }
         >
-            {successMessage ? (
+            {successMessage && currentQueueState !== 'server_confirmed' ? (
                 <Stack spacing={4}>
                     <h2 className="text-lg font-semibold">Radnja spremljena</h2>
                     <Alert color="success" role="status">
@@ -753,6 +842,89 @@ export function CompleteOperationModal({
                                     variant="outlined"
                                 >
                                     Zatvori
+                                </Button>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'queued' &&
+                    currentQueueState !== 'server_confirmed' ? (
+                        <Alert
+                            color={
+                                currentQueueState === 'failed'
+                                    ? 'warning'
+                                    : 'info'
+                            }
+                            data-operation-completion-queue-gate
+                            role="status"
+                        >
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        {currentQueueState === 'syncing'
+                                            ? 'Šaljem radnju farmi'
+                                            : currentQueueState === 'failed'
+                                              ? 'Potrebna je tvoja radnja'
+                                              : 'Radnja čeka slanje'}
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {currentQueueState === 'syncing'
+                                            ? 'Ostani u aplikaciji dok se napomena i fotografije šalju.'
+                                            : currentQueueState === 'failed'
+                                              ? (currentQueueFailureMessage ??
+                                                'Pregledaj spremljeni unos prije ponovnog slanja ili odbacivanja.')
+                                              : 'Unos je sigurno spremljen samo na ovom uređaju. Poslat će se kada je aplikacija otvorena uz internetsku vezu.'}
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <Button
+                                        fullWidth
+                                        href="/settings#sinkronizacija-radnji"
+                                        size="lg"
+                                        type="button"
+                                        variant="solid"
+                                    >
+                                        Pregledaj slanje
+                                    </Button>
+                                    <Button
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'server_confirmed' ||
+                    currentQueueState === 'server_confirmed' ? (
+                        <Alert
+                            color="success"
+                            data-operation-completion-server-receipt
+                            role="status"
+                        >
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Radnja je spremljena na farmi
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {currentQueueServerState ===
+                                        'pendingVerification'
+                                            ? 'Poslužitelj je potvrdio primitak, a radnja sada čeka provjeru.'
+                                            : 'Poslužitelj je potvrdio dovršetak radnje.'}
+                                    </Typography>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    onClick={refreshTasks}
+                                    size="lg"
+                                    type="button"
+                                    variant="solid"
+                                >
+                                    Osvježi raspored
                                 </Button>
                             </Stack>
                         </Alert>
