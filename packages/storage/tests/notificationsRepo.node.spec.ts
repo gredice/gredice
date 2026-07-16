@@ -25,10 +25,11 @@ import {
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
+    userNotificationSettings,
     users,
     webPushSubscriptions,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
     createTestAccount,
     createTestGarden,
@@ -54,6 +55,316 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
     );
     assert.ok(Array.isArray(notifications));
     assert.ok(notifications.some((n) => n.id === notificationId));
+});
+
+test('createNotification reuses a bounded opaque identity for repeated domain events', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const idempotencyKey = `delivery-lifecycle:${randomUUID()}`;
+    const notification = {
+        accountId,
+        header: 'Dostava je krenula',
+        content: 'Pratite status dostave.',
+        category: 'delivery_updates',
+        type: 'route-started',
+        timestamp: new Date(),
+    };
+
+    const firstId = await createNotification(notification, { idempotencyKey });
+    const replayId = await createNotification(notification, { idempotencyKey });
+
+    assert.equal(firstId, replayId);
+    assert.equal(firstId.startsWith('notification:'), true);
+    assert.equal(firstId.length <= 128, true);
+    assert.equal(firstId.includes(idempotencyKey), false);
+
+    const storedRows = await storage()
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(eq(notifications.id, firstId));
+    assert.equal(storedRows.length, 1);
+
+    const attempts = await storage()
+        .select({ provider: notificationDeliveryAttempts.provider })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, firstId));
+    assert.equal(
+        attempts.filter((attempt) => attempt.provider === 'router').length,
+        3,
+    );
+});
+
+test('createNotification rejects empty or cross-target idempotency key reuse', async () => {
+    createTestDb();
+    const firstAccountId = await createTestAccount();
+    const secondAccountId = await createTestAccount();
+    const idempotencyKey = `delivery-lifecycle:${randomUUID()}`;
+    const notification = {
+        accountId: firstAccountId,
+        header: 'Dostava',
+        content: 'Status dostave.',
+        category: 'delivery_updates',
+        type: 'route-started',
+        timestamp: new Date(),
+    };
+
+    await assert.rejects(
+        createNotification(notification, { idempotencyKey: '   ' }),
+        /must not be empty/,
+    );
+    await createNotification(notification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+    await assert.rejects(
+        createNotification(
+            { ...notification, accountId: secondAccountId },
+            { idempotencyKey, routeDelivery: false },
+        ),
+        /different target/,
+    );
+});
+
+test('repeated keyed customer events queue each delivery channel once', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-idempotency-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const subscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: subscriptionId,
+            accountId,
+            userId,
+            endpoint: `https://example.com/${subscriptionId}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+    const notification = {
+        accountId,
+        userId,
+        header: 'Dostava je krenula',
+        content: 'Pratite status dostave.',
+        category: 'delivery_updates',
+        type: 'route-started',
+        timestamp: new Date(),
+    };
+    const idempotencyKey = `delivery-lifecycle:${randomUUID()}`;
+
+    const notificationIds = await Promise.all(
+        Array.from(
+            { length: 10 },
+            async () =>
+                await createNotification(notification, { idempotencyKey }),
+        ),
+    );
+    assert.equal(new Set(notificationIds).size, 1);
+    const notificationId = notificationIds[0];
+    assert.ok(notificationId);
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+    assert.equal(
+        attempts.filter((attempt) => attempt.provider === 'router').length,
+        3,
+    );
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'web_push_queue')
+            .map((attempt) => attempt.channel),
+        ['push'],
+    );
+
+    await storage()
+        .update(notificationDeliveryAttempts)
+        .set({ createdAt: new Date('2020-01-01T00:00:00.000Z') })
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+    const cleanup = await cleanupNotificationRetention({
+        deleteDeliveryAttemptsOlderThanDays: 180,
+    });
+    assert.equal(cleanup.deliveryAttemptsDeleted, 4);
+
+    const retainedNotificationId = await createNotification(notification, {
+        idempotencyKey,
+    });
+    assert.equal(retainedNotificationId, notificationId);
+    const attemptsAfterRetainedReplay = await storage()
+        .select({ id: notificationDeliveryAttempts.id })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+    assert.deepEqual(attemptsAfterRetainedReplay, []);
+});
+
+test('delivery updates use optional defaults and account preferences override global preferences', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-preference-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const subscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: subscriptionId,
+            accountId,
+            userId,
+            endpoint: `https://example.com/${subscriptionId}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
+    const defaultNotificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Dostava',
+            content: 'Ažuriranje dostave.',
+            category: 'delivery_updates',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
+    const defaultDecisions = await routeNotificationDelivery(
+        defaultNotificationId,
+    );
+    assert.deepEqual(
+        defaultDecisions
+            .map(({ channel, outcome, required }) => ({
+                channel,
+                outcome,
+                required,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            { channel: 'email', outcome: 'immediate', required: false },
+            { channel: 'in_app', outcome: 'immediate', required: false },
+            { channel: 'push', outcome: 'immediate', required: false },
+        ],
+    );
+
+    await storage()
+        .insert(notificationUserChannelPreferences)
+        .values([
+            {
+                userId,
+                category: 'delivery_updates',
+                channel: 'push',
+                enabled: true,
+            },
+            {
+                userId,
+                accountId,
+                scope: 'account',
+                category: 'delivery_updates',
+                channel: 'push',
+                enabled: false,
+            },
+        ]);
+    const accountOverrideId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Dostava',
+            content: 'Ažuriranje dostave.',
+            category: 'delivery_updates',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
+    const overrideDecisions =
+        await routeNotificationDelivery(accountOverrideId);
+    assert.ok(
+        overrideDecisions.some(
+            (decision) =>
+                decision.channel === 'push' &&
+                decision.outcome === 'suppressed' &&
+                decision.reason === 'preference_disabled' &&
+                decision.required === false,
+        ),
+    );
+});
+
+test('delivery update quiet hours use an injected clock across midnight', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-quiet-hours-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    await storage()
+        .insert(notificationUserChannelPreferences)
+        .values({
+            userId,
+            category: 'delivery_updates',
+            channel: 'email',
+            digestFrequency: 'daily',
+            enabled: true,
+            quietHoursStartMinute: 22 * 60,
+            quietHoursEndMinute: 6 * 60,
+            timezone: 'UTC',
+        });
+
+    const createUnrouted = async () =>
+        await createNotification(
+            {
+                accountId,
+                userId,
+                header: 'Dostava',
+                content: 'Ažuriranje dostave.',
+                category: 'delivery_updates',
+                timestamp: new Date(),
+            },
+            { routeDelivery: false },
+        );
+    const quietDecisions = await routeNotificationDelivery(
+        await createUnrouted(),
+        { now: new Date('2026-07-16T23:00:00.000Z') },
+    );
+    const daytimeDecisions = await routeNotificationDelivery(
+        await createUnrouted(),
+        { now: new Date('2026-07-16T12:00:00.000Z') },
+    );
+    assert.ok(
+        quietDecisions.some(
+            (decision) =>
+                decision.channel === 'email' &&
+                decision.outcome === 'deferred' &&
+                decision.reason === 'quiet_hours',
+        ),
+    );
+    assert.ok(
+        daytimeDecisions.some(
+            (decision) =>
+                decision.channel === 'email' &&
+                decision.outcome === 'immediate' &&
+                decision.reason === 'eligible_immediate',
+        ),
+    );
 });
 
 test('createNotification routes and queues deliverable push by default', async () => {
@@ -1229,6 +1540,7 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
     createTestDb();
     const defaultSubscriptionIds: string[] = [];
     const deniedSubscriptionIds: string[] = [];
+    const rolloutUserIds: string[] = [];
     const rolloutUserDates = [
         '1900-01-01T00:00:00.000Z',
         '1900-01-02T00:00:00.000Z',
@@ -1239,6 +1551,7 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
             `rollout-limit-${suffix}-${randomUUID()}@example.com`,
             'password',
         );
+        rolloutUserIds.push(userId);
         await storage()
             .update(users)
             .set({ createdAt: new Date(rolloutUserDates[index]) })
@@ -1312,6 +1625,50 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
         ],
     );
 
+    const deliveryUpdatePreferences = await storage()
+        .select({
+            channel: notificationUserChannelPreferences.channel,
+            digestFrequency: notificationUserChannelPreferences.digestFrequency,
+            enabled: notificationUserChannelPreferences.enabled,
+            required: notificationUserChannelPreferences.required,
+            userId: notificationUserChannelPreferences.userId,
+        })
+        .from(notificationUserChannelPreferences)
+        .where(
+            eq(notificationUserChannelPreferences.category, 'delivery_updates'),
+        );
+    assert.deepEqual(
+        deliveryUpdatePreferences
+            .filter((preference) => preference.userId === rolloutUserIds[0])
+            .map((preference) => ({
+                channel: preference.channel,
+                digestFrequency: preference.digestFrequency,
+                enabled: preference.enabled,
+                required: preference.required,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            {
+                channel: 'email',
+                digestFrequency: 'off',
+                enabled: true,
+                required: false,
+            },
+            {
+                channel: 'in_app',
+                digestFrequency: 'off',
+                enabled: true,
+                required: false,
+            },
+            {
+                channel: 'push',
+                digestFrequency: 'off',
+                enabled: true,
+                required: false,
+            },
+        ],
+    );
+
     const subscriptions = await storage()
         .select({
             id: webPushSubscriptions.id,
@@ -1367,5 +1724,156 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
                 !subscription.revokedAt,
         ).length,
         1,
+    );
+});
+
+test('delivery preference backfill inherits global quiet hours without replacing explicit overrides', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `delivery-backfill-quiet-hours-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage()
+        .update(users)
+        .set({ createdAt: new Date('1800-01-01T00:00:00.000Z') })
+        .where(eq(users.id, userId));
+    await storage().insert(userNotificationSettings).values({
+        userId,
+        emailEnabled: false,
+        dailyDigest: true,
+    });
+    await storage()
+        .insert(notificationUserChannelPreferences)
+        .values([
+            {
+                userId,
+                category: 'reminders',
+                channel: 'in_app',
+                enabled: true,
+                quietHoursStartMinute: 22 * 60,
+                quietHoursEndMinute: 6 * 60,
+                timezone: 'UTC',
+            },
+            {
+                userId,
+                category: 'delivery_updates',
+                channel: 'push',
+                enabled: false,
+                timezone: 'Europe/Zagreb',
+            },
+        ]);
+    const subscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: subscriptionId,
+            accountId,
+            userId,
+            endpoint: `https://example.com/${subscriptionId}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
+    const result = await backfillNotificationRolloutDefaults({ limit: 1 });
+    assert.equal(result.usersScanned, 1);
+
+    const deliveryPreferences = await storage()
+        .select({
+            channel: notificationUserChannelPreferences.channel,
+            digestFrequency: notificationUserChannelPreferences.digestFrequency,
+            enabled: notificationUserChannelPreferences.enabled,
+            quietHoursEndMinute:
+                notificationUserChannelPreferences.quietHoursEndMinute,
+            quietHoursStartMinute:
+                notificationUserChannelPreferences.quietHoursStartMinute,
+            timezone: notificationUserChannelPreferences.timezone,
+        })
+        .from(notificationUserChannelPreferences)
+        .where(
+            and(
+                eq(notificationUserChannelPreferences.userId, userId),
+                eq(
+                    notificationUserChannelPreferences.category,
+                    'delivery_updates',
+                ),
+            ),
+        );
+    assert.deepEqual(
+        deliveryPreferences.sort((left, right) =>
+            left.channel.localeCompare(right.channel),
+        ),
+        [
+            {
+                channel: 'email',
+                digestFrequency: 'off',
+                enabled: false,
+                quietHoursEndMinute: 6 * 60,
+                quietHoursStartMinute: 22 * 60,
+                timezone: 'UTC',
+            },
+            {
+                channel: 'in_app',
+                digestFrequency: 'off',
+                enabled: true,
+                quietHoursEndMinute: 6 * 60,
+                quietHoursStartMinute: 22 * 60,
+                timezone: 'UTC',
+            },
+            {
+                channel: 'push',
+                digestFrequency: 'off',
+                enabled: false,
+                quietHoursEndMinute: null,
+                quietHoursStartMinute: null,
+                timezone: 'Europe/Zagreb',
+            },
+        ],
+    );
+
+    const notificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Dostava',
+            content: 'Ažuriranje dostave.',
+            category: 'delivery_updates',
+            timestamp: new Date('2026-07-16T23:00:00.000Z'),
+        },
+        { routeDelivery: false },
+    );
+    const decisions = await routeNotificationDelivery(notificationId, {
+        now: new Date('2026-07-16T23:00:00.000Z'),
+    });
+    assert.ok(
+        decisions.some(
+            (decision) =>
+                decision.channel === 'in_app' &&
+                decision.outcome === 'deferred' &&
+                decision.reason === 'quiet_hours',
+        ),
+    );
+    assert.ok(
+        decisions.some(
+            (decision) =>
+                decision.channel === 'email' &&
+                decision.outcome === 'suppressed' &&
+                decision.reason === 'preference_disabled',
+        ),
+    );
+    assert.ok(
+        decisions.some(
+            (decision) =>
+                decision.channel === 'push' &&
+                decision.outcome === 'suppressed' &&
+                decision.reason === 'preference_disabled',
+        ),
     );
 });

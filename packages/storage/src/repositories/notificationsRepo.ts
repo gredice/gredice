@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
     and,
     asc,
@@ -36,7 +36,12 @@ import {
 } from '../schema';
 
 type DeliveryChannel = 'email' | 'in_app' | 'push';
-type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
+type DeliveryOutcome =
+    | 'immediate'
+    | 'deferred'
+    | 'digest'
+    | 'suppressed'
+    | 'required';
 type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
 type NotificationCampaignQueueStatus = 'queued' | 'scheduled';
 type NotificationDigestFrequency = 'off' | 'hourly' | 'daily' | 'weekly';
@@ -44,6 +49,11 @@ type NotificationCampaignExplicitRecipient = Extract<
     NotificationCampaignAudience,
     { type: 'explicit' }
 >['recipients'][number];
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type NotificationDatabaseClient = StorageClient | TransactionClient;
 
 // Croatian fallback label for legacy web-push subscriptions without client device metadata.
 export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
@@ -120,8 +130,19 @@ export type NotificationRolloutDiagnostics = {
 };
 
 export type CreateNotificationOptions = {
+    idempotencyKey?: string;
+    now?: Date;
     routeDelivery?: boolean;
 };
+
+async function acquireNotificationDeliveryLock(
+    db: TransactionClient,
+    notificationId: string,
+) {
+    await db.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`notification-delivery:${notificationId}`}));`,
+    );
+}
 
 type NotificationRolloutPreferenceDefault = {
     category: string;
@@ -129,6 +150,12 @@ type NotificationRolloutPreferenceDefault = {
     defaultEnabled: boolean;
     digestEligible: boolean;
     required: boolean;
+};
+
+type NotificationQuietHoursWindow = {
+    endMinute: number;
+    startMinute: number;
+    timezone: string;
 };
 
 type NotificationDeliveryRecipient = {
@@ -179,6 +206,27 @@ const notificationRolloutPreferenceDefaults: NotificationRolloutPreferenceDefaul
             defaultEnabled: true,
             digestEligible: false,
             required: true,
+        },
+        {
+            category: 'delivery_updates',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'delivery_updates',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'delivery_updates',
+            channel: 'push',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
         },
         {
             category: 'garden',
@@ -359,10 +407,12 @@ function notificationPreferenceDefault(
 
 function notificationRolloutPreferenceRows({
     dailyDigest,
+    deliveryUpdatesQuietHours,
     emailEnabled,
     userId,
 }: {
     dailyDigest: boolean | null;
+    deliveryUpdatesQuietHours?: NotificationQuietHoursWindow;
     emailEnabled: boolean | null;
     userId: string;
 }): (typeof notificationUserChannelPreferences.$inferInsert)[] {
@@ -379,6 +429,10 @@ function notificationRolloutPreferenceRows({
             dailyDigest === true
                 ? 'daily'
                 : 'off';
+        const quietHours =
+            preference.category === 'delivery_updates'
+                ? deliveryUpdatesQuietHours
+                : undefined;
 
         return {
             userId,
@@ -389,10 +443,43 @@ function notificationRolloutPreferenceRows({
             enabled,
             required: preference.required,
             digestFrequency,
-            quietHoursStartMinute: null,
-            quietHoursEndMinute: null,
+            quietHoursStartMinute: quietHours?.startMinute ?? null,
+            quietHoursEndMinute: quietHours?.endMinute ?? null,
+            timezone: quietHours?.timezone ?? null,
         };
     });
+}
+
+function inheritedGlobalQuietHours(
+    preferences: Array<
+        Pick<
+            SelectNotificationUserChannelPreference,
+            | 'quietHoursEndMinute'
+            | 'quietHoursStartMinute'
+            | 'required'
+            | 'timezone'
+        >
+    >,
+): NotificationQuietHoursWindow | undefined {
+    for (const preference of preferences) {
+        const timezone = preference.timezone?.trim();
+        if (
+            preference.required ||
+            preference.quietHoursStartMinute === null ||
+            preference.quietHoursEndMinute === null ||
+            !timezone
+        ) {
+            continue;
+        }
+
+        return {
+            startMinute: preference.quietHoursStartMinute,
+            endMinute: preference.quietHoursEndMinute,
+            timezone,
+        };
+    }
+
+    return undefined;
 }
 
 async function countWebPushSubscriptionsWhere(where: SQL | undefined) {
@@ -447,31 +534,36 @@ export async function backfillNotificationRolloutDefaults({
     let defaultPreferencesAlreadyPresent = 0;
 
     for (const user of userRows) {
-        const rows = notificationRolloutPreferenceRows(user);
+        const existingPreferences = await storage()
+            .select({
+                category: notificationUserChannelPreferences.category,
+                channel: notificationUserChannelPreferences.channel,
+                quietHoursEndMinute:
+                    notificationUserChannelPreferences.quietHoursEndMinute,
+                quietHoursStartMinute:
+                    notificationUserChannelPreferences.quietHoursStartMinute,
+                required: notificationUserChannelPreferences.required,
+                timezone: notificationUserChannelPreferences.timezone,
+            })
+            .from(notificationUserChannelPreferences)
+            .where(
+                and(
+                    eq(notificationUserChannelPreferences.userId, user.userId),
+                    eq(notificationUserChannelPreferences.scope, 'global'),
+                ),
+            )
+            .orderBy(
+                desc(notificationUserChannelPreferences.updatedAt),
+                desc(notificationUserChannelPreferences.id),
+            );
+        const rows = notificationRolloutPreferenceRows({
+            ...user,
+            deliveryUpdatesQuietHours:
+                inheritedGlobalQuietHours(existingPreferences),
+        });
         defaultPreferencesExpected += rows.length;
 
         if (dryRun) {
-            const existingPreferences = await storage()
-                .select({
-                    category: notificationUserChannelPreferences.category,
-                    channel: notificationUserChannelPreferences.channel,
-                })
-                .from(notificationUserChannelPreferences)
-                .where(
-                    and(
-                        eq(
-                            notificationUserChannelPreferences.userId,
-                            user.userId,
-                        ),
-                        eq(notificationUserChannelPreferences.scope, 'global'),
-                        inArray(
-                            notificationUserChannelPreferences.category,
-                            notificationRolloutPreferenceDefaults.map(
-                                (preference) => preference.category,
-                            ),
-                        ),
-                    ),
-                );
             const existingKeys = new Set(
                 existingPreferences.map((preference) =>
                     notificationPreferenceKey({
@@ -986,12 +1078,16 @@ function decideDeliveryOutcome({
     if (!required && preference && isInsideQuietHours(nowMinute, preference)) {
         return {
             channel,
-            outcome: 'digest',
+            outcome: 'deferred',
             reason: 'quiet_hours',
             required: false,
         };
     }
-    if (!required && (preference?.digestFrequency ?? 'off') !== 'off') {
+    if (
+        !required &&
+        (defaultPreference?.digestEligible ?? true) &&
+        (preference?.digestFrequency ?? 'off') !== 'off'
+    ) {
         return {
             channel,
             outcome: 'digest',
@@ -1011,7 +1107,7 @@ function deliveryAttemptStatusForOutcome(
     outcome: DeliveryOutcome,
 ): DeliveryAttemptStatus {
     if (outcome === 'suppressed') return 'dropped';
-    if (outcome === 'digest') return 'queued';
+    if (outcome === 'deferred' || outcome === 'digest') return 'queued';
     return 'accepted';
 }
 
@@ -1190,13 +1286,20 @@ export async function cancelNotificationCampaign({
     return result[0];
 }
 
-export async function getNotification(
+async function getNotificationWithDatabase(
+    db: NotificationDatabaseClient,
     id: string,
 ): Promise<SelectNotification | undefined> {
-    const result = await storage().query.notifications.findFirst({
+    const result = await db.query.notifications.findFirst({
         where: eq(notifications.id, id),
     });
     return result;
+}
+
+export async function getNotification(
+    id: string,
+): Promise<SelectNotification | undefined> {
+    return await getNotificationWithDatabase(storage(), id);
 }
 
 function shouldQueuePushDelivery(decisions: NotificationDeliveryDecision[]) {
@@ -1224,24 +1327,48 @@ function queueablePushDeliveryUserIds(
     );
 }
 
-export async function createNotification(
+async function createNotificationWithDatabase(
+    db: NotificationDatabaseClient,
     notification: InsertNotification,
-    options: CreateNotificationOptions = {},
+    options: CreateNotificationOptions,
+    notificationId: string,
 ) {
-    const result = await storage()
+    const result = await db
         .insert(notifications)
         .values({
-            id: randomUUID(),
+            id: notificationId,
             ...notification,
         })
+        .onConflictDoNothing({ target: notifications.id })
         .returning({ id: notifications.id });
-    const notificationId = result[0].id;
+    const insertedId = result[0]?.id;
+
+    if (!insertedId) {
+        const existing = await getNotificationWithDatabase(db, notificationId);
+        if (
+            !existing ||
+            existing.accountId !== notification.accountId ||
+            existing.userId !== (notification.userId ?? null) ||
+            existing.category !== (notification.category ?? 'general') ||
+            existing.type !== (notification.type ?? 'general')
+        ) {
+            throw new Error(
+                'Notification idempotency key was reused for a different target.',
+            );
+        }
+
+        return notificationId;
+    }
 
     if (options.routeDelivery !== false) {
-        const decisions = await routeNotificationDelivery(notificationId);
+        const decisions = await routeNotificationDeliveryWithDatabase(
+            db,
+            notificationId,
+            { now: options.now },
+        );
         const pushUserIds = queueablePushDeliveryUserIds(decisions);
         if (pushUserIds.length > 0) {
-            await enqueuePushDeliveryAttemptsForNotification({
+            await enqueuePushDeliveryAttemptsWithDatabase(db, {
                 notificationId,
                 userIds: pushUserIds,
             });
@@ -1251,27 +1378,66 @@ export async function createNotification(
     return notificationId;
 }
 
-export async function enqueuePushDeliveryAttemptsForNotification({
-    notificationId,
-    batchSize = 100,
-    userIds,
-}: {
-    notificationId: string;
-    batchSize?: number;
-    userIds?: string[];
-}) {
-    const notification = await getNotification(notificationId);
+export async function createNotification(
+    notification: InsertNotification,
+    options: CreateNotificationOptions = {},
+) {
+    const normalizedIdempotencyKey = options.idempotencyKey?.trim();
+    if (options.idempotencyKey !== undefined && !normalizedIdempotencyKey) {
+        throw new Error('Notification idempotency key must not be empty.');
+    }
+    const notificationId = normalizedIdempotencyKey
+        ? `notification:${createHash('sha256')
+              .update(normalizedIdempotencyKey)
+              .digest('hex')}`
+        : randomUUID();
+
+    if (!normalizedIdempotencyKey) {
+        return await createNotificationWithDatabase(
+            storage(),
+            notification,
+            options,
+            notificationId,
+        );
+    }
+
+    return await storage().transaction(async (tx) => {
+        await acquireNotificationDeliveryLock(tx, notificationId);
+        return await createNotificationWithDatabase(
+            tx,
+            notification,
+            options,
+            notificationId,
+        );
+    });
+}
+
+async function enqueuePushDeliveryAttemptsWithDatabase(
+    db: NotificationDatabaseClient,
+    {
+        notificationId,
+        batchSize = 100,
+        userIds,
+    }: {
+        notificationId: string;
+        batchSize?: number;
+        userIds?: string[];
+    },
+) {
+    const notification = await getNotificationWithDatabase(db, notificationId);
     if (!notification) return { queued: 0, skipped: 0 };
     const targetUserIds = userIds
         ? uniqueStrings(userIds)
         : uniqueStrings(
-              (await getNotificationDeliveryRecipients(notification)).flatMap(
-                  (recipient) => (recipient.userId ? [recipient.userId] : []),
+              (
+                  await getNotificationDeliveryRecipients(db, notification)
+              ).flatMap((recipient) =>
+                  recipient.userId ? [recipient.userId] : [],
               ),
           );
     if (targetUserIds.length === 0) return { queued: 0, skipped: 0 };
 
-    const subscriptions = await storage().query.webPushSubscriptions.findMany({
+    const subscriptions = await db.query.webPushSubscriptions.findMany({
         where: and(
             eq(webPushSubscriptions.enabled, true),
             eq(webPushSubscriptions.permissionState, 'granted'),
@@ -1284,7 +1450,7 @@ export async function enqueuePushDeliveryAttemptsForNotification({
 
     if (!subscriptions.length) return { queued: 0, skipped: 0 };
 
-    const existing = await storage()
+    const existing = await db
         .select({
             pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
         })
@@ -1324,14 +1490,23 @@ export async function enqueuePushDeliveryAttemptsForNotification({
             providerResponseCode: 'queued_background',
         }));
 
-    await storage()
-        .insert(notificationDeliveryAttempts)
-        .values(deliveryAttempts);
+    await db.insert(notificationDeliveryAttempts).values(deliveryAttempts);
 
     return {
         queued: pending.length,
         skipped: subscriptions.length - pending.length,
     };
+}
+
+export async function enqueuePushDeliveryAttemptsForNotification(args: {
+    notificationId: string;
+    batchSize?: number;
+    userIds?: string[];
+}) {
+    return await storage().transaction(async (tx) => {
+        await acquireNotificationDeliveryLock(tx, args.notificationId);
+        return await enqueuePushDeliveryAttemptsWithDatabase(tx, args);
+    });
 }
 
 function hasPushSubscriptionUserId(
@@ -1343,6 +1518,7 @@ function hasPushSubscriptionUserId(
 }
 
 async function getNotificationDeliveryRecipients(
+    db: NotificationDatabaseClient,
     notification: Pick<SelectNotification, 'accountId' | 'userId'>,
 ): Promise<NotificationDeliveryRecipient[]> {
     if (notification.userId) {
@@ -1354,7 +1530,7 @@ async function getNotificationDeliveryRecipients(
         ];
     }
 
-    const rows = await storage()
+    const rows = await db
         .select({ userId: accountUsers.userId })
         .from(accountUsers)
         .where(eq(accountUsers.accountId, notification.accountId));
@@ -1381,12 +1557,18 @@ function notificationDeliveryRoutingKey(decision: {
     return `${decision.userId ?? 'account'}:${decision.channel}`;
 }
 
-export async function routeNotificationDelivery(notificationId: string) {
-    const notification = await getNotification(notificationId);
+async function routeNotificationDeliveryWithDatabase(
+    db: NotificationDatabaseClient,
+    notificationId: string,
+    { now = new Date() }: { now?: Date } = {},
+) {
+    const notification = await getNotificationWithDatabase(db, notificationId);
     if (!notification) return [];
-    const now = new Date();
     const targetChannels: DeliveryChannel[] = ['in_app', 'email', 'push'];
-    const recipients = await getNotificationDeliveryRecipients(notification);
+    const recipients = await getNotificationDeliveryRecipients(
+        db,
+        notification,
+    );
     const recipientUserIds = uniqueStrings(
         recipients.flatMap((recipient) =>
             recipient.userId ? [recipient.userId] : [],
@@ -1394,18 +1576,16 @@ export async function routeNotificationDelivery(notificationId: string) {
     );
     const preferences =
         recipientUserIds.length > 0
-            ? await storage().query.notificationUserChannelPreferences.findMany(
-                  {
-                      where: inArray(
-                          notificationUserChannelPreferences.userId,
-                          recipientUserIds,
-                      ),
-                  },
-              )
+            ? await db.query.notificationUserChannelPreferences.findMany({
+                  where: inArray(
+                      notificationUserChannelPreferences.userId,
+                      recipientUserIds,
+                  ),
+              })
             : [];
     const pushSubscriptionRows =
         recipientUserIds.length > 0
-            ? await storage()
+            ? await db
                   .select({ userId: webPushSubscriptions.userId })
                   .from(webPushSubscriptions)
                   .where(
@@ -1470,7 +1650,7 @@ export async function routeNotificationDelivery(notificationId: string) {
     );
 
     if (notification.userId || notification.accountId) {
-        const existingRouterAttempts = await storage()
+        const existingRouterAttempts = await db
             .select({
                 channel: notificationDeliveryAttempts.channel,
                 userId: notificationDeliveryAttempts.userId,
@@ -1494,25 +1674,35 @@ export async function routeNotificationDelivery(notificationId: string) {
         );
 
         if (unroutedDecisions.length > 0) {
-            await storage()
-                .insert(notificationDeliveryAttempts)
-                .values(
-                    unroutedDecisions.map((decision) => ({
-                        notificationId,
-                        userId: decision.userId,
-                        accountId: decision.accountId,
-                        channel: decision.channel,
-                        status: deliveryAttemptStatusForOutcome(
-                            decision.outcome,
-                        ),
-                        provider: 'router',
-                        providerResponseCode: decision.reason,
-                    })),
-                );
+            await db.insert(notificationDeliveryAttempts).values(
+                unroutedDecisions.map((decision) => ({
+                    notificationId,
+                    userId: decision.userId,
+                    accountId: decision.accountId,
+                    channel: decision.channel,
+                    status: deliveryAttemptStatusForOutcome(decision.outcome),
+                    provider: 'router',
+                    providerResponseCode: decision.reason,
+                })),
+            );
         }
     }
 
     return decisions;
+}
+
+export async function routeNotificationDelivery(
+    notificationId: string,
+    options: { now?: Date } = {},
+) {
+    return await storage().transaction(async (tx) => {
+        await acquireNotificationDeliveryLock(tx, notificationId);
+        return await routeNotificationDeliveryWithDatabase(
+            tx,
+            notificationId,
+            options,
+        );
+    });
 }
 
 export async function recordNotificationDeliveryEvent({

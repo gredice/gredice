@@ -29,6 +29,7 @@ import {
     sanitizeGrediceLinkUrl,
     validateHostedImageUrl,
 } from '../../../lib/http/safeUrls';
+import { notificationPreferenceUpdateSchema } from '../../../lib/notifications/notificationPreferences';
 import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
 import { notificationCenterRoles } from '../../../lib/notifications/notificationRouteRoles';
 import {
@@ -766,31 +767,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator(
             'json',
             z.object({
-                preferences: z.array(
-                    z.object({
-                        scope: z.enum(['global', 'account']),
-                        category: z.string().min(1),
-                        channel: z.enum(['in_app', 'email', 'push', 'sms']),
-                        enabled: z.boolean(),
-                        quietHoursStartMinute: z
-                            .number()
-                            .int()
-                            .min(0)
-                            .max(1439)
-                            .nullable()
-                            .optional(),
-                        quietHoursEndMinute: z
-                            .number()
-                            .int()
-                            .min(0)
-                            .max(1439)
-                            .nullable()
-                            .optional(),
-                        digestFrequency: z
-                            .enum(['off', 'hourly', 'daily', 'weekly'])
-                            .optional(),
-                    }),
-                ),
+                preferences: z.array(notificationPreferenceUpdateSchema),
             }),
         ),
         async (context) => {
@@ -815,6 +792,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             preference.quietHoursStartMinute ?? null,
                         quietHoursEndMinute:
                             preference.quietHoursEndMinute ?? null,
+                        timezone: preference.timezone,
                         digestFrequency: preference.digestFrequency ?? 'off',
                     })
                     .onConflictDoUpdate({
@@ -841,6 +819,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 preference.quietHoursStartMinute ?? null,
                             quietHoursEndMinute:
                                 preference.quietHoursEndMinute ?? null,
+                            timezone: preference.timezone,
                             ...(preference.digestFrequency === undefined
                                 ? {}
                                 : {

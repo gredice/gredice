@@ -1411,6 +1411,9 @@ importers:
       '@types/node':
         specifier: 24.12.4
         version: 24.12.4
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3

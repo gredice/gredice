@@ -66,11 +66,22 @@ type NotificationPreferenceItem = {
     quietHoursEligible: boolean;
 };
 
+type NotificationPreferencePolicy = Pick<
+    NotificationPreferenceItem,
+    | 'category'
+    | 'channel'
+    | 'defaultEnabled'
+    | 'digestEligible'
+    | 'quietHoursEligible'
+>;
+
 const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
 const pushDeviceIdKey = 'game:push:device-id';
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
+const quietHoursTimeZoneUnavailableMessage =
+    'Vremenska zona preglednika nije dostupna. Provjeri postavke uređaja i pokušaj ponovno.';
 
 function readBooleanFlag(value: string | undefined, defaultValue: boolean) {
     const normalizedValue = value?.trim().toLowerCase();
@@ -86,6 +97,14 @@ function readCurrentPushDeviceId() {
     }
 
     return window.localStorage.getItem(pushDeviceIdKey) ?? undefined;
+}
+
+function readCurrentTimeZone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch {
+        return null;
+    }
 }
 
 const premiumNotificationControlsEnabled = readBooleanFlag(
@@ -163,6 +182,35 @@ const categoryPreferences: NotificationPreferenceItem[] = [
         label: 'Promotivne ponude i sezonske preporuke',
         quietHoursEligible: true,
     },
+];
+
+const hiddenDeliveryPreferencePolicies: NotificationPreferencePolicy[] = [
+    {
+        category: 'delivery_updates',
+        channel: 'in_app',
+        defaultEnabled: true,
+        digestEligible: false,
+        quietHoursEligible: true,
+    },
+    {
+        category: 'delivery_updates',
+        channel: 'email',
+        defaultEnabled: true,
+        digestEligible: false,
+        quietHoursEligible: true,
+    },
+    {
+        category: 'delivery_updates',
+        channel: 'push',
+        defaultEnabled: true,
+        digestEligible: false,
+        quietHoursEligible: true,
+    },
+];
+
+const globalPreferencePolicies: NotificationPreferencePolicy[] = [
+    ...categoryPreferences,
+    ...hiddenDeliveryPreferencePolicies,
 ];
 
 const digestFrequencyItems: Array<{
@@ -252,6 +300,12 @@ export function NotificationsTab({
     const [quietHoursEndMinute, setQuietHoursEndMinute] = useState(
         defaultQuietHoursEndMinute,
     );
+    const [quietHoursTimeZone, setQuietHoursTimeZone] = useState<string | null>(
+        null,
+    );
+    const [quietHoursTimeZoneError, setQuietHoursTimeZoneError] = useState<
+        string | null
+    >(null);
     const [digestEnabled, setDigestEnabled] = useState(false);
     const [digestFrequency, setDigestFrequency] =
         useState<DigestPeriod>('daily');
@@ -336,26 +390,32 @@ export function NotificationsTab({
 
         const quietHoursPreference = preferencesQuery.data.find(
             (preference) =>
-                categoryPreferences.some(
+                globalPreferencePolicies.some(
                     (item) =>
                         item.quietHoursEligible &&
                         item.category === preference.category &&
                         item.channel === preference.channel,
                 ) &&
                 preference.quietHoursStartMinute !== null &&
-                preference.quietHoursEndMinute !== null,
+                preference.quietHoursEndMinute !== null &&
+                typeof preference.timezone === 'string' &&
+                preference.timezone.length > 0,
         );
         if (
             typeof quietHoursPreference?.quietHoursStartMinute === 'number' &&
-            typeof quietHoursPreference.quietHoursEndMinute === 'number'
+            typeof quietHoursPreference.quietHoursEndMinute === 'number' &&
+            typeof quietHoursPreference.timezone === 'string'
         ) {
             setQuietHoursEnabled(true);
             setQuietHoursStartMinute(
                 quietHoursPreference.quietHoursStartMinute,
             );
             setQuietHoursEndMinute(quietHoursPreference.quietHoursEndMinute);
+            setQuietHoursTimeZone(quietHoursPreference.timezone);
+            setQuietHoursTimeZoneError(null);
         } else {
             setQuietHoursEnabled(false);
+            setQuietHoursTimeZone(null);
         }
 
         const digestPreference = preferencesQuery.data.find(
@@ -380,7 +440,7 @@ export function NotificationsTab({
         }
     }, [preferencesQuery.data]);
 
-    function findPreference(item: (typeof categoryPreferences)[number]) {
+    function findPreference(item: NotificationPreferencePolicy) {
         return preferencesQuery.data?.find(
             (preference) =>
                 preference.category === item.category &&
@@ -390,12 +450,13 @@ export function NotificationsTab({
     }
 
     function buildPreferenceUpdate(
-        item: (typeof categoryPreferences)[number],
+        item: NotificationPreferencePolicy,
         enabled: boolean,
         options: {
             quietEnabled?: boolean;
             quietStart?: number;
             quietEnd?: number;
+            quietTimeZone?: string;
             summaryEnabled?: boolean;
             summaryFrequency?: DigestPeriod;
         } = {},
@@ -416,6 +477,10 @@ export function NotificationsTab({
                 item.quietHoursEligible && nextQuietEnabled
                     ? (options.quietEnd ?? quietHoursEndMinute)
                     : null,
+            timezone:
+                item.quietHoursEligible && nextQuietEnabled
+                    ? (options.quietTimeZone ?? quietHoursTimeZone)
+                    : null,
             digestFrequency:
                 item.digestEligible && nextSummaryEnabled
                     ? (options.summaryFrequency ?? digestFrequency)
@@ -426,15 +491,32 @@ export function NotificationsTab({
     function saveAllPreferenceSettings(
         options: Parameters<typeof buildPreferenceUpdate>[2] = {},
     ) {
+        const nextQuietEnabled = options.quietEnabled ?? quietHoursEnabled;
+        const nextQuietTimeZone = nextQuietEnabled
+            ? (options.quietTimeZone ??
+              quietHoursTimeZone ??
+              readCurrentTimeZone())
+            : null;
+        if (nextQuietEnabled && !nextQuietTimeZone) {
+            setQuietHoursTimeZoneError(quietHoursTimeZoneUnavailableMessage);
+            return false;
+        }
+
+        setQuietHoursTimeZoneError(null);
+        setQuietHoursTimeZone(nextQuietTimeZone);
         savePreferencesMutation.mutate(
-            categoryPreferences.map((item) =>
+            globalPreferencePolicies.map((item) =>
                 buildPreferenceUpdate(
                     item,
                     findPreference(item)?.enabled ?? item.defaultEnabled,
-                    options,
+                    {
+                        ...options,
+                        quietTimeZone: nextQuietTimeZone ?? undefined,
+                    },
                 ),
             ),
         );
+        return true;
     }
 
     const handleEnablePush = async () => {
@@ -832,15 +914,46 @@ export function NotificationsTab({
                                                 checked={quietHoursEnabled}
                                                 disabled={settingsBusy}
                                                 onCheckedChange={(checked) => {
-                                                    setQuietHoursEnabled(
-                                                        checked,
-                                                    );
+                                                    if (checked) {
+                                                        const timeZone =
+                                                            readCurrentTimeZone();
+                                                        if (!timeZone) {
+                                                            setQuietHoursTimeZoneError(
+                                                                quietHoursTimeZoneUnavailableMessage,
+                                                            );
+                                                            return;
+                                                        }
+                                                        setQuietHoursEnabled(
+                                                            true,
+                                                        );
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietEnabled: true,
+                                                                quietTimeZone:
+                                                                    timeZone,
+                                                            },
+                                                        );
+                                                        return;
+                                                    }
+
+                                                    setQuietHoursEnabled(false);
+                                                    setQuietHoursTimeZone(null);
                                                     saveAllPreferenceSettings({
-                                                        quietEnabled: checked,
+                                                        quietEnabled: false,
                                                     });
                                                 }}
                                             />
                                         </Row>
+                                        {quietHoursTimeZoneError && (
+                                            <div role="alert">
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {quietHoursTimeZoneError}
+                                                </Typography>
+                                            </div>
+                                        )}
                                         {quietHoursEnabled && (
                                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                                 <Input
