@@ -12,6 +12,7 @@ import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
 } from '../hooks/useDeliveryActionSync';
+import { useDeliveryHandoffSync } from '../hooks/useDeliveryHandoffSync';
 import {
     type DriverRouteWakeLockState,
     useDriverRouteWakeLock,
@@ -19,14 +20,21 @@ import {
 import { useDriverTracking } from '../hooks/useDriverTracking';
 import { useOfflineRouteCache } from '../hooks/useOfflineRouteCache';
 import { usePickupManifestSync } from '../hooks/usePickupManifestSync';
+import { deliveryRouteStepsWithLocalActions } from '../lib/deliveryActionPresentation';
 import {
     clearOtherDeliveryActionQueueScopes,
     createBrowserDeliveryActionQueuePersistence,
+    isDeliveryHandoffCommand,
 } from '../lib/deliveryActionQueue';
+import {
+    currentDeliveryRouteStep,
+    deliveryCurrentStopCommandDeliveries,
+} from '../lib/deliveryCurrentStopPresentation';
 import type {
     DeliveryDashboard as DeliveryDashboardData,
     DriverDeliveryDashboard,
 } from '../lib/deliveryDashboardTypes';
+import { createWebStorageDeliveryHandoffManifestCachePersistence } from '../lib/deliveryHandoffManifestCache';
 import { performDeliveryLogout } from '../lib/deliveryLogout';
 import {
     assertDeliveryOfflineWritesAllowed,
@@ -81,6 +89,9 @@ async function clearOtherStoredDriverRuns(userId: string, activeRunId: string) {
             createBrowserDeliveryActionQueuePersistence(),
             { userId, activeRunId },
         );
+        await createWebStorageDeliveryHandoffManifestCachePersistence(
+            window.localStorage,
+        ).clearOtherRuns?.({ userId, activeRunId });
         return true;
     } catch {
         // A completion marker is retained when supporting cleanup is uncertain.
@@ -373,9 +384,45 @@ function ActiveDriverDashboardWithPickupSync({
         runId: activeRunId,
         refreshServerState: onServerStateChanged,
     });
+    const displayedRouteSteps = dashboard.activeRun
+        ? deliveryRouteStepsWithLocalActions(
+              dashboard.activeRun.routeSteps,
+              deliverySync.snapshot,
+          )
+        : [];
+    const currentRouteStep = currentDeliveryRouteStep(displayedRouteSteps);
+    const handoffSelection =
+        currentRouteStep?.kind === 'delivery' &&
+        currentRouteStep.stop.id !== null
+            ? {
+                  target: {
+                      targetStopId: currentRouteStep.stop.id,
+                      retryAttempt: currentRouteStep.retryAttempt,
+                  },
+                  deliveries: deliveryCurrentStopCommandDeliveries(
+                      currentRouteStep.stop,
+                  ),
+              }
+            : null;
+    const deliveryHandoffSync = useDeliveryHandoffSync({
+        userId: dashboard.user.id,
+        runId: activeRunId,
+        target: handoffSelection?.target ?? null,
+        deliveries: handoffSelection?.deliveries ?? [],
+        actionSync: deliverySync,
+    });
+    const deliveryHandoff = handoffSelection
+        ? {
+              view: deliveryHandoffSync.handoff,
+              feedback: deliveryHandoffSync.feedback,
+              scan: deliveryHandoffSync.scan,
+              markItem: deliveryHandoffSync.markItem,
+              markRemainingReviewed: deliveryHandoffSync.markRemainingReviewed,
+          }
+        : null;
     const serverAcknowledgementCount = deliverySync.snapshot.entries.filter(
         (entry) =>
-            entry.command.kind !== 'verification-scan' &&
+            !isDeliveryHandoffCommand(entry.command) &&
             entry.acknowledgement?.kind === 'server',
     ).length;
     const minimumAcknowledgedRouteRevision = Math.max(
@@ -473,6 +520,7 @@ function ActiveDriverDashboardWithPickupSync({
             }}
             pickupQueue={pickupSync.snapshot}
             deliveryQueue={deliverySync.snapshot}
+            deliveryHandoff={deliveryHandoff}
             onPickupScan={(pickupNodeId, scanValue) =>
                 report(pickupSync.enqueueScan(pickupNodeId, scanValue))
             }
@@ -495,9 +543,25 @@ function ActiveDriverDashboardWithPickupSync({
             onDiscardPickupSync={(operationId) =>
                 report(pickupSync.discardEntry(operationId))
             }
-            onVerificationScan={(stopId, tracePath) =>
-                report(deliverySync.enqueueVerificationScan(stopId, tracePath))
-            }
+            onVerificationScan={(stopId, tracePath) => {
+                if (
+                    !handoffSelection ||
+                    handoffSelection.target.targetStopId !== stopId
+                ) {
+                    return Promise.resolve({
+                        status: 'failed' as const,
+                        message:
+                            'Aktivni posjet stanici promijenio se. Osvježi prikaz prije nove provjere.',
+                    });
+                }
+                return report(
+                    deliverySync.enqueueVerificationScan(
+                        stopId,
+                        tracePath,
+                        handoffSelection.target.retryAttempt,
+                    ),
+                );
+            }}
             onRetryDeliverySync={(operationId) =>
                 report(deliverySync.retry(operationId))
             }

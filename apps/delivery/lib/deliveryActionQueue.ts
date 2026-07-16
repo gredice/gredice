@@ -1,4 +1,8 @@
 import type {
+    DeliveryRunHandoffItemState,
+    DeliveryRunHandoffSkipReason,
+} from '@gredice/storage';
+import type {
     DeliveryExceptionOutcome,
     DeliveryExceptionReason,
 } from './deliveryDashboardTypes';
@@ -37,25 +41,42 @@ export type DeliveryExceptionCommand = DeliveryRouteCommandBase & {
     }>;
 };
 
-export type DeliveryVerificationScanCommand = {
-    kind: 'verification-scan';
+type DeliveryHandoffCommandBase = {
     operationId: string;
     runId: string;
     stopId: number;
+    expectedRetryAttempt: number;
     occurredAt: string;
+};
+
+export type DeliveryVerificationScanCommand = DeliveryHandoffCommandBase & {
+    kind: 'verification-scan';
     tracePath: string;
 };
+
+export type DeliveryVerificationMarkCommand = DeliveryHandoffCommandBase & {
+    kind: 'verification-mark';
+    itemStopId: number;
+    outcome: 'no-label' | 'missing' | 'skipped';
+    reason?: DeliveryRunHandoffSkipReason;
+};
+
+export type DeliveryHandoffCommand =
+    | DeliveryVerificationScanCommand
+    | DeliveryVerificationMarkCommand;
 
 export type DeliveryActionCommand =
     | DeliveryArriveCommand
     | DeliveryCompleteCommand
     | DeliveryExceptionCommand
-    | DeliveryVerificationScanCommand;
+    | DeliveryHandoffCommand;
 
-export type DeliveryServerActionCommand = Exclude<
+export type DeliveryRouteActionCommand = Exclude<
     DeliveryActionCommand,
-    DeliveryVerificationScanCommand
+    DeliveryHandoffCommand
 >;
+
+export type DeliveryServerActionCommand = DeliveryActionCommand;
 
 export type DeliveryActionCommandState =
     | 'queued'
@@ -65,13 +86,43 @@ export type DeliveryActionCommandState =
     | 'failed'
     | 'conflicted';
 
-export type DeliveryActionAcknowledgement = {
-    kind: 'server' | 'device';
+export type DeliveryRouteActionAcknowledgement = {
+    kind: 'server';
     replayed: boolean;
     routeRevision?: number;
     reroutePending?: boolean;
     runCompleted?: boolean;
 };
+
+export type DeliveryHandoffOperationOutcome =
+    | 'applied'
+    | 'already-applied'
+    | 'stale'
+    | 'invalid'
+    | 'wrong-stop'
+    | 'item-not-found';
+
+export type DeliveryHandoffOperationResult = {
+    kind: 'scan' | 'mark-item';
+    outcome: DeliveryHandoffOperationOutcome;
+    affectedStopIds: number[];
+    itemState?: DeliveryRunHandoffItemState;
+    reason?: DeliveryRunHandoffSkipReason;
+};
+
+export type DeliveryHandoffActionAcknowledgement = {
+    kind: 'handoff';
+    replayed: boolean;
+    retryAttempt: number;
+    result: DeliveryHandoffOperationResult;
+    routeRevision?: undefined;
+    reroutePending?: undefined;
+    runCompleted?: undefined;
+};
+
+export type DeliveryActionAcknowledgement =
+    | DeliveryRouteActionAcknowledgement
+    | DeliveryHandoffActionAcknowledgement;
 
 export type DeliveryActionQueueEntry = {
     sequence: number;
@@ -112,6 +163,12 @@ export type DeliveryActionTransportResult =
           routeRevision: number;
           reroutePending: boolean;
           runCompleted: boolean;
+      }
+    | {
+          status: 'handoff-acknowledged';
+          replayed: boolean;
+          retryAttempt: number;
+          result: DeliveryHandoffOperationResult;
       }
     | { status: 'retryable-failure'; code?: string }
     | { status: 'permanent-failure'; code?: string };
@@ -161,6 +218,15 @@ type DeliveryRouteCommandInput = {
     now?: () => Date;
 };
 
+type DeliveryHandoffCommandInput = {
+    operationId: string;
+    runId: string;
+    stopId: number;
+    expectedRetryAttempt: number;
+    occurredAt?: string;
+    now?: () => Date;
+};
+
 const persistenceVersion = 1;
 export const deliveryActionQueueTtlMs = 24 * 60 * 60 * 1_000;
 const maximumPersistedEntries = 200;
@@ -184,12 +250,36 @@ function validStopId(value: unknown): value is number {
     return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
+function validHandoffStopId(value: unknown): value is number {
+    return (
+        validStopId(value) &&
+        Number.isSafeInteger(value) &&
+        value <= 2_147_483_647
+    );
+}
+
 function validRevision(value: unknown): value is number {
     return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
+function validRetryAttempt(value: unknown): value is number {
+    return (
+        typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    );
+}
+
 function validDate(value: unknown): value is string {
     return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function validHandoffDate(value: unknown): value is string {
+    return (
+        typeof value === 'string' &&
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(?:Z|[+-](\d{2}):(\d{2}))$/.test(
+            value,
+        ) &&
+        Number.isFinite(Date.parse(value))
+    );
 }
 
 function validErrorCode(value: unknown): value is string {
@@ -224,10 +314,51 @@ function validOutcome(value: unknown): value is DeliveryExceptionOutcome {
     return value === 'deferred' || value === 'failed' || value === 'cancelled';
 }
 
+function validHandoffOperationId(value: unknown): value is string {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(value);
+}
+
 function validTracePath(value: unknown): value is string {
     return (
         typeof value === 'string' &&
+        value.length <= 2_048 &&
         normalizeHarvestTraceScanValue(value) === value
+    );
+}
+
+function validHandoffState(
+    value: unknown,
+): value is DeliveryRunHandoffItemState {
+    return (
+        value === 'unverified' ||
+        value === 'scanned' ||
+        value === 'no-label' ||
+        value === 'missing' ||
+        value === 'skipped'
+    );
+}
+
+function validHandoffSkipReason(
+    value: unknown,
+): value is DeliveryRunHandoffSkipReason {
+    return (
+        value === 'scanner-unavailable' ||
+        value === 'label-unreadable' ||
+        value === 'manual-verification' ||
+        value === 'other-operational'
+    );
+}
+
+function validHandoffOutcome(
+    value: unknown,
+): value is DeliveryHandoffOperationOutcome {
+    return (
+        value === 'applied' ||
+        value === 'already-applied' ||
+        value === 'stale' ||
+        value === 'invalid' ||
+        value === 'wrong-stop' ||
+        value === 'item-not-found'
     );
 }
 
@@ -239,6 +370,37 @@ function validException(value: unknown) {
         validReason(value.reason) &&
         validNote(value.note)
     );
+}
+
+export function isDeliveryHandoffCommand(
+    value: unknown,
+): value is DeliveryHandoffCommand {
+    if (
+        !isRecord(value) ||
+        (value.kind !== 'verification-scan' &&
+            value.kind !== 'verification-mark') ||
+        !validHandoffOperationId(value.operationId) ||
+        !validIdentifier(value.runId) ||
+        !validHandoffStopId(value.stopId) ||
+        !validRetryAttempt(value.expectedRetryAttempt) ||
+        !validHandoffDate(value.occurredAt)
+    ) {
+        return false;
+    }
+    if (value.kind === 'verification-scan') {
+        return validTracePath(value.tracePath);
+    }
+    if (
+        !validHandoffStopId(value.itemStopId) ||
+        (value.outcome !== 'no-label' &&
+            value.outcome !== 'missing' &&
+            value.outcome !== 'skipped')
+    ) {
+        return false;
+    }
+    return value.outcome === 'skipped'
+        ? validHandoffSkipReason(value.reason)
+        : value.reason === undefined;
 }
 
 function isDeliveryActionCommand(
@@ -253,9 +415,7 @@ function isDeliveryActionCommand(
     ) {
         return false;
     }
-    if (value.kind === 'verification-scan') {
-        return validTracePath(value.tracePath);
-    }
+    if (isDeliveryHandoffCommand(value)) return true;
     if (!validRevision(value.expectedRouteRevision)) return false;
     if (value.kind === 'arrive') return true;
     if (value.kind === 'deliver') return validNote(value.notes);
@@ -268,17 +428,74 @@ function isDeliveryActionCommand(
     );
 }
 
-function isAcknowledgement(
+function isHandoffOperationResult(
     value: unknown,
-): value is DeliveryActionAcknowledgement {
+): value is DeliveryHandoffOperationResult {
+    return (
+        isRecord(value) &&
+        (value.kind === 'scan' || value.kind === 'mark-item') &&
+        validHandoffOutcome(value.outcome) &&
+        Array.isArray(value.affectedStopIds) &&
+        value.affectedStopIds.every(validStopId) &&
+        new Set(value.affectedStopIds).size === value.affectedStopIds.length &&
+        (value.itemState === undefined || validHandoffState(value.itemState)) &&
+        (value.reason === undefined || validHandoffSkipReason(value.reason))
+    );
+}
+
+function handoffAcknowledgementMatchesCommand(
+    command: DeliveryHandoffCommand,
+    acknowledgement: DeliveryHandoffActionAcknowledgement,
+) {
+    const result = acknowledgement.result;
     if (
-        !isRecord(value) ||
-        !(value.kind === 'server' || value.kind === 'device') ||
-        typeof value.replayed !== 'boolean'
+        acknowledgement.retryAttempt !== command.expectedRetryAttempt ||
+        result.kind !==
+            (command.kind === 'verification-scan' ? 'scan' : 'mark-item')
     ) {
         return false;
     }
+    const emptyOutcome =
+        result.outcome === 'invalid' ||
+        result.outcome === 'wrong-stop' ||
+        result.outcome === 'item-not-found';
+    if (emptyOutcome) {
+        return (
+            result.affectedStopIds.length === 0 &&
+            result.itemState === undefined &&
+            result.reason === undefined &&
+            (result.outcome === 'wrong-stop' ||
+                (command.kind === 'verification-scan' &&
+                    result.outcome === 'invalid') ||
+                (command.kind === 'verification-mark' &&
+                    result.outcome === 'item-not-found'))
+        );
+    }
+    if (result.affectedStopIds.length === 0) return false;
+    if (command.kind === 'verification-scan') {
+        return result.itemState === 'scanned' && result.reason === undefined;
+    }
     return (
+        result.affectedStopIds.length === 1 &&
+        result.affectedStopIds[0] === command.itemStopId &&
+        result.itemState === command.outcome &&
+        result.reason ===
+            (command.outcome === 'skipped' ? command.reason : undefined)
+    );
+}
+
+function isAcknowledgement(
+    value: unknown,
+): value is DeliveryActionAcknowledgement {
+    if (!isRecord(value) || typeof value.replayed !== 'boolean') return false;
+    if (value.kind === 'handoff') {
+        return (
+            validRetryAttempt(value.retryAttempt) &&
+            isHandoffOperationResult(value.result)
+        );
+    }
+    return (
+        value.kind === 'server' &&
         (value.routeRevision === undefined ||
             validRevision(value.routeRevision)) &&
         (value.reroutePending === undefined ||
@@ -289,26 +506,47 @@ function isAcknowledgement(
 }
 
 function isEntry(value: unknown): value is DeliveryActionQueueEntry {
+    if (
+        !(
+            isRecord(value) &&
+            typeof value.sequence === 'number' &&
+            Number.isInteger(value.sequence) &&
+            value.sequence >= 0 &&
+            isDeliveryActionCommand(value.command) &&
+            (value.state === 'queued' ||
+                value.state === 'sending' ||
+                value.state === 'reconciling' ||
+                value.state === 'synced' ||
+                value.state === 'failed' ||
+                value.state === 'conflicted') &&
+            typeof value.attemptCount === 'number' &&
+            Number.isInteger(value.attemptCount) &&
+            value.attemptCount >= 0 &&
+            validDate(value.createdAt) &&
+            validDate(value.updatedAt) &&
+            (value.acknowledgement === undefined ||
+                isAcknowledgement(value.acknowledgement)) &&
+            (value.errorCode === undefined || validErrorCode(value.errorCode))
+        )
+    ) {
+        return false;
+    }
+    if (value.acknowledgement?.kind === 'handoff') {
+        return (
+            isDeliveryHandoffCommand(value.command) &&
+            value.state === 'synced' &&
+            handoffAcknowledgementMatchesCommand(
+                value.command,
+                value.acknowledgement,
+            )
+        );
+    }
+    if (isDeliveryHandoffCommand(value.command)) {
+        return value.state !== 'synced' && value.acknowledgement === undefined;
+    }
     return (
-        isRecord(value) &&
-        typeof value.sequence === 'number' &&
-        Number.isInteger(value.sequence) &&
-        value.sequence >= 0 &&
-        isDeliveryActionCommand(value.command) &&
-        (value.state === 'queued' ||
-            value.state === 'sending' ||
-            value.state === 'reconciling' ||
-            value.state === 'synced' ||
-            value.state === 'failed' ||
-            value.state === 'conflicted') &&
-        typeof value.attemptCount === 'number' &&
-        Number.isInteger(value.attemptCount) &&
-        value.attemptCount >= 0 &&
-        validDate(value.createdAt) &&
-        validDate(value.updatedAt) &&
-        (value.acknowledgement === undefined ||
-            isAcknowledgement(value.acknowledgement)) &&
-        (value.errorCode === undefined || validErrorCode(value.errorCode))
+        value.acknowledgement?.kind !== 'server' ||
+        !isDeliveryHandoffCommand(value.command)
     );
 }
 
@@ -323,6 +561,53 @@ function cloneEntry(entry: DeliveryActionQueueEntry) {
 
 function fingerprint(command: DeliveryActionCommand) {
     return JSON.stringify(command);
+}
+
+function handoffSemanticFingerprint(command: DeliveryHandoffCommand) {
+    return JSON.stringify(
+        command.kind === 'verification-scan'
+            ? {
+                  kind: command.kind,
+                  operationId: command.operationId,
+                  runId: command.runId,
+                  stopId: command.stopId,
+                  expectedRetryAttempt: command.expectedRetryAttempt,
+                  tracePath: command.tracePath,
+              }
+            : {
+                  kind: command.kind,
+                  operationId: command.operationId,
+                  runId: command.runId,
+                  stopId: command.stopId,
+                  expectedRetryAttempt: command.expectedRetryAttempt,
+                  itemStopId: command.itemStopId,
+                  outcome: command.outcome,
+                  reason: command.reason,
+              },
+    );
+}
+
+function monotonicHandoffCommand(
+    command: DeliveryHandoffCommand,
+    entries: readonly DeliveryActionQueueEntry[],
+): DeliveryHandoffCommand {
+    const previousOccurredAt = Math.max(
+        -1,
+        ...entries.flatMap((entry) =>
+            isDeliveryHandoffCommand(entry.command) &&
+            entry.command.runId === command.runId &&
+            entry.command.stopId === command.stopId &&
+            entry.command.expectedRetryAttempt === command.expectedRetryAttempt
+                ? [Date.parse(entry.command.occurredAt)]
+                : [],
+        ),
+    );
+    const occurredAt = Date.parse(command.occurredAt);
+    if (occurredAt > previousOccurredAt) return command;
+    return {
+        ...command,
+        occurredAt: new Date(previousOccurredAt + 1).toISOString(),
+    };
 }
 
 function resolvedOccurredAt(value: string | undefined, now: () => Date) {
@@ -389,18 +674,51 @@ export function createDeliveryVerificationScanCommand({
     operationId,
     runId,
     stopId,
+    expectedRetryAttempt,
     tracePath,
     occurredAt,
     now = () => new Date(),
-}: Omit<DeliveryRouteCommandInput, 'expectedRouteRevision'> & {
+}: DeliveryHandoffCommandInput & {
     tracePath: string;
 }): DeliveryVerificationScanCommand {
+    const trimmedTracePath = tracePath.trim();
+    const normalizedTracePath =
+        normalizeHarvestTraceScanValue(trimmedTracePath);
     return validatedCommand({
         kind: 'verification-scan',
         operationId,
         runId,
         stopId,
-        tracePath,
+        expectedRetryAttempt,
+        tracePath: normalizedTracePath ?? '',
+        occurredAt: resolvedOccurredAt(occurredAt, now),
+    });
+}
+
+export function createDeliveryVerificationMarkCommand({
+    operationId,
+    runId,
+    stopId,
+    expectedRetryAttempt,
+    itemStopId,
+    outcome,
+    reason,
+    occurredAt,
+    now = () => new Date(),
+}: DeliveryHandoffCommandInput & {
+    itemStopId: number;
+    outcome: DeliveryVerificationMarkCommand['outcome'];
+    reason?: DeliveryRunHandoffSkipReason;
+}): DeliveryVerificationMarkCommand {
+    return validatedCommand({
+        kind: 'verification-mark',
+        operationId,
+        runId,
+        stopId,
+        expectedRetryAttempt,
+        itemStopId,
+        outcome,
+        ...(reason ? { reason } : {}),
         occurredAt: resolvedOccurredAt(occurredAt, now),
     });
 }
@@ -508,7 +826,7 @@ export function deliveryActionPendingEntryForStop(
     const entries =
         snapshot?.entries.filter(
             (entry) =>
-                entry.command.kind !== 'verification-scan' &&
+                !isDeliveryHandoffCommand(entry.command) &&
                 entry.command.stopId === stopId &&
                 (entry.state !== 'synced' ||
                     entry.acknowledgement?.kind === 'server'),
@@ -534,10 +852,19 @@ export function deliveryActionQueueCanReplay(
     snapshot: DeliveryActionQueueSnapshot,
 ) {
     return (
-        snapshot.queuedCount > 0 &&
-        snapshot.failedCount === 0 &&
-        snapshot.conflictedCount === 0 &&
-        snapshot.reconcilingCount === 0 &&
+        snapshot.entries.some(
+            (entry) =>
+                entry.state === 'queued' ||
+                (isDeliveryHandoffCommand(entry.command) &&
+                    entry.state === 'failed'),
+        ) &&
+        !snapshot.entries.some(
+            (entry) =>
+                !isDeliveryHandoffCommand(entry.command) &&
+                (entry.state === 'failed' ||
+                    entry.state === 'conflicted' ||
+                    entry.state === 'reconciling'),
+        ) &&
         !snapshot.entries.some(deliveryActionAcknowledgementBlocksRoute)
     );
 }
@@ -545,12 +872,17 @@ export function deliveryActionQueueCanReplay(
 export function deliveryActionVerifiedTracePaths(
     snapshot: DeliveryActionQueueSnapshot | null,
     stopId: number,
+    expectedRetryAttempt: number,
 ) {
     return (
         snapshot?.entries.flatMap((entry) =>
             entry.command.kind === 'verification-scan' &&
             entry.command.stopId === stopId &&
-            entry.state === 'synced'
+            entry.command.expectedRetryAttempt === expectedRetryAttempt &&
+            entry.state !== 'conflicted' &&
+            (entry.acknowledgement?.kind !== 'handoff' ||
+                entry.acknowledgement.result.outcome === 'applied' ||
+                entry.acknowledgement.result.outcome === 'already-applied')
                 ? [entry.command.tracePath]
                 : [],
         ) ?? []
@@ -564,7 +896,7 @@ export function nextDeliveryActionRouteRevision(
     let revision = serverRouteRevision;
     for (const entry of snapshot?.entries ?? []) {
         if (
-            entry.command.kind === 'verification-scan' ||
+            isDeliveryHandoffCommand(entry.command) ||
             entry.state === 'conflicted'
         ) {
             continue;
@@ -907,7 +1239,7 @@ export class DeliveryActionQueue {
         serverRouteRevision: number,
         createCommand: (
             expectedRouteRevision: number,
-        ) => DeliveryServerActionCommand,
+        ) => DeliveryRouteActionCommand,
     ) {
         if (!validRevision(serverRouteRevision)) {
             throw new TypeError('Server route revision is invalid');
@@ -930,34 +1262,63 @@ export class DeliveryActionQueue {
         });
     }
 
-    private async enqueueLoaded(command: DeliveryActionCommand) {
+    private async enqueueLoaded(inputCommand: DeliveryActionCommand) {
         const exact = this.entries.find(
-            (entry) => entry.command.operationId === command.operationId,
+            (entry) => entry.command.operationId === inputCommand.operationId,
         );
         if (exact) {
-            if (fingerprint(exact.command) !== fingerprint(command)) {
+            const queueNormalizedReplay =
+                isDeliveryHandoffCommand(exact.command) &&
+                isDeliveryHandoffCommand(inputCommand) &&
+                handoffSemanticFingerprint(exact.command) ===
+                    handoffSemanticFingerprint(inputCommand) &&
+                Date.parse(inputCommand.occurredAt) <=
+                    Date.parse(exact.command.occurredAt);
+            if (
+                fingerprint(exact.command) !== fingerprint(inputCommand) &&
+                !queueNormalizedReplay
+            ) {
                 throw new DeliveryActionOperationConflictError(
-                    command.operationId,
+                    inputCommand.operationId,
                 );
             }
             return cloneEntry(exact);
         }
-        if (command.kind === 'verification-scan') {
-            const existingScan = this.entries.find(
-                (entry) =>
-                    entry.command.kind === 'verification-scan' &&
-                    entry.command.stopId === command.stopId &&
-                    entry.command.tracePath === command.tracePath,
-            );
-            if (existingScan) return cloneEntry(existingScan);
+        const command = isDeliveryHandoffCommand(inputCommand)
+            ? monotonicHandoffCommand(inputCommand, this.entries)
+            : inputCommand;
+        if (isDeliveryHandoffCommand(command)) {
+            const latestHandoff = this.entries
+                .filter(
+                    (entry) =>
+                        isDeliveryHandoffCommand(entry.command) &&
+                        entry.command.stopId === command.stopId &&
+                        entry.command.expectedRetryAttempt ===
+                            command.expectedRetryAttempt,
+                )
+                .at(-1);
+            const latestCommand = latestHandoff?.command;
+            const semanticDuplicate =
+                (command.kind === 'verification-scan' &&
+                    latestCommand?.kind === 'verification-scan' &&
+                    latestCommand.tracePath === command.tracePath) ||
+                (command.kind === 'verification-mark' &&
+                    latestCommand?.kind === 'verification-mark' &&
+                    latestCommand.itemStopId === command.itemStopId &&
+                    latestCommand.outcome === command.outcome &&
+                    latestCommand.reason === command.reason);
+            if (latestHandoff && semanticDuplicate) {
+                return cloneEntry(latestHandoff);
+            }
         } else {
             if (
                 this.entries.some(
                     (entry) =>
-                        entry.state === 'failed' ||
-                        entry.state === 'conflicted' ||
-                        entry.state === 'reconciling' ||
-                        deliveryActionAcknowledgementBlocksRoute(entry),
+                        !isDeliveryHandoffCommand(entry.command) &&
+                        (entry.state === 'failed' ||
+                            entry.state === 'conflicted' ||
+                            entry.state === 'reconciling' ||
+                            deliveryActionAcknowledgementBlocksRoute(entry)),
                 )
             ) {
                 throw new DeliveryActionBarrierError();
@@ -975,28 +1336,23 @@ export class DeliveryActionQueue {
                 }
             }
             if (
-                this.entries.some((entry) => entry.command.kind === 'exception')
+                this.entries.some(
+                    (entry) =>
+                        !isDeliveryHandoffCommand(entry.command) &&
+                        entry.command.kind === 'exception',
+                )
             ) {
                 throw new DeliveryActionBarrierError();
             }
         }
         const timestamp = this.now().toISOString();
-        const localOnly = command.kind === 'verification-scan';
         const entry: DeliveryActionQueueEntry = {
             sequence: this.nextSequence,
             command: cloneValue(command),
-            state: localOnly ? 'synced' : 'queued',
+            state: 'queued',
             attemptCount: 0,
             createdAt: timestamp,
             updatedAt: timestamp,
-            ...(localOnly
-                ? {
-                      acknowledgement: {
-                          kind: 'device' as const,
-                          replayed: false,
-                      },
-                  }
-                : {}),
         };
         this.nextSequence += 1;
         this.entries.push(entry);
@@ -1046,7 +1402,7 @@ export class DeliveryActionQueue {
             );
             if (
                 !entry ||
-                entry.command.kind === 'verification-scan' ||
+                isDeliveryHandoffCommand(entry.command) ||
                 entry.acknowledgement?.kind !== 'server'
             ) {
                 return false;
@@ -1059,6 +1415,44 @@ export class DeliveryActionQueue {
         });
     }
 
+    async completeHandoffReconciliation({
+        stopId,
+        expectedRetryAttempt,
+        operationIds,
+    }: {
+        stopId: number;
+        expectedRetryAttempt: number;
+        operationIds: readonly string[];
+    }) {
+        if (
+            !validHandoffStopId(stopId) ||
+            !validRetryAttempt(expectedRetryAttempt) ||
+            operationIds.some(
+                (operationId) => !validHandoffOperationId(operationId),
+            ) ||
+            new Set(operationIds).size !== operationIds.length
+        ) {
+            throw new TypeError('Delivery handoff reconciliation is invalid');
+        }
+        const reconciledOperationIds = new Set(operationIds);
+        return await this.runExclusive(async () => {
+            await this.load();
+            const before = this.entries.length;
+            this.entries = this.entries.filter(
+                (entry) =>
+                    !isDeliveryHandoffCommand(entry.command) ||
+                    entry.command.stopId !== stopId ||
+                    entry.command.expectedRetryAttempt !==
+                        expectedRetryAttempt ||
+                    entry.state !== 'synced' ||
+                    !reconciledOperationIds.has(entry.command.operationId),
+            );
+            if (this.entries.length === before) return 0;
+            await this.persist();
+            return before - this.entries.length;
+        });
+    }
+
     async discardConflictAndDependents(operationId: string) {
         return await this.runExclusive(async () => {
             await this.load();
@@ -1066,9 +1460,16 @@ export class DeliveryActionQueue {
                 (entry) => entry.command.operationId === operationId,
             );
             if (conflicted?.state !== 'conflicted') return false;
+            if (isDeliveryHandoffCommand(conflicted.command)) {
+                this.entries = this.entries.filter(
+                    (entry) => entry.command.operationId !== operationId,
+                );
+                await this.persist();
+                return true;
+            }
             this.entries = this.entries.filter(
                 (entry) =>
-                    entry.command.kind === 'verification-scan' ||
+                    isDeliveryHandoffCommand(entry.command) ||
                     entry.sequence < conflicted.sequence,
             );
             await this.persist();
@@ -1134,6 +1535,7 @@ export class DeliveryActionQueue {
     }
 
     private async replayEntries(generation: number) {
+        const attemptedHandoffOperationIds = new Set<string>();
         while (generation === this.generation) {
             const command = await this.runExclusive(async () => {
                 await this.load();
@@ -1142,18 +1544,32 @@ export class DeliveryActionQueue {
                 ) {
                     return null;
                 }
-                const entry = this.entries.find(
-                    (candidate) =>
-                        candidate.command.kind !== 'verification-scan' &&
-                        candidate.state !== 'synced',
-                );
+                const entry = this.entries.find((candidate) => {
+                    if (candidate.state === 'synced') return false;
+                    if (!isDeliveryHandoffCommand(candidate.command)) {
+                        return true;
+                    }
+                    if (
+                        candidate.state === 'conflicted' ||
+                        candidate.state === 'reconciling'
+                    ) {
+                        return false;
+                    }
+                    return !attemptedHandoffOperationIds.has(
+                        candidate.command.operationId,
+                    );
+                });
+                if (!entry) return null;
                 if (
-                    !entry ||
-                    entry.state === 'failed' ||
-                    entry.state === 'conflicted' ||
-                    entry.state === 'reconciling'
+                    !isDeliveryHandoffCommand(entry.command) &&
+                    (entry.state === 'failed' ||
+                        entry.state === 'conflicted' ||
+                        entry.state === 'reconciling')
                 ) {
                     return null;
+                }
+                if (isDeliveryHandoffCommand(entry.command)) {
+                    attemptedHandoffOperationIds.add(entry.command.operationId);
                 }
                 entry.state = 'sending';
                 entry.attemptCount += 1;
@@ -1161,10 +1577,7 @@ export class DeliveryActionQueue {
                 delete entry.errorCode;
                 delete entry.acknowledgement;
                 await this.persist();
-                return cloneValue(entry.command) as Exclude<
-                    DeliveryActionCommand,
-                    DeliveryVerificationScanCommand
-                >;
+                return cloneValue(entry.command);
             });
             if (!command) break;
             let result: DeliveryActionTransportResult;
@@ -1184,32 +1597,60 @@ export class DeliveryActionQueue {
                 );
                 if (!entry || entry.state === 'synced') return false;
                 entry.updatedAt = this.now().toISOString();
+                const handoffCommand = isDeliveryHandoffCommand(command);
                 if (
+                    result.status === 'handoff-acknowledged' &&
+                    handoffCommand
+                ) {
+                    entry.state = 'synced';
+                    entry.acknowledgement = {
+                        kind: 'handoff',
+                        replayed: result.replayed,
+                        retryAttempt: result.retryAttempt,
+                        result: cloneValue(result.result),
+                    };
+                    delete entry.errorCode;
+                } else if (
                     result.status === 'applied' ||
                     result.status === 'exact-duplicate'
                 ) {
-                    entry.state =
-                        command.kind === 'exception' ? 'reconciling' : 'synced';
-                    entry.acknowledgement = {
-                        kind: 'server',
-                        replayed: result.status === 'exact-duplicate',
-                        routeRevision: result.routeRevision,
-                        reroutePending: result.reroutePending,
-                        runCompleted: result.runCompleted,
-                    };
-                    delete entry.errorCode;
+                    if (handoffCommand) {
+                        entry.state = 'failed';
+                        entry.errorCode = 'invalid-acknowledgement';
+                    } else {
+                        entry.state =
+                            command.kind === 'exception'
+                                ? 'reconciling'
+                                : 'synced';
+                        entry.acknowledgement = {
+                            kind: 'server',
+                            replayed: result.status === 'exact-duplicate',
+                            routeRevision: result.routeRevision,
+                            reroutePending: result.reroutePending,
+                            runCompleted: result.runCompleted,
+                        };
+                        delete entry.errorCode;
+                    }
                 } else if (result.status === 'retryable-failure') {
                     entry.state = 'failed';
                     entry.errorCode = validErrorCode(result.code)
                         ? result.code
-                        : 'delivery-action-sync-failed';
-                } else {
+                        : handoffCommand
+                          ? 'handoff-sync-failed'
+                          : 'delivery-action-sync-failed';
+                } else if (result.status === 'permanent-failure') {
                     entry.state = 'conflicted';
                     entry.errorCode = validErrorCode(result.code)
                         ? result.code
-                        : 'delivery-action-conflict';
+                        : handoffCommand
+                          ? 'handoff-sync-conflict'
+                          : 'delivery-action-conflict';
+                } else {
+                    entry.state = 'failed';
+                    entry.errorCode = 'invalid-acknowledgement';
                 }
                 await this.persist();
+                if (handoffCommand) return false;
                 return (
                     entry.state === 'failed' ||
                     entry.state === 'conflicted' ||

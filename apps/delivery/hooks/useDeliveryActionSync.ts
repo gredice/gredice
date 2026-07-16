@@ -1,5 +1,6 @@
 'use client';
 
+import type { DeliveryRunHandoffSkipReason } from '@gredice/storage';
 import {
     useCallback,
     useEffect,
@@ -19,14 +20,16 @@ import {
     createDeliveryArriveCommand,
     createDeliveryCompleteCommand,
     createDeliveryExceptionCommand,
+    createDeliveryVerificationMarkCommand,
     createDeliveryVerificationScanCommand,
     DeliveryActionBarrierError,
     type DeliveryActionCommand,
     DeliveryActionQueue,
     type DeliveryActionQueueCoordinator,
     type DeliveryActionQueueSnapshot,
-    type DeliveryServerActionCommand,
+    type DeliveryRouteActionCommand,
     deliveryActionQueueCanReplay,
+    isDeliveryHandoffCommand,
 } from '../lib/deliveryActionQueue';
 import { sendDeliveryAction } from '../lib/deliveryActionTransport';
 import type { DeliveryExceptionMutation } from '../lib/deliveryExceptionPresentation';
@@ -182,7 +185,7 @@ export function useDeliveryActionSync({
             const next = await queue.replay();
             announceChange();
             const changedServerEntries = next.entries.filter((entry) => {
-                if (entry.command.kind === 'verification-scan') return false;
+                if (isDeliveryHandoffCommand(entry.command)) return false;
                 const previous = before.entries.find(
                     (candidate) =>
                         candidate.command.operationId ===
@@ -215,7 +218,7 @@ export function useDeliveryActionSync({
             if (changedServerEntries.length === 0) return next;
             const acknowledgedEntries = next.entries.filter(
                 (entry) =>
-                    entry.command.kind !== 'verification-scan' &&
+                    !isDeliveryHandoffCommand(entry.command) &&
                     entry.acknowledgement?.kind === 'server',
             );
             const highestRevision = Math.max(
@@ -267,7 +270,7 @@ export function useDeliveryActionSync({
             .getSnapshot()
             .entries.filter(
                 (entry) =>
-                    entry.command.kind !== 'verification-scan' &&
+                    !isDeliveryHandoffCommand(entry.command) &&
                     entry.acknowledgement?.kind === 'server' &&
                     !entry.acknowledgement.runCompleted,
             );
@@ -312,7 +315,7 @@ export function useDeliveryActionSync({
             }
             const hasServerAcknowledgement = restored.entries.some(
                 (entry) =>
-                    entry.command.kind !== 'verification-scan' &&
+                    !isDeliveryHandoffCommand(entry.command) &&
                     entry.acknowledgement?.kind === 'server',
             );
             if (hasServerAcknowledgement) {
@@ -377,7 +380,7 @@ export function useDeliveryActionSync({
         async (command: DeliveryActionCommand) => {
             const entry = await queue.enqueue(command);
             announceChange();
-            if (navigator.onLine && command.kind !== 'verification-scan') {
+            if (navigator.onLine) {
                 void replay().catch(() => undefined);
             }
             return entry;
@@ -390,7 +393,7 @@ export function useDeliveryActionSync({
             serverRouteRevision: number,
             createCommand: (
                 expectedRouteRevision: number,
-            ) => DeliveryServerActionCommand,
+            ) => DeliveryRouteActionCommand,
         ) => {
             const entry = await queue.enqueueRouteAction(
                 serverRouteRevision,
@@ -465,15 +468,59 @@ export function useDeliveryActionSync({
                         exceptions: mutation.exceptions,
                     }),
             ),
-        enqueueVerificationScan: (stopId: number, tracePath: string) =>
+        enqueueVerificationScan: (
+            stopId: number,
+            tracePath: string,
+            expectedRetryAttempt: number,
+        ) =>
             enqueue(
                 createDeliveryVerificationScanCommand({
                     operationId: operationId('verification'),
                     runId,
                     stopId,
+                    expectedRetryAttempt,
                     tracePath,
                 }),
             ),
+        enqueueVerificationMark: ({
+            stopId,
+            expectedRetryAttempt,
+            itemStopId,
+            outcome,
+            reason,
+        }: {
+            stopId: number;
+            expectedRetryAttempt: number;
+            itemStopId: number;
+            outcome: 'no-label' | 'missing' | 'skipped';
+            reason?: DeliveryRunHandoffSkipReason;
+        }) =>
+            enqueue(
+                createDeliveryVerificationMarkCommand({
+                    operationId: operationId('verification'),
+                    runId,
+                    stopId,
+                    expectedRetryAttempt,
+                    itemStopId,
+                    outcome,
+                    reason,
+                }),
+            ),
+        completeHandoffReconciliation: async (
+            stopId: number,
+            expectedRetryAttempt: number,
+            operationIds: readonly string[],
+        ) => {
+            const removed = await queue.completeHandoffReconciliation({
+                stopId,
+                expectedRetryAttempt,
+                operationIds,
+            });
+            if (removed > 0) announceChange();
+            return removed;
+        },
+        getSnapshot: queue.getSnapshot,
+        syncNow: replay,
         retry,
         recoverConflict,
         reconcilePendingServerState,

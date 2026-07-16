@@ -10,6 +10,7 @@ import {
     createDeliveryArriveCommand,
     createDeliveryCompleteCommand,
     createDeliveryExceptionCommand,
+    createDeliveryVerificationMarkCommand,
     createDeliveryVerificationScanCommand,
     createMemoryDeliveryActionQueuePersistence,
     DeliveryActionBarrierError,
@@ -21,6 +22,7 @@ import {
     deliveryActionPendingEntryForStop,
     deliveryActionQueueCanReplay,
     deliveryActionVerifiedTracePaths,
+    isDeliveryHandoffCommand,
     nextDeliveryActionRouteRevision,
 } from './deliveryActionQueue';
 
@@ -206,6 +208,9 @@ test('a server-required reroute stops replay before dependent route work', async
     const actions = queue({
         transport: async (command) => {
             transported.push(command.operationId);
+            if (isDeliveryHandoffCommand(command)) {
+                throw new Error('Expected a route command');
+            }
             return {
                 status: 'applied',
                 routeRevision: command.expectedRouteRevision + 1,
@@ -302,9 +307,9 @@ test('computes a new command revision after restoring durable predecessors atomi
     const secondCommand = commands[1];
     if (
         !firstCommand ||
-        firstCommand.kind === 'verification-scan' ||
+        isDeliveryHandoffCommand(firstCommand) ||
         !secondCommand ||
-        secondCommand.kind === 'verification-scan'
+        isDeliveryHandoffCommand(secondCommand)
     ) {
         throw new Error('Expected two route-changing commands');
     }
@@ -417,13 +422,26 @@ test('rapid repeated route taps reuse the durable pending operation', async () =
     assert.equal(actionQueue.getSnapshot().entries.length, 1);
 });
 
-test('advisory verification scans persist locally, deduplicate, and never call transport', async () => {
+test('server-backed handoff scans deduplicate and replay before later route actions', async () => {
     const persistence = createMemoryDeliveryActionQueuePersistence();
-    let transportCalls = 0;
+    const transported: string[] = [];
     const actionQueue = queue({
         persistence,
-        transport: async () => {
-            transportCalls += 1;
+        transport: async (command) => {
+            transported.push(command.operationId);
+            if (command.kind === 'verification-scan') {
+                return {
+                    status: 'handoff-acknowledged',
+                    replayed: false,
+                    retryAttempt: 0,
+                    result: {
+                        kind: 'scan',
+                        outcome: 'applied',
+                        affectedStopIds: [101],
+                        itemState: 'scanned',
+                    },
+                };
+            }
             return {
                 status: 'applied',
                 routeRevision: 5,
@@ -433,9 +451,10 @@ test('advisory verification scans persist locally, deduplicate, and never call t
         },
     });
     const scan = createDeliveryVerificationScanCommand({
-        operationId: 'scan-1',
+        operationId: 'scan-0001',
         runId: scope.runId,
         stopId: 101,
+        expectedRetryAttempt: 0,
         tracePath: '/trag/plant-trace-token-0001',
         now,
     });
@@ -444,17 +463,288 @@ test('advisory verification scans persist locally, deduplicate, and never call t
     await actionQueue.enqueue(arrive());
     await actionQueue.replay();
 
-    assert.equal(transportCalls, 1);
+    assert.deepEqual(transported, ['scan-0001', 'arrive-1']);
     assert.deepEqual(
-        deliveryActionVerifiedTracePaths(actionQueue.getSnapshot(), 101),
+        deliveryActionVerifiedTracePaths(actionQueue.getSnapshot(), 101, 0),
         ['/trag/plant-trace-token-0001'],
     );
     const restored = queue({ persistence });
     await restored.restore();
     assert.deepEqual(
-        deliveryActionVerifiedTracePaths(restored.getSnapshot(), 101),
+        deliveryActionVerifiedTracePaths(restored.getSnapshot(), 101, 0),
         ['/trag/plant-trace-token-0001'],
     );
+    assert.equal(
+        await restored.completeHandoffReconciliation({
+            stopId: 101,
+            expectedRetryAttempt: 0,
+            operationIds: ['scan-0001'],
+        }),
+        1,
+    );
+    assert.equal(
+        restored
+            .getSnapshot()
+            .entries.some(
+                (entry) => entry.command.kind === 'verification-scan',
+            ),
+        false,
+    );
+});
+
+test('advisory handoff failures remain visible without blocking later route replay', async () => {
+    const transported: string[] = [];
+    const actionQueue = queue({
+        transport: async (command) => {
+            transported.push(command.operationId);
+            if (command.kind === 'verification-scan') {
+                return { status: 'retryable-failure', code: 'offline' };
+            }
+            if (command.kind === 'verification-mark') {
+                return {
+                    status: 'permanent-failure',
+                    code: 'handoff-operation-conflict',
+                };
+            }
+            return {
+                status: 'applied',
+                routeRevision: 5,
+                reroutePending: false,
+                runCompleted: false,
+            };
+        },
+    });
+    await actionQueue.enqueue(
+        createDeliveryVerificationScanCommand({
+            operationId: 'scan-failure-0001',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 0,
+            tracePath: '/trag/plant-trace-token-0002',
+            now,
+        }),
+    );
+    await actionQueue.enqueue(
+        createDeliveryVerificationMarkCommand({
+            operationId: 'mark-failure-0001',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 0,
+            itemStopId: 102,
+            outcome: 'missing',
+            now,
+        }),
+    );
+    await actionQueue.enqueue(arrive());
+
+    const replayed = await actionQueue.replay();
+
+    assert.deepEqual(transported, [
+        'scan-failure-0001',
+        'mark-failure-0001',
+        'arrive-1',
+    ]);
+    assert.deepEqual(
+        replayed.entries.map((entry) => [
+            entry.command.operationId,
+            entry.state,
+            entry.errorCode,
+        ]),
+        [
+            ['scan-failure-0001', 'failed', 'offline'],
+            ['mark-failure-0001', 'conflicted', 'handoff-operation-conflict'],
+            ['arrive-1', 'synced', undefined],
+        ],
+    );
+    assert.equal(
+        deliveryActionPendingEntryForStop(replayed, 101)?.command.operationId,
+        'arrive-1',
+    );
+});
+
+test('rapid mark duplicates collapse while later semantic corrections stay ordered', async () => {
+    const actionQueue = queue();
+    const first = await actionQueue.enqueue(
+        createDeliveryVerificationMarkCommand({
+            operationId: 'mark-no-label-0001',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 2,
+            itemStopId: 102,
+            outcome: 'no-label',
+            now,
+        }),
+    );
+    const duplicate = await actionQueue.enqueue(
+        createDeliveryVerificationMarkCommand({
+            operationId: 'mark-no-label-0002',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 2,
+            itemStopId: 102,
+            outcome: 'no-label',
+            now,
+        }),
+    );
+    const correction = await actionQueue.enqueue(
+        createDeliveryVerificationMarkCommand({
+            operationId: 'mark-missing-0001',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 2,
+            itemStopId: 102,
+            outcome: 'missing',
+            now,
+        }),
+    );
+    const reversion = await actionQueue.enqueue(
+        createDeliveryVerificationMarkCommand({
+            operationId: 'mark-no-label-0003',
+            runId: scope.runId,
+            stopId: 101,
+            expectedRetryAttempt: 2,
+            itemStopId: 102,
+            outcome: 'no-label',
+            now,
+        }),
+    );
+
+    assert.equal(duplicate.command.operationId, first.command.operationId);
+    assert.notEqual(correction.command.operationId, first.command.operationId);
+    assert.notEqual(reversion.command.operationId, first.command.operationId);
+    assert.deepEqual(
+        actionQueue
+            .getSnapshot()
+            .entries.map((entry) => entry.command.operationId),
+        ['mark-no-label-0001', 'mark-missing-0001', 'mark-no-label-0003'],
+    );
+    assert.deepEqual(
+        actionQueue
+            .getSnapshot()
+            .entries.map((entry) => entry.command.occurredAt),
+        [
+            '2026-07-15T12:00:00.000Z',
+            '2026-07-15T12:00:00.001Z',
+            '2026-07-15T12:00:00.002Z',
+        ],
+    );
+});
+
+test('arbitrary QR payloads are rejected before durable handoff enqueue', async () => {
+    const persistence = createMemoryDeliveryActionQueuePersistence();
+    const actionQueue = queue({ persistence });
+
+    assert.throws(
+        () =>
+            createDeliveryVerificationScanCommand({
+                operationId: 'private-scan-0001',
+                runId: scope.runId,
+                stopId: 101,
+                expectedRetryAttempt: 0,
+                tracePath: 'WIFI:T:WPA;S:private-network;P:secret-password;;',
+                now,
+            }),
+        TypeError,
+    );
+
+    assert.equal((await actionQueue.restore()).entries.length, 0);
+    const restored = queue({ persistence });
+    assert.equal((await restored.restore()).entries.length, 0);
+});
+
+test('restore drops legacy local-only scans without losing route actions', async () => {
+    let savedEntries: readonly unknown[] = [];
+    const persistence: DeliveryActionQueuePersistence = {
+        durability: 'memory',
+        async load() {
+            return {
+                version: 1,
+                entries: [
+                    {
+                        sequence: 0,
+                        command: arrive(),
+                        state: 'queued',
+                        attemptCount: 0,
+                        createdAt: now().toISOString(),
+                        updatedAt: now().toISOString(),
+                    },
+                    {
+                        sequence: 1,
+                        command: {
+                            kind: 'verification-scan',
+                            operationId: 'legacy-scan-0001',
+                            runId: scope.runId,
+                            stopId: 101,
+                            occurredAt: now().toISOString(),
+                            tracePath: '/trag/legacy-plant-trace-0001',
+                        },
+                        state: 'synced',
+                        attemptCount: 0,
+                        createdAt: now().toISOString(),
+                        updatedAt: now().toISOString(),
+                        acknowledgement: {
+                            kind: 'device',
+                            replayed: false,
+                        },
+                    },
+                    {
+                        sequence: 2,
+                        command: createDeliveryVerificationMarkCommand({
+                            operationId: 'tampered-mark-0001',
+                            runId: scope.runId,
+                            stopId: 101,
+                            expectedRetryAttempt: 0,
+                            itemStopId: 102,
+                            outcome: 'missing',
+                            now,
+                        }),
+                        state: 'synced',
+                        attemptCount: 1,
+                        createdAt: now().toISOString(),
+                        updatedAt: now().toISOString(),
+                        acknowledgement: {
+                            kind: 'handoff',
+                            replayed: false,
+                            retryAttempt: 0,
+                            result: {
+                                kind: 'mark-item',
+                                outcome: 'applied',
+                                affectedStopIds: [999],
+                                itemState: 'scanned',
+                            },
+                        },
+                    },
+                    {
+                        sequence: 3,
+                        command: createDeliveryVerificationScanCommand({
+                            operationId: 'unacked-scan-0001',
+                            runId: scope.runId,
+                            stopId: 101,
+                            expectedRetryAttempt: 0,
+                            tracePath: '/trag/unacked-trace-token-0001',
+                            now,
+                        }),
+                        state: 'synced',
+                        attemptCount: 1,
+                        createdAt: now().toISOString(),
+                        updatedAt: now().toISOString(),
+                    },
+                ],
+            };
+        },
+        async save(_scope, entries) {
+            savedEntries = entries;
+        },
+        async clear() {},
+    };
+
+    const restored = await queue({ persistence }).restore();
+
+    assert.deepEqual(
+        restored.entries.map((entry) => entry.command.operationId),
+        ['arrive-1'],
+    );
+    assert.equal(savedEntries.length, 1);
 });
 
 test('rejects operation ID reuse with a changed payload and expires old device data', async () => {
@@ -669,6 +959,7 @@ test('shared state and replay locks preserve concurrent cross-tab actions', asyn
                 operationId: 'cross-tab-scan',
                 runId: scope.runId,
                 stopId: 101,
+                expectedRetryAttempt: 0,
                 tracePath: '/trag/cross-tab-trace-0001',
                 now,
             }),

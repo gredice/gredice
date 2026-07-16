@@ -1,4 +1,5 @@
 import type { DeliveryActionQueueSnapshot } from './deliveryActionQueue';
+import { isDeliveryHandoffCommand } from './deliveryActionQueue';
 
 const channelMessageVersion = 1;
 
@@ -37,7 +38,7 @@ export function deliveryRunCompletionFromSnapshot(
 ): DeliveryRunCompletion | null {
     const completed = snapshot.entries.find(
         (entry) =>
-            entry.command.kind !== 'verification-scan' &&
+            !isDeliveryHandoffCommand(entry.command) &&
             entry.acknowledgement?.kind === 'server' &&
             entry.acknowledgement.runCompleted,
     );

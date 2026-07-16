@@ -28,6 +28,7 @@ import {
     type DeliveryActionQueueSnapshot,
     deliveryActionPendingEntryForStop,
     deliveryActionVerifiedTracePaths,
+    isDeliveryHandoffCommand,
 } from '../lib/deliveryActionQueue';
 import {
     currentDeliveryRouteStep,
@@ -75,7 +76,10 @@ import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DeliveryBatchCard } from './DeliveryBatchCard';
 import { DeliveryMap } from './DeliveryMap';
 import type { PickupManifestSyncSummary } from './DeliveryPickupCard';
-import { DriverCurrentStopCommandCenter } from './DriverCurrentStopCommandCenter';
+import {
+    type DeliveryHandoffCommandController,
+    DriverCurrentStopCommandCenter,
+} from './DriverCurrentStopCommandCenter';
 import { DriverRouteContinuity } from './DriverRouteContinuity';
 import { DriverRouteProgressTimeline } from './DriverRouteProgressTimeline';
 import { DriverRouteStepDetails } from './DriverRouteStepDetails';
@@ -349,7 +353,7 @@ export function DeliveryActionSyncStatus({
     const pendingEntries =
         snapshot?.entries.filter(
             (entry) =>
-                entry.command.kind !== 'verification-scan' &&
+                !isDeliveryHandoffCommand(entry.command) &&
                 entry.state !== 'synced',
         ) ?? [];
     const blockingEntry: DeliveryActionQueueEntry | undefined =
@@ -531,6 +535,7 @@ export function DriverDashboard({
     onException,
     pickupQueue,
     deliveryQueue,
+    deliveryHandoff,
     onPickupScan,
     onPickupItemState,
     onConfirmPickupManifest,
@@ -570,6 +575,7 @@ export function DriverDashboard({
     ) => Promise<DeliveryExceptionSubmitResult>;
     pickupQueue: PickupManifestQueueSnapshot | null;
     deliveryQueue: DeliveryActionQueueSnapshot | null;
+    deliveryHandoff?: DeliveryHandoffCommandController | null;
     onPickupScan: (
         pickupNodeId: string,
         scanValue: string,
@@ -609,10 +615,11 @@ export function DriverDashboard({
         run?.reroutePending ||
             deliveryQueue?.entries.some(
                 (entry) =>
-                    entry.state === 'failed' ||
-                    entry.state === 'conflicted' ||
-                    entry.state === 'reconciling' ||
-                    deliveryActionAcknowledgementBlocksRoute(entry),
+                    !isDeliveryHandoffCommand(entry.command) &&
+                    (entry.state === 'failed' ||
+                        entry.state === 'conflicted' ||
+                        entry.state === 'reconciling' ||
+                        deliveryActionAcknowledgementBlocksRoute(entry)),
             ),
     );
     const syncingRouteStepIds = new Set(
@@ -710,7 +717,7 @@ export function DriverDashboard({
     const currentCommandIdentity = currentRouteStepIdentity
         ? currentPickup
             ? `${currentRouteStepIdentity}:manifest:${currentPickupManifestId ?? 'complete'}`
-            : `${currentRouteStepIdentity}:requests:${currentDeliveryCommandRequestIdentity ?? 'none'}`
+            : `${currentRouteStepIdentity}:attempt:${currentRouteStep?.kind === 'delivery' ? currentRouteStep.retryAttempt : 0}:requests:${currentDeliveryCommandRequestIdentity ?? 'none'}`
         : null;
     const focusCurrentCommand = useCurrentCommandTransitionFocus(
         currentCommandIdentity,
@@ -990,7 +997,7 @@ export function DriverDashboard({
                             />
                         ) : currentDeliveryStop ? (
                             <DriverCurrentStopCommandCenter
-                                key={`${run.id}:delivery:${currentDeliveryStop.id}:requests:${currentDeliveryCommandRequestIdentity}`}
+                                key={`${run.id}:delivery:${currentDeliveryStop.id}:attempt:${currentRouteStep?.kind === 'delivery' ? currentRouteStep.retryAttempt : 0}:requests:${currentDeliveryCommandRequestIdentity}`}
                                 kind="delivery"
                                 stop={currentDeliveryStop}
                                 routeRevision={run.routeRevision}
@@ -1000,11 +1007,16 @@ export function DriverDashboard({
                                     currentDeliveryStop.id,
                                 )}
                                 syncEntry={currentDeliverySyncEntry}
+                                handoff={deliveryHandoff ?? undefined}
                                 verifiedTracePaths={
                                     currentDeliveryStopId
                                         ? deliveryActionVerifiedTracePaths(
                                               deliveryQueue,
                                               currentDeliveryStopId,
+                                              currentRouteStep?.kind ===
+                                                  'delivery'
+                                                  ? currentRouteStep.retryAttempt
+                                                  : 0,
                                           )
                                         : []
                                 }
