@@ -25,6 +25,7 @@ type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 
 interface FarmScheduleOperationsSectionProps {
+    accountId: string;
     raisedBeds: FarmScheduleDayData['raisedBeds'];
     scheduledOperations: FarmScheduleDayData['scheduledOperations'];
     plantSorts: EntityStandardized[] | null | undefined;
@@ -34,6 +35,7 @@ interface FarmScheduleOperationsSectionProps {
     >;
     mode: FarmScheduleOperationsMode;
     selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }
 
@@ -65,6 +67,7 @@ function buildOperationLabel(
 }
 
 export function FarmScheduleOperationsSection({
+    accountId,
     raisedBeds,
     scheduledOperations,
     plantSorts,
@@ -72,6 +75,7 @@ export function FarmScheduleOperationsSection({
     raisedBedPhotoPreviewByIdPromise,
     mode,
     selectedDateKey,
+    sessionIncarnation,
     userId,
 }: FarmScheduleOperationsSectionProps) {
     if (scheduledOperations.length === 0) {
@@ -213,12 +217,15 @@ export function FarmScheduleOperationsSection({
                             key={operation.id}
                             completionAction={
                                 <CompleteOperationModal
+                                    accountId={accountId}
                                     expectedEntityId={operation.entityId}
                                     expectedTaskVersionEventId={
                                         operation.taskVersionEventId
                                     }
                                     operationId={operation.id}
                                     label={operation.label}
+                                    sessionIncarnation={sessionIncarnation}
+                                    userId={userId}
                                     conditions={
                                         operationDataById.get(
                                             operation.entityId,
@@ -329,6 +336,7 @@ export function FarmScheduleOperationsSection({
                                         key={operation.id}
                                         completionAction={
                                             <CompleteOperationModal
+                                                accountId={accountId}
                                                 expectedEntityId={
                                                     operation.entityId
                                                 }
@@ -337,6 +345,10 @@ export function FarmScheduleOperationsSection({
                                                 }
                                                 operationId={operation.id}
                                                 label={operation.label}
+                                                sessionIncarnation={
+                                                    sessionIncarnation
+                                                }
+                                                userId={userId}
                                                 conditions={
                                                     operationDataById.get(
                                                         operation.entityId,
@@ -373,12 +385,15 @@ export function FarmScheduleOperationsSection({
                                 key={operation.id}
                                 completionAction={
                                     <CompleteOperationModal
+                                        accountId={accountId}
                                         expectedEntityId={operation.entityId}
                                         expectedTaskVersionEventId={
                                             operation.taskVersionEventId
                                         }
                                         operationId={operation.id}
                                         label={operation.label}
+                                        sessionIncarnation={sessionIncarnation}
+                                        userId={userId}
                                         conditions={
                                             operationDataById.get(
                                                 operation.entityId,

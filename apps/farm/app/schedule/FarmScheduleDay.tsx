@@ -13,6 +13,7 @@ import type {
 import { getFarmScheduleRaisedBedPhotoPreviewsForDay } from './scheduleData';
 
 interface FarmScheduleDayProps {
+    accountId: string;
     dayDataPromise: Promise<FarmScheduleDayData>;
     operationsDayDataPromise: Promise<FarmScheduleOperationsDayData>;
     plantingsDayDataPromise: Promise<FarmSchedulePlantingsDayData>;
@@ -22,10 +23,12 @@ interface FarmScheduleDayProps {
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
     groupWateringOperations: boolean;
     selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }
 
 export function FarmScheduleDay({
+    accountId,
     dayDataPromise,
     operationsDayDataPromise,
     operationsDataPromise,
@@ -33,6 +36,7 @@ export function FarmScheduleDay({
     plantSortsPromise,
     groupWateringOperations,
     selectedDateKey,
+    sessionIncarnation,
     userId,
 }: FarmScheduleDayProps) {
     const raisedBedPhotoPreviewByIdPromise =
@@ -46,6 +50,7 @@ export function FarmScheduleDay({
             {groupWateringOperations && (
                 <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                     <FarmScheduleOperationsSectionContent
+                        accountId={accountId}
                         dayDataPromise={operationsDayDataPromise}
                         plantSortsPromise={plantSortsPromise}
                         operationsDataPromise={operationsDataPromise}
@@ -54,6 +59,7 @@ export function FarmScheduleDay({
                         }
                         mode="watering"
                         selectedDateKey={selectedDateKey}
+                        sessionIncarnation={sessionIncarnation}
                         userId={userId}
                     />
                 </Suspense>
@@ -71,6 +77,7 @@ export function FarmScheduleDay({
             </Suspense>
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmScheduleOperationsSectionContent
+                    accountId={accountId}
                     dayDataPromise={operationsDayDataPromise}
                     plantSortsPromise={plantSortsPromise}
                     operationsDataPromise={operationsDataPromise}
@@ -79,6 +86,7 @@ export function FarmScheduleDay({
                     }
                     mode={groupWateringOperations ? 'withoutWatering' : 'all'}
                     selectedDateKey={selectedDateKey}
+                    sessionIncarnation={sessionIncarnation}
                     userId={userId}
                 />
             </Suspense>

@@ -1,7 +1,8 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
     baseAuth,
     baseWithAuth,
@@ -10,6 +11,7 @@ import {
     setCookie,
     verifyJwt,
 } from './baseAuth';
+import { getRefreshTokenCookie } from './refreshCookies';
 import { accountCookieName } from './sessionConfig';
 import { refreshSessionIfNeeded } from './sessionRefresh';
 
@@ -102,7 +104,29 @@ async function authFromToken(token: string, roles: string[]) {
         userId,
         user: authUser,
         accountId,
+        sessionIncarnation: await getSessionIncarnation(token),
     };
+}
+
+async function getSessionIncarnation(accessToken: string) {
+    const refreshToken = await getRefreshTokenCookie();
+    return createFarmSessionIncarnation(refreshToken ?? accessToken);
+}
+
+export function createFarmSessionIncarnation(sessionToken: string) {
+    return createHash('sha256').update(sessionToken).digest('base64url');
+}
+
+async function getRequestToken() {
+    const cookieToken = (await cookies()).get('gredice_session')?.value;
+    if (cookieToken) {
+        return cookieToken;
+    }
+    const authorization = (await headers()).get('Authorization');
+    if (authorization?.toLowerCase().startsWith('bearer ')) {
+        return authorization.substring(7);
+    }
+    throw new Error('Unauthorized: Missing authenticated session token');
 }
 
 export async function auth(...args: Parameters<typeof baseAuth>) {
@@ -115,7 +139,13 @@ export async function auth(...args: Parameters<typeof baseAuth>) {
         return await authFromToken(accessToken, roles);
     }
 
-    return await baseAuth(...args);
+    const context = await baseAuth(...args);
+    return {
+        ...context,
+        sessionIncarnation: await getSessionIncarnation(
+            await getRequestToken(),
+        ),
+    };
 }
 
 export async function withAuth(...args: Parameters<typeof baseWithAuth>) {

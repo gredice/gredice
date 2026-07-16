@@ -8,7 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { upload } from '@vercel/blob/client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
@@ -31,6 +31,10 @@ import {
     getScheduleTaskCompletionSuccessMessage,
     type ScheduleTaskSubmissionFailure,
 } from './scheduleTaskSubmissionResult';
+import {
+    type OperationCompletionDraftSaveState,
+    useOperationCompletionDraft,
+} from './useOperationCompletionDraft';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -52,14 +56,38 @@ const MAX_UPLOAD_ATTEMPTS = 3;
 const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
-function createUploadItem(file: File): UploadItem {
+function createUploadItem(file: File, id = crypto.randomUUID()): UploadItem {
     return {
-        id: crypto.randomUUID(),
+        id,
         file,
         progress: 0,
         status: 'pending',
         attempts: 0,
     };
+}
+
+function getLocalDraftSaveErrorMessage(
+    reason: Extract<
+        OperationCompletionDraftSaveState,
+        { kind: 'error' }
+    >['reason'],
+) {
+    switch (reason) {
+        case 'draft_count_limit':
+            return 'Dosegnuto je ograničenje od 5 lokalnih skica. Otvori drugi zadatak sa skicom i odbaci je prije spremanja nove.';
+        case 'draft_size_limit':
+            return 'Lokalne skice koriste dopuštenih 100 MB. Ukloni fotografije ili odbaci drugu skicu.';
+        case 'draft_changed':
+            return 'Lokalna skica promijenila se u drugom prozoru. Pregledaj trenutnu skicu prije nastavka.';
+        case 'incompatible':
+            return 'Zadatak se promijenio pa se ova lokalna skica ne može spremiti. Osvježi raspored prije nastavka.';
+        case 'quota_exceeded':
+            return 'Uređaj nema dovoljno prostora za lokalnu skicu. Unos ostaje otvoren, ali možda neće preživjeti osvježavanje.';
+        case 'session_changed':
+            return 'Sesija je završila. Ovaj unos neće ostati spremljen na uređaju.';
+        default:
+            return 'Lokalna skica se ne može spremiti na ovom uređaju. Unos ostaje otvoren, ali možda neće preživjeti osvježavanje.';
+    }
 }
 
 function clampUploadProgress(progress: number) {
@@ -108,21 +136,27 @@ function getUploadItemProgressClassName(uploadItem: UploadItem) {
 }
 
 interface CompleteOperationModalProps {
+    accountId: string;
     expectedEntityId: number;
     expectedTaskVersionEventId: number;
     operationId: number;
+    sessionIncarnation: string;
     label: string;
     conditions?: EntityStandardized['conditions'];
     defaultOpen?: boolean;
+    userId: string;
 }
 
 export function CompleteOperationModal({
+    accountId,
     expectedEntityId,
     expectedTaskVersionEventId,
     operationId,
+    sessionIncarnation,
     label,
     conditions,
     defaultOpen = false,
+    userId,
 }: CompleteOperationModalProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
@@ -134,16 +168,34 @@ export function CompleteOperationModal({
     const [imageSelectionMessage, setImageSelectionMessage] = useState<
         string | null
     >(null);
+    const [isResolvingLocalDraft, setIsResolvingLocalDraft] = useState(false);
+    const [localDraftCleanupWarning, setLocalDraftCleanupWarning] =
+        useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+    const notesInputRef = useRef<HTMLTextAreaElement>(null);
+    const sessionChangedFocusRef = useRef<HTMLDivElement>(null);
     const submissionInFlightRef = useRef(false);
     const errorRef = useRef<HTMLDivElement>(null);
+    const previousDraftScopeIdentityRef = useRef<string | null>(null);
 
     const requirements = getScheduleOperationCompletionRequirements({
         conditions,
     });
     const expectedRequirementsFingerprint =
         getScheduleOperationCompletionRequirementsFingerprint(requirements);
+    const localDraft = useOperationCompletionDraft({
+        accountId,
+        enabled: isOpen,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        notes,
+        operationId,
+        photos: uploadItems.map(({ file, id }) => ({ file, id })),
+        requirementsFingerprint: expectedRequirementsFingerprint,
+        sessionIncarnation,
+        userId,
+    });
     const attachImages = isScheduleOperationRequirementVisible(
         requirements.images,
     );
@@ -166,12 +218,99 @@ export function CompleteOperationModal({
     );
     const imageLimitReached =
         uploadItems.length >= MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT;
+    const localDraftBlocksEditing = localDraft.gate.kind !== 'none';
+    const draftScopeIdentity = JSON.stringify([
+        userId,
+        accountId,
+        operationId,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        expectedRequirementsFingerprint,
+        sessionIncarnation,
+    ]);
+
+    useEffect(() => {
+        const previousIdentity = previousDraftScopeIdentityRef.current;
+        previousDraftScopeIdentityRef.current = draftScopeIdentity;
+        if (
+            previousIdentity === null ||
+            previousIdentity === draftScopeIdentity
+        ) {
+            return;
+        }
+        setNotes('');
+        setUploadItems([]);
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
+    }, [draftScopeIdentity]);
+
+    useEffect(() => {
+        if (localDraft.gate.kind !== 'session_changed') {
+            return;
+        }
+        setNotes('');
+        setUploadItems([]);
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        requestAnimationFrame(() => sessionChangedFocusRef.current?.focus());
+    }, [localDraft.gate.kind]);
+
+    const focusCompletionForm = () => {
+        requestAnimationFrame(() => {
+            if (attachNotes) {
+                notesInputRef.current?.focus();
+                return;
+            }
+            document
+                .querySelector<HTMLButtonElement>(
+                    `[data-operation-draft-focus-target="${operationId.toString()}"]`,
+                )
+                ?.focus();
+        });
+    };
+
+    const resumeLocalDraft = () => {
+        const restoredDraft = localDraft.resume();
+        if (!restoredDraft) {
+            return;
+        }
+        setNotes(restoredDraft.notes);
+        setUploadItems(
+            restoredDraft.photos.map(({ file, id }) =>
+                createUploadItem(file, id),
+            ),
+        );
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        focusCompletionForm();
+    };
+
+    const discardLocalDraft = async () => {
+        setIsResolvingLocalDraft(true);
+        try {
+            const discarded = await localDraft.discard();
+            if (discarded) {
+                setNotes('');
+                setUploadItems([]);
+                setErrorMessage(null);
+                setImageSelectionMessage(null);
+                focusCompletionForm();
+            }
+        } finally {
+            setIsResolvingLocalDraft(false);
+        }
+    };
 
     const resetCompletedDraft = () => {
         setSuccessMessage(null);
         setErrorMessage(null);
         setRequiresRefresh(false);
         setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
         setUploadItems([]);
         setNotes('');
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -203,6 +342,7 @@ export function CompleteOperationModal({
 
         setIsOpen(open);
         if (!open && !requiresRefresh) {
+            void localDraft.flush();
             setErrorMessage(null);
             setImageSelectionMessage(null);
         }
@@ -239,7 +379,7 @@ export function CompleteOperationModal({
                     ...currentUploadItems,
                     ...acceptedFiles
                         .slice(0, remainingSlots)
-                        .map(createUploadItem),
+                        .map((file) => createUploadItem(file)),
                 ];
             });
             const selectionMessages = [
@@ -381,12 +521,8 @@ export function CompleteOperationModal({
                 }));
 
                 return { failure: null, url: uploadedImage.url };
-            } catch (error) {
-                console.error(
-                    'Error uploading image:',
-                    uploadItem.file.name,
-                    error,
-                );
+            } catch {
+                console.error('Error uploading completion image.');
                 lastErrorMessage =
                     'Spremanje fotografije nije uspjelo. Pokušaj ponovno.';
                 const currentTargetValidation =
@@ -419,7 +555,7 @@ export function CompleteOperationModal({
     };
 
     const handleConfirm = async () => {
-        if (submissionInFlightRef.current) {
+        if (submissionInFlightRef.current || localDraftBlocksEditing) {
             return;
         }
 
@@ -488,6 +624,9 @@ export function CompleteOperationModal({
                 requestAnimationFrame(() => errorRef.current?.focus());
                 return;
             }
+            const localConfirmationSucceeded =
+                await localDraft.discardAfterServerSuccess();
+            setLocalDraftCleanupWarning(!localConfirmationSucceeded);
             setSuccessMessage(
                 getScheduleTaskCompletionSuccessMessage({
                     kind: 'operation',
@@ -545,6 +684,13 @@ export function CompleteOperationModal({
                     <Alert color="success" role="status">
                         {successMessage}
                     </Alert>
+                    {localDraftCleanupWarning ? (
+                        <Alert color="warning" role="status">
+                            Radnja je spremljena na farmi, ali lokalnu skicu
+                            nije moguće očistiti. Osvježi raspored prije
+                            ponovnog otvaranja zadatka.
+                        </Alert>
+                    ) : null}
                     <Button
                         fullWidth
                         onClick={finishSuccess}
@@ -561,7 +707,185 @@ export function CompleteOperationModal({
                         Jeste li sigurni da želite označiti operaciju kao
                         završenu: <strong>{label}</strong>?
                     </Typography>
-                    {attachImages && (
+                    {localDraft.gate.kind === 'checking' ? (
+                        <Stack spacing={2}>
+                            <Alert color="info" role="status">
+                                Provjeravam postoji li lokalna skica na ovom
+                                uređaju…
+                            </Alert>
+                            <Button
+                                fullWidth
+                                onClick={() => handleOpenChange(false)}
+                                size="lg"
+                                type="button"
+                                variant="outlined"
+                            >
+                                Zatvori
+                            </Button>
+                        </Stack>
+                    ) : null}
+                    {localDraft.gate.kind === 'session_changed' ? (
+                        <Alert
+                            color="warning"
+                            data-operation-draft-gate
+                            role="alert"
+                        >
+                            <Stack spacing={3}>
+                                <div
+                                    data-operation-draft-session-focus
+                                    ref={sessionChangedFocusRef}
+                                    tabIndex={-1}
+                                >
+                                    <Typography level="body2" semiBold>
+                                        Sesija je završila
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Ovaj unos nije spremljen i neće ostati
+                                        na ovom uređaju. Ponovno se prijavi
+                                        prije nastavka.
+                                    </Typography>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    onClick={() => handleOpenChange(false)}
+                                    size="lg"
+                                    type="button"
+                                    variant="outlined"
+                                >
+                                    Zatvori
+                                </Button>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'found' ? (
+                        <Alert color="info" data-operation-draft-gate>
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Pronađena lokalna skica
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Skica je spremljena samo na ovom
+                                        uređaju. Radnja još nije dovršena.
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={resumeLocalDraft}
+                                        size="lg"
+                                        type="button"
+                                        variant="solid"
+                                    >
+                                        Nastavi uređivanje
+                                    </Button>
+                                    <Button
+                                        color="danger"
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        loading={isResolvingLocalDraft}
+                                        onClick={() => void discardLocalDraft()}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Odbaci skicu
+                                    </Button>
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="plain"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                                {localDraft.saveState.kind === 'error' ? (
+                                    <Typography
+                                        aria-live="assertive"
+                                        className="text-red-800 dark:text-red-200"
+                                        data-operation-draft-gate-error
+                                        level="body2"
+                                    >
+                                        {localDraft.saveState.reason ===
+                                        'draft_changed'
+                                            ? 'Skica se promijenila u drugom prozoru. Pregledaj trenutnu skicu prije odbacivanja.'
+                                            : 'Lokalnu skicu trenutačno nije moguće odbaciti. Zatvori prozor i pokušaj ponovno.'}
+                                    </Typography>
+                                ) : null}
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'stale' ? (
+                        <Alert color="warning" data-operation-draft-gate>
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Zadatak se promijenio
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Spremljena skica pripada staroj verziji
+                                        zadatka i ne može se koristiti. Odbaci
+                                        je prije nastavka.
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <Button
+                                        color="danger"
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        loading={isResolvingLocalDraft}
+                                        onClick={() => void discardLocalDraft()}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Odbaci skicu
+                                    </Button>
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="plain"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                                {localDraft.saveState.kind === 'error' ? (
+                                    <Typography
+                                        aria-live="assertive"
+                                        className="text-red-800 dark:text-red-200"
+                                        data-operation-draft-gate-error
+                                        level="body2"
+                                    >
+                                        {localDraft.saveState.reason ===
+                                        'draft_changed'
+                                            ? 'Skica se promijenila u drugom prozoru. Pregledaj trenutnu skicu prije odbacivanja.'
+                                            : 'Lokalnu skicu trenutačno nije moguće odbaciti. Zatvori prozor i pokušaj ponovno.'}
+                                    </Typography>
+                                ) : null}
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.notice === 'expired' ? (
+                        <Alert color="warning" role="status">
+                            Lokalna skica istekla je nakon 7 dana i uklonjena
+                            je. Možeš započeti novu skicu.
+                        </Alert>
+                    ) : null}
+                    {localDraft.notice === 'storage_unavailable' ? (
+                        <Alert color="warning" role="status">
+                            Lokalna skica se ne može spremiti na ovom uređaju.
+                            Unos ostaje otvoren, ali možda neće preživjeti
+                            osvježavanje.
+                        </Alert>
+                    ) : null}
+                    {!localDraftBlocksEditing && attachImages && (
                         <Stack spacing={2}>
                             {imageRequirementText && (
                                 <Typography level="body2" className="italic">
@@ -585,6 +909,7 @@ export function CompleteOperationModal({
                                 onChange={handleFileChange}
                             />
                             <Button
+                                data-operation-draft-focus-target={operationId}
                                 variant="outlined"
                                 type="button"
                                 onClick={() => cameraInputRef.current?.click()}
@@ -722,7 +1047,7 @@ export function CompleteOperationModal({
                             )}
                         </Stack>
                     )}
-                    {attachNotes && (
+                    {!localDraftBlocksEditing && attachNotes && (
                         <Stack spacing={2}>
                             {notesRequirementText && (
                                 <label
@@ -733,6 +1058,7 @@ export function CompleteOperationModal({
                                 </label>
                             )}
                             <textarea
+                                ref={notesInputRef}
                                 aria-describedby={notesCounterId}
                                 aria-invalid={notesRequiredMissing || undefined}
                                 id={notesInputId}
@@ -757,7 +1083,7 @@ export function CompleteOperationModal({
                             </Typography>
                         </Stack>
                     )}
-                    {errorMessage && (
+                    {!localDraftBlocksEditing && errorMessage && (
                         <div
                             data-schedule-submission-error
                             ref={errorRef}
@@ -768,48 +1094,72 @@ export function CompleteOperationModal({
                             </Alert>
                         </div>
                     )}
-                    <Row
-                        spacing={2}
-                        justifyContent="end"
-                        className="flex-wrap gap-y-2"
-                    >
-                        <Button
-                            variant="outlined"
-                            onClick={() => handleOpenChange(false)}
-                            disabled={isSubmitting}
-                            size="lg"
-                        >
-                            Odustani
-                        </Button>
-                        <Button
-                            variant="solid"
-                            aria-busy={isSubmitting}
-                            onClick={
-                                requiresRefresh ? refreshTasks : handleConfirm
-                            }
-                            disabled={
-                                isSubmitting ||
-                                (attachImagesRequired &&
-                                    uploadItems.length === 0) ||
-                                notesRequiredMissing
-                            }
-                            loading={isSubmitting}
-                            size="lg"
-                        >
-                            {errorMessage && requiresRefresh
-                                ? 'Osvježi zadatke'
-                                : hasFailedUploads || errorMessage
-                                  ? 'Pokušaj ponovno'
-                                  : 'Potvrdi'}
-                        </Button>
-                    </Row>
-                    <Typography
-                        className="text-center text-muted-foreground"
-                        level="body3"
-                    >
-                        Odabrane fotografije i napomena ostaju sačuvane ako
-                        zatvoriš ovaj prozor prije slanja.
-                    </Typography>
+                    {!localDraftBlocksEditing ? (
+                        <>
+                            {localDraft.saveState.kind === 'error' ? (
+                                <Alert color="warning" role="status">
+                                    {getLocalDraftSaveErrorMessage(
+                                        localDraft.saveState.reason,
+                                    )}
+                                </Alert>
+                            ) : null}
+                            <Row
+                                spacing={2}
+                                justifyContent="end"
+                                className="flex-wrap gap-y-2"
+                            >
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => handleOpenChange(false)}
+                                    disabled={isSubmitting}
+                                    size="lg"
+                                >
+                                    Odustani
+                                </Button>
+                                <Button
+                                    variant="solid"
+                                    aria-busy={isSubmitting}
+                                    onClick={
+                                        requiresRefresh
+                                            ? refreshTasks
+                                            : handleConfirm
+                                    }
+                                    disabled={
+                                        isSubmitting ||
+                                        (attachImagesRequired &&
+                                            uploadItems.length === 0) ||
+                                        notesRequiredMissing
+                                    }
+                                    loading={isSubmitting}
+                                    data-operation-draft-focus-target={
+                                        operationId
+                                    }
+                                    size="lg"
+                                >
+                                    {errorMessage && requiresRefresh
+                                        ? 'Osvježi zadatke'
+                                        : hasFailedUploads || errorMessage
+                                          ? 'Pokušaj ponovno'
+                                          : 'Potvrdi'}
+                                </Button>
+                            </Row>
+                            <Typography
+                                aria-live="polite"
+                                className="text-center text-muted-foreground"
+                                data-operation-draft-status
+                                level="body3"
+                            >
+                                {localDraft.saveState.kind === 'error' ||
+                                localDraft.notice === 'storage_unavailable'
+                                    ? 'Unos trenutačno nije spremljen na ovom uređaju. Radnja još nije dovršena.'
+                                    : localDraft.saveState.kind === 'saving'
+                                      ? 'Spremam lokalnu skicu…'
+                                      : localDraft.saveState.kind === 'saved'
+                                        ? 'Spremljeno samo na ovom uređaju — radnja još nije dovršena.'
+                                        : 'Napomena i fotografije spremaju se samo na ovom uređaju. Radnja nije dovršena dok je ne potvrdiš.'}
+                            </Typography>
+                        </>
+                    ) : null}
                 </Stack>
             )}
         </Modal>

@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
@@ -5,6 +6,13 @@ import {
     CompletePlantingModalAttemptStory,
     ScheduleTaskBlockerModalAttemptStory,
 } from '../../playwright/ScheduleTaskAttemptVersionStories';
+
+declare global {
+    interface Window {
+        __restoreOperationDraftDeleteForTest?: () => void;
+        __restoreOperationDraftPutForTest?: () => void;
+    }
+}
 
 const expectedTaskVersionEventId = 81;
 const expectedPlantCycleVersionEventId = 802;
@@ -1980,4 +1988,510 @@ test('keeps one blocker request in flight under rapid phone input', async ({
     await expect(dialog.getByRole('status')).toContainText(
         'Status: Blokirano.',
     );
+});
+
+test('offers a phone draft after refresh and removes it only after server confirmation', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+    });
+    await mockOperationPhotoUpload(page, 0);
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{
+                completionAttachImages: true,
+                completionAttachNotes: true,
+            }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Dokumentiraj završenu radnju"
+            operationId={142}
+        />,
+    );
+    await settleResponsiveModal(page);
+
+    let dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    const notes = dialog.getByPlaceholder('Upišite napomenu o završetku...');
+    await expect(notes).toBeVisible();
+    await notes.fill('Završeno nakon jutarnje provjere.');
+    await dialog.locator('input[capture="environment"]').setInputFiles({
+        buffer: Buffer.from('local completion draft proof'),
+        mimeType: 'image/jpeg',
+        name: 'lokalni-dokaz.jpg',
+    });
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
+    );
+
+    await page.reload();
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+    });
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{
+                completionAttachImages: true,
+                completionAttachNotes: true,
+            }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Dokumentiraj završenu radnju"
+            operationId={142}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+
+    await expect(dialog.getByText('Pronađena lokalna skica')).toBeVisible();
+    await expect(dialog.getByText('lokalni-dokaz.jpg')).toHaveCount(0);
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveCount(0);
+    const resumeButton = dialog.getByRole('button', {
+        name: 'Nastavi uređivanje',
+    });
+    const discardButton = dialog.getByRole('button', {
+        name: 'Odbaci skicu',
+    });
+    const closeButton = dialog.getByRole('button', { name: 'Zatvori' });
+    for (const button of [resumeButton, discardButton, closeButton]) {
+        await button.scrollIntoViewIfNeeded();
+        const bounds = await button.boundingBox();
+        expect(bounds).not.toBeNull();
+        expect(bounds?.height).toBeGreaterThanOrEqual(44);
+        expect(bounds?.width).toBeGreaterThanOrEqual(44);
+        expect(bounds?.x).toBeGreaterThanOrEqual(0);
+        expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(
+            320,
+        );
+        expect(bounds?.y).toBeGreaterThanOrEqual(0);
+        expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThanOrEqual(
+            568,
+        );
+    }
+    const accessibilityResults = await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .analyze();
+    expect(
+        accessibilityResults.violations.filter(
+            ({ impact }) => impact === 'serious' || impact === 'critical',
+        ),
+    ).toEqual([]);
+    await closeButton.click();
+    await expect(dialog).toBeHidden();
+    await page
+        .getByRole('button', {
+            name: 'Dovrši radnju: Dokumentiraj završenu radnju',
+        })
+        .click();
+    await expect(dialog.getByText('Pronađena lokalna skica')).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => window.__farmScheduleActionTestState?.operationCalls ?? -1,
+        ),
+    ).toBe(0);
+
+    await resumeButton.click();
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveValue('Završeno nakon jutarnje provjere.');
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toBeFocused();
+    await expect(dialog.getByText('lokalni-dokaz.jpg')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Potvrdi' }).click();
+    await expect(dialog.getByRole('status')).toContainText('čeka potvrdu');
+    expect(
+        await page.evaluate(
+            () => window.__farmScheduleActionTestState?.operationCalls ?? -1,
+        ),
+    ).toBe(1);
+
+    await page.reload();
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{
+                completionAttachImages: true,
+                completionAttachNotes: true,
+            }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Dokumentiraj završenu radnju"
+            operationId={142}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(dialog.getByText('Pronađena lokalna skica')).toHaveCount(0);
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveValue('');
+});
+
+test('does not resurrect a cleared note while its first local save is in flight', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        const originalPut = Object.getOwnPropertyDescriptor(
+            IDBObjectStore.prototype,
+            'put',
+        );
+        const nativePut = IDBObjectStore.prototype.put;
+        let delayedFirstPut = false;
+
+        window.__restoreOperationDraftPutForTest = () => {
+            if (originalPut) {
+                Object.defineProperty(
+                    IDBObjectStore.prototype,
+                    'put',
+                    originalPut,
+                );
+            } else {
+                Reflect.deleteProperty(IDBObjectStore.prototype, 'put');
+            }
+            delete window.__restoreOperationDraftPutForTest;
+        };
+        Object.defineProperty(IDBObjectStore.prototype, 'put', {
+            configurable: true,
+            value: function delayedPut(
+                this: IDBObjectStore,
+                value: unknown,
+                key?: IDBValidKey,
+            ) {
+                const request =
+                    key === undefined
+                        ? nativePut.call(this, value)
+                        : nativePut.call(this, value, key);
+                const isTargetDraft =
+                    this.name === 'operation-completion-drafts' &&
+                    typeof value === 'object' &&
+                    value !== null &&
+                    'notes' in value &&
+                    value.notes === 'Ovu napomenu farmer odmah briše.';
+                if (delayedFirstPut || !isTargetDraft) {
+                    return request;
+                }
+                delayedFirstPut = true;
+                const nativeAddEventListener = request.addEventListener;
+                Object.defineProperty(request, 'addEventListener', {
+                    configurable: true,
+                    value: (
+                        type: string,
+                        listener: EventListenerOrEventListenerObject | null,
+                        options?: boolean | AddEventListenerOptions,
+                    ) => {
+                        if (type !== 'success' || listener === null) {
+                            return Reflect.apply(
+                                nativeAddEventListener,
+                                request,
+                                [type, listener, options],
+                            );
+                        }
+                        const delayedListener = (event: Event) => {
+                            window.setTimeout(() => {
+                                if (typeof listener === 'function') {
+                                    listener.call(request, event);
+                                } else {
+                                    listener.handleEvent(event);
+                                }
+                            }, 1_000);
+                        };
+                        return Reflect.apply(nativeAddEventListener, request, [
+                            type,
+                            delayedListener,
+                            options,
+                        ]);
+                    },
+                });
+                return request;
+            },
+        });
+    });
+
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={702}
+            label="Očisti probnu napomenu"
+            operationId={143}
+        />,
+    );
+    await settleResponsiveModal(page);
+    let dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    const notes = dialog.getByPlaceholder('Upišite napomenu o završetku...');
+    await notes.fill('Ovu napomenu farmer odmah briše.');
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremam lokalnu skicu…',
+    );
+    await notes.fill('');
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Napomena i fotografije spremaju se samo na ovom uređaju. Radnja nije dovršena dok je ne potvrdiš.',
+        { timeout: 5_000 },
+    );
+    await page.evaluate(() => {
+        window.__restoreOperationDraftPutForTest?.();
+    });
+
+    await page.reload();
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={702}
+            label="Očisti probnu napomenu"
+            operationId={143}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(dialog.getByText('Pronađena lokalna skica')).toHaveCount(0);
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveValue('');
+});
+
+test('flushes the latest note when the phone app enters the background', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const component = await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Zapiši stanje tla"
+            operationId={143}
+        />,
+    );
+    await settleResponsiveModal(page);
+    let dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    const notes = dialog.getByPlaceholder('Upišite napomenu o završetku...');
+    await expect(notes).toBeVisible();
+    await notes.fill('Unos neposredno prije odlaska u pozadinu.');
+    await page.evaluate(() => {
+        Object.defineProperties(document, {
+            hidden: { configurable: true, value: true },
+            visibilityState: { configurable: true, value: 'hidden' },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
+    );
+    await component.unmount();
+    await page.evaluate(() => {
+        Reflect.deleteProperty(document, 'hidden');
+        Reflect.deleteProperty(document, 'visibilityState');
+        document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Zapiši stanje tla"
+            operationId={143}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(dialog.getByText('Pronađena lokalna skica')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Nastavi uređivanje' }).click();
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveValue('Unos neposredno prije odlaska u pozadinu.');
+});
+
+test('blocks a changed task draft until the farmer explicitly discards it', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 430, height: 932 });
+    let component = await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje"
+            operationId={144}
+        />,
+    );
+    await settleResponsiveModal(page);
+    let dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog
+        .getByPlaceholder('Upišite napomenu o završetku...')
+        .fill('Skica za staru verziju zadatka.');
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
+        'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
+    );
+    await component.unmount();
+
+    component = await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={702}
+            label="Pregledaj navodnjavanje"
+            operationId={144}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(dialog.getByText('Zadatak se promijenio')).toBeVisible();
+    await expect(
+        dialog.getByRole('button', { name: 'Nastavi uređivanje' }),
+    ).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Potvrdi' })).toHaveCount(
+        0,
+    );
+    const discardButton = dialog.getByRole('button', {
+        name: 'Odbaci skicu',
+    });
+    const discardBounds = await discardButton.boundingBox();
+    expect(discardBounds?.height).toBeGreaterThanOrEqual(44);
+    expect(discardBounds?.x).toBeGreaterThanOrEqual(0);
+    expect(
+        (discardBounds?.x ?? 0) + (discardBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(430);
+    await expect(dialog.getByRole('button', { name: 'Zatvori' })).toBeVisible();
+    await page.evaluate(() => {
+        const originalDelete = Object.getOwnPropertyDescriptor(
+            IDBObjectStore.prototype,
+            'delete',
+        );
+        window.__restoreOperationDraftDeleteForTest = () => {
+            if (originalDelete) {
+                Object.defineProperty(
+                    IDBObjectStore.prototype,
+                    'delete',
+                    originalDelete,
+                );
+            } else {
+                Reflect.deleteProperty(IDBObjectStore.prototype, 'delete');
+            }
+            delete window.__restoreOperationDraftDeleteForTest;
+        };
+        Object.defineProperty(IDBObjectStore.prototype, 'delete', {
+            configurable: true,
+            value: () => {
+                throw new DOMException(
+                    'Test delete failure',
+                    'InvalidStateError',
+                );
+            },
+        });
+    });
+    await discardButton.click();
+    await expect(
+        dialog.locator('[data-operation-draft-gate-error]'),
+    ).toContainText('Lokalnu skicu trenutačno nije moguće odbaciti.');
+    await page.evaluate(() => {
+        window.__restoreOperationDraftDeleteForTest?.();
+    });
+    await discardButton.click();
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toBeVisible();
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toBeFocused();
+    await component.unmount();
+
+    await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj navodnjavanje"
+            operationId={144}
+        />,
+    );
+    await settleResponsiveModal(page);
+    dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await expect(dialog.getByText('Pronađena lokalna skica')).toHaveCount(0);
+    await expect(
+        dialog.getByPlaceholder('Upišite napomenu o završetku...'),
+    ).toHaveValue('');
+});
+
+test('flushes the old scope before loading changed task props', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const component = await mount(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Pregledaj sustav"
+            operationId={145}
+        />,
+    );
+    await settleResponsiveModal(page);
+    const dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog
+        .getByPlaceholder('Upišite napomenu o završetku...')
+        .fill('Neposredno prije promjene verzije zadatka.');
+
+    await component.update(
+        <CompleteOperationModalAttemptStory
+            conditions={{ completionAttachNotes: true }}
+            defaultOpen
+            expectedEntityId={702}
+            label="Pregledaj sustav"
+            operationId={145}
+        />,
+    );
+
+    await expect(dialog.getByText('Zadatak se promijenio')).toBeVisible();
+    await expect(dialog.locator('[data-operation-draft-status]')).toHaveCount(
+        0,
+    );
+    await dialog.getByRole('button', { name: 'Odbaci skicu' }).click();
+    const changedTaskNotes = dialog.getByPlaceholder(
+        'Upišite napomenu o završetku...',
+    );
+    await expect(changedTaskNotes).toHaveValue('');
+    await expect(changedTaskNotes).toBeFocused();
 });
