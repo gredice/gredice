@@ -1429,7 +1429,7 @@ test('a slower estimate calculation cannot overwrite the route for a newer accep
     assert.equal(localPersisted?.estimateSource, 'legacy');
 });
 
-test('a modern pickup-aware route durably records bounded route-progress reconciliation sources without location data', async () => {
+test('a modern pickup-aware route records bounded progress sources without premature suppression telemetry', async () => {
     const prepared = await createPreparedRunFixture();
     const driverUserId = prepared.fixture.driverUserIds[0];
     const requestId = prepared.fixture.requestIds[0];
@@ -1585,28 +1585,7 @@ test('a modern pickup-aware route durably records bounded route-progress reconci
         ),
         orderBy: (event, { asc }) => [asc(event.id)],
     });
-    assert.deepEqual(
-        decisionRows.map(({ aggregateId, data, type, version }) => ({
-            aggregateId,
-            data,
-            type,
-            version,
-        })),
-        routeProgressMilestones.map((milestone) => ({
-            aggregateId: requestId,
-            data: {
-                decision: 'suppressed',
-                milestone,
-                reason: 'eta_threshold_already_emitted',
-                retryAttempt: stop.retryAttempt,
-                runId: run.id,
-                sourceId: `route-progress:${occurredAt.toISOString()}`,
-                stopId: String(stop.id),
-            },
-            type: 'delivery.request.lifecycle_notification.decision',
-            version: 1,
-        })),
-    );
+    assert.deepEqual(decisionRows, []);
     assert.doesNotMatch(
         JSON.stringify(decisionRows),
         /latitude|longitude|formattedAddress|currentLocation|accountId|userId/u,

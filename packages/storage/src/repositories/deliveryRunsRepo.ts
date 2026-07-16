@@ -1391,64 +1391,10 @@ export async function recordDeliveryRunRouteProgressMilestones({
                 deliveryRunRouteProgressSourceKey(source),
             ),
         );
-        const existingDecisions = await tx
-            .select({
-                deliveryRequestId: events.aggregateId,
-                milestone: sql<string>`${events.data}->>'milestone'`,
-                retryAttempt: sql<string>`${events.data}->>'retryAttempt'`,
-                stopId: sql<string>`${events.data}->>'stopId'`,
-            })
-            .from(events)
-            .where(
-                and(
-                    eq(
-                        events.type,
-                        knownEventTypes.delivery
-                            .requestLifecycleNotificationDecision,
-                    ),
-                    inArray(
-                        events.aggregateId,
-                        uniqueMilestones.map(
-                            (milestone) => milestone.deliveryRequestId,
-                        ),
-                    ),
-                    eq(sql<string>`${events.data}->>'runId'`, runId),
-                    eq(sql<string>`${events.data}->>'decision'`, 'suppressed'),
-                    eq(
-                        sql<string>`${events.data}->>'reason'`,
-                        'eta_threshold_already_emitted',
-                    ),
-                ),
-            );
-        const existingDecisionKeys = new Set(
-            existingDecisions.map((decision) =>
-                deliveryRunRouteProgressSourceKey(decision),
-            ),
-        );
         const recorded = [];
         for (const progress of uniqueMilestones) {
             const sourceKey = deliveryRunRouteProgressSourceKey(progress);
-            if (existingKeys.has(sourceKey)) {
-                if (!existingDecisionKeys.has(sourceKey)) {
-                    await createEvent(
-                        knownEvents.delivery.requestLifecycleNotificationDecisionV1(
-                            progress.deliveryRequestId,
-                            {
-                                decision: 'suppressed',
-                                milestone: progress.milestone,
-                                reason: 'eta_threshold_already_emitted',
-                                retryAttempt: progress.retryAttempt,
-                                runId,
-                                sourceId: progress.sourceId,
-                                stopId: String(progress.stopId),
-                            },
-                        ),
-                        tx,
-                    );
-                    existingDecisionKeys.add(sourceKey);
-                }
-                continue;
-            }
+            if (existingKeys.has(sourceKey)) continue;
             recorded.push(
                 await createEvent(
                     knownEvents.delivery.requestRouteProgressV1(

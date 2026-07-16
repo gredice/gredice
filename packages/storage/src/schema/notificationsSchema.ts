@@ -387,12 +387,6 @@ export const notificationDeliveryAttempts = pgTable(
             table.notificationId,
         ),
         index('notification_delivery_attempts_status_idx').on(table.status),
-        index('notification_delivery_attempts_attempted_at_idx').on(
-            table.attemptedAt,
-        ),
-        index('notification_delivery_attempts_queued_attempted_at_idx')
-            .on(table.attemptedAt)
-            .where(sql`${table.status} = 'queued'`),
     ],
 );
 
@@ -420,14 +414,6 @@ export const notificationDeliveryEvents = pgTable(
         index('notification_delivery_events_attempt_id_idx').on(
             table.deliveryAttemptId,
         ),
-        index('notification_delivery_events_occurred_at_idx').on(
-            table.occurredAt,
-        ),
-        index('notification_delivery_events_retry_exhausted_at_idx')
-            .on(table.occurredAt)
-            .where(
-                sql`${table.type} = 'failed' and ${table.metadata}->>'reason' = 'attempts_exhausted'`,
-            ),
     ],
 );
 

@@ -3545,6 +3545,7 @@ test('final email failure records exhaustion before candidate filtering and aler
             accountId,
             category: 'delivery_updates',
             content: 'Exhaustion test.',
+            createdAt: now,
             header: 'Exhaustion test',
             metadata: {
                 eventVersion: 1,

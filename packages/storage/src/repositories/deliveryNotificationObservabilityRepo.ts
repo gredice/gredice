@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import 'server-only';
+import { deliveryLifecycleNotificationMaximumAgeSeconds } from '../deliveryNotificationPolicy';
 import {
     events,
     notificationDeliveryAttempts,
@@ -726,15 +727,17 @@ function highestSeverity(
 
 function healthBaseWhere({
     channel,
-    from,
+    attemptFrom,
     milestone,
+    notificationFrom,
     requestId,
     sourceId,
     to,
 }: {
     channel?: DeliveryLifecycleNotificationChannel;
-    from: Date;
+    attemptFrom: Date;
     milestone?: DeliveryLifecycleNotificationMilestone;
+    notificationFrom: Date;
     requestId?: string;
     sourceId?: string;
     to: Date;
@@ -743,7 +746,9 @@ function healthBaseWhere({
         eq(notifications.category, 'delivery_updates'),
         eq(notifications.type, 'delivery_lifecycle'),
         inArray(milestoneExpression, [...deliveryLifecycleMilestones]),
-        gte(notificationDeliveryAttempts.attemptedAt, from),
+        gte(notifications.createdAt, notificationFrom),
+        lte(notifications.createdAt, to),
+        gte(notificationDeliveryAttempts.attemptedAt, attemptFrom),
         lte(notificationDeliveryAttempts.attemptedAt, to),
         requestId ? eq(requestIdExpression, requestId) : undefined,
         sourceId ? eq(sourceIdExpression, sourceId) : undefined,
@@ -774,6 +779,11 @@ export async function getDeliveryLifecycleNotificationHealth(
         requestId,
         sourceId,
     };
+    const notificationLookbackMs =
+        deliveryLifecycleNotificationMaximumAgeSeconds * 1000;
+    const notificationWindowFrom = new Date(
+        window.from.getTime() - notificationLookbackMs,
+    );
     const terminalFailureCondition = or(
         eq(notificationDeliveryAttempts.status, 'failed'),
         and(
@@ -808,7 +818,8 @@ export async function getDeliveryLifecycleNotificationHealth(
         .where(
             healthBaseWhere({
                 ...common,
-                from: window.from,
+                attemptFrom: window.from,
+                notificationFrom: notificationWindowFrom,
                 to: window.to,
             }),
         )
@@ -823,7 +834,7 @@ export async function getDeliveryLifecycleNotificationHealth(
         }),
     );
 
-    const backlogFrom = new Date(now.getTime() - maximumWindowMs);
+    const backlogFrom = new Date(now.getTime() - notificationLookbackMs);
     const staleCutoff = new Date(now.getTime() - staleQueueAgeMs);
     const [backlog] = await storage()
         .select({
@@ -846,36 +857,31 @@ export async function getDeliveryLifecycleNotificationHealth(
             eq(notifications.id, notificationDeliveryAttempts.notificationId),
         )
         .where(
-            healthBaseWhere({
-                ...common,
-                from: backlogFrom,
-                to: staleCutoff,
-            }),
+            and(
+                healthBaseWhere({
+                    ...common,
+                    attemptFrom: backlogFrom,
+                    notificationFrom: backlogFrom,
+                    to: staleCutoff,
+                }),
+                eq(notificationDeliveryAttempts.status, 'queued'),
+            ),
         );
 
-    const [retryExhausted] = await storage()
-        .select({
-            count: sql<number>`count(distinct ${notificationDeliveryEvents.notificationId})::int`,
-        })
-        .from(notificationDeliveryEvents)
+    const retryCandidateAttempts = storage()
+        .select({ attemptId: notificationDeliveryAttempts.id })
+        .from(notifications)
         .innerJoin(
             notificationDeliveryAttempts,
-            eq(
-                notificationDeliveryAttempts.id,
-                notificationDeliveryEvents.deliveryAttemptId,
-            ),
-        )
-        .innerJoin(
-            notifications,
-            eq(notifications.id, notificationDeliveryEvents.notificationId),
+            eq(notificationDeliveryAttempts.notificationId, notifications.id),
         )
         .where(
             and(
                 eq(notifications.category, 'delivery_updates'),
                 eq(notifications.type, 'delivery_lifecycle'),
+                gte(notifications.createdAt, notificationWindowFrom),
+                lte(notifications.createdAt, window.to),
                 inArray(milestoneExpression, [...deliveryLifecycleMilestones]),
-                gte(notificationDeliveryEvents.occurredAt, window.from),
-                lte(notificationDeliveryEvents.occurredAt, window.to),
                 requestId ? eq(requestIdExpression, requestId) : undefined,
                 sourceId ? eq(sourceIdExpression, sourceId) : undefined,
                 filters.milestone
@@ -889,13 +895,37 @@ export async function getDeliveryLifecycleNotificationHealth(
                     notificationDeliveryAttempts.provider,
                     'delivery_lifecycle_email',
                 ),
+            ),
+        )
+        .as('delivery_lifecycle_retry_candidate_attempts');
+    const retryExhaustedEvent = storage()
+        .select({
+            notificationId: notificationDeliveryEvents.notificationId,
+        })
+        .from(notificationDeliveryEvents)
+        .where(
+            and(
+                eq(
+                    notificationDeliveryEvents.deliveryAttemptId,
+                    retryCandidateAttempts.attemptId,
+                ),
+                gte(notificationDeliveryEvents.occurredAt, window.from),
+                lte(notificationDeliveryEvents.occurredAt, window.to),
                 eq(notificationDeliveryEvents.type, 'failed'),
                 eq(
                     sql<string>`${notificationDeliveryEvents.metadata}->>'reason'`,
                     'attempts_exhausted',
                 ),
             ),
-        );
+        )
+        .limit(1)
+        .as('delivery_lifecycle_retry_exhausted_event');
+    const [retryExhausted] = await storage()
+        .select({
+            count: sql<number>`count(distinct ${retryExhaustedEvent.notificationId})::int`,
+        })
+        .from(retryCandidateAttempts)
+        .innerJoinLateral(retryExhaustedEvent, sql`true`);
 
     const ambiguousEmailSendingCount = backlog?.ambiguousEmailSendingCount ?? 0;
     const staleEligibleQueueCount = backlog?.staleEligibleQueueCount ?? 0;

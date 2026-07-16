@@ -533,13 +533,6 @@
       "when": 1784163861364,
       "tag": "0075_whole_thunderbolts",
       "breakpoints": true
-    },
-    {
-      "idx": 76,
-      "version": "7",
-      "when": 1784233924709,
-      "tag": "0076_stormy_grim_reaper",
-      "breakpoints": true
     }
   ]
 }

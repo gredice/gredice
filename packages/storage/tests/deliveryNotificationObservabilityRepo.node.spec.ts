@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     classifyDeliveryLifecycleNotificationOutcome,
+    deliveryLifecycleNotificationMaximumAgeSeconds,
     events,
     getDeliveryLifecycleNotificationDiagnostics,
     getDeliveryLifecycleNotificationHealth,
@@ -47,6 +48,7 @@ async function createLifecycleNotification({
             accountId,
             category: 'delivery_updates',
             content: `private-message-body-${randomUUID()}`,
+            createdAt: occurredAt,
             header: `private-message-title-${randomUUID()}`,
             id: notificationId,
             metadata: {
@@ -921,15 +923,32 @@ test('health alerts on stale eligible queues, ambiguous sends, and retry exhaust
     const accountId = await createTestAccount();
     const now = new Date('2049-07-16T12:00:00.000Z');
     const requestId = `health-queues-${randomUUID()}`;
+    const staleAt = new Date(now.getTime() - 11 * 60 * 1000);
     const fixture = await createLifecycleNotification({
         accountId,
-        occurredAt: now,
+        occurredAt: staleAt,
         requestId,
     });
-    const staleAt = new Date(now.getTime() - 11 * 60 * 1000);
+    const expiredFixture = await createLifecycleNotification({
+        accountId,
+        occurredAt: new Date(
+            now.getTime() -
+                (deliveryLifecycleNotificationMaximumAgeSeconds + 60) * 1000,
+        ),
+        requestId,
+    });
     await storage()
         .insert(notificationDeliveryAttempts)
         .values([
+            {
+                accountId,
+                attemptedAt: staleAt,
+                channel: 'push' as const,
+                notificationId: expiredFixture.notificationId,
+                provider: 'web_push_queue',
+                providerResponseCode: 'queued_background',
+                status: 'queued' as const,
+            },
             ...Array.from({ length: 5 }, () => ({
                 accountId,
                 attemptedAt: staleAt,

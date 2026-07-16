@@ -487,10 +487,11 @@ export async function createDeliveryLifecycleNotificationDecisionOnce(event: {
         throw new Error('Invalid delivery lifecycle notification decision.');
     }
     const { data } = event;
+    const scopeByMilestone = data.reason === 'eta_threshold_already_emitted';
     const lockKey = [
         'delivery-lifecycle-notification-decision',
         event.aggregateId,
-        data.sourceId,
+        scopeByMilestone ? 'milestone-scope' : data.sourceId,
         data.milestone,
         data.reason,
         String(data.retryAttempt),
@@ -520,7 +521,12 @@ export async function createDeliveryLifecycleNotificationDecisionOnce(event: {
                         String(data.retryAttempt),
                     ),
                     eq(sql<string>`${events.data}->>'runId'`, data.runId),
-                    eq(sql<string>`${events.data}->>'sourceId'`, data.sourceId),
+                    scopeByMilestone
+                        ? undefined
+                        : eq(
+                              sql<string>`${events.data}->>'sourceId'`,
+                              data.sourceId,
+                          ),
                     eq(sql<string>`${events.data}->>'stopId'`, data.stopId),
                 ),
             )

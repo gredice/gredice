@@ -51,6 +51,23 @@ and push queue attempts under one database advisory lock. Concurrent retries
 and replays therefore reuse one customer notification and one attempt per
 channel.
 
+Suppression telemetry is written only after every recipient publication reports
+that its idempotent notification row was reused. Route-progress replays record
+one `eta_threshold_already_emitted` decision per request, run, stop, milestone,
+and retry attempt. A failed first publication can therefore recover on the next
+evaluation without producing a contradictory suppressed-and-sent timeline.
+
+## Operational health window
+
+The default health projection measures terminal attempts and explicit retry
+exhaustion over the latest 15 minutes. It first bounds candidate notifications
+to the lifecycle contract's 24-hour maximum outbound age, then applies the
+requested attempt or event window. Stale queued-attempt checks use the same
+24-hour horizon and keep `status = queued` in the query predicate. These bounds
+use the existing notification creation-time and notification/attempt
+relationship indexes instead of scanning the complete 180-day audit retention
+window.
+
 ## Minimal payload and retention
 
 The event envelope contains only:

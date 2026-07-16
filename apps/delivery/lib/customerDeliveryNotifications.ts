@@ -283,10 +283,7 @@ async function publishCustomerDeliveryEventToRecipients(
             )),
         );
     }
-    if (
-        event.source.kind !== 'route-progress' &&
-        notificationResults.every((result) => result.outcome === 'reused')
-    ) {
+    if (notificationResults.every((result) => result.outcome === 'reused')) {
         try {
             await dependencies.recordLifecycleNotificationDecision(
                 knownEvents.delivery.requestLifecycleNotificationDecisionV1(
@@ -294,7 +291,10 @@ async function publishCustomerDeliveryEventToRecipients(
                     {
                         decision: 'suppressed',
                         milestone: event.milestone,
-                        reason: 'idempotency_reused',
+                        reason:
+                            event.source.kind === 'route-progress'
+                                ? 'eta_threshold_already_emitted'
+                                : 'idempotency_reused',
                         retryAttempt: event.retryAttempt,
                         runId: event.runId,
                         sourceId: event.source.id,

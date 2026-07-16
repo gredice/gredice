@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createDeliveryLifecycleEvent } from '@gredice/notifications';
+import {
+    createDeliveryLifecycleEvent,
+    customerDeliveryNotificationWebPushTtlSeconds,
+} from '@gredice/notifications';
+import { deliveryLifecycleNotificationMaximumAgeSeconds } from '@gredice/storage';
 import {
     type CustomerDeliveryMilestoneInput,
     customerDeliveryLifecycleNotification,
@@ -45,6 +49,13 @@ async function withDeliveryNotificationsEnabled<T>(run: () => Promise<T>) {
         }
     }
 }
+
+test('delivery lifecycle outbound TTL matches the bounded health lookback', () => {
+    assert.equal(
+        customerDeliveryNotificationWebPushTtlSeconds,
+        deliveryLifecycleNotificationMaximumAgeSeconds,
+    );
+});
 
 test('delivery notification producer remains disabled unless explicitly enabled', () => {
     assert.equal(customerDeliveryNotificationsEnabled(undefined), false);
@@ -528,48 +539,76 @@ test('reused notification publication stays successful when suppression telemetr
     }
 });
 
-test('route-progress reuse relies on the one-time ETA decision instead of emitting repeated idempotency decisions', async () => {
-    let recordedDecisions = 0;
-    const result = await withDeliveryNotificationsEnabled(async () =>
-        publishCustomerDeliveryMilestoneSafely(
+test('route-progress suppression is recorded only after publication is reused', async () => {
+    const recordedDecisions: unknown[] = [];
+    let publicationAttempt = 0;
+    const input = {
+        accountId: 'account-1',
+        milestone: 'near-arrival' as const,
+        occurredAt: new Date('2026-07-16T12:00:00.000Z'),
+        requestId: 'request-1',
+        retryAttempt: 0,
+        runId: 'run-1',
+        source: {
+            id: 'route-progress:2026-07-16T12:00:00.000Z',
+            kind: 'route-progress' as const,
+            version: 1,
+        },
+        stopId: 1,
+    };
+    const dependencies = {
+        getDeliveryAccountContacts: async () => [
             {
                 accountId: 'account-1',
-                milestone: 'near-arrival',
-                occurredAt: new Date('2026-07-16T12:00:00.000Z'),
-                requestId: 'request-1',
-                retryAttempt: 0,
-                runId: 'run-1',
-                source: {
-                    id: 'route-progress:2026-07-16T12:00:00.000Z',
-                    kind: 'route-progress',
-                    version: 1,
-                },
-                stopId: 1,
+                avatarUrl: null,
+                displayName: 'Customer',
+                id: 'user-1',
+                role: 'user',
+                userName: 'customer@example.test',
             },
-            {
-                getDeliveryAccountContacts: async () => [
-                    {
-                        accountId: 'account-1',
-                        avatarUrl: null,
-                        displayName: 'Customer',
-                        id: 'user-1',
-                        role: 'user',
-                        userName: 'customer@example.test',
-                    },
-                ],
-                createNotificationWithOutcome: async () => ({
-                    notificationId: 'notification:reused',
-                    outcome: 'reused',
-                }),
-                recordLifecycleNotificationDecision: async () => {
-                    recordedDecisions += 1;
-                },
-            },
-        ),
+        ],
+        createNotificationWithOutcome: async () => {
+            publicationAttempt += 1;
+            if (publicationAttempt === 1) {
+                throw new Error('temporary publication failure');
+            }
+            return {
+                notificationId: 'notification:route-progress',
+                outcome: publicationAttempt === 2 ? 'created' : 'reused',
+            } as const;
+        },
+        recordLifecycleNotificationDecision: async (event: unknown) => {
+            recordedDecisions.push(event);
+        },
+    };
+
+    const [failed, recovered, reused] = await withDeliveryNotificationsEnabled(
+        async () => [
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+            await publishCustomerDeliveryMilestoneSafely(input, dependencies),
+        ],
     );
 
-    assert.equal(result.outcome, 'published');
-    assert.equal(recordedDecisions, 0);
+    assert.deepEqual(failed, { outcome: 'failed' });
+    assert.equal(recovered.outcome, 'published');
+    assert.equal(reused.outcome, 'published');
+    assert.deepEqual(recordedDecisions, [
+        {
+            aggregateId: 'request-1',
+            data: {
+                decision: 'suppressed',
+                milestone: 'near-arrival',
+                reason: 'eta_threshold_already_emitted',
+                retryAttempt: 0,
+                runId: 'run-1',
+                sourceId: 'route-progress:2026-07-16T12:00:00.000Z',
+                stopId: '1',
+            },
+            type: 'delivery.request.lifecycle_notification.decision',
+            version: 1,
+        },
+    ]);
 });
 
 test('batch milestone publishing isolates one notification storage failure', async () => {

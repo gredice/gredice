@@ -20,6 +20,7 @@ import { storage } from '..';
 import {
     customerDeliveryNotificationRecipientRoles,
     deliveryLifecycleNotificationCategory,
+    deliveryLifecycleNotificationMaximumAgeSeconds,
     deliveryLifecycleNotificationType,
     isCustomerDeliveryLifecycleNotification,
 } from '../deliveryNotificationPolicy';
@@ -172,7 +173,6 @@ export const deliveryLifecycleEmailProvider = 'delivery_lifecycle_email';
 const defaultDeliveryLifecycleEmailMaxAttempts = 3;
 const defaultDeliveryLifecycleEmailClaimLeaseMs = 5 * 60 * 1000;
 const maximumDeliveryLifecycleEmailClaimLeaseMs = 60 * 60 * 1000;
-const maximumDeliveryLifecycleEmailAgeSeconds = 24 * 60 * 60;
 const maximumDeliveryLifecycleEmailRecipientLength = 254;
 const deliveryLifecycleEmailExpiredClaimCode = 'claim_expired_before_send';
 
@@ -2522,8 +2522,9 @@ function deliveryLifecycleNotificationIsExpired(
     const ttlSeconds = Math.max(
         0,
         Math.min(
-            notification.ttlSeconds ?? maximumDeliveryLifecycleEmailAgeSeconds,
-            maximumDeliveryLifecycleEmailAgeSeconds,
+            notification.ttlSeconds ??
+                deliveryLifecycleNotificationMaximumAgeSeconds,
+            deliveryLifecycleNotificationMaximumAgeSeconds,
         ),
     );
     return (
@@ -2612,9 +2613,9 @@ export async function getDeliveryLifecycleEmailCandidates({
                             least(
                                 coalesce(
                                     ${notifications.ttlSeconds},
-                                    ${maximumDeliveryLifecycleEmailAgeSeconds}
+                                    ${deliveryLifecycleNotificationMaximumAgeSeconds}
                                 ),
-                                ${maximumDeliveryLifecycleEmailAgeSeconds}
+                                ${deliveryLifecycleNotificationMaximumAgeSeconds}
                             )
                         ) * interval '1 second'
                     ) > ${now}`,

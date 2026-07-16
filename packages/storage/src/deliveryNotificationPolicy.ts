@@ -4,6 +4,7 @@ export const customerDeliveryNotificationRecipientRoles = [
 ] as const;
 export const deliveryLifecycleNotificationCategory = 'delivery_updates';
 export const deliveryLifecycleNotificationType = 'delivery_lifecycle';
+export const deliveryLifecycleNotificationMaximumAgeSeconds = 24 * 60 * 60;
 
 const customerDeliveryNotificationRecipientRoleSet: ReadonlySet<string> =
     new Set(customerDeliveryNotificationRecipientRoles);
