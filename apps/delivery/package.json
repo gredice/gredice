@@ -12,9 +12,11 @@
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run test:run",
+        "test:prepare": "turbo build --filter=delivery",
         "test:unit": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test lib/*.node.spec.ts",
         "test:component": "playwright test --project=chromium",
-        "test:run": "pnpm run test:unit && pnpm run test:component",
+        "test:e2e": "playwright test --config=playwright-e2e.config.ts --project=chromium",
+        "test:run": "pnpm run test:unit && pnpm run test:component && pnpm run test:prepare && pnpm run test:e2e",
         "test-ui": "playwright test --project=chromium --ui",
         "test:local": "pnpm run test:run"
     },
