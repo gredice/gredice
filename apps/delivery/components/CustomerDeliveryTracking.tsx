@@ -4,6 +4,7 @@ import {
 } from '@gredice/storage/deliveryTrackingPolicy';
 import { Alert } from '@gredice/ui/Alert';
 import { MyLocation, Timer, Warning } from '@gredice/ui/icons';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useState } from 'react';
 import type { CustomerDeliveryTrackingSummary } from '../lib/deliveryDashboardTypes';
 import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
@@ -16,22 +17,13 @@ export type CustomerDeliveryTrackingRequestTiming = {
 };
 
 function trackingMessage(tracking: CustomerDeliveryTrackingSummary) {
-    const lastUpdate = tracking.lastAcceptedAt
-        ? formatDeliveryDateTime(tracking.lastAcceptedAt)
-        : null;
     switch (tracking.status) {
         case 'live':
-            return lastUpdate
-                ? `Lokacija vozača je uživo. Zadnje ažuriranje: ${lastUpdate}.`
-                : 'Lokacija vozača je uživo.';
+            return 'Lokacija vozača je uživo.';
         case 'delayed':
-            return lastUpdate
-                ? `Lokacija vozača kasni. Zadnje potvrđeno ažuriranje: ${lastUpdate}.`
-                : 'Lokacija vozača kasni.';
+            return 'Lokacija vozača kasni.';
         case 'offline':
-            return lastUpdate
-                ? `Praćenje je trenutačno izvan mreže. Zadnje potvrđeno ažuriranje: ${lastUpdate}.`
-                : 'Praćenje je trenutačno izvan mreže.';
+            return 'Praćenje je trenutačno izvan mreže.';
         case 'unavailable':
             return 'Lokacija vozača još nije dostupna. Status dostave i procjena dolaska i dalje će se ažurirati.';
     }
@@ -191,9 +183,9 @@ export function CustomerDeliveryTracking({
     return (
         <section className="space-y-3">
             <Alert
-                role="status"
-                aria-live="polite"
+                aria-label="Status praćenja lokacije"
                 color={delayed || offline ? 'warning' : 'info'}
+                role="group"
                 startDecorator={
                     offline ? (
                         <Warning className="size-5" />
@@ -204,7 +196,26 @@ export function CustomerDeliveryTracking({
                     )
                 }
             >
-                {trackingMessage(visibleTracking)}
+                <div>
+                    <span aria-atomic="true" aria-live="polite" role="status">
+                        {trackingMessage(visibleTracking)}
+                    </span>
+                    {visibleTracking.lastAcceptedAt ? (
+                        <Typography
+                            level="body3"
+                            className="mt-1 text-muted-foreground"
+                        >
+                            {visibleTracking.status === 'live'
+                                ? 'Zadnje ažuriranje:'
+                                : 'Zadnje potvrđeno ažuriranje:'}{' '}
+                            <time dateTime={visibleTracking.lastAcceptedAt}>
+                                {formatDeliveryDateTime(
+                                    visibleTracking.lastAcceptedAt,
+                                )}
+                            </time>
+                        </Typography>
+                    ) : null}
+                </div>
             </Alert>
             {showMap ? (
                 <DeliveryMap

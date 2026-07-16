@@ -39,6 +39,15 @@ test('leads with every active delivery and organizes upcoming requests and bound
         active.getByRole('heading', { level: 3, name: 'Aktivna dostava' }),
     ).toBeVisible();
     await expect(active.getByTestId('customer-delivery-card')).toHaveCount(2);
+    await expect(active.getByRole('alert')).toHaveCount(1);
+    await expect(active.getByRole('alert')).toHaveText(
+        'Vozač je stigao na lokaciju dostave.',
+    );
+    await expect(
+        active.getByText('Vozač je stigao na lokaciju dostave.', {
+            exact: true,
+        }),
+    ).toHaveCount(2);
     await expect(active.getByRole('heading', { level: 4 })).toHaveText([
         'Aktivna rajčica',
         'Aktivni bosiljak',

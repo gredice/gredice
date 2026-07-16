@@ -59,17 +59,14 @@ function deliveryPromiseAnnouncement(
     const expiredPromise = progress.delayed && !range;
     return [
         range
-            ? eta.source === 'promised-window'
-                ? `Procijenjeni dolazak od ${range.startLabel} do ${range.endLabel}.`
-                : `Procijenjeni dolazak do ${formatDeliveryDateTime(range.endAt)}.`
+            ? `Procijenjeni dolazak od ${range.startLabel} do ${range.endLabel}.`
             : expiredPromise
               ? 'Odabrani termin je prošao, a nova procjena dolaska trenutačno nije dostupna.'
               : 'Procjena dolaska trenutačno nije dostupna.',
-        range ? etaSourceLabel(eta) : null,
+        range ? `${etaSourceLabel(eta)}.` : null,
         eta.freshness === 'stale'
             ? 'Procjena rute nije ažurna; prikazujemo odabrani termin.'
             : null,
-        progressMessage(progress),
         progress.delayed && range
             ? 'Procjena dolaska je nakon završetka odabranog termina.'
             : null,
@@ -82,10 +79,12 @@ export function CustomerDeliveryPromise({
     eta,
     progress,
     promisedWindowStartAt,
+    announceArrival = true,
 }: {
     eta: CustomerDeliveryEtaSummary;
     progress: CustomerDeliveryProgressSummary;
     promisedWindowStartAt: string | null;
+    announceArrival?: boolean;
 }) {
     const range = formatDeliveryDateTimeRange(
         eta.rangeStartAt,
@@ -97,17 +96,15 @@ export function CustomerDeliveryPromise({
         eta.remainingMinSeconds,
         eta.remainingMaxSeconds,
     );
+    const routineAnnouncement = deliveryPromiseAnnouncement(
+        eta,
+        progress,
+        range,
+    );
+    const arrived = progress.phase === 'arrived';
 
     return (
         <div data-testid="customer-delivery-promise" className="space-y-3">
-            <span
-                className="sr-only"
-                role="status"
-                aria-atomic="true"
-                aria-live="polite"
-            >
-                {deliveryPromiseAnnouncement(eta, progress, range)}
-            </span>
             {hasRange ? (
                 <div className="rounded-lg bg-muted/70 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -196,9 +193,27 @@ export function CustomerDeliveryPromise({
                 </Alert>
             )}
 
-            <div className="flex items-start gap-2 text-sm">
+            <div
+                aria-atomic="true"
+                aria-live={
+                    arrived
+                        ? announceArrival
+                            ? 'assertive'
+                            : undefined
+                        : 'polite'
+                }
+                className="flex items-start gap-2 text-sm"
+                role={
+                    arrived ? (announceArrival ? 'alert' : undefined) : 'status'
+                }
+            >
                 <Tally3 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <span>{progressMessage(progress)}</span>
+                {!arrived && routineAnnouncement ? (
+                    <span className="sr-only">
+                        Ažuriranje statusa: {routineAnnouncement}
+                    </span>
+                ) : null}
             </div>
 
             {progress.delayed && hasRange ? (

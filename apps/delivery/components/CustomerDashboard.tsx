@@ -12,6 +12,10 @@ import type {
     CustomerDeliveryDashboardRequest,
     CustomerDeliveryRequestSummary,
 } from '../lib/deliveryDashboardTypes';
+import {
+    CustomerDashboardFreshness,
+    type CustomerDashboardFreshnessFailure,
+} from './CustomerDashboardFreshness';
 import { CustomerDeliveryCard } from './CustomerDeliveryCard';
 import {
     CustomerDeliveryTracking,
@@ -23,12 +27,15 @@ import { DeliveryAppHeader } from './DeliveryAppHeader';
 function CustomerRequestCard({
     request,
     emphasized = false,
+    announceArrival = false,
 }: {
     request: CustomerDeliveryDashboardRequest;
     emphasized?: boolean;
+    announceArrival?: boolean;
 }) {
     return request.mode === 'delivery' ? (
         <CustomerDeliveryCard
+            announceArrival={announceArrival}
             delivery={request}
             emphasized={emphasized}
             headingLevel="h4"
@@ -54,9 +61,14 @@ function CustomerSectionEmpty({ children }: { children: string }) {
 export function CustomerDashboard({
     dashboard,
     requestTiming,
+    freshness,
 }: {
     dashboard: CustomerDeliveryDashboard;
     requestTiming: CustomerDeliveryTrackingRequestTiming | null;
+    freshness?: {
+        failure: CustomerDashboardFreshnessFailure;
+        onRetry: () => Promise<boolean>;
+    };
 }) {
     const hasDelivery = dashboard.deliveries.some(
         (request) => request.mode === 'delivery',
@@ -147,6 +159,13 @@ export function CustomerDashboard({
                 context={headerContext}
             />
             <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-5 sm:py-8">
+                {freshness ? (
+                    <CustomerDashboardFreshness
+                        failure={freshness.failure}
+                        refreshedAt={dashboard.refreshedAt}
+                        onRetry={freshness.onRetry}
+                    />
+                ) : null}
                 <div>
                     <Typography level="h2" semiBold>
                         {heading}
@@ -213,6 +232,9 @@ export function CustomerDashboard({
                                                         }
                                                     >
                                                         <CustomerRequestCard
+                                                            announceArrival={
+                                                                index === 0
+                                                            }
                                                             request={request}
                                                             emphasized={
                                                                 index === 0

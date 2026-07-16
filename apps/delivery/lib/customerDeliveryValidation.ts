@@ -4,14 +4,14 @@ import type {
     CustomerDeliveryTrackingSummary,
 } from './deliveryDashboardTypes';
 
-function canonicalIsoTimestamp(value: unknown): value is string {
+export function isCanonicalIsoTimestamp(value: unknown): value is string {
     if (typeof value !== 'string') return false;
     const time = Date.parse(value);
     return Number.isFinite(time) && new Date(time).toISOString() === value;
 }
 
 function nullableCanonicalIsoTimestamp(value: unknown): value is string | null {
-    return value === null || canonicalIsoTimestamp(value);
+    return value === null || isCanonicalIsoTimestamp(value);
 }
 
 export function isCustomerDeliveryTrackingSummary(

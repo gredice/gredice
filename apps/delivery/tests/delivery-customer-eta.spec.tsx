@@ -180,6 +180,9 @@ test('keeps a stable polite announcement for meaningful ETA and progress updates
     await expect(announcement).toContainText(
         '3 zaustavljanja prije tvoje dostave.',
     );
+    await expect(announcement).toContainText(
+        'Procijenjeni dolazak od 10:00 do 12:00.',
+    );
     const initialAnnouncement = await announcement.textContent();
     await component.update(
         <UpdatingCustomerEtaStory
@@ -191,12 +194,41 @@ test('keeps a stable polite announcement for meaningful ETA and progress updates
         component.getByText('Preostalo: 5 min – 15 min', { exact: true }),
     ).toBeVisible();
     await expect(announcement).toHaveText(initialAnnouncement ?? '');
+    await component.update(
+        <UpdatingCustomerEtaStory
+            rangeStartAt="2026-07-16T09:15:00.000Z"
+            rangeEndAt="2026-07-16T09:30:00.000Z"
+        />,
+    );
+    await expect(announcement).not.toHaveText(initialAnnouncement ?? '');
+    await expect(announcement).toContainText(
+        'Procijenjeni dolazak od 11:15 do 11:30.',
+    );
     await component.update(<UpdatingCustomerEtaStory delayed />);
     await expect(announcement).toContainText(
         'Procjena dolaska je nakon završetka odabranog termina.',
     );
     await expect(announcement).toHaveAttribute('aria-atomic', 'true');
     await expect(component.getByRole('alert')).toHaveCount(0);
+});
+
+test('announces driver arrival assertively without duplicating a routine update', async ({
+    mount,
+}) => {
+    const component = await mount(<UpdatingCustomerEtaStory />);
+    await expect(component.getByRole('status')).toHaveCount(1);
+
+    await component.update(<UpdatingCustomerEtaStory arrived />);
+
+    await expect(component.getByRole('alert')).toHaveText(
+        'Vozač je stigao na lokaciju dostave.',
+    );
+    await expect(component.getByRole('status')).toHaveCount(0);
+    await expect(
+        component.getByText('Vozač je stigao na lokaciju dostave.', {
+            exact: true,
+        }),
+    ).toBeVisible();
 });
 
 test.describe('customer ETA on a narrow touch screen', () => {

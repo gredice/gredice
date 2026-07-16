@@ -41,6 +41,34 @@ excluded. Delivery, pickup, receipt, and recovery support links prefill the
 exact owned request and harvest/trace reference without adding destination or
 recipient data to the message.
 
+## Cached dashboard and announcements
+
+The customer dashboard keeps the last successful React Query response mounted
+during an offline period or transient background refresh failure. This is an
+authenticated, in-memory session cache only: customer recipient, destination,
+harvest, and tracking data are not persisted to local storage. The query key is
+scoped to the authenticated user, and logout removes delivery-dashboard query
+data before another session can render.
+
+A full-screen error is reserved for the initial request when no dashboard has
+ever loaded. When last-known content exists, a customer-specific warning shows
+the server-provided `refreshedAt` time and offers an in-place retry without
+unmounting active, upcoming, or historical requests. Invalid refresh timestamps
+fail the runtime response guard. Reconnecting keeps the warning visible until a
+newer server response succeeds; a cached or paused query cannot produce a false
+recovery. A cold offline customer request goes directly to the initial error,
+while drivers get a bounded grace period for their persisted route to load.
+Successful automatic recovery is announced politely without moving focus;
+recovery after a customer-triggered retry moves focus to the confirmation so
+the completed action is unambiguous.
+
+Routine ETA, progress, and tracking-state changes use polite status regions.
+Polling-only GPS timestamps and ETA calculation timestamps remain visible as
+ordinary `<time>` content outside those live regions, so a refresh does not
+reannounce an otherwise unchanged state. Driver arrival and loss of a usable
+dashboard remain assertive. These announcement rules do not extend exact-map
+retention: an already-rendered map still unmounts at the server-calculated TTL.
+
 ## Promised window
 
 Every delivery card renders the complete `slotStartAt`–`slotEndAt` window. A

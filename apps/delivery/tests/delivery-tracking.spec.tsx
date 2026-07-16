@@ -33,6 +33,57 @@ test('customer sees a live server-acknowledged location and map', async ({
     ).toBeVisible();
 });
 
+test('keeps polling timestamps outside the polite tracking announcement', async ({
+    mount,
+}) => {
+    const component = await mount(
+        <CustomerDeliveryTrackingFromRequest
+            mapPath="/api/map/run-announcement"
+            tracking={{
+                status: 'live',
+                lastAcceptedAt,
+                mapAvailable: true,
+                exactLocationExpiresInMs: 110_000,
+            }}
+        />,
+    );
+    const announcement = component.getByRole('status');
+
+    await expect(announcement).toHaveText('Lokacija vozača je uživo.');
+    const initialAnnouncement = await announcement.textContent();
+    await component.update(
+        <CustomerDeliveryTrackingFromRequest
+            mapPath="/api/map/run-announcement"
+            tracking={{
+                status: 'live',
+                lastAcceptedAt: '2026-07-15T10:00:10.000Z',
+                mapAvailable: true,
+                exactLocationExpiresInMs: 110_000,
+            }}
+        />,
+    );
+
+    await expect(announcement).toHaveText(initialAnnouncement ?? '');
+    await expect(component.locator('time')).toHaveAttribute(
+        'datetime',
+        '2026-07-15T10:00:10.000Z',
+    );
+
+    await component.update(
+        <CustomerDeliveryTrackingFromRequest
+            mapPath="/api/map/run-announcement"
+            tracking={{
+                status: 'delayed',
+                lastAcceptedAt: '2026-07-15T10:00:10.000Z',
+                mapAvailable: true,
+                exactLocationExpiresInMs: 60_000,
+            }}
+        />,
+    );
+    await expect(announcement).toHaveText('Lokacija vozača kasni.');
+    await expect(component.getByRole('alert')).toHaveCount(0);
+});
+
 test('ages a live location to delayed when dashboard polling stalls', async ({
     mount,
     page,

@@ -49,10 +49,12 @@ export function CustomerDeliveryCard({
     delivery,
     emphasized = false,
     headingLevel = 'h3',
+    announceArrival = true,
 }: {
     delivery: CustomerDeliveryRequestSummary;
     emphasized?: boolean;
     headingLevel?: 'h3' | 'h4';
+    announceArrival?: boolean;
 }) {
     const showDeliveryPromise =
         delivery.status !== 'fulfilled' &&
@@ -139,6 +141,7 @@ export function CustomerDeliveryCard({
 
                 {showDeliveryPromise ? (
                     <CustomerDeliveryPromise
+                        announceArrival={announceArrival}
                         eta={delivery.eta}
                         progress={delivery.progress}
                         promisedWindowStartAt={delivery.slotStartAt}

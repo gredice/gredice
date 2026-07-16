@@ -243,11 +243,17 @@ export function InvalidCustomerWindowStory({
 }
 
 export function UpdatingCustomerEtaStory({
+    arrived = false,
     delayed = false,
+    rangeStartAt = baseDelivery.slotStartAt,
+    rangeEndAt = baseDelivery.slotEndAt,
     remainingMinSeconds = 3_600,
     remainingMaxSeconds = 10_800,
 }: {
+    arrived?: boolean;
     delayed?: boolean;
+    rangeStartAt?: string | null;
+    rangeEndAt?: string | null;
     remainingMinSeconds?: number;
     remainingMaxSeconds?: number;
 }) {
@@ -272,22 +278,28 @@ export function UpdatingCustomerEtaStory({
                           calculatedAt: null,
                           freshness: 'fallback',
                           confidence: 'approximate',
-                          rangeStartAt: baseDelivery.slotStartAt,
-                          rangeEndAt: baseDelivery.slotEndAt,
+                          rangeStartAt,
+                          rangeEndAt,
                           remainingMinSeconds,
                           remainingMaxSeconds,
                       },
-                progress: delayed
+                progress: arrived
                     ? {
-                          phase: 'on-route',
-                          stopsAhead: 1,
-                          delayed: true,
-                      }
-                    : {
-                          phase: 'on-route',
-                          stopsAhead: 3,
+                          phase: 'arrived',
+                          stopsAhead: 0,
                           delayed: false,
-                      },
+                      }
+                    : delayed
+                      ? {
+                            phase: 'on-route',
+                            stopsAhead: 1,
+                            delayed: true,
+                        }
+                      : {
+                            phase: 'on-route',
+                            stopsAhead: 3,
+                            delayed: false,
+                        },
             }}
         />
     );
