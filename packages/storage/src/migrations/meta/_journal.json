@@ -526,6 +526,13 @@
       "when": 1784138271972,
       "tag": "0074_strong_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1784163861364,
+      "tag": "0075_whole_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

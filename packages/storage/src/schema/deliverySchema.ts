@@ -210,6 +210,72 @@ export type DeliveryRunPickupOperationStoredResult = {
     manifestState?: DeliveryRunManifestState;
 };
 
+export const DeliveryRunHandoffItemStates = {
+    UNVERIFIED: 'unverified',
+    SCANNED: 'scanned',
+    NO_LABEL: 'no-label',
+    MISSING: 'missing',
+    SKIPPED: 'skipped',
+} as const;
+
+export type DeliveryRunHandoffItemState =
+    (typeof DeliveryRunHandoffItemStates)[keyof typeof DeliveryRunHandoffItemStates];
+
+export const DeliveryRunHandoffSkipReasons = {
+    SCANNER_UNAVAILABLE: 'scanner-unavailable',
+    LABEL_UNREADABLE: 'label-unreadable',
+    MANUAL_VERIFICATION: 'manual-verification',
+    OTHER_OPERATIONAL: 'other-operational',
+} as const;
+
+export type DeliveryRunHandoffSkipReason =
+    (typeof DeliveryRunHandoffSkipReasons)[keyof typeof DeliveryRunHandoffSkipReasons];
+
+export const DeliveryRunHandoffOperationKinds = {
+    SCAN: 'scan',
+    MARK_ITEM: 'mark-item',
+} as const;
+
+export type DeliveryRunHandoffOperationKind =
+    (typeof DeliveryRunHandoffOperationKinds)[keyof typeof DeliveryRunHandoffOperationKinds];
+
+export type DeliveryRunHandoffOperationStoredResult = {
+    kind: DeliveryRunHandoffOperationKind;
+    outcome:
+        | 'applied'
+        | 'already-applied'
+        | 'stale'
+        | 'invalid'
+        | 'wrong-stop'
+        | 'item-not-found';
+    affectedStopIds: number[];
+    itemState?: DeliveryRunHandoffItemState;
+    reason?: DeliveryRunHandoffSkipReason;
+};
+
+export type DeliveryRunHandoffItemSnapshot = {
+    stopId: number;
+    deliveryRequestId: string;
+    retryAttempt: number;
+    traceLinkId: number | null;
+    qrAvailable: boolean;
+    state: DeliveryRunHandoffItemState;
+    reason: DeliveryRunHandoffSkipReason | null;
+    verifiedAt: string | null;
+};
+
+export type DeliveryRunHandoffSnapshot = {
+    version: 1;
+    retryAttempt: number;
+    items: DeliveryRunHandoffItemSnapshot[];
+    expectedCount: number;
+    scannedCount: number;
+    unverifiedCount: number;
+    noLabelCount: number;
+    missingCount: number;
+    skippedCount: number;
+};
+
 export const DeliveryRunExceptionOutcomes = {
     DEFERRED: 'deferred',
     FAILED: 'failed',
@@ -259,6 +325,7 @@ export type DeliveryRunStopOperationStoredResult = {
     routeRevision: number;
     reroutePending: boolean;
     runCompleted: boolean;
+    handoff?: DeliveryRunHandoffSnapshot;
 };
 
 // Delivery Runs - one optimized route picked up and driven by a driver/admin.
@@ -319,6 +386,7 @@ export const deliveryRuns = pgTable(
         index('delivery_runs_location_recorded_at_idx').on(
             table.currentLocationRecordedAt,
         ),
+        index('delivery_runs_completed_at_idx').on(table.completedAt),
     ],
 );
 
@@ -694,6 +762,17 @@ export const deliveryRunStops = pgTable(
             () => users.id,
             { onDelete: 'set null' },
         ),
+        handoffVerificationState: text(
+            'handoff_verification_state',
+        ).$type<DeliveryRunHandoffItemState>(),
+        handoffVerificationReason: text(
+            'handoff_verification_reason',
+        ).$type<DeliveryRunHandoffSkipReason>(),
+        handoffVerifiedAt: timestamp('handoff_verified_at'),
+        handoffVerifiedByUserId: text('handoff_verified_by_user_id').references(
+            () => users.id,
+            { onDelete: 'set null' },
+        ),
         state: text('state')
             .$type<DeliveryRunStopState>()
             .notNull()
@@ -804,6 +883,36 @@ export const deliveryRunStops = pgTable(
             )`,
         ),
         check(
+            'delivery_run_stops_handoff_verification_state_check',
+            sql`${table.handoffVerificationState} is null or ${table.handoffVerificationState} in ('unverified', 'scanned', 'no-label', 'missing', 'skipped')`,
+        ),
+        check(
+            'delivery_run_stops_handoff_verification_reason_check',
+            sql`${table.handoffVerificationReason} is null or ${table.handoffVerificationReason} in ('scanner-unavailable', 'label-unreadable', 'manual-verification', 'other-operational')`,
+        ),
+        check(
+            'delivery_run_stops_handoff_verification_shape_check',
+            sql`(
+                ${table.handoffVerificationState} is null
+                and ${table.handoffVerificationReason} is null
+                and ${table.handoffVerifiedAt} is null
+                and ${table.handoffVerifiedByUserId} is null
+            ) or (
+                ${table.handoffVerificationState} = 'unverified'
+                and ${table.handoffVerificationReason} is null
+                and ${table.handoffVerifiedAt} is null
+                and ${table.handoffVerifiedByUserId} is null
+            ) or (
+                ${table.handoffVerificationState} in ('scanned', 'no-label', 'missing')
+                and ${table.handoffVerificationReason} is null
+                and ${table.handoffVerifiedAt} is not null
+            ) or (
+                ${table.handoffVerificationState} = 'skipped'
+                and ${table.handoffVerificationReason} is not null
+                and ${table.handoffVerifiedAt} is not null
+            )`,
+        ),
+        check(
             'delivery_run_stops_state_check',
             sql`${table.state} in ('pending', 'arrived', 'delivered', 'deferred', 'failed', 'cancelled')`,
         ),
@@ -877,6 +986,9 @@ export const deliveryRunStops = pgTable(
         index('delivery_run_stops_pickup_item_state_idx').on(
             table.pickupItemState,
         ),
+        index('delivery_run_stops_handoff_verification_state_idx').on(
+            table.handoffVerificationState,
+        ),
     ],
 );
 
@@ -922,6 +1034,60 @@ export const deliveryRunPickupOperations = pgTable(
         index('delivery_run_pickup_operations_run_id_idx').on(table.runId),
         index('delivery_run_pickup_operations_pickup_node_id_idx').on(
             table.pickupNodeId,
+        ),
+    ],
+);
+
+// Durable, data-minimized receipts for advisory harvest handoff checks.
+// Raw QR values are represented only by a digest and are never stored here.
+export const deliveryRunHandoffOperations = pgTable(
+    'delivery_run_handoff_operations',
+    {
+        id: serial('id').primaryKey(),
+        runId: text('run_id')
+            .notNull()
+            .references(() => deliveryRuns.id, { onDelete: 'cascade' }),
+        targetStopId: integer('target_stop_id').notNull(),
+        retryAttempt: integer('retry_attempt').notNull(),
+        driverUserId: text('driver_user_id')
+            .notNull()
+            .references(() => users.id),
+        clientOperationId: text('client_operation_id').notNull(),
+        kind: text('kind').$type<DeliveryRunHandoffOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        result: jsonb('result')
+            .$type<DeliveryRunHandoffOperationStoredResult>()
+            .notNull(),
+        occurredAt: timestamp('occurred_at').notNull(),
+        appliedAt: timestamp('applied_at').notNull().defaultNow(),
+    },
+    (table) => [
+        foreignKey({
+            columns: [table.runId, table.targetStopId],
+            foreignColumns: [deliveryRunStops.runId, deliveryRunStops.id],
+            name: 'delivery_run_handoff_operations_run_target_stop_fk',
+        }).onDelete('cascade'),
+        uniqueIndex('delivery_run_handoff_operations_run_client_unique').on(
+            table.runId,
+            table.clientOperationId,
+        ),
+        check(
+            'delivery_run_handoff_operations_kind_check',
+            sql`${table.kind} in ('scan', 'mark-item')`,
+        ),
+        check(
+            'delivery_run_handoff_operations_retry_attempt_check',
+            sql`${table.retryAttempt} >= 0`,
+        ),
+        index('delivery_run_handoff_operations_run_id_idx').on(table.runId),
+        index('delivery_run_handoff_operations_target_stop_id_idx').on(
+            table.targetStopId,
+        ),
+        index('delivery_run_handoff_operations_driver_user_id_idx').on(
+            table.driverUserId,
+        ),
+        index('delivery_run_handoff_operations_applied_at_idx').on(
+            table.appliedAt,
         ),
     ],
 );
@@ -1032,6 +1198,9 @@ export const deliveryRunsRelations = relations(
         pickupOperations: many(deliveryRunPickupOperations, {
             relationName: 'deliveryRunPickupOperations',
         }),
+        handoffOperations: many(deliveryRunHandoffOperations, {
+            relationName: 'deliveryRunHandoffOperations',
+        }),
         exceptionOperations: many(deliveryRunExceptionOperations, {
             relationName: 'deliveryRunExceptionOperations',
         }),
@@ -1127,6 +1296,9 @@ export const deliveryRunStopsRelations = relations(
         operations: many(deliveryRunStopOperations, {
             relationName: 'deliveryRunStopOperationsTarget',
         }),
+        handoffOperations: many(deliveryRunHandoffOperations, {
+            relationName: 'deliveryRunHandoffOperationsTarget',
+        }),
     }),
 );
 
@@ -1169,6 +1341,27 @@ export const deliveryRunExceptionOperationsRelations = relations(
             fields: [deliveryRunExceptionOperations.driverUserId],
             references: [users.id],
             relationName: 'driverDeliveryRunExceptionOperations',
+        }),
+    }),
+);
+
+export const deliveryRunHandoffOperationsRelations = relations(
+    deliveryRunHandoffOperations,
+    ({ one }) => ({
+        run: one(deliveryRuns, {
+            fields: [deliveryRunHandoffOperations.runId],
+            references: [deliveryRuns.id],
+            relationName: 'deliveryRunHandoffOperations',
+        }),
+        targetStop: one(deliveryRunStops, {
+            fields: [deliveryRunHandoffOperations.targetStopId],
+            references: [deliveryRunStops.id],
+            relationName: 'deliveryRunHandoffOperationsTarget',
+        }),
+        driver: one(users, {
+            fields: [deliveryRunHandoffOperations.driverUserId],
+            references: [users.id],
+            relationName: 'driverDeliveryRunHandoffOperations',
         }),
     }),
 );
@@ -1246,6 +1439,8 @@ export type SelectDeliveryRunSlot = typeof deliveryRunSlots.$inferSelect;
 export type SelectDeliveryRunStop = typeof deliveryRunStops.$inferSelect;
 export type SelectDeliveryRunPickupOperation =
     typeof deliveryRunPickupOperations.$inferSelect;
+export type SelectDeliveryRunHandoffOperation =
+    typeof deliveryRunHandoffOperations.$inferSelect;
 export type SelectDeliveryRunExceptionOperation =
     typeof deliveryRunExceptionOperations.$inferSelect;
 export type SelectDeliveryRunStopOperation =

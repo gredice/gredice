@@ -1,4 +1,7 @@
-import { clearExpiredDeliveryRunLocations } from '@gredice/storage';
+import {
+    clearExpiredDeliveryRunLocations,
+    pruneExpiredDeliveryRunHandoffOperations,
+} from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -32,21 +35,29 @@ export async function GET(request: NextRequest) {
 
     try {
         const cleared = await clearExpiredDeliveryRunLocations();
+        const prunedHandoffOperationCount =
+            await pruneExpiredDeliveryRunHandoffOperations();
         if (cleared.length > 0) {
             console.warn('Expired stale delivery tracking coordinates', {
                 clearedCount: cleared.length,
+            });
+        }
+        if (prunedHandoffOperationCount > 0) {
+            console.warn('Pruned expired delivery handoff operations', {
+                prunedCount: prunedHandoffOperationCount,
             });
         }
         return Response.json(
             {
                 success: true,
                 clearedCount: cleared.length,
+                prunedHandoffOperationCount,
                 timestamp: new Date().toISOString(),
             },
             { headers: noStoreHeaders },
         );
     } catch (error) {
-        console.error('Failed to expire stale delivery tracking coordinates', {
+        console.error('Failed delivery retention cleanup', {
             errorName: error instanceof Error ? error.name : 'Unknown',
             errorCode: boundedErrorCode(error),
         });

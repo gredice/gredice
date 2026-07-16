@@ -418,6 +418,22 @@ export type DeliveryRequestStatusPayload = {
 export type DeliveryRequestFulfilledPayload = {
     status: string;
     deliveryNotes?: string;
+    handoffVerification?: {
+        version: 1;
+        runId: string;
+        stopId: number;
+        retryAttempt: number;
+        clientOperationId: string;
+        traceLinkId: number | null;
+        qrAvailable: boolean;
+        result: 'unverified' | 'scanned' | 'no-label' | 'missing' | 'skipped';
+        reason?:
+            | 'scanner-unavailable'
+            | 'label-unreadable'
+            | 'manual-verification'
+            | 'other-operational';
+        verifiedAt?: string;
+    };
 };
 
 export type DeliveryRequestExceptionRecordedPayload = {

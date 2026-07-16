@@ -48,6 +48,7 @@ import {
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
+    type DeliveryRequestFulfilledPayload,
     getAllEvents,
     knownEvents,
     knownEventTypes,
@@ -1783,10 +1784,18 @@ export async function fulfillDeliveryRequest(
     requestId: string,
     deliveryNotes?: string,
     db?: DatabaseClient,
+    handoffVerification?: NonNullable<
+        DeliveryRequestFulfilledPayload['handoffVerification']
+    >,
 ): Promise<void> {
     if (!db) {
         await withDeliveryDispatchTransaction(async (tx) => {
-            await fulfillDeliveryRequest(requestId, deliveryNotes, tx);
+            await fulfillDeliveryRequest(
+                requestId,
+                deliveryNotes,
+                tx,
+                handoffVerification,
+            );
         });
         return;
     }
@@ -1823,11 +1832,15 @@ export async function fulfillDeliveryRequest(
     }
 
     // Create the fulfillment event
+    const payload: DeliveryRequestFulfilledPayload = {
+        status: DeliveryRequestStates.FULFILLED,
+        deliveryNotes,
+        ...(handoffVerification ? { handoffVerification } : {}),
+    };
     await createEvent(
-        knownEvents.delivery.requestFulfilledV1(requestId, {
-            status: DeliveryRequestStates.FULFILLED,
-            deliveryNotes,
-        }),
+        handoffVerification
+            ? knownEvents.delivery.requestFulfilledV2(requestId, payload)
+            : knownEvents.delivery.requestFulfilledV1(requestId, payload),
         db,
     );
 }

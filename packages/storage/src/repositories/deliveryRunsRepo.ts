@@ -29,6 +29,14 @@ import {
     DeliveryRunExceptionOutcomes,
     type DeliveryRunExceptionReason,
     DeliveryRunExceptionReasons,
+    type DeliveryRunHandoffItemSnapshot,
+    type DeliveryRunHandoffItemState,
+    DeliveryRunHandoffItemStates,
+    DeliveryRunHandoffOperationKinds,
+    type DeliveryRunHandoffOperationStoredResult,
+    type DeliveryRunHandoffSkipReason,
+    DeliveryRunHandoffSkipReasons,
+    type DeliveryRunHandoffSnapshot,
     type DeliveryRunManifestItemState,
     DeliveryRunManifestItemStates,
     DeliveryRunManifestStates,
@@ -47,6 +55,7 @@ import {
     deliveryAddresses,
     deliveryRequests,
     deliveryRunExceptionOperations,
+    deliveryRunHandoffOperations,
     deliveryRunPickupNodes,
     deliveryRunPickupOperations,
     deliveryRunPreparations,
@@ -281,6 +290,8 @@ export const DeliveryRunExecutionErrorCodes = {
     PICKUP_MANIFEST_NOT_FOUND: 'pickup-manifest-not-found',
     PICKUP_MANIFEST_INCOMPLETE: 'pickup-manifest-incomplete',
     PICKUP_OPERATION_CONFLICT: 'pickup-operation-conflict',
+    HANDOFF_OPERATION_CONFLICT: 'handoff-operation-conflict',
+    HANDOFF_OPERATION_INVALID: 'handoff-operation-invalid',
     PICKUP_DEPENDENCY_PENDING: 'pickup-dependency-pending',
     ROUTE_ORDER: 'route-order',
     ROUTE_REVISION_CONFLICT: 'route-revision-conflict',
@@ -357,6 +368,35 @@ export type DeliveryRunPickupMutationResult = {
     clientOperationId: string;
     replayed: boolean;
     result: DeliveryRunPickupOperationStoredResult;
+};
+
+type DeliveryRunHandoffMutationBase = {
+    clientOperationId: string;
+    occurredAt: Date;
+};
+
+export type DeliveryRunHandoffMutation =
+    | (DeliveryRunHandoffMutationBase & {
+          kind: 'scan';
+          tracePath: string;
+      })
+    | (DeliveryRunHandoffMutationBase & {
+          kind: 'mark-item';
+          stopId: number;
+          outcome: 'no-label' | 'missing' | 'skipped';
+          reason?: DeliveryRunHandoffSkipReason;
+      });
+
+export type DeliveryRunHandoffMutationResult = {
+    clientOperationId: string;
+    retryAttempt: number;
+    replayed: boolean;
+    result: DeliveryRunHandoffOperationStoredResult;
+};
+
+export type DeliveryRunHandoffManifest = DeliveryRunHandoffSnapshot & {
+    runId: string;
+    targetStopId: number;
 };
 
 export type DeliveryRunStopExceptionInput = {
@@ -1753,6 +1793,7 @@ async function insertPreparedDeliveryRun(
                       pickupTraceToken: manifestItem.traceToken,
                   }
                 : {}),
+            handoffVerificationState: DeliveryRunHandoffItemStates.UNVERIFIED,
             latitude: stop.latitude,
             longitude: stop.longitude,
             formattedAddress: stop.formattedAddress,
@@ -1919,6 +1960,8 @@ export async function createDeliveryRun({
                 estimatedArrivalAt: stop.estimatedArrivalAt,
                 estimatedTravelSeconds: stop.estimatedTravelSeconds,
                 estimatedDistanceMeters: stop.estimatedDistanceMeters,
+                handoffVerificationState:
+                    DeliveryRunHandoffItemStates.UNVERIFIED,
             })),
         );
     });
@@ -2733,6 +2776,678 @@ export async function applyDeliveryRunPickupMutations({
     });
 }
 
+type DeliveryRunHandoffSnapshotStop = Pick<
+    typeof deliveryRunStops.$inferSelect,
+    | 'id'
+    | 'deliveryRequestId'
+    | 'retryAttempt'
+    | 'pickupItemState'
+    | 'pickupTraceLinkId'
+    | 'pickupTraceToken'
+    | 'handoffVerificationState'
+    | 'handoffVerificationReason'
+    | 'handoffVerifiedAt'
+>;
+
+function deliveryRunHandoffItemSnapshot(
+    stop: DeliveryRunHandoffSnapshotStop,
+): DeliveryRunHandoffItemSnapshot {
+    const qrAvailable = Boolean(
+        stop.pickupTraceLinkId &&
+            stop.pickupTraceToken &&
+            stop.pickupItemState !==
+                DeliveryRunManifestItemStates.MISSING_LABEL,
+    );
+    const recordedState =
+        stop.handoffVerificationState ??
+        DeliveryRunHandoffItemStates.UNVERIFIED;
+    const state =
+        recordedState === DeliveryRunHandoffItemStates.UNVERIFIED &&
+        !qrAvailable
+            ? DeliveryRunHandoffItemStates.NO_LABEL
+            : recordedState;
+    return {
+        stopId: stop.id,
+        deliveryRequestId: stop.deliveryRequestId,
+        retryAttempt: stop.retryAttempt,
+        traceLinkId: stop.pickupTraceLinkId,
+        qrAvailable,
+        state,
+        reason:
+            state === DeliveryRunHandoffItemStates.SKIPPED
+                ? stop.handoffVerificationReason
+                : null,
+        verifiedAt: stop.handoffVerifiedAt?.toISOString() ?? null,
+    };
+}
+
+function deliveryRunHandoffSnapshot(
+    stops: DeliveryRunHandoffSnapshotStop[],
+): DeliveryRunHandoffSnapshot {
+    const items = stops.map(deliveryRunHandoffItemSnapshot);
+    const count = (state: DeliveryRunHandoffItemState) =>
+        items.filter((item) => item.state === state).length;
+    return {
+        version: 1,
+        retryAttempt: Math.max(0, ...items.map((item) => item.retryAttempt)),
+        items,
+        expectedCount: items.length,
+        scannedCount: count(DeliveryRunHandoffItemStates.SCANNED),
+        unverifiedCount: count(DeliveryRunHandoffItemStates.UNVERIFIED),
+        noLabelCount: count(DeliveryRunHandoffItemStates.NO_LABEL),
+        missingCount: count(DeliveryRunHandoffItemStates.MISSING),
+        skippedCount: count(DeliveryRunHandoffItemStates.SKIPPED),
+    };
+}
+
+async function deliveryRunHandoffStopGroup({
+    runId,
+    targetStopId,
+    db,
+}: {
+    runId: string;
+    targetStopId: number;
+    db: DatabaseClient;
+}) {
+    const progress = await getDeliveryRunExecutionProgressFromDb(runId, db);
+    const checkpoint = progress.find(
+        (step) =>
+            step.kind === 'delivery' && step.stopIds.includes(targetStopId),
+    );
+    if (checkpoint?.kind !== 'delivery') {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+            'Delivery handoff must target a delivery checkpoint',
+        );
+    }
+    return await db.query.deliveryRunStops.findMany({
+        where: and(
+            eq(deliveryRunStops.runId, runId),
+            inArray(deliveryRunStops.id, checkpoint.stopIds),
+        ),
+        orderBy: [asc(deliveryRunStops.sequence)],
+    });
+}
+
+export async function getDeliveryRunHandoffManifest({
+    readerUserId,
+    runId,
+    targetStopId,
+    allowAnyRun = false,
+}: {
+    readerUserId: string;
+    runId: string;
+    targetStopId: number;
+    allowAnyRun?: boolean;
+}): Promise<DeliveryRunHandoffManifest> {
+    if (
+        !runId ||
+        runId.length > 256 ||
+        !Number.isSafeInteger(targetStopId) ||
+        targetStopId <= 0 ||
+        targetStopId > 2_147_483_647
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+            'Delivery handoff manifest selection is invalid',
+        );
+    }
+    const db = storage();
+    const run = await db.query.deliveryRuns.findFirst({
+        columns: { driverUserId: true },
+        where: eq(deliveryRuns.id, runId),
+    });
+    if (!run || (!allowAnyRun && run.driverUserId !== readerUserId)) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+            'Delivery run handoff manifest was not found',
+        );
+    }
+    const stops = await deliveryRunHandoffStopGroup({
+        runId,
+        targetStopId,
+        db,
+    });
+    return {
+        runId,
+        targetStopId,
+        ...deliveryRunHandoffSnapshot(stops),
+    };
+}
+
+function normalizeDeliveryHandoffTrace(value: string) {
+    const trimmed = value.trim();
+    const directToken = normalizeHarvestTraceToken(trimmed);
+    if (directToken) return directToken;
+
+    let url: URL;
+    try {
+        url = new URL(trimmed, 'https://www.gredice.com');
+    } catch {
+        return null;
+    }
+    const isAbsolute =
+        /^[A-Za-z][A-Za-z\d+.-]*:/.test(trimmed) || trimmed.startsWith('//');
+    const trustedHost =
+        url.hostname === 'gredice.com' || url.hostname.endsWith('.gredice.com');
+    if (
+        isAbsolute &&
+        (url.protocol !== 'https:' ||
+            !trustedHost ||
+            Boolean(url.username) ||
+            Boolean(url.password))
+    ) {
+        return null;
+    }
+    const segments = url.pathname.split('/').filter(Boolean);
+    return segments.length === 2 && segments[0] === 'trag'
+        ? normalizeHarvestTraceToken(segments[1])
+        : null;
+}
+
+const handoffOperationIdPattern = /^[A-Za-z0-9_-]{8,128}$/;
+const handoffSkipReasons = new Set<string>(
+    Object.values(DeliveryRunHandoffSkipReasons),
+);
+
+function normalizeDeliveryRunHandoffMutation(
+    mutation: DeliveryRunHandoffMutation,
+) {
+    if (
+        !handoffOperationIdPattern.test(mutation.clientOperationId) ||
+        !(mutation.occurredAt instanceof Date) ||
+        !Number.isFinite(mutation.occurredAt.getTime())
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+            'Delivery handoff operation is invalid',
+        );
+    }
+    if (mutation.kind === DeliveryRunHandoffOperationKinds.SCAN) {
+        if (mutation.tracePath.length > 2_048) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+                'Delivery handoff scan value is invalid',
+            );
+        }
+        const tracePath = mutation.tracePath.trim();
+        if (tracePath.length === 0 || tracePath.length > 2_048) {
+            throw new DeliveryRunExecutionError(
+                DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+                'Delivery handoff scan value is invalid',
+            );
+        }
+        return { ...mutation, tracePath };
+    }
+    if (
+        mutation.kind !== DeliveryRunHandoffOperationKinds.MARK_ITEM ||
+        !Number.isSafeInteger(mutation.stopId) ||
+        mutation.stopId <= 0 ||
+        mutation.stopId > 2_147_483_647 ||
+        !['no-label', 'missing', 'skipped'].includes(mutation.outcome) ||
+        (mutation.outcome === 'skipped'
+            ? !mutation.reason || !handoffSkipReasons.has(mutation.reason)
+            : mutation.reason !== undefined)
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+            'Delivery handoff item result is invalid',
+        );
+    }
+    return mutation;
+}
+
+function deliveryRunHandoffMutationPayloadHash(
+    targetStopId: number,
+    expectedRetryAttempt: number,
+    mutation: DeliveryRunHandoffMutation,
+) {
+    const traceToken =
+        mutation.kind === DeliveryRunHandoffOperationKinds.SCAN
+            ? normalizeDeliveryHandoffTrace(mutation.tracePath)
+            : null;
+    const traceFingerprint =
+        mutation.kind === DeliveryRunHandoffOperationKinds.SCAN
+            ? traceToken
+                ? `trace:${traceToken}`
+                : `invalid:${hashValue(mutation.tracePath)}`
+            : null;
+    return {
+        payloadHash: hashValue(
+            JSON.stringify({
+                targetStopId,
+                expectedRetryAttempt,
+                clientOperationId: mutation.clientOperationId,
+                occurredAt: mutation.occurredAt.toISOString(),
+                kind: mutation.kind,
+                traceFingerprint,
+                stopId:
+                    mutation.kind === DeliveryRunHandoffOperationKinds.MARK_ITEM
+                        ? mutation.stopId
+                        : null,
+                outcome:
+                    mutation.kind === DeliveryRunHandoffOperationKinds.MARK_ITEM
+                        ? mutation.outcome
+                        : null,
+                reason:
+                    mutation.kind === DeliveryRunHandoffOperationKinds.MARK_ITEM
+                        ? (mutation.reason ?? null)
+                        : null,
+            }),
+        ),
+        traceToken,
+    };
+}
+
+async function ensureCurrentDeliveryRunHandoffStopIds({
+    driverUserId,
+    runId,
+    targetStopId,
+    expectedRetryAttempt,
+    db,
+}: {
+    driverUserId: string;
+    runId: string;
+    targetStopId: number;
+    expectedRetryAttempt: number;
+    db: TransactionClient;
+}) {
+    const run = await db.query.deliveryRuns.findFirst({
+        where: and(
+            eq(deliveryRuns.id, runId),
+            eq(deliveryRuns.driverUserId, driverUserId),
+            eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+        ),
+    });
+    if (!run) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+            'Active delivery run was not found',
+        );
+    }
+    const progress = await getDeliveryRunExecutionProgressFromDb(runId, db);
+    const current = progress.find((step) => step.state === 'current');
+    if (current?.kind === 'pickup') {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+            'Delivery pickup dependency is pending',
+        );
+    }
+    if (
+        current?.kind !== 'delivery' ||
+        !current.stopIds.includes(targetStopId)
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_ORDER,
+            'Delivery handoff must target the current delivery checkpoint',
+        );
+    }
+    if (!current.pickupConfirmed) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.PICKUP_DEPENDENCY_PENDING,
+            'Delivery pickup dependency is pending',
+        );
+    }
+    const currentRetryAttempt = current.retryAttempt ?? 0;
+    const currentStops = await db.query.deliveryRunStops.findMany({
+        columns: { id: true, retryAttempt: true },
+        where: and(
+            eq(deliveryRunStops.runId, runId),
+            inArray(deliveryRunStops.id, current.stopIds),
+        ),
+    });
+    if (
+        currentRetryAttempt !== expectedRetryAttempt ||
+        currentStops.length !== current.stopIds.length ||
+        currentStops.some((stop) => stop.retryAttempt !== expectedRetryAttempt)
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ROUTE_REVISION_CONFLICT,
+            'Delivery handoff retry attempt changed. Refresh the active run and retry.',
+        );
+    }
+    return current.stopIds;
+}
+
+async function applyDeliveryRunHandoffScan({
+    runId,
+    currentStopIds,
+    driverUserId,
+    traceToken,
+    occurredAt,
+    db,
+}: {
+    runId: string;
+    currentStopIds: number[];
+    driverUserId: string;
+    traceToken: string | null;
+    occurredAt: Date;
+    db: TransactionClient;
+}): Promise<DeliveryRunHandoffOperationStoredResult> {
+    if (!traceToken) {
+        return {
+            kind: DeliveryRunHandoffOperationKinds.SCAN,
+            outcome: 'invalid',
+            affectedStopIds: [],
+        };
+    }
+    const rows = await db.query.deliveryRunStops.findMany({
+        where: and(
+            eq(deliveryRunStops.runId, runId),
+            eq(deliveryRunStops.pickupTraceToken, traceToken),
+        ),
+        orderBy: [asc(deliveryRunStops.sequence)],
+    });
+    if (rows.length === 0) {
+        return {
+            kind: DeliveryRunHandoffOperationKinds.SCAN,
+            outcome: 'invalid',
+            affectedStopIds: [],
+        };
+    }
+    const currentIds = new Set(currentStopIds);
+    const matchingStops = rows.filter((stop) => currentIds.has(stop.id));
+    if (matchingStops.length === 0) {
+        return {
+            kind: DeliveryRunHandoffOperationKinds.SCAN,
+            outcome: 'wrong-stop',
+            affectedStopIds: [],
+        };
+    }
+    const alreadyScanned = matchingStops.filter(
+        (stop) =>
+            stop.handoffVerificationState ===
+            DeliveryRunHandoffItemStates.SCANNED,
+    );
+    const stale = matchingStops.filter(
+        (stop) =>
+            stop.handoffVerificationState !==
+                DeliveryRunHandoffItemStates.SCANNED &&
+            Boolean(
+                stop.handoffVerifiedAt && stop.handoffVerifiedAt >= occurredAt,
+            ),
+    );
+    const staleIds = new Set(stale.map((stop) => stop.id));
+    const alreadyScannedIds = new Set(alreadyScanned.map((stop) => stop.id));
+    const toUpdate = matchingStops.filter(
+        (stop) => !staleIds.has(stop.id) && !alreadyScannedIds.has(stop.id),
+    );
+    if (toUpdate.length > 0) {
+        await db
+            .update(deliveryRunStops)
+            .set({
+                handoffVerificationState: DeliveryRunHandoffItemStates.SCANNED,
+                handoffVerificationReason: null,
+                handoffVerifiedAt: occurredAt,
+                handoffVerifiedByUserId: driverUserId,
+            })
+            .where(
+                and(
+                    eq(deliveryRunStops.runId, runId),
+                    inArray(
+                        deliveryRunStops.id,
+                        toUpdate.map((stop) => stop.id),
+                    ),
+                ),
+            );
+    }
+    return {
+        kind: DeliveryRunHandoffOperationKinds.SCAN,
+        outcome:
+            toUpdate.length > 0
+                ? 'applied'
+                : stale.length > 0
+                  ? 'stale'
+                  : 'already-applied',
+        affectedStopIds:
+            toUpdate.length > 0
+                ? toUpdate.map((stop) => stop.id)
+                : matchingStops.map((stop) => stop.id),
+        itemState: DeliveryRunHandoffItemStates.SCANNED,
+    };
+}
+
+async function applyDeliveryRunHandoffItemResult({
+    runId,
+    currentStopIds,
+    driverUserId,
+    mutation,
+    db,
+}: {
+    runId: string;
+    currentStopIds: number[];
+    driverUserId: string;
+    mutation: Extract<DeliveryRunHandoffMutation, { kind: 'mark-item' }>;
+    db: TransactionClient;
+}): Promise<DeliveryRunHandoffOperationStoredResult> {
+    const stop = await db.query.deliveryRunStops.findFirst({
+        where: and(
+            eq(deliveryRunStops.runId, runId),
+            eq(deliveryRunStops.id, mutation.stopId),
+        ),
+    });
+    if (!stop) {
+        return {
+            kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+            outcome: 'item-not-found',
+            affectedStopIds: [],
+        };
+    }
+    if (!currentStopIds.includes(stop.id)) {
+        return {
+            kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+            outcome: 'wrong-stop',
+            affectedStopIds: [],
+        };
+    }
+    const state = mutation.outcome;
+    const reason =
+        state === DeliveryRunHandoffItemStates.SKIPPED
+            ? mutation.reason
+            : undefined;
+    const alreadyApplied =
+        stop.handoffVerificationState === state &&
+        (stop.handoffVerificationReason ?? undefined) === reason;
+    const stale = Boolean(
+        !alreadyApplied &&
+            stop.handoffVerifiedAt &&
+            stop.handoffVerifiedAt >= mutation.occurredAt,
+    );
+    if (!alreadyApplied && !stale) {
+        await db
+            .update(deliveryRunStops)
+            .set({
+                handoffVerificationState: state,
+                handoffVerificationReason: reason ?? null,
+                handoffVerifiedAt: mutation.occurredAt,
+                handoffVerifiedByUserId: driverUserId,
+            })
+            .where(
+                and(
+                    eq(deliveryRunStops.runId, runId),
+                    eq(deliveryRunStops.id, stop.id),
+                ),
+            );
+    }
+    return {
+        kind: DeliveryRunHandoffOperationKinds.MARK_ITEM,
+        outcome: alreadyApplied
+            ? 'already-applied'
+            : stale
+              ? 'stale'
+              : 'applied',
+        affectedStopIds: [stop.id],
+        itemState: state,
+        ...(reason ? { reason } : {}),
+    };
+}
+
+export async function applyDeliveryRunHandoffMutations({
+    driverUserId,
+    runId,
+    targetStopId,
+    expectedRetryAttempt,
+    mutations,
+}: {
+    driverUserId: string;
+    runId: string;
+    targetStopId: number;
+    expectedRetryAttempt: number;
+    mutations: DeliveryRunHandoffMutation[];
+}): Promise<DeliveryRunHandoffMutationResult[]> {
+    if (
+        !runId ||
+        runId.length > 256 ||
+        !Number.isSafeInteger(targetStopId) ||
+        targetStopId <= 0 ||
+        targetStopId > 2_147_483_647 ||
+        !Number.isSafeInteger(expectedRetryAttempt) ||
+        expectedRetryAttempt < 0 ||
+        mutations.length === 0 ||
+        mutations.length > 100
+    ) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+            'Delivery handoff mutation batch is invalid',
+        );
+    }
+    return await storage().transaction(async (tx) => {
+        await lockDeliveryRun(runId, tx);
+        let currentStopIds: number[] | undefined;
+        const results: DeliveryRunHandoffMutationResult[] = [];
+        for (const inputMutation of mutations) {
+            const mutation = normalizeDeliveryRunHandoffMutation(inputMutation);
+            const { payloadHash, traceToken } =
+                deliveryRunHandoffMutationPayloadHash(
+                    targetStopId,
+                    expectedRetryAttempt,
+                    mutation,
+                );
+            const receipt =
+                await tx.query.deliveryRunHandoffOperations.findFirst({
+                    where: and(
+                        eq(deliveryRunHandoffOperations.runId, runId),
+                        eq(
+                            deliveryRunHandoffOperations.clientOperationId,
+                            mutation.clientOperationId,
+                        ),
+                    ),
+                });
+            if (receipt) {
+                if (
+                    receipt.driverUserId !== driverUserId ||
+                    receipt.payloadHash !== payloadHash
+                ) {
+                    throw new DeliveryRunExecutionError(
+                        DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_CONFLICT,
+                        'Delivery handoff operation ID was reused with different content',
+                    );
+                }
+                results.push({
+                    clientOperationId: mutation.clientOperationId,
+                    retryAttempt: receipt.retryAttempt,
+                    replayed: true,
+                    result: receipt.result,
+                });
+                continue;
+            }
+            if (
+                !deliveryRunStopOperationOccurredAtIsAcceptable(
+                    mutation.occurredAt,
+                )
+            ) {
+                throw new DeliveryRunExecutionError(
+                    DeliveryRunExecutionErrorCodes.HANDOFF_OPERATION_INVALID,
+                    'Delivery handoff occurrence time is outside the accepted range',
+                );
+            }
+            currentStopIds ??= await ensureCurrentDeliveryRunHandoffStopIds({
+                driverUserId,
+                runId,
+                targetStopId,
+                expectedRetryAttempt,
+                db: tx,
+            });
+            const result =
+                mutation.kind === DeliveryRunHandoffOperationKinds.SCAN
+                    ? await applyDeliveryRunHandoffScan({
+                          runId,
+                          currentStopIds,
+                          driverUserId,
+                          traceToken,
+                          occurredAt: mutation.occurredAt,
+                          db: tx,
+                      })
+                    : await applyDeliveryRunHandoffItemResult({
+                          runId,
+                          currentStopIds,
+                          driverUserId,
+                          mutation,
+                          db: tx,
+                      });
+            const appliedAt = new Date();
+            await tx.insert(deliveryRunHandoffOperations).values({
+                runId,
+                targetStopId,
+                retryAttempt: expectedRetryAttempt,
+                driverUserId,
+                clientOperationId: mutation.clientOperationId,
+                kind: mutation.kind,
+                payloadHash,
+                result,
+                occurredAt: mutation.occurredAt,
+                appliedAt,
+            });
+            results.push({
+                clientOperationId: mutation.clientOperationId,
+                retryAttempt: expectedRetryAttempt,
+                replayed: false,
+                result,
+            });
+        }
+        return results;
+    });
+}
+
+export const deliveryRunHandoffOperationRetentionMs = 90 * 24 * 60 * 60 * 1000;
+
+export async function pruneExpiredDeliveryRunHandoffOperations(
+    now = new Date(),
+    limit = 250,
+) {
+    const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 1_000);
+    const cutoff = new Date(
+        now.getTime() - deliveryRunHandoffOperationRetentionMs,
+    );
+    const db = storage();
+    const candidates = await db
+        .select({ id: deliveryRunHandoffOperations.id })
+        .from(deliveryRunHandoffOperations)
+        .innerJoin(
+            deliveryRuns,
+            eq(deliveryRunHandoffOperations.runId, deliveryRuns.id),
+        )
+        .where(
+            and(
+                isNotNull(deliveryRuns.completedAt),
+                lte(deliveryRuns.completedAt, cutoff),
+            ),
+        )
+        .orderBy(asc(deliveryRunHandoffOperations.appliedAt))
+        .limit(boundedLimit);
+    if (candidates.length === 0) return 0;
+    const deleted = await db
+        .delete(deliveryRunHandoffOperations)
+        .where(
+            inArray(
+                deliveryRunHandoffOperations.id,
+                candidates.map(({ id }) => id),
+            ),
+        )
+        .returning({ id: deliveryRunHandoffOperations.id });
+    return deleted.length;
+}
+
 const deliveryRunExceptionOutcomes = new Set<string>(
     Object.values(DeliveryRunExceptionOutcomes),
 );
@@ -3425,6 +4140,11 @@ export async function retryDeliveryRunStop({
                 exceptionNote: null,
                 exceptionOccurredAt: null,
                 exceptionRecordedByUserId: null,
+                handoffVerificationState:
+                    DeliveryRunHandoffItemStates.UNVERIFIED,
+                handoffVerificationReason: null,
+                handoffVerifiedAt: null,
+                handoffVerifiedByUserId: null,
             })
             .where(
                 inArray(
@@ -3560,6 +4280,11 @@ export async function recoverDeliveryRunStop({
                     exceptionNote: null,
                     exceptionOccurredAt: null,
                     exceptionRecordedByUserId: null,
+                    handoffVerificationState:
+                        DeliveryRunHandoffItemStates.UNVERIFIED,
+                    handoffVerificationReason: null,
+                    handoffVerifiedAt: null,
+                    handoffVerifiedByUserId: null,
                     releasedAt: null,
                 })
                 .where(
@@ -5373,19 +6098,43 @@ async function recordDeliveryRunStopOperationInDatabase(
         );
     }
 
-    const newlyFulfilledRequestIds =
+    const newlyFulfilledStops =
         input.kind === DeliveryRunStopOperationKinds.DELIVER
-            ? stops
-                  .filter((stop) => isDeliveryRunStopActionable(stop.state))
-                  .map((stop) => stop.deliveryRequestId)
+            ? stops.filter((stop) => isDeliveryRunStopActionable(stop.state))
             : [];
+    const newlyFulfilledRequestIds = newlyFulfilledStops.map(
+        (stop) => stop.deliveryRequestId,
+    );
+    const handoff =
+        input.kind === DeliveryRunStopOperationKinds.DELIVER
+            ? deliveryRunHandoffSnapshot(stops)
+            : undefined;
     if (input.kind === DeliveryRunStopOperationKinds.DELIVER) {
-        for (const requestId of newlyFulfilledRequestIds) {
+        for (const stop of newlyFulfilledStops) {
             try {
+                const item = handoff?.items.find(
+                    ({ stopId }) => stopId === stop.id,
+                );
                 await fulfillDeliveryRequest(
-                    requestId,
+                    stop.deliveryRequestId,
                     input.deliveryNotes,
                     db,
+                    item
+                        ? {
+                              version: 1,
+                              runId: input.runId,
+                              stopId: item.stopId,
+                              retryAttempt: item.retryAttempt,
+                              clientOperationId: input.clientOperationId,
+                              traceLinkId: item.traceLinkId,
+                              qrAvailable: item.qrAvailable,
+                              result: item.state,
+                              ...(item.reason ? { reason: item.reason } : {}),
+                              ...(item.verifiedAt
+                                  ? { verifiedAt: item.verifiedAt }
+                                  : {}),
+                          }
+                        : undefined,
                 );
             } catch (error) {
                 if (error instanceof DeliveryRequestFulfillmentError) {
@@ -5436,6 +6185,7 @@ async function recordDeliveryRunStopOperationInDatabase(
         reroutePending:
             !runCompleted && Boolean(runAfterMutation.rerouteRequiredAt),
         runCompleted,
+        ...(handoff ? { handoff } : {}),
     };
     await db.insert(deliveryRunStopOperations).values({
         runId: input.runId,

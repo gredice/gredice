@@ -506,6 +506,15 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        requestFulfilledV2: (
+            aggregateId: string,
+            data: DeliveryRequestFulfilledPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestFulfilled,
+            version: 2,
+            aggregateId,
+            data,
+        }),
         requestExceptionRecordedV1: (
             aggregateId: string,
             data: DeliveryRequestExceptionRecordedPayload,
