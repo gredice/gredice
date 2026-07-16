@@ -15,6 +15,7 @@ import {
     type DeliveryActionQueueSnapshot,
     deliveryActionPendingEntryForStop,
     deliveryActionVerifiedTracePaths,
+    isDeliveryHandoffCommand,
 } from '../lib/deliveryActionQueue';
 import type {
     DeliveryPickupStepSummary,
@@ -40,7 +41,10 @@ import type {
     OfflineRouteSnapshot,
     OfflineRouteStep,
 } from '../lib/offlineRouteCache';
-import { DriverCurrentStopCommandCenter } from './DriverCurrentStopCommandCenter';
+import {
+    type DeliveryHandoffCommandController,
+    DriverCurrentStopCommandCenter,
+} from './DriverCurrentStopCommandCenter';
 import { DeliveryActionSyncStatus } from './DriverDashboard';
 import { DriverRouteProgressTimeline } from './DriverRouteProgressTimeline';
 
@@ -144,7 +148,7 @@ function hasDeliveryStopId(
     return step.kind === 'delivery' && step.id !== null;
 }
 
-function offlineDeliveryItems(
+export function offlineDeliveryItems(
     step: OfflineRouteDeliveryStep,
 ): DeliveryStopDeliverySummary[] {
     return step.items.map((item) => ({
@@ -163,6 +167,37 @@ function offlineDeliveryItems(
         },
         exception: null,
     }));
+}
+
+export function offlineRouteActiveStepIndex(
+    snapshot: OfflineRouteSnapshot,
+    actionQueue: DeliveryActionQueueSnapshot,
+) {
+    const firstStep = snapshot.steps[0];
+    const firstStopId = firstStep?.kind === 'delivery' ? firstStep.id : null;
+    const firstEntry = firstStopId
+        ? deliveryActionPendingEntryForStop(actionQueue, firstStopId)
+        : undefined;
+    return deliveryActionLocallyCompletesStop(firstEntry) &&
+        snapshot.steps.length > 1
+        ? 1
+        : 0;
+}
+
+export function offlineDeliveryHandoffSelection(
+    snapshot: OfflineRouteSnapshot,
+    actionQueue: DeliveryActionQueueSnapshot,
+) {
+    const step =
+        snapshot.steps[offlineRouteActiveStepIndex(snapshot, actionQueue)];
+    if (!step || !hasDeliveryStopId(step)) return null;
+    return {
+        target: {
+            targetStopId: step.id,
+            retryAttempt: step.retryAttempt,
+        },
+        deliveries: offlineDeliveryItems(step),
+    };
 }
 
 function offlineDeliveryStop(
@@ -237,6 +272,7 @@ function offlinePickup(
 export function OfflineRoutePanel({
     snapshot,
     actionQueue,
+    deliveryHandoff,
     routeContinuity,
     onArrive,
     onDeliver,
@@ -248,6 +284,7 @@ export function OfflineRoutePanel({
 }: {
     snapshot: OfflineRouteSnapshot;
     actionQueue: DeliveryActionQueueSnapshot;
+    deliveryHandoff?: DeliveryHandoffCommandController | null;
     routeContinuity?: ReactNode;
     onArrive: (
         stopId: number,
@@ -275,11 +312,7 @@ export function OfflineRoutePanel({
     const firstEntry = firstStopId
         ? deliveryActionPendingEntryForStop(actionQueue, firstStopId)
         : undefined;
-    const activeStepIndex =
-        deliveryActionLocallyCompletesStop(firstEntry) &&
-        snapshot.steps.length > 1
-            ? 1
-            : 0;
+    const activeStepIndex = offlineRouteActiveStepIndex(snapshot, actionQueue);
     const currentStep = snapshot.steps[activeStepIndex];
     const currentStopId =
         currentStep?.kind === 'delivery' ? currentStep.id : null;
@@ -291,12 +324,13 @@ export function OfflineRoutePanel({
         snapshot.source.reroutePending ||
         actionQueue.entries.some(
             (entry) =>
-                (entry.command.kind === 'exception' &&
+                !isDeliveryHandoffCommand(entry.command) &&
+                ((entry.command.kind === 'exception' &&
                     entry.state !== 'synced') ||
-                entry.state === 'failed' ||
-                deliveryActionAcknowledgementBlocksRoute(entry),
-        ) ||
-        actionQueue.conflictedCount > 0;
+                    entry.state === 'failed' ||
+                    entry.state === 'conflicted' ||
+                    deliveryActionAcknowledgementBlocksRoute(entry)),
+        );
     const currentDeliveryStop =
         currentStep && hasDeliveryStopId(currentStep)
             ? offlineDeliveryStop(currentStep, snapshot.scope.runId)
@@ -320,16 +354,18 @@ export function OfflineRoutePanel({
             <div className="mx-auto max-w-3xl space-y-4">
                 {currentDeliveryStop && currentStep?.kind === 'delivery' ? (
                     <DriverCurrentStopCommandCenter
-                        key={`${snapshot.scope.runId}:delivery:${currentDeliveryStop.id}`}
+                        key={`${snapshot.scope.runId}:delivery:${currentDeliveryStop.id}:attempt:${currentStep.retryAttempt}`}
                         kind="delivery"
                         offline
                         focusOnMount={activeStepIndex > 0}
                         stop={currentDeliveryStop}
                         routeRevision={snapshot.source.routeRevision}
                         syncEntry={currentEntry}
+                        handoff={deliveryHandoff ?? undefined}
                         verifiedTracePaths={deliveryActionVerifiedTracePaths(
                             actionQueue,
                             currentDeliveryStop.id,
+                            currentStep.retryAttempt,
                         )}
                         routeSyncBlocked={routeBarrier}
                         onArrive={() =>

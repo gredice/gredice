@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { DriverCurrentStopCommandCenter } from '../components/DriverCurrentStopCommandCenter';
+import type { DeliveryHandoffManifestView } from '../components/DeliveryHarvestVerification';
+import {
+    type DeliveryHandoffCommandController,
+    DriverCurrentStopCommandCenter,
+} from '../components/DriverCurrentStopCommandCenter';
 import { HarvestTraceScanner } from '../components/HarvestTraceScanner';
 import type { DeliveryActionQueueEntry } from '../lib/deliveryActionQueue';
 import type {
@@ -76,6 +80,58 @@ const arrivedStop: DeliveryStopSummary = {
     })),
 };
 
+function handoffController(): DeliveryHandoffCommandController {
+    const items = arrivedStop.deliveries.flatMap((delivery, index) =>
+        delivery.stopId === null || delivery.stopState !== 'arrived'
+            ? []
+            : [
+                  {
+                      stopId: delivery.stopId,
+                      deliveryRequestId: delivery.requestId,
+                      retryAttempt: 0,
+                      traceLinkId: delivery.harvest.tracePath
+                          ? index + 1
+                          : null,
+                      qrAvailable: Boolean(delivery.harvest.tracePath),
+                      state:
+                          index === 0
+                              ? ('scanned' as const)
+                              : index === 1
+                                ? ('unverified' as const)
+                                : ('no-label' as const),
+                      reason: null,
+                      verifiedAt:
+                          index === 0 ? '2026-07-15T08:32:00.000Z' : null,
+                      syncState: 'persisted' as const,
+                  },
+              ],
+    );
+    const view: DeliveryHandoffManifestView = {
+        runId: 'run-component-4127',
+        targetStopId: arrivedStop.id ?? 41,
+        version: 1,
+        retryAttempt: 0,
+        items,
+        expectedCount: items.length,
+        scannedCount: items.filter((item) => item.state === 'scanned').length,
+        unverifiedCount: items.filter((item) => item.state === 'unverified')
+            .length,
+        noLabelCount: items.filter((item) => item.state === 'no-label').length,
+        missingCount: 0,
+        skippedCount: 0,
+        syncState: 'ready',
+        pendingCount: 0,
+        error: null,
+    };
+    return {
+        view,
+        feedback: [],
+        scan: () => ({ status: 'verification-invalid' }),
+        markItem: () => undefined,
+        markRemainingReviewed: () => undefined,
+    };
+}
+
 function actionEntry(
     kind: 'arrive' | 'deliver',
     state: DeliveryActionQueueEntry['state'],
@@ -107,12 +163,14 @@ export function DriverCurrentDeliveryCommandStory({
     syncKind = 'arrive',
     throwOnArrive = false,
     late = false,
+    withHandoff = false,
 }: {
     arrived?: boolean;
     syncState?: DeliveryActionQueueEntry['state'];
     syncKind?: 'arrive' | 'deliver';
     throwOnArrive?: boolean;
     late?: boolean;
+    withHandoff?: boolean;
 }) {
     const [result, setResult] = useState('none');
     const selectedStop = arrived ? arrivedStop : currentStop;
@@ -133,6 +191,7 @@ export function DriverCurrentDeliveryCommandStory({
                     kind="delivery"
                     stop={stop}
                     routeRevision={12}
+                    handoff={withHandoff ? handoffController() : undefined}
                     syncEntry={
                         syncState ? actionEntry(syncKind, syncState) : undefined
                     }

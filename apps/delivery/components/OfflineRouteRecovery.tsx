@@ -4,12 +4,16 @@ import {
     type DeliveryServerStateExpectation,
     useDeliveryActionSync,
 } from '../hooks/useDeliveryActionSync';
+import { useDeliveryHandoffSync } from '../hooks/useDeliveryHandoffSync';
 import type { DriverRouteWakeLockState } from '../hooks/useDriverRouteWakeLock';
 import type { DriverCommandResult } from '../lib/driverCommandResult';
 import type { OfflineRouteSnapshot } from '../lib/offlineRouteCache';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 import { DriverRouteContinuity } from './DriverRouteContinuity';
-import { OfflineRoutePanel } from './OfflineRoutePanel';
+import {
+    OfflineRoutePanel,
+    offlineDeliveryHandoffSelection,
+} from './OfflineRoutePanel';
 
 export function OfflineRouteRecovery({
     snapshot,
@@ -31,6 +35,26 @@ export function OfflineRouteRecovery({
         runId: snapshot.scope.runId,
         refreshServerState,
     });
+    const handoffSelection = offlineDeliveryHandoffSelection(
+        snapshot,
+        sync.snapshot,
+    );
+    const deliveryHandoffSync = useDeliveryHandoffSync({
+        userId: authenticatedUserId,
+        runId: snapshot.scope.runId,
+        target: handoffSelection?.target ?? null,
+        deliveries: handoffSelection?.deliveries ?? [],
+        actionSync: sync,
+    });
+    const deliveryHandoff = handoffSelection
+        ? {
+              view: deliveryHandoffSync.handoff,
+              feedback: deliveryHandoffSync.feedback,
+              scan: deliveryHandoffSync.scan,
+              markItem: deliveryHandoffSync.markItem,
+              markRemainingReviewed: deliveryHandoffSync.markRemainingReviewed,
+          }
+        : null;
 
     const report = async (
         action: Promise<unknown>,
@@ -64,6 +88,7 @@ export function OfflineRouteRecovery({
             <OfflineRoutePanel
                 snapshot={snapshot}
                 actionQueue={sync.snapshot}
+                deliveryHandoff={deliveryHandoff}
                 routeContinuity={
                     <DriverRouteContinuity
                         state={routeWakeLock}
@@ -89,9 +114,25 @@ export function OfflineRouteRecovery({
                             : { status: 'retryable', message };
                     }
                 }}
-                onVerificationScan={(stopId, tracePath) =>
-                    report(sync.enqueueVerificationScan(stopId, tracePath))
-                }
+                onVerificationScan={(stopId, tracePath) => {
+                    if (
+                        !handoffSelection ||
+                        handoffSelection.target.targetStopId !== stopId
+                    ) {
+                        return Promise.resolve({
+                            status: 'failed' as const,
+                            message:
+                                'Aktivni posjet stanici promijenio se. Osvježi prikaz prije nove provjere.',
+                        });
+                    }
+                    return report(
+                        sync.enqueueVerificationScan(
+                            stopId,
+                            tracePath,
+                            handoffSelection.target.retryAttempt,
+                        ),
+                    );
+                }}
                 onRetry={(operationId) => report(sync.retry(operationId))}
                 onRecoverConflict={(operationId) =>
                     report(

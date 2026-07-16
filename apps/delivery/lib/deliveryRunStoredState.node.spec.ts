@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMemoryDeliveryActionQueuePersistence } from './deliveryActionQueue';
+import type { DeliveryHandoffManifest } from './deliveryHandoffManifest';
+import {
+    createDeliveryHandoffManifestCacheRecord,
+    createMemoryDeliveryHandoffManifestCachePersistence,
+} from './deliveryHandoffManifestCache';
 import {
     clearDeliveryRunSupportingStores,
     clearDeliveryUserStoredState,
@@ -69,39 +74,108 @@ function offlineSnapshot(): OfflineRouteSnapshot {
     };
 }
 
+function handoffManifest(runId = scope.runId): DeliveryHandoffManifest {
+    return {
+        runId,
+        targetStopId: 101,
+        version: 1,
+        retryAttempt: 0,
+        items: [
+            {
+                stopId: 101,
+                deliveryRequestId: 'request-cleanup',
+                retryAttempt: 0,
+                traceLinkId: 501,
+                qrAvailable: true,
+                state: 'unverified',
+                reason: null,
+                verifiedAt: null,
+            },
+        ],
+        expectedCount: 1,
+        scannedCount: 0,
+        unverifiedCount: 1,
+        noLabelCount: 0,
+        missingCount: 0,
+        skippedCount: 0,
+    };
+}
+
 test('completion cleanup removes exact pickup and route stores but preserves another run', async () => {
     const pickupManifest = createMemoryPickupManifestQueuePersistence();
     const offlineRoute = createMemoryOfflineRouteCachePersistence();
+    const handoffManifestCache =
+        createMemoryDeliveryHandoffManifestCachePersistence();
     const otherScope = { userId: scope.userId, runId: 'run-other' };
     await pickupManifest.save(scope, []);
     await pickupManifest.save(otherScope, []);
     await offlineRoute.save(offlineSnapshot());
+    const currentHandoff = createDeliveryHandoffManifestCacheRecord({
+        userId: scope.userId,
+        manifest: handoffManifest(),
+        now: new Date(now),
+    });
+    const otherHandoff = createDeliveryHandoffManifestCacheRecord({
+        userId: scope.userId,
+        manifest: handoffManifest(otherScope.runId),
+        now: new Date(now),
+    });
+    await handoffManifestCache.save(currentHandoff);
+    await handoffManifestCache.save(otherHandoff);
 
     await clearDeliveryRunSupportingStores(
-        { pickupManifest, offlineRoute },
+        {
+            pickupManifest,
+            offlineRoute,
+            handoffManifest: handoffManifestCache,
+        },
         scope,
     );
 
     assert.equal(await pickupManifest.load(scope), undefined);
     assert.notEqual(await pickupManifest.load(otherScope), undefined);
     assert.equal(await offlineRoute.load(scope), null);
+    assert.equal(
+        await handoffManifestCache.load(currentHandoff.scope, new Date(now)),
+        null,
+    );
+    assert.ok(
+        await handoffManifestCache.load(otherHandoff.scope, new Date(now)),
+    );
 });
 
 test('user cleanup removes pickup, route, and action data together', async () => {
     const pickupManifest = createMemoryPickupManifestQueuePersistence();
     const offlineRoute = createMemoryOfflineRouteCachePersistence();
+    const handoffManifestCache =
+        createMemoryDeliveryHandoffManifestCachePersistence();
     const deliveryActions = createMemoryDeliveryActionQueuePersistence();
     await pickupManifest.save(scope, []);
     await offlineRoute.save(offlineSnapshot());
     await deliveryActions.save(scope, []);
+    const handoff = createDeliveryHandoffManifestCacheRecord({
+        userId: scope.userId,
+        manifest: handoffManifest(),
+        now: new Date(now),
+    });
+    await handoffManifestCache.save(handoff);
 
     await clearDeliveryUserStoredState(
-        { pickupManifest, offlineRoute, deliveryActions },
+        {
+            pickupManifest,
+            offlineRoute,
+            handoffManifest: handoffManifestCache,
+            deliveryActions,
+        },
         { userId: scope.userId },
     );
 
     assert.equal(await pickupManifest.load(scope), undefined);
     assert.equal(await offlineRoute.load(scope), null);
+    assert.equal(
+        await handoffManifestCache.load(handoff.scope, new Date(now)),
+        null,
+    );
     assert.equal(await deliveryActions.load(scope), undefined);
 });
 
@@ -115,6 +189,7 @@ test('user cleanup retains the action marker until every supporting store is cle
                 throw new Error('route cleanup failed');
             },
         },
+        handoffManifest: createMemoryDeliveryHandoffManifestCachePersistence(),
         deliveryActions: {
             ...createMemoryDeliveryActionQueuePersistence(),
             async clear() {
@@ -146,6 +221,7 @@ test('completion marker must remain when a formerly durable store cannot confirm
             },
         },
         offlineRoute: createMemoryOfflineRouteCachePersistence(),
+        handoffManifest: createMemoryDeliveryHandoffManifestCachePersistence(),
     };
 
     await assert.rejects(
@@ -166,6 +242,7 @@ test('completion marker must remain when a degraded store may still have an olde
             async clear() {},
         },
         offlineRoute: createMemoryOfflineRouteCachePersistence(),
+        handoffManifest: createMemoryDeliveryHandoffManifestCachePersistence(),
     };
 
     await assert.rejects(

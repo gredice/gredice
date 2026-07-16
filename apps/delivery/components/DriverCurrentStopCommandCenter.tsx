@@ -15,7 +15,14 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
-import { type CSSProperties, useEffect, useId, useRef, useState } from 'react';
+import {
+    type ComponentProps,
+    type CSSProperties,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+} from 'react';
 import {
     deliveryActionLocallyCompletesStop,
     deliveryActionPermanentFailureMessage,
@@ -45,9 +52,26 @@ import {
 import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
 import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
-import { DeliveryHarvestVerification } from './DeliveryHarvestVerification';
+import {
+    type DeliveryHandoffFeedbackView,
+    type DeliveryHandoffManifestView,
+    type DeliveryHandoffMarkItemInput,
+    DeliveryHarvestVerification,
+} from './DeliveryHarvestVerification';
 import type { PickupManifestSyncSummary } from './DeliveryPickupCard';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
+
+export type DeliveryHandoffCommandController = {
+    view: DeliveryHandoffManifestView | null;
+    feedback: readonly DeliveryHandoffFeedbackView[];
+    scan: NonNullable<
+        ComponentProps<typeof DeliveryHarvestVerification>['onScan']
+    >;
+    markItem: (
+        input: DeliveryHandoffMarkItemInput,
+    ) => unknown | Promise<unknown>;
+    markRemainingReviewed: () => unknown | Promise<unknown>;
+};
 
 type DeliveryCommandCenterProps = {
     kind: 'delivery';
@@ -55,6 +79,7 @@ type DeliveryCommandCenterProps = {
     routeRevision: number;
     pendingAction?: 'retry' | 'arrive' | 'deliver' | 'exception' | null;
     syncEntry?: DeliveryActionQueueEntry | null;
+    handoff?: DeliveryHandoffCommandController;
     verifiedTracePaths?: string[];
     routeSyncBlocked?: boolean;
     checkpointPending?: boolean;
@@ -188,6 +213,7 @@ function DeliveryCurrentStopCommandCenter({
     routeRevision,
     pendingAction = null,
     syncEntry,
+    handoff,
     verifiedTracePaths = [],
     routeSyncBlocked = false,
     checkpointPending = false,
@@ -211,6 +237,8 @@ function DeliveryCurrentStopCommandCenter({
         'retry' | 'arrive' | 'deliver' | null
     >(null);
     const [localError, setLocalError] = useState<string | null>(null);
+    const [deliveryConfirmationOpen, setDeliveryConfirmationOpen] =
+        useState(false);
     const [syncRecoveryPending, setSyncRecoveryPending] = useState(false);
     const stickyHeadingHeight = useElementHeight(headingRef, 96);
     const stickyActionHeight = useElementHeight(actionRef, 48);
@@ -283,8 +311,11 @@ function DeliveryCurrentStopCommandCenter({
             if (isDriverCommandResult(result) && result.status === 'failed') {
                 setLocalError(result.message);
             }
+            return result;
         } catch (error) {
-            setLocalError(commandErrorMessage(error));
+            const message = commandErrorMessage(error);
+            setLocalError(message);
+            return { status: 'failed' as const, message };
         } finally {
             setLocalPendingAction(null);
         }
@@ -620,9 +651,11 @@ function DeliveryCurrentStopCommandCenter({
                                         : undefined
                                 }
                                 onClick={() =>
-                                    void runCommand('deliver', () =>
-                                        onDeliver?.(notes || undefined),
-                                    )
+                                    !handoff
+                                        ? void runCommand('deliver', () =>
+                                              onDeliver?.(notes || undefined),
+                                          )
+                                        : setDeliveryConfirmationOpen(true)
                                 }
                                 startDecorator={<Approved className="size-4" />}
                             >
@@ -736,6 +769,37 @@ function DeliveryCurrentStopCommandCenter({
                             disabled={
                                 Boolean(effectivePendingAction) ||
                                 routeCommandBlocked
+                            }
+                            handoff={handoff?.view}
+                            feedback={handoff?.feedback}
+                            onScan={handoff?.scan}
+                            onMarkItem={handoff?.markItem}
+                            onMarkRemainingReviewed={
+                                handoff?.markRemainingReviewed
+                            }
+                            completionConfirmation={
+                                !handoff
+                                    ? undefined
+                                    : {
+                                          open: deliveryConfirmationOpen,
+                                          pending:
+                                              effectivePendingAction ===
+                                              'deliver',
+                                          disabled:
+                                              routeCommandBlocked ||
+                                              deliveryQueued ||
+                                              actionableDeliveries.length ===
+                                                  0 ||
+                                              !onDeliver,
+                                          onOpenChange:
+                                              setDeliveryConfirmationOpen,
+                                          onConfirm: () =>
+                                              runCommand('deliver', () =>
+                                                  onDeliver?.(
+                                                      notes || undefined,
+                                                  ),
+                                              ),
+                                      }
                             }
                             verifiedTracePaths={verifiedTracePaths}
                             onVerifiedTrace={onVerificationScan}

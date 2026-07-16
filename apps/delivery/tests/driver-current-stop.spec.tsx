@@ -166,6 +166,33 @@ test.describe('320px current-stop command center', () => {
         );
     });
 
+    test('opens the persisted handoff summary before completing a delivery without blocking unresolved items', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<DriverCurrentDeliveryCommandStory arrived withHandoff />);
+        await page.getByRole('button', { name: 'Dostavi 3 · dalje' }).click();
+
+        const confirmation = page.getByRole('dialog', {
+            name: 'Potvrdi dostavu',
+        });
+        await expect(confirmation).toContainText('1 provjereno');
+        await expect(confirmation).toContainText('1 bez provjere');
+        await expect(confirmation).toContainText('1 bez etikete');
+        await expect(page.getByTestId('current-stop-result')).toHaveText(
+            'none',
+        );
+
+        const confirm = confirmation.getByRole('button', {
+            name: 'Potvrdi dostavu i nastavi',
+        });
+        await expect(confirm).toBeEnabled();
+        await confirm.click();
+        await expect(page.getByTestId('current-stop-result')).toHaveText(
+            'delivered:',
+        );
+    });
+
     test('keeps failed delivery recovery attached to the sticky delivery action', async ({
         mount,
         page,

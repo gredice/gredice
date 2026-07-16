@@ -3,6 +3,10 @@ import {
     type DeliveryActionQueuePersistence,
 } from './deliveryActionQueue';
 import {
+    createWebStorageDeliveryHandoffManifestCachePersistence,
+    type DeliveryHandoffManifestCachePersistence,
+} from './deliveryHandoffManifestCache';
+import {
     createBrowserOfflineRouteCachePersistence,
     type OfflineRouteCachePersistence,
 } from './offlineRouteCache';
@@ -14,6 +18,7 @@ import {
 export type DeliveryRunSupportingStores = {
     pickupManifest: PickupManifestQueuePersistence;
     offlineRoute: OfflineRouteCachePersistence;
+    handoffManifest: DeliveryHandoffManifestCachePersistence;
 };
 
 export type DeliveryUserStoredState = DeliveryRunSupportingStores & {
@@ -26,6 +31,10 @@ export function createBrowserDeliveryRunSupportingStores(): DeliveryRunSupportin
             window.localStorage,
         ),
         offlineRoute: createBrowserOfflineRouteCachePersistence(),
+        handoffManifest:
+            createWebStorageDeliveryHandoffManifestCachePersistence(
+                window.localStorage,
+            ),
     };
 }
 
@@ -63,6 +72,9 @@ export async function clearDeliveryRunSupportingStores(
         clearStoreDurably(stores.offlineRoute, async () =>
             stores.offlineRoute.clear(scope),
         ),
+        clearStoreDurably(stores.handoffManifest, async () =>
+            stores.handoffManifest.clear(scope),
+        ),
     ]);
     if (results.some((result) => result.status === 'rejected')) {
         throw new Error('Durable delivery cleanup could not be confirmed');
@@ -79,6 +91,9 @@ export async function clearDeliveryUserStoredState(
         ),
         clearStoreDurably(stores.offlineRoute, async () =>
             stores.offlineRoute.clear(scope),
+        ),
+        clearStoreDurably(stores.handoffManifest, async () =>
+            stores.handoffManifest.clear(scope),
         ),
     ]);
     if (supportingResults.some((result) => result.status === 'rejected')) {
