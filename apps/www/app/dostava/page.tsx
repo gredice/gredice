@@ -132,13 +132,13 @@ export default function DeliveryPage() {
                         </caption>
                         <thead>
                             <tr>
-                                <th className="border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
+                                <th className="rounded-tl-xl border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Mjesto
                                 </th>
                                 <th className="border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Cijena dostave
                                 </th>
-                                <th className="bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
+                                <th className="rounded-tr-xl bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Formula
                                 </th>
                             </tr>
