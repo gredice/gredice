@@ -302,9 +302,11 @@ test('hides actionable work on abandoned beds but keeps blocker history visible'
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
                 scheduledOperations: [plannedOperation, blockedOperation],
                 scheduledOperationsComplete: true,
             }),
@@ -574,9 +576,11 @@ test('surfaces durable blocked work as attention with its reason and timestamp',
         buildInput({
             operationDefinitions: ready([buildDefinition()]),
             operations: ready({
+                authorizationScope: 'farmMembership',
                 pendingOperations: [],
                 pendingOperationsComplete: true,
                 raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
                 scheduledOperations: [blockedOperation],
                 scheduledOperationsComplete: true,
             }),
