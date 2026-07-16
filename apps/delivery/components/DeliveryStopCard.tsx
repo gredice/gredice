@@ -36,6 +36,7 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import { DeliveryCustomerReceipt } from './DeliveryCustomerReceipt';
 import { DeliveryCustomerRecovery } from './DeliveryCustomerRecovery';
 import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
 import { DeliveryHarvestVerification } from './DeliveryHarvestVerification';
@@ -98,6 +99,7 @@ export function DeliveryStopCard({
     const [syncRecoveryPending, setSyncRecoveryPending] = useState(false);
     const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
     const driverMode = mode === 'driver';
+    const customerReceipt = driverMode ? null : (stop.receipt ?? null);
     const delivered = stop.statusLabel === 'Dostavljeno';
     const driverActionState =
         stop.actionState ??
@@ -623,6 +625,12 @@ export function DeliveryStopCard({
                                 </div>
                             ))}
                         </div>
+                    ) : customerReceipt ? (
+                        stop.requestNotes ? (
+                            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                <strong>Napomena:</strong> {stop.requestNotes}
+                            </div>
+                        ) : null
                     ) : (
                         <>
                             <div className="flex items-start gap-2">
@@ -660,7 +668,7 @@ export function DeliveryStopCard({
                     ) : null}
                 </div>
 
-                {!driverMode && stop.harvest.tracePath ? (
+                {!driverMode && !customerReceipt && stop.harvest.tracePath ? (
                     <div className="flex flex-wrap gap-2">
                         <Button
                             href={`https://www.gredice.com${stop.harvest.tracePath}`}
@@ -672,6 +680,10 @@ export function DeliveryStopCard({
                             Trag uroda
                         </Button>
                     </div>
+                ) : null}
+
+                {customerReceipt ? (
+                    <DeliveryCustomerReceipt receipt={customerReceipt} />
                 ) : null}
 
                 {driverMode &&
@@ -691,7 +703,7 @@ export function DeliveryStopCard({
                     </Alert>
                 ) : null}
 
-                {stop.deliveredAt ? (
+                {stop.deliveredAt && !customerReceipt ? (
                     <Typography
                         level="body3"
                         className="flex items-center gap-2 text-muted-foreground"

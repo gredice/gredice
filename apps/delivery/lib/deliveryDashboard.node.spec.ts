@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     accountCanTrackCurrentDeliveryGroup,
+    customerDeliveryReceiptSummary,
     deliveryMutationRouteState,
     deliveryRecipientCount,
     deliveryStatusLabel,
@@ -421,6 +422,89 @@ test('customer dashboard serialization excludes driver delivery notes', () => {
     assert.equal(customerProjection.deliveries[0]?.deliveryNotes, null);
     assert.equal(JSON.stringify(customerProjection).includes(sentinel), false);
     assert.equal(visibleDeliveryNotes('driver', sentinel), sentinel);
+});
+
+test('customer receipt projection allowlists one completed request and harvest', () => {
+    const privateRunId = 'PRIVATE RUN 4144';
+    const privateStopId = 987_654_321;
+    const privateOperationId = 'PRIVATE OPERATION 4144';
+    const fulfilledAt = new Date('2026-07-16T10:30:00.000Z');
+    const harvest = {
+        plantName: 'Rajčica kupca',
+        operationName: 'Berba',
+        raisedBedName: 'Gredica 4',
+        fieldName: 'Polje 2',
+        tracePath: '/trag/customer-owned-4144',
+    };
+    const handoffReceipt = {
+        fulfilledAt,
+        verification: 'verified' as const,
+        runId: privateRunId,
+        stopId: privateStopId,
+        clientOperationId: privateOperationId,
+    };
+
+    const receipt = customerDeliveryReceiptSummary({
+        audience: 'customer',
+        requestState: 'fulfilled',
+        requestId: 'customer-request-4144',
+        handoffReceipt,
+        harvest,
+    });
+
+    assert.deepEqual(receipt, {
+        requestReference: 'customer-request-4144',
+        deliveredAt: '2026-07-16T10:30:00.000Z',
+        verification: 'verified',
+        harvest,
+    });
+    const serialized = JSON.stringify(receipt);
+    assert.equal(serialized.includes(privateRunId), false);
+    assert.equal(serialized.includes(String(privateStopId)), false);
+    assert.equal(serialized.includes(privateOperationId), false);
+});
+
+test('customer receipt projection excludes active and driver-facing requests', () => {
+    const input = {
+        requestId: 'customer-request-4144',
+        handoffReceipt: {
+            fulfilledAt: new Date('2026-07-16T10:30:00.000Z'),
+            verification: 'not-recorded' as const,
+        },
+        harvest: {
+            plantName: 'Rajčica kupca',
+            operationName: null,
+            raisedBedName: null,
+            fieldName: null,
+            tracePath: null,
+        },
+    };
+
+    assert.equal(
+        customerDeliveryReceiptSummary({
+            ...input,
+            audience: 'customer',
+            requestState: 'ready',
+        }),
+        null,
+    );
+    assert.equal(
+        customerDeliveryReceiptSummary({
+            ...input,
+            audience: 'driver',
+            requestState: 'fulfilled',
+        }),
+        null,
+    );
+    assert.equal(
+        customerDeliveryReceiptSummary({
+            audience: 'customer',
+            requestState: 'fulfilled',
+            requestId: input.requestId,
+            harvest: input.harvest,
+        }),
+        null,
+    );
 });
 
 test('exception receipt replay returns current revision without rerouting a stale receipt', () => {

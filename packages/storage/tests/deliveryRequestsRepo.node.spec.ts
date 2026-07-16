@@ -586,6 +586,379 @@ test('getDeliveryRequestsWithEvents uses the traced harvest plant sort for plant
     assert.equal(request.plantSort?.information.name, 'Original tomato');
 });
 
+test('delivery fulfillment projects only a customer-safe handoff receipt', async () => {
+    const fixture = await createDeliveryRequestWithTraceFixture();
+    const privateRunId = `private-run-${randomUUID()}`;
+    const privateOperationId = `private-operation-${randomUUID()}`;
+    const privateReason = 'manual-verification' as const;
+    const cases = [
+        { result: 'scanned' as const, expected: 'verified' as const },
+        { result: 'no-label' as const, expected: 'no-label' as const },
+        {
+            result: 'skipped' as const,
+            reason: privateReason,
+            expected: 'skipped' as const,
+        },
+        { result: 'unverified' as const, expected: 'not-recorded' as const },
+        { result: 'missing' as const, expected: 'not-recorded' as const },
+    ];
+
+    for (const [index, handoffCase] of cases.entries()) {
+        if (index > 0) {
+            await createEvent(
+                knownEvents.delivery.requestConfirmedV1(fixture.requestId, {
+                    status: DeliveryRequestStates.CONFIRMED,
+                }),
+            );
+        }
+        const fulfilledAt = new Date(Date.UTC(2099, 6, 16, 8, index, 0));
+        const fulfillmentEvent = await createEvent({
+            ...knownEvents.delivery.requestFulfilledV2(fixture.requestId, {
+                status: DeliveryRequestStates.FULFILLED,
+                deliveryNotes: `private-note-${index}`,
+                handoffVerification: {
+                    version: 1,
+                    runId: privateRunId,
+                    stopId: 700 + index,
+                    retryAttempt: 0,
+                    clientOperationId: privateOperationId,
+                    traceLinkId: fixture.traceLink.id,
+                    qrAvailable: handoffCase.result !== 'no-label',
+                    result: handoffCase.result,
+                    ...(handoffCase.reason
+                        ? { reason: handoffCase.reason }
+                        : {}),
+                    ...(handoffCase.result === 'scanned' ||
+                    handoffCase.result === 'skipped' ||
+                    handoffCase.result === 'missing'
+                        ? { verifiedAt: fulfilledAt.toISOString() }
+                        : {}),
+                },
+            }),
+            createdAt: fulfilledAt,
+        });
+
+        const request = await getDeliveryRequest(fixture.requestId);
+        const listedRequest = (
+            await getDeliveryRequestsWithEvents(fixture.accountId)
+        ).find((candidate) => candidate.id === fixture.requestId);
+        const expectedReceipt = {
+            fulfilledAt: fulfillmentEvent.createdAt,
+            verification: handoffCase.expected,
+        };
+
+        assert.deepEqual(request?.customerHandoffReceipt, expectedReceipt);
+        assert.deepEqual(
+            listedRequest?.customerHandoffReceipt,
+            expectedReceipt,
+        );
+        assert.deepEqual(
+            Object.keys(request?.customerHandoffReceipt ?? {}).sort(),
+            ['fulfilledAt', 'verification'],
+        );
+        const serializedReceipt = JSON.stringify(
+            request?.customerHandoffReceipt,
+        );
+        assert.ok(!serializedReceipt.includes(privateRunId));
+        assert.ok(!serializedReceipt.includes(privateOperationId));
+        assert.ok(!serializedReceipt.includes(privateReason));
+    }
+
+    await createEvent(
+        knownEvents.delivery.requestConfirmedV1(fixture.requestId, {
+            status: DeliveryRequestStates.CONFIRMED,
+        }),
+    );
+    const legacyEvent = await createEvent({
+        ...knownEvents.delivery.requestFulfilledV1(fixture.requestId, {
+            status: DeliveryRequestStates.FULFILLED,
+        }),
+        createdAt: new Date('2099-07-16T09:00:00.000Z'),
+    });
+    const legacyRequest = await getDeliveryRequest(fixture.requestId);
+    assert.deepEqual(legacyRequest?.customerHandoffReceipt, {
+        fulfilledAt: legacyEvent.createdAt,
+        verification: 'not-recorded',
+    });
+
+    await createEvent(
+        knownEvents.delivery.requestConfirmedV1(fixture.requestId, {
+            status: DeliveryRequestStates.CONFIRMED,
+        }),
+    );
+    const malformedSentinel = `malformed-private-${randomUUID()}`;
+    const malformedEvent = await createEvent({
+        type: knownEventTypes.delivery.requestFulfilled,
+        version: 2,
+        aggregateId: fixture.requestId,
+        data: {
+            status: DeliveryRequestStates.FULFILLED,
+            handoffVerification: {
+                version: 1,
+                runId: malformedSentinel,
+                result: 'scanned',
+            },
+        },
+        createdAt: new Date('2099-07-16T09:05:00.000Z'),
+    });
+    const malformedRequest = await getDeliveryRequest(fixture.requestId);
+    assert.deepEqual(malformedRequest?.customerHandoffReceipt, {
+        fulfilledAt: malformedEvent.createdAt,
+        verification: 'not-recorded',
+    });
+    assert.ok(
+        !JSON.stringify(malformedRequest?.customerHandoffReceipt).includes(
+            malformedSentinel,
+        ),
+    );
+
+    const contradictoryPayloads = [
+        {
+            label: 'scan without QR provenance',
+            handoffVerification: {
+                version: 1,
+                runId: privateRunId,
+                stopId: 801,
+                retryAttempt: 0,
+                clientOperationId: `contradictory-${randomUUID()}`,
+                traceLinkId: null,
+                qrAvailable: false,
+                result: 'scanned',
+            },
+        },
+        {
+            label: 'scan without a verification timestamp',
+            handoffVerification: {
+                version: 1,
+                runId: privateRunId,
+                stopId: 802,
+                retryAttempt: 0,
+                clientOperationId: `contradictory-${randomUUID()}`,
+                traceLinkId: fixture.traceLink.id,
+                qrAvailable: true,
+                result: 'scanned',
+            },
+        },
+        {
+            label: 'manual no-label result without a recorded time',
+            handoffVerification: {
+                version: 1,
+                runId: privateRunId,
+                stopId: 803,
+                retryAttempt: 0,
+                clientOperationId: `contradictory-${randomUUID()}`,
+                traceLinkId: fixture.traceLink.id,
+                qrAvailable: true,
+                result: 'no-label',
+            },
+        },
+        {
+            label: 'skip without a recorded time',
+            handoffVerification: {
+                version: 1,
+                runId: privateRunId,
+                stopId: 804,
+                retryAttempt: 0,
+                clientOperationId: `contradictory-${randomUUID()}`,
+                traceLinkId: fixture.traceLink.id,
+                qrAvailable: true,
+                result: 'skipped',
+                reason: 'manual-verification',
+            },
+        },
+    ];
+    for (const [index, contradictory] of contradictoryPayloads.entries()) {
+        await createEvent(
+            knownEvents.delivery.requestConfirmedV1(fixture.requestId, {
+                status: DeliveryRequestStates.CONFIRMED,
+            }),
+        );
+        const event = await createEvent({
+            type: knownEventTypes.delivery.requestFulfilled,
+            version: 2,
+            aggregateId: fixture.requestId,
+            data: {
+                status: DeliveryRequestStates.FULFILLED,
+                handoffVerification: contradictory.handoffVerification,
+            },
+            createdAt: new Date(Date.UTC(2099, 6, 16, 9, 10 + index, 0)),
+        });
+        const contradictoryRequest = await getDeliveryRequest(
+            fixture.requestId,
+        );
+        assert.deepEqual(
+            contradictoryRequest?.customerHandoffReceipt,
+            {
+                fulfilledAt: event.createdAt,
+                verification: 'not-recorded',
+            },
+            contradictory.label,
+        );
+    }
+});
+
+test('customer handoff receipts remain isolated across a shared bulk run', async () => {
+    createTestDb();
+
+    const firstAccountId = await createTestAccount();
+    const secondAccountId = await createTestAccount();
+    const pickupLocationId = await createPickupLocation({
+        name: `Bulk receipt HQ ${randomUUID()}`,
+        street1: 'HQ 1',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const slotId = await createTimeSlot({
+        locationId: pickupLocationId,
+        type: 'delivery',
+        startAt: new Date('2099-07-17T08:00:00.000Z'),
+        endAt: new Date('2099-07-17T10:00:00.000Z'),
+        status: TimeSlotStatuses.SCHEDULED,
+    });
+    const firstAddressId = await createDeliveryAddress({
+        accountId: firstAccountId,
+        label: 'Prvi ulaz',
+        contactName: 'FIRST CUSTOMER 4144',
+        phone: '+385 91 111 4144',
+        street1: 'Zajednička 14',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const secondAddressId = await createDeliveryAddress({
+        accountId: secondAccountId,
+        label: 'Drugi ulaz',
+        contactName: 'SECOND CUSTOMER 4144',
+        phone: '+385 91 222 4144',
+        street1: 'Zajednička 14',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
+    const [firstOperation, secondOperation] = await storage()
+        .insert(operations)
+        .values([
+            {
+                entityId: 1,
+                entityTypeName: 'operation',
+                accountId: firstAccountId,
+            },
+            {
+                entityId: 1,
+                entityTypeName: 'operation',
+                accountId: secondAccountId,
+            },
+        ])
+        .returning({ id: operations.id });
+    assert.ok(firstOperation);
+    assert.ok(secondOperation);
+
+    const firstRequestId = randomUUID();
+    const secondRequestId = randomUUID();
+    await storage()
+        .insert(deliveryRequests)
+        .values([
+            { id: firstRequestId, operationId: firstOperation.id },
+            { id: secondRequestId, operationId: secondOperation.id },
+        ]);
+    await Promise.all([
+        createEvent(
+            knownEvents.delivery.requestCreatedV1(firstRequestId, {
+                operationId: firstOperation.id,
+                slotId,
+                mode: 'delivery',
+                addressId: firstAddressId,
+                accountId: firstAccountId,
+            }),
+        ),
+        createEvent(
+            knownEvents.delivery.requestCreatedV1(secondRequestId, {
+                operationId: secondOperation.id,
+                slotId,
+                mode: 'delivery',
+                addressId: secondAddressId,
+                accountId: secondAccountId,
+            }),
+        ),
+    ]);
+
+    const sharedRunId = `bulk-run-${randomUUID()}`;
+    const firstPrivateOperation = `first-private-${randomUUID()}`;
+    const secondPrivateOperation = `second-private-${randomUUID()}`;
+    await Promise.all([
+        createEvent(
+            knownEvents.delivery.requestFulfilledV2(firstRequestId, {
+                status: DeliveryRequestStates.FULFILLED,
+                handoffVerification: {
+                    version: 1,
+                    runId: sharedRunId,
+                    stopId: 901,
+                    retryAttempt: 0,
+                    clientOperationId: firstPrivateOperation,
+                    traceLinkId: null,
+                    qrAvailable: false,
+                    result: 'no-label',
+                },
+            }),
+        ),
+        createEvent(
+            knownEvents.delivery.requestFulfilledV2(secondRequestId, {
+                status: DeliveryRequestStates.FULFILLED,
+                handoffVerification: {
+                    version: 1,
+                    runId: sharedRunId,
+                    stopId: 902,
+                    retryAttempt: 0,
+                    clientOperationId: secondPrivateOperation,
+                    traceLinkId: null,
+                    qrAvailable: false,
+                    result: 'skipped',
+                    reason: 'other-operational',
+                    verifiedAt: '2099-07-17T09:00:00.000Z',
+                },
+            }),
+        ),
+    ]);
+
+    const firstAccountRequests =
+        await getDeliveryRequestsWithEvents(firstAccountId);
+    const secondAccountRequests =
+        await getDeliveryRequestsWithEvents(secondAccountId);
+
+    assert.deepEqual(
+        firstAccountRequests.map((request) => request.id),
+        [firstRequestId],
+    );
+    assert.deepEqual(
+        secondAccountRequests.map((request) => request.id),
+        [secondRequestId],
+    );
+    assert.equal(
+        firstAccountRequests[0]?.customerHandoffReceipt?.verification,
+        'no-label',
+    );
+    assert.equal(
+        secondAccountRequests[0]?.customerHandoffReceipt?.verification,
+        'skipped',
+    );
+    assert.equal(
+        firstAccountRequests[0]?.address?.contactName,
+        'FIRST CUSTOMER 4144',
+    );
+    assert.equal(
+        secondAccountRequests[0]?.address?.contactName,
+        'SECOND CUSTOMER 4144',
+    );
+    const firstCustomerReceipt = JSON.stringify(firstAccountRequests[0]);
+    assert.ok(!firstCustomerReceipt.includes(sharedRunId));
+    assert.ok(!firstCustomerReceipt.includes(firstPrivateOperation));
+    assert.ok(!firstCustomerReceipt.includes(secondPrivateOperation));
+    assert.ok(!firstCustomerReceipt.includes(secondRequestId));
+    assert.ok(!firstCustomerReceipt.includes('SECOND CUSTOMER 4144'));
+    assert.ok(!firstCustomerReceipt.includes('+385 91 222 4144'));
+});
+
 test('uncancelDeliveryRequest restores cancelled requests to confirmed', async () => {
     const fixture = await createDeliveryRequestWithTraceFixture();
 

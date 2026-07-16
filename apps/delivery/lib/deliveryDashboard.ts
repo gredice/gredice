@@ -31,6 +31,8 @@ import {
 import 'server-only';
 import type {
     ActiveDeliveryRunSummary,
+    CustomerDeliveryReceiptSummary,
+    CustomerHandoffVerification,
     DeliveryDashboard,
     DeliveryHarvestSummary,
     DeliveryPickupManifestItemState,
@@ -140,6 +142,38 @@ function harvestSummary(request: DeliveryRequest): DeliveryHarvestSummary {
         raisedBedName: raisedBedName(request),
         fieldName: fieldName(request),
         tracePath: request.trace?.publicPath ?? null,
+    };
+}
+
+export function customerDeliveryReceiptSummary({
+    audience,
+    requestState,
+    requestId,
+    handoffReceipt,
+    harvest,
+}: {
+    audience: 'driver' | 'customer';
+    requestState: string;
+    requestId: string;
+    handoffReceipt?: {
+        fulfilledAt: Date;
+        verification: CustomerHandoffVerification;
+    };
+    harvest: DeliveryHarvestSummary;
+}): CustomerDeliveryReceiptSummary | null {
+    if (
+        audience !== 'customer' ||
+        requestState !== DeliveryRequestStates.FULFILLED ||
+        !handoffReceipt
+    ) {
+        return null;
+    }
+
+    return {
+        requestReference: requestId,
+        deliveredAt: handoffReceipt.fulfilledAt.toISOString(),
+        verification: handoffReceipt.verification,
+        harvest,
     };
 }
 
@@ -459,6 +493,13 @@ function deliveryStopSummary({
         estimatedTravelSeconds: representativeStop?.estimatedTravelSeconds,
         estimatedDistanceMeters: representativeStop?.estimatedDistanceMeters,
     });
+    const receipt = customerDeliveryReceiptSummary({
+        audience,
+        requestState: request.state,
+        requestId: request.id,
+        handoffReceipt: request.customerHandoffReceipt,
+        harvest: harvestSummary(request),
+    });
 
     return {
         id: representativeStop?.id ?? null,
@@ -488,8 +529,11 @@ function deliveryStopSummary({
         ...estimates,
         reroutePending,
         arrivedAt: iso(stops.find((stop) => stop.arrivedAt)?.arrivedAt),
-        deliveredAt: iso(stops.find((stop) => stop.deliveredAt)?.deliveredAt),
+        deliveredAt:
+            receipt?.deliveredAt ??
+            iso(stops.find((stop) => stop.deliveredAt)?.deliveredAt),
         harvest: harvestSummary(request),
+        receipt,
         recovery:
             audience === 'customer'
                 ? customerDeliveryRecoverySummary({
