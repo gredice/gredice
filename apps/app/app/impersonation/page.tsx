@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { ComponentType } from 'react';
+import { requestOrigin } from './requestOrigin';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
@@ -63,16 +64,6 @@ const impersonationApps: ImpersonationApp[] = [
         origin: 'app',
     },
 ];
-
-function requestOrigin(host: string | null, forwardedProtocol: string | null) {
-    if (!host) {
-        return undefined;
-    }
-
-    const protocol =
-        forwardedProtocol ?? (host.startsWith('localhost') ? 'http' : 'https');
-    return `${protocol}://${host}`;
-}
 
 export default async function ImpersonationPage() {
     const cookieStore = await cookies();
