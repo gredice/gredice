@@ -20,6 +20,10 @@ import {
 } from 'drizzle-orm';
 import 'server-only';
 import {
+    deliveryRunExactLocationTtlMs,
+    persistLegacyGoogleRoutePolyline,
+} from '../deliveryTrackingPolicy';
+import {
     accountUsers,
     DeliveryRequestStates,
     type DeliveryRunCompletionBypass,
@@ -325,9 +329,6 @@ export class DeliveryRunExecutionError extends Error {
         super(message);
     }
 }
-
-export const deliveryRunTrackingLiveThresholdMs = 30 * 1000;
-export const deliveryRunExactLocationTtlMs = 2 * 60 * 1000;
 
 export type DeliveryRunExecutionStep =
     | {
@@ -1653,6 +1654,7 @@ function parsePreparationToken(preparationToken: string) {
 async function insertPreparedDeliveryRun(
     plan: DeliveryRunPreparationPlanPayload,
     preparationId: string,
+    estimatesCalculatedAt: Date,
     db: TransactionClient,
 ) {
     const runId = randomUUID();
@@ -1669,7 +1671,7 @@ async function insertPreparedDeliveryRun(
             plan.formatVersion === 1
                 ? DeliveryRunEstimateSources.LEGACY
                 : plan.createRunInput.estimateSource,
-        estimatesUpdatedAt: new Date(),
+        estimatesUpdatedAt: estimatesCalculatedAt,
     });
 
     const pickupNodeIdsByLocationId = new Map<number, string>();
@@ -1912,7 +1914,12 @@ export async function consumeDeliveryRunPreparation({
         await ensurePreparationCanCreateRun(plan, tx);
         await validatePreparationSnapshot(plan, tx);
         await validatePreparedBulkMembership(plan, tx);
-        return await insertPreparedDeliveryRun(plan, preparationId, tx);
+        return await insertPreparedDeliveryRun(
+            plan,
+            preparationId,
+            preparation.createdAt,
+            tx,
+        );
     });
 
     const run = await getDeliveryRun(runId);
@@ -4951,7 +4958,15 @@ export async function applyDeliveryRunReroute(
         const [updatedRun] = await tx
             .update(deliveryRuns)
             .set({
-                encodedPolyline: input.encodedPolyline ?? null,
+                encodedPolyline:
+                    run.routePlanVersion < 2
+                        ? input.estimateSource ===
+                          DeliveryRunEstimateSources.GOOGLE
+                            ? persistLegacyGoogleRoutePolyline(
+                                  input.encodedPolyline,
+                              )
+                            : null
+                        : (input.encodedPolyline ?? null),
                 totalDistanceMeters: input.totalDistanceMeters,
                 totalDurationSeconds: input.totalDurationSeconds,
                 estimateSource:
@@ -5346,7 +5361,8 @@ export async function updateDeliveryRunEstimates({
         const [updatedRun] = await tx
             .update(deliveryRuns)
             .set({
-                encodedPolyline,
+                encodedPolyline:
+                    persistLegacyGoogleRoutePolyline(encodedPolyline),
                 totalDistanceMeters,
                 totalDurationSeconds,
                 estimatesUpdatedAt: new Date(),
@@ -5356,6 +5372,7 @@ export async function updateDeliveryRunEstimates({
                     eq(deliveryRuns.id, runId),
                     eq(deliveryRuns.driverUserId, driverUserId),
                     eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    eq(deliveryRuns.routePlanVersion, 1),
                     eq(deliveryRuns.routeRevision, expectedRouteRevision),
                     eq(
                         deliveryRuns.currentLocationRecordedAt,

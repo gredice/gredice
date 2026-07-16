@@ -51,6 +51,7 @@ import {
     deliveryRunPickupOperations,
     deliveryRunPreparations,
     deliveryRunRerouteLeaseMs,
+    deliveryRunRoutePolyline,
     deliveryRunStopOperationOccurredAtIsAcceptable,
     deliveryRunStopOperations,
     deliveryRunStops,
@@ -70,6 +71,7 @@ import {
     getDeliveryRunHandoffManifest,
     getDeliveryRunStopsForRequestIds,
     harvestTraceLinks,
+    hasLegacyGoogleRouteArtifact,
     knownEvents,
     knownEventTypes,
     markDeliveryRunStopArrived,
@@ -1374,12 +1376,103 @@ test('a slower estimate calculation cannot overwrite the route for a newer accep
 
     assert.equal(await updateDeliveryRunEstimates(slowerOlderEstimate), false);
     const persisted = await getDeliveryRun(run.id);
-    assert.equal(persisted?.encodedPolyline, 'newer-route');
+    assert.equal(
+        hasLegacyGoogleRouteArtifact(persisted?.encodedPolyline),
+        true,
+    );
+    assert.equal(
+        deliveryRunRoutePolyline(persisted?.encodedPolyline),
+        'newer-route',
+    );
+    assert.equal(persisted?.estimateSource, 'legacy');
     assert.equal(persisted?.totalDistanceMeters, 3_000);
     assert.equal(persisted?.totalDurationSeconds, 600);
     assert.equal(persisted?.stops[0]?.estimatedTravelSeconds, 600);
     assert.equal(persisted?.stops[0]?.estimatedDistanceMeters, 3_000);
     assert.deepEqual(persisted?.stops[0]?.estimatedArrivalAt, newerArrivalAt);
+
+    const localRecordedAt = new Date('2026-07-13T08:10:20.000Z');
+    const localAcknowledgement = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.83,
+        longitude: 15.99,
+        recordedAt: localRecordedAt,
+    });
+    assert.equal(
+        await updateDeliveryRunEstimates({
+            runId: run.id,
+            driverUserId,
+            expectedRouteRevision: run.routeRevision,
+            expectedLocationRecordedAt: localRecordedAt,
+            expectedLocationReceivedAt: localAcknowledgement.acceptedAt,
+            totalDistanceMeters: 2_500,
+            totalDurationSeconds: 500,
+            estimates: [
+                {
+                    deliveryRequestId: requestId,
+                    estimatedArrivalAt: new Date('2026-07-13T08:18:40.000Z'),
+                    estimatedTravelSeconds: 500,
+                    estimatedDistanceMeters: 2_500,
+                },
+            ],
+        }),
+        true,
+    );
+    const localPersisted = await getDeliveryRun(run.id);
+    assert.equal(localPersisted?.encodedPolyline, null);
+    assert.equal(localPersisted?.estimateSource, 'legacy');
+});
+
+test('legacy GPS estimate updates cannot mark a pickup-aware route', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    const requestId = prepared.fixture.requestIds[0];
+    assert.ok(driverUserId);
+    assert.ok(requestId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+    const recordedAt = new Date('2026-07-13T08:10:00.000Z');
+    const acknowledgement = await updateDeliveryRunLocation({
+        runId: run.id,
+        driverUserId,
+        latitude: 45.81,
+        longitude: 15.97,
+        recordedAt,
+    });
+
+    assert.equal(
+        await updateDeliveryRunEstimates({
+            runId: run.id,
+            driverUserId,
+            expectedRouteRevision: run.routeRevision,
+            expectedLocationRecordedAt: recordedAt,
+            expectedLocationReceivedAt: acknowledgement.acceptedAt,
+            encodedPolyline: 'must-not-mark-v2',
+            totalDistanceMeters: 1,
+            totalDurationSeconds: 1,
+            estimates: [
+                {
+                    deliveryRequestId: requestId,
+                    estimatedArrivalAt: new Date('2026-07-13T08:10:01.000Z'),
+                    estimatedTravelSeconds: 1,
+                    estimatedDistanceMeters: 1,
+                },
+            ],
+        }),
+        false,
+    );
+    const persisted = await getDeliveryRun(run.id);
+    assert.equal(persisted?.routePlanVersion, 2);
+    assert.equal(persisted?.estimateSource, DeliveryRunEstimateSources.LOCAL);
+    assert.equal(
+        deliveryRunRoutePolyline(persisted?.encodedPolyline),
+        deliveryRunRoutePolyline(run.encodedPolyline),
+    );
 });
 
 test('an estimate calculation cannot overwrite a route whose revision advanced at arrival', async () => {
@@ -2634,6 +2727,31 @@ test('persisted v3 itinerary tampering is rejected before run creation', async (
     );
 });
 
+test('prepared run preserves the route calculation time near token expiry', async () => {
+    const prepared = await createPreparedRunFixture();
+    const driverUserId = prepared.fixture.driverUserIds[0];
+    assert.ok(driverUserId);
+    const saved = await saveDeliveryRunPreparation(prepared);
+    const now = new Date();
+    const calculatedAt = new Date(now.getTime() - 110_000);
+    await storage()
+        .update(deliveryRunPreparations)
+        .set({
+            createdAt: calculatedAt,
+            expiresAt: new Date(now.getTime() + 10_000),
+        })
+        .where(eq(deliveryRunPreparations.id, saved.preparationId));
+
+    const run = await consumeDeliveryRunPreparation({
+        preparationToken: saved.preparationToken,
+        driverUserId,
+        deliveryRequestIds: prepared.fixture.requestIds,
+    });
+
+    assert.deepEqual(run.estimatesUpdatedAt, calculatedAt);
+    assert.ok(run.startedAt.getTime() - calculatedAt.getTime() >= 100_000);
+});
+
 test('existing v1 preparation tokens remain consumable as legacy routes', async () => {
     const prepared = await createPreparedRunFixture();
     const driverUserId = prepared.fixture.driverUserIds[0];
@@ -2647,12 +2765,19 @@ test('existing v1 preparation tokens remain consumable as legacy routes', async 
     if (preparation?.plan.formatVersion !== 3) {
         assert.fail('Expected a v3 delivery run preparation');
     }
+    const legacyPlan = asLegacyPreparationPlan(
+        asV2PreparationPlan(preparation.plan),
+    );
     await storage()
         .update(deliveryRunPreparations)
         .set({
-            plan: asLegacyPreparationPlan(
-                asV2PreparationPlan(preparation.plan),
-            ),
+            plan: {
+                ...legacyPlan,
+                createRunInput: {
+                    ...legacyPlan.createRunInput,
+                    encodedPolyline: 'initial-legacy-google-route',
+                },
+            },
         })
         .where(eq(deliveryRunPreparations.id, saved.preparationId));
 
@@ -2663,6 +2788,11 @@ test('existing v1 preparation tokens remain consumable as legacy routes', async 
     });
     assert.equal(run.routePlanVersion, 1);
     assert.equal(run.estimateSource, 'legacy');
+    assert.equal(hasLegacyGoogleRouteArtifact(run.encodedPolyline), false);
+    assert.equal(
+        deliveryRunRoutePolyline(run.encodedPolyline),
+        'initial-legacy-google-route',
+    );
     assert.ok(
         run.pickupNodes.every(
             (node) =>
@@ -4917,6 +5047,7 @@ test('legacy reroute keeps completed bulk sequences and legacy estimate provenan
         expectedRouteRevision: deferred.result.routeRevision,
         rerouteClaimedAt: claimedAt,
         estimateSource: DeliveryRunEstimateSources.GOOGLE,
+        encodedPolyline: 'rerouted-google-route',
         totalDistanceMeters: 2_000,
         totalDurationSeconds: 900,
         pickupEstimates: [],
@@ -4941,6 +5072,11 @@ test('legacy reroute keeps completed bulk sequences and legacy estimate provenan
     const rerouted = await getDeliveryRun(run.id);
     assert.equal(rerouted?.routePlanVersion, 1);
     assert.equal(rerouted?.estimateSource, DeliveryRunEstimateSources.LEGACY);
+    assert.equal(hasLegacyGoogleRouteArtifact(rerouted?.encodedPolyline), true);
+    assert.equal(
+        deliveryRunRoutePolyline(rerouted?.encodedPolyline),
+        'rerouted-google-route',
+    );
     assert.equal(
         rerouted?.stops.find((stop) => stop.id === currentStop.id)?.sequence,
         3,

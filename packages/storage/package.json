@@ -8,6 +8,7 @@
     "exports": {
         ".": "./src/index.ts",
         "./cmsPageContent": "./src/cmsPageContent.ts",
+        "./deliveryTrackingPolicy": "./src/deliveryTrackingPolicy.ts",
         "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
         "./entityPageSections": "./src/helpers/entityPageSections.ts",
         "./cmsPageSections": "./src/cmsPageSections.ts"

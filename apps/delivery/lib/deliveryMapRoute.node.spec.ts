@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { persistLegacyGoogleRoutePolyline } from '@gredice/storage/deliveryTrackingPolicy';
 import { createDeliveryMapRouteHandlers } from './deliveryMapRoute';
 
 const runId = 'delivery-run-map-1';
@@ -143,7 +144,9 @@ function deliveryRun(options: TestRunOptions = {}): TestDeliveryMapRun {
                 longitude: null,
             },
         ],
-        encodedPolyline: 'private-complete-route',
+        encodedPolyline: persistLegacyGoogleRoutePolyline(
+            'private-complete-route',
+        ),
         groups: deliveryGroups(),
     };
 }
@@ -193,6 +196,7 @@ function createHarness(input: HarnessInput) {
         getCustomerTrackingContext: 0,
         resolveGroups: 0,
         buildStaticMapUrl: 0,
+        staticMapEncodedPolylines: [] as Array<string | null>,
     };
     const handlers = createDeliveryMapRouteHandlers<
         TestDeliveryMapRun,
@@ -225,8 +229,9 @@ function createHarness(input: HarnessInput) {
             return run.driverLocation;
         },
         isStopTerminal: (state) => terminalStates.has(state),
-        buildStaticMapUrl: () => {
+        buildStaticMapUrl: (mapData) => {
             calls.buildStaticMapUrl += 1;
+            calls.staticMapEncodedPolylines.push(mapData.encodedPolyline);
             return null;
         },
         unavailableMapSvg: () => '<svg>Map unavailable</svg>',
@@ -389,6 +394,38 @@ test('assigned drivers and admins receive the complete driver map projection', a
             assert.equal(calls.resolveGroups, 1);
         });
     }
+});
+
+test('assigned driver maps preserve unmarked legacy route geometry', async () => {
+    const run = deliveryRun();
+    run.encodedPolyline = 'old-unmarked-route';
+    const { handlers } = createHarness({
+        role: 'driver',
+        userId: 'assigned-driver',
+        accountId: 'operator-account',
+        run,
+    });
+
+    const response = await handlers.GET(request(), context());
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).encodedPolyline, 'old-unmarked-route');
+});
+
+test('assigned driver static maps receive raw route geometry', async () => {
+    const { handlers, calls } = createHarness({
+        role: 'driver',
+        userId: 'assigned-driver',
+        accountId: 'operator-account',
+    });
+
+    const response = await handlers.GET(request('image'), context());
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.buildStaticMapUrl, 1);
+    assert.deepEqual(calls.staticMapEncodedPolylines, [
+        'private-complete-route',
+    ]);
 });
 
 test('unassigned drivers and admins remain constrained to the customer-safe projection', async (t) => {

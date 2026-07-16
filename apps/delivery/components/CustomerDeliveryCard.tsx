@@ -1,23 +1,14 @@
-import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import {
-    Calendar,
-    ExternalLink,
-    Leaf,
-    Timer,
-    Truck,
-    Warning,
-} from '@gredice/ui/icons';
+import { Calendar, ExternalLink, Leaf, Timer, Truck } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import type { CustomerDeliveryRequestSummary } from '../lib/deliveryDashboardTypes';
 import {
     formatDeliveryDateTime,
-    formatDeliveryTime,
-    formatDistance,
-    formatTravelDuration,
+    formatDeliveryDateTimeRange,
 } from '../lib/deliveryFormatting';
+import { CustomerDeliveryPromise } from './CustomerDeliveryPromise';
 import { DeliveryCustomerReceipt } from './DeliveryCustomerReceipt';
 import { DeliveryCustomerRecovery } from './DeliveryCustomerRecovery';
 
@@ -48,16 +39,13 @@ export function CustomerDeliveryCard({
 }: {
     delivery: CustomerDeliveryRequestSummary;
 }) {
-    const showRouteEstimates =
-        Boolean(
-            delivery.estimatedArrivalAt || delivery.estimatedTravelSeconds,
-        ) &&
+    const showDeliveryPromise =
+        delivery.status !== 'fulfilled' &&
+        !delivery.receipt &&
         (!delivery.recovery || delivery.recovery.kind === 'retry-planned');
-    const estimatedOutsideWindow = Boolean(
-        delivery.estimatedArrivalAt &&
-            delivery.slotEndAt &&
-            new Date(delivery.estimatedArrivalAt) >
-                new Date(delivery.slotEndAt),
+    const promisedWindow = formatDeliveryDateTimeRange(
+        delivery.slotStartAt,
+        delivery.slotEndAt,
     );
     const harvestDescription = [
         delivery.harvest.plantName,
@@ -102,68 +90,30 @@ export function CustomerDeliveryCard({
                     </div>
                 </div>
 
-                {delivery.slotStartAt && delivery.slotEndAt ? (
-                    <div className="flex items-start gap-2 text-sm">
-                        <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="flex items-start gap-2 text-sm">
+                    <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    {promisedWindow ? (
                         <span>
                             Termin:{' '}
-                            <time dateTime={delivery.slotStartAt}>
-                                {formatDeliveryDateTime(delivery.slotStartAt)}
+                            <time dateTime={promisedWindow.startAt}>
+                                {promisedWindow.startLabel}
                             </time>{' '}
                             –{' '}
-                            <time dateTime={delivery.slotEndAt}>
-                                {formatDeliveryTime(delivery.slotEndAt)}
+                            <time dateTime={promisedWindow.endAt}>
+                                {promisedWindow.endLabel}
                             </time>
                         </span>
-                    </div>
-                ) : null}
+                    ) : (
+                        <span>Termin još nije dostupan.</span>
+                    )}
+                </div>
 
-                {showRouteEstimates ? (
-                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/70 p-3 text-center">
-                        <div>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                Dolazak
-                            </Typography>
-                            <Typography level="body2" semiBold>
-                                {formatDeliveryTime(
-                                    delivery.estimatedArrivalAt,
-                                )}
-                            </Typography>
-                        </div>
-                        <div className="border-x">
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                Vožnja
-                            </Typography>
-                            <Typography level="body2" semiBold>
-                                {formatTravelDuration(
-                                    delivery.estimatedTravelSeconds,
-                                )}
-                            </Typography>
-                        </div>
-                        <div>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                Udaljenost
-                            </Typography>
-                            <Typography level="body2" semiBold>
-                                {formatDistance(
-                                    delivery.estimatedDistanceMeters,
-                                )}
-                            </Typography>
-                        </div>
-                    </div>
-                ) : delivery.reroutePending ? (
-                    <Alert color="info">
-                        Procjena dolaska ažurira se nakon promjene rute.
-                    </Alert>
+                {showDeliveryPromise ? (
+                    <CustomerDeliveryPromise
+                        eta={delivery.eta}
+                        progress={delivery.progress}
+                        promisedWindowStartAt={delivery.slotStartAt}
+                    />
                 ) : null}
 
                 {delivery.recovery ? (
@@ -182,19 +132,6 @@ export function CustomerDeliveryCard({
                 {delivery.requestNotes ? (
                     <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                         <strong>Napomena:</strong> {delivery.requestNotes}
-                    </div>
-                ) : null}
-
-                {showRouteEstimates &&
-                estimatedOutsideWindow &&
-                delivery.status !== 'fulfilled' ? (
-                    <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                        <Warning className="mt-0.5 size-4 shrink-0" />
-                        <span>
-                            Trenutačna procjena dolaska je nakon završetka
-                            termina. Prikaz će se ažurirati kada vozač nastavi
-                            rutu.
-                        </span>
                     </div>
                 ) : null}
 

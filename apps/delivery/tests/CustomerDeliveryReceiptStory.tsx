@@ -42,10 +42,21 @@ function customerDelivery({
         requestNotes: null,
         slotStartAt: '2026-07-16T08:00:00.000Z',
         slotEndAt: '2026-07-16T10:00:00.000Z',
-        estimatedArrivalAt: null,
-        estimatedTravelSeconds: null,
-        estimatedDistanceMeters: null,
-        reroutePending: false,
+        eta: {
+            source: 'promised-window',
+            calculatedAt: null,
+            freshness: 'unavailable',
+            confidence: 'none',
+            rangeStartAt: null,
+            rangeEndAt: null,
+            remainingMinSeconds: null,
+            remainingMaxSeconds: null,
+        },
+        progress: {
+            phase: 'unavailable',
+            stopsAhead: null,
+            delayed: false,
+        },
         deliveredAt: '2026-07-16T09:30:00.000Z',
         harvest,
         receipt: {
@@ -69,15 +80,28 @@ const activeDelivery: CustomerDeliveryRequestSummary = {
     requestId: 'customer-owned-request-journey-4144',
     status: 'ready',
     statusLabel: 'Vozač stiže',
-    estimatedArrivalAt: '2026-07-16T09:30:00.000Z',
-    estimatedTravelSeconds: 600,
-    estimatedDistanceMeters: 3_200,
+    eta: {
+        source: 'traffic-route',
+        calculatedAt: '2026-07-16T09:20:00.000Z',
+        freshness: 'fresh',
+        confidence: 'high',
+        rangeStartAt: '2026-07-16T09:25:00.000Z',
+        rangeEndAt: '2026-07-16T09:35:00.000Z',
+        remainingMinSeconds: 300,
+        remainingMaxSeconds: 900,
+    },
+    progress: {
+        phase: 'next',
+        stopsAhead: 0,
+        delayed: false,
+    },
     deliveredAt: null,
     receipt: null,
     tracking: {
         status: 'live',
         lastAcceptedAt: '2026-07-16T09:20:00.000Z',
         mapAvailable: false,
+        exactLocationExpiresInMs: null,
     },
     mapPath: '/api/map/customer-run-journey-4144',
 };
@@ -148,6 +172,10 @@ export function CustomerDeliveryReceiptStatesStory() {
 
 export function CustomerDeliveryReceiptJourneyStory() {
     const [delivered, setDelivered] = useState(false);
+    const [requestTiming] = useState(() => ({
+        monotonicMs: performance.now(),
+        wallMs: Date.now(),
+    }));
     return (
         <div>
             <div className="p-4">
@@ -159,6 +187,7 @@ export function CustomerDeliveryReceiptJourneyStory() {
                 dashboard={dashboard([
                     delivered ? deliveredJourneyDelivery : activeDelivery,
                 ])}
+                requestTiming={requestTiming}
             />
         </div>
     );

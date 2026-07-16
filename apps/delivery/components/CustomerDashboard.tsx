@@ -6,14 +6,19 @@ import type {
     CustomerDeliveryRequestSummary,
 } from '../lib/deliveryDashboardTypes';
 import { CustomerDeliveryCard } from './CustomerDeliveryCard';
-import { CustomerDeliveryTracking } from './CustomerDeliveryTracking';
+import {
+    CustomerDeliveryTracking,
+    type CustomerDeliveryTrackingRequestTiming,
+} from './CustomerDeliveryTracking';
 import { CustomerPickupCard } from './CustomerPickupCard';
 import { DeliveryAppHeader } from './DeliveryAppHeader';
 
 export function CustomerDashboard({
     dashboard,
+    requestTiming,
 }: {
     dashboard: CustomerDeliveryDashboard;
+    requestTiming: CustomerDeliveryTrackingRequestTiming | null;
 }) {
     const hasDelivery = dashboard.deliveries.some(
         (request) => request.mode === 'delivery',
@@ -73,6 +78,7 @@ export function CustomerDashboard({
                     <CustomerDeliveryTracking
                         mapPath={trackedDelivery.mapPath}
                         tracking={trackedDelivery.tracking}
+                        requestTiming={requestTiming}
                     />
                 ) : null}
 
