@@ -19,6 +19,7 @@ import {
     DeliverySlotPicker,
     type DeliverySlotPickerSlot,
 } from './DeliverySlotPicker';
+import { isDeliverySlotAvailable } from './deliverySlotAvailability';
 
 export interface DeliverySelectionData {
     mode: 'delivery' | 'pickup';
@@ -48,24 +49,30 @@ export function DeliveryStep({
     });
     const [manageAddresses, setManageAddresses] = useState(false);
     const [slotRange] = useState(() => {
-        const from = new Date();
+        const referenceDate = new Date();
+        const from = new Date(referenceDate);
         const daysFromMonday = (from.getDay() + 6) % 7;
         from.setDate(from.getDate() - daysFromMonday);
         from.setHours(0, 0, 0, 0);
 
-        const to = new Date();
+        const to = new Date(referenceDate);
         to.setMonth(to.getMonth() + 1);
 
         return {
             from: from.toISOString(),
+            referenceDate: referenceDate.toISOString(),
             to: to.toISOString(),
         };
     });
     const { data: cart } = useShoppingCart();
     const { data: addresses, isLoading: isLoadingAddresses } =
         useDeliveryAddresses();
-    const { data: timeSlots, isLoading: slotsLoading } =
-        useTimeSlots(slotRange);
+    const { data: timeSlots, isLoading: slotsLoading } = useTimeSlots({
+        from: slotRange.from,
+        includeArchived: true,
+        includeClosed: true,
+        to: slotRange.to,
+    });
     const pickerSlots = useMemo<DeliverySlotPickerSlot[]>(
         () =>
             (timeSlots ?? []).flatMap((slot) => {
@@ -79,10 +86,14 @@ export function DeliveryStep({
                         startAt: slot.startAt,
                         endAt: slot.endAt,
                         fulfillment: slot.type,
+                        disabled: !isDeliverySlotAvailable(
+                            slot,
+                            slotRange.referenceDate,
+                        ),
                     },
                 ];
             }),
-        [timeSlots],
+        [slotRange.referenceDate, timeSlots],
     );
     const selectedTimeSlot = timeSlots?.find(
         (slot) => slot.id === selection.slotId,
@@ -190,6 +201,7 @@ export function DeliveryStep({
                 emptyMessage="Trenutno nema dostupnih termina dostave ili osobnog preuzimanja."
                 label={null}
                 loading={slotsLoading}
+                referenceDate={slotRange.referenceDate}
                 slots={pickerSlots}
                 value={selection.slotId}
                 onValueChange={handleSlotChange}
