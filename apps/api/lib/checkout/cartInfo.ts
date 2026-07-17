@@ -2,7 +2,10 @@ import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import { minimumShoppingCartAmountEur } from '@gredice/js/shoppingCart';
+import {
+    minimumShoppingCartAmountCents,
+    minimumShoppingCartAmountEur,
+} from '@gredice/js/shoppingCart';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -44,6 +47,11 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
     inventoryAvailable?: number;
 };
 
+type CartValueItem = Pick<
+    ShoppingCartItemWithShopData,
+    'amount' | 'currency' | 'shopData' | 'status'
+>;
+
 const RAISED_BED_BLOCKS_PER_BED = 2;
 const REQUIRED_PLANT_ITEMS_PER_NEW_RAISED_BED = 9;
 
@@ -82,10 +90,24 @@ export function getAbandonedRaisedBedCartNote(raisedBedName?: string | null) {
     return `${prefix} je napuštena zbog neaktivnosti. ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`;
 }
 
-export function getMinimumOrderNote(totalCartValueEur: number) {
+export function getTotalCartValueCents(items: CartValueItem[]) {
+    return items.reduce((sum, item) => {
+        if (item.status !== 'paid' && item.currency === 'eur') {
+            const priceEur =
+                item.shopData.discountPrice ?? item.shopData.price ?? 0;
+            const priceCents = Math.round(priceEur * 100);
+
+            return sum + priceCents * item.amount;
+        }
+
+        return sum;
+    }, 0);
+}
+
+export function getMinimumOrderNote(totalCartValueCents: number) {
     if (
-        totalCartValueEur <= 0 ||
-        totalCartValueEur >= minimumShoppingCartAmountEur
+        totalCartValueCents <= 0 ||
+        totalCartValueCents >= minimumShoppingCartAmountCents
     ) {
         return null;
     }
@@ -369,15 +391,8 @@ export async function getCartInfo(
         allowPurchase = false;
     }
 
-    const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
-        if (item.status !== 'paid' && item.currency === 'eur') {
-            const price =
-                item.shopData.discountPrice ?? item.shopData.price ?? 0;
-            return sum + price * item.amount;
-        }
-        return sum;
-    }, 0);
-    const minimumOrderNote = getMinimumOrderNote(totalCartValue);
+    const totalCartValueCents = getTotalCartValueCents(cartItemsWithShopInfo);
+    const minimumOrderNote = getMinimumOrderNote(totalCartValueCents);
     if (minimumOrderNote) {
         notes.push(minimumOrderNote);
         allowPurchase = false;
