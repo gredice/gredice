@@ -96,53 +96,60 @@ export function FarmScheduleOperationTaskCard({
         (Boolean(operation.completionNotes?.trim()) ||
             Boolean(operation.imageUrls?.some((url) => url.trim().length > 0)));
     const detailsContent = (
-        <Row spacing={2} className="min-w-0 items-start justify-between gap-3">
-            <Stack spacing={1} className="min-w-0 grow">
+        <Stack spacing={1} className="min-w-0">
+            <Row
+                spacing={2}
+                className="min-w-0 items-start justify-between gap-3"
+            >
                 <Typography
                     id={taskLabelId}
-                    className={
+                    className={cx(
+                        'min-w-0 grow',
                         taskPresentation.isCompleted
                             ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
-                            : '[overflow-wrap:anywhere]'
-                    }
+                            : '[overflow-wrap:anywhere]',
+                    )}
                 >
                     {operation.label}
                 </Typography>
+                {operation.assignedUser && (
+                    <div
+                        className="shrink-0"
+                        title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                    >
+                        <UserAvatar
+                            avatarUrl={operation.assignedUser.avatarUrl}
+                            displayName={
+                                operation.assignedUser.displayName ??
+                                operation.assignedUser.userName
+                            }
+                            className="size-7 rounded-full"
+                        />
+                    </div>
+                )}
+            </Row>
+            <Row spacing={1} className="items-center flex-wrap gap-y-1">
                 <ScheduleTaskLocation
+                    inline
                     positionNumber={operation.positionNumber}
                     raisedBedLabel={operation.raisedBedLabel}
                 />
-                <Row spacing={2} className="items-center flex-wrap gap-y-1">
-                    <ScheduleTaskStatusChip state={taskState} />
-                    <ScheduleTaskDurationChip
-                        minutes={operation.durationMinutes}
-                    />
-                    <ScheduleTaskDateChip
+                <ScheduleTaskDurationChip
+                    compact
+                    minutes={operation.durationMinutes}
+                />
+                <ScheduleTaskDateChip
+                    compact
+                    scheduledDate={operation.scheduledDate}
+                />
+                <ScheduleTaskStatusChip state={taskState} />
+                {taskPresentation.showAgeIndicator && (
+                    <ScheduleTaskAgeIndicatorChip
                         scheduledDate={operation.scheduledDate}
                     />
-                    {taskPresentation.showAgeIndicator && (
-                        <ScheduleTaskAgeIndicatorChip
-                            scheduledDate={operation.scheduledDate}
-                        />
-                    )}
-                </Row>
-            </Stack>
-            {operation.assignedUser && (
-                <div
-                    className="shrink-0"
-                    title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
-                >
-                    <UserAvatar
-                        avatarUrl={operation.assignedUser.avatarUrl}
-                        displayName={
-                            operation.assignedUser.displayName ??
-                            operation.assignedUser.userName
-                        }
-                        className="size-7 rounded-full"
-                    />
-                </div>
-            )}
-        </Row>
+                )}
+            </Row>
+        </Stack>
     );
 
     return (
@@ -199,6 +206,7 @@ export function FarmScheduleOperationTaskCard({
                     ) : undefined
                 }
                 label={operation.label}
+                layout="inline"
                 state={taskState}
                 unavailableTitle={
                     operationData

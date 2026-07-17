@@ -1,5 +1,5 @@
 import { Alert } from '@gredice/ui/Alert';
-import { MapPin, Warning } from '@gredice/ui/icons';
+import { Droplet, MapPin, Sprout, Warning } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
@@ -23,17 +23,27 @@ type FarmTodayViewProps = {
 };
 
 type FarmTodayTaskGroup = {
+    kind: 'harvest' | 'location' | 'watering';
     key: string;
     label: string;
     tasks: FarmTodayTask[];
 };
 
 function getTaskGroup(task: FarmTodayTask) {
+    if (task.kind === 'operation' && task.operationGroup) {
+        return {
+            key: `operation-group:${task.operationGroup}`,
+            kind: task.operationGroup,
+            label: task.operationGroup === 'watering' ? 'Zalijevanje' : 'Berba',
+        } as const;
+    }
+
     if (task.location.kind === 'farm') {
         return {
             key: `farm:${task.location.farmId}`,
+            kind: 'location',
             label: task.location.label,
-        };
+        } as const;
     }
 
     const raisedBedLabel = task.location.physicalId
@@ -42,20 +52,26 @@ function getTaskGroup(task: FarmTodayTask) {
 
     return {
         key: `raised-bed:${task.location.groupKey}`,
+        kind: 'location',
         label: raisedBedLabel,
-    };
+    } as const;
 }
 
 function groupTasks(tasks: FarmTodayTask[]) {
     const groups = new Map<string, FarmTodayTaskGroup>();
 
     for (const task of tasks) {
-        const { key, label } = getTaskGroup(task);
+        const { key, kind, label } = getTaskGroup(task);
         const group = groups.get(key);
         if (group) {
             group.tasks.push(task);
         } else {
-            groups.set(key, { key, label, tasks: [task] });
+            groups.set(key, {
+                key,
+                kind,
+                label,
+                tasks: [task],
+            });
         }
     }
 
@@ -165,6 +181,12 @@ export function FarmTodayView({
                     <Stack spacing={4}>
                         {taskGroups.map((group, groupIndex) => {
                             const groupTitleId = `farm-today-task-group-${groupIndex}`;
+                            const GroupIcon =
+                                group.kind === 'watering'
+                                    ? Droplet
+                                    : group.kind === 'harvest'
+                                      ? Sprout
+                                      : MapPin;
 
                             return (
                                 <section
@@ -177,7 +199,7 @@ export function FarmTodayView({
                                             className="inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md bg-primary/10 px-2.5 text-base font-bold text-primary [overflow-wrap:anywhere]"
                                             id={groupTitleId}
                                         >
-                                            <MapPin
+                                            <GroupIcon
                                                 aria-hidden
                                                 className="size-4 shrink-0"
                                             />

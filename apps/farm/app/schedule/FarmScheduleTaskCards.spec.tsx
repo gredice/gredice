@@ -129,23 +129,22 @@ async function assertPrimaryTargetsAreTouchable(component: Locator) {
     expect(undersizedTargets).toEqual([]);
 }
 
-async function assertTaskActionsAreFullWidth(card: Locator) {
+async function assertTaskActionsShareRow(card: Locator) {
     const actionArea = card.locator(
         '[data-schedule-task-completion="available"]',
     );
     const actionButtons = actionArea.getByRole('button');
 
     await expect(actionButtons).toHaveCount(2);
-    expect(
-        await actionArea.evaluate((area) => {
-            const availableWidth = area.getBoundingClientRect().width;
-            return Array.from(area.querySelectorAll('button')).every(
-                (button) =>
-                    Math.abs(
-                        button.getBoundingClientRect().width - availableWidth,
-                    ) <= 1,
-            );
+    const bounds = await actionButtons.evaluateAll((buttons) =>
+        buttons.map((button) => {
+            const rect = button.getBoundingClientRect();
+            return { height: rect.height, width: rect.width, y: rect.y };
         }),
+    );
+    expect(bounds[0]?.y).toBeCloseTo(bounds[1]?.y ?? Number.NaN, 0);
+    expect(
+        bounds.every(({ height, width }) => height >= 44 && width >= 44),
     ).toBe(true);
 }
 
@@ -241,7 +240,19 @@ test('keeps location before completion and exposes no manual links', async ({
     await expect(completionButton).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(blockerButton).toBeFocused();
-    await assertTaskActionsAreFullWidth(component);
+    const metadataLabels = ['Gr 15', 'Pozicija 8', '15 min', '15. 07.'];
+    const metadataCenterY = await Promise.all(
+        metadataLabels.map(async (label) => {
+            const bounds = await component
+                .getByText(label, { exact: true })
+                .boundingBox();
+            return bounds ? bounds.y + bounds.height / 2 : Number.NaN;
+        }),
+    );
+    expect(
+        Math.max(...metadataCenterY) - Math.min(...metadataCenterY),
+    ).toBeLessThanOrEqual(1);
+    await assertTaskActionsShareRow(component);
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
@@ -516,7 +527,7 @@ test('keeps loading completion explicit, disabled, and phone-sized', async ({
             name: /Ne mogu dovršiti sijanje/,
         }),
     ).toBeVisible();
-    await assertTaskActionsAreFullWidth(component);
+    await assertTaskActionsShareRow(component);
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
@@ -709,7 +720,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
             }),
         ).toBeVisible();
         await expect(actionableCard.getByRole('link')).toHaveCount(0);
-        await assertTaskActionsAreFullWidth(actionableCard);
+        await assertTaskActionsShareRow(actionableCard);
 
         await assertCardsStayWithinViewport(component);
         await assertPrimaryTargetsAreTouchable(component);
@@ -817,7 +828,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
             }),
         ).toBeVisible();
         await expect(actionableCard.getByRole('link')).toHaveCount(0);
-        await assertTaskActionsAreFullWidth(actionableCard);
+        await assertTaskActionsShareRow(actionableCard);
 
         await assertCardsStayWithinViewport(component);
         await assertPrimaryTargetsAreTouchable(component);

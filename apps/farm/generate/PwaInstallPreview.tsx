@@ -40,6 +40,7 @@ const focusTask = {
     },
     occurredAt: null,
     operationId: 701,
+    operationGroup: null,
     operationDefinitionAvailable: true,
     overdue: false,
     proofRequirements: { images: 'required', notes: 'optional' },
