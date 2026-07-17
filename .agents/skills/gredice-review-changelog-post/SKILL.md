@@ -45,18 +45,22 @@ Na stranici [Dostava](https://www.gredice.com/dostava) moÅ¾ete pregledati podruÄ
 
 ### 4. Create a meaningful cover
 
-- Capture the live user-facing feature or page described by the post, not the admin editor.
+- Default to a feature-specific illustrated composition. Use the exact checked-in product assets plus simplified, privacy-safe UI motifs or neutral mock data that explain the visible change at a glance.
+- Use a live screenshot only when the exact changed UI is available, privacy-safe, and communicates the feature more clearly than an illustration. Capture the user-facing feature, not the admin editor.
 - Match the cover subject to the post's exact claim. A post about a specific block or entity must show that block or entity; a generic garden, list, gallery, or product-area page is not an acceptable substitute.
+- In a batch, compare the existing covers before composing replacements. Do not reuse one screenshot, including `/vrtovi`, across unrelated posts merely because it belongs to the same product area.
 - Protect privacy before composition. Prefer public pages, public demo content, mock data, or a neutral empty state over authenticated live account, farm, garden, delivery, or admin data.
 - Inspect the entire intended frame for names, initials, avatars, email addresses, phone numbers, delivery addresses, order or customer identifiers, exact locations, private garden state, internal notes, and operational details. Reframe or choose another source if any appear.
 - Do not attach a screenshot while personal or sensitive information is visible. Prefer a clean source or crop over post-capture blurring; if neither is possible, omit the screenshot and report the blocker.
 - Wait for maps, canvases, data, and other interactive content to finish loading.
-- Frame the changed UI and enough context to understand it. Keep legends and meaningful labels; exclude clipped captions, browser chrome, and unrelated page content.
+- Frame the changed UI and enough context to understand it. Keep legends and meaningful labels; exclude clipped captions, browser chrome, navigation bars that are not part of the change, and unrelated page content.
 - Prefer a landscape image suitable for changelog cards. Capture at least 1200 pixels wide when the source supports it.
 - For a high-density browser capture, use a wide desktop viewport and a 2x screenshot scale when supported. Reset temporary viewport overrides afterward.
 - Prefer PNG for crisp UI. If transfer size is unreliable, use JPEG quality 90-92 while retaining the high pixel dimensions.
-- Reuse an existing accurate asset when it is stronger than a screenshot. Do not invent a generic illustration when the real feature can be shown.
-- For a release with several blocks or entities, search the checked-in product assets first, including `apps/www/public/assets/blocks`. Compose only the exact mentioned renders on a temporary, privacy-safe HTML artboard with a fixed 16:9 frame, balanced padding, and the visual group centered within the frame.
+- Reuse an existing accurate asset when it is stronger than a screenshot. Do not invent a generic scene or substitute a loosely related product page.
+- Search the checked-in product assets first, including `apps/www/public/assets/blocks`. Compose only the exact mentioned renders on a temporary, privacy-safe HTML artboard with a fixed 16:9 frame, balanced internal spacing, and the visual group centered within the frame.
+- Make the outer artboard a full-bleed, opaque rectangle. Do not give the artboard itself rounded corners or include page/body padding around it. Inner cards may be rounded, but every output corner must be painted by the artboard background; JPEG output must not contain differently colored corner wedges, and PNG output must not rely on transparent outer corners.
+- Capture the artboard element's exact bounds rather than the surrounding page. Confirm all four edges and corners belong to the intended background before upload.
 - For a release centered on one entity, use its exact render as the dominant hero. Capture the artboard element at high density so the uploaded cover is at least 1920 x 1080 when the source assets support it.
 - Remove temporary composition pages and stop local preview servers after the cover is attached unless the user asks to keep them.
 
