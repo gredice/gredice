@@ -7,17 +7,20 @@ import {
 type DeliverySlotPickerStoryProps = Pick<
     DeliverySlotPickerProps,
     'autoSelectFirstDeliverySlot' | 'referenceDate' | 'slots'
->;
+> & {
+    containerClassName?: string;
+};
 
 export function DeliverySlotPickerStory({
     autoSelectFirstDeliverySlot,
+    containerClassName = 'w-[44rem]',
     referenceDate,
     slots,
 }: DeliverySlotPickerStoryProps) {
     const [value, setValue] = useState<number>();
 
     return (
-        <div className="w-[44rem] p-6">
+        <div className={`${containerClassName} p-6`}>
             <DeliverySlotPicker
                 autoFocus={false}
                 autoSelectFirstDeliverySlot={autoSelectFirstDeliverySlot}

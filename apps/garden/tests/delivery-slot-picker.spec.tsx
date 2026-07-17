@@ -87,31 +87,30 @@ test('keeps time slots within a mobile-width container', async ({
     page,
 }) => {
     await mount(
-        <div data-testid="mobile-container" style={{ width: '18rem' }}>
-            <DeliverySlotPickerStory
-                referenceDate={referenceDate}
-                slots={[
-                    {
-                        endAt: '2026-07-17T17:00:00.000Z',
-                        fulfillment: 'delivery',
-                        id: 1,
-                        startAt: '2026-07-17T15:00:00.000Z',
-                    },
-                    {
-                        endAt: '2026-07-17T19:00:00.000Z',
-                        fulfillment: 'pickup',
-                        id: 2,
-                        startAt: '2026-07-17T17:00:00.000Z',
-                    },
-                    {
-                        endAt: '2026-07-17T21:00:00.000Z',
-                        fulfillment: 'delivery',
-                        id: 3,
-                        startAt: '2026-07-17T19:00:00.000Z',
-                    },
-                ]}
-            />
-        </div>,
+        <DeliverySlotPickerStory
+            containerClassName="w-[21rem]"
+            referenceDate={referenceDate}
+            slots={[
+                {
+                    endAt: '2026-07-17T17:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 1,
+                    startAt: '2026-07-17T15:00:00.000Z',
+                },
+                {
+                    endAt: '2026-07-17T19:00:00.000Z',
+                    fulfillment: 'pickup',
+                    id: 2,
+                    startAt: '2026-07-17T17:00:00.000Z',
+                },
+                {
+                    endAt: '2026-07-17T21:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 3,
+                    startAt: '2026-07-17T19:00:00.000Z',
+                },
+            ]}
+        />,
     );
 
     const timeSlots = page.getByRole('group', {
