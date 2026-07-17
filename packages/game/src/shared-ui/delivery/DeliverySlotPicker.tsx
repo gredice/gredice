@@ -532,7 +532,7 @@ export function DeliverySlotPicker({
                                 </Typography>
                             </div>
                             <fieldset
-                                className="m-0 grid min-w-0 grid-cols-2 gap-2 border-0 p-0 sm:grid-cols-3"
+                                className="m-0 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2 border-0 p-0"
                                 disabled={disabled}
                             >
                                 <legend className="sr-only">
