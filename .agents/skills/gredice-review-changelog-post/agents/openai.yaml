@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Changelog Post Review"
+  short_description: "Review, illustrate, and submit changelog posts"
+  default_prompt: "Use $gredice-review-changelog-post to review a Gredice changelog post, add relevant links and a sharp privacy-safe cover, and mark it ready for review."
