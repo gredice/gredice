@@ -332,6 +332,21 @@ test('logged-in landing game morphs into full screen in place', async ({
 }) => {
     test.slow();
 
+    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeArea.bottom,
+            bottomMax: safeArea.bottom,
+            left: safeArea.left,
+            leftMax: safeArea.left,
+            right: safeArea.right,
+            rightMax: safeArea.right,
+            top: safeArea.top,
+            topMax: safeArea.top,
+        },
+    });
+
     await page.unroute('**/api/gredice/api/auth/current-claims**');
     await page.route(
         '**/api/gredice/api/auth/current-claims**',
@@ -373,4 +388,39 @@ test('logged-in landing game morphs into full screen in place', async ({
     expect(expandedBox.y).toBeLessThanOrEqual(1);
     expect(expandedBox.width).toBeGreaterThanOrEqual(389);
     expect(expandedBox.height).toBeGreaterThanOrEqual(843);
+
+    const topLeftBounds = await scene
+        .locator('[data-game-hud-top-left]')
+        .boundingBox();
+    expect(topLeftBounds).not.toBeNull();
+    expect(topLeftBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(topLeftBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+
+    const topRightBounds = await scene
+        .locator('[data-game-hud-top-right]')
+        .boundingBox();
+    expect(topRightBounds).not.toBeNull();
+    expect(
+        (topRightBounds?.x ?? 0) + (topRightBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(topRightBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+
+    const bottomControlsBounds = await scene
+        .locator('[data-game-hud-bottom-controls]')
+        .boundingBox();
+    expect(bottomControlsBounds).not.toBeNull();
+    expect(
+        (bottomControlsBounds?.y ?? 0) + (bottomControlsBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+
+    const closeBounds = await page
+        .getByRole('button', { name: 'Zatvori prikaz' })
+        .boundingBox();
+    expect(closeBounds).not.toBeNull();
+    expect(
+        (closeBounds?.x ?? 0) + (closeBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(
+        (closeBounds?.y ?? 0) + (closeBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
 });

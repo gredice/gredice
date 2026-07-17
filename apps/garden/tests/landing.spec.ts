@@ -337,6 +337,48 @@ test('renders the whole game edge to edge while keeping HUD controls safe', asyn
     expect(overflow.height).toBeLessThanOrEqual(0);
 });
 
+test('keeps landscape game dialogs inside the safe area', async ({ page }) => {
+    const landscapeSafeArea = { bottom: 18, left: 47, right: 21, top: 0 };
+    await page.setViewportSize({ height: 390, width: 844 });
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: landscapeSafeArea.bottom,
+            bottomMax: landscapeSafeArea.bottom,
+            left: landscapeSafeArea.left,
+            leftMax: landscapeSafeArea.left,
+            right: landscapeSafeArea.right,
+            rightMax: landscapeSafeArea.right,
+            top: landscapeSafeArea.top,
+            topMax: landscapeSafeArea.top,
+        },
+    });
+    await mockGardenApi(page, true);
+
+    const response = await page.goto('/?pregled=generalno');
+
+    expect(response?.ok()).toBe(true);
+    const dialog = page.getByRole('dialog', { name: 'Profil' });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(dialog).toHaveCSS(
+        'padding-left',
+        `${landscapeSafeArea.left + 24}px`,
+    );
+    await expect(dialog).toHaveCSS(
+        'padding-right',
+        `${landscapeSafeArea.right + 24}px`,
+    );
+
+    const closeBounds = await dialog
+        .getByRole('button', { name: 'Zatvori' })
+        .boundingBox();
+    expect(closeBounds).not.toBeNull();
+    expect(closeBounds?.x).toBeGreaterThanOrEqual(landscapeSafeArea.left);
+    expect(
+        (closeBounds?.x ?? 0) + (closeBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(844 - landscapeSafeArea.right);
+});
+
 test('keeps edge-to-edge viewport behavior scoped to the game route', async ({
     request,
 }) => {
