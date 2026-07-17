@@ -77,6 +77,7 @@ function buildOperationTask(
         },
         occurredAt: null,
         operationId: 701,
+        operationGroup: null,
         operationDefinitionAvailable: true,
         overdue: false,
         proofRequirements: { images: 'none', notes: 'none' },
@@ -373,16 +374,22 @@ for (const viewport of phoneViewports) {
             ) - nextTaskBounds.y,
         ).toBeGreaterThanOrEqual(Math.min(44, nextTaskBounds.height));
 
-        await expect(
-            nextTaskCard.getByRole('button', {
-                name: `Dovrši radnju: ${nextTask.label}`,
-            }),
-        ).toBeVisible();
-        await expect(
-            nextTaskCard.getByRole('button', {
-                name: `Ne mogu dovršiti radnju: ${nextTask.label}`,
-            }),
-        ).toBeVisible();
+        const completionButton = nextTaskCard.getByRole('button', {
+            name: `Dovrši radnju: ${nextTask.label}`,
+        });
+        const blockerButton = nextTaskCard.getByRole('button', {
+            name: `Ne mogu dovršiti radnju: ${nextTask.label}`,
+        });
+        await expect(completionButton).toBeVisible();
+        await expect(blockerButton).toBeVisible();
+        const [completionBounds, blockerBounds] = await Promise.all([
+            completionButton.boundingBox(),
+            blockerButton.boundingBox(),
+        ]);
+        expect(completionBounds?.y).toBeCloseTo(
+            blockerBounds?.y ?? Number.NaN,
+            0,
+        );
         await expect(component.getByRole('checkbox')).toHaveCount(0);
 
         await expect(component.getByText('Kasni 4 dana')).toBeVisible();
@@ -445,6 +452,80 @@ test('opens the existing completion and blocker flows from Today', async ({
     await expect(
         page.getByRole('dialog', { name: 'Prijavi prepreku' }),
     ).toBeVisible();
+});
+
+test('groups watering and harvest across raised beds like Schedule', async ({
+    mount,
+}) => {
+    const wateringFirst = buildOperationTask({
+        key: 'operation:watering-1',
+        label: 'Zalijevanje prve gredice',
+        location: {
+            farmId: 1,
+            groupKey: '1|garden-1|account-1',
+            kind: 'raisedBed',
+            label: 'Gredica 1',
+            physicalId: '1',
+            positionIndex: null,
+            positionNumber: null,
+            raisedBedId: 1,
+        },
+        operationGroup: 'watering',
+    });
+    const harvest = buildOperationTask({
+        key: 'operation:harvest-1',
+        label: 'Berba druge gredice',
+        location: {
+            farmId: 1,
+            groupKey: '2|garden-1|account-1',
+            kind: 'raisedBed',
+            label: 'Gredica 2 · pozicija 4',
+            physicalId: '2',
+            positionIndex: 3,
+            positionNumber: 4,
+            raisedBedId: 2,
+        },
+        operationGroup: 'harvest',
+    });
+    const wateringSecond = buildOperationTask({
+        key: 'operation:watering-2',
+        label: 'Zalijevanje treće gredice',
+        location: {
+            farmId: 1,
+            groupKey: '3|garden-1|account-1',
+            kind: 'raisedBed',
+            label: 'Gredica 3',
+            physicalId: '3',
+            positionIndex: null,
+            positionNumber: null,
+            raisedBedId: 3,
+        },
+        operationGroup: 'watering',
+    });
+    const component = await mount(
+        todayView(
+            buildAvailableData({
+                focusQueue: [wateringFirst, harvest, wateringSecond],
+                summary: buildSummary({
+                    assignedToMe: 3,
+                    remaining: 3,
+                    remainingDuration: { complete: true, minutes: 60 },
+                }),
+                workState: 'hasWork',
+            }),
+        ),
+    );
+
+    const wateringGroup = component.getByRole('region', {
+        name: 'Zalijevanje',
+    });
+    const harvestGroup = component.getByRole('region', { name: 'Berba' });
+    await expect(
+        wateringGroup.locator('[data-farm-today-task-card]'),
+    ).toHaveCount(2);
+    await expect(
+        harvestGroup.locator('[data-farm-today-task-card]'),
+    ).toHaveCount(1);
 });
 
 test('keeps a partial result actionable while explaining incomplete counts', async ({

@@ -101,14 +101,16 @@ function buildDefinition({
     duration = 20,
     id = 701,
     label = `Radnja ${id}`,
+    visualReward,
 }: {
     duration?: number;
     id?: number;
     label?: string;
+    visualReward?: 'harvest' | 'watering';
 } = {}): EntityStandardized {
     return {
         id,
-        attributes: { duration },
+        attributes: { duration, visualReward },
         information: { label },
     };
 }
@@ -212,7 +214,11 @@ test('composes mixed operation and planting work without merging pending into co
     });
     const operationDefinitions = [
         {
-            ...buildDefinition({ id: 701, duration: 20 }),
+            ...buildDefinition({
+                id: 701,
+                duration: 20,
+                visualReward: 'watering',
+            }),
             conditions: {
                 completionAttachImagesRequired: true,
                 completionAttachNotes: true,
@@ -295,6 +301,11 @@ test('composes mixed operation and planting work without merging pending into co
         notes: 'optional',
     });
     expect(operationTask?.href).toBe('/operations/701');
+    expect(
+        operationTask?.kind === 'operation'
+            ? operationTask.operationGroup
+            : null,
+    ).toBe('watering');
     expect(operationTask?.actionTarget).toEqual({
         expectedEntityId: 701,
         expectedTaskVersionEventId: 1101,

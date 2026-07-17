@@ -183,23 +183,28 @@ export function FarmTodayTaskCard({
                 >
                     {task.label}
                 </div>
-                <ScheduleTaskLocation
-                    positionNumber={
-                        task.location.kind === 'farm'
-                            ? null
-                            : task.location.positionNumber
-                    }
-                    raisedBedLabel={raisedBedLabel}
-                />
                 <div className="flex min-w-0 flex-wrap gap-1.5">
-                    {renderActionableStateChip(task)}
-                    {renderAssignmentChip(task.assignment)}
-                    <ScheduleTaskDateChip scheduledDate={task.scheduledDate} />
+                    <ScheduleTaskLocation
+                        inline
+                        positionNumber={
+                            task.location.kind === 'farm'
+                                ? null
+                                : task.location.positionNumber
+                        }
+                        raisedBedLabel={raisedBedLabel}
+                    />
                     {task.durationMinutes === null ? null : (
                         <ScheduleTaskDurationChip
+                            compact
                             minutes={task.durationMinutes}
                         />
                     )}
+                    <ScheduleTaskDateChip
+                        compact
+                        scheduledDate={task.scheduledDate}
+                    />
+                    {renderActionableStateChip(task)}
+                    {renderAssignmentChip(task.assignment)}
                 </div>
                 {renderProofRequirements(task)}
                 {task.blocker ? (

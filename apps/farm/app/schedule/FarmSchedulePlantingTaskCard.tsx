@@ -93,58 +93,65 @@ export function FarmSchedulePlantingTaskCard({
     const taskAnchorId = getScheduleTaskAnchorId('planting', field.id);
     const taskLabelId = getScheduleTaskLabelId('planting', field.id);
     const detailsContent = (
-        <Row spacing={2} className="min-w-0 items-start justify-between gap-3">
-            <SchedulePlantVisual plantSort={plantSort} label={label} />
-            <Stack spacing={1} className="min-w-0 grow">
+        <Stack spacing={1} className="min-w-0">
+            <Row
+                spacing={2}
+                className="min-w-0 items-start justify-between gap-3"
+            >
+                <SchedulePlantVisual plantSort={plantSort} label={label} />
                 <Typography
                     id={taskLabelId}
-                    className={
+                    className={cx(
+                        'min-w-0 grow',
                         taskPresentation.isCompleted
                             ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
-                            : '[overflow-wrap:anywhere]'
-                    }
+                            : '[overflow-wrap:anywhere]',
+                    )}
                 >
                     {label}
                 </Typography>
+                {field.assignedUserId && (
+                    <Suspense
+                        fallback={
+                            <Skeleton className="size-7 shrink-0 rounded-full" />
+                        }
+                    >
+                        <PlantingAssignedUserAvatar
+                            assignedUserByFieldIdPromise={
+                                assignedUserByFieldIdPromise
+                            }
+                            fieldId={field.id}
+                        />
+                    </Suspense>
+                )}
+            </Row>
+            <Row spacing={1} className="items-center flex-wrap gap-y-1">
                 <ScheduleTaskLocation
+                    inline
                     positionNumber={positionNumber}
                     raisedBedLabel={raisedBedLabel}
                 />
-                <Row spacing={2} className="items-center flex-wrap gap-y-1">
-                    <ScheduleTaskStatusChip state={taskState} />
-                    <ScheduleTaskDurationChip
-                        minutes={PLANTING_TASK_DURATION_MINUTES}
-                    />
-                    {greenhouseSowing && (
-                        <Chip size="sm" color="success" variant="soft">
-                            Staklenik
-                        </Chip>
-                    )}
-                    <ScheduleTaskDateChip
+                <ScheduleTaskDurationChip
+                    compact
+                    minutes={PLANTING_TASK_DURATION_MINUTES}
+                />
+                <ScheduleTaskDateChip
+                    compact
+                    scheduledDate={field.plantScheduledDate}
+                />
+                <ScheduleTaskStatusChip state={taskState} />
+                {greenhouseSowing && (
+                    <Chip size="sm" color="success" variant="soft">
+                        Staklenik
+                    </Chip>
+                )}
+                {taskPresentation.showAgeIndicator && (
+                    <ScheduleTaskAgeIndicatorChip
                         scheduledDate={field.plantScheduledDate}
                     />
-                    {taskPresentation.showAgeIndicator && (
-                        <ScheduleTaskAgeIndicatorChip
-                            scheduledDate={field.plantScheduledDate}
-                        />
-                    )}
-                </Row>
-            </Stack>
-            {field.assignedUserId && (
-                <Suspense
-                    fallback={
-                        <Skeleton className="size-7 shrink-0 rounded-full" />
-                    }
-                >
-                    <PlantingAssignedUserAvatar
-                        assignedUserByFieldIdPromise={
-                            assignedUserByFieldIdPromise
-                        }
-                        fieldId={field.id}
-                    />
-                </Suspense>
-            )}
-        </Row>
+                )}
+            </Row>
+        </Stack>
     );
 
     return (
@@ -188,6 +195,7 @@ export function FarmSchedulePlantingTaskCard({
                     ) : undefined
                 }
                 label={label}
+                layout="inline"
                 state={taskState}
                 unavailableTitle={
                     plantingIdentity

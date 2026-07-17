@@ -145,6 +145,7 @@ function buildOperationTask(
         },
         occurredAt: null,
         operationId: 987654321,
+        operationGroup: null,
         operationDefinitionAvailable: true,
         overdue: false,
         proofRequirements: { images: 'required', notes: 'optional' },

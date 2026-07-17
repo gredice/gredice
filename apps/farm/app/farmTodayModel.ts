@@ -8,6 +8,8 @@ import {
     getFieldPhysicalPositionIndex,
     getOperationDurationMinutes,
     getScheduleTaskAgeIndicator,
+    isGroupedHarvestScheduleOperation,
+    isGroupedWateringScheduleOperation,
     isScheduleDatePast,
     PLANTING_TASK_DURATION_MINUTES,
     type ScheduleTaskAgeIndicator,
@@ -158,6 +160,7 @@ export type FarmTodayOperationTask = FarmTodayTaskBase & {
     > | null;
     completionConditions?: EntityStandardized['conditions'];
     kind: 'operation';
+    operationGroup: 'harvest' | 'watering' | null;
     operationDefinitionAvailable: boolean;
     operationId: number;
     proofRequirements: ScheduleOperationCompletionRequirements;
@@ -689,6 +692,17 @@ function buildOperationCandidates({
                     : operation.completedAt,
             ),
             operationId: operation.id,
+            operationGroup: isGroupedWateringScheduleOperation(
+                operation,
+                operationDefinition,
+            )
+                ? 'watering'
+                : isGroupedHarvestScheduleOperation(
+                        operation,
+                        operationDefinition,
+                    )
+                  ? 'harvest'
+                  : null,
             operationDefinitionAvailable: Boolean(operationDefinition),
             proofRequirements: getScheduleOperationCompletionRequirements(
                 operationDefinition,
