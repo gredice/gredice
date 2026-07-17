@@ -46,6 +46,7 @@ Na stranici [Dostava](https://www.gredice.com/dostava) moÅ¾ete pregledati podruÄ
 ### 4. Create a meaningful cover
 
 - Capture the live user-facing feature or page described by the post, not the admin editor.
+- Match the cover subject to the post's exact claim. A post about a specific block or entity must show that block or entity; a generic garden, list, gallery, or product-area page is not an acceptable substitute.
 - Protect privacy before composition. Prefer public pages, public demo content, mock data, or a neutral empty state over authenticated live account, farm, garden, delivery, or admin data.
 - Inspect the entire intended frame for names, initials, avatars, email addresses, phone numbers, delivery addresses, order or customer identifiers, exact locations, private garden state, internal notes, and operational details. Reframe or choose another source if any appear.
 - Do not attach a screenshot while personal or sensitive information is visible. Prefer a clean source or crop over post-capture blurring; if neither is possible, omit the screenshot and report the blocker.
@@ -55,6 +56,9 @@ Na stranici [Dostava](https://www.gredice.com/dostava) moÅ¾ete pregledati podruÄ
 - For a high-density browser capture, use a wide desktop viewport and a 2x screenshot scale when supported. Reset temporary viewport overrides afterward.
 - Prefer PNG for crisp UI. If transfer size is unreliable, use JPEG quality 90-92 while retaining the high pixel dimensions.
 - Reuse an existing accurate asset when it is stronger than a screenshot. Do not invent a generic illustration when the real feature can be shown.
+- For a release with several blocks or entities, search the checked-in product assets first, including `apps/www/public/assets/blocks`. Compose only the exact mentioned renders on a temporary, privacy-safe HTML artboard with a fixed 16:9 frame, balanced padding, and the visual group centered within the frame.
+- For a release centered on one entity, use its exact render as the dominant hero. Capture the artboard element at high density so the uploaded cover is at least 1920 x 1080 when the source assets support it.
+- Remove temporary composition pages and stop local preview servers after the cover is attached unless the user asks to keep them.
 
 Attach the result as `Naslovna slika`, not `SEO slika`, unless the user explicitly asks for a custom SEO image. If direct Chrome file upload is unavailable, use the CMS image dialog's clipboard-paste path.
 
