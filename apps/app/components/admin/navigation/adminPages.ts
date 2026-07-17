@@ -51,6 +51,10 @@ export const adminPages = {
         href: KnownPages.SowingStatistics,
         label: 'Statistika sijanja',
     },
+    DeliveryRequestStatistics: {
+        href: KnownPages.DeliveryRequestStatistics,
+        label: 'Statistika zahtjeva za dostavu',
+    },
     DeliverySlots: {
         href: KnownPages.DeliverySlots,
         label: 'Dostava - Slotovi',
@@ -121,6 +125,7 @@ export const adminBreadcrumbPages = [
     adminPages.Occasions,
     adminPages.Schedule,
     adminPages.SowingStatistics,
+    adminPages.DeliveryRequestStatistics,
     adminPages.DeliverySlots,
     adminPages.DeliveryRequests,
     adminPages.DeliveryOperations,
