@@ -20,16 +20,20 @@ import {
 } from 'recharts';
 import type { DeliveryRequestStatistics } from './deliveryRequestStatistics';
 
-const chartColors = [
-    'hsl(var(--primary))',
-    '#22c55e',
-    '#3b82f6',
-    '#f59e0b',
-    '#8b5cf6',
-    '#ec4899',
-    '#ef4444',
-    '#64748b',
-];
+const pastelBlue = '#a9bfd4';
+const pastelGreen = '#b8cdb7';
+const pastelColors = [
+    pastelBlue,
+    pastelGreen,
+    '#dac7a3',
+    '#c8bdd8',
+    '#d8b7bd',
+    '#b4cdca',
+    '#d2beb1',
+    '#bdc2c9',
+] as const;
+
+const pastelTrend = '#8ea8c0';
 
 const tooltipStyle = {
     border: '1px solid hsl(var(--border))',
@@ -42,8 +46,8 @@ export function DeliveryRequestStatisticsCharts({
 }: {
     statistics: DeliveryRequestStatistics;
 }) {
-    const hasSlotData = statistics.popularSlots.length > 0;
-    const hasTimeWindowData = statistics.timeWindows.length > 0;
+    const hasDeliverySizeData = statistics.deliverySizes.length > 0;
+    const hasTimeWindowData = statistics.deliveryTimeWindows.length > 0;
     const hasTrendData = statistics.trend.length > 0;
     const hasStateData = statistics.states.length > 0;
     const hasModeData = statistics.modes.length > 0;
@@ -55,74 +59,77 @@ export function DeliveryRequestStatisticsCharts({
                     <Stack spacing={4} className="p-4">
                         <Stack spacing={1}>
                             <Typography level="h4" component="h2">
-                                Najtraženiji pojedinačni termini
+                                Veličina grupiranih dostava
                             </Typography>
                             <Typography
                                 level="body3"
                                 className="text-muted-foreground"
                             >
-                                Osam termina s najviše zahtjeva, prema
-                                trenutačno odabranom terminu svakog zahtjeva
+                                Broj dostava prema broju zahtjeva istog
+                                korisnika u istom terminu
                             </Typography>
                         </Stack>
-                        {!hasSlotData ? (
+                        {!hasDeliverySizeData ? (
                             <Typography
                                 level="body2"
                                 className="text-muted-foreground"
                             >
-                                Nema zahtjeva povezanih s terminom.
+                                Nema grupiranih dostava za prikaz.
                             </Typography>
                         ) : (
                             <div
-                                className="h-80 w-full"
+                                className="h-72 w-full"
                                 role="img"
-                                aria-label="Stupčasti graf najtraženijih pojedinačnih termina dostave"
+                                aria-label="Stupčasti graf grupiranih dostava prema broju zahtjeva u dostavi"
                             >
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
-                                        data={statistics.popularSlots.toReversed()}
-                                        layout="vertical"
+                                        data={statistics.deliverySizes}
                                         margin={{
                                             top: 8,
-                                            right: 24,
-                                            left: 8,
-                                            bottom: 0,
+                                            right: 8,
+                                            left: -16,
+                                            bottom: 8,
                                         }}
                                     >
                                         <CartesianGrid
                                             strokeDasharray="3 3"
                                             className="stroke-border"
-                                            horizontal={false}
                                         />
                                         <XAxis
-                                            type="number"
+                                            dataKey="label"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tick={{ fontSize: 12 }}
+                                            label={{
+                                                value: 'Zahtjeva u dostavi',
+                                                position: 'insideBottom',
+                                                offset: -4,
+                                                fontSize: 12,
+                                            }}
+                                            height={44}
+                                        />
+                                        <YAxis
                                             allowDecimals={false}
                                             tickLine={false}
                                             axisLine={false}
                                             tick={{ fontSize: 12 }}
-                                        />
-                                        <YAxis
-                                            type="category"
-                                            dataKey="shortLabel"
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tick={{ fontSize: 12 }}
-                                            width={184}
+                                            width={28}
                                         />
                                         <Tooltip
                                             cursor={{
-                                                fill: 'hsl(var(--primary) / 0.08)',
+                                                fill: 'hsl(var(--muted))',
                                             }}
                                             contentStyle={tooltipStyle}
                                             formatter={(value) => [
-                                                `${value} zahtjeva`,
-                                                'Zahtjevi',
+                                                `${value} dostava`,
+                                                'Dostave',
                                             ]}
                                         />
                                         <Bar
                                             dataKey="count"
-                                            fill="hsl(var(--primary) / 0.72)"
-                                            radius={[0, 6, 6, 0]}
+                                            fill={pastelBlue}
+                                            radius={[6, 6, 0, 0]}
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -137,7 +144,7 @@ export function DeliveryRequestStatisticsCharts({
                     <Stack spacing={4} className="p-4">
                         <Stack spacing={1}>
                             <Typography level="h4" component="h2">
-                                Zahtjevi po danu u tjednu
+                                Dostave po danu u tjednu
                             </Typography>
                             <Typography
                                 level="body3"
@@ -149,11 +156,11 @@ export function DeliveryRequestStatisticsCharts({
                         <div
                             className="h-72 w-full"
                             role="img"
-                            aria-label="Stupčasti graf zahtjeva za dostavu po danima u tjednu"
+                            aria-label="Stupčasti graf grupiranih dostava po danima u tjednu"
                         >
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
-                                    data={statistics.weekdays}
+                                    data={statistics.deliveryWeekdays}
                                     margin={{
                                         top: 8,
                                         right: 8,
@@ -180,17 +187,17 @@ export function DeliveryRequestStatisticsCharts({
                                     />
                                     <Tooltip
                                         cursor={{
-                                            fill: 'hsl(var(--primary) / 0.08)',
+                                            fill: 'hsl(var(--muted))',
                                         }}
                                         contentStyle={tooltipStyle}
                                         formatter={(value) => [
-                                            `${value} zahtjeva`,
-                                            'Zahtjevi',
+                                            `${value} dostava`,
+                                            'Dostave',
                                         ]}
                                     />
                                     <Bar
                                         dataKey="count"
-                                        fill="#3b82f6"
+                                        fill={pastelBlue}
                                         radius={[6, 6, 0, 0]}
                                     />
                                 </BarChart>
@@ -205,13 +212,13 @@ export function DeliveryRequestStatisticsCharts({
                     <Stack spacing={4} className="p-4">
                         <Stack spacing={1}>
                             <Typography level="h4" component="h2">
-                                Najtraženija vremena
+                                Dostave po vremenu termina
                             </Typography>
                             <Typography
                                 level="body3"
                                 className="text-muted-foreground"
                             >
-                                Zahtjevi grupirani po vremenskom rasponu termina
+                                Grupirane dostave po vremenskom rasponu termina
                             </Typography>
                         </Stack>
                         {!hasTimeWindowData ? (
@@ -219,17 +226,17 @@ export function DeliveryRequestStatisticsCharts({
                                 level="body2"
                                 className="text-muted-foreground"
                             >
-                                Nema zahtjeva povezanih s terminom.
+                                Nema grupiranih dostava povezanih s terminom.
                             </Typography>
                         ) : (
                             <div
                                 className="h-72 w-full"
                                 role="img"
-                                aria-label="Stupčasti graf najtraženijih vremenskih raspona dostave"
+                                aria-label="Stupčasti graf grupiranih dostava po vremenskim rasponima termina"
                             >
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
-                                        data={statistics.timeWindows}
+                                        data={statistics.deliveryTimeWindows}
                                         margin={{
                                             top: 8,
                                             right: 8,
@@ -256,17 +263,17 @@ export function DeliveryRequestStatisticsCharts({
                                         />
                                         <Tooltip
                                             cursor={{
-                                                fill: 'hsl(var(--primary) / 0.08)',
+                                                fill: 'hsl(var(--muted))',
                                             }}
                                             contentStyle={tooltipStyle}
                                             formatter={(value) => [
-                                                `${value} zahtjeva`,
-                                                'Zahtjevi',
+                                                `${value} dostava`,
+                                                'Dostave',
                                             ]}
                                         />
                                         <Bar
                                             dataKey="count"
-                                            fill="#22c55e"
+                                            fill={pastelGreen}
                                             radius={[6, 6, 0, 0]}
                                         />
                                     </BarChart>
@@ -324,12 +331,12 @@ export function DeliveryRequestStatisticsCharts({
                                             >
                                                 <stop
                                                     offset="5%"
-                                                    stopColor="hsl(var(--primary))"
-                                                    stopOpacity={0.35}
+                                                    stopColor={pastelTrend}
+                                                    stopOpacity={0.3}
                                                 />
                                                 <stop
                                                     offset="95%"
-                                                    stopColor="hsl(var(--primary))"
+                                                    stopColor={pastelTrend}
                                                     stopOpacity={0.02}
                                                 />
                                             </linearGradient>
@@ -361,7 +368,7 @@ export function DeliveryRequestStatisticsCharts({
                                         <Area
                                             type="monotone"
                                             dataKey="count"
-                                            stroke="hsl(var(--primary))"
+                                            stroke={pastelTrend}
                                             strokeWidth={2}
                                             fill="url(#deliveryRequestTrend)"
                                         />
@@ -415,9 +422,9 @@ export function DeliveryRequestStatisticsCharts({
                                                     <Cell
                                                         key={state.label}
                                                         fill={
-                                                            chartColors[
+                                                            pastelColors[
                                                                 index %
-                                                                    chartColors.length
+                                                                    pastelColors.length
                                                             ]
                                                         }
                                                     />
@@ -485,9 +492,9 @@ export function DeliveryRequestStatisticsCharts({
                                                     <Cell
                                                         key={mode.label}
                                                         fill={
-                                                            chartColors[
+                                                            pastelColors[
                                                                 (index + 1) %
-                                                                    chartColors.length
+                                                                    pastelColors.length
                                                             ]
                                                         }
                                                     />

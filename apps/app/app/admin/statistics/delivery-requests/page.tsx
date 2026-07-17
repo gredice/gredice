@@ -39,11 +39,25 @@ export default async function DeliveryRequestStatisticsPage() {
                   detail: `${statistics.summary.assignedRequests} s odabranim terminom`,
               },
               {
-                  label: 'Korišteni termini',
-                  value: statistics.summary.uniqueSlots.toString(),
-                  detail: statistics.summary.mostPopularSlot
-                      ? `Najtraženiji: ${statistics.summary.mostPopularSlot.count} zahtjeva`
-                      : 'Nema odabranih termina',
+                  label: 'Grupirane dostave',
+                  value: statistics.summary.totalDeliveries.toString(),
+                  detail: `${statistics.summary.uniqueSlots} korištena termina`,
+              },
+              {
+                  label: 'Zahtjeva po dostavi',
+                  value: statistics.summary.averageRequestsPerDelivery.toLocaleString(
+                      'hr-HR',
+                      {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                      },
+                  ),
+                  detail: 'Prosjek po korisniku i terminu',
+              },
+              {
+                  label: 'Dostave s više zahtjeva',
+                  value: statistics.summary.multiRequestDeliveries.toString(),
+                  detail: `${statistics.summary.multiRequestDeliveryRate}% grupiranih · najviše ${statistics.summary.largestDeliverySize}`,
               },
               {
                   label: 'Ispunjeno',
@@ -68,8 +82,8 @@ export default async function DeliveryRequestStatisticsPage() {
                     Statistika zahtjeva za dostavu
                 </Typography>
                 <Typography level="body2" className="text-muted-foreground">
-                    Potražnja po terminima, danima i vremenu te pregled trendova
-                    i ishoda zahtjeva.
+                    Zahtjevi, grupirane dostave te potražnja po danima i vremenu
+                    uz pregled trendova i ishoda.
                 </Typography>
                 <div>
                     <Chip color="neutral" variant="soft">
@@ -97,7 +111,7 @@ export default async function DeliveryRequestStatisticsPage() {
 
             {statistics && statistics.summary.totalRequests > 0 && (
                 <>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                         {summaryCards.map((card) => (
                             <Card key={card.label}>
                                 <CardOverflow>
@@ -125,17 +139,6 @@ export default async function DeliveryRequestStatisticsPage() {
                             </Card>
                         ))}
                     </div>
-
-                    {statistics.summary.mostPopularSlot && (
-                        <Alert color="info">
-                            Najtraženiji termin je{' '}
-                            <strong>
-                                {statistics.summary.mostPopularSlot.label}
-                            </strong>{' '}
-                            s {statistics.summary.mostPopularSlot.count}{' '}
-                            zahtjeva.
-                        </Alert>
-                    )}
 
                     <DeliveryRequestStatisticsCharts statistics={statistics} />
                 </>
