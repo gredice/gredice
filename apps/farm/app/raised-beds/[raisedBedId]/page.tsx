@@ -22,6 +22,7 @@ import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
 import { PlantStateRequestForm } from './PlantStateRequestForm';
 import { RaisedBedMobileFieldList } from './RaisedBedMobileFieldList';
+import { RaisedBedResponsiveLayout } from './RaisedBedResponsiveLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -196,14 +197,16 @@ async function RaisedBedDetailPageContent({
                             readyDate: formatDate(field?.plantReadyDate),
                             sowingDate: formatDate(field?.plantSowDate),
                             statusControl: field?.plantStatus ? (
-                                <PlantStateRequestForm
-                                    currentStatus={field.plantStatus}
-                                    pendingRequestedStatus={
-                                        pendingRequestedStatus
-                                    }
-                                    positionIndex={positionIndex}
-                                    raisedBedId={raisedBed.id}
-                                />
+                                <RaisedBedResponsiveLayout layout="mobile">
+                                    <PlantStateRequestForm
+                                        currentStatus={field.plantStatus}
+                                        pendingRequestedStatus={
+                                            pendingRequestedStatus
+                                        }
+                                        positionIndex={positionIndex}
+                                        raisedBedId={raisedBed.id}
+                                    />
+                                </RaisedBedResponsiveLayout>
                             ) : (
                                 <Typography
                                     className="text-muted-foreground"
@@ -266,20 +269,22 @@ async function RaisedBedDetailPageContent({
                                             </Table.Cell>
                                             <Table.Cell>
                                                 {field?.plantStatus ? (
-                                                    <PlantStateRequestForm
-                                                        raisedBedId={
-                                                            raisedBed.id
-                                                        }
-                                                        positionIndex={
-                                                            positionIndex
-                                                        }
-                                                        currentStatus={
-                                                            field.plantStatus
-                                                        }
-                                                        pendingRequestedStatus={
-                                                            pendingRequestedStatus
-                                                        }
-                                                    />
+                                                    <RaisedBedResponsiveLayout layout="desktop">
+                                                        <PlantStateRequestForm
+                                                            raisedBedId={
+                                                                raisedBed.id
+                                                            }
+                                                            positionIndex={
+                                                                positionIndex
+                                                            }
+                                                            currentStatus={
+                                                                field.plantStatus
+                                                            }
+                                                            pendingRequestedStatus={
+                                                                pendingRequestedStatus
+                                                            }
+                                                        />
+                                                    </RaisedBedResponsiveLayout>
                                                 ) : (
                                                     <Typography
                                                         level="body3"
