@@ -120,7 +120,7 @@ function SuncokretChatPositioner({
         return (
             <Popper
                 align="center"
-                className="!w-[440px] max-w-[calc(100vw-1rem)] border-0 bg-transparent p-0 shadow-none"
+                className="!w-[440px] max-w-[calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem)] border-0 bg-transparent p-0 shadow-none"
                 data-suncokret-placement="anchored"
                 onOpenChange={(nextOpen) => {
                     if (!nextOpen) {
@@ -140,10 +140,10 @@ function SuncokretChatPositioner({
     return (
         <div
             className={cx(
-                'pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:bottom-2 md:block',
+                'pointer-events-auto fixed bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] z-50 flex justify-center md:block',
                 isCloseup
-                    ? 'md:right-auto md:left-2'
-                    : 'md:right-2 md:left-auto',
+                    ? 'md:right-auto md:left-[calc(var(--game-safe-area-left,0px)+0.5rem)]'
+                    : 'md:right-[calc(var(--game-safe-area-right,0px)+0.5rem)] md:left-auto',
             )}
             data-suncokret-placement={
                 isCloseup ? 'bottom-left' : 'bottom-right'
@@ -953,7 +953,7 @@ export function SuncokretChatHud() {
                 >
                     <div
                         aria-label="Razgovor sa Suncokretom"
-                        className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-5rem))]"
+                        className="flex h-[min(680px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-5rem))]"
                         data-suncokret-chat
                         role="dialog"
                     >

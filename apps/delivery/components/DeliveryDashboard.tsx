@@ -1341,7 +1341,7 @@ export function DeliveryDashboard({
     return (
         <>
             {showDriverConnectionWarning ? (
-                <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-xl">
+                <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] left-[calc(env(safe-area-inset-left,0px)+1rem)] right-[calc(env(safe-area-inset-right,0px)+1rem)] z-50 mx-auto max-w-xl">
                     <Alert
                         color="warning"
                         startDecorator={<Warning className="size-5" />}
@@ -1352,7 +1352,7 @@ export function DeliveryDashboard({
                 </div>
             ) : null}
             {actionError ? (
-                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto max-w-xl">
+                <div className="fixed left-[calc(env(safe-area-inset-left,0px)+1rem)] right-[calc(env(safe-area-inset-right,0px)+1rem)] top-[max(1rem,env(safe-area-inset-top,0px))] z-50 mx-auto max-w-xl">
                     <Alert
                         color="danger"
                         startDecorator={<Warning className="size-5" />}
@@ -1362,7 +1362,7 @@ export function DeliveryDashboard({
                 </div>
             ) : null}
             {actionConfirmation ? (
-                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-50 mx-auto max-w-xl">
+                <div className="fixed left-[calc(env(safe-area-inset-left,0px)+1rem)] right-[calc(env(safe-area-inset-right,0px)+1rem)] top-[max(1rem,env(safe-area-inset-top,0px))] z-50 mx-auto max-w-xl">
                     <Alert
                         color="info"
                         endDecorator={
@@ -1382,7 +1382,7 @@ export function DeliveryDashboard({
                 </div>
             ) : null}
             {dashboard.kind === 'driver' && deliveryTarget.kind !== 'none' ? (
-                <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-40 mx-auto max-w-xl">
+                <div className="fixed left-[calc(env(safe-area-inset-left,0px)+1rem)] right-[calc(env(safe-area-inset-right,0px)+1rem)] top-[max(1rem,env(safe-area-inset-top,0px))] z-40 mx-auto max-w-xl">
                     <Alert
                         color="warning"
                         data-testid="customer-delivery-deep-link-unavailable"

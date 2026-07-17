@@ -31,7 +31,7 @@ export function GameModal({
     return (
         <Modal
             className={cx(
-                'border-tertiary border-b-4',
+                'border-tertiary border-b-4 md:[padding-top:calc(var(--game-safe-area-top,0px)+1.5rem)] md:[padding-right:calc(var(--game-safe-area-right,0px)+1.5rem)] md:[padding-bottom:calc(var(--game-safe-area-bottom,0px)+1.5rem)] md:[padding-left:calc(var(--game-safe-area-left,0px)+1.5rem)] md:[&>button:last-child]:top-[calc(var(--game-safe-area-top,0px)+0.25rem)] md:[&>button:last-child]:right-[calc(var(--game-safe-area-right,0px)+0.25rem)]',
                 hudLayer && 'z-[46]',
                 className,
             )}

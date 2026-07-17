@@ -177,10 +177,35 @@ async function expectNoImmediateRuntimeFailures(
     expect(failures).toEqual([]);
 }
 
+const safeAreaInsets = {
+    bottom: 24,
+    left: 12,
+    right: 12,
+    top: 32,
+};
+
+async function emulateSafeArea(page: Page) {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeAreaInsets.bottom,
+            bottomMax: safeAreaInsets.bottom,
+            left: safeAreaInsets.left,
+            leftMax: safeAreaInsets.left,
+            right: safeAreaInsets.right,
+            rightMax: safeAreaInsets.right,
+            top: safeAreaInsets.top,
+            topMax: safeAreaInsets.top,
+        },
+    });
+}
+
 test('loads signed-out landing page without immediate runtime failures', async ({
     page,
 }) => {
     const failures = collectRuntimeFailures(page);
+    await page.setViewportSize({ height: 844, width: 390 });
+    await emulateSafeArea(page);
     await mockGardenApi(page, false);
 
     const response = await page.goto('/');
@@ -190,6 +215,19 @@ test('loads signed-out landing page without immediate runtime failures', async (
     await expect(
         page.getByRole('button', { name: 'Prijava' }).first(),
     ).toBeVisible();
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+        'href',
+        '/manifest.json',
+    );
+    await expect(
+        page.locator('meta[name="apple-mobile-web-app-title"]'),
+    ).toHaveAttribute('content', 'Gredice');
+    const loginBannerBounds = await page
+        .getByText('Posjeti gredice.com')
+        .locator('..')
+        .boundingBox();
+    expect(loginBannerBounds).not.toBeNull();
+    expect(loginBannerBounds?.y).toBeGreaterThanOrEqual(safeAreaInsets.top);
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
@@ -205,4 +243,198 @@ test('loads signed-in landing page HUD without immediate runtime failures', asyn
     await expect(page).toHaveTitle(/Gredice/);
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expectNoImmediateRuntimeFailures(page, failures);
+});
+
+test('renders the whole game edge to edge while keeping HUD controls safe', async ({
+    context,
+    page,
+}) => {
+    await page.setViewportSize({ height: 844, width: 390 });
+    await emulateSafeArea(page);
+    await context.addCookies([
+        {
+            domain: '127.0.0.1',
+            name: 'gredice_impersonating',
+            path: '/',
+            value: '1',
+        },
+    ]);
+    await mockGardenApi(page, true);
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Impersonacija je aktivna.')).toBeVisible();
+
+    const viewportMeta = page.locator('meta[name="viewport"]');
+    await expect(viewportMeta).toHaveCount(1);
+    await expect(viewportMeta).toHaveAttribute(
+        'content',
+        /viewport-fit=cover/u,
+    );
+    await expect(page.locator('meta[name="theme-color"]')).toHaveCount(1);
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+        'content',
+        '#2e6f40',
+    );
+
+    const viewportSize = page.viewportSize();
+    expect(viewportSize).not.toBeNull();
+
+    const gameCanvas = page.locator('canvas').first();
+    await expect
+        .poll(async () => (await gameCanvas.boundingBox())?.width)
+        .toBe(viewportSize?.width);
+    const canvasBounds = await gameCanvas.boundingBox();
+    expect(canvasBounds).not.toBeNull();
+    expect(canvasBounds?.x).toBe(0);
+    expect(canvasBounds?.y).toBe(0);
+    expect(canvasBounds?.width).toBe(viewportSize?.width);
+    expect(canvasBounds?.height).toBe(viewportSize?.height);
+
+    const topLeftBounds = await page
+        .locator('[data-game-hud-top-left]')
+        .boundingBox();
+    expect(topLeftBounds).not.toBeNull();
+    expect(topLeftBounds?.x).toBeGreaterThanOrEqual(safeAreaInsets.left);
+    expect(topLeftBounds?.y).toBeGreaterThanOrEqual(safeAreaInsets.top);
+
+    const topRightBounds = await page
+        .locator('[data-game-hud-top-right]')
+        .boundingBox();
+    expect(topRightBounds).not.toBeNull();
+    expect(
+        (topRightBounds?.x ?? 0) + (topRightBounds?.width ?? 0),
+    ).toBeLessThanOrEqual((viewportSize?.width ?? 0) - safeAreaInsets.right);
+    expect(topRightBounds?.y).toBeGreaterThanOrEqual(safeAreaInsets.top);
+
+    const bottomControlsBounds = await page
+        .locator('[data-game-hud-bottom-controls]')
+        .boundingBox();
+    expect(bottomControlsBounds).not.toBeNull();
+    expect(
+        (bottomControlsBounds?.y ?? 0) + (bottomControlsBounds?.height ?? 0),
+    ).toBeLessThanOrEqual((viewportSize?.height ?? 0) - safeAreaInsets.bottom);
+
+    const impersonationBannerBounds = await page
+        .getByText('Impersonacija je aktivna.')
+        .locator('..')
+        .boundingBox();
+    expect(impersonationBannerBounds).not.toBeNull();
+    expect(impersonationBannerBounds?.x).toBeGreaterThanOrEqual(
+        safeAreaInsets.left,
+    );
+    expect(impersonationBannerBounds?.y).toBeGreaterThanOrEqual(
+        safeAreaInsets.top,
+    );
+
+    const overflow = await page.evaluate(() => ({
+        height: document.documentElement.scrollHeight - window.innerHeight,
+        width: document.documentElement.scrollWidth - window.innerWidth,
+    }));
+    expect(overflow.width).toBeLessThanOrEqual(0);
+    expect(overflow.height).toBeLessThanOrEqual(0);
+});
+
+test('keeps landscape game dialogs inside the safe area', async ({ page }) => {
+    const landscapeSafeArea = { bottom: 18, left: 47, right: 21, top: 0 };
+    await page.setViewportSize({ height: 390, width: 844 });
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: landscapeSafeArea.bottom,
+            bottomMax: landscapeSafeArea.bottom,
+            left: landscapeSafeArea.left,
+            leftMax: landscapeSafeArea.left,
+            right: landscapeSafeArea.right,
+            rightMax: landscapeSafeArea.right,
+            top: landscapeSafeArea.top,
+            topMax: landscapeSafeArea.top,
+        },
+    });
+    await mockGardenApi(page, true);
+
+    const response = await page.goto('/?pregled=generalno');
+
+    expect(response?.ok()).toBe(true);
+    const dialog = page.getByRole('dialog', { name: 'Profil' });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(dialog).toHaveCSS(
+        'padding-left',
+        `${landscapeSafeArea.left + 24}px`,
+    );
+    await expect(dialog).toHaveCSS(
+        'padding-right',
+        `${landscapeSafeArea.right + 24}px`,
+    );
+
+    const closeBounds = await dialog
+        .getByRole('button', { name: 'Zatvori' })
+        .boundingBox();
+    expect(closeBounds).not.toBeNull();
+    expect(closeBounds?.x).toBeGreaterThanOrEqual(landscapeSafeArea.left);
+    expect(
+        (closeBounds?.x ?? 0) + (closeBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(844 - landscapeSafeArea.right);
+});
+
+test('keeps edge-to-edge viewport behavior scoped to the game route', async ({
+    request,
+}) => {
+    const gameResponse = await request.get('/');
+    const documentResponse = await request.get('/pozivnica');
+
+    expect(gameResponse.ok()).toBe(true);
+    expect(documentResponse.ok()).toBe(true);
+
+    const gameHtml = await gameResponse.text();
+    const documentHtml = await documentResponse.text();
+
+    expect(gameHtml.match(/name="viewport"/gu)).toHaveLength(1);
+    expect(gameHtml).toContain('viewport-fit=cover');
+    expect(documentHtml).not.toContain('viewport-fit=cover');
+});
+
+test('preserves the published Garden Android app contract', async ({
+    request,
+}) => {
+    const manifestResponse = await request.get('/manifest.json');
+    const assetLinksResponse = await request.get(
+        '/.well-known/assetlinks.json',
+    );
+
+    expect(manifestResponse.ok()).toBe(true);
+    expect(assetLinksResponse.ok()).toBe(true);
+
+    const manifest = await manifestResponse.json();
+    expect(manifest).toMatchObject({
+        background_color: '#2e6f40',
+        display: 'fullscreen',
+        display_override: ['window-controls-overlay', 'standalone', 'browser'],
+        id: '/',
+        related_applications: [
+            {
+                id: 'com.gredice.vrt.twa',
+                platform: 'play',
+            },
+        ],
+        scope: 'https://vrt.gredice.com',
+        start_url: '/',
+        theme_color: '#2e6f40',
+    });
+
+    const assetLinks = await assetLinksResponse.json();
+    expect(assetLinks).toEqual([
+        {
+            relation: ['delegate_permission/common.handle_all_urls'],
+            target: {
+                namespace: 'android_app',
+                package_name: 'com.gredice.vrt.twa',
+                sha256_cert_fingerprints: [
+                    '33:8A:CB:39:A4:46:2F:AD:42:1B:97:63:F2:76:CE:2E:91:47:01:E0:79:37:61:C2:55:3E:EE:E3:DD:39:77:F2',
+                ],
+            },
+        },
+    ]);
 });
