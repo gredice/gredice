@@ -52,7 +52,7 @@ export function useCheckout() {
             }
 
             if ('success' in responseData) {
-                window.location.href = '/?placanje=uspijesno';
+                window.location.href = '/?placanje=uspjesno';
                 return;
             }
 
