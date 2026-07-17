@@ -35,6 +35,13 @@ function buildField(
         assignedUserIds: [userId],
         id: 201,
         plantScheduledDate: todayDate,
+        plantCycles: [
+            {
+                active: true,
+                endedEventId: 1202,
+                plantPlaceEventId: 1201,
+            },
+        ],
         plantSortId: 601,
         plantStatus: 'planned',
         positionIndex: 0,
@@ -45,21 +52,29 @@ function buildField(
 }
 
 function buildRaisedBed({
+    accountId = 'account-1',
     farmId = 1,
     fields = [],
+    gardenId = 1,
     id = 10,
+    physicalId = `A${id}`,
     status = 'active',
 }: {
+    accountId?: string;
     farmId?: number;
     fields?: FarmTodayPlantingInput[];
+    gardenId?: number;
     id?: number;
+    physicalId?: string;
     status?: string;
 } = {}): FarmTodayRaisedBedInput {
     return {
+        accountId,
         farmId,
         fields,
+        gardenId,
         id,
-        physicalId: `A${id}`,
+        physicalId,
         status,
     };
 }
@@ -77,6 +92,7 @@ function buildOperation(
         raisedBedId: 10,
         scheduledDate: todayDate,
         status: 'planned',
+        taskVersionEventId: 1101,
         ...overrides,
     };
 }
@@ -279,6 +295,61 @@ test('composes mixed operation and planting work without merging pending into co
         notes: 'optional',
     });
     expect(operationTask?.href).toBe('/operations/701');
+    expect(operationTask?.actionTarget).toEqual({
+        expectedEntityId: 701,
+        expectedTaskVersionEventId: 1101,
+        kind: 'operation',
+        operationId: 101,
+    });
+    const plantingTask = result.focusQueue.find(
+        (task) => task.key === 'planting:201',
+    );
+    expect(plantingTask?.actionTarget).toEqual({
+        expectedPlantCycleEventId: 1201,
+        expectedPlantCycleVersionEventId: 1202,
+        expectedPlantSortId: 601,
+        kind: 'planting',
+        positionIndex: 0,
+        raisedBedId: 10,
+    });
+});
+
+test('keeps physical positions continuous across raised-bed blocks', () => {
+    const firstField = buildField({ id: 201, raisedBedId: 10 });
+    const secondField = buildField({ id: 202, raisedBedId: 11 });
+    const firstRaisedBed = buildRaisedBed({
+        fields: [firstField],
+        id: 10,
+        physicalId: '15',
+    });
+    const secondRaisedBed = buildRaisedBed({
+        fields: [secondField],
+        id: 11,
+        physicalId: '15',
+    });
+    const result = composeFarmTodayData(
+        buildInput({
+            plantings: ready({
+                raisedBeds: [firstRaisedBed, secondRaisedBed],
+                scheduledFields: [firstField, secondField],
+            }),
+            plantSorts: ready([{ id: 601, information: { name: 'Rajčica' } }]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+
+    const positionByTaskKey = new Map(
+        result.focusQueue.map((task) => [
+            task.key,
+            task.location.kind === 'farm' ? null : task.location.positionNumber,
+        ]),
+    );
+    expect(positionByTaskKey.get('planting:201')).toBe(1);
+    expect(positionByTaskKey.get('planting:202')).toBe(10);
 });
 
 test('hides actionable work on abandoned beds but keeps blocker history visible', () => {
@@ -712,9 +783,13 @@ test('keeps available work in partial results and never turns total source failu
         expect(partial.summary.countsComplete).toBe(false);
         expect(partial.focusQueue).toHaveLength(1);
         expect(partial.focusQueue[0]?.location).toEqual({
+            farmId: null,
+            groupKey: 'missing-10|garden:null|account:null',
             kind: 'raisedBed',
             label: 'Gredica 10',
+            physicalId: null,
             positionIndex: null,
+            positionNumber: null,
             raisedBedId: 10,
         });
         expect(partial.focusQueue[0]?.durationMinutes).toBeNull();

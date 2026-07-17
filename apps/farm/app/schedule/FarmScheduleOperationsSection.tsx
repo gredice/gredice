@@ -39,13 +39,19 @@ interface FarmScheduleOperationsSectionProps {
     userId: string;
 }
 
-function buildOperationLabel(
+function buildOperationCardData(
     operation: FarmOperation,
     raisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
     operationDataById: Map<number, EntityStandardized>,
 ) {
     const operationData = operationDataById.get(operation.entityId);
+    const raisedBed =
+        operation.raisedBedId === null
+            ? undefined
+            : raisedBeds.find(
+                  (candidate) => candidate.id === operation.raisedBedId,
+              );
     const field = operation.raisedBedFieldId
         ? raisedBeds
               .flatMap((raisedBed) => raisedBed.fields)
@@ -58,12 +64,22 @@ function buildOperationLabel(
         ? plantSortById.get(field.plantSortId)
         : undefined;
     const physicalPositionIndex = field
-        ? getFieldPhysicalPositionIndex(field, raisedBeds).toString()
-        : '';
+        ? getFieldPhysicalPositionIndex(field, raisedBeds)
+        : null;
     const isFullRaisedBed =
         operationData?.attributes?.application === 'raisedBedFull';
 
-    return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
+    return {
+        ...operation,
+        durationMinutes: getOperationDurationMinutes(operationData),
+        label: `${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`,
+        positionNumber: isFullRaisedBed ? null : physicalPositionIndex,
+        raisedBedLabel: raisedBed
+            ? raisedBed.physicalId
+                ? `Gr ${raisedBed.physicalId}`
+                : `Gredica ${raisedBed.id}`
+            : null,
+    };
 }
 
 export function FarmScheduleOperationsSection({
@@ -125,23 +141,14 @@ export function FarmScheduleOperationsSection({
                 typeof operation.farmId === 'number' &&
                 operation.raisedBedId === null,
         )
-        .map((operation) => {
-            const label = buildOperationLabel(
+        .map((operation) =>
+            buildOperationCardData(
                 operation,
                 raisedBeds,
                 plantSortById,
                 operationDataById,
-            );
-            const durationMinutes = getOperationDurationMinutes(
-                operationDataById.get(operation.entityId),
-            );
-
-            return {
-                ...operation,
-                durationMinutes,
-                label,
-            };
-        })
+            ),
+        )
         .sort((left, right) =>
             left.label.localeCompare(right.label, undefined, {
                 numeric: true,
@@ -155,11 +162,7 @@ export function FarmScheduleOperationsSection({
 
     if (mode === 'harvest' || mode === 'watering') {
         const groupedOperations = raisedBedGroups.flatMap(
-            ({ physicalId, raisedBeds: groupedRaisedBeds }) => {
-                const raisedBedLabel = physicalId
-                    ? `Gr ${physicalId}`
-                    : `Gredica ${groupedRaisedBeds[0]?.id ?? ''}`;
-
+            ({ raisedBeds: groupedRaisedBeds }) => {
                 return visibleScheduledOperations
                     .filter(
                         (operation) =>
@@ -169,18 +172,14 @@ export function FarmScheduleOperationsSection({
                                     raisedBed.id === operation.raisedBedId,
                             ),
                     )
-                    .map((operation) => ({
-                        ...operation,
-                        durationMinutes: getOperationDurationMinutes(
-                            operationDataById.get(operation.entityId),
-                        ),
-                        label: `${raisedBedLabel} · ${buildOperationLabel(
+                    .map((operation) =>
+                        buildOperationCardData(
                             operation,
                             groupedRaisedBeds,
                             plantSortById,
                             operationDataById,
-                        )}`,
-                    }))
+                        ),
+                    )
                     .sort((left, right) => {
                         const dateComparison = compareScheduleDates(
                             left.scheduledDate,
@@ -260,23 +259,14 @@ export function FarmScheduleOperationsSection({
                                         raisedBed.id === operation.raisedBedId,
                                 ),
                         )
-                        .map((operation) => {
-                            const label = buildOperationLabel(
+                        .map((operation) =>
+                            buildOperationCardData(
                                 operation,
                                 groupedRaisedBeds,
                                 plantSortById,
                                 operationDataById,
-                            );
-                            const durationMinutes = getOperationDurationMinutes(
-                                operationDataById.get(operation.entityId),
-                            );
-
-                            return {
-                                ...operation,
-                                durationMinutes,
-                                label,
-                            };
-                        })
+                            ),
+                        )
                         .sort((left, right) => {
                             const dateComparison = compareScheduleDates(
                                 left.scheduledDate,

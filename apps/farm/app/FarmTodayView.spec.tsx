@@ -52,6 +52,12 @@ function buildOperationTask(
     overrides: Partial<FarmTodayOperationTask> = {},
 ): FarmTodayOperationTask {
     return {
+        actionTarget: {
+            expectedEntityId: 701,
+            expectedTaskVersionEventId: 1701,
+            kind: 'operation',
+            operationId: 701,
+        },
         ageIndicator: null,
         assignment: 'mine',
         durationMinutes: 20,
@@ -60,13 +66,18 @@ function buildOperationTask(
         kind: 'operation',
         label: 'Obreži rajčice',
         location: {
+            farmId: 1,
+            groupKey: 'A12|garden-1|account-1',
             kind: 'raisedBed',
             label: 'Gredica A12 · pozicija 3',
+            physicalId: 'A12',
             positionIndex: 2,
+            positionNumber: 3,
             raisedBedId: 12,
         },
         occurredAt: null,
         operationId: 701,
+        operationDefinitionAvailable: true,
         overdue: false,
         proofRequirements: { images: 'none', notes: 'none' },
         scheduledDate: '2026-07-15T08:00:00.000Z',
@@ -79,6 +90,14 @@ function buildPlantingTask(
     overrides: Partial<FarmTodayPlantingTask> = {},
 ): FarmTodayPlantingTask {
     return {
+        actionTarget: {
+            expectedPlantCycleEventId: 1801,
+            expectedPlantCycleVersionEventId: 1802,
+            expectedPlantSortId: 901,
+            kind: 'planting',
+            positionIndex: 6,
+            raisedBedId: 81,
+        },
         ageIndicator: null,
         assignment: 'mine',
         durationMinutes: 5,
@@ -88,9 +107,13 @@ function buildPlantingTask(
         kind: 'planting',
         label: 'Sijanje: Salata',
         location: {
+            farmId: 1,
+            groupKey: 'B4|garden-1|account-1',
             kind: 'raisedBed',
             label: 'Gredica B4 · pozicija 7',
+            physicalId: 'B4',
             positionIndex: 6,
+            positionNumber: 7,
             raisedBedId: 81,
         },
         occurredAt: null,
@@ -127,9 +150,13 @@ const nextTask = buildOperationTask({
     },
     label: 'Obreži bočne izboje na visokim rajčicama sorte Volovsko srce prije večernjeg zalijevanja',
     location: {
+        farmId: 1,
+        groupKey: 'Sjeverna proizvodna zona 123456|garden-1|account-1',
         kind: 'raisedBed',
         label: 'Gredica Sjeverna proizvodna zona 123456 · pozicija 9',
+        physicalId: 'Sjeverna proizvodna zona 123456',
         positionIndex: 8,
+        positionNumber: 9,
         raisedBedId: 12,
     },
     overdue: true,
@@ -140,9 +167,13 @@ const queuedTask = buildPlantingTask({
     assignment: 'shared',
     label: 'Sijanje u stakleniku: hrskava ljetna salata vrlo dugog naziva',
     location: {
+        farmId: 1,
+        groupKey: 'Južni tunel 81|garden-1|account-1',
         kind: 'greenhouse',
         label: 'Staklenik · Gredica Južni tunel 81 · pozicija 7',
+        physicalId: 'Južni tunel 81',
         positionIndex: 6,
+        positionNumber: 7,
         raisedBedId: 81,
     },
 });
@@ -201,6 +232,11 @@ function todayView(data: FarmTodayData) {
             <FarmTodayView
                 data={data}
                 heading={heading()}
+                taskActionContext={{
+                    accountId: 'account-1',
+                    sessionIncarnation: 'session-1',
+                    userId: 'farmer-1',
+                }}
                 headerActions={
                     <>
                         <button
@@ -274,18 +310,13 @@ for (const viewport of phoneViewports) {
         await page.setViewportSize(viewport);
         const component = await mount(todayView(mixedReadyData));
 
-        const nextTaskLink = component.locator('a[href="/operations/701"]');
-        await expect(nextTaskLink).toHaveCount(1);
-        await expect(
-            component.locator('a[href="/raised-beds/81"]'),
-        ).toHaveCount(1);
-        expect(await nextTaskLink.evaluate((element) => element.tagName)).toBe(
-            'A',
+        const nextTaskCard = component.locator(
+            '[data-farm-today-task-card="operation:701"]',
         );
-        await expect(nextTaskLink).toHaveAttribute('href', '/operations/701');
+        await expect(nextTaskCard).toHaveCount(1);
         await expect(
-            nextTaskLink.locator('[data-farm-today-task="operation:701"]'),
-        ).toBeVisible();
+            component.locator('[data-farm-today-task-card="planting:801"]'),
+        ).toHaveCount(1);
         await expect(component.getByRole('heading', { level: 1 })).toHaveCount(
             1,
         );
@@ -295,16 +326,16 @@ for (const viewport of phoneViewports) {
             }),
         ).toBeVisible();
         await expect(
-            component.getByRole('region', { name: 'Fokus' }),
+            component.getByRole('region', { name: 'Današnji zadaci' }),
         ).toBeVisible();
         await expect(
             component.getByRole('region', { name: 'Treba pažnju' }),
         ).toBeVisible();
 
-        const nextTaskBounds = await nextTaskLink.boundingBox();
+        const nextTaskBounds = await nextTaskCard.boundingBox();
         expect(nextTaskBounds).not.toBeNull();
         if (!nextTaskBounds) {
-            throw new Error('Expected the next-task card link to render.');
+            throw new Error('Expected the next-task card to render.');
         }
         expect(nextTaskBounds.y).toBeGreaterThanOrEqual(0);
         expect(nextTaskBounds.y + nextTaskBounds.height).toBeLessThanOrEqual(
@@ -312,22 +343,27 @@ for (const viewport of phoneViewports) {
         );
 
         await expect(
-            nextTaskLink.locator(
-                'a, button, input, select, textarea, [role="button"], [role="checkbox"]',
-            ),
-        ).toHaveCount(0);
+            nextTaskCard.getByRole('button', {
+                name: `Dovrši radnju: ${nextTask.label}`,
+            }),
+        ).toBeVisible();
         await expect(
-            component.getByText('Dovrši', { exact: false }),
-        ).toHaveCount(0);
+            nextTaskCard.getByRole('button', {
+                name: `Ne mogu dovršiti radnju: ${nextTask.label}`,
+            }),
+        ).toBeVisible();
         await expect(component.getByRole('checkbox')).toHaveCount(0);
 
         await expect(component.getByText('Kasni 4 dana')).toBeVisible();
         await expect(component.getByText(nextTask.label)).toBeVisible();
         await expect(
-            component.getByText(nextTask.location.label),
+            nextTaskCard.getByText('20 min', { exact: true }),
         ).toBeVisible();
+        await expect(nextTaskCard.getByText('Pozicija 9')).toBeVisible();
         await expect(
-            nextTaskLink.getByText('20 min', { exact: true }),
+            component.getByRole('heading', {
+                name: /Gr Sjeverna proizvodna zona 123456/,
+            }),
         ).toBeVisible();
         await expect(
             component.getByText('Dodijeljeno meni').first(),
@@ -338,9 +374,8 @@ for (const viewport of phoneViewports) {
         await expect(
             component.getByText('Nije dodijeljeno').first(),
         ).toBeVisible();
-        await expect(
-            component.getByText('Dokaz nije potreban').first(),
-        ).toBeVisible();
+        await expect(component.getByText('Dokaz nije potreban')).toHaveCount(0);
+        await expect(component.getByText('Otvori upute')).toHaveCount(0);
         await expect(component.getByText('Čeka potvrdu')).toBeVisible();
         await expect(
             component.getByText('Neuspjelo', { exact: true }),
@@ -353,6 +388,33 @@ for (const viewport of phoneViewports) {
         await expectTouchTargets(component);
     });
 }
+
+test('opens the existing completion and blocker flows from Today', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(todayView(mixedReadyData));
+    const nextTaskCard = component.locator(
+        '[data-farm-today-task-card="operation:701"]',
+    );
+
+    await nextTaskCard
+        .getByRole('button', { name: `Dovrši radnju: ${nextTask.label}` })
+        .click();
+    await expect(
+        page.getByRole('dialog', { name: 'Potvrda završetka radnje' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Odustani' }).click();
+
+    await nextTaskCard
+        .getByRole('button', {
+            name: `Ne mogu dovršiti radnju: ${nextTask.label}`,
+        })
+        .click();
+    await expect(
+        page.getByRole('dialog', { name: 'Prijavi prepreku' }),
+    ).toBeVisible();
+});
 
 test('keeps a partial result actionable while explaining incomplete counts', async ({
     mount,
@@ -380,7 +442,9 @@ test('keeps a partial result actionable while explaining incomplete counts', asy
             'Brojevi sa znakom ≥ najmanje su potvrđene vrijednosti.',
         ),
     ).toBeVisible();
-    await expect(component.locator('a[href="/operations/701"]')).toBeVisible();
+    await expect(
+        component.locator('[data-farm-today-task-card="operation:701"]'),
+    ).toBeVisible();
     await expect(
         component.getByText('≥ 1', { exact: true }).first(),
     ).toBeVisible();

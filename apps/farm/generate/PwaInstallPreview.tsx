@@ -20,6 +20,7 @@ const nextNavigationRouter = {
 } satisfies AppRouterInstance;
 
 const focusTask = {
+    actionTarget: null,
     ageIndicator: null,
     assignment: 'mine',
     durationMinutes: 20,
@@ -28,13 +29,18 @@ const focusTask = {
     kind: 'operation',
     label: 'Pregledaj sustav navodnjavanja',
     location: {
+        farmId: 1,
+        groupKey: 'A12|garden-1|account-1',
         kind: 'raisedBed',
         label: 'Gredica A12 · pozicija 3',
+        physicalId: 'A12',
         positionIndex: 2,
+        positionNumber: 3,
         raisedBedId: 12,
     },
     occurredAt: null,
     operationId: 701,
+    operationDefinitionAvailable: true,
     overdue: false,
     proofRequirements: { images: 'required', notes: 'optional' },
     scheduledDate: '2026-07-15T08:00:00.000Z',

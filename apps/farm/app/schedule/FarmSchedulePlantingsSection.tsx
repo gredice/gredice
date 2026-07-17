@@ -42,21 +42,20 @@ interface FarmSchedulePlantingsSectionProps {
 function buildFieldLabel(
     field: FarmRaisedBedField,
     plantSortById: Map<number, EntityStandardized>,
-    physicalPositionIndex: number,
 ) {
     const taskName =
         field.sowingLocation === 'greenhouse'
-            ? 'sijanje u stakleniku'
-            : 'sijanje';
+            ? 'Sijanje u stakleniku'
+            : 'Sijanje';
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
     if (!field.plantSortId || !sort) {
-        return `${physicalPositionIndex} - ${taskName}: ? Nepoznato`;
+        return `${taskName}: ? Nepoznato`;
     }
 
     const totalPlants = getPlantsPerFieldCount(sort);
-    return `${physicalPositionIndex} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
+    return `${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 function getPlantsPerFieldCount(
@@ -118,11 +117,7 @@ export function FarmSchedulePlantingsSection({
                             return {
                                 ...field,
                                 physicalPositionIndex,
-                                label: buildFieldLabel(
-                                    field,
-                                    plantSortById,
-                                    physicalPositionIndex,
-                                ),
+                                label: buildFieldLabel(field, plantSortById),
                             };
                         })
                         .sort((left, right) => {
@@ -202,6 +197,14 @@ export function FarmSchedulePlantingsSection({
                                             label={field.label}
                                             plantingIdentity={plantingIdentity}
                                             plantSort={plantSort}
+                                            positionNumber={
+                                                field.physicalPositionIndex
+                                            }
+                                            raisedBedLabel={
+                                                physicalId
+                                                    ? `Gr ${physicalId}`
+                                                    : `Gredica ${field.raisedBedId}`
+                                            }
                                             selectedDateKey={selectedDateKey}
                                             userId={userId}
                                             assignedUserByFieldIdPromise={

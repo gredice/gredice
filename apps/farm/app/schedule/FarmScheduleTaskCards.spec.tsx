@@ -188,7 +188,7 @@ test('locks array-only work assigned to another farmer on a phone', async ({
         </div>,
     );
 
-    await expect(component.getByRole('link')).toHaveCount(2);
+    await expect(component.getByRole('link')).toHaveCount(0);
     await expect(component.getByRole('checkbox')).toHaveCount(0);
     const lockedButtons = component.getByRole('button');
     await expect(lockedButtons).toHaveCount(2);
@@ -205,7 +205,7 @@ test('locks array-only work assigned to another farmer on a phone', async ({
     await assertPrimaryTargetsAreTouchable(component);
 });
 
-test('keeps details before completion in keyboard order without nesting actions', async ({
+test('keeps location before completion and exposes no manual links', async ({
     mount,
     page,
 }) => {
@@ -213,29 +213,31 @@ test('keeps details before completion in keyboard order without nesting actions'
     const component = await mount(
         <FarmScheduleOperationTaskCard
             completionAction={completionAction('Dovrši radnju')}
-            operation={buildOperation(
-                20,
-                'planned',
-                'Vrlo duga radnja koju farmer otvara prije završetka',
-            )}
             operationData={buildOperationDefinition(1020)}
+            operation={{
+                ...buildOperation(
+                    20,
+                    'planned',
+                    'Vrlo duga radnja koju farmer otvara prije završetka',
+                ),
+                positionNumber: 8,
+                raisedBedLabel: 'Gr 15',
+            }}
             selectedDateKey={selectedDateKey}
             userId="farmer-1"
         />,
     );
 
-    const detailsLink = component.getByRole('link', {
-        name: /Otvori upute/,
-    });
     const completionButton = component.getByRole('button', {
         name: 'Dovrši radnju',
     });
     const blockerButton = component.getByRole('button', {
         name: /Ne mogu dovršiti radnju/,
     });
-    await expect(detailsLink.getByRole('button')).toHaveCount(0);
-    await detailsLink.focus();
-    await page.keyboard.press('Tab');
+    await expect(component.getByRole('link')).toHaveCount(0);
+    await expect(component.getByText('Gr 15', { exact: true })).toBeVisible();
+    await expect(component.getByText('Pozicija 8')).toBeVisible();
+    await completionButton.focus();
     await expect(completionButton).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(blockerButton).toBeFocused();
@@ -338,7 +340,7 @@ test('restores focus to the exact task and yields one logical keyboard focus', a
 
     await page.keyboard.press('Tab');
     await expect(
-        task.getByRole('link', { name: /Otvori upute/ }),
+        task.getByRole('button', { name: 'Dovrši radnju' }),
     ).toBeFocused();
     await expect(task).not.toHaveAttribute('data-schedule-task-restored');
 });
@@ -363,7 +365,7 @@ test('waits beyond the initial settle window for a streamed task target', async 
     await expect(target).toHaveAttribute('data-schedule-task-restored', 'true');
 });
 
-test('does not link unavailable operation guidance to a guaranteed 404', async ({
+test('keeps unavailable operation actions safe without manual-link clutter', async ({
     mount,
 }) => {
     const component = await mount(
@@ -382,10 +384,7 @@ test('does not link unavailable operation guidance to a guaranteed 404', async (
 
     await expect(component.getByRole('link')).toHaveCount(0);
     await expect(
-        component.getByText('Upute za radnju trenutno nisu dostupne.'),
-    ).toBeVisible();
-    await expect(
-        component.getByText('Zahtjevi za dovršetak trenutno nisu dostupni.'),
+        component.getByText('Radnja sa zastarjelim uputama'),
     ).toBeVisible();
     await expect(
         component.getByRole('button', { name: /Dovrši radnju/ }),
@@ -402,7 +401,7 @@ test('does not link unavailable operation guidance to a guaranteed 404', async (
     ).toBeVisible();
 });
 
-test('uses the raised bed as a safe fallback when plant guidance is missing', async ({
+test('keeps planting actionable without per-task manual links', async ({
     mount,
     page,
 }) => {
@@ -429,15 +428,11 @@ test('uses the raised bed as a safe fallback when plant guidance is missing', as
         />,
     );
 
+    await expect(component.getByRole('link')).toHaveCount(0);
+    await expect(component.getByText('Posij nepoznatu sortu')).toBeVisible();
     await expect(
-        component.getByText('Upute za biljku trenutno nisu dostupne.'),
+        component.getByRole('button', { name: 'Dovrši sijanje' }),
     ).toBeVisible();
-    await expect(
-        component.getByRole('link', { name: 'Otvori gredicu' }),
-    ).toHaveAttribute('href', '/raised-beds/10');
-    await expect(
-        component.getByRole('link', { name: /Otvori upute za biljku/ }),
-    ).toHaveCount(0);
     await assertCardsStayWithinViewport(component);
     await assertPrimaryTargetsAreTouchable(component);
 });
@@ -678,12 +673,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
         ).toBeVisible();
         await expect(pendingCard.getByRole('checkbox')).toHaveCount(0);
         await expect(pendingCard.getByRole('button')).toHaveCount(0);
-        await expect(
-            pendingCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute(
-            'href',
-            '/operations/1001?scheduleDate=2026-07-20&scheduleTask=1',
-        );
+        await expect(pendingCard.getByRole('link')).toHaveCount(0);
         await expect(
             pendingCard.getByText(operationLabels.pending),
         ).toBeVisible();
@@ -705,12 +695,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                 name: /Otvori galeriju u punoj veličini/,
             }),
         ).toBeVisible();
-        await expect(
-            completedCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute(
-            'href',
-            '/operations/1002?scheduleDate=2026-07-20&scheduleTask=2',
-        );
+        await expect(completedCard.getByRole('link')).toHaveCount(0);
 
         const actionableCard = component.locator(
             '[data-task-state="actionable"]',
@@ -723,17 +708,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                 name: /Ne mogu dovršiti radnju/,
             }),
         ).toBeVisible();
-        await expect(
-            actionableCard.getByRole('link', { name: /Otvori upute/ }),
-        ).toHaveAttribute(
-            'href',
-            '/operations/1003?scheduleDate=2026-07-20&scheduleTask=3',
-        );
-        await expect(
-            actionableCard
-                .getByRole('link', { name: /Otvori upute/ })
-                .getByRole('button'),
-        ).toHaveCount(0);
+        await expect(actionableCard.getByRole('link')).toHaveCount(0);
         await assertTaskActionsAreFullWidth(actionableCard);
 
         await assertCardsStayWithinViewport(component);
@@ -815,14 +790,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
         ).toBeVisible();
         await expect(pendingCard.getByRole('checkbox')).toHaveCount(0);
         await expect(pendingCard.getByRole('button')).toHaveCount(0);
-        await expect(
-            pendingCard.getByRole('link', {
-                name: /Otvori upute za biljku/,
-            }),
-        ).toHaveAttribute(
-            'href',
-            '/plants/501?scheduleDate=2026-07-20&scheduleTask=1',
-        );
+        await expect(pendingCard.getByRole('link')).toHaveCount(0);
         await expect(
             pendingCard.getByText(plantingLabels.pending),
         ).toBeVisible();
@@ -835,14 +803,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
         ).toBeVisible();
         await expect(completedCard.getByRole('checkbox')).toHaveCount(0);
         await expect(completedCard.getByRole('button')).toHaveCount(0);
-        await expect(
-            completedCard.getByRole('link', {
-                name: /Otvori upute za biljku/,
-            }),
-        ).toHaveAttribute(
-            'href',
-            '/plants/501?scheduleDate=2026-07-20&scheduleTask=2',
-        );
+        await expect(completedCard.getByRole('link')).toHaveCount(0);
 
         const actionableCard = component.locator(
             '[data-task-state="actionable"]',
@@ -855,19 +816,7 @@ for (const width of [320, 375, 390, 430, 1280]) {
                 name: /Ne mogu dovršiti sijanje/,
             }),
         ).toBeVisible();
-        await expect(
-            actionableCard.getByRole('link', {
-                name: /Otvori upute za biljku/,
-            }),
-        ).toHaveAttribute(
-            'href',
-            '/plants/501?scheduleDate=2026-07-20&scheduleTask=3',
-        );
-        await expect(
-            actionableCard
-                .getByRole('link', { name: /Otvori upute za biljku/ })
-                .getByRole('button'),
-        ).toHaveCount(0);
+        await expect(actionableCard.getByRole('link')).toHaveCount(0);
         await assertTaskActionsAreFullWidth(actionableCard);
 
         await assertCardsStayWithinViewport(component);

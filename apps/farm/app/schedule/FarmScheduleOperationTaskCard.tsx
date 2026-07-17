@@ -11,8 +11,8 @@ import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import { ScheduleTaskBlockedDetails } from './ScheduleTaskBlockedDetails';
 import { ScheduleTaskBlockerModal } from './ScheduleTaskBlockerModal';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
-import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
+import { ScheduleTaskLocation } from './ScheduleTaskLocation';
 import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
@@ -26,7 +26,6 @@ import {
     getScheduleTaskAnchorId,
     getScheduleTaskLabelId,
 } from './scheduleTaskIds';
-import { buildScheduleTaskGuidanceHref } from './scheduleTaskNavigation';
 import {
     getOperationTaskState,
     getScheduleTaskPresentation,
@@ -55,6 +54,8 @@ export type FarmOperationCardData = Pick<
     > & {
         durationMinutes: number;
         label: string;
+        positionNumber?: number | null;
+        raisedBedLabel?: string | null;
     };
 
 type FarmScheduleOperationTaskCardProps = {
@@ -69,7 +70,6 @@ export function FarmScheduleOperationTaskCard({
     completionAction,
     operation,
     operationData,
-    selectedDateKey,
     userId,
 }: FarmScheduleOperationTaskCardProps) {
     const taskState = getOperationTaskState(operation.status);
@@ -91,13 +91,6 @@ export function FarmScheduleOperationTaskCard({
     );
     const taskAnchorId = getScheduleTaskAnchorId('operation', operation.id);
     const taskLabelId = getScheduleTaskLabelId('operation', operation.id);
-    const guidanceHref = operationData
-        ? buildScheduleTaskGuidanceHref({
-              dateKey: selectedDateKey,
-              guidancePath: `/operations/${operation.entityId}`,
-              taskId: operation.id,
-          })
-        : null;
     const hasCompletionAttachments =
         taskPresentation.showCompletionAttachments &&
         (Boolean(operation.completionNotes?.trim()) ||
@@ -115,6 +108,10 @@ export function FarmScheduleOperationTaskCard({
                 >
                     {operation.label}
                 </Typography>
+                <ScheduleTaskLocation
+                    positionNumber={operation.positionNumber}
+                    raisedBedLabel={operation.raisedBedLabel}
+                />
                 <Row spacing={2} className="items-center flex-wrap gap-y-1">
                     <ScheduleTaskStatusChip state={taskState} />
                     <ScheduleTaskDurationChip
@@ -159,30 +156,7 @@ export function FarmScheduleOperationTaskCard({
                 taskPresentation.isCompleted ? 'bg-muted/30' : 'bg-white',
             )}
         >
-            {guidanceHref ? (
-                <ScheduleTaskDetailsLink
-                    actionLabel="Otvori upute"
-                    href={guidanceHref}
-                >
-                    {detailsContent}
-                </ScheduleTaskDetailsLink>
-            ) : (
-                <div className="min-w-0 px-1 py-1">
-                    {detailsContent}
-                    <Typography
-                        className="mt-1.5 text-muted-foreground"
-                        level="body2"
-                    >
-                        Upute za radnju trenutno nisu dostupne.
-                    </Typography>
-                    <Typography
-                        className="mt-1 text-muted-foreground"
-                        level="body2"
-                    >
-                        Zahtjevi za dovršetak trenutno nisu dostupni.
-                    </Typography>
-                </div>
-            )}
+            <div className="min-w-0 px-1 py-1">{detailsContent}</div>
             {showProofRequirements && (
                 <OperationProofRequirements
                     className="mt-2"

@@ -1,6 +1,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Lock } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 import type { ScheduleTaskState } from './scheduleTaskState';
 
@@ -9,6 +10,7 @@ interface ScheduleTaskStateControlProps {
     actionLabel: string;
     blockerAction?: ReactNode;
     label: string;
+    layout?: 'inline' | 'stacked';
     state: ScheduleTaskState;
     unavailableTitle: string;
 }
@@ -18,6 +20,7 @@ export function ScheduleTaskStateControl({
     actionLabel,
     blockerAction,
     label,
+    layout = 'stacked',
     state,
     unavailableTitle,
 }: ScheduleTaskStateControlProps) {
@@ -51,7 +54,10 @@ export function ScheduleTaskStateControl({
     if (action || blockerAction) {
         return (
             <div
-                className="mt-2 grid grid-cols-1 gap-2 border-t pt-2 [&>*]:w-full"
+                className={cx(
+                    'mt-2 grid grid-cols-1 gap-2 border-t pt-2 [&>*]:w-full',
+                    layout === 'inline' && blockerAction && 'grid-cols-2',
+                )}
                 data-schedule-task-completion="available"
             >
                 {action ?? unavailableAction}
