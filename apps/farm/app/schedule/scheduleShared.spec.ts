@@ -1,6 +1,7 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { expect, test } from '@playwright/test';
 import {
+    isHarvestOperationData,
     isWateringOperationData,
     shouldDisplayScheduleOperation,
 } from './scheduleShared';
@@ -9,6 +10,20 @@ const wateringOperationData = {
     id: 167,
     attributes: {
         visualReward: 'watering',
+        stage: {
+            id: 1,
+            information: {
+                name: 'maintenance',
+                label: 'Održavanje',
+            },
+        },
+    },
+} satisfies EntityStandardized;
+
+const harvestOperationData = {
+    id: 169,
+    attributes: {
+        visualReward: 'harvest',
         stage: {
             id: 1,
             information: {
@@ -38,7 +53,13 @@ test('identifies watering from its visual reward regardless of plant stage', () 
     expect(isWateringOperationData(undefined)).toBe(false);
 });
 
-test('moves only raised-bed watering into the grouped schedule section', () => {
+test('identifies harvest from its visual reward regardless of plant stage', () => {
+    expect(isHarvestOperationData(harvestOperationData)).toBe(true);
+    expect(isHarvestOperationData(maintenanceOperationData)).toBe(false);
+    expect(isHarvestOperationData(undefined)).toBe(false);
+});
+
+test('moves only raised-bed watering and harvest into grouped schedule sections', () => {
     const raisedBedOperation = { raisedBedId: 42 };
     const farmOperation = { raisedBedId: null };
 
@@ -53,21 +74,42 @@ test('moves only raised-bed watering into the grouped schedule section', () => {
         shouldDisplayScheduleOperation(
             raisedBedOperation,
             wateringOperationData,
-            'withoutWatering',
+            'withoutGroupedOperations',
+        ),
+    ).toBe(false);
+    expect(
+        shouldDisplayScheduleOperation(
+            raisedBedOperation,
+            harvestOperationData,
+            'harvest',
+        ),
+    ).toBe(true);
+    expect(
+        shouldDisplayScheduleOperation(
+            raisedBedOperation,
+            harvestOperationData,
+            'watering',
+        ),
+    ).toBe(false);
+    expect(
+        shouldDisplayScheduleOperation(
+            raisedBedOperation,
+            harvestOperationData,
+            'withoutGroupedOperations',
         ),
     ).toBe(false);
     expect(
         shouldDisplayScheduleOperation(
             raisedBedOperation,
             maintenanceOperationData,
-            'withoutWatering',
+            'withoutGroupedOperations',
         ),
     ).toBe(true);
     expect(
         shouldDisplayScheduleOperation(
             farmOperation,
-            wateringOperationData,
-            'withoutWatering',
+            harvestOperationData,
+            'withoutGroupedOperations',
         ),
     ).toBe(true);
 });
