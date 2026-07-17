@@ -1,3 +1,5 @@
+import { groupDeliveryRequests } from '../../delivery/requests/DeliveryRequestGroups';
+
 const deliveryStatisticsTimeZone = 'Europe/Zagreb';
 
 const weekdayOrder = [
@@ -23,6 +25,7 @@ const stateOrder = [
 
 type DeliveryStatisticsRequest = {
     id: string;
+    accountId?: string | null;
     state: string;
     mode?: 'delivery' | 'pickup';
     createdAt: Date;
@@ -30,9 +33,6 @@ type DeliveryStatisticsRequest = {
         id: number;
         startAt: Date;
         endAt: Date;
-        location?: {
-            name: string;
-        };
     };
 };
 
@@ -42,13 +42,6 @@ export type DeliveryRequestStatistics = ReturnType<
 
 const weekdayKeyFormatter = new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
-    timeZone: deliveryStatisticsTimeZone,
-});
-
-const slotDateFormatter = new Intl.DateTimeFormat('hr-HR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
     timeZone: deliveryStatisticsTimeZone,
 });
 
@@ -119,15 +112,6 @@ function formatTimeWindow(startAt: Date, endAt: Date) {
     return `${timeFormatter.format(startAt)}–${timeFormatter.format(endAt)}`;
 }
 
-function formatSlotLabel(request: DeliveryStatisticsRequest) {
-    const slot = request.slot;
-    if (!slot) return '';
-
-    const location = slot.location?.name.trim();
-    const dateAndTime = `${slotDateFormatter.format(slot.startAt)} · ${formatTimeWindow(slot.startAt, slot.endAt)}`;
-    return location ? `${dateAndTime} · ${location}` : dateAndTime;
-}
-
 export function buildDeliveryRequestStatistics(
     requests: DeliveryStatisticsRequest[],
 ) {
@@ -138,40 +122,19 @@ export function buildDeliveryRequestStatistics(
             slot: NonNullable<DeliveryStatisticsRequest['slot']>;
         } => Boolean(request.slot),
     );
-    const slotCounts = new Map<
-        number,
-        { id: number; label: string; shortLabel: string; count: number }
-    >();
-
-    for (const request of requestsWithSlots) {
-        const existing = slotCounts.get(request.slot.id);
-        if (existing) {
-            existing.count += 1;
-            continue;
-        }
-
-        const label = formatSlotLabel(request);
-
-        slotCounts.set(request.slot.id, {
-            id: request.slot.id,
-            label,
-            shortLabel: label,
-            count: 1,
-        });
-    }
-
-    const popularSlots = Array.from(slotCounts.values())
-        .sort(
-            (left, right) =>
-                right.count - left.count ||
-                left.label.localeCompare(right.label, 'hr-HR'),
-        )
-        .slice(0, 8);
-    const weekdayCounts = countByKey(requestsWithSlots, (request) =>
+    const deliveryGroups = groupDeliveryRequests(requestsWithSlots);
+    const deliveryRepresentatives = deliveryGroups.flatMap((group) => {
+        const request = group.requests[0];
+        return request ? [request] : [];
+    });
+    const weekdayCounts = countByKey(deliveryRepresentatives, (request) =>
         weekdayKeyFormatter.format(request.slot.startAt),
     );
-    const timeWindowCounts = countByKey(requestsWithSlots, (request) =>
+    const timeWindowCounts = countByKey(deliveryRepresentatives, (request) =>
         formatTimeWindow(request.slot.startAt, request.slot.endAt),
+    );
+    const deliverySizeCounts = countByKey(deliveryGroups, (group) =>
+        String(group.requests.length),
     );
     const stateCounts = countByKey(requests, (request) => request.state);
     const trendCounts = countByKey(requests, (request) =>
@@ -180,6 +143,10 @@ export function buildDeliveryRequestStatistics(
     const fulfilledRequests = stateCounts.get('fulfilled') ?? 0;
     const cancelledRequests = stateCounts.get('cancelled') ?? 0;
     const totalRequests = requests.length;
+    const totalDeliveries = deliveryGroups.length;
+    const multiRequestDeliveries = deliveryGroups.filter(
+        (group) => group.requests.length > 1,
+    ).length;
     const observedTrendMonths = Array.from(trendCounts.keys()).sort(
         (left, right) => left.localeCompare(right),
     );
@@ -194,7 +161,27 @@ export function buildDeliveryRequestStatistics(
         summary: {
             totalRequests,
             assignedRequests: requestsWithSlots.length,
-            uniqueSlots: slotCounts.size,
+            totalDeliveries,
+            uniqueSlots: new Set(
+                requestsWithSlots.map((request) => request.slot.id),
+            ).size,
+            averageRequestsPerDelivery:
+                totalDeliveries === 0
+                    ? 0
+                    : Math.round(
+                          (requestsWithSlots.length / totalDeliveries) * 10,
+                      ) / 10,
+            multiRequestDeliveries,
+            multiRequestDeliveryRate:
+                totalDeliveries === 0
+                    ? 0
+                    : Math.round(
+                          (multiRequestDeliveries / totalDeliveries) * 100,
+                      ),
+            largestDeliverySize: deliveryGroups.reduce(
+                (largest, group) => Math.max(largest, group.requests.length),
+                0,
+            ),
             fulfilledRequests,
             cancelledRequests,
             completionRate:
@@ -205,14 +192,20 @@ export function buildDeliveryRequestStatistics(
                 totalRequests === 0
                     ? 0
                     : Math.round((cancelledRequests / totalRequests) * 100),
-            mostPopularSlot: popularSlots[0] ?? null,
         },
-        popularSlots,
-        weekdays: weekdayOrder.map(({ key, label }) => ({
+        deliverySizes: Array.from(
+            deliverySizeCounts,
+            ([requestCount, count]) => ({
+                requestCount: Number(requestCount),
+                label: requestCount,
+                count,
+            }),
+        ).sort((left, right) => left.requestCount - right.requestCount),
+        deliveryWeekdays: weekdayOrder.map(({ key, label }) => ({
             label,
             count: weekdayCounts.get(key) ?? 0,
         })),
-        timeWindows: Array.from(timeWindowCounts, ([label, count]) => ({
+        deliveryTimeWindows: Array.from(timeWindowCounts, ([label, count]) => ({
             label,
             count,
         })).sort(
