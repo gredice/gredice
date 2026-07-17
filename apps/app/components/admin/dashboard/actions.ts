@@ -17,6 +17,11 @@ import {
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { sumAiAnalysisCostUsd } from '../../../src/ai/aiAnalyticsCost';
+import {
+    analyticsDateKey,
+    analyticsTimeZone,
+    createAnalyticsDateRange,
+} from './analyticsDateRange';
 
 type OperationsDurationPoint = {
     date: string;
@@ -68,18 +73,12 @@ type DailyOperationUserStats = {
     plannedMinutes: number;
 };
 
-type DateRange = {
-    startDate: Date;
-    endDate: Date;
-};
-
 type SunflowersDailyTotalsPoint = {
     date: string;
     spent: number;
     earned: number;
 };
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAY_LABELS = [
     'Nedjelja',
     'Ponedjeljak',
@@ -96,13 +95,6 @@ const UNASSIGNED_USER = {
     userAvatarUrl: null,
 };
 
-function toDateKey(date: Date) {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 function cacheKeyPart(value: string | number | undefined) {
     if (typeof value === 'undefined' || value === '') {
         return 'none';
@@ -116,7 +108,7 @@ function analyticsCacheKey(
     from?: string,
     to?: string,
 ) {
-    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v2`;
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v3`;
 }
 
 function parseDuration(value: unknown) {
@@ -130,40 +122,6 @@ function parseDuration(value: unknown) {
         }
     }
     return 0;
-}
-
-function parseAssignedUserIds(value: unknown) {
-    if (!value || typeof value !== 'object') {
-        return [];
-    }
-
-    const payload = value as {
-        assignedUserId?: unknown;
-        assignedUserIds?: unknown;
-    };
-    const assignedUserIds = new Set<string>();
-
-    if (typeof payload.assignedUserId === 'string') {
-        const assignedUserId = payload.assignedUserId.trim();
-        if (assignedUserId.length > 0) {
-            assignedUserIds.add(assignedUserId);
-        }
-    }
-
-    if (Array.isArray(payload.assignedUserIds)) {
-        for (const item of payload.assignedUserIds) {
-            if (typeof item !== 'string') {
-                continue;
-            }
-
-            const assignedUserId = item.trim();
-            if (assignedUserId.length > 0) {
-                assignedUserIds.add(assignedUserId);
-            }
-        }
-    }
-
-    return Array.from(assignedUserIds);
 }
 
 function addDurationToUsers({
@@ -231,19 +189,14 @@ function addDurationToUsers({
     }
 }
 
-function createDurationBuckets(startDate: Date, days: number) {
-    const dateKeys: string[] = [];
+function createDurationBuckets(dateKeys: string[]) {
     const operationsTotals = new Map<string, number>();
     const plannedTotals = new Map<string, number>();
     const sowingTotals = new Map<string, number>();
-    for (let i = 0; i < days; i += 1) {
-        const current = new Date(startDate);
-        current.setDate(startDate.getDate() + i);
-        const key = toDateKey(current);
-        dateKeys.push(key);
-        operationsTotals.set(key, 0);
-        plannedTotals.set(key, 0);
-        sowingTotals.set(key, 0);
+    for (const date of dateKeys) {
+        operationsTotals.set(date, 0);
+        plannedTotals.set(date, 0);
+        sowingTotals.set(date, 0);
     }
 
     return {
@@ -316,66 +269,6 @@ function getOperationUser(operation: {
     };
 }
 
-function parseDateInput(value?: string) {
-    if (!value) {
-        return null;
-    }
-
-    const parts = value.split('-').map((part) => Number.parseInt(part, 10));
-    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
-        return null;
-    }
-
-    const [year, month, day] = parts;
-    const date = new Date(year, month - 1, day);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    if (
-        date.getFullYear() !== year ||
-        date.getMonth() !== month - 1 ||
-        date.getDate() !== day
-    ) {
-        return null;
-    }
-
-    return date;
-}
-
-function createDateRange(days: number, from?: string, to?: string): DateRange {
-    const now = new Date();
-    const defaultDays = Number.isFinite(days) && days > 0 ? days : 1;
-    const defaultStartDate = new Date(now);
-    defaultStartDate.setHours(0, 0, 0, 0);
-    defaultStartDate.setDate(defaultStartDate.getDate() - (defaultDays - 1));
-    const defaultEndDate = new Date(now);
-    defaultEndDate.setHours(23, 59, 59, 999);
-
-    const parsedFrom = parseDateInput(from);
-    const parsedTo = parseDateInput(to);
-
-    if (!parsedFrom || !parsedTo) {
-        return { startDate: defaultStartDate, endDate: defaultEndDate };
-    }
-
-    const customStartDate = new Date(parsedFrom);
-    customStartDate.setHours(0, 0, 0, 0);
-    const customEndDate = new Date(parsedTo);
-    customEndDate.setHours(23, 59, 59, 999);
-
-    if (customStartDate > customEndDate) {
-        return { startDate: defaultStartDate, endDate: defaultEndDate };
-    }
-
-    return { startDate: customStartDate, endDate: customEndDate };
-}
-
-function getRangeDays(startDate: Date, endDate: Date) {
-    const timeDiff = Math.abs(endDate.getTime() - startDate.getTime());
-    return Math.floor(timeDiff / ONE_DAY_MS) + 1;
-}
-
 export async function getAnalyticsData(
     days: number | undefined,
     from?: string,
@@ -396,8 +289,12 @@ async function getAnalyticsDataUncached(
     from?: string,
     to?: string,
 ) {
-    const { startDate, endDate } = createDateRange(days, from, to);
-    const rangeDays = getRangeDays(startDate, endDate);
+    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
+        days,
+        from,
+        to,
+    );
+    const rangeDays = dateKeys.length;
 
     const [
         analyticsResult,
@@ -420,10 +317,14 @@ async function getAnalyticsDataUncached(
             status: 'planned',
         }),
         getEntitiesFormatted<EntityStandardized>('operation'),
-        getUserRegistrationsByWeekday(startDate, endDate),
+        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
         getAiAnalysisTotals({ from: startDate, to: endDate }),
         getAiAnalysisEvents({ from: startDate, to: endDate }),
-        getSunflowersDailyTotals({ from: startDate, to: endDate }),
+        getSunflowersDailyTotals({
+            from: startDate,
+            to: endDate,
+            timeZone: analyticsTimeZone,
+        }),
     ]);
 
     const entitiesCounts = await Promise.all(
@@ -444,8 +345,8 @@ async function getAnalyticsDataUncached(
         }),
     );
 
-    const { dateKeys, operationsTotals, plannedTotals, sowingTotals } =
-        createDurationBuckets(startDate, rangeDays);
+    const { operationsTotals, plannedTotals, sowingTotals } =
+        createDurationBuckets(dateKeys);
 
     const operationDurations = new Map<number, number>();
     for (const operation of operationsData ?? []) {
@@ -467,7 +368,7 @@ async function getAnalyticsDataUncached(
             continue;
         }
 
-        const key = toDateKey(operation.completedAt);
+        const key = analyticsDateKey(operation.completedAt);
         if (!operationsTotals.has(key)) {
             continue;
         }
@@ -503,7 +404,7 @@ async function getAnalyticsDataUncached(
             continue;
         }
 
-        const key = toDateKey(operation.scheduledDate);
+        const key = analyticsDateKey(operation.scheduledDate);
         if (!plannedTotals.has(key)) {
             continue;
         }
@@ -531,7 +432,7 @@ async function getAnalyticsDataUncached(
     });
 
     for (const event of sowingEvents) {
-        const key = toDateKey(event.createdAt);
+        const key = analyticsDateKey(event.createdAt);
         if (!sowingTotals.has(key)) {
             continue;
         }
@@ -540,25 +441,6 @@ async function getAnalyticsDataUncached(
             key,
             (sowingTotals.get(key) ?? 0) + PLANT_SOWING_DURATION_MINUTES,
         );
-
-        const assignedUserIds = parseAssignedUserIds(event.data);
-        if (!assignedUserIds.length) {
-            continue;
-        }
-
-        for (const userId of assignedUserIds) {
-            const existingUser = operationsByUser.get(userId);
-            addDurationToUsers({
-                date: key,
-                durationMinutes: PLANT_SOWING_DURATION_MINUTES,
-                userId,
-                userName: existingUser?.userName ?? userId,
-                userAvatarUrl: existingUser?.userAvatarUrl ?? null,
-                operationsByUser,
-                dailyOperationsByUser,
-                includeInDailyTotals: false,
-            });
-        }
     }
 
     const operationsDuration = formatOperationsDurationData(

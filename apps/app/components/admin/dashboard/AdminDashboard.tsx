@@ -5,6 +5,7 @@ import {
     getSetting,
     SettingsKeys,
 } from '@gredice/storage';
+import { resolveCurrentWeekStatisticsPeriod } from '../../../app/admin/statistics/statisticsPeriod';
 import { auth } from '../../../lib/auth/auth';
 import { getPendingAdminApprovalTaskCount } from '../../../src/approvalTasks';
 import {
@@ -28,10 +29,12 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         params?.from,
         params?.to,
     );
-    const weeklyDataPromise =
-        selectedPeriod === '7' && !params?.from && !params?.to
-            ? selectedDataPromise
-            : getAnalyticsData(7);
+    const currentWeek = resolveCurrentWeekStatisticsPeriod();
+    const weeklyDataPromise = getAnalyticsData(
+        undefined,
+        currentWeek.pickerFrom,
+        currentWeek.pickerTo,
+    );
 
     const [
         data,

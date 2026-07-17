@@ -178,16 +178,23 @@ export async function getAnalyticsTotals(days: number = 7) {
     };
 }
 
-export async function getUserRegistrationsByWeekday(from: Date, to: Date) {
+export async function getUserRegistrationsByWeekday(
+    from: Date,
+    to: Date,
+    timeZone?: string,
+) {
     // EXTRACT(DOW) returns 0 for Sunday through 6 for Saturday, matching JS Date.getDay() indexing
+    const weekdayExpression = timeZone
+        ? sql<number>`EXTRACT(DOW FROM (${users.createdAt} AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone})::integer`
+        : sql<number>`EXTRACT(DOW FROM ${users.createdAt})::integer`;
     const rows = await storage()
         .select({
-            dayOfWeek: sql<number>`EXTRACT(DOW FROM ${users.createdAt})::integer`,
+            dayOfWeek: weekdayExpression,
             registrations: count(),
         })
         .from(users)
         .where(and(gte(users.createdAt, from), lte(users.createdAt, to)))
-        .groupBy(sql`EXTRACT(DOW FROM ${users.createdAt})`);
+        .groupBy(sql`1`);
 
     const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
     for (const row of rows) {
