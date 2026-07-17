@@ -85,6 +85,7 @@ jobs:
               - apps/delivery/**
               - packages/auth/**
               - packages/client/**
+              - packages/js/**
               - packages/notifications/**
               - packages/storage/**
               - packages/ui/**
