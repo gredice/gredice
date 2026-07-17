@@ -1,4 +1,4 @@
-import { Inbox, ListTodo, MoreHorizontal, Sprout } from '@gredice/ui/icons';
+import { Calendar, Inbox, ListTodo, Sprout } from '@gredice/ui/icons';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import Link from 'next/link';
 import type { ComponentType, SVGProps } from 'react';
@@ -18,9 +18,9 @@ type FarmNavigationIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 const farmNavigationIcons = {
     greenhouse: Sprout,
-    more: MoreHorizontal,
     notifications: Inbox,
     raised_beds: RaisedBedSimpleIcon,
+    schedule: Calendar,
     today: ListTodo,
 } satisfies Record<FarmPrimaryNavigationDestination, FarmNavigationIcon>;
 

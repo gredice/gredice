@@ -2,7 +2,6 @@ import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
@@ -16,8 +15,8 @@ import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import { ScheduleTaskBlockedDetails } from './ScheduleTaskBlockedDetails';
 import { ScheduleTaskBlockerModal } from './ScheduleTaskBlockerModal';
 import { ScheduleTaskDateChip } from './ScheduleTaskDateChip';
-import { ScheduleTaskDetailsLink } from './ScheduleTaskDetailsLink';
 import { ScheduleTaskDurationChip } from './ScheduleTaskDurationChip';
+import { ScheduleTaskLocation } from './ScheduleTaskLocation';
 import { ScheduleTaskStateControl } from './ScheduleTaskStateControl';
 import { ScheduleTaskStatusChip } from './ScheduleTaskStatusChip';
 import type { FarmScheduleDayData } from './scheduleData';
@@ -28,7 +27,6 @@ import {
     getScheduleTaskAnchorId,
     getScheduleTaskLabelId,
 } from './scheduleTaskIds';
-import { buildScheduleTaskGuidanceHref } from './scheduleTaskNavigation';
 import {
     getPlantingTaskState,
     getScheduleTaskPresentation,
@@ -62,6 +60,8 @@ interface FarmSchedulePlantingTaskCardProps {
     assignedUserByFieldIdPromise: Promise<
         Map<number, RaisedBedFieldAssignableFarmUser>
     >;
+    positionNumber?: number | null;
+    raisedBedLabel?: string | null;
     selectedDateKey: string;
 }
 
@@ -73,7 +73,8 @@ export function FarmSchedulePlantingTaskCard({
     userId,
     completionAction,
     assignedUserByFieldIdPromise,
-    selectedDateKey,
+    positionNumber,
+    raisedBedLabel,
 }: FarmSchedulePlantingTaskCardProps) {
     const taskState = getPlantingTaskState(field.plantStatus);
     if (!taskState) {
@@ -91,13 +92,6 @@ export function FarmSchedulePlantingTaskCard({
     const greenhouseSowing = field.sowingLocation === 'greenhouse';
     const taskAnchorId = getScheduleTaskAnchorId('planting', field.id);
     const taskLabelId = getScheduleTaskLabelId('planting', field.id);
-    const guidanceHref = plantSort
-        ? buildScheduleTaskGuidanceHref({
-              dateKey: selectedDateKey,
-              guidancePath: `/plants/${plantSort.id}`,
-              taskId: field.id,
-          })
-        : null;
     const detailsContent = (
         <Row spacing={2} className="min-w-0 items-start justify-between gap-3">
             <SchedulePlantVisual plantSort={plantSort} label={label} />
@@ -112,6 +106,10 @@ export function FarmSchedulePlantingTaskCard({
                 >
                     {label}
                 </Typography>
+                <ScheduleTaskLocation
+                    positionNumber={positionNumber}
+                    raisedBedLabel={raisedBedLabel}
+                />
                 <Row spacing={2} className="items-center flex-wrap gap-y-1">
                     <ScheduleTaskStatusChip state={taskState} />
                     <ScheduleTaskDurationChip
@@ -163,33 +161,7 @@ export function FarmSchedulePlantingTaskCard({
                     'bg-muted/20',
             )}
         >
-            {guidanceHref ? (
-                <ScheduleTaskDetailsLink
-                    actionLabel="Otvori upute za biljku"
-                    href={guidanceHref}
-                >
-                    {detailsContent}
-                </ScheduleTaskDetailsLink>
-            ) : (
-                <div className="min-w-0 px-1 py-1">
-                    {detailsContent}
-                    <Typography
-                        className="mt-1.5 text-muted-foreground"
-                        level="body2"
-                    >
-                        Upute za biljku trenutno nisu dostupne.
-                    </Typography>
-                    <Button
-                        className="mt-2"
-                        fullWidth
-                        href={`/raised-beds/${field.raisedBedId}`}
-                        size="lg"
-                        variant="outlined"
-                    >
-                        Otvori gredicu
-                    </Button>
-                </div>
-            )}
+            <div className="min-w-0 px-1 py-1">{detailsContent}</div>
             {taskState === 'blocked' && (
                 <ScheduleTaskBlockedDetails
                     blockedAt={field.blockedAt}

@@ -267,7 +267,7 @@ export const PLANTING_TASK_DURATION_MINUTES = 5;
 
 export function getFieldPhysicalPositionIndex(
     field: Pick<FarmRaisedBedField, 'positionIndex' | 'raisedBedId'>,
-    raisedBeds: FarmRaisedBed[],
+    raisedBeds: Pick<FarmRaisedBed, 'id'>[],
 ) {
     const raisedBedIndex = [...raisedBeds]
         .sort((left, right) => left.id - right.id)

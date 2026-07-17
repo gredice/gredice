@@ -5,6 +5,7 @@ import {
 } from './schedule/scheduleOperationRequirements';
 import {
     compareScheduleDates,
+    getFieldPhysicalPositionIndex,
     getOperationDurationMinutes,
     getScheduleTaskAgeIndicator,
     isScheduleDatePast,
@@ -16,6 +17,11 @@ import {
     getSchedulePlantingTaskAssignment,
     type ScheduleTaskAssignment,
 } from './schedule/scheduleTaskAssignment';
+import type { ScheduleTaskBlockerTarget } from './schedule/scheduleTaskBlocker';
+import {
+    getSchedulePlantingTaskIdentity,
+    type SchedulePlantingTaskIdentity,
+} from './schedule/scheduleTaskIdentity';
 import {
     getOperationTaskState,
     getPlantingTaskState,
@@ -46,14 +52,21 @@ export type FarmTodayPlantingInput = {
     plantSortId?: number | null;
     plantSowDate?: DateInput;
     plantStatus?: string | null;
+    plantCycles?: readonly {
+        active: boolean;
+        endedEventId: number;
+        plantPlaceEventId: number;
+    }[];
     positionIndex: number;
     raisedBedId: number;
     sowingLocation?: 'direct' | 'greenhouse';
 };
 
 export type FarmTodayRaisedBedInput = {
+    accountId?: string | null;
     farmId: number | null;
     fields: FarmTodayPlantingInput[];
+    gardenId?: number | null;
     id: number;
     physicalId?: string | null;
     status?: string | null;
@@ -72,6 +85,7 @@ export type FarmTodayOperationInput = {
     raisedBedId: number | null;
     scheduledDate?: DateInput;
     status: OperationStatus;
+    taskVersionEventId?: number;
 };
 
 export type FarmTodayPlantingsSourceData = {
@@ -110,8 +124,12 @@ export type FarmTodayTaskLocation =
       }
     | {
           kind: 'raisedBed' | 'greenhouse';
+          farmId: number | null;
+          groupKey: string;
           label: string;
+          physicalId: string | null;
           positionIndex: number | null;
+          positionNumber: number | null;
           raisedBedId: number;
       };
 
@@ -134,12 +152,22 @@ type FarmTodayTaskBase = {
 };
 
 export type FarmTodayOperationTask = FarmTodayTaskBase & {
+    actionTarget: Extract<
+        ScheduleTaskBlockerTarget,
+        { kind: 'operation' }
+    > | null;
+    completionConditions?: EntityStandardized['conditions'];
     kind: 'operation';
+    operationDefinitionAvailable: boolean;
     operationId: number;
     proofRequirements: ScheduleOperationCompletionRequirements;
 };
 
 export type FarmTodayPlantingTask = FarmTodayTaskBase & {
+    actionTarget: Extract<
+        ScheduleTaskBlockerTarget,
+        { kind: 'planting' }
+    > | null;
     fieldId: number;
     kind: 'planting';
     plantSortId: number;
@@ -260,21 +288,81 @@ function getRaisedBedLocation({
     greenhouse,
     positionIndex,
     raisedBed,
+    relatedRaisedBeds,
 }: {
     greenhouse: boolean;
     positionIndex: number | null;
     raisedBed: FarmTodayRaisedBedInput;
+    relatedRaisedBeds: FarmTodayRaisedBedInput[];
 }): FarmTodayTaskLocation {
+    const groupedRaisedBeds = relatedRaisedBeds.filter(
+        (candidate) =>
+            candidate.accountId === raisedBed.accountId &&
+            candidate.farmId === raisedBed.farmId &&
+            candidate.gardenId === raisedBed.gardenId &&
+            candidate.physicalId === raisedBed.physicalId,
+    );
+    const positionNumber =
+        positionIndex === null
+            ? null
+            : getFieldPhysicalPositionIndex(
+                  { positionIndex, raisedBedId: raisedBed.id },
+                  groupedRaisedBeds,
+              );
     const positionLabel =
-        positionIndex === null ? '' : ` · pozicija ${positionIndex + 1}`;
+        positionNumber === null ? '' : ` · pozicija ${positionNumber}`;
     const raisedBedLabel = `${getRaisedBedLabel(raisedBed)}${positionLabel}`;
 
     return {
+        farmId: raisedBed.farmId,
+        groupKey: [
+            raisedBed.physicalId ?? `missing-${raisedBed.id}`,
+            raisedBed.gardenId ?? 'garden:null',
+            raisedBed.accountId ?? 'account:null',
+        ].join('|'),
         kind: greenhouse ? 'greenhouse' : 'raisedBed',
         label: greenhouse ? `Staklenik · ${raisedBedLabel}` : raisedBedLabel,
+        physicalId: raisedBed.physicalId ?? null,
         positionIndex,
+        positionNumber,
         raisedBedId: raisedBed.id,
     };
+}
+
+function getOperationActionTarget(operation: FarmTodayOperationInput) {
+    if (
+        typeof operation.taskVersionEventId !== 'number' ||
+        !Number.isSafeInteger(operation.taskVersionEventId) ||
+        operation.taskVersionEventId < 0
+    ) {
+        return null;
+    }
+
+    return {
+        expectedEntityId: operation.entityId,
+        expectedTaskVersionEventId: operation.taskVersionEventId,
+        kind: 'operation' as const,
+        operationId: operation.id,
+    };
+}
+
+function getPlantingActionTarget(
+    field: FarmTodayPlantingInput,
+): Extract<ScheduleTaskBlockerTarget, { kind: 'planting' }> | null {
+    const identity: SchedulePlantingTaskIdentity | null =
+        getSchedulePlantingTaskIdentity({
+            plantCycles: field.plantCycles ?? [],
+            plantSortId: field.plantSortId,
+        });
+
+    return identity
+        ? {
+              ...identity,
+              kind: 'planting',
+              positionIndex: field.positionIndex,
+              raisedBedId: field.raisedBedId,
+          }
+        : null;
 }
 
 function buildTaskTiming(
@@ -367,6 +455,7 @@ function buildPlantingCandidates({
 
         tasks.push({
             ...buildTaskTiming(state, field.plantScheduledDate, referenceDate),
+            actionTarget: getPlantingActionTarget(field),
             assignment,
             blocker:
                 state === 'blocked'
@@ -385,6 +474,7 @@ function buildPlantingCandidates({
                 greenhouse,
                 positionIndex: field.positionIndex,
                 raisedBed,
+                relatedRaisedBeds: authorizedRaisedBeds,
             }),
             occurredAt: toIsoString(
                 state === 'blocked' ? field.blockedAt : field.plantSowDate,
@@ -544,12 +634,17 @@ function buildOperationCandidates({
                 greenhouse: false,
                 positionIndex: raisedBedField?.positionIndex ?? null,
                 raisedBed,
+                relatedRaisedBeds: authorizedRaisedBeds,
             });
         } else if (typeof operation.raisedBedId === 'number') {
             location = {
+                farmId: operation.farmId,
+                groupKey: `missing-${operation.raisedBedId}|garden:null|account:null`,
                 kind: 'raisedBed',
                 label: `Gredica ${operation.raisedBedId}`,
+                physicalId: null,
                 positionIndex: null,
+                positionNumber: null,
                 raisedBedId: operation.raisedBedId,
             };
         } else {
@@ -567,6 +662,7 @@ function buildOperationCandidates({
 
         tasks.push({
             ...buildTaskTiming(state, operation.scheduledDate, referenceDate),
+            actionTarget: getOperationActionTarget(operation),
             assignment,
             blocker:
                 state === 'blocked'
@@ -578,6 +674,7 @@ function buildOperationCandidates({
             durationMinutes: operationDefinition
                 ? getOperationDurationMinutes(operationDefinition)
                 : null,
+            completionConditions: operationDefinition?.conditions,
             href: `/operations/${operation.entityId}`,
             key: `operation:${operation.id}`,
             kind: 'operation',
@@ -592,6 +689,7 @@ function buildOperationCandidates({
                     : operation.completedAt,
             ),
             operationId: operation.id,
+            operationDefinitionAvailable: Boolean(operationDefinition),
             proofRequirements: getScheduleOperationCompletionRequirements(
                 operationDefinition,
                 operationDefinitions.status === 'ready',

@@ -1,40 +1,8 @@
 import { Button } from '@gredice/ui/Button';
-import {
-    BookA,
-    Calendar,
-    Euro,
-    Fence,
-    Inbox,
-    MapPinHouse,
-    Sprout,
-} from '@gredice/ui/icons';
+import { BookA, Euro, Sprout } from '@gredice/ui/icons';
 import type { FarmNavigationDestination } from '../components/analytics/farmAnalytics';
 
 const tools = [
-    {
-        destination: 'schedule',
-        href: '/schedule',
-        icon: Calendar,
-        label: 'Cijeli raspored',
-    },
-    {
-        destination: 'notifications',
-        href: '/notifications',
-        icon: Inbox,
-        label: 'Obavijesti',
-    },
-    {
-        destination: 'raised_beds',
-        href: '/raised-beds',
-        icon: Fence,
-        label: 'Gredice',
-    },
-    {
-        destination: 'greenhouse',
-        href: '/greenhouse',
-        icon: MapPinHouse,
-        label: 'Staklenik',
-    },
     {
         destination: 'operations',
         href: '/operations',
@@ -56,20 +24,17 @@ const tools = [
 ] satisfies {
     destination: FarmNavigationDestination;
     href: string;
-    icon: typeof Calendar;
+    icon: typeof BookA;
     label: string;
 }[];
 
 export function FarmTodayTools() {
     return (
-        <section aria-labelledby="farm-today-tools-title" className="space-y-2">
-            <h2 className="text-sm font-semibold" id="farm-today-tools-title">
-                Ostali alati
-            </h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <nav aria-label="Ostale stranice">
+            <div className="grid grid-cols-3 gap-2">
                 {tools.map(({ destination, href, icon: Icon, label }) => (
                     <Button
-                        className="justify-start px-3 text-sm"
+                        className="justify-center px-2 text-sm"
                         data-farm-analytics="navigation"
                         data-farm-navigation-destination={destination}
                         data-farm-navigation-source="today_tools"
@@ -84,6 +49,6 @@ export function FarmTodayTools() {
                     </Button>
                 ))}
             </div>
-        </section>
+        </nav>
     );
 }

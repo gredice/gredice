@@ -1,6 +1,6 @@
 import { Alert } from '@gredice/ui/Alert';
-import { Warning } from '@gredice/ui/icons';
-import { List } from '@gredice/ui/List';
+import { MapPin, Warning } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import { FarmTodayViewTracker } from '../components/analytics/FarmTodayViewTracker';
@@ -10,20 +10,63 @@ import {
     FarmTodayUnavailableState,
 } from './FarmTodayStatePanel';
 import { FarmTodaySummary } from './FarmTodaySummary';
-import { FarmTodayTaskLink } from './FarmTodayTaskLink';
+import type { FarmTodayTaskActionContext } from './FarmTodayTaskActions';
+import { FarmTodayTaskCard } from './FarmTodayTaskCard';
 import { FarmTodayTools } from './FarmTodayTools';
-import type { FarmTodayData } from './farmTodayModel';
+import type { FarmTodayData, FarmTodayTask } from './farmTodayModel';
 
 type FarmTodayViewProps = {
     data: FarmTodayData;
     headerActions?: ReactNode;
     heading: ReactNode;
+    taskActionContext?: FarmTodayTaskActionContext;
 };
+
+type FarmTodayTaskGroup = {
+    key: string;
+    label: string;
+    tasks: FarmTodayTask[];
+};
+
+function getTaskGroup(task: FarmTodayTask) {
+    if (task.location.kind === 'farm') {
+        return {
+            key: `farm:${task.location.farmId}`,
+            label: task.location.label,
+        };
+    }
+
+    const raisedBedLabel = task.location.physicalId
+        ? `Gr ${task.location.physicalId}`
+        : `Gredica ${task.location.raisedBedId}`;
+
+    return {
+        key: `raised-bed:${task.location.groupKey}`,
+        label: raisedBedLabel,
+    };
+}
+
+function groupTasks(tasks: FarmTodayTask[]) {
+    const groups = new Map<string, FarmTodayTaskGroup>();
+
+    for (const task of tasks) {
+        const { key, label } = getTaskGroup(task);
+        const group = groups.get(key);
+        if (group) {
+            group.tasks.push(task);
+        } else {
+            groups.set(key, { key, label, tasks: [task] });
+        }
+    }
+
+    return [...groups.values()];
+}
 
 export function FarmTodayView({
     data,
     headerActions,
     heading,
+    taskActionContext,
 }: FarmTodayViewProps) {
     const viewTracker =
         data.status === 'ready' || data.status === 'partial' ? (
@@ -51,8 +94,8 @@ export function FarmTodayView({
                         </div>
                     ) : null}
                 </header>
-                <FarmTodayUnavailableState />
                 <FarmTodayTools />
+                <FarmTodayUnavailableState />
             </main>
         );
     }
@@ -69,8 +112,8 @@ export function FarmTodayView({
                         </div>
                     ) : null}
                 </header>
-                <FarmTodayNoFarmState />
                 <FarmTodayTools />
+                <FarmTodayNoFarmState />
             </main>
         );
     }
@@ -80,7 +123,7 @@ export function FarmTodayView({
         ({ task }) => !focusKeys.has(task.key),
     );
     const nextTask = data.focusQueue[0];
-    const remainingTasks = data.focusQueue.slice(1);
+    const taskGroups = groupTasks(data.focusQueue);
     const partialNotice =
         data.status === 'partial' ? (
             <Alert
@@ -107,49 +150,70 @@ export function FarmTodayView({
                 ) : null}
             </header>
 
+            <FarmTodayTools />
+
             <FarmTodaySummary summary={data.summary} />
 
-            {nextTask ? (
-                <section aria-labelledby="farm-today-focus-title">
-                    <h2 className="sr-only" id="farm-today-focus-title">
-                        Fokus
-                    </h2>
-                    <List variant="outlined">
-                        <FarmTodayTaskLink
-                            emphasis="next"
-                            source="next"
-                            task={nextTask}
-                        />
-                    </List>
-                </section>
-            ) : null}
-
-            {nextTask ? partialNotice : null}
-
-            {remainingTasks.length > 0 ? (
+            {taskGroups.length > 0 ? (
                 <section
-                    aria-labelledby="farm-today-queue-title"
+                    aria-labelledby="farm-today-work-title"
                     className="space-y-2"
                 >
-                    <h2
-                        className="text-sm font-semibold"
-                        id="farm-today-queue-title"
-                    >
-                        Nakon toga
+                    <h2 className="sr-only" id="farm-today-work-title">
+                        Današnji zadaci
                     </h2>
-                    <List variant="outlined">
-                        {remainingTasks.map((task) => (
-                            <FarmTodayTaskLink
-                                key={task.key}
-                                source="queue"
-                                task={task}
-                            />
-                        ))}
-                    </List>
+                    <Stack spacing={4}>
+                        {taskGroups.map((group, groupIndex) => {
+                            const groupTitleId = `farm-today-task-group-${groupIndex}`;
+
+                            return (
+                                <section
+                                    aria-labelledby={groupTitleId}
+                                    className="space-y-2"
+                                    key={group.key}
+                                >
+                                    <div className="flex min-w-0 items-center justify-between gap-3">
+                                        <h3
+                                            className="inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md bg-primary/10 px-2.5 text-base font-bold text-primary [overflow-wrap:anywhere]"
+                                            id={groupTitleId}
+                                        >
+                                            <MapPin
+                                                aria-hidden
+                                                className="size-4 shrink-0"
+                                            />
+                                            {group.label}
+                                        </h3>
+                                        <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                                            {group.tasks.length}{' '}
+                                            {group.tasks.length === 1
+                                                ? 'zadatak'
+                                                : 'zadataka'}
+                                        </span>
+                                    </div>
+                                    <Stack spacing={2}>
+                                        {group.tasks.map((task) => (
+                                            <FarmTodayTaskCard
+                                                actionContext={
+                                                    taskActionContext
+                                                }
+                                                emphasis={
+                                                    task.key === nextTask?.key
+                                                        ? 'next'
+                                                        : 'standard'
+                                                }
+                                                key={task.key}
+                                                task={task}
+                                            />
+                                        ))}
+                                    </Stack>
+                                </section>
+                            );
+                        })}
+                    </Stack>
                 </section>
             ) : null}
 
-            {!nextTask ? partialNotice : null}
+            {partialNotice}
 
             {!nextTask ? (
                 <FarmTodayAvailableStatePanel
@@ -176,19 +240,17 @@ export function FarmTodayView({
                             Zadaci koji čekaju potvrdu ili zahtijevaju provjeru.
                         </Typography>
                     </div>
-                    <List variant="outlined">
+                    <Stack spacing={2}>
                         {attentionItems.map(({ task }) => (
-                            <FarmTodayTaskLink
+                            <FarmTodayTaskCard
+                                actionContext={taskActionContext}
                                 key={task.key}
-                                source="attention"
                                 task={task}
                             />
                         ))}
-                    </List>
+                    </Stack>
                 </section>
             ) : null}
-
-            <FarmTodayTools />
         </main>
     );
 }

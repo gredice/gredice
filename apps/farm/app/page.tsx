@@ -21,10 +21,12 @@ async function getFarmAuth() {
 }
 
 async function FarmTodayDashboard({
+    accountId,
     fallbackDisplayName,
     sessionIncarnation,
     userId,
 }: {
+    accountId: string;
     fallbackDisplayName: string;
     sessionIncarnation: string;
     userId: string;
@@ -48,6 +50,7 @@ async function FarmTodayDashboard({
                     initialDateIso={new Date().toISOString()}
                 />
             }
+            taskActionContext={{ accountId, sessionIncarnation, userId }}
             headerActions={
                 <>
                     <IconButton
@@ -80,6 +83,7 @@ export default async function Home() {
             {authContext ? (
                 <Suspense fallback={<FarmTodayLoadingState />}>
                     <FarmTodayDashboard
+                        accountId={authContext.accountId}
                         fallbackDisplayName={authContext.user.userName}
                         sessionIncarnation={authContext.sessionIncarnation}
                         userId={authContext.userId}

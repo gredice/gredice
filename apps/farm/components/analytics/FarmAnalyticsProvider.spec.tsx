@@ -130,6 +130,7 @@ function buildOperationTask(
     state: FarmTodayOperationTask['state'] = 'actionable',
 ): FarmTodayOperationTask {
     return {
+        actionTarget: null,
         ageIndicator: null,
         assignment: 'mine',
         durationMinutes: 15,
@@ -144,6 +145,7 @@ function buildOperationTask(
         },
         occurredAt: null,
         operationId: 987654321,
+        operationDefinitionAvailable: true,
         overdue: false,
         proofRequirements: { images: 'required', notes: 'optional' },
         scheduledDate: '2026-07-15T08:00:00.000Z',
@@ -387,7 +389,7 @@ test('captures only bounded completion synchronization properties', async ({
     );
 });
 
-test('marks actual Today focus, queue, and attention task links with safe analytics attributes', async ({
+test('keeps Today task cards free of removed manual links and task-open analytics', async ({
     mount,
 }) => {
     const nextTask = buildOperationTask(
@@ -428,27 +430,11 @@ test('marks actual Today focus, queue, and attention task links with safe analyt
         </AppRouterContext.Provider>,
     );
 
-    const nextLink = component.locator('a[href="/operations/801"]');
-    const queuedLink = component.locator('a[href="/operations/802"]');
-    const attentionLink = component.locator('a[href="/operations/803"]');
-
-    await expect(nextLink).toHaveAttribute('data-farm-analytics', 'today_task');
-    await expect(nextLink).toHaveAttribute('data-farm-task-source', 'next');
-    await expect(nextLink).toHaveAttribute('data-farm-task-kind', 'operation');
-    await expect(nextLink).toHaveAttribute('data-farm-task-assignment', 'mine');
-    await expect(nextLink).toHaveAttribute(
-        'data-farm-task-state',
-        'actionable',
+    await expect(component.locator('[data-farm-today-task-card]')).toHaveCount(
+        3,
     );
-    await expect(nextLink).toHaveAttribute('data-farm-task-overdue', 'false');
-
-    await expect(queuedLink).toHaveAttribute('data-farm-task-source', 'queue');
-    await expect(attentionLink).toHaveAttribute(
-        'data-farm-task-source',
-        'attention',
-    );
-    await expect(attentionLink).toHaveAttribute(
-        'data-farm-task-state',
-        'failed',
-    );
+    await expect(component.locator('a[href^="/operations/"]')).toHaveCount(0);
+    await expect(
+        component.locator('[data-farm-analytics="today_task"]'),
+    ).toHaveCount(0);
 });

@@ -4,7 +4,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { CompleteOperationModal } from './CompleteOperationModal';
-import { FarmScheduleOperationTaskCard } from './FarmScheduleOperationTaskCard';
+import {
+    type FarmOperationCardData,
+    FarmScheduleOperationTaskCard,
+} from './FarmScheduleOperationTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
@@ -24,6 +27,11 @@ import {
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 
+type SortableOperationCard = Pick<
+    FarmOperationCardData,
+    'label' | 'positionNumber' | 'scheduledDate'
+>;
+
 interface FarmScheduleOperationsSectionProps {
     accountId: string;
     raisedBeds: FarmScheduleDayData['raisedBeds'];
@@ -39,13 +47,42 @@ interface FarmScheduleOperationsSectionProps {
     userId: string;
 }
 
-function buildOperationLabel(
+export function compareRaisedBedScheduleOperations(
+    left: SortableOperationCard,
+    right: SortableOperationCard,
+) {
+    const dateComparison = compareScheduleDates(
+        left.scheduledDate,
+        right.scheduledDate,
+    );
+    if (dateComparison !== 0) {
+        return dateComparison;
+    }
+
+    const leftPosition = left.positionNumber ?? Number.POSITIVE_INFINITY;
+    const rightPosition = right.positionNumber ?? Number.POSITIVE_INFINITY;
+    if (leftPosition !== rightPosition) {
+        return leftPosition - rightPosition;
+    }
+
+    return left.label.localeCompare(right.label, undefined, {
+        numeric: true,
+    });
+}
+
+function buildOperationCardData(
     operation: FarmOperation,
     raisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
     operationDataById: Map<number, EntityStandardized>,
 ) {
     const operationData = operationDataById.get(operation.entityId);
+    const raisedBed =
+        operation.raisedBedId === null
+            ? undefined
+            : raisedBeds.find(
+                  (candidate) => candidate.id === operation.raisedBedId,
+              );
     const field = operation.raisedBedFieldId
         ? raisedBeds
               .flatMap((raisedBed) => raisedBed.fields)
@@ -58,12 +95,22 @@ function buildOperationLabel(
         ? plantSortById.get(field.plantSortId)
         : undefined;
     const physicalPositionIndex = field
-        ? getFieldPhysicalPositionIndex(field, raisedBeds).toString()
-        : '';
+        ? getFieldPhysicalPositionIndex(field, raisedBeds)
+        : null;
     const isFullRaisedBed =
         operationData?.attributes?.application === 'raisedBedFull';
 
-    return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
+    return {
+        ...operation,
+        durationMinutes: getOperationDurationMinutes(operationData),
+        label: `${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`,
+        positionNumber: isFullRaisedBed ? null : physicalPositionIndex,
+        raisedBedLabel: raisedBed
+            ? raisedBed.physicalId
+                ? `Gr ${raisedBed.physicalId}`
+                : `Gredica ${raisedBed.id}`
+            : null,
+    };
 }
 
 export function FarmScheduleOperationsSection({
@@ -125,23 +172,14 @@ export function FarmScheduleOperationsSection({
                 typeof operation.farmId === 'number' &&
                 operation.raisedBedId === null,
         )
-        .map((operation) => {
-            const label = buildOperationLabel(
+        .map((operation) =>
+            buildOperationCardData(
                 operation,
                 raisedBeds,
                 plantSortById,
                 operationDataById,
-            );
-            const durationMinutes = getOperationDurationMinutes(
-                operationDataById.get(operation.entityId),
-            );
-
-            return {
-                ...operation,
-                durationMinutes,
-                label,
-            };
-        })
+            ),
+        )
         .sort((left, right) =>
             left.label.localeCompare(right.label, undefined, {
                 numeric: true,
@@ -155,11 +193,7 @@ export function FarmScheduleOperationsSection({
 
     if (mode === 'harvest' || mode === 'watering') {
         const groupedOperations = raisedBedGroups.flatMap(
-            ({ physicalId, raisedBeds: groupedRaisedBeds }) => {
-                const raisedBedLabel = physicalId
-                    ? `Gr ${physicalId}`
-                    : `Gredica ${groupedRaisedBeds[0]?.id ?? ''}`;
-
+            ({ raisedBeds: groupedRaisedBeds }) => {
                 return visibleScheduledOperations
                     .filter(
                         (operation) =>
@@ -169,31 +203,15 @@ export function FarmScheduleOperationsSection({
                                     raisedBed.id === operation.raisedBedId,
                             ),
                     )
-                    .map((operation) => ({
-                        ...operation,
-                        durationMinutes: getOperationDurationMinutes(
-                            operationDataById.get(operation.entityId),
-                        ),
-                        label: `${raisedBedLabel} · ${buildOperationLabel(
+                    .map((operation) =>
+                        buildOperationCardData(
                             operation,
                             groupedRaisedBeds,
                             plantSortById,
                             operationDataById,
-                        )}`,
-                    }))
-                    .sort((left, right) => {
-                        const dateComparison = compareScheduleDates(
-                            left.scheduledDate,
-                            right.scheduledDate,
-                        );
-
-                        return (
-                            dateComparison ||
-                            left.label.localeCompare(right.label, undefined, {
-                                numeric: true,
-                            })
-                        );
-                    });
+                        ),
+                    )
+                    .sort(compareRaisedBedScheduleOperations);
             },
         );
         const groupedTotalDuration = groupedOperations.reduce(
@@ -260,40 +278,15 @@ export function FarmScheduleOperationsSection({
                                         raisedBed.id === operation.raisedBedId,
                                 ),
                         )
-                        .map((operation) => {
-                            const label = buildOperationLabel(
+                        .map((operation) =>
+                            buildOperationCardData(
                                 operation,
                                 groupedRaisedBeds,
                                 plantSortById,
                                 operationDataById,
-                            );
-                            const durationMinutes = getOperationDurationMinutes(
-                                operationDataById.get(operation.entityId),
-                            );
-
-                            return {
-                                ...operation,
-                                durationMinutes,
-                                label,
-                            };
-                        })
-                        .sort((left, right) => {
-                            const dateComparison = compareScheduleDates(
-                                left.scheduledDate,
-                                right.scheduledDate,
-                            );
-                            if (dateComparison !== 0) {
-                                return dateComparison;
-                            }
-
-                            return left.label.localeCompare(
-                                right.label,
-                                undefined,
-                                {
-                                    numeric: true,
-                                },
-                            );
-                        });
+                            ),
+                        )
+                        .sort(compareRaisedBedScheduleOperations);
 
                     const totalDuration = dayOperations.reduce(
                         (sum, operation) => sum + operation.durationMinutes,
