@@ -1,3 +1,4 @@
+import { minimumShoppingCartAmountEur } from '@gredice/js/shoppingCart';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -349,6 +350,10 @@ export default async function PricingPage() {
                                     Nije dostupno
                                 </Chip>
                             </div>
+                            <Typography level="body3" secondary>
+                                Minimalna vrijednost narudžbe iznosi{' '}
+                                {formatPrice(minimumShoppingCartAmountEur)}.
+                            </Typography>
                             <Typography level="body3" secondary>
                                 Interne radnje namijenjene su OPG partnerima i
                                 ne naplaćuju se. Cijena 0 € za biljku, sortu ili

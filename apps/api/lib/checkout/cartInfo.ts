@@ -2,6 +2,7 @@ import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
 } from '@gredice/js/raisedBeds';
+import { minimumShoppingCartAmountEur } from '@gredice/js/shoppingCart';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -79,6 +80,17 @@ export function getAbandonedRaisedBedCartNote(raisedBedName?: string | null) {
     const prefix = raisedBedName?.trim() ? raisedBedName.trim() : 'Gredica';
 
     return `${prefix} je napuštena zbog neaktivnosti. ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`;
+}
+
+export function getMinimumOrderNote(totalCartValueEur: number) {
+    if (
+        totalCartValueEur <= 0 ||
+        totalCartValueEur >= minimumShoppingCartAmountEur
+    ) {
+        return null;
+    }
+
+    return `Minimalna vrijednost narudžbe je ${minimumShoppingCartAmountEur} €.`;
 }
 
 export async function getCartInfo(
@@ -357,7 +369,6 @@ export async function getCartInfo(
         allowPurchase = false;
     }
 
-    // Minimum order (0.5 EUR)
     const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
         if (item.status !== 'paid' && item.currency === 'eur') {
             const price =
@@ -366,8 +377,9 @@ export async function getCartInfo(
         }
         return sum;
     }, 0);
-    if (totalCartValue > 0 && totalCartValue < 0.5) {
-        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
+    const minimumOrderNote = getMinimumOrderNote(totalCartValue);
+    if (minimumOrderNote) {
+        notes.push(minimumOrderNote);
         allowPurchase = false;
     }
     // --- End notes logic ---
