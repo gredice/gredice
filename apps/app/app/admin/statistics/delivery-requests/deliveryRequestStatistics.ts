@@ -94,6 +94,27 @@ function formatMonthLabel(monthKey: string) {
     return monthLabelFormatter.format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
+function listMonthKeys(firstMonthKey: string, lastMonthKey: string) {
+    const [firstYear, firstMonth] = firstMonthKey.split('-').map(Number);
+    const [lastYear, lastMonth] = lastMonthKey.split('-').map(Number);
+    const monthKeys: string[] = [];
+
+    let year = firstYear;
+    let month = firstMonth;
+
+    while (year < lastYear || (year === lastYear && month <= lastMonth)) {
+        monthKeys.push(`${year}-${String(month).padStart(2, '0')}`);
+        month += 1;
+
+        if (month > 12) {
+            year += 1;
+            month = 1;
+        }
+    }
+
+    return monthKeys;
+}
+
 function formatTimeWindow(startAt: Date, endAt: Date) {
     return `${timeFormatter.format(startAt)}–${timeFormatter.format(endAt)}`;
 }
@@ -129,10 +150,12 @@ export function buildDeliveryRequestStatistics(
             continue;
         }
 
+        const label = formatSlotLabel(request);
+
         slotCounts.set(request.slot.id, {
             id: request.slot.id,
-            label: formatSlotLabel(request),
-            shortLabel: `${slotDateFormatter.format(request.slot.startAt)} · ${formatTimeWindow(request.slot.startAt, request.slot.endAt)}`,
+            label,
+            shortLabel: label,
             count: 1,
         });
     }
@@ -157,6 +180,15 @@ export function buildDeliveryRequestStatistics(
     const fulfilledRequests = stateCounts.get('fulfilled') ?? 0;
     const cancelledRequests = stateCounts.get('cancelled') ?? 0;
     const totalRequests = requests.length;
+    const observedTrendMonths = Array.from(trendCounts.keys()).sort(
+        (left, right) => left.localeCompare(right),
+    );
+    const firstTrendMonth = observedTrendMonths[0];
+    const lastTrendMonth = observedTrendMonths.at(-1);
+    const trendMonths =
+        firstTrendMonth && lastTrendMonth
+            ? listMonthKeys(firstTrendMonth, lastTrendMonth)
+            : [];
 
     return {
         summary: {
@@ -210,10 +242,10 @@ export function buildDeliveryRequestStatistics(
                 count: requests.filter((request) => !request.mode).length,
             },
         ].filter((item) => item.count > 0),
-        trend: Array.from(trendCounts, ([month, count]) => ({
+        trend: trendMonths.map((month) => ({
             month,
             label: formatMonthLabel(month),
-            count,
-        })).sort((left, right) => left.month.localeCompare(right.month)),
+            count: trendCounts.get(month) ?? 0,
+        })),
     };
 }

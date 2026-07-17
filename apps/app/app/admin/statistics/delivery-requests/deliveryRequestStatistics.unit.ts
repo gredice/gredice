@@ -75,7 +75,7 @@ test('aggregates delivery demand by slot, weekday, time, state, mode and month',
         mostPopularSlot: {
             id: 11,
             label: '06. 07. 2026. · 08:00–10:00 · Gredice Zagreb',
-            shortLabel: '06. 07. 2026. · 08:00–10:00',
+            shortLabel: '06. 07. 2026. · 08:00–10:00 · Gredice Zagreb',
             count: 3,
         },
     });
@@ -101,6 +101,75 @@ test('aggregates delivery demand by slot, weekday, time, state, mode and month',
         [
             { month: '2026-06', count: 1 },
             { month: '2026-07', count: 4 },
+        ],
+    );
+});
+
+test('keeps locations visible for slots with the same date and time', () => {
+    const statistics = buildDeliveryRequestStatistics([
+        {
+            id: 'request-zagreb',
+            state: 'pending',
+            createdAt: new Date('2026-07-01T10:00:00.000Z'),
+            slot: slot(
+                21,
+                '2026-07-06T06:00:00.000Z',
+                '2026-07-06T08:00:00.000Z',
+                'Gredice Zagreb',
+            ),
+        },
+        {
+            id: 'request-split',
+            state: 'pending',
+            createdAt: new Date('2026-07-01T10:00:00.000Z'),
+            slot: slot(
+                22,
+                '2026-07-06T06:00:00.000Z',
+                '2026-07-06T08:00:00.000Z',
+                'Gredice Split',
+            ),
+        },
+    ]);
+
+    assert.deepEqual(
+        statistics.popularSlots.map(({ id, shortLabel }) => ({
+            id,
+            shortLabel,
+        })),
+        [
+            {
+                id: 22,
+                shortLabel: '06. 07. 2026. · 08:00–10:00 · Gredice Split',
+            },
+            {
+                id: 21,
+                shortLabel: '06. 07. 2026. · 08:00–10:00 · Gredice Zagreb',
+            },
+        ],
+    );
+});
+
+test('fills zero-demand months between the first and last request', () => {
+    const statistics = buildDeliveryRequestStatistics([
+        {
+            id: 'request-january',
+            state: 'fulfilled',
+            createdAt: new Date('2026-01-15T10:00:00.000Z'),
+        },
+        {
+            id: 'request-april',
+            state: 'fulfilled',
+            createdAt: new Date('2026-04-15T10:00:00.000Z'),
+        },
+    ]);
+
+    assert.deepEqual(
+        statistics.trend.map(({ month, count }) => ({ month, count })),
+        [
+            { month: '2026-01', count: 1 },
+            { month: '2026-02', count: 0 },
+            { month: '2026-03', count: 0 },
+            { month: '2026-04', count: 1 },
         ],
     );
 });
