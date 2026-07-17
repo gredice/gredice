@@ -31,6 +31,7 @@
         "@biomejs/biome": "2.5.3",
         "@gredice/auth": "workspace:*",
         "@gredice/client": "workspace:*",
+        "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",

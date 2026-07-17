@@ -2,21 +2,18 @@
 
 'use client';
 
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
+import { grediceHqPosition, zagrebBoundary } from '@gredice/js/delivery';
 import { Button } from '@gredice/ui/Button';
 import { MyLocation } from '@gredice/ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import { deliveryRoadAreaPaths } from './deliveryRoadAreaData';
-import { grediceHqPosition, zagrebBoundary } from './deliveryZoneMapData';
+import {
+    type DeliveryMapLibraries,
+    googleMapsAuthFailureEvent,
+    loadDeliveryMapLibraries,
+} from './googleMapsClient';
 
 type MapState = 'loading' | 'ready' | 'fallback';
-
-type GoogleMapsClient = {
-    LatLngBounds: typeof google.maps.LatLngBounds;
-    Map: typeof google.maps.Map;
-    Marker: typeof google.maps.Marker;
-    Polygon: typeof google.maps.Polygon;
-};
 
 type MapLayers = {
     deliveryArea: google.maps.Polygon[];
@@ -25,67 +22,13 @@ type MapLayers = {
     zagrebArea: google.maps.Polygon | null;
 };
 
-declare global {
-    interface Window {
-        gm_authFailure?: () => void;
-    }
-}
-
-const googleMapsAuthFailureEvent = 'gredice-www-google-maps-auth-failure';
-let configuredApiKey: string | null = null;
-let mapsAuthFailed = false;
-let mapsPromise: Promise<GoogleMapsClient> | null = null;
-
-function loadGoogleMaps(apiKey: string) {
-    if (mapsAuthFailed) {
-        return Promise.reject(
-            new Error('Google Maps JavaScript API authorization failed'),
-        );
-    }
-    if (configuredApiKey && configuredApiKey !== apiKey) {
-        return Promise.reject(
-            new Error('Google Maps JavaScript API key changed after loading'),
-        );
-    }
-    if (mapsPromise) return mapsPromise;
-
-    window.gm_authFailure = () => {
-        mapsAuthFailed = true;
-        window.dispatchEvent(new Event(googleMapsAuthFailureEvent));
-    };
-    configuredApiKey = apiKey;
-    setOptions({
-        key: apiKey,
-        v: 'quarterly',
-        language: 'hr',
-        region: 'HR',
-        authReferrerPolicy: 'origin',
-    });
-    mapsPromise = Promise.all([
-        importLibrary('maps'),
-        importLibrary('marker'),
-        importLibrary('core'),
-    ])
-        .then(([maps, marker, core]) => ({
-            LatLngBounds: core.LatLngBounds,
-            Map: maps.Map,
-            Marker: marker.Marker,
-            Polygon: maps.Polygon,
-        }))
-        .catch((error: unknown) => {
-            mapsPromise = null;
-            throw error;
-        });
-    return mapsPromise;
-}
-
 function clearLayers(layers: MapLayers) {
     for (const area of layers.deliveryArea) area.setMap(null);
     layers.hqMarker?.setMap(null);
     layers.zagrebArea?.setMap(null);
 }
 
-function drawDeliveryZones(map: google.maps.Map, maps: GoogleMapsClient) {
+function drawDeliveryZones(map: google.maps.Map, maps: DeliveryMapLibraries) {
     const deliveryBounds = new maps.LatLngBounds();
     const deliveryArea = deliveryRoadAreaPaths.map((path) => {
         const paths = path.map(([longitude, latitude]) => {
@@ -166,7 +109,7 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
             const element = containerRef.current;
             if (!element) return;
             try {
-                const maps = await loadGoogleMaps(apiKey);
+                const maps = await loadDeliveryMapLibraries(apiKey);
                 if (!active) return;
                 const map = new maps.Map(element, {
                     center: grediceHqPosition,

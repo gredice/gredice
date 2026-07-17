@@ -437,6 +437,9 @@ importers:
       '@gredice/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../../packages/js
       '@gredice/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications

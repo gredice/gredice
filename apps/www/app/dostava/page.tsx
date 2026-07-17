@@ -1,3 +1,4 @@
+import { deliveryPricePerKilometre } from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -13,14 +14,13 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
+import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
 import { DeliveryZoneMap } from './DeliveryZoneMap';
 
 export const metadata: Metadata = {
     title: 'Dostava',
     description: 'Sve informacije o dostavi povrća iz tvojih gredica.',
 };
-
-const distanceSurchargePerKm = 0.2;
 
 const deliveryLocations = [
     { name: 'Velika Gorica', distance: 20 },
@@ -69,7 +69,8 @@ export default function DeliveryPage() {
                         udaljenosti:
                         <strong>
                             {' '}
-                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                            {formatPrice(deliveryPricePerKilometre)} po
+                            kilometru
                         </strong>
                         .
                     </Alert>
@@ -82,10 +83,12 @@ export default function DeliveryPage() {
                         </a>
                         :{' '}
                         <strong>
-                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                            {formatPrice(deliveryPricePerKilometre)} po
+                            kilometru
                         </strong>
                         .
                     </p>
+                    <DeliveryAvailabilityChecker />
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
                     <figure className="not-prose mb-4 w-full">
                         <DeliveryZoneMap apiKey={googleMapsApiKey} />
@@ -157,7 +160,8 @@ export default function DeliveryPage() {
                             </tr>
                             {deliveryLocations.map((location) => {
                                 const distanceFee =
-                                    location.distance * distanceSurchargePerKm;
+                                    location.distance *
+                                    deliveryPricePerKilometre;
                                 return (
                                     <tr key={location.name}>
                                         <td className="border-border border-t border-r px-2 py-2">
@@ -173,7 +177,7 @@ export default function DeliveryPage() {
                                             <strong>
                                                 {location.distance} km ×{' '}
                                                 {formatPrice(
-                                                    distanceSurchargePerKm,
+                                                    deliveryPricePerKilometre,
                                                 )}
                                                 /km = {formatPrice(distanceFee)}
                                             </strong>
@@ -193,14 +197,14 @@ export default function DeliveryPage() {
                                 </td>
                                 <td className="border-border border-t border-r px-2 py-2">
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}
+                                        {formatPrice(deliveryPricePerKilometre)}
                                         /km
                                     </strong>
                                 </td>
                                 <td className="border-border border-t px-2 py-2">
                                     <strong>
                                         udaljenost ×{' '}
-                                        {formatPrice(distanceSurchargePerKm)}
+                                        {formatPrice(deliveryPricePerKilometre)}
                                         /km
                                     </strong>
                                 </td>
