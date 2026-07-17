@@ -4,7 +4,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { CompleteOperationModal } from './CompleteOperationModal';
-import { FarmScheduleOperationTaskCard } from './FarmScheduleOperationTaskCard';
+import {
+    type FarmOperationCardData,
+    FarmScheduleOperationTaskCard,
+} from './FarmScheduleOperationTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
@@ -24,6 +27,11 @@ import {
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 
+type SortableOperationCard = Pick<
+    FarmOperationCardData,
+    'label' | 'positionNumber' | 'scheduledDate'
+>;
+
 interface FarmScheduleOperationsSectionProps {
     accountId: string;
     raisedBeds: FarmScheduleDayData['raisedBeds'];
@@ -37,6 +45,29 @@ interface FarmScheduleOperationsSectionProps {
     selectedDateKey: string;
     sessionIncarnation: string;
     userId: string;
+}
+
+export function compareRaisedBedScheduleOperations(
+    left: SortableOperationCard,
+    right: SortableOperationCard,
+) {
+    const dateComparison = compareScheduleDates(
+        left.scheduledDate,
+        right.scheduledDate,
+    );
+    if (dateComparison !== 0) {
+        return dateComparison;
+    }
+
+    const leftPosition = left.positionNumber ?? Number.POSITIVE_INFINITY;
+    const rightPosition = right.positionNumber ?? Number.POSITIVE_INFINITY;
+    if (leftPosition !== rightPosition) {
+        return leftPosition - rightPosition;
+    }
+
+    return left.label.localeCompare(right.label, undefined, {
+        numeric: true,
+    });
 }
 
 function buildOperationCardData(
@@ -180,19 +211,7 @@ export function FarmScheduleOperationsSection({
                             operationDataById,
                         ),
                     )
-                    .sort((left, right) => {
-                        const dateComparison = compareScheduleDates(
-                            left.scheduledDate,
-                            right.scheduledDate,
-                        );
-
-                        return (
-                            dateComparison ||
-                            left.label.localeCompare(right.label, undefined, {
-                                numeric: true,
-                            })
-                        );
-                    });
+                    .sort(compareRaisedBedScheduleOperations);
             },
         );
         const groupedTotalDuration = groupedOperations.reduce(
@@ -267,23 +286,7 @@ export function FarmScheduleOperationsSection({
                                 operationDataById,
                             ),
                         )
-                        .sort((left, right) => {
-                            const dateComparison = compareScheduleDates(
-                                left.scheduledDate,
-                                right.scheduledDate,
-                            );
-                            if (dateComparison !== 0) {
-                                return dateComparison;
-                            }
-
-                            return left.label.localeCompare(
-                                right.label,
-                                undefined,
-                                {
-                                    numeric: true,
-                                },
-                            );
-                        });
+                        .sort(compareRaisedBedScheduleOperations);
 
                     const totalDuration = dayOperations.reduce(
                         (sum, operation) => sum + operation.durationMinutes,
