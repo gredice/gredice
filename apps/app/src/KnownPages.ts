@@ -54,6 +54,7 @@ export const KnownPages = {
     Automation: (automationId: number) =>
         `/admin/automations/${automationId}` as Route,
     SowingStatistics: '/admin/statistics/sowing',
+    DeliveryRequestStatistics: '/admin/statistics/delivery-requests',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',

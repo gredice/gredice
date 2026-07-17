@@ -12,6 +12,7 @@ import {
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Inbox,
     Lightning,
@@ -113,6 +114,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.Inventory:
         case KnownPages.SowingStatistics:
             return <Tally3 className="size-4" />;
+        case KnownPages.DeliveryRequestStatistics:
+            return <Graph className="size-4" />;
         case KnownPages.Notifications:
         case KnownPages.SocialPublishing:
             return <Megaphone className="size-4" />;

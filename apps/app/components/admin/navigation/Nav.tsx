@@ -100,6 +100,7 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Truck className="size-5" />;
         case KnownPages.DeliveryOperations:
         case KnownPages.DeliveryNotifications:
+        case KnownPages.DeliveryRequestStatistics:
             return <Graph className="size-5" />;
         case KnownPages.FarmerPayouts:
         case KnownPages.FarmerPrices:
@@ -268,10 +269,10 @@ export function Nav({
         shadowTypes.length > 0 ||
         uncategorizedTypes.length > 0;
     const navClassName = compact ? 'space-y-1' : 'space-y-3';
-    const sowingStatisticsActive = isSelectedPath(
-        pathname,
+    const statisticsActive = includesSelectedPath(pathname, [
         adminPages.SowingStatistics.href,
-    );
+        adminPages.DeliveryRequestStatistics.href,
+    ]);
 
     return (
         <div className={navClassName}>
@@ -738,13 +739,13 @@ export function Nav({
                 <NavGroup
                     label="Izvještaji"
                     icon={<Tally3 className="size-5" />}
-                    forceOpen={sowingStatisticsActive}
+                    forceOpen={statisticsActive}
                     compact={compact}
                 >
                     <NavGroup
                         label="Statistika"
                         icon={<Tally3 className="size-5" />}
-                        forceOpen={sowingStatisticsActive}
+                        forceOpen={statisticsActive}
                         compact={compact}
                         depth={1}
                     >
@@ -752,6 +753,14 @@ export function Nav({
                             href={adminPages.SowingStatistics.href}
                             label={adminPages.SowingStatistics.label}
                             icon={<Tally3 className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.DeliveryRequestStatistics.href}
+                            label={adminPages.DeliveryRequestStatistics.label}
+                            icon={<Graph className="size-5" />}
                             onClick={onItemClick}
                             compact={compact}
                             nested
