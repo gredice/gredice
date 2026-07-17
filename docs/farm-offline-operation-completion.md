@@ -35,9 +35,9 @@ selection are outside its scope.
 | `drain_only` | Uses the legacy online path | Drains in the foreground | Queue and resolution UI remain visible |
 | `enabled` | Persists before any network work | Drains in the foreground | Full queue and resolution UI |
 
-Production defaults to `off`. Development and test default to `enabled`. A
-Vercel flag override can select another mode for a controlled environment or
-pilot.
+Production, development, and test default to `enabled` while Farm is in its
+active pilot. A Vercel flag override can select another mode for rollback or
+targeted testing.
 
 The workflow uses the existing authenticated Farm session and Vercel Blob
 configuration. It adds no database migration and no service-worker background
@@ -168,13 +168,13 @@ and successful receipts without joining them to private farmer content.
 
 ## Rollout and rollback
 
-1. Keep production `off` while automated storage, concurrency, mobile,
-   accessibility, and privacy tests are incomplete.
-2. Enable a small internal cohort and complete GitHub task #4194 on physical
-   iOS standalone and Android Chrome devices, including weak connectivity,
-   background/force-close/reopen, lost response, and logout cases.
+1. Keep production `enabled` while Farm is in its active pilot.
+2. Record physical iOS standalone and Android Chrome results, including weak
+   connectivity, background/force-close/reopen, lost response, and logout
+   cases. Reopen GitHub task #4194 if a formal go/no-go gate is reinstated.
 3. Review controlled telemetry and unreferenced Blob growth.
-4. Expand `enabled` only after the real-device go/no-go record is approved.
+4. Retain `enabled` after the pilot only when the go/no-go record is approved;
+   otherwise use the rollback sequence below.
 
 To stop new queue creation while preserving farmer work, change `enabled` to
 `drain_only`. Keep the app deployed until existing records reach a server
