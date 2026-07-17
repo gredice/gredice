@@ -2,6 +2,7 @@ import type { SelectCmsPage } from '@gredice/storage';
 import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Typography } from '@gredice/ui/Typography';
+import Image from 'next/image';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { CmsPageStateChip } from './CmsPageStateChip';
@@ -70,13 +71,14 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                     startDecorator={
                         page.metaImageUrl ? (
                             <span className="h-10 w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
-                                {/** biome-ignore lint/performance/noImgElement: CMS covers may use arbitrary uploaded image URLs. */}
-                                <img
+                                <Image
                                     alt=""
                                     className="size-full object-cover"
                                     decoding="async"
+                                    height={40}
                                     loading="lazy"
                                     src={page.metaImageUrl}
+                                    width={64}
                                 />
                             </span>
                         ) : undefined

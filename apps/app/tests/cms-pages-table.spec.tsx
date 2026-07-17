@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { CmsPagesTable } from '../app/admin/cms/pages/CmsPagesTable';
 
 const coverUrl =
-    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="100"%3E%3Cpath fill="%236b8e23" d="M0 0h160v100H0z"/%3E%3C/svg%3E';
+    'https://test.public.blob.vercel-storage.com/cms/pages/1/cover/test.jpg';
 const timestamp = new Date('2026-07-17T08:00:00.000Z');
 
 function cmsPage(
@@ -59,7 +59,14 @@ test('shows an available cover thumbnail before the page title', async ({
     });
     const thumbnail = pageWithCover.locator('img');
 
-    await expect(thumbnail).toHaveAttribute('src', coverUrl);
+    await expect(thumbnail).toHaveAttribute(
+        'src',
+        /\/_next\/image\?url=.*&w=128&q=75$/,
+    );
+    await expect(thumbnail).toHaveAttribute(
+        'srcset',
+        /w=64&q=75 1x, .*w=128&q=75 2x$/,
+    );
     await expect(pageWithoutCover.locator('img')).toHaveCount(0);
 
     const thumbnailPrecedesTitle = await thumbnail.evaluate((image) => {
