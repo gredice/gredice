@@ -254,7 +254,7 @@ the deployed flow.
 | [#4144](https://github.com/gredice/gredice/issues/4144) customer handoff receipt | [PR #4206](https://github.com/gredice/gredice/pull/4206) and [checks](https://github.com/gredice/gredice/pull/4206/checks) | [Exact production evidence](https://github.com/gredice/gredice/issues/4144#issuecomment-4990821783) |
 | [#4145](https://github.com/gredice/gredice/issues/4145) orchestration characterization | [PR #4168](https://github.com/gredice/gredice/pull/4168) and [checks](https://github.com/gredice/gredice/pull/4168/checks) | [Verified deployed descendant](https://github.com/gredice/gredice/issues/4125#issuecomment-4980317995) |
 | [#4146](https://github.com/gredice/gredice/issues/4146) driver/customer journeys | [Owner-approved exact-tree local gate](https://github.com/gredice/gredice/pull/4226#issuecomment-4997376332) after a GitHub REST outage | [Exact production evidence](https://github.com/gredice/gredice/issues/4146#issuecomment-4997395607) |
-| [#4147](https://github.com/gredice/gredice/issues/4147) observability/rollout | Operations projection/log privacy tests and this checklist | Pending until this change is merged and deployed |
+| [#4147](https://github.com/gredice/gredice/issues/4147) observability/rollout | [PR #4231](https://github.com/gredice/gredice/pull/4231), its [owner-approved exact-tree local gate](https://github.com/gredice/gredice/pull/4231#issuecomment-4997472413), and [corrective PR #4232 checks](https://github.com/gredice/gredice/pull/4232/checks) | [Exact production evidence](https://github.com/gredice/gredice/issues/4147#issuecomment-4997645976) |
 
 Evidence is complete only when the linked artifact identifies the tested SHA
 and the production record identifies the same deployed SHA. If they differ,
