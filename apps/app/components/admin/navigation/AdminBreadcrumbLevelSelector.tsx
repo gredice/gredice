@@ -191,6 +191,35 @@ const breadcrumbSections: {
         ],
     },
     {
+        title: 'Izvještaji',
+        pages: [
+            {
+                ...adminPages.SowingStatistics,
+                icon: <Tally3 className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryRequestStatistics,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.UsersStatistics,
+                icon: <User className="size-4" />,
+            },
+            {
+                ...adminPages.OperationsStatistics,
+                icon: <Hammer className="size-4" />,
+            },
+            {
+                ...adminPages.RecordsStatistics,
+                icon: <File className="size-4" />,
+            },
+            {
+                ...adminPages.SunflowersStatistics,
+                icon: <Success className="size-4" />,
+            },
+        ],
+    },
+    {
         title: 'Komunikacija',
         pages: [
             {

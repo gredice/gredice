@@ -23,20 +23,27 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     await auth(['admin']);
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
+    const selectedDataPromise = getAnalyticsData(
+        selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
+        params?.from,
+        params?.to,
+    );
+    const weeklyDataPromise =
+        selectedPeriod === '7' && !params?.from && !params?.to
+            ? selectedDataPromise
+            : getAnalyticsData(7);
 
     const [
         data,
+        weeklyData,
         entityTypes,
         dashboardQuickActionsSetting,
         pendingCmsPagesReviewCount,
         pendingAchievementsCount,
         pendingApprovalTasksCount,
     ] = await Promise.all([
-        getAnalyticsData(
-            selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
-            params?.from,
-            params?.to,
-        ),
+        selectedDataPromise,
+        weeklyDataPromise,
         getEntityTypes(),
         getSetting(SettingsKeys.DashboardQuickActions),
         getCmsPagesReadyForReviewCount(),
@@ -65,11 +72,11 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     return (
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
-            initialEntitiesData={data.entities}
-            initialOperationsDurationData={data.operationsDuration}
-            initialWeekdayRegistrations={data.weekdayRegistrations}
+            initialEntitiesData={weeklyData.entities}
+            initialOperationsDurationData={weeklyData.operationsDuration}
+            initialWeekdayRegistrations={weeklyData.weekdayRegistrations}
             initialAiData={data.ai}
-            initialSunflowersData={data.sunflowers}
+            initialSunflowersData={weeklyData.sunflowers}
             initialQuickActions={quickActions}
             initialQuickActionBadgeCounts={{
                 pendingCmsPagesReviewCount,

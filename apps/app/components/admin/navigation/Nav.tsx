@@ -272,6 +272,10 @@ export function Nav({
     const statisticsActive = includesSelectedPath(pathname, [
         adminPages.SowingStatistics.href,
         adminPages.DeliveryRequestStatistics.href,
+        adminPages.UsersStatistics.href,
+        adminPages.OperationsStatistics.href,
+        adminPages.RecordsStatistics.href,
+        adminPages.SunflowersStatistics.href,
     ]);
 
     return (
@@ -761,6 +765,38 @@ export function Nav({
                             href={adminPages.DeliveryRequestStatistics.href}
                             label={adminPages.DeliveryRequestStatistics.label}
                             icon={<Graph className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.UsersStatistics.href}
+                            label={adminPages.UsersStatistics.label}
+                            icon={<User className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.OperationsStatistics.href}
+                            label={adminPages.OperationsStatistics.label}
+                            icon={<Hammer className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.RecordsStatistics.href}
+                            label={adminPages.RecordsStatistics.label}
+                            icon={<File className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.SunflowersStatistics.href}
+                            label={adminPages.SunflowersStatistics.label}
+                            icon={<Success className="size-5" />}
                             onClick={onItemClick}
                             compact={compact}
                             nested

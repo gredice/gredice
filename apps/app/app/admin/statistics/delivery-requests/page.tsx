@@ -1,7 +1,6 @@
 import { getDeliveryRequestsSummary } from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
 import { Warning } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -11,6 +10,11 @@ import {
 } from '../../../../components/admin/navigation';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
+import { StatisticsPeriodFilter } from '../StatisticsPeriodFilter';
+import {
+    resolveStatisticsPeriod,
+    type StatisticsPeriodSearchParams,
+} from '../statisticsPeriod';
 import { DeliveryRequestStatisticsCharts } from './DeliveryRequestStatisticsCharts';
 import {
     buildDeliveryRequestStatistics,
@@ -19,12 +23,24 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export default async function DeliveryRequestStatisticsPage() {
+export default async function DeliveryRequestStatisticsPage({
+    searchParams,
+}: {
+    searchParams: Promise<StatisticsPeriodSearchParams>;
+}) {
     await auth(['admin']);
+
+    const period = resolveStatisticsPeriod(await searchParams);
 
     let statistics: DeliveryRequestStatistics | null = null;
     try {
-        const requests = await getDeliveryRequestsSummary();
+        const requests = await getDeliveryRequestsSummary(
+            undefined,
+            undefined,
+            undefined,
+            period.fromDate,
+            period.toDate,
+        );
         statistics = buildDeliveryRequestStatistics(requests);
     } catch {
         // Keep database and event reconstruction details private while giving
@@ -85,11 +101,14 @@ export default async function DeliveryRequestStatisticsPage() {
                     Zahtjevi, grupirane dostave te potražnja po danima i vremenu
                     uz pregled trendova i ishoda.
                 </Typography>
-                <div>
-                    <Chip color="neutral" variant="soft">
-                        Cijelo razdoblje
-                    </Chip>
-                </div>
+                <StatisticsPeriodFilter
+                    initialPeriod={period.key}
+                    initialFrom={period.pickerFrom}
+                    initialTo={period.pickerTo}
+                    maxDate={period.maxDate}
+                    rangeLabel={period.rangeLabel}
+                    label="Razdoblje zahtjeva"
+                />
             </Stack>
 
             {!statistics && (
@@ -103,7 +122,7 @@ export default async function DeliveryRequestStatisticsPage() {
                 <Card>
                     <CardOverflow className="p-4">
                         <NoDataPlaceholder>
-                            Nema zahtjeva za dostavu za statistički prikaz.
+                            Nema zahtjeva za dostavu u odabranom razdoblju.
                         </NoDataPlaceholder>
                     </CardOverflow>
                 </Card>
