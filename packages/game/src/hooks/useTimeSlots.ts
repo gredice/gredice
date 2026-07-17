@@ -1,28 +1,18 @@
 import { clientPublic } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import {
+    serializeTimeSlotsQueryParams,
+    type TimeSlotsQueryParams,
+} from './timeSlotsQueryParams';
 
 export const timeSlotsQueryKey = ['delivery', 'timeSlots'];
 
-export function useTimeSlots(params?: {
-    type?: 'delivery' | 'pickup';
-    from?: string;
-    to?: string;
-    locationId?: number;
-}) {
+export function useTimeSlots(params?: TimeSlotsQueryParams) {
     return useQuery({
         queryKey: [...timeSlotsQueryKey, params],
         queryFn: async () => {
-            const queryParams = params
-                ? {
-                      type: params.type,
-                      from: params.from,
-                      to: params.to,
-                      locationId: params.locationId?.toString(),
-                  }
-                : {};
-
             const response = await clientPublic().api.delivery.slots.$get({
-                query: queryParams,
+                query: serializeTimeSlotsQueryParams(params),
             });
             if (response.status !== 200) {
                 throw new Error('Failed to fetch time slots');

@@ -22,6 +22,7 @@ export interface DeliverySlotPickerSlot {
     startAt: Date | string;
     endAt: Date | string;
     fulfillment: 'delivery' | 'pickup';
+    disabled?: boolean;
 }
 
 export interface DeliverySlotPickerProps {
@@ -141,10 +142,8 @@ export function DeliverySlotPicker({
         }),
         [locale, timeZone],
     );
-    const todayKey = dateKey(
-        formatters.dateKey,
-        referenceDate ? new Date(referenceDate) : initialDate,
-    );
+    const currentDate = referenceDate ? new Date(referenceDate) : initialDate;
+    const todayKey = dateKey(formatters.dateKey, currentDate);
     const days = useMemo(() => {
         const groupedDays = new Map<string, SlotDay>();
 
@@ -224,33 +223,25 @@ export function DeliverySlotPicker({
     const selectedSlotDayKey = selectedSlotDate
         ? dateKey(formatters.dateKey, selectedSlotDate)
         : undefined;
-    const availableSelectedSlotDayKey =
-        selectedSlotDayKey && selectedSlotDayKey > todayKey
-            ? selectedSlotDayKey
-            : undefined;
     const selectedSlotWeekKey =
-        selectedSlotDate && availableSelectedSlotDayKey
+        selectedSlotDate && selectedSlotDayKey
             ? weekKey(formatters.dateKey, selectedSlotDate)
             : undefined;
     const [preferredWeekKey, setPreferredWeekKey] = useState<string>();
     const [preferredDayKey, setPreferredDayKey] = useState<string>();
     const firstAvailableWeekKey = weeks.find((week) =>
-        week.days.some(
-            (day) =>
-                day.key > todayKey &&
-                day.slots.some((slot) => slot.fulfillment === 'delivery'),
+        week.days.some((day) =>
+            day.slots.some(
+                (slot) => slot.fulfillment === 'delivery' && !slot.disabled,
+            ),
         ),
     )?.key;
-    const firstFutureWeekKey = weeks.find((week) =>
-        week.days.some((day) => day.key > todayKey),
-    )?.key;
+    const currentWeekKey = weekKey(formatters.dateKey, currentDate);
     const selectedWeekKey =
         selectedSlotWeekKey ??
         weeks.find((week) => week.key === preferredWeekKey)?.key ??
-        (autoSelectFirstDeliverySlot
-            ? firstAvailableWeekKey
-            : firstFutureWeekKey) ??
-        firstFutureWeekKey ??
+        weeks.find((week) => week.key === currentWeekKey)?.key ??
+        firstAvailableWeekKey ??
         weeks[0]?.key;
     const selectedWeekIndex = Math.max(
         weeks.findIndex((week) => week.key === selectedWeekKey),
@@ -258,22 +249,22 @@ export function DeliverySlotPicker({
     );
     const selectedWeek = weeks[selectedWeekIndex];
     const selectedDayKey =
-        availableSelectedSlotDayKey ??
-        selectedWeek?.days.find(
-            (day) => day.key === preferredDayKey && day.key > todayKey,
-        )?.key ??
+        selectedSlotDayKey ??
+        selectedWeek?.days.find((day) => day.key === preferredDayKey)?.key ??
         (autoSelectFirstDeliverySlot
-            ? selectedWeek?.days.find(
-                  (day) =>
-                      day.key > todayKey &&
-                      day.slots.some((slot) => slot.fulfillment === 'delivery'),
+            ? selectedWeek?.days.find((day) =>
+                  day.slots.some(
+                      (slot) =>
+                          slot.fulfillment === 'delivery' && !slot.disabled,
+                  ),
               )?.key
             : undefined) ??
-        selectedWeek?.days.find((day) => day.key > todayKey)?.key;
+        selectedWeek?.days.find((day) => day.key === todayKey)?.key ??
+        selectedWeek?.days[0]?.key;
     const selectedDay = selectedWeek?.days.find(
         (day) => day.key === selectedDayKey,
     );
-    const focusTargetKey = availableSelectedSlotDayKey
+    const focusTargetKey = selectedSlotDayKey
         ? `slot-${value?.toString()}`
         : selectedDayKey
           ? `day-${selectedDayKey}`
@@ -281,7 +272,7 @@ export function DeliverySlotPicker({
     const focusTargetRef = useRef<HTMLButtonElement>(null);
     const autoSelectedSlotRef = useRef<number | undefined>(undefined);
     const firstAvailableDeliverySlotId = selectedDay?.slots.find(
-        (slot) => slot.fulfillment === 'delivery',
+        (slot) => slot.fulfillment === 'delivery' && !slot.disabled,
     )?.id;
 
     useEffect(() => {
@@ -325,15 +316,15 @@ export function DeliverySlotPicker({
         setPreferredWeekKey(nextWeek.key);
         setPreferredDayKey(
             (autoSelectFirstDeliverySlot
-                ? nextWeek.days.find(
-                      (day) =>
-                          day.key > todayKey &&
-                          day.slots.some(
-                              (slot) => slot.fulfillment === 'delivery',
-                          ),
+                ? nextWeek.days.find((day) =>
+                      day.slots.some(
+                          (slot) =>
+                              slot.fulfillment === 'delivery' && !slot.disabled,
+                      ),
                   )?.key
                 : undefined) ??
-                nextWeek.days.find((day) => day.key > todayKey)?.key,
+                nextWeek.days.find((day) => day.key === todayKey)?.key ??
+                nextWeek.days[0]?.key,
         );
 
         if (selectedSlotWeekKey && selectedSlotWeekKey !== nextWeek.key) {
@@ -447,7 +438,6 @@ export function DeliverySlotPicker({
                             {selectedWeek.days.map((day) => {
                                 const isSelected = day.key === selectedDay?.key;
                                 const isToday = day.key === todayKey;
-                                const isUnavailable = day.key <= todayKey;
 
                                 return (
                                     <button
@@ -455,20 +445,17 @@ export function DeliverySlotPicker({
                                         aria-current={
                                             isToday ? 'date' : undefined
                                         }
-                                        aria-label={`${formatters.fullDate.format(day.date)}, ${slotCountLabel(day.slots.length)}${isToday ? ', danas' : ''}${isUnavailable ? ', nije dostupno' : ''}`}
+                                        aria-label={`${formatters.fullDate.format(day.date)}, ${slotCountLabel(day.slots.length)}${isToday ? ', danas' : ''}`}
                                         aria-pressed={isSelected}
                                         className={cx(
                                             'relative flex min-h-[5.5rem] min-w-[5rem] flex-1 flex-col items-center justify-center rounded-lg border px-2.5 py-2 text-center transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed',
                                             isSelected
                                                 ? 'border-primary bg-primary/10 text-primary ring-1 ring-inset ring-primary/40'
                                                 : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted/50',
-                                            isUnavailable &&
-                                                'border-border/60 bg-muted/30 text-foreground/50 hover:border-border/60 hover:bg-muted/30',
                                         )}
-                                        disabled={disabled || isUnavailable}
+                                        disabled={disabled}
                                         ref={
-                                            !availableSelectedSlotDayKey &&
-                                            isSelected
+                                            !selectedSlotDayKey && isSelected
                                                 ? focusTargetRef
                                                 : undefined
                                         }
@@ -495,8 +482,6 @@ export function DeliverySlotPicker({
                                                 'absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-muted text-[0.6rem] font-bold text-foreground/70',
                                                 isSelected &&
                                                     'bg-primary text-primary-foreground',
-                                                isUnavailable &&
-                                                    'bg-muted-foreground/10 text-foreground/50',
                                             )}
                                         >
                                             {day.slots.length}
@@ -558,6 +543,12 @@ export function DeliverySlotPicker({
                                 </legend>
                                 {selectedDay.slots.map((slot) => {
                                     const isSelected = slot.id === value;
+                                    const startAtLabel = formatters.time.format(
+                                        new Date(slot.startAt),
+                                    );
+                                    const endAtLabel = formatters.time.format(
+                                        new Date(slot.endAt),
+                                    );
                                     const FulfillmentIcon =
                                         slot.fulfillment === 'delivery'
                                             ? Truck
@@ -570,6 +561,7 @@ export function DeliverySlotPicker({
                                     return (
                                         <button
                                             key={slot.id}
+                                            aria-label={`${startAtLabel} – ${endAtLabel}, ${fulfillmentLabel}${slot.disabled ? ', nije dostupno' : ''}`}
                                             aria-pressed={isSelected}
                                             className={cx(
                                                 'flex min-h-14 items-center gap-2 rounded-lg border px-3 py-2 text-sm tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
@@ -577,7 +569,7 @@ export function DeliverySlotPicker({
                                                     ? 'border-primary bg-primary/10 text-primary ring-1 ring-inset ring-primary/40'
                                                     : 'border-border bg-background text-foreground hover:border-primary/60 hover:bg-primary/5',
                                             )}
-                                            disabled={disabled}
+                                            disabled={disabled || slot.disabled}
                                             ref={
                                                 isSelected
                                                     ? focusTargetRef
@@ -598,13 +590,15 @@ export function DeliverySlotPicker({
                                             />
                                             <span className="min-w-0 flex-1 text-left">
                                                 <span className="block whitespace-nowrap font-semibold">
-                                                    {formatters.time.format(
-                                                        new Date(slot.startAt),
-                                                    )}{' '}
-                                                    –{' '}
-                                                    {formatters.time.format(
-                                                        new Date(slot.endAt),
-                                                    )}
+                                                    <span
+                                                        className={cx(
+                                                            slot.disabled &&
+                                                                'line-through',
+                                                        )}
+                                                    >
+                                                        {startAtLabel} –{' '}
+                                                        {endAtLabel}
+                                                    </span>
                                                 </span>
                                                 <span
                                                     className={cx(
@@ -615,6 +609,8 @@ export function DeliverySlotPicker({
                                                     )}
                                                 >
                                                     {fulfillmentLabel}
+                                                    {slot.disabled &&
+                                                        ' · Nije dostupno'}
                                                 </span>
                                             </span>
                                             {isSelected && (
