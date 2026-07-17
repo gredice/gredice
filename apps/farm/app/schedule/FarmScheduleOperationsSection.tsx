@@ -153,8 +153,8 @@ export function FarmScheduleOperationsSection({
         0,
     );
 
-    if (mode === 'watering') {
-        const wateringOperations = raisedBedGroups.flatMap(
+    if (mode === 'harvest' || mode === 'watering') {
+        const groupedOperations = raisedBedGroups.flatMap(
             ({ physicalId, raisedBeds: groupedRaisedBeds }) => {
                 const raisedBedLabel = physicalId
                     ? `Gr ${physicalId}`
@@ -196,23 +196,24 @@ export function FarmScheduleOperationsSection({
                     });
             },
         );
-        const wateringTotalDuration = wateringOperations.reduce(
+        const groupedTotalDuration = groupedOperations.reduce(
             (sum, operation) => sum + operation.durationMinutes,
             0,
         );
+        const sectionTitle = mode === 'harvest' ? 'Berba' : 'Zalijevanje';
 
         return (
             <Stack spacing={2}>
                 <Row spacing={2} className="items-center flex-wrap gap-y-1">
-                    <Typography semiBold>Zalijevanje</Typography>
+                    <Typography semiBold>{sectionTitle}</Typography>
                     <ScheduleSectionSummaryBadges
-                        count={wateringOperations.length}
+                        count={groupedOperations.length}
                         countLabel="zadataka"
-                        durationMinutes={wateringTotalDuration}
+                        durationMinutes={groupedTotalDuration}
                     />
                 </Row>
                 <Stack spacing={2}>
-                    {wateringOperations.map((operation) => (
+                    {groupedOperations.map((operation) => (
                         <FarmScheduleOperationTaskCard
                             key={operation.id}
                             completionAction={

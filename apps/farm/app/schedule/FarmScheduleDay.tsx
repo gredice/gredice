@@ -11,6 +11,12 @@ import type {
     getFarmSchedulePlantSorts,
 } from './scheduleData';
 import { getFarmScheduleRaisedBedPhotoPreviewsForDay } from './scheduleData';
+import type { FarmScheduleOperationsMode } from './scheduleShared';
+
+const priorityOperationModes = [
+    'watering',
+    'harvest',
+] satisfies FarmScheduleOperationsMode[];
 
 interface FarmScheduleDayProps {
     accountId: string;
@@ -21,7 +27,7 @@ interface FarmScheduleDayProps {
         typeof import('./scheduleData').getFarmScheduleOperationsData
     >;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
-    groupWateringOperations: boolean;
+    groupPriorityOperations: boolean;
     selectedDateKey: string;
     sessionIncarnation: string;
     userId: string;
@@ -34,7 +40,7 @@ export function FarmScheduleDay({
     operationsDataPromise,
     plantingsDayDataPromise,
     plantSortsPromise,
-    groupWateringOperations,
+    groupPriorityOperations,
     selectedDateKey,
     sessionIncarnation,
     userId,
@@ -47,23 +53,27 @@ export function FarmScheduleDay({
             <Suspense fallback={null}>
                 <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
             </Suspense>
-            {groupWateringOperations && (
-                <Suspense fallback={<FarmScheduleSectionSkeleton />}>
-                    <FarmScheduleOperationsSectionContent
-                        accountId={accountId}
-                        dayDataPromise={operationsDayDataPromise}
-                        plantSortsPromise={plantSortsPromise}
-                        operationsDataPromise={operationsDataPromise}
-                        raisedBedPhotoPreviewByIdPromise={
-                            raisedBedPhotoPreviewByIdPromise
-                        }
-                        mode="watering"
-                        selectedDateKey={selectedDateKey}
-                        sessionIncarnation={sessionIncarnation}
-                        userId={userId}
-                    />
-                </Suspense>
-            )}
+            {groupPriorityOperations &&
+                priorityOperationModes.map((mode) => (
+                    <Suspense
+                        key={mode}
+                        fallback={<FarmScheduleSectionSkeleton />}
+                    >
+                        <FarmScheduleOperationsSectionContent
+                            accountId={accountId}
+                            dayDataPromise={operationsDayDataPromise}
+                            plantSortsPromise={plantSortsPromise}
+                            operationsDataPromise={operationsDataPromise}
+                            raisedBedPhotoPreviewByIdPromise={
+                                raisedBedPhotoPreviewByIdPromise
+                            }
+                            mode={mode}
+                            selectedDateKey={selectedDateKey}
+                            sessionIncarnation={sessionIncarnation}
+                            userId={userId}
+                        />
+                    </Suspense>
+                ))}
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmSchedulePlantingsSectionContent
                     dayDataPromise={plantingsDayDataPromise}
@@ -84,7 +94,11 @@ export function FarmScheduleDay({
                     raisedBedPhotoPreviewByIdPromise={
                         raisedBedPhotoPreviewByIdPromise
                     }
-                    mode={groupWateringOperations ? 'withoutWatering' : 'all'}
+                    mode={
+                        groupPriorityOperations
+                            ? 'withoutGroupedOperations'
+                            : 'all'
+                    }
                     selectedDateKey={selectedDateKey}
                     sessionIncarnation={sessionIncarnation}
                     userId={userId}

@@ -101,7 +101,7 @@ async function FarmScheduleContent({
                 operationsDayDataPromise={operationsDayDataPromise}
                 operationsDataPromise={operationsDataPromise}
                 plantSortsPromise={plantSortsPromise}
-                groupWateringOperations={
+                groupPriorityOperations={
                     user?.farmScheduleGroupedWateringEnabled ?? true
                 }
                 sessionIncarnation={sessionIncarnation}

@@ -6,7 +6,11 @@ type FarmRaisedBedField = FarmRaisedBed['fields'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
 
-export type FarmScheduleOperationsMode = 'all' | 'watering' | 'withoutWatering';
+export type FarmScheduleOperationsMode =
+    | 'all'
+    | 'harvest'
+    | 'watering'
+    | 'withoutGroupedOperations';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 export const FARM_SCHEDULE_TIME_ZONE = 'Europe/Zagreb';
@@ -206,12 +210,27 @@ export function isWateringOperationData(
     return operationData?.attributes?.visualReward === 'watering';
 }
 
+export function isHarvestOperationData(
+    operationData: EntityStandardized | undefined,
+) {
+    return operationData?.attributes?.visualReward === 'harvest';
+}
+
 export function isGroupedWateringScheduleOperation(
     operation: Pick<FarmOperation, 'raisedBedId'>,
     operationData: EntityStandardized | undefined,
 ) {
     return (
         operation.raisedBedId !== null && isWateringOperationData(operationData)
+    );
+}
+
+export function isGroupedHarvestScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        operation.raisedBedId !== null && isHarvestOperationData(operationData)
     );
 }
 
@@ -224,13 +243,21 @@ export function shouldDisplayScheduleOperation(
         operation,
         operationData,
     );
+    const isGroupedHarvest = isGroupedHarvestScheduleOperation(
+        operation,
+        operationData,
+    );
+
+    if (mode === 'harvest') {
+        return isGroupedHarvest;
+    }
 
     if (mode === 'watering') {
         return isGroupedWatering;
     }
 
-    if (mode === 'withoutWatering') {
-        return !isGroupedWatering;
+    if (mode === 'withoutGroupedOperations') {
+        return !isGroupedHarvest && !isGroupedWatering;
     }
 
     return true;
