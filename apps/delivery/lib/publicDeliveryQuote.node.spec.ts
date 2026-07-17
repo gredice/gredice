@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
-import { OPTIONS, POST } from '../app/api/public/delivery-quote/route';
+import { createPublicDeliveryQuoteHandlers } from './publicDeliveryQuoteRoute';
 
 const originalFetch = globalThis.fetch;
 const originalApiKey = process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY;
+const { OPTIONS, POST } = createPublicDeliveryQuoteHandlers(async () => ({
+    rateLimited: false,
+}));
 
 beforeEach(() => {
     process.env.GREDICE_GOOGLE_MAPS_SERVER_API_KEY = 'server-test-key';
@@ -159,12 +162,25 @@ test('handles preflight requests from production and preview origins', () => {
             },
         }),
     );
+    const customPreviewResponse = OPTIONS(
+        new Request('https://dostava.gredice.com/api/public/delivery-quote', {
+            method: 'OPTIONS',
+            headers: {
+                origin: 'https://www-feat-delivery-check.preview.gredice.com',
+            },
+        }),
+    );
 
     assert.equal(productionResponse.status, 204);
     assert.equal(previewResponse.status, 204);
+    assert.equal(customPreviewResponse.status, 204);
     assert.equal(
         previewResponse.headers.get('Access-Control-Allow-Origin'),
         'https://33fa1ur95-preview-gredice.vercel.app',
+    );
+    assert.equal(
+        customPreviewResponse.headers.get('Access-Control-Allow-Origin'),
+        'https://www-feat-delivery-check.preview.gredice.com',
     );
 });
 
@@ -183,9 +199,17 @@ test('rejects invalid and unapproved-origin requests before calling Google', asy
             'https://example.com',
         ),
     );
+    const spoofedPreviewResponse = await POST(
+        deliveryRequest(
+            'Testna ulica 1, Zagreb',
+            '203.0.113.8',
+            'https://www-branch.preview.gredice.com.example.com',
+        ),
+    );
 
     assert.equal(invalidAddressResponse.status, 400);
     assert.equal(crossOriginResponse.status, 403);
+    assert.equal(spoofedPreviewResponse.status, 403);
 });
 
 test('returns a static not-found response without exposing Google details', async () => {
@@ -200,23 +224,21 @@ test('returns a static not-found response without exposing Google details', asyn
     assert.deepEqual(await response.json(), { error: 'Address not found.' });
 });
 
-test('rate limits repeated public quote requests by client address', async () => {
-    globalThis.fetch = googleMapsFetch({
-        distanceMeters: 5_000,
-        latitude: 45.778683,
-        longitude: 15.9837396,
+test('returns the shared platform rate-limit response before calling Google', async () => {
+    globalThis.fetch = async () => {
+        throw new Error('Google must not be called');
+    };
+    const { POST: rateLimitedPost } = createPublicDeliveryQuoteHandlers(
+        async () => ({ rateLimited: true }),
+    );
+
+    const response = await rateLimitedPost(
+        deliveryRequest('Testna ulica 1, Zagreb', '203.0.113.6'),
+    );
+
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get('Retry-After'), '60');
+    assert.deepEqual(await response.json(), {
+        error: 'Rate limit exceeded.',
     });
-    const responses: Response[] = [];
-
-    for (let index = 0; index < 11; index += 1) {
-        responses.push(
-            await POST(
-                deliveryRequest('Testna ulica 1, Zagreb', '203.0.113.6'),
-            ),
-        );
-    }
-
-    assert.equal(responses[9]?.status, 200);
-    assert.equal(responses[10]?.status, 429);
-    assert.ok(Number(responses[10]?.headers.get('Retry-After')) >= 1);
 });
