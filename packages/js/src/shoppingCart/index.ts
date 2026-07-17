@@ -1,1 +1,3 @@
-export const minimumShoppingCartAmountEur = 1;
+export const minimumShoppingCartAmountCents = 100;
+export const minimumShoppingCartAmountEur =
+    minimumShoppingCartAmountCents / 100;

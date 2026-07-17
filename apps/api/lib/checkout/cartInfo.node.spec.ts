@@ -4,6 +4,7 @@ import {
     getAbandonedRaisedBedCartNote,
     getMinimumOrderNote,
     getNewRaisedBedPlantingNote,
+    getTotalCartValueCents,
 } from './cartInfo';
 
 describe('getNewRaisedBedPlantingNote', () => {
@@ -32,16 +33,44 @@ describe('getAbandonedRaisedBedCartNote', () => {
 });
 
 describe('getMinimumOrderNote', () => {
-    it('blocks positive EUR totals below one euro', () => {
+    it('blocks positive totals below one euro', () => {
         assert.strictEqual(
-            getMinimumOrderNote(0.99),
+            getMinimumOrderNote(99),
             'Minimalna vrijednost narudžbe je 1 €.',
         );
     });
 
-    it('allows an empty EUR total and totals of at least one euro', () => {
+    it('allows an empty total and totals of at least one euro', () => {
         assert.strictEqual(getMinimumOrderNote(0), null);
-        assert.strictEqual(getMinimumOrderNote(1), null);
-        assert.strictEqual(getMinimumOrderNote(1.01), null);
+        assert.strictEqual(getMinimumOrderNote(100), null);
+        assert.strictEqual(getMinimumOrderNote(101), null);
+    });
+});
+
+describe('getTotalCartValueCents', () => {
+    it('sums cent-denominated line items without floating-point drift', () => {
+        const totalCartValueCents = getTotalCartValueCents([
+            {
+                amount: 1,
+                currency: 'eur',
+                shopData: { price: 0.06 },
+                status: 'new',
+            },
+            {
+                amount: 1,
+                currency: 'eur',
+                shopData: { price: 0.57 },
+                status: 'new',
+            },
+            {
+                amount: 1,
+                currency: 'eur',
+                shopData: { price: 0.37 },
+                status: 'new',
+            },
+        ]);
+
+        assert.strictEqual(totalCartValueCents, 100);
+        assert.strictEqual(getMinimumOrderNote(totalCartValueCents), null);
     });
 });
