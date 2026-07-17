@@ -12,14 +12,7 @@ const workspaceRouteCases = [
     { active: 'raised_beds', pathname: '/raised-beds/42' },
     { active: 'greenhouse', pathname: '/greenhouse' },
     { active: 'notifications', pathname: '/notifications' },
-    { active: 'more', pathname: '/more' },
-    { active: 'more', pathname: '/schedule' },
-    { active: 'more', pathname: '/operations' },
-    { active: 'more', pathname: '/operations/701' },
-    { active: 'more', pathname: '/plants' },
-    { active: 'more', pathname: '/plants/901' },
-    { active: 'more', pathname: '/payouts' },
-    { active: 'more', pathname: '/settings' },
+    { active: 'schedule', pathname: '/schedule' },
 ] satisfies readonly {
     active: FarmPrimaryNavigationDestination;
     pathname: string;
@@ -39,6 +32,27 @@ for (const routeCase of workspaceRouteCases) {
             .map((item) => item.destination);
 
         expect(activeDestinations).toEqual([routeCase.active]);
+    });
+}
+
+const secondaryWorkspacePaths = [
+    '/more',
+    '/operations',
+    '/operations/701',
+    '/plants',
+    '/plants/901',
+    '/payouts',
+    '/settings',
+] as const;
+
+for (const pathname of secondaryWorkspacePaths) {
+    test(`${pathname} stays inside the shell without selecting an unrelated primary page`, () => {
+        expect(isFarmWorkspacePath(pathname)).toBe(true);
+        expect(
+            farmPrimaryNavigationItems.some((item) =>
+                isFarmPrimaryNavigationItemActive(pathname, item.destination),
+            ),
+        ).toBe(false);
     });
 }
 

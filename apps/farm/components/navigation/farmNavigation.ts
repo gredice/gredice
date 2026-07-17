@@ -3,7 +3,7 @@ import type { FarmNavigationDestination } from '../analytics/farmAnalytics';
 
 export type FarmPrimaryNavigationDestination = Extract<
     FarmNavigationDestination,
-    'greenhouse' | 'more' | 'notifications' | 'raised_beds' | 'today'
+    'greenhouse' | 'notifications' | 'raised_beds' | 'schedule' | 'today'
 >;
 
 export type FarmPrimaryNavigationItem = {
@@ -39,15 +39,14 @@ export const farmPrimaryNavigationItems = [
         label: 'Obavijesti',
     },
     {
-        destination: 'more',
-        href: '/more',
-        label: 'Više',
+        destination: 'schedule',
+        href: '/schedule',
+        label: 'Raspored',
     },
 ] satisfies readonly FarmPrimaryNavigationItem[];
 
-const farmMoreNavigationRoutes = [
+const farmSecondaryNavigationRoutes = [
     { href: '/more', match: 'exact' },
-    { href: '/schedule', match: 'exact' },
     { href: '/operations', match: 'segment' },
     { href: '/plants', match: 'segment' },
     { href: '/payouts', match: 'exact' },
@@ -56,9 +55,9 @@ const farmMoreNavigationRoutes = [
 
 const farmPrimaryNavigationRoutes = {
     greenhouse: { href: '/greenhouse', match: 'exact' },
-    more: { href: '/more', match: 'exact' },
     notifications: { href: '/notifications', match: 'exact' },
     raised_beds: { href: '/raised-beds', match: 'segment' },
+    schedule: { href: '/schedule', match: 'exact' },
     today: { href: '/', match: 'exact' },
 } satisfies Record<FarmPrimaryNavigationDestination, FarmRouteMatch>;
 
@@ -67,7 +66,8 @@ export const farmWorkspaceRoutes = [
     { href: '/raised-beds', match: 'segment' },
     { href: '/greenhouse', match: 'exact' },
     { href: '/notifications', match: 'exact' },
-    ...farmMoreNavigationRoutes,
+    { href: '/schedule', match: 'exact' },
+    ...farmSecondaryNavigationRoutes,
 ] satisfies readonly FarmRouteMatch[];
 
 function matchesFarmRoute(pathname: string, route: FarmRouteMatch) {
@@ -88,11 +88,5 @@ export function isFarmPrimaryNavigationItemActive(
     pathname: string,
     destination: FarmPrimaryNavigationDestination,
 ) {
-    if (destination === 'more') {
-        return farmMoreNavigationRoutes.some((route) =>
-            matchesFarmRoute(pathname, route),
-        );
-    }
-
     return matchesFarmRoute(pathname, farmPrimaryNavigationRoutes[destination]);
 }

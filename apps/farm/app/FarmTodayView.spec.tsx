@@ -325,6 +325,33 @@ for (const viewport of phoneViewports) {
                 name: 'Sažetak današnjih zadataka',
             }),
         ).toBeVisible();
+        const pageLinks = component.getByRole('navigation', {
+            name: 'Ostale stranice',
+        });
+        await expect(pageLinks).toBeVisible();
+        await expect(pageLinks.getByRole('link')).toHaveCount(3);
+        await expect(
+            pageLinks.getByRole('link', { name: 'Radnje' }),
+        ).toHaveAttribute('href', '/operations');
+        await expect(
+            pageLinks.getByRole('link', { name: 'Biljke' }),
+        ).toHaveAttribute('href', '/plants');
+        await expect(
+            pageLinks.getByRole('link', { name: 'Isplate' }),
+        ).toHaveAttribute('href', '/payouts');
+        expect(
+            await component
+                .locator(
+                    '[aria-label="Ostale stranice"], [aria-labelledby="farm-today-summary-title"]',
+                )
+                .evaluateAll((elements) =>
+                    elements.map(
+                        (element) =>
+                            element.getAttribute('aria-label') ??
+                            element.getAttribute('aria-labelledby'),
+                    ),
+                ),
+        ).toEqual(['Ostale stranice', 'farm-today-summary-title']);
         await expect(
             component.getByRole('region', { name: 'Današnji zadaci' }),
         ).toBeVisible();
@@ -338,9 +365,13 @@ for (const viewport of phoneViewports) {
             throw new Error('Expected the next-task card to render.');
         }
         expect(nextTaskBounds.y).toBeGreaterThanOrEqual(0);
-        expect(nextTaskBounds.y + nextTaskBounds.height).toBeLessThanOrEqual(
-            viewport.height,
-        );
+        expect(nextTaskBounds.y).toBeLessThan(viewport.height);
+        expect(
+            Math.min(
+                nextTaskBounds.y + nextTaskBounds.height,
+                viewport.height,
+            ) - nextTaskBounds.y,
+        ).toBeGreaterThanOrEqual(Math.min(44, nextTaskBounds.height));
 
         await expect(
             nextTaskCard.getByRole('button', {

@@ -20,7 +20,7 @@ const expectedDestinations = [
     'raised_beds',
     'greenhouse',
     'notifications',
-    'more',
+    'schedule',
 ] as const;
 
 const expectedLabels = [
@@ -28,7 +28,7 @@ const expectedLabels = [
     'Gredice',
     'Staklenik',
     'Obavijesti',
-    'Više',
+    'Raspored',
 ] as const;
 
 const nextNavigationRouter = {

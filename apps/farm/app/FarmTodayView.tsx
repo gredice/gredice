@@ -94,8 +94,8 @@ export function FarmTodayView({
                         </div>
                     ) : null}
                 </header>
-                <FarmTodayUnavailableState />
                 <FarmTodayTools />
+                <FarmTodayUnavailableState />
             </main>
         );
     }
@@ -112,8 +112,8 @@ export function FarmTodayView({
                         </div>
                     ) : null}
                 </header>
-                <FarmTodayNoFarmState />
                 <FarmTodayTools />
+                <FarmTodayNoFarmState />
             </main>
         );
     }
@@ -149,6 +149,8 @@ export function FarmTodayView({
                     <div className="flex shrink-0 gap-1">{headerActions}</div>
                 ) : null}
             </header>
+
+            <FarmTodayTools />
 
             <FarmTodaySummary summary={data.summary} />
 
@@ -249,8 +251,6 @@ export function FarmTodayView({
                     </Stack>
                 </section>
             ) : null}
-
-            <FarmTodayTools />
         </main>
     );
 }
