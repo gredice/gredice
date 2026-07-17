@@ -41,6 +41,10 @@ const tooltipStyle = {
     backgroundColor: 'hsl(var(--background))',
 };
 
+function formatTimeWindowTick(label: string) {
+    return label.split('–', 1)[0]?.trim() || label;
+}
+
 export function DeliveryRequestStatisticsCharts({
     statistics,
 }: {
@@ -250,9 +254,11 @@ export function DeliveryRequestStatisticsCharts({
                                         />
                                         <XAxis
                                             dataKey="label"
+                                            interval={0}
                                             tickLine={false}
                                             axisLine={false}
-                                            tick={{ fontSize: 12 }}
+                                            tick={{ fontSize: 11 }}
+                                            tickFormatter={formatTimeWindowTick}
                                         />
                                         <YAxis
                                             allowDecimals={false}

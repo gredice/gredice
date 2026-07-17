@@ -55,6 +55,22 @@ export const adminPages = {
         href: KnownPages.DeliveryRequestStatistics,
         label: 'Statistika zahtjeva za dostavu',
     },
+    UsersStatistics: {
+        href: KnownPages.UsersStatistics,
+        label: 'Statistika korisnika',
+    },
+    OperationsStatistics: {
+        href: KnownPages.OperationsStatistics,
+        label: 'Statistika radnji',
+    },
+    RecordsStatistics: {
+        href: KnownPages.RecordsStatistics,
+        label: 'Statistika zapisa',
+    },
+    SunflowersStatistics: {
+        href: KnownPages.SunflowersStatistics,
+        label: 'Statistika suncokreta',
+    },
     DeliverySlots: {
         href: KnownPages.DeliverySlots,
         label: 'Dostava - Slotovi',
@@ -126,6 +142,10 @@ export const adminBreadcrumbPages = [
     adminPages.Schedule,
     adminPages.SowingStatistics,
     adminPages.DeliveryRequestStatistics,
+    adminPages.UsersStatistics,
+    adminPages.OperationsStatistics,
+    adminPages.RecordsStatistics,
+    adminPages.SunflowersStatistics,
     adminPages.DeliverySlots,
     adminPages.DeliveryRequests,
     adminPages.DeliveryOperations,

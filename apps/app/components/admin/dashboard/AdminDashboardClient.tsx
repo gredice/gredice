@@ -45,18 +45,11 @@ import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { DashboardDivider } from './DashboardDivider';
-import {
-    OperationsDurationCard,
-    type OperationsDurationData,
-} from './OperationsDurationCard';
-import {
-    SunflowersDailyCard,
-    type SunflowersDailyData,
-} from './SunflowersDailyCard';
-import {
-    UsersRegistrationWeekdayCard,
-    type WeekdayRegistrationData,
-} from './UsersRegistrationWeekdayCard';
+import type { OperationsDurationData } from './OperationsDurationCard';
+import { formatOperationsDuration } from './operationsDuration';
+import { StatisticsOverviewCard } from './StatisticsOverviewCard';
+import type { SunflowersDailyData } from './SunflowersDailyCard';
+import type { WeekdayRegistrationData } from './UsersRegistrationWeekdayCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -267,6 +260,30 @@ export function AdminDashboardClient({
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
         activeUsers,
     } = initialAnalyticsData;
+    const weeklyRegistrations = initialWeekdayRegistrations.reduce(
+        (total, item) => total + item.count,
+        0,
+    );
+    const weeklyActiveRegistrationDays = initialWeekdayRegistrations.filter(
+        (item) => item.count > 0,
+    ).length;
+    const totalRecords = initialEntitiesData.reduce(
+        (total, item) => total + item.count,
+        0,
+    );
+    const incompleteRecords = initialEntitiesData.reduce(
+        (total, item) =>
+            total + item.incompleteDraftCount + item.incompletePublishedCount,
+        0,
+    );
+    const weeklySunflowersSpent = initialSunflowersData.reduce(
+        (total, item) => total + item.spent,
+        0,
+    );
+    const weeklySunflowersEarned = initialSunflowersData.reduce(
+        (total, item) => total + item.earned,
+        0,
+    );
 
     return (
         <Stack spacing={4}>
@@ -440,69 +457,37 @@ export function AdminDashboardClient({
                 </div>
             </Stack>
             <Stack spacing={2}>
-                <DashboardDivider>Registracije</DashboardDivider>
-                <div className="w-full lg:max-w-2xl">
-                    <UsersRegistrationWeekdayCard
-                        data={initialWeekdayRegistrations}
+                <DashboardDivider>Statistika</DashboardDivider>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatisticsOverviewCard
+                        title="Registracije"
+                        value={weeklyRegistrations.toLocaleString('hr-HR')}
+                        detail={`Ovaj tjedan · ${weeklyActiveRegistrationDays} aktivnih dana`}
+                        href={KnownPages.UsersStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Radnje"
+                        value={formatOperationsDuration(
+                            initialOperationsDurationData.totalMinutes,
+                        )}
+                        detail="Ukupno trajanje ovaj tjedan"
+                        href={KnownPages.OperationsStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Zapisi"
+                        value={totalRecords.toLocaleString('hr-HR')}
+                        detail={`${incompleteRecords} nepotpunih zapisa`}
+                        href={KnownPages.RecordsStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Suncokreti"
+                        value={(
+                            weeklySunflowersEarned - weeklySunflowersSpent
+                        ).toLocaleString('hr-HR')}
+                        detail={`Ovaj tjedan · +${weeklySunflowersEarned.toLocaleString('hr-HR')} / −${weeklySunflowersSpent.toLocaleString('hr-HR')}`}
+                        href={KnownPages.SunflowersStatistics}
                     />
                 </div>
-            </Stack>
-            <Stack spacing={2}>
-                <DashboardDivider>Radnje</DashboardDivider>
-                <div className="w-full lg:max-w-2xl">
-                    <OperationsDurationCard
-                        data={initialOperationsDurationData}
-                    />
-                </div>
-            </Stack>
-            <Stack spacing={2}>
-                <DashboardDivider>Zapisi</DashboardDivider>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {initialEntitiesData.map(
-                        ({
-                            label,
-                            count,
-                            entityTypeName,
-                            incompleteDraftCount,
-                            incompletePublishedCount,
-                        }) => (
-                            <FactCard
-                                key={entityTypeName}
-                                header={label}
-                                value={
-                                    <Stack spacing={1}>
-                                        <Typography>{count}</Typography>
-                                        <Button
-                                            variant="plain"
-                                            size="sm"
-                                            className="justify-start px-0 h-auto min-h-0"
-                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=draft`}
-                                        >
-                                            Draft nepotpuni:{' '}
-                                            {incompleteDraftCount}
-                                        </Button>
-                                        <Button
-                                            variant="plain"
-                                            size="sm"
-                                            className="justify-start px-0 h-auto min-h-0"
-                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=published`}
-                                        >
-                                            Objavljeno nepotpuni:{' '}
-                                            {incompletePublishedCount}
-                                        </Button>
-                                    </Stack>
-                                }
-                                href={KnownPages.DirectoryEntityType(
-                                    entityTypeName,
-                                )}
-                            />
-                        ),
-                    )}
-                </div>
-            </Stack>
-            <Stack spacing={2}>
-                <DashboardDivider>Suncokreti</DashboardDivider>
-                <SunflowersDailyCard data={initialSunflowersData} />
             </Stack>
         </Stack>
     );
