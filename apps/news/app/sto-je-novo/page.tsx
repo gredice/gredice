@@ -2,6 +2,7 @@ import { Container } from '@gredice/ui/Container';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import type { Route } from 'next';
 import { EmptyNewsState } from '../../components/EmptyNewsState';
+import { NewsArchiveNavigation } from '../../components/NewsArchiveNavigation';
 import { NewsCard } from '../../components/NewsCard';
 import { NewsTagFilters } from '../../components/NewsTagFilters';
 import {
@@ -108,6 +109,7 @@ export default async function WhatsNewPage({
                     u Gredicama.
                 </p>
             </section>
+            <NewsArchiveNavigation active="changelog" />
             {tags.length > 0 ? (
                 <NewsTagFilters
                     activeTag={tag}

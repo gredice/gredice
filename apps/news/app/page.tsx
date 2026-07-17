@@ -3,46 +3,12 @@ import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
-import {
-    NewsCard,
-    type NewsCardEntry,
-    type NewsCardKind,
-} from '../components/NewsCard';
-import { NewsTagFilters } from '../components/NewsTagFilters';
-import {
-    getBlogPosts,
-    getChangelogEntries,
-    getPrimaryNewsTags,
-    uniqueNewsValues,
-} from '../lib/news';
+import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
+import { NewsCard } from '../components/NewsCard';
+import { getBlogPosts, uniqueNewsValues } from '../lib/news';
 import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
-
-const newsTypeFilters = [
-    { label: 'Blog', value: 'blog' },
-    { label: 'Što je novo', value: 'changelog' },
-] satisfies { label: string; value: NewsCardKind }[];
-
-type NewsLandingItem = {
-    entry: NewsCardEntry;
-    href: Route;
-    kind: NewsCardKind;
-    sortTime: number;
-};
-
-function normalizedTime(value: string | null | undefined) {
-    if (!value) {
-        return 0;
-    }
-
-    const time = new Date(value).getTime();
-    return Number.isNaN(time) ? 0 : time;
-}
-
-function normalizeNewsTypeFilter(value: string | undefined) {
-    return value === 'blog' || value === 'changelog' ? value : undefined;
-}
 
 function normalizeFilterValue(value: string | undefined) {
     return value?.trim().toLocaleLowerCase('hr-HR');
@@ -50,6 +16,13 @@ function normalizeFilterValue(value: string | undefined) {
 
 function changelogTagRedirectPath(tag: string): Route {
     return `/sto-je-novo?tag=${encodeURIComponent(tag)}` as Route;
+}
+
+function blogArchivePath(category: string | undefined): Route {
+    const requestedCategory = category?.trim();
+    return requestedCategory
+        ? (`/?category=${encodeURIComponent(requestedCategory)}` as Route)
+        : '/';
 }
 
 export default async function NewsHomePage({
@@ -63,48 +36,22 @@ export default async function NewsHomePage({
         redirect(changelogTagRedirectPath(requestedTag));
     }
 
-    const activeType = normalizeNewsTypeFilter(type);
-    const activeCategory = activeType === 'changelog' ? undefined : category;
-    const normalizedCategory = normalizeFilterValue(activeCategory);
-    const [allPosts, allChangelogEntries] = await Promise.all([
-        getBlogPosts(),
-        getChangelogEntries(),
-    ]);
-    const allItems: NewsLandingItem[] = [
-        ...allPosts.map((entry) => ({
-            entry,
-            href: `/${entry.slug}` as Route,
-            kind: 'blog' as const,
-            sortTime: normalizedTime(entry.publishedAt),
-        })),
-        ...allChangelogEntries.map((entry) => ({
-            entry,
-            href: `/sto-je-novo/${entry.slug}` as Route,
-            kind: 'changelog' as const,
-            sortTime: normalizedTime(entry.publishedAt),
-        })),
-    ].sort((left, right) => right.sortTime - left.sortTime);
-    const currentFilters = { category: activeCategory, type: activeType };
-    const categories =
-        activeType === 'changelog'
-            ? []
-            : uniqueNewsValues(allPosts, (item) => item.category);
-    const tags = uniqueNewsValues(allChangelogEntries, (item) => item.tags);
-    const primaryTags = getPrimaryNewsTags(allChangelogEntries);
-    const primaryTagKeys = new Set(
-        primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),
-    );
-    const dropdownTags = tags.filter(
-        (value) => !primaryTagKeys.has(value.toLocaleLowerCase('hr-HR')),
-    );
-    const visibleItems = allItems.filter((item) => {
-        if (activeType && item.kind !== activeType) {
-            return false;
-        }
+    if (type === 'changelog') {
+        redirect('/sto-je-novo');
+    }
+    if (type) {
+        redirect(blogArchivePath(category));
+    }
 
+    const activeCategory = category;
+    const normalizedCategory = normalizeFilterValue(activeCategory);
+    const allPosts = await getBlogPosts();
+    const currentFilters = { category: activeCategory };
+    const categories = uniqueNewsValues(allPosts, (item) => item.category);
+    const visiblePosts = allPosts.filter((post) => {
         if (
             normalizedCategory &&
-            normalizeFilterValue(item.entry.category ?? undefined) !==
+            normalizeFilterValue(post.category ?? undefined) !==
                 normalizedCategory
         ) {
             return false;
@@ -127,44 +74,29 @@ export default async function NewsHomePage({
                     događa u Gredicama.
                 </p>
             </section>
-            <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
-                <FilterPills
-                    active={activeType}
-                    currentFilters={currentFilters}
-                    label="Vrsta"
-                    param="type"
-                    values={newsTypeFilters}
-                />
-                <FilterPills
-                    active={activeCategory}
-                    currentFilters={currentFilters}
-                    label="Kategorije"
-                    param="category"
-                    values={categories}
-                />
-                {tags.length > 0 ? (
-                    <div className="grid gap-2">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">
-                            Tagovi
-                        </p>
-                        <NewsTagFilters
-                            dropdownTags={dropdownTags}
-                            primaryTags={primaryTags}
-                        />
-                    </div>
-                ) : null}
-            </aside>
-            {visibleItems.length > 0 ? (
+            <NewsArchiveNavigation active="blog" />
+            {categories.length > 0 ? (
+                <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
+                    <FilterPills
+                        active={activeCategory}
+                        currentFilters={currentFilters}
+                        label="Kategorije"
+                        param="category"
+                        values={categories}
+                    />
+                </aside>
+            ) : null}
+            {visiblePosts.length > 0 ? (
                 <section className="grid items-start gap-4 md:grid-cols-2">
-                    {visibleItems.map((item) => (
+                    {visiblePosts.map((entry) => (
                         <NewsCard
-                            key={`${item.kind}-${item.href}`}
-                            entry={item.entry}
-                            href={item.href}
-                            kind={item.kind}
+                            key={entry.id}
+                            entry={entry}
+                            href={`/${entry.slug}` as Route}
+                            kind="blog"
                             viewTransitionName={getNewsArticleViewTransitionName(
-                                item.kind,
-                                item.entry.slug,
+                                'blog',
+                                entry.slug,
                             )}
                         />
                     ))}
