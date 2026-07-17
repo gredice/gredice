@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     getAbandonedRaisedBedCartNote,
+    getMinimumOrderNote,
     getNewRaisedBedPlantingNote,
 } from './cartInfo';
 
@@ -27,5 +28,20 @@ describe('getAbandonedRaisedBedCartNote', () => {
             getAbandonedRaisedBedCartNote('Gredica 12'),
             'Gredica 12 je napuštena zbog neaktivnosti. Nove sjetve i radnje više nisu dostupne za ovu gredicu.',
         );
+    });
+});
+
+describe('getMinimumOrderNote', () => {
+    it('blocks positive EUR totals below one euro', () => {
+        assert.strictEqual(
+            getMinimumOrderNote(0.99),
+            'Minimalna vrijednost narudžbe je 1 €.',
+        );
+    });
+
+    it('allows an empty EUR total and totals of at least one euro', () => {
+        assert.strictEqual(getMinimumOrderNote(0), null);
+        assert.strictEqual(getMinimumOrderNote(1), null);
+        assert.strictEqual(getMinimumOrderNote(1.01), null);
     });
 });

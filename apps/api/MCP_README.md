@@ -152,7 +152,7 @@ Handles shopping cart management, dual currency support, and checkout processes.
 - **Primary**: EUR (Euro)
 - **Secondary**: 🌻 (Sunflowers)
 - **Exchange Rate**: 1 EUR = 1000 🌻
-- **Minimum Cart**: €0.50
+- **Minimum Cart**: €1.00
 - **Sunflower Earning**: 10 🌻 per 1 EUR spent
 
 ### 4. Accounts MCP Server
