@@ -26,6 +26,7 @@ import Link from 'next/link';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { GreenhouseMobilePlantList } from './GreenhouseMobilePlantList';
 
 export const dynamic = 'force-dynamic';
 
@@ -325,7 +326,41 @@ async function GreenhousePageContent() {
                                     </Chip>
                                 </Row>
                             </CardHeader>
-                            <CardOverflow>
+                            <GreenhouseMobilePlantList
+                                items={raisedBed.fields.map((field) => {
+                                    const plantSort = plantSortById.get(
+                                        field.plantSortId,
+                                    );
+
+                                    return {
+                                        germinationDate: formatDate(
+                                            field.plantGrowthDate,
+                                        ),
+                                        key: `${raisedBed.id}-${field.id}`,
+                                        plantName: getPlantName(
+                                            plantSort,
+                                            field.plantSortId,
+                                        ),
+                                        plantSort,
+                                        positionNumber: field.positionIndex + 1,
+                                        sowingDate: sowingDateCell(
+                                            field.plantSowDate,
+                                            field.plantGrowthDate,
+                                            today,
+                                        ),
+                                        statusColor: getStatusColor(
+                                            field.plantStatus,
+                                        ),
+                                        statusEmoji: plantFieldStatusEmoji(
+                                            field.plantStatus ?? undefined,
+                                        ),
+                                        statusLabel: getStatusLabel(
+                                            field.plantStatus,
+                                        ),
+                                    };
+                                })}
+                            />
+                            <CardOverflow className="hidden md:block">
                                 <Table>
                                     <Table.Header>
                                         <Table.Row>
