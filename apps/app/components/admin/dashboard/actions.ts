@@ -15,6 +15,7 @@ import {
     getUserRegistrationsByWeekday,
     redisCached,
 } from '@gredice/storage';
+import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { sumAiAnalysisCostUsd } from '../../../src/ai/aiAnalyticsCost';
 import {
@@ -109,6 +110,10 @@ function analyticsCacheKey(
     to?: string,
 ) {
     return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v3`;
+}
+
+function weeklyStatisticsCacheKey(from: string, to: string) {
+    return `dashboard:admin:weekly-statistics:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
 }
 
 function parseDuration(value: unknown) {
@@ -269,87 +274,42 @@ function getOperationUser(operation: {
     };
 }
 
-export async function getAnalyticsData(
-    days: number | undefined,
-    from?: string,
-    to?: string,
-) {
-    return redisCached(
-        analyticsCacheKey(days, from, to),
-        () => getAnalyticsDataUncached(days, from, to),
-        {
-            ttl: 60,
-            maxPayloadBytes: 2 * 1024 * 1024,
-        },
-    );
-}
-
-async function getAnalyticsDataUncached(
-    days: number | undefined,
-    from?: string,
-    to?: string,
-) {
-    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
-        days,
-        from,
-        to,
-    );
-    const rangeDays = dateKeys.length;
-
-    const [
-        analyticsResult,
-        entityTypes,
-        operationsList,
-        plannedOperationsList,
-        operationsData,
-        weekdayRegistrationsRaw,
-        aiTotals,
-        aiEvents,
-        sunflowersDailyTotalsRaw,
-    ] = await Promise.all([
-        getAnalyticsTotals(rangeDays),
-        getEntityTypes(),
-        getAllOperations({
-            completedFrom: startDate,
-            completedTo: endDate,
-        }),
+const getOperationAnalyticsReferenceData = cache(async () => {
+    const [plannedOperationsList, operationsData] = await Promise.all([
         getAllOperations({
             status: 'planned',
         }),
         getEntitiesFormatted<EntityStandardized>('operation'),
-        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
-        getAiAnalysisTotals({ from: startDate, to: endDate }),
-        getAiAnalysisEvents({ from: startDate, to: endDate }),
-        getSunflowersDailyTotals({
-            from: startDate,
-            to: endDate,
-            timeZone: analyticsTimeZone,
-        }),
     ]);
 
-    const entitiesCounts = await Promise.all(
-        entityTypes.map(async (entityType) => {
-            const entities = await getEntitiesRaw(entityType.name);
-            const definitions = await getAttributeDefinitions(entityType.name);
-            const incompleteCounts = getIncompleteEntityCountsByState(
-                entities,
-                definitions,
-            );
-            return {
-                entityTypeName: entityType.name,
-                label: entityType.label,
-                count: entities.length,
-                incompleteDraftCount: incompleteCounts.draft,
-                incompletePublishedCount: incompleteCounts.published,
-            };
-        }),
-    );
+    return {
+        plannedOperationsList,
+        operationsData,
+    };
+});
 
+function buildOperationsDurationData({
+    startDate,
+    endDate,
+    dateKeys,
+    operationsList,
+    plannedOperationsList,
+    operationsData,
+    sowingEvents,
+}: {
+    startDate: Date;
+    endDate: Date;
+    dateKeys: string[];
+    operationsList: Awaited<ReturnType<typeof getAllOperations>>;
+    plannedOperationsList: Awaited<ReturnType<typeof getAllOperations>>;
+    operationsData: EntityStandardized[];
+    sowingEvents: Awaited<ReturnType<typeof getPlantUpdateEvents>>;
+}) {
     const { operationsTotals, plannedTotals, sowingTotals } =
         createDurationBuckets(dateKeys);
 
     const operationDurations = new Map<number, number>();
-    for (const operation of operationsData ?? []) {
+    for (const operation of operationsData) {
         const duration = parseDuration(
             (operation.attributes as { duration?: unknown } | undefined)
                 ?.duration,
@@ -425,12 +385,6 @@ async function getAnalyticsDataUncached(
         });
     }
 
-    const sowingEvents = await getPlantUpdateEvents({
-        from: startDate,
-        to: endDate,
-        status: 'sowed',
-    });
-
     for (const event of sowingEvents) {
         const key = analyticsDateKey(event.createdAt);
         if (!sowingTotals.has(key)) {
@@ -470,23 +424,197 @@ async function getAnalyticsDataUncached(
             ),
     }));
 
-    const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
-        label,
-        count: weekdayRegistrationsRaw[index] ?? 0,
-    }));
+    return operationsDuration;
+}
 
-    const sunflowersByDate = new Map<string, SunflowersDailyTotalsPoint>();
-    for (const day of sunflowersDailyTotalsRaw) {
-        sunflowersByDate.set(day.date, day);
+function formatWeekdayRegistrations(counts: number[]) {
+    return WEEKDAY_LABELS.map((label, index) => ({
+        label,
+        count: counts[index] ?? 0,
+    }));
+}
+
+function formatSunflowersDailyTotals(
+    dateKeys: string[],
+    totals: SunflowersDailyTotalsPoint[],
+) {
+    const totalsByDate = new Map<string, SunflowersDailyTotalsPoint>();
+    for (const day of totals) {
+        totalsByDate.set(day.date, day);
     }
-    const sunflowersDailyTotals = dateKeys.map((date) => {
-        const day = sunflowersByDate.get(date);
+
+    return dateKeys.map((date) => {
+        const day = totalsByDate.get(date);
         return {
             date,
             spent: day?.spent ?? 0,
             earned: day?.earned ?? 0,
         };
     });
+}
+
+export async function getAnalyticsData(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return redisCached(
+        analyticsCacheKey(days, from, to),
+        () => getAnalyticsDataUncached(days, from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 2 * 1024 * 1024,
+        },
+    );
+}
+
+export async function getDashboardWeeklyStatisticsData(
+    from: string,
+    to: string,
+) {
+    return redisCached(
+        weeklyStatisticsCacheKey(from, to),
+        () => getDashboardWeeklyStatisticsDataUncached(from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 512 * 1024,
+        },
+    );
+}
+
+async function getDashboardWeeklyStatisticsDataUncached(
+    from: string,
+    to: string,
+) {
+    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
+        undefined,
+        from,
+        to,
+    );
+    const [
+        operationsList,
+        operationReferenceData,
+        weekdayRegistrationsRaw,
+        sunflowersDailyTotalsRaw,
+        sowingEvents,
+    ] = await Promise.all([
+        getAllOperations({
+            completedFrom: startDate,
+            completedTo: endDate,
+        }),
+        getOperationAnalyticsReferenceData(),
+        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
+        getSunflowersDailyTotals({
+            from: startDate,
+            to: endDate,
+            timeZone: analyticsTimeZone,
+        }),
+        getPlantUpdateEvents({
+            from: startDate,
+            to: endDate,
+            status: 'sowed',
+        }),
+    ]);
+
+    return {
+        operationsDuration: buildOperationsDurationData({
+            startDate,
+            endDate,
+            dateKeys,
+            operationsList,
+            plannedOperationsList: operationReferenceData.plannedOperationsList,
+            operationsData: operationReferenceData.operationsData,
+            sowingEvents,
+        }),
+        weekdayRegistrations: formatWeekdayRegistrations(
+            weekdayRegistrationsRaw,
+        ),
+        sunflowers: formatSunflowersDailyTotals(
+            dateKeys,
+            sunflowersDailyTotalsRaw,
+        ),
+    };
+}
+
+async function getAnalyticsDataUncached(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
+        days,
+        from,
+        to,
+    );
+    const rangeDays = dateKeys.length;
+
+    const [
+        analyticsResult,
+        entityTypes,
+        operationsList,
+        operationReferenceData,
+        weekdayRegistrationsRaw,
+        aiTotals,
+        aiEvents,
+        sunflowersDailyTotalsRaw,
+        sowingEvents,
+    ] = await Promise.all([
+        getAnalyticsTotals(rangeDays),
+        getEntityTypes(),
+        getAllOperations({
+            completedFrom: startDate,
+            completedTo: endDate,
+        }),
+        getOperationAnalyticsReferenceData(),
+        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
+        getAiAnalysisTotals({ from: startDate, to: endDate }),
+        getAiAnalysisEvents({ from: startDate, to: endDate }),
+        getSunflowersDailyTotals({
+            from: startDate,
+            to: endDate,
+            timeZone: analyticsTimeZone,
+        }),
+        getPlantUpdateEvents({
+            from: startDate,
+            to: endDate,
+            status: 'sowed',
+        }),
+    ]);
+
+    const entitiesCounts = await Promise.all(
+        entityTypes.map(async (entityType) => {
+            const entities = await getEntitiesRaw(entityType.name);
+            const definitions = await getAttributeDefinitions(entityType.name);
+            const incompleteCounts = getIncompleteEntityCountsByState(
+                entities,
+                definitions,
+            );
+            return {
+                entityTypeName: entityType.name,
+                label: entityType.label,
+                count: entities.length,
+                incompleteDraftCount: incompleteCounts.draft,
+                incompletePublishedCount: incompleteCounts.published,
+            };
+        }),
+    );
+
+    const operationsDuration = buildOperationsDurationData({
+        startDate,
+        endDate,
+        dateKeys,
+        operationsList,
+        plannedOperationsList: operationReferenceData.plannedOperationsList,
+        operationsData: operationReferenceData.operationsData,
+        sowingEvents,
+    });
+    const weekdayRegistrations = formatWeekdayRegistrations(
+        weekdayRegistrationsRaw,
+    );
+    const sunflowersDailyTotals = formatSunflowersDailyTotals(
+        dateKeys,
+        sunflowersDailyTotalsRaw,
+    );
 
     const aiTotalTokens = aiEvents.reduce(
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
