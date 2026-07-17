@@ -325,8 +325,8 @@ export function WhatsNewWidget({
     return (
         <>
             {hasUnreadEntries ? (
-                <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-2 z-20 md:bottom-16">
-                    <div className="pointer-events-auto relative w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-lg border bg-background/95 text-foreground shadow-lg backdrop-blur">
+                <div className="pointer-events-none absolute bottom-[calc(var(--game-safe-area-bottom,0px)+4.75rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] z-20 md:bottom-[calc(var(--game-safe-area-bottom,0px)+4rem)]">
+                    <div className="pointer-events-auto relative w-[min(21rem,calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem))] overflow-hidden rounded-lg border bg-background/95 text-foreground shadow-lg backdrop-blur">
                         <button
                             className={cx(
                                 'grid w-full gap-3 px-3 py-2 pr-10 text-left transition-colors hover:bg-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

@@ -20,6 +20,7 @@ export function generateMetadata(): Metadata {
 export const viewport: Viewport = {
     initialScale: 1,
     themeColor: '#111111',
+    viewportFit: 'cover',
     width: 'device-width',
 };
 
@@ -39,9 +40,9 @@ export default function RootLayout({
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <>
-            <Stack className="w-full">
-                <div className="h-[62px]" />
-                <div className="fixed top-0 left-0 z-10 w-full border-white/10 border-b bg-[#111111] px-4 py-2">
+            <Stack className="w-full [padding-right:env(safe-area-inset-right,0px)] [padding-bottom:env(safe-area-inset-bottom,0px)] [padding-left:env(safe-area-inset-left,0px)]">
+                <div className="h-[calc(62px+env(safe-area-inset-top,0px))]" />
+                <header className="fixed top-0 left-0 z-10 w-full border-white/10 border-b bg-[#111111] pb-2 [padding-top:calc(env(safe-area-inset-top,0px)+0.5rem)] [padding-right:calc(env(safe-area-inset-right,0px)+1rem)] [padding-left:calc(env(safe-area-inset-left,0px)+1rem)]">
                     <Link href="/">
                         <Image
                             alt="Gredice Logotype"
@@ -51,7 +52,7 @@ export default function RootLayout({
                             height={44}
                         />
                     </Link>
-                </div>
+                </header>
                 {children}
             </Stack>
             <Analytics />

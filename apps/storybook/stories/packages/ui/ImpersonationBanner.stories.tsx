@@ -22,8 +22,15 @@ const meta = {
         ),
     ],
     parameters: {
+        docs: {
+            description: {
+                component:
+                    'A draggable global impersonation notice. Its drag bounds respect device safe-area insets when an app renders edge to edge.',
+            },
+        },
         layout: 'fullscreen',
     },
+    tags: ['autodocs'],
 } satisfies Meta<typeof ImpersonationBanner>;
 
 export default meta;

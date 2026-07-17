@@ -43,6 +43,10 @@
         --radius: 0.5rem;
         --game-scrollbar-thumb: 28 35% 42%;
         --game-scrollbar-thumb-hover: 28 42% 32%;
+        --game-safe-area-top: env(safe-area-inset-top, 0px);
+        --game-safe-area-right: env(safe-area-inset-right, 0px);
+        --game-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        --game-safe-area-left: env(safe-area-inset-left, 0px);
 
         --light-display: visible;
         --dark-display: none;

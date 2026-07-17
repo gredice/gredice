@@ -28,7 +28,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
     themeColor: '#2e6f40',
+    viewportFit: 'cover',
 };
 
 const montserrat = Montserrat({
@@ -46,12 +49,12 @@ export default function RootLayout({
             <body className={`${montserrat.variable} min-h-dvh antialiased`}>
                 <style>{'@view-transition { navigation: auto; }'}</style>
                 <PublicChromeProvider apiBasePath="/novosti/api/gredice">
-                    <div className="flex min-h-dvh flex-col">
+                    <div className="flex min-h-dvh flex-col [padding-bottom:env(safe-area-inset-bottom,0px)] [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)]">
                         <PublicHeader
                             apiBasePath="/novosti/api/gredice"
                             linkMode="www-origin"
                         />
-                        <main className="relative mt-16 flex-1">
+                        <main className="relative mt-[calc(4rem+env(safe-area-inset-top,0px))] flex-1">
                             {children}
                         </main>
                         <PublicFooter linkMode="www-origin" />

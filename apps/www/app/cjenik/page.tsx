@@ -365,7 +365,7 @@ export default async function PricingPage() {
 
                 <nav
                     aria-label="Dijelovi cjenika"
-                    className="sticky top-16 z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+                    className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
                 >
                     <Chip color="neutral" href="#suncokreti" variant="soft">
                         Suncokreti

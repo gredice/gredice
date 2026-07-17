@@ -56,6 +56,58 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
         .toBeLessThanOrEqual(56);
 }
 
+test('public chrome stays inside mobile safe areas', async ({ page }) => {
+    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
+    await page.setViewportSize({ height: 844, width: 390 });
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeArea.bottom,
+            bottomMax: safeArea.bottom,
+            left: safeArea.left,
+            leftMax: safeArea.left,
+            right: safeArea.right,
+            rightMax: safeArea.right,
+            top: safeArea.top,
+            topMax: safeArea.top,
+        },
+    });
+
+    await page.goto('/kontakt', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+        'content',
+        /viewport-fit=cover/u,
+    );
+
+    const headerBounds = await page.locator('header').boundingBox();
+    expect(headerBounds).not.toBeNull();
+    expect(headerBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(headerBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+
+    await page.getByRole('button', { name: 'Pretraga' }).click();
+    const searchBounds = await page
+        .getByRole('dialog', { name: 'Pretraga' })
+        .boundingBox();
+    expect(searchBounds).not.toBeNull();
+    expect(searchBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(searchBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (searchBounds?.x ?? 0) + (searchBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(
+        (searchBounds?.y ?? 0) + (searchBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+
+    await expect(page.locator('.site-footer').locator('..')).toHaveCSS(
+        'padding-bottom',
+        `${safeArea.bottom}px`,
+    );
+});
+
 test('has title', async ({ page }) => {
     // The first `/` hit in a shard pays the Next.js SSR cold-start cost,
     // which can exceed the 10s default test timeout. Triple it.

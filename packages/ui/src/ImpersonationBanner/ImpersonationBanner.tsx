@@ -59,22 +59,38 @@ function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max);
 }
 
+function getSafeAreaInset(element: HTMLElement, side: string) {
+    const value = Number.parseFloat(
+        window
+            .getComputedStyle(element)
+            .getPropertyValue(`--impersonation-safe-area-${side}`),
+    );
+
+    return Number.isFinite(value) ? value : 0;
+}
+
 function getPositionBounds(element: HTMLElement) {
     const width = element.offsetWidth;
     const height = element.offsetHeight;
+    const safeAreaBottom = getSafeAreaInset(element, 'bottom');
+    const safeAreaLeft = getSafeAreaInset(element, 'left');
+    const safeAreaRight = getSafeAreaInset(element, 'right');
+    const safeAreaTop = getSafeAreaInset(element, 'top');
+    const minLeft = safeAreaLeft + bannerOffset;
+    const minTop = safeAreaTop + bannerOffset;
 
     return {
         height,
         maxLeft: Math.max(
-            bannerOffset,
-            window.innerWidth - width - bannerOffset,
+            minLeft,
+            window.innerWidth - safeAreaRight - width - bannerOffset,
         ),
         maxTop: Math.max(
-            bannerOffset,
-            window.innerHeight - height - bannerOffset,
+            minTop,
+            window.innerHeight - safeAreaBottom - height - bannerOffset,
         ),
-        minLeft: bannerOffset,
-        minTop: bannerOffset,
+        minLeft,
+        minTop,
         width,
     };
 }
@@ -199,7 +215,7 @@ export function ImpersonationBanner() {
     return (
         <div
             ref={bannerRef}
-            className="fixed z-[9999] flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-2 rounded-full border border-yellow-700/70 bg-yellow-400/95 px-2.5 py-1.5 text-xs font-medium text-black shadow-lg backdrop-blur-xs"
+            className="fixed z-[9999] flex max-w-[calc(100vw-var(--impersonation-safe-area-left)-var(--impersonation-safe-area-right)-1rem)] flex-wrap items-center gap-2 rounded-full border border-yellow-700/70 bg-yellow-400/95 px-2.5 py-1.5 text-xs font-medium text-black shadow-lg backdrop-blur-xs [--impersonation-safe-area-top:env(safe-area-inset-top,0px)] [--impersonation-safe-area-right:env(safe-area-inset-right,0px)] [--impersonation-safe-area-bottom:env(safe-area-inset-bottom,0px)] [--impersonation-safe-area-left:env(safe-area-inset-left,0px)]"
             style={{
                 left: position?.left ?? bannerOffset,
                 opacity: position ? 1 : 0,
