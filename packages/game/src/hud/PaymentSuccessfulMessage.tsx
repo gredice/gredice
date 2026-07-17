@@ -14,7 +14,7 @@ import { GameModal } from '../shared-ui/game-modal';
 export function PaymentSuccessfulMessage() {
     const [showSuccessMessage, setShowSuccessMessage] =
         useSearchParam('placanje');
-    const isSuccess = showSuccessMessage === 'uspijesno';
+    const isSuccess = showSuccessMessage === 'uspjesno';
 
     const [open, setOpen] = useState(isSuccess);
     const { resumeIfNeeded } = useGameAudio();
