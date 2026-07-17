@@ -2,7 +2,7 @@
 
 import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
-import { CmsMediaImage } from '@gredice/ui/cms';
+import { CmsMediaImage, cmsImageObjectPosition } from '@gredice/ui/cms';
 import { Close, ExternalLink } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Row } from '@gredice/ui/Row';
@@ -196,9 +196,13 @@ const audienceWhatsNewHref = `${KnownPages.GrediceWhatsNew}?tag=${encodeURICompo
 
 function ChangelogCoverImage({
     className,
+    pointOfInterestX,
+    pointOfInterestY,
     src,
 }: {
     className?: string;
+    pointOfInterestX?: number | null;
+    pointOfInterestY?: number | null;
     src: string | null | undefined;
 }) {
     if (!src) {
@@ -216,6 +220,12 @@ function ChangelogCoverImage({
                 alt=""
                 className="h-full w-full object-cover"
                 src={src}
+                style={{
+                    objectPosition: cmsImageObjectPosition(
+                        pointOfInterestX,
+                        pointOfInterestY,
+                    ),
+                }}
             />
         </div>
     );
@@ -347,6 +357,8 @@ export function WhatsNewWidget({
                         >
                             <ChangelogCoverImage
                                 className="h-14 w-14"
+                                pointOfInterestX={latestEntry.metaImagePoiX}
+                                pointOfInterestY={latestEntry.metaImagePoiY}
                                 src={latestEntry.metaImageUrl}
                             />
                             <Stack className="min-w-0" spacing={1}>
@@ -440,6 +452,12 @@ export function WhatsNewWidget({
                                         >
                                             <ChangelogCoverImage
                                                 className="h-16 w-16"
+                                                pointOfInterestX={
+                                                    entry.metaImagePoiX
+                                                }
+                                                pointOfInterestY={
+                                                    entry.metaImagePoiY
+                                                }
                                                 src={entry.metaImageUrl}
                                             />
                                             <Stack

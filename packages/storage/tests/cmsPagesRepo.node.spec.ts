@@ -541,6 +541,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
         title: 'V1 title',
         content: firstContent,
         canonicalPath: '/history-v1',
+        metaImagePoiX: 25,
+        metaImagePoiY: 75,
         noIndex: true,
     });
     await updateCmsPage({
@@ -548,6 +550,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
         title: 'V2 title',
         content: secondContent,
         canonicalPath: '/history-v2',
+        metaImagePoiX: 80,
+        metaImagePoiY: 20,
         noIndex: false,
     });
 
@@ -564,6 +568,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
     assert.equal(restored?.title, 'V1 title');
     assert.equal(restored?.content, firstContent);
     assert.equal(restored?.canonicalPath, '/history-v1');
+    assert.equal(restored?.metaImagePoiX, 25);
+    assert.equal(restored?.metaImagePoiY, 75);
     assert.equal(restored?.noIndex, true);
 });
 
@@ -588,6 +594,8 @@ test('CMS page metadata is preserved when updating only content', async () => {
         metaTitle: 'Meta title',
         metaDescription: 'Meta description',
         metaImageUrl: 'https://www.gredice.com/meta.png',
+        metaImagePoiX: 70,
+        metaImagePoiY: 30,
         seoImageUrl: 'https://www.gredice.com/seo.png',
     });
 
@@ -600,7 +608,23 @@ test('CMS page metadata is preserved when updating only content', async () => {
     assert.equal(page?.metaTitle, 'Meta title');
     assert.equal(page?.metaDescription, 'Meta description');
     assert.equal(page?.metaImageUrl, 'https://www.gredice.com/meta.png');
+    assert.equal(page?.metaImagePoiX, 70);
+    assert.equal(page?.metaImagePoiY, 30);
     assert.equal(page?.seoImageUrl, 'https://www.gredice.com/seo.png');
+});
+
+test('CMS page cover image POI coordinates must be percentages', async () => {
+    createTestDb();
+
+    await assert.rejects(
+        createCmsPage({
+            slug: `invalid-cover-poi-${randomUUID()}`,
+            title: 'Invalid cover POI',
+            metaImagePoiX: 101,
+            metaImagePoiY: 50,
+        }),
+        /Cover image POI X must be an integer from 0 to 100/,
+    );
 });
 
 test('published CMS news pages list only published blog and changelog entries', async () => {

@@ -32,6 +32,8 @@ export type CreateCmsPageInput = {
     metaTitle?: string | null;
     metaDescription?: string | null;
     metaImageUrl?: string | null;
+    metaImagePoiX?: number | null;
+    metaImagePoiY?: number | null;
     seoImageUrl?: string | null;
     canonicalPath?: string | null;
     noIndex?: boolean;
@@ -110,6 +112,21 @@ const reservedCmsPageFirstSegments = new Set([
 function optionalText(value: string | null | undefined) {
     const trimmed = value?.trim();
     return trimmed ? trimmed : null;
+}
+
+function optionalImagePoiCoordinate(
+    value: number | null | undefined,
+    label: string,
+) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    if (!Number.isInteger(value) || value < 0 || value > 100) {
+        throw new Error(`${label} must be an integer from 0 to 100.`);
+    }
+
+    return value;
 }
 
 function optionalTaxonomyText(value: string | null | undefined) {
@@ -320,6 +337,14 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
             160,
         ),
         metaImageUrl: optionalText(input.metaImageUrl),
+        metaImagePoiX: optionalImagePoiCoordinate(
+            input.metaImagePoiX,
+            'Cover image POI X',
+        ),
+        metaImagePoiY: optionalImagePoiCoordinate(
+            input.metaImagePoiY,
+            'Cover image POI Y',
+        ),
         seoImageUrl: optionalText(input.seoImageUrl),
         canonicalPath: optionalText(input.canonicalPath),
         noIndex: input.noIndex ?? false,
@@ -549,6 +574,8 @@ export async function createCmsPage(
         nextMetaTitle: values.metaTitle,
         nextMetaDescription: values.metaDescription,
         nextMetaImageUrl: values.metaImageUrl,
+        nextMetaImagePoiX: values.metaImagePoiX,
+        nextMetaImagePoiY: values.metaImagePoiY,
         nextSeoImageUrl: values.seoImageUrl,
         nextCanonicalPath: values.canonicalPath,
         nextNoIndex: values.noIndex,
@@ -625,6 +652,20 @@ export async function updateCmsPage(
 
     if (input.metaImageUrl !== undefined) {
         updateData.metaImageUrl = optionalText(input.metaImageUrl);
+    }
+
+    if (input.metaImagePoiX !== undefined) {
+        updateData.metaImagePoiX = optionalImagePoiCoordinate(
+            input.metaImagePoiX,
+            'Cover image POI X',
+        );
+    }
+
+    if (input.metaImagePoiY !== undefined) {
+        updateData.metaImagePoiY = optionalImagePoiCoordinate(
+            input.metaImagePoiY,
+            'Cover image POI Y',
+        );
     }
 
     if (input.seoImageUrl !== undefined) {
@@ -744,6 +785,10 @@ function cmsPageRevisionValues(
         nextMetaDescription: next.metaDescription,
         previousMetaImageUrl: previous.metaImageUrl,
         nextMetaImageUrl: next.metaImageUrl,
+        previousMetaImagePoiX: previous.metaImagePoiX,
+        nextMetaImagePoiX: next.metaImagePoiX,
+        previousMetaImagePoiY: previous.metaImagePoiY,
+        nextMetaImagePoiY: next.metaImagePoiY,
         previousSeoImageUrl: previous.seoImageUrl,
         nextSeoImageUrl: next.seoImageUrl,
         previousCanonicalPath: previous.canonicalPath,
@@ -857,6 +902,12 @@ export async function restoreCmsPageRevision(
             metaImageUrl: restoreNextSnapshot
                 ? revision.nextMetaImageUrl
                 : revision.previousMetaImageUrl,
+            metaImagePoiX: restoreNextSnapshot
+                ? revision.nextMetaImagePoiX
+                : revision.previousMetaImagePoiX,
+            metaImagePoiY: restoreNextSnapshot
+                ? revision.nextMetaImagePoiY
+                : revision.previousMetaImagePoiY,
             seoImageUrl: restoreNextSnapshot
                 ? revision.nextSeoImageUrl
                 : revision.previousSeoImageUrl,

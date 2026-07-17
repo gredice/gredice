@@ -23,6 +23,8 @@ export default async function ChangelogOpenGraphImage({
         <CmsOgImage
             imageUrl={entry?.metaImageUrl}
             kind="changelog"
+            pointOfInterestX={entry?.metaImagePoiX}
+            pointOfInterestY={entry?.metaImagePoiY}
             tags={entry?.tags ?? []}
             title={entry?.title ?? 'Što je novo'}
         />,

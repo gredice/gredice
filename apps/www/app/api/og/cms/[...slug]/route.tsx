@@ -54,6 +54,8 @@ export async function GET(
         <CmsOgImage
             imageUrl={page?.metaImageUrl}
             kind={pageOgKind(page?.contentKind)}
+            pointOfInterestX={page?.metaImagePoiX}
+            pointOfInterestY={page?.metaImagePoiY}
             tags={page?.tags ?? []}
             title={page?.title ?? 'Gredice'}
         />,
