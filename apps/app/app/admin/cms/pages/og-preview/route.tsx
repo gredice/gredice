@@ -6,6 +6,7 @@ import {
 } from '@gredice/ui/cms';
 import { ImageResponse } from 'next/og';
 import { withAuth } from '../../../../../lib/auth/auth';
+import { parseOgImagePointOfInterest } from './ogPreviewPointOfInterest';
 
 function parseOgImageKind(value: string | null): CmsOgImageKind {
     if (value === 'blog' || value === 'changelog') {
@@ -27,13 +28,6 @@ function parseTags(searchParams: URLSearchParams) {
         .slice(0, 8);
 }
 
-function parsePointOfInterest(value: string | null) {
-    const coordinate = Number(value);
-    return Number.isInteger(coordinate) && coordinate >= 0 && coordinate <= 100
-        ? coordinate
-        : null;
-}
-
 export async function GET(request: Request) {
     return await withAuth(['admin'], async () => {
         const { searchParams } = new URL(request.url);
@@ -44,10 +38,10 @@ export async function GET(request: Request) {
             <CmsOgImage
                 imageUrl={imageUrl}
                 kind={parseOgImageKind(searchParams.get('contentKind'))}
-                pointOfInterestX={parsePointOfInterest(
+                pointOfInterestX={parseOgImagePointOfInterest(
                     searchParams.get('pointOfInterestX'),
                 )}
-                pointOfInterestY={parsePointOfInterest(
+                pointOfInterestY={parseOgImagePointOfInterest(
                     searchParams.get('pointOfInterestY'),
                 )}
                 tags={parseTags(searchParams)}

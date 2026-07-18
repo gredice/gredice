@@ -5,17 +5,15 @@ test('marks a cover image point of interest and previews the crop', async ({
     mount,
 }) => {
     const component = await mount(<CmsPageCoverImageFieldStory />);
-    const picker = component.getByRole('button', {
-        name: 'Odaberi točku interesa na naslovnoj slici',
-    });
+    const picker = component.locator('[data-cms-cover-poi-picker]');
     await picker.evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
+        element.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
         element.dispatchEvent(
-            new MouseEvent('click', {
+            new PointerEvent('pointerdown', {
                 bubbles: true,
-                clientX: bounds.left + bounds.width * 0.8,
-                clientY: bounds.top + bounds.height * 0.2,
-                detail: 1,
+                clientX: 80,
+                clientY: 20,
+                pointerType: 'mouse',
             }),
         );
     });
@@ -27,6 +25,12 @@ test('marks a cover image point of interest and previews the crop', async ({
         .locator('input[name="metaImagePoiY"]')
         .inputValue();
     expect(Number(pointOfInterestX)).toBeGreaterThan(50);
+    await expect(component.getByRole('slider')).toHaveCount(2);
+    await expect(
+        component.getByRole('button', {
+            name: 'Odaberi točku interesa na naslovnoj slici',
+        }),
+    ).toHaveCount(0);
     await expect(
         component.getByRole('img', {
             name: 'Pregled izreza naslovne slike',

@@ -7,7 +7,7 @@ import { Row } from '@gredice/ui/Row';
 import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { type MouseEvent, useRef, useState } from 'react';
+import { type PointerEvent, useRef, useState } from 'react';
 import {
     ImageUploadManager,
     type ImageUploadManagerHandle,
@@ -102,13 +102,9 @@ export function CmsPageCoverImageField({
     const supportsPointOfInterest =
         usage === 'cover' && Boolean(onPointOfInterestChange);
 
-    const handlePointOfInterestClick = (
-        event: MouseEvent<HTMLButtonElement>,
+    const handlePointOfInterestPointerDown = (
+        event: PointerEvent<HTMLDivElement>,
     ) => {
-        if (event.detail === 0) {
-            return;
-        }
-
         const bounds = event.currentTarget.getBoundingClientRect();
         const x = Math.min(
             100,
@@ -201,7 +197,8 @@ export function CmsPageCoverImageField({
                             >
                                 Kliknite najvažniju točku na cijeloj slici. Ona
                                 ostaje u središtu kad se slika izrezuje u
-                                različite omjere.
+                                različite omjere. Za podešavanje tipkovnicom
+                                upotrijebite klizače ispod.
                             </Typography>
                         </div>
                         <div className="flex max-h-80 justify-center overflow-hidden rounded-md border bg-muted">
@@ -212,11 +209,13 @@ export function CmsPageCoverImageField({
                                     className="block max-h-80 max-w-full object-contain"
                                     src={value}
                                 />
-                                <button
-                                    aria-label="Odaberi točku interesa na naslovnoj slici"
-                                    className="absolute inset-0 cursor-crosshair focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                                    onClick={handlePointOfInterestClick}
-                                    type="button"
+                                <div
+                                    aria-hidden
+                                    className="absolute inset-0 cursor-crosshair"
+                                    data-cms-cover-poi-picker
+                                    onPointerDown={
+                                        handlePointOfInterestPointerDown
+                                    }
                                 >
                                     <span
                                         aria-hidden
@@ -226,7 +225,7 @@ export function CmsPageCoverImageField({
                                             top: `${pointOfInterestY}%`,
                                         }}
                                     />
-                                </button>
+                                </div>
                             </div>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
