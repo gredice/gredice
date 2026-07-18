@@ -1644,6 +1644,7 @@ test('recipient lifecycle rows honor account preferences, quiet hours, and indep
 test('removed account members cannot claim or route direct lifecycle notifications', async () => {
     createTestDb();
     await ensureFarmId();
+    const scenarioTime = new Date('2026-07-16T12:01:00.000Z');
     const userId = await createUserWithPassword(
         `delivery-center-removed-${randomUUID()}@example.com`,
         'password',
@@ -1682,7 +1683,11 @@ test('removed account members cannot claim or route direct lifecycle notificatio
         );
 
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: scenarioTime,
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === userId,
@@ -1690,13 +1695,21 @@ test('removed account members cannot claim or route direct lifecycle notificatio
         true,
     );
     assert.deepEqual(
-        await claimDeliveryLifecycleEmailCandidate({ notificationId, userId }),
+        await claimDeliveryLifecycleEmailCandidate({
+            notificationId,
+            now: scenarioTime,
+            userId,
+        }),
         { reason: 'not_recipient', status: 'unavailable' },
     );
     assert.deepEqual(await routeNotificationDelivery(notificationId), []);
     await storage().insert(accountUsers).values({ accountId, userId });
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: scenarioTime,
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === userId,
@@ -1704,7 +1717,11 @@ test('removed account members cannot claim or route direct lifecycle notificatio
         false,
     );
     assert.deepEqual(
-        await claimDeliveryLifecycleEmailCandidate({ notificationId, userId }),
+        await claimDeliveryLifecycleEmailCandidate({
+            notificationId,
+            now: scenarioTime,
+            userId,
+        }),
         { reason: 'already_claimed', status: 'unavailable' },
     );
 });
@@ -1712,6 +1729,7 @@ test('removed account members cannot claim or route direct lifecycle notificatio
 test('customer lifecycle delivery stops after a recipient role changes to driver', async () => {
     createTestDb();
     await ensureFarmId();
+    const scenarioTime = new Date('2026-07-16T12:01:00.000Z');
     const userId = await createUserWithPassword(
         `delivery-center-role-change-${randomUUID()}@example.com`,
         'password',
@@ -1720,23 +1738,26 @@ test('customer lifecycle delivery stops after a recipient role changes to driver
     assert.ok(user);
     const accountId = user.accounts[0]?.accountId;
     assert.ok(accountId);
-    const notificationId = await createNotification({
-        accountId,
-        category: 'delivery_updates',
-        content: 'Dostava je krenula.',
-        header: 'Dostava',
-        metadata: {
-            eventVersion: 1,
-            milestone: 'route-started',
-            requestId: randomUUID(),
-            retryAttempt: 0,
-            runId: 'run-role-change',
-            stopId: '42',
+    const notificationId = await createNotification(
+        {
+            accountId,
+            category: 'delivery_updates',
+            content: 'Dostava je krenula.',
+            header: 'Dostava',
+            metadata: {
+                eventVersion: 1,
+                milestone: 'route-started',
+                requestId: randomUUID(),
+                retryAttempt: 0,
+                runId: 'run-role-change',
+                stopId: '42',
+            },
+            timestamp: new Date('2026-07-16T12:00:00.000Z'),
+            type: 'delivery_lifecycle',
+            userId,
         },
-        timestamp: new Date('2026-07-16T12:00:00.000Z'),
-        type: 'delivery_lifecycle',
-        userId,
-    });
+        { now: scenarioTime },
+    );
     assert.equal(
         (
             await getNotificationsForCenter({
@@ -1755,7 +1776,11 @@ test('customer lifecycle delivery stops after a recipient role changes to driver
         .where(eq(users.id, userId));
 
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: scenarioTime,
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === userId,
@@ -1763,7 +1788,11 @@ test('customer lifecycle delivery stops after a recipient role changes to driver
         true,
     );
     assert.deepEqual(
-        await claimDeliveryLifecycleEmailCandidate({ notificationId, userId }),
+        await claimDeliveryLifecycleEmailCandidate({
+            notificationId,
+            now: scenarioTime,
+            userId,
+        }),
         { reason: 'not_recipient', status: 'unavailable' },
     );
     assert.deepEqual(await routeNotificationDelivery(notificationId), []);
@@ -1784,7 +1813,11 @@ test('customer lifecycle delivery stops after a recipient role changes to driver
         .set({ role: 'user' })
         .where(eq(users.id, userId));
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: scenarioTime,
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === userId,
@@ -1792,7 +1825,11 @@ test('customer lifecycle delivery stops after a recipient role changes to driver
         false,
     );
     assert.deepEqual(
-        await claimDeliveryLifecycleEmailCandidate({ notificationId, userId }),
+        await claimDeliveryLifecycleEmailCandidate({
+            notificationId,
+            now: scenarioTime,
+            userId,
+        }),
         { reason: 'already_claimed', status: 'unavailable' },
     );
 });
@@ -3356,15 +3393,18 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         runId: `run:${randomUUID()}`,
         stopId: `stop:${randomUUID()}`,
     };
-    const notificationId = await createNotification({
-        accountId,
-        category: 'delivery_updates',
-        content: 'Catalog content is not the email source.',
-        header: 'Catalog header is not the email source.',
-        metadata,
-        timestamp: new Date('2026-07-17T00:00:00.000Z'),
-        type: 'delivery_lifecycle',
-    });
+    const notificationId = await createNotification(
+        {
+            accountId,
+            category: 'delivery_updates',
+            content: 'Catalog content is not the email source.',
+            header: 'Catalog header is not the email source.',
+            metadata,
+            timestamp: new Date('2026-07-17T04:00:00.000Z'),
+            type: 'delivery_lifecycle',
+        },
+        { now: new Date('2026-07-17T04:00:00.000Z') },
+    );
     const wrongTypeId = await createNotification(
         {
             accountId,
@@ -3403,7 +3443,9 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         { routeDelivery: false },
     );
 
-    const initialCandidates = await getDeliveryLifecycleEmailCandidates();
+    const initialCandidates = await getDeliveryLifecycleEmailCandidates({
+        now: new Date('2026-07-17T04:01:00.000Z'),
+    });
     assert.deepEqual(
         initialCandidates
             .filter((candidate) => candidate.notificationId === notificationId)
@@ -3420,7 +3462,7 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         );
     }
 
-    const quietTime = new Date('2026-07-17T01:00:00.000Z');
+    const quietTime = new Date('2026-07-17T05:00:00.000Z');
     const disabled = await claimDeliveryLifecycleEmailCandidate({
         notificationId,
         now: quietTime,
@@ -3594,8 +3636,11 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         }),
         true,
     );
+    const retryCandidates = await getDeliveryLifecycleEmailCandidates({
+        now: new Date('2026-07-17T23:02:02.000Z'),
+    });
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        retryCandidates.some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === quietUserId,
@@ -3603,7 +3648,12 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         true,
     );
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates({ maxAttempts: 1 })).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                maxAttempts: 1,
+                now: new Date('2026-07-17T23:02:02.000Z'),
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === quietUserId,
@@ -3678,9 +3728,11 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         true,
     );
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
-            (candidate) => candidate.notificationId === notificationId,
-        ),
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: new Date('2026-07-17T23:04:01.000Z'),
+            })
+        ).some((candidate) => candidate.notificationId === notificationId),
         false,
     );
 
