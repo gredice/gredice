@@ -6,6 +6,7 @@ import {
 } from '@gredice/ui/cms';
 import { ImageResponse } from 'next/og';
 import { withAuth } from '../../../../../lib/auth/auth';
+import { parseOgImagePointOfInterest } from './ogPreviewPointOfInterest';
 
 function parseOgImageKind(value: string | null): CmsOgImageKind {
     if (value === 'blog' || value === 'changelog') {
@@ -37,6 +38,12 @@ export async function GET(request: Request) {
             <CmsOgImage
                 imageUrl={imageUrl}
                 kind={parseOgImageKind(searchParams.get('contentKind'))}
+                pointOfInterestX={parseOgImagePointOfInterest(
+                    searchParams.get('pointOfInterestX'),
+                )}
+                pointOfInterestY={parseOgImagePointOfInterest(
+                    searchParams.get('pointOfInterestY'),
+                )}
                 tags={parseTags(searchParams)}
                 title={title}
             />,

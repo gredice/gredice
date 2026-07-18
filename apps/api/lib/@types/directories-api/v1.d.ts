@@ -957,6 +957,8 @@ export interface components {
             metaTitle?: string | null;
             metaDescription?: string | null;
             metaImageUrl?: string | null;
+            metaImagePoiX?: number | null;
+            metaImagePoiY?: number | null;
             seoImageUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;

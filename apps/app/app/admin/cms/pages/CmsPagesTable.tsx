@@ -1,4 +1,5 @@
 import type { SelectCmsPage } from '@gredice/storage';
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
 import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Typography } from '@gredice/ui/Typography';
@@ -78,6 +79,12 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                                     height={40}
                                     loading="lazy"
                                     src={page.metaImageUrl}
+                                    style={{
+                                        objectPosition: cmsImageObjectPosition(
+                                            page.metaImagePoiX,
+                                            page.metaImagePoiY,
+                                        ),
+                                    }}
                                     width={64}
                                 />
                             </span>
