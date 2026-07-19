@@ -56,7 +56,6 @@
         "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
         "@vercel/analytics": "2.0.1",
-        "babel-plugin-react-compiler": "19.1.0-rc.3",
         "nuqs": "2.9.0",
         "postcss": "8.5.16",
         "sass": "1.101.0",
