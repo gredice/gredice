@@ -70,7 +70,6 @@
         "@types/react-dom": "19.2.3",
         "@vercel/analytics": "2.0.1",
         "@zxing/library": "0.23.0",
-        "babel-plugin-react-compiler": "19.1.0-rc.3",
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
         "tsx": "4.23.0",

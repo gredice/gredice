@@ -189,6 +189,15 @@ Turbo build/test results are cached remotely through Vercel for the `gredice` te
 
 `pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
 
+### Next.js build cache canary
+
+`apps/app` enables the experimental Turbopack filesystem cache for production
+builds. Vercel persists `.next/cache` automatically, while the reusable
+GitHub Actions workflow persists it only when the caller sets
+`nextBuildCache: true`. Keep the rollout scoped to the admin app until cached
+CI and Vercel builds have proved artifact consistency; the other Next.js apps
+continue to use only the stable development filesystem cache.
+
 ### Public page revalidation
 
 `apps/app` triggers public `apps/www` ISR revalidation after admin changes to directory plants, plant sorts, and operations. Configure the same `GREDICE_WWW_REVALIDATE_SECRET` in both apps. In production the admin app calls `https://www.gredice.com/api/revalidate/directories`; for preview or custom environments, set `GREDICE_WWW_REVALIDATE_URL` in `apps/app` to the target `www` deployment URL.

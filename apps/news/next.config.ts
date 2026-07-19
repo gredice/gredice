@@ -74,6 +74,7 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
         useTypeScriptCli: true,
     },

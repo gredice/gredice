@@ -68,7 +68,6 @@
         "@types/react-dom": "19.2.3",
         "@types/xml2js": "0.4.14",
         "@vercel/analytics": "2.0.1",
-        "babel-plugin-react-compiler": "19.1.0-rc.3",
         "dotenv": "17.4.2",
         "motion": "12.42.2",
         "next-sitemap": "4.2.3",
