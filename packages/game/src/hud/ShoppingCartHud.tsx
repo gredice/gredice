@@ -34,6 +34,7 @@ import {
 import { HudCard } from './components/HudCard';
 import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
+import { ShoppingCartStepTransition } from './components/shopping-cart/ShoppingCartStepTransition';
 
 interface ShoppingCartProps {
     showDeliveryStep: boolean;
@@ -129,17 +130,19 @@ export function ShoppingCart({
     // Show delivery step if user clicked on checkout with deliverable items
     if (showDeliveryStep) {
         return (
-            <DeliveryStep
-                onSelectionChange={setDeliverySelection}
-                onBack={handleBackToCart}
-                onProceed={handleDeliveryProceed}
-                checkout={checkout}
-                isValid={isCompleteDeliverySelection(deliverySelection)}
-            />
+            <ShoppingCartStepTransition step="delivery">
+                <DeliveryStep
+                    onSelectionChange={setDeliverySelection}
+                    onBack={handleBackToCart}
+                    onProceed={handleDeliveryProceed}
+                    checkout={checkout}
+                    isValid={isCompleteDeliverySelection(deliverySelection)}
+                />
+            </ShoppingCartStepTransition>
         );
     }
 
-    return (
+    const cartStep = (
         <Stack spacing={4}>
             <Stack>
                 <div
@@ -285,6 +288,12 @@ export function ShoppingCart({
                 </Stack>
             </Stack>
         </Stack>
+    );
+
+    return (
+        <ShoppingCartStepTransition step="cart">
+            {cartStep}
+        </ShoppingCartStepTransition>
     );
 }
 
