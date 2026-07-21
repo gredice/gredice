@@ -1660,6 +1660,8 @@ function GardenWorkspaceShowcase() {
 }
 
 function AccountAndStatesShowcase() {
+    const [collapseOpen, setCollapseOpen] = useState(false);
+
     return (
         <Container className="py-8" maxWidth="xl">
             <Stack spacing={8}>
@@ -1798,13 +1800,30 @@ function AccountAndStatesShowcase() {
                             <div className="grid gap-4 lg:grid-cols-2">
                                 <Card variant="secondary">
                                     <CardHeader>
-                                        <CardTitle>Collapsed state</CardTitle>
+                                        <CardTitle>
+                                            Collapse transition
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <Collapse appear={false}>
+                                        <Button
+                                            aria-expanded={collapseOpen}
+                                            className="mb-3"
+                                            onClick={() =>
+                                                setCollapseOpen(
+                                                    (current) => !current,
+                                                )
+                                            }
+                                            size="sm"
+                                            variant="outlined"
+                                        >
+                                            {collapseOpen
+                                                ? 'Sakrij detalje'
+                                                : 'Prikaži detalje'}
+                                        </Button>
+                                        <Collapse appear={collapseOpen}>
                                             <Typography>
-                                                Hidden content remains in the
-                                                flow only when expanded.
+                                                Skriveni sadržaj ostaje miran i
+                                                dostupan tek kada je proširen.
                                             </Typography>
                                         </Collapse>
                                         <NoDataPlaceholder />
