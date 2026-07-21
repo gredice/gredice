@@ -2,9 +2,17 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
-import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
-import { useShoppingCart } from '../../../packages/game/src/hooks/useShoppingCart';
+import {
+    type ShoppingCartData,
+    type ShoppingCartItemData,
+    useShoppingCart,
+    useShoppingCartQueryKey,
+} from '../../../packages/game/src/hooks/useShoppingCart';
 import { ShoppingCartItem } from '../../../packages/game/src/hud/components/shopping-cart/ShoppingCartItem';
+import {
+    ShoppingCart,
+    ShoppingCartHud,
+} from '../../../packages/game/src/hud/ShoppingCartHud';
 import {
     createGameState,
     GameStateContext,
@@ -44,6 +52,52 @@ const cartItem = {
         },
     },
 } as unknown as ShoppingCartItemData;
+
+function createOperationCartItem({
+    id,
+    name,
+    price,
+}: {
+    id: number;
+    name: string;
+    price: number;
+}) {
+    return {
+        ...cartItem,
+        id,
+        entityId: `operation-${id}`,
+        shopData: {
+            ...cartItem.shopData,
+            name,
+            price,
+        },
+        entityData: {
+            ...cartItem.entityData,
+            id,
+            slug: `mock-operation-${id}`,
+            information: {
+                ...cartItem.entityData.information,
+                label: name,
+                name,
+            },
+        },
+    } as unknown as ShoppingCartItemData;
+}
+
+const basilCartItem = createOperationCartItem({
+    id: 2,
+    name: 'Sadnja bosiljka',
+    price: 3.5,
+});
+const mintCartItem = createOperationCartItem({
+    id: 3,
+    name: 'Sadnja metvice',
+    price: 4.5,
+});
+const onePresenceItem = [cartItem];
+const twoPresenceItems = [cartItem, basilCartItem];
+const basilAndMintPresenceItems = [basilCartItem, mintCartItem];
+const noPresenceItems: ShoppingCartItemData[] = [];
 
 function createOutletCartItem() {
     const plantSortItem = createPlantSortCartItem();
@@ -129,7 +183,15 @@ function createPlantSortCartItem() {
     } as unknown as ShoppingCartItemData;
 }
 
-function createOptimisticToggleQueryClient(item = cartItem) {
+function cartTotal(items: ShoppingCartItemData[]) {
+    return items.reduce(
+        (total, item) =>
+            total + (item.shopData.discountPrice ?? item.shopData.price ?? 0),
+        0,
+    );
+}
+
+function createOptimisticToggleQueryClient(items = onePresenceItem) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -164,9 +226,9 @@ function createOptimisticToggleQueryClient(item = cartItem) {
         allowPurchase: true,
         hasDeliverableItems: false,
         id: 1,
-        items: [item],
+        items,
         notes: [],
-        total: 2.5,
+        total: cartTotal(items),
         totalSunflowers: 0,
     });
 
@@ -175,11 +237,21 @@ function createOptimisticToggleQueryClient(item = cartItem) {
 
 function ShoppingCartOptimisticToggleProviders({
     children,
+    hasMemory = false,
     item,
-}: PropsWithChildren<{ item?: ShoppingCartItemData }>) {
+    items,
+}: PropsWithChildren<{
+    hasMemory?: boolean;
+    item?: ShoppingCartItemData;
+    items?: ShoppingCartItemData[];
+}>) {
+    const initialItems = useMemo(
+        () => items ?? (item ? [item] : onePresenceItem),
+        [item, items],
+    );
     const queryClient = useMemo(
-        () => createOptimisticToggleQueryClient(item),
-        [item],
+        () => createOptimisticToggleQueryClient(initialItems),
+        [initialItems],
     );
     const gameStore = useMemo(
         () =>
@@ -193,7 +265,7 @@ function ShoppingCartOptimisticToggleProviders({
     );
 
     return (
-        <NuqsTestingAdapter>
+        <NuqsTestingAdapter hasMemory={hasMemory}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     <GameAnalyticsProvider capture={() => undefined}>
@@ -202,6 +274,95 @@ function ShoppingCartOptimisticToggleProviders({
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
+    );
+}
+
+function setPresenceItems(
+    queryClient: ReactQuery.QueryClient,
+    items: ShoppingCartItemData[],
+) {
+    queryClient.setQueryData<ShoppingCartData | null>(
+        useShoppingCartQueryKey,
+        (cart) =>
+            cart
+                ? {
+                      ...cart,
+                      items,
+                      total: cartTotal(items),
+                  }
+                : cart,
+    );
+}
+
+function ShoppingCartItemsPresencePanel({
+    useProductionHud = false,
+}: {
+    useProductionHud?: boolean;
+}) {
+    const queryClient = ReactQuery.useQueryClient();
+    const { data: cart } = useShoppingCart();
+
+    return (
+        <div className="w-[40rem] max-w-full p-8">
+            <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                    data-testid="cart-set-one"
+                    type="button"
+                    onClick={() =>
+                        setPresenceItems(queryClient, onePresenceItem)
+                    }
+                >
+                    Jedna stavka
+                </button>
+                <button
+                    data-testid="cart-set-two"
+                    type="button"
+                    onClick={() =>
+                        setPresenceItems(queryClient, twoPresenceItems)
+                    }
+                >
+                    Dvije stavke
+                </button>
+                <button
+                    data-testid="cart-set-basil"
+                    type="button"
+                    onClick={() =>
+                        setPresenceItems(queryClient, [basilCartItem])
+                    }
+                >
+                    Samo bosiljak
+                </button>
+                <button
+                    data-testid="cart-set-basil-mint"
+                    type="button"
+                    onClick={() =>
+                        setPresenceItems(queryClient, basilAndMintPresenceItems)
+                    }
+                >
+                    Bosiljak i metvica
+                </button>
+                <button
+                    data-testid="cart-set-empty"
+                    type="button"
+                    onClick={() =>
+                        setPresenceItems(queryClient, noPresenceItems)
+                    }
+                >
+                    Prazna košara
+                </button>
+            </div>
+            <output data-testid="cart-source-item-ids">
+                {cart?.items.map((item) => item.id).join(',') || 'empty'}
+            </output>
+            {useProductionHud ? (
+                <ShoppingCartHud />
+            ) : (
+                <ShoppingCart
+                    showDeliveryStep={false}
+                    onShowDeliveryStepChange={() => undefined}
+                />
+            )}
+        </div>
     );
 }
 
@@ -260,6 +421,36 @@ export function ShoppingCartPlantSortStory() {
     return (
         <ShoppingCartOptimisticToggleProviders item={item}>
             <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartItemsPresenceStory({
+    initialItemCount = 1,
+}: {
+    initialItemCount?: 0 | 1 | 2;
+}) {
+    const items =
+        initialItemCount === 0
+            ? noPresenceItems
+            : initialItemCount === 2
+              ? twoPresenceItems
+              : onePresenceItem;
+
+    return (
+        <ShoppingCartOptimisticToggleProviders items={items}>
+            <ShoppingCartItemsPresencePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartHudItemsPresenceStory() {
+    return (
+        <ShoppingCartOptimisticToggleProviders
+            hasMemory
+            items={onePresenceItem}
+        >
+            <ShoppingCartItemsPresencePanel useProductionHud />
         </ShoppingCartOptimisticToggleProviders>
     );
 }
