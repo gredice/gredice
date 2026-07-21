@@ -6,12 +6,14 @@ import { type FormEvent, useEffect, useState } from 'react';
 interface EmailPasswordFormProps {
     onSubmit: (email: string, password: string) => Promise<void>;
     submitText: string;
+    autoFocusEmail?: boolean;
     registration?: boolean;
 }
 
 export function EmailPasswordForm({
     onSubmit,
     submitText,
+    autoFocusEmail = false,
     registration = false,
 }: EmailPasswordFormProps) {
     const [email, setEmail] = useState('');
@@ -45,6 +47,7 @@ export function EmailPasswordForm({
                     id="email"
                     type="email"
                     label="Email"
+                    autoFocus={autoFocusEmail}
                     fullWidth
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
