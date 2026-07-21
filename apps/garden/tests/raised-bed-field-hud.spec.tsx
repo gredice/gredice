@@ -1168,13 +1168,40 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const recommendationsList = dialog.locator(
             '[data-recommended-operation-list]',
         );
-        await expect(recommendationsList).toHaveCount(0);
+        const operationsContent = operationsSection.locator(
+            '[data-recommendation-section-content]',
+        );
+        const operationsCollapse = operationsSection.locator(
+            '[data-collapse-state]',
+        );
+        await expect(operationsContent).toHaveCount(0);
+        await expect(operationsCollapse).toHaveAttribute(
+            'data-collapse-state',
+            'closed',
+        );
+        await expect(operationsCollapse).toHaveCSS(
+            'transition-property',
+            'grid-template-rows, opacity',
+        );
+        await expect(operationsCollapse).toHaveCSS(
+            'transition-duration',
+            '0.2s',
+        );
 
         const operationsHeader = operationsSection.getByRole('button', {
             name: /Radnje/,
         });
         await operationsHeader.click();
 
+        await expect(operationsContent).toHaveAttribute('aria-hidden', 'false');
+        await expect(operationsContent).not.toHaveAttribute('inert', '');
+        await expect(operationsCollapse).toHaveAttribute(
+            'data-collapse-state',
+            'open',
+        );
+        await expect(
+            operationsSection.locator('[data-recommendation-section-count]'),
+        ).toHaveClass(/scale-95 opacity-0/);
         await expect(recommendationsList).toBeVisible();
         await expect(recommendationsList).toContainText('Okopavanje');
         await expect(recommendationsList).toContainText('Uklanjanje korova');
@@ -1186,9 +1213,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).not.toContainText('Zakazano');
 
         await operationsHeader.click();
-        await expect(operationsSection.getByTitle('2 preporuka')).toBeVisible();
-        await expect(recommendationsList).toHaveCount(0);
+        await expect(operationsSection.getByTitle('2 preporuka')).toHaveClass(
+            /opacity-100/,
+        );
+        await expect(operationsContent).toHaveAttribute('aria-hidden', 'true');
+        await expect(operationsContent).toHaveCount(0);
         await operationsHeader.click();
+        await operationsHeader.click();
+        await operationsHeader.click();
+        await expect(operationsHeader).toHaveAttribute('aria-expanded', 'true');
         await expect(recommendationsList).toBeVisible();
 
         const listItems = recommendationsList.locator(':scope > *');
@@ -1251,7 +1284,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const healthList = healthSection.locator(
             '[data-plant-health-operation-list]',
         );
-        await expect(healthList).toHaveCount(0);
+        const healthContent = healthSection.locator(
+            '[data-recommendation-section-content]',
+        );
+        await expect(healthContent).toHaveCount(0);
         await expect
             .poll(() =>
                 countAnalyticsEvents(
@@ -1266,6 +1302,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         });
         await healthHeader.click();
 
+        await expect(healthContent).toHaveAttribute('aria-hidden', 'false');
         await expect(healthSection.getByText('Lisne uši')).toBeVisible();
         await expect(healthList).toBeVisible();
         await expect(healthList).toContainText('Ispiranje biljke od štetnika');
@@ -1279,8 +1316,11 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             .toBe(1);
 
         await healthHeader.click();
-        await expect(healthSection.getByTitle('1 preporuka')).toBeVisible();
-        await expect(healthList).toHaveCount(0);
+        await expect(healthSection.getByTitle('1 preporuka')).toHaveClass(
+            /opacity-100/,
+        );
+        await expect(healthContent).toHaveAttribute('aria-hidden', 'true');
+        await expect(healthContent).toHaveCount(0);
         await healthHeader.click();
         await expect
             .poll(() =>
@@ -1290,6 +1330,41 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 ),
             )
             .toBe(1);
+    });
+
+    test('recommendation sections use reduced-motion opacity transitions', async ({
+        mount,
+        page,
+    }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const section = page.locator(
+            '[data-recommendation-section="operations"]',
+        );
+        const collapse = section.locator('[data-collapse-state]');
+        const count = section.locator('[data-recommendation-section-count]');
+        const chevron = section.locator('svg.lucide-chevron-down');
+
+        await expect(collapse).toHaveCSS(
+            'transition-property',
+            'opacity, grid-template-rows',
+        );
+        await expect(collapse).toHaveCSS('transition-duration', '0.12s, 0s');
+        await expect(collapse).toHaveCSS('transition-delay', '0s, 0.12s');
+        await expect(count).toHaveCSS('transition-property', 'opacity');
+        await expect(count).toHaveCSS('transition-duration', '0.12s');
+        await expect(chevron).toHaveCSS('transition-property', 'none');
+
+        await section.getByRole('button', { name: /Radnje/ }).click();
+        await expect(collapse).toHaveCSS('transition-delay', '0s, 0s');
     });
 
     test('favorite operations are ranked first in recommendations and operation choices', async ({
