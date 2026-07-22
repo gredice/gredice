@@ -1,10 +1,13 @@
 import { Logotype } from '../PublicChrome/Logotype';
+import { cmsImageObjectPosition } from './CmsImagePointOfInterest';
 
 export type CmsOgImageKind = 'blog' | 'changelog' | 'page';
 
 export type CmsOgImageProps = {
     imageUrl?: string | null;
     kind?: CmsOgImageKind;
+    pointOfInterestX?: number | null;
+    pointOfInterestY?: number | null;
     tags?: string[];
     title: string;
 };
@@ -64,6 +67,8 @@ function visibleTags(tags: string[] | undefined) {
 export function CmsOgImage({
     imageUrl,
     kind = 'page',
+    pointOfInterestX,
+    pointOfInterestY,
     tags,
     title,
 }: CmsOgImageProps) {
@@ -224,6 +229,10 @@ export function CmsOgImage({
                         style={{
                             height: '100%',
                             objectFit: 'cover',
+                            objectPosition: cmsImageObjectPosition(
+                                pointOfInterestX,
+                                pointOfInterestY,
+                            ),
                             width: '100%',
                         }}
                     />

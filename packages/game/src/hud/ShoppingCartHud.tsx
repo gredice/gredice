@@ -9,12 +9,11 @@ import {
     Truck,
 } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
-import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -33,7 +32,35 @@ import {
 } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
-import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
+import { ShoppingCartItemsPresence } from './components/shopping-cart/ShoppingCartItemsPresence';
+import { ShoppingCartStepTransition } from './components/shopping-cart/ShoppingCartStepTransition';
+
+const sunflowerSuggestionLayoutExitDelayMs = 150;
+
+function useSunflowerSuggestionLayout(showSuggestion: boolean) {
+    const [reserveLayout, setReserveLayout] = useState(showSuggestion);
+
+    useLayoutEffect(() => {
+        if (showSuggestion) {
+            if (!reserveLayout) {
+                setReserveLayout(true);
+            }
+            return;
+        }
+
+        if (!reserveLayout) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            setReserveLayout(false);
+        }, sunflowerSuggestionLayoutExitDelayMs);
+
+        return () => window.clearTimeout(timeout);
+    }, [reserveLayout, showSuggestion]);
+
+    return reserveLayout;
+}
 
 interface ShoppingCartProps {
     showDeliveryStep: boolean;
@@ -54,16 +81,20 @@ export function ShoppingCart({
     const [deliverySelection, setDeliverySelection] =
         useState<DeliverySelectionData | null>(null);
 
-    const showSunflowersSuggestion =
+    const showSunflowersSuggestion = Boolean(
         !cart?.items.some((item) => item.currency === 'sunflower') &&
-        cart?.items.some(
-            (item) =>
-                (account?.sunflowers.amount ?? 0) >=
-                calculateSunflowerAmountFromPrices({
-                    price: item.shopData.price,
-                    discountPrice: item.shopData.discountPrice,
-                }),
-        );
+            cart?.items.some(
+                (item) =>
+                    (account?.sunflowers.amount ?? 0) >=
+                    calculateSunflowerAmountFromPrices({
+                        price: item.shopData.price,
+                        discountPrice: item.shopData.discountPrice,
+                    }),
+            ),
+    );
+    const reserveSunflowersSuggestionLayout = useSunflowerSuggestionLayout(
+        showSunflowersSuggestion,
+    );
 
     function handleCheckout() {
         if (!cart?.id) {
@@ -129,26 +160,32 @@ export function ShoppingCart({
     // Show delivery step if user clicked on checkout with deliverable items
     if (showDeliveryStep) {
         return (
-            <DeliveryStep
-                onSelectionChange={setDeliverySelection}
-                onBack={handleBackToCart}
-                onProceed={handleDeliveryProceed}
-                checkout={checkout}
-                isValid={isCompleteDeliverySelection(deliverySelection)}
-            />
+            <ShoppingCartStepTransition step="delivery">
+                <DeliveryStep
+                    onSelectionChange={setDeliverySelection}
+                    onBack={handleBackToCart}
+                    onProceed={handleDeliveryProceed}
+                    checkout={checkout}
+                    isValid={isCompleteDeliverySelection(deliverySelection)}
+                />
+            </ShoppingCartStepTransition>
         );
     }
 
-    return (
+    const cartStep = (
         <Stack spacing={4}>
             <Stack>
                 <div
                     className={cx(
-                        'opacity-0 h-0 transition-all duration-150',
+                        'opacity-0 transition-opacity duration-150',
+                        reserveSunflowersSuggestionLayout
+                            ? 'h-auto mb-4'
+                            : 'h-0',
                         showSunflowersSuggestion
-                            ? 'opacity-100 h-auto mb-4'
+                            ? 'opacity-100'
                             : 'pointer-events-none',
                     )}
+                    data-shopping-cart-sunflowers-suggestion
                 >
                     <Alert color="primary">
                         Dio košare možeš platiti u{' '}
@@ -169,22 +206,17 @@ export function ShoppingCart({
                                 Greška prilikom učitavanja košare
                             </Typography>
                         )}
-                        {!isLoading &&
-                            !isError &&
-                            (cart?.items.length ? (
-                                cart.items.map((item) => (
-                                    <ShoppingCartItem
-                                        key={item.id}
-                                        item={item}
-                                    />
-                                ))
-                            ) : (
-                                <NoDataPlaceholder>
-                                    Košara je prazna
-                                </NoDataPlaceholder>
-                            ))}
+                        {!isLoading && !isError ? (
+                            <ShoppingCartItemsPresence
+                                items={cart?.items ?? []}
+                            />
+                        ) : null}
                     </Stack>
-                    <Stack className="border-t mt-4 pt-2" spacing={2}>
+                    <Stack
+                        className="border-t mt-4 pt-2"
+                        data-shopping-cart-summary
+                        spacing={2}
+                    >
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
@@ -286,6 +318,12 @@ export function ShoppingCart({
             </Stack>
         </Stack>
     );
+
+    return (
+        <ShoppingCartStepTransition step="cart">
+            {cartStep}
+        </ShoppingCartStepTransition>
+    );
 }
 
 export function ShoppingCartHud() {
@@ -295,7 +333,7 @@ export function ShoppingCartHud() {
     const [showDeliveryStep, setShowDeliveryStep] = useState(false);
     const showTransientHub = useShoppingCartTransientHub(isOpen);
 
-    if (!cart?.items.length && !showTransientHub) {
+    if (!cart?.items.length && !showTransientHub && !isOpen) {
         return null;
     }
 

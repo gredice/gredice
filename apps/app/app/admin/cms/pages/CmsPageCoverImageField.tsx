@@ -1,11 +1,13 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
+import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useRef, useState } from 'react';
+import { type PointerEvent, useRef, useState } from 'react';
 import {
     ImageUploadManager,
     type ImageUploadManagerHandle,
@@ -19,7 +21,12 @@ type CmsPageCoverImageFieldProps = {
     modalTitle?: string;
     name: string;
     onChange: (value: string) => void;
+    onPointOfInterestChange?: (x: number, y: number) => void;
     pageId?: number;
+    pointOfInterestX?: number;
+    pointOfInterestXName?: string;
+    pointOfInterestY?: number;
+    pointOfInterestYName?: string;
     usage?: 'cover' | 'seo';
     uploadEmptyLabel?: string;
     value: string;
@@ -79,7 +86,12 @@ export function CmsPageCoverImageField({
     modalTitle = label,
     name,
     onChange,
+    onPointOfInterestChange,
     pageId,
+    pointOfInterestX = 50,
+    pointOfInterestXName,
+    pointOfInterestY = 50,
+    pointOfInterestYName,
     usage = 'cover',
     uploadEmptyLabel = 'Odaberite jednu sliku.',
     value,
@@ -87,6 +99,33 @@ export function CmsPageCoverImageField({
     const [isOpen, setIsOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const uploaderRef = useRef<ImageUploadManagerHandle>(null);
+    const supportsPointOfInterest =
+        usage === 'cover' && Boolean(onPointOfInterestChange);
+
+    const handlePointOfInterestPointerDown = (
+        event: PointerEvent<HTMLDivElement>,
+    ) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const x = Math.min(
+            100,
+            Math.max(
+                0,
+                Math.round(
+                    ((event.clientX - bounds.left) / bounds.width) * 100,
+                ),
+            ),
+        );
+        const y = Math.min(
+            100,
+            Math.max(
+                0,
+                Math.round(
+                    ((event.clientY - bounds.top) / bounds.height) * 100,
+                ),
+            ),
+        );
+        onPointOfInterestChange?.(x, y);
+    };
 
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
@@ -121,6 +160,22 @@ export function CmsPageCoverImageField({
     return (
         <Stack spacing={2}>
             <input name={name} type="hidden" value={value} readOnly />
+            {pointOfInterestXName ? (
+                <input
+                    name={pointOfInterestXName}
+                    type="hidden"
+                    value={pointOfInterestX}
+                    readOnly
+                />
+            ) : null}
+            {pointOfInterestYName ? (
+                <input
+                    name={pointOfInterestYName}
+                    type="hidden"
+                    value={pointOfInterestY}
+                    readOnly
+                />
+            ) : null}
             <div className="space-y-1">
                 <Typography level="body3" semiBold>
                     {label}
@@ -130,14 +185,109 @@ export function CmsPageCoverImageField({
                 </Typography>
             </div>
             {value ? (
-                <div className="overflow-hidden rounded-md border bg-muted">
-                    {/** biome-ignore lint/performance/noImgElement: Admin preview supports arbitrary uploaded image URLs. */}
-                    <img
-                        alt="Naslovna slika stranice"
-                        className="aspect-video w-full object-cover"
-                        src={value}
-                    />
-                </div>
+                supportsPointOfInterest ? (
+                    <Stack spacing={3}>
+                        <div className="space-y-1">
+                            <Typography level="body3" semiBold>
+                                Točka interesa
+                            </Typography>
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Kliknite najvažniju točku na cijeloj slici. Ona
+                                ostaje u središtu kad se slika izrezuje u
+                                različite omjere. Za podešavanje tipkovnicom
+                                upotrijebite klizače ispod.
+                            </Typography>
+                        </div>
+                        <div className="flex max-h-80 justify-center overflow-hidden rounded-md border bg-muted">
+                            <div className="relative inline-flex max-w-full">
+                                {/** biome-ignore lint/performance/noImgElement: Admin preview supports arbitrary uploaded image URLs. */}
+                                <img
+                                    alt="Naslovna slika stranice"
+                                    className="block max-h-80 max-w-full object-contain"
+                                    src={value}
+                                />
+                                <div
+                                    aria-hidden
+                                    className="absolute inset-0 cursor-crosshair"
+                                    data-cms-cover-poi-picker
+                                    onPointerDown={
+                                        handlePointOfInterestPointerDown
+                                    }
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary/80 shadow-[0_0_0_1px_rgba(0,0,0,0.45)]"
+                                        style={{
+                                            left: `${pointOfInterestX}%`,
+                                            top: `${pointOfInterestY}%`,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <Slider
+                                aria-label="Vodoravna pozicija točke interesa"
+                                label={`Vodoravno: ${pointOfInterestX}%`}
+                                max={100}
+                                min={0}
+                                onValueChange={([x]) =>
+                                    onPointOfInterestChange?.(
+                                        x ?? pointOfInterestX,
+                                        pointOfInterestY,
+                                    )
+                                }
+                                step={1}
+                                value={[pointOfInterestX]}
+                            />
+                            <Slider
+                                aria-label="Okomita pozicija točke interesa"
+                                label={`Okomito: ${pointOfInterestY}%`}
+                                max={100}
+                                min={0}
+                                onValueChange={([y]) =>
+                                    onPointOfInterestChange?.(
+                                        pointOfInterestX,
+                                        y ?? pointOfInterestY,
+                                    )
+                                }
+                                step={1}
+                                value={[pointOfInterestY]}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Typography level="body3" semiBold>
+                                Pregled izreza 16:9
+                            </Typography>
+                            <div className="overflow-hidden rounded-md border bg-muted">
+                                {/** biome-ignore lint/performance/noImgElement: Admin preview supports arbitrary uploaded image URLs. */}
+                                <img
+                                    alt="Pregled izreza naslovne slike"
+                                    className="aspect-video w-full object-cover"
+                                    src={value}
+                                    style={{
+                                        objectPosition: cmsImageObjectPosition(
+                                            pointOfInterestX,
+                                            pointOfInterestY,
+                                        ),
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </Stack>
+                ) : (
+                    <div className="overflow-hidden rounded-md border bg-muted">
+                        {/** biome-ignore lint/performance/noImgElement: Admin preview supports arbitrary uploaded image URLs. */}
+                        <img
+                            alt="Naslovna slika stranice"
+                            className="aspect-video w-full object-cover"
+                            src={value}
+                        />
+                    </div>
+                )
             ) : (
                 <div className="flex aspect-video items-center justify-center rounded-md border border-dashed bg-muted/30 px-4 text-center">
                     <Typography level="body2" className="text-muted-foreground">

@@ -3385,15 +3385,18 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         runId: `run:${randomUUID()}`,
         stopId: `stop:${randomUUID()}`,
     };
-    const notificationId = await createNotification({
-        accountId,
-        category: 'delivery_updates',
-        content: 'Catalog content is not the email source.',
-        header: 'Catalog header is not the email source.',
-        metadata,
-        timestamp: new Date('2026-07-17T00:00:00.000Z'),
-        type: 'delivery_lifecycle',
-    });
+    const notificationId = await createNotification(
+        {
+            accountId,
+            category: 'delivery_updates',
+            content: 'Catalog content is not the email source.',
+            header: 'Catalog header is not the email source.',
+            metadata,
+            timestamp: new Date('2026-07-17T04:00:00.000Z'),
+            type: 'delivery_lifecycle',
+        },
+        { now: new Date('2026-07-17T04:00:00.000Z') },
+    );
     const wrongTypeId = await createNotification(
         {
             accountId,
@@ -3432,7 +3435,9 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         { routeDelivery: false },
     );
 
-    const initialCandidates = await getDeliveryLifecycleEmailCandidates();
+    const initialCandidates = await getDeliveryLifecycleEmailCandidates({
+        now: new Date('2026-07-17T04:01:00.000Z'),
+    });
     assert.deepEqual(
         initialCandidates
             .filter((candidate) => candidate.notificationId === notificationId)
@@ -3449,7 +3454,7 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         );
     }
 
-    const quietTime = new Date('2026-07-17T01:00:00.000Z');
+    const quietTime = new Date('2026-07-17T05:00:00.000Z');
     const disabled = await claimDeliveryLifecycleEmailCandidate({
         notificationId,
         now: quietTime,
@@ -3623,8 +3628,11 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         }),
         true,
     );
+    const retryCandidates = await getDeliveryLifecycleEmailCandidates({
+        now: new Date('2026-07-17T23:02:02.000Z'),
+    });
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
+        retryCandidates.some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === quietUserId,
@@ -3632,7 +3640,12 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         true,
     );
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates({ maxAttempts: 1 })).some(
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                maxAttempts: 1,
+                now: new Date('2026-07-17T23:02:02.000Z'),
+            })
+        ).some(
             (candidate) =>
                 candidate.notificationId === notificationId &&
                 candidate.userId === quietUserId,
@@ -3707,9 +3720,11 @@ test('delivery lifecycle email candidates claim per account user with live prefe
         true,
     );
     assert.equal(
-        (await getDeliveryLifecycleEmailCandidates()).some(
-            (candidate) => candidate.notificationId === notificationId,
-        ),
+        (
+            await getDeliveryLifecycleEmailCandidates({
+                now: new Date('2026-07-17T23:04:01.000Z'),
+            })
+        ).some((candidate) => candidate.notificationId === notificationId),
         false,
     );
 

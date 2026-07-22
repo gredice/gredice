@@ -1,0 +1,88 @@
+.presence {
+    display: grid;
+    min-width: 0;
+}
+
+.items,
+.empty {
+    grid-area: 1 / 1;
+    min-width: 0;
+}
+
+.items {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.empty {
+    align-self: start;
+}
+
+.slot {
+    min-width: 0;
+    width: 100%;
+}
+
+.entering {
+    animation: shopping-cart-item-enter 150ms ease-out both;
+}
+
+.exiting {
+    animation: shopping-cart-item-exit 150ms ease-in both;
+    pointer-events: none;
+}
+
+@keyframes shopping-cart-item-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shopping-cart-item-exit {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+@keyframes shopping-cart-item-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes shopping-cart-item-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .entering {
+        animation: shopping-cart-item-fade-in 100ms ease-out both;
+    }
+
+    .exiting {
+        animation: shopping-cart-item-fade-out 100ms ease-in both;
+    }
+}

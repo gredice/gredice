@@ -1,4 +1,8 @@
-import { parseSectionData, SectionsView } from '@gredice/ui/cms';
+import {
+    cmsImageObjectPosition,
+    parseSectionData,
+    SectionsView,
+} from '@gredice/ui/cms';
 import type { NewsDetail as NewsDetailEntry } from '../lib/news';
 import { formatNewsDate } from '../lib/news';
 import { sectionsComponentRegistry } from './shared/sectionsComponentRegistry';
@@ -51,6 +55,12 @@ export function NewsDetail({
                             alt=""
                             className="h-auto max-h-[520px] max-w-full object-contain"
                             src={entry.metaImageUrl}
+                            style={{
+                                objectPosition: cmsImageObjectPosition(
+                                    entry.metaImagePoiX,
+                                    entry.metaImagePoiY,
+                                ),
+                            }}
                         />
                     </div>
                 </div>

@@ -134,7 +134,7 @@
     }
 
     :target {
-        scroll-margin-top: 4rem;
+        scroll-margin-top: calc(4rem + env(safe-area-inset-top, 0px));
     }
     ::selection {
         background: var(--bg-selection);

@@ -17,6 +17,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
+import { getRaisedBedPositionIndexesDescending } from './raisedBedPositionOrder';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,47 +39,41 @@ function getFieldPreviews(
             .filter((field) => field.active)
             .map((field) => [field.positionIndex, field]),
     );
-    const highestPositionIndex = Math.max(
-        8,
-        ...fields.map((field) => field.positionIndex),
-    );
+    return getRaisedBedPositionIndexesDescending(
+        fields.map((field) => field.positionIndex),
+    ).map((positionIndex) => {
+        const field = activeFieldsByPosition.get(positionIndex);
+        const plantSortId = field?.plantSortId;
+        const hasPlant = typeof plantSortId === 'number';
+        const plantSort = hasPlant ? plantSortsById.get(plantSortId) : null;
+        const status = hasPlant ? field?.plantStatus : undefined;
+        const statusLabel = status
+            ? plantFieldStatusLabel(status).shortLabel
+            : null;
 
-    return Array.from(
-        { length: highestPositionIndex + 1 },
-        (_, positionIndex) => {
-            const field = activeFieldsByPosition.get(positionIndex);
-            const plantSortId = field?.plantSortId;
-            const hasPlant = typeof plantSortId === 'number';
-            const plantSort = hasPlant ? plantSortsById.get(plantSortId) : null;
-            const status = hasPlant ? field?.plantStatus : undefined;
-            const statusLabel = status
-                ? plantFieldStatusLabel(status).shortLabel
-                : null;
-
-            if (!hasPlant) {
-                return {
-                    hasPlant,
-                    key: `position-${positionIndex}`,
-                    label: `Polje ${positionIndex + 1} prazno`,
-                    plantSort: null,
-                    status: null,
-                    statusLabel: null,
-                };
-            }
-
+        if (!hasPlant) {
             return {
                 hasPlant,
-                key: field ? `field-${field.id}` : `position-${positionIndex}`,
-                label:
-                    plantSort?.information?.label ??
-                    plantSort?.information?.name ??
-                    `Sorta #${plantSortId}`,
-                plantSort: plantSort ?? null,
-                status,
-                statusLabel,
+                key: `position-${positionIndex}`,
+                label: `Polje ${positionIndex + 1} prazno`,
+                plantSort: null,
+                status: null,
+                statusLabel: null,
             };
-        },
-    );
+        }
+
+        return {
+            hasPlant,
+            key: field ? `field-${field.id}` : `position-${positionIndex}`,
+            label:
+                plantSort?.information?.label ??
+                plantSort?.information?.name ??
+                `Sorta #${plantSortId}`,
+            plantSort: plantSort ?? null,
+            status,
+            statusLabel,
+        };
+    });
 }
 
 function comparePhysicalIdsDescending(

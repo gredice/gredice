@@ -250,6 +250,7 @@ jobs:
       name: "app"
       path: "apps/app"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_APP"
+      nextBuildCache: true
     secrets: inherit
 
   ci_api:

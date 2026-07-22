@@ -5,7 +5,6 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
-import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
@@ -18,12 +17,16 @@ export function generateMetadata(): Metadata {
     return {
         title: 'Vrt | Gredice',
         description: 'Gredice vrt - vrt po tvom',
+        other: {
+            'apple-mobile-web-app-title': 'Gredice',
+        },
     };
 }
 
 export const viewport: Viewport = {
     maximumScale: 1,
     initialScale: 1,
+    themeColor: '#2e6f40',
     userScalable: false,
     width: 'device-width',
 };
@@ -56,10 +59,6 @@ export default function RootLayout({
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
-            <Head>
-                <meta name="theme-color" content="#2e6f40" />
-                <meta name="apple-mobile-web-app-title" content="Gredice" />
-            </Head>
             <body className={`${montserrat.variable} antialiased bg-muted`}>
                 {postHogApiKey ? (
                     <PostHogProvider

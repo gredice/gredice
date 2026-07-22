@@ -1,10 +1,48 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import {
+    ShoppingCartHudItemsPresenceStory,
+    ShoppingCartItemsPresenceStory,
     ShoppingCartOptimisticToggleStory,
     ShoppingCartOutletCountdownStory,
     ShoppingCartPaidItemStory,
     ShoppingCartPlantSortStory,
 } from './ShoppingCartOptimisticToggleStory';
+
+async function getPresenceAnimation(locator: Locator) {
+    return locator.evaluate((node) => {
+        const style = window.getComputedStyle(node);
+        const keyframes = Array.from(document.styleSheets)
+            .flatMap((styleSheet) => Array.from(styleSheet.cssRules))
+            .find(
+                (rule) =>
+                    rule instanceof CSSKeyframesRule &&
+                    rule.name === style.animationName,
+            );
+
+        return {
+            animationDuration: style.animationDuration,
+            animationName: style.animationName,
+            animationTimingFunction: style.animationTimingFunction,
+            keyframes:
+                keyframes instanceof CSSKeyframesRule
+                    ? Array.from(keyframes.cssRules).flatMap((keyframe) =>
+                          keyframe instanceof CSSKeyframeRule
+                              ? [
+                                    {
+                                        opacity:
+                                            keyframe.style.opacity || undefined,
+                                        transform:
+                                            keyframe.style.transform ||
+                                            undefined,
+                                    },
+                                ]
+                              : [],
+                      )
+                    : [],
+        };
+    });
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -250,4 +288,364 @@ test('shopping cart outlet item shows a live reservation countdown', async ({
     const payload = await postedPayload;
     expect(payload.currency).toBe('sunflower');
     expect(payload.outletOfferId).toBe(1);
+});
+
+test.describe('shopping cart item presence', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+    });
+
+    test('keeps initial rows settled and animates only an inserted row', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={1} />);
+
+        const firstItem = page.locator('[data-shopping-cart-item-id="1"]');
+        await expect(firstItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        expect(await getPresenceAnimation(firstItem)).toEqual({
+            animationDuration: '0s',
+            animationName: 'none',
+            animationTimingFunction: 'ease',
+            keyframes: [],
+        });
+
+        await page.getByTestId('cart-set-two').dispatchEvent('click');
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText(
+            '1,2',
+        );
+        const insertedItem = page.locator('[data-shopping-cart-item-id="2"]');
+        await expect(insertedItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'entering',
+        );
+        expect(await getPresenceAnimation(insertedItem)).toEqual({
+            animationDuration: '0.15s',
+            animationName: expect.stringContaining('shopping-cart-item-enter'),
+            animationTimingFunction: 'ease-out',
+            keyframes: [
+                { opacity: '0', transform: 'translateY(4px)' },
+                { opacity: '1', transform: 'translateY(0px)' },
+            ],
+        });
+        await expect(firstItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(insertedItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(page.locator('[data-shopping-cart-summary]')).toHaveCSS(
+            'animation-name',
+            'none',
+        );
+    });
+
+    test('keeps siblings and summary stable while a removed row exits inert', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={2} />);
+
+        const removedItem = page.locator('[data-shopping-cart-item-id="1"]');
+        const unaffectedItem = page.locator('[data-shopping-cart-item-id="2"]');
+        const summary = page.locator('[data-shopping-cart-summary]');
+        const unaffectedBefore = await unaffectedItem.boundingBox();
+        const summaryBefore = await summary.boundingBox();
+
+        await page.getByTestId('cart-set-basil').dispatchEvent('click');
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText('2');
+        await expect(removedItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'exiting',
+        );
+        await expect(removedItem).toHaveAttribute('aria-hidden', 'true');
+        await expect(removedItem).toHaveAttribute('inert', '');
+        expect(
+            await removedItem.locator('[role="switch"]').evaluate((element) => {
+                if (!(element instanceof HTMLElement)) {
+                    return false;
+                }
+                element.focus();
+                return document.activeElement === element;
+            }),
+        ).toBe(false);
+        expect(await getPresenceAnimation(removedItem)).toEqual({
+            animationDuration: '0.15s',
+            animationName: expect.stringContaining('shopping-cart-item-exit'),
+            animationTimingFunction: 'ease-in',
+            keyframes: [
+                { opacity: '1', transform: 'translateY(0px)' },
+                { opacity: '0', transform: 'translateY(4px)' },
+            ],
+        });
+        expect(await unaffectedItem.boundingBox()).toEqual(unaffectedBefore);
+        expect(await summary.boundingBox()).toEqual(summaryBefore);
+        await expect(unaffectedItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(summary).toHaveCSS('animation-name', 'none');
+        await expect(removedItem).toHaveCount(0);
+    });
+
+    test('shows the empty state and updates cart actions before the final row finishes exiting', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ height: 844, width: 390 });
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={1} />);
+
+        const summary = page.locator('[data-shopping-cart-summary]');
+        const summaryBefore = await summary.boundingBox();
+        await page.getByTestId('cart-set-empty').dispatchEvent('click');
+
+        const summaryDuringCrossfade = await summary.evaluate(
+            async (element) => {
+                await new Promise<void>((resolve) =>
+                    window.setTimeout(resolve, 75),
+                );
+                const bounds = element.getBoundingClientRect();
+                return {
+                    height: bounds.height,
+                    width: bounds.width,
+                    x: bounds.x,
+                    y: bounds.y,
+                };
+            },
+        );
+        expect(summaryBefore).not.toBeNull();
+        expect(summaryDuringCrossfade.x).toBeCloseTo(summaryBefore?.x ?? 0, 1);
+        expect(summaryDuringCrossfade.y).toBeCloseTo(summaryBefore?.y ?? 0, 1);
+        expect(summaryDuringCrossfade.width).toBeCloseTo(
+            summaryBefore?.width ?? 0,
+            1,
+        );
+        expect(summaryDuringCrossfade.height).toBeCloseTo(
+            summaryBefore?.height ?? 0,
+            1,
+        );
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText(
+            'empty',
+        );
+        const exitingItem = page.locator('[data-shopping-cart-item-id="1"]');
+        const emptyState = page.locator(
+            '[data-shopping-cart-presence="empty"]',
+        );
+        await expect(exitingItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'exiting',
+        );
+        await expect(emptyState).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'entering',
+        );
+        await expect(emptyState).toContainText('Košara je prazna');
+        await expect(
+            page.getByRole('button', { name: 'Očisti košaru' }),
+        ).toBeDisabled();
+        await expect(
+            page.getByRole('button', { name: 'Plati' }),
+        ).toBeDisabled();
+
+        await expect(exitingItem).toHaveCount(0);
+        await expect(emptyState).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(
+            page.locator('[data-shopping-cart-presence="item"]'),
+        ).toHaveCount(0);
+    });
+
+    test('keeps the production HUD mounted while the final row exits', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        const cartTrigger = page.getByTitle('Košara');
+        await cartTrigger.click();
+        const cartDialog = page.getByRole('dialog', { name: 'Košara' });
+        await expect(cartDialog).toBeVisible();
+
+        const finalItem = page.locator('[data-shopping-cart-item-id="1"]');
+        await expect(finalItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+
+        await page.getByTestId('cart-set-empty').dispatchEvent('click');
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText(
+            'empty',
+        );
+        await expect(finalItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'exiting',
+        );
+        const emptyState = page.locator(
+            '[data-shopping-cart-presence="empty"]',
+        );
+        await expect(emptyState).toContainText('Košara je prazna');
+        await expect(
+            page.getByRole('button', { name: 'Očisti košaru' }),
+        ).toBeDisabled();
+        await expect(
+            page.getByRole('button', { name: 'Plati' }),
+        ).toBeDisabled();
+        await expect(
+            page.locator('[data-shopping-cart-summary]'),
+        ).toContainText('0.00 €');
+
+        await expect(finalItem).toHaveCount(0);
+        await expect(emptyState).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(cartDialog).toBeVisible();
+
+        await page.getByRole('button', { name: 'Zatvori' }).click();
+
+        await expect(cartDialog).toHaveCount(0);
+        await expect(cartTrigger).toHaveCount(0);
+    });
+
+    test('reuses an exiting row when an optimistic removal rolls back', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={1} />);
+
+        const suggestion = page.locator(
+            '[data-shopping-cart-sunflowers-suggestion]',
+        );
+        const summary = page.locator('[data-shopping-cart-summary]');
+        const suggestionBefore = await suggestion.boundingBox();
+        const summaryBefore = await summary.boundingBox();
+        const firstItem = page.locator('[data-shopping-cart-item-id="1"]');
+        await page.getByTestId('cart-set-empty').dispatchEvent('click');
+        await expect(firstItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'exiting',
+        );
+
+        await page.getByTestId('cart-set-one').dispatchEvent('click');
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText('1');
+        await expect(firstItem).toHaveCount(1);
+        await expect(firstItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'entering',
+        );
+        await expect(firstItem).not.toHaveAttribute('aria-hidden', 'true');
+        await expect(firstItem).not.toHaveAttribute('inert', '');
+        await expect(firstItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+        await expect(firstItem).toHaveCount(1);
+        await page.waitForTimeout(175);
+        await expect(suggestion).toHaveCSS('opacity', '1');
+        expect(await suggestion.boundingBox()).toEqual(suggestionBefore);
+        expect(await summary.boundingBox()).toEqual(summaryBefore);
+        await expect(
+            page.locator('[data-shopping-cart-presence="empty"]'),
+        ).toHaveCount(0);
+    });
+
+    test('does not leave duplicate or stale rows after rapid cart changes', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={2} />);
+
+        await page.getByTestId('cart-set-basil').dispatchEvent('click');
+        await page.getByTestId('cart-set-basil-mint').dispatchEvent('click');
+        await page.getByTestId('cart-set-two').dispatchEvent('click');
+        await page.getByTestId('cart-set-basil').dispatchEvent('click');
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText('2');
+        for (const id of ['1', '2', '3']) {
+            expect(
+                await page
+                    .locator(`[data-shopping-cart-item-id="${id}"]`)
+                    .count(),
+            ).toBeLessThanOrEqual(1);
+        }
+
+        await expect(
+            page.locator('[data-shopping-cart-presence="item"]'),
+        ).toHaveCount(1);
+        await expect(
+            page.locator('[data-shopping-cart-item-id="2"]'),
+        ).toHaveAttribute('data-shopping-cart-presence-state', 'settled');
+        await expect(
+            page.locator('[data-shopping-cart-item-id="1"]'),
+        ).toHaveCount(0);
+        await expect(
+            page.locator('[data-shopping-cart-item-id="3"]'),
+        ).toHaveCount(0);
+    });
+
+    test('uses 100ms opacity-only presence transitions for reduced motion', async ({
+        mount,
+        page,
+    }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await mount(<ShoppingCartItemsPresenceStory initialItemCount={0} />);
+
+        await page.getByTestId('cart-set-one').dispatchEvent('click');
+
+        const enteredItem = page.locator('[data-shopping-cart-item-id="1"]');
+        const exitingEmptyState = page.locator(
+            '[data-shopping-cart-presence="empty"]',
+        );
+        expect(await getPresenceAnimation(enteredItem)).toEqual({
+            animationDuration: '0.1s',
+            animationName: expect.stringContaining(
+                'shopping-cart-item-fade-in',
+            ),
+            animationTimingFunction: 'ease-out',
+            keyframes: [
+                { opacity: '0', transform: undefined },
+                { opacity: '1', transform: undefined },
+            ],
+        });
+        expect(await getPresenceAnimation(exitingEmptyState)).toEqual({
+            animationDuration: '0.1s',
+            animationName: expect.stringContaining(
+                'shopping-cart-item-fade-out',
+            ),
+            animationTimingFunction: 'ease-in',
+            keyframes: [
+                { opacity: '1', transform: undefined },
+                { opacity: '0', transform: undefined },
+            ],
+        });
+        await expect(enteredItem).toHaveAttribute(
+            'data-shopping-cart-presence-state',
+            'settled',
+        );
+
+        await page.getByTestId('cart-set-empty').dispatchEvent('click');
+
+        expect(await getPresenceAnimation(enteredItem)).toMatchObject({
+            animationDuration: '0.1s',
+            animationName: expect.stringContaining(
+                'shopping-cart-item-fade-out',
+            ),
+            animationTimingFunction: 'ease-in',
+            keyframes: [
+                { opacity: '1', transform: undefined },
+                { opacity: '0', transform: undefined },
+            ],
+        });
+    });
 });

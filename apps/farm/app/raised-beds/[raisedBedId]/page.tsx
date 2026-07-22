@@ -6,9 +6,14 @@ import {
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
@@ -16,6 +21,8 @@ import LoginDialog from '../../../components/auth/LoginDialog';
 import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
 import { PlantStateRequestForm } from './PlantStateRequestForm';
+import { RaisedBedMobileFieldList } from './RaisedBedMobileFieldList';
+import { RaisedBedResponsiveLayout } from './RaisedBedResponsiveLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,6 +127,36 @@ async function RaisedBedDetailPageContent({
             .filter((field) => field.active)
             .map((field) => [field.positionIndex, field]),
     );
+    const fieldRows = orderedPositions.map((positionIndex) => {
+        const field = activeFieldsByPosition.get(positionIndex);
+        const pendingRequest = getPendingPlantStatusRequest(
+            pendingPlantStatusRequests,
+            raisedBed.id,
+            positionIndex,
+        );
+        const currentStatus = field?.plantStatus ?? null;
+        const activePendingRequest = isRequestForCurrentStatus(
+            pendingRequest,
+            currentStatus,
+        )
+            ? pendingRequest
+            : undefined;
+        const pendingRequestedStatus =
+            activePendingRequest?.target.kind === 'raisedBedField.plantStatus'
+                ? activePendingRequest.target.requestedStatus
+                : null;
+        const plantSort = field?.plantSortId
+            ? (plantSortsById.get(field.plantSortId) ?? null)
+            : null;
+
+        return {
+            field,
+            pendingRequestedStatus,
+            plantName: resolvePlantName(field?.plantSortId, plantSort),
+            plantSort,
+            positionIndex,
+        };
+    });
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
@@ -135,63 +172,74 @@ async function RaisedBedDetailPageContent({
                     <CardTitle>Detalji polja</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={4}>
-                        <Typography
-                            level="body2"
-                            className="text-muted-foreground"
-                        >
-                            Pregled svih pozicija i stanja biljaka u odabranoj
-                            gredici.
-                        </Typography>
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Pozicija</Table.Head>
-                                    <Table.Head>Biljka</Table.Head>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Planirano</Table.Head>
-                                    <Table.Head>Posijano</Table.Head>
-                                    <Table.Head>Spremno</Table.Head>
-                                    <Table.Head>Ubrano</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {orderedPositions.map((positionIndex) => {
-                                    const field =
-                                        activeFieldsByPosition.get(
-                                            positionIndex,
-                                        );
-                                    const pendingRequest =
-                                        getPendingPlantStatusRequest(
-                                            pendingPlantStatusRequests,
-                                            raisedBed.id,
-                                            positionIndex,
-                                        );
-                                    const currentStatus =
-                                        field?.plantStatus ?? null;
-                                    const activePendingRequest =
-                                        isRequestForCurrentStatus(
-                                            pendingRequest,
-                                            currentStatus,
-                                        )
-                                            ? pendingRequest
-                                            : undefined;
-                                    const pendingRequestedStatus =
-                                        activePendingRequest?.target.kind ===
-                                        'raisedBedField.plantStatus'
-                                            ? activePendingRequest.target
-                                                  .requestedStatus
-                                            : null;
-                                    const plantSort = field?.plantSortId
-                                        ? (plantSortsById.get(
-                                              field.plantSortId,
-                                          ) ?? null)
-                                        : null;
-                                    const plantName = resolvePlantName(
-                                        field?.plantSortId,
-                                        plantSort,
-                                    );
-
+                    <Typography level="body2" className="text-muted-foreground">
+                        Pregled svih pozicija i stanja biljaka u odabranoj
+                        gredici.
+                    </Typography>
+                </CardContent>
+                <RaisedBedMobileFieldList
+                    items={fieldRows.map(
+                        ({
+                            field,
+                            pendingRequestedStatus,
+                            plantName,
+                            plantSort,
+                            positionIndex,
+                        }) => ({
+                            harvestedDate: formatDate(
+                                field?.plantHarvestedDate,
+                            ),
+                            key: `position-${positionIndex}`,
+                            plannedDate: formatDate(field?.plantScheduledDate),
+                            plantName,
+                            plantSort,
+                            positionNumber: positionIndex + 1,
+                            readyDate: formatDate(field?.plantReadyDate),
+                            sowingDate: formatDate(field?.plantSowDate),
+                            statusControl: field?.plantStatus ? (
+                                <RaisedBedResponsiveLayout layout="mobile">
+                                    <PlantStateRequestForm
+                                        currentStatus={field.plantStatus}
+                                        pendingRequestedStatus={
+                                            pendingRequestedStatus
+                                        }
+                                        positionIndex={positionIndex}
+                                        raisedBedId={raisedBed.id}
+                                    />
+                                </RaisedBedResponsiveLayout>
+                            ) : (
+                                <Typography
+                                    className="text-muted-foreground"
+                                    level="body3"
+                                >
+                                    —
+                                </Typography>
+                            ),
+                        }),
+                    )}
+                />
+                <CardOverflow className="hidden md:block">
+                    <Table>
+                        <Table.Header>
+                            <Table.Row>
+                                <Table.Head>Pozicija</Table.Head>
+                                <Table.Head>Biljka</Table.Head>
+                                <Table.Head>Status</Table.Head>
+                                <Table.Head>Planirano</Table.Head>
+                                <Table.Head>Posijano</Table.Head>
+                                <Table.Head>Spremno</Table.Head>
+                                <Table.Head>Ubrano</Table.Head>
+                            </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                            {fieldRows.map(
+                                ({
+                                    field,
+                                    pendingRequestedStatus,
+                                    plantName,
+                                    plantSort,
+                                    positionIndex,
+                                }) => {
                                     return (
                                         <Table.Row key={positionIndex}>
                                             <Table.Cell>
@@ -221,20 +269,22 @@ async function RaisedBedDetailPageContent({
                                             </Table.Cell>
                                             <Table.Cell>
                                                 {field?.plantStatus ? (
-                                                    <PlantStateRequestForm
-                                                        raisedBedId={
-                                                            raisedBed.id
-                                                        }
-                                                        positionIndex={
-                                                            positionIndex
-                                                        }
-                                                        currentStatus={
-                                                            field.plantStatus
-                                                        }
-                                                        pendingRequestedStatus={
-                                                            pendingRequestedStatus
-                                                        }
-                                                    />
+                                                    <RaisedBedResponsiveLayout layout="desktop">
+                                                        <PlantStateRequestForm
+                                                            raisedBedId={
+                                                                raisedBed.id
+                                                            }
+                                                            positionIndex={
+                                                                positionIndex
+                                                            }
+                                                            currentStatus={
+                                                                field.plantStatus
+                                                            }
+                                                            pendingRequestedStatus={
+                                                                pendingRequestedStatus
+                                                            }
+                                                        />
+                                                    </RaisedBedResponsiveLayout>
                                                 ) : (
                                                     <Typography
                                                         level="body3"
@@ -266,11 +316,11 @@ async function RaisedBedDetailPageContent({
                                             </Table.Cell>
                                         </Table.Row>
                                     );
-                                })}
-                            </Table.Body>
-                        </Table>
-                    </Stack>
-                </CardContent>
+                                },
+                            )}
+                        </Table.Body>
+                    </Table>
+                </CardOverflow>
             </Card>
         </div>
     );

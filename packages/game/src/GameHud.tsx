@@ -35,7 +35,7 @@ import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
-    'pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center md:block';
+    'pointer-events-none absolute bottom-[var(--game-safe-area-bottom,0px)] left-[var(--game-safe-area-left,0px)] right-[var(--game-safe-area-right,0px)] flex flex-col items-center md:block';
 
 export const gameHudBottomControlsClassName =
     'self-start flex flex-row items-end justify-start p-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:absolute md:bottom-0 md:left-0';
@@ -122,8 +122,9 @@ export function GameHud({
     return (
         <SuncokretChatProvider>
             <div
+                data-game-hud-top-left
                 className={cx(
-                    'absolute top-2 left-2 flex flex-col items-start gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-left-4',
                 )}
@@ -165,8 +166,9 @@ export function GameHud({
                 )}
             </div>
             <div
+                data-game-hud-top-right
                 className={cx(
-                    'absolute top-2 right-2 flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-right-4',
                 )}

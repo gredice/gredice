@@ -7,7 +7,8 @@ const coverUrl =
 const timestamp = new Date('2026-07-17T08:00:00.000Z');
 
 function cmsPage(
-    values: Pick<SelectCmsPage, 'id' | 'metaImageUrl' | 'title'>,
+    values: Pick<SelectCmsPage, 'id' | 'metaImageUrl' | 'title'> &
+        Partial<Pick<SelectCmsPage, 'metaImagePoiX' | 'metaImagePoiY'>>,
 ): SelectCmsPage {
     return {
         id: values.id,
@@ -22,6 +23,8 @@ function cmsPage(
         metaTitle: null,
         metaDescription: null,
         metaImageUrl: values.metaImageUrl,
+        metaImagePoiX: values.metaImagePoiX ?? null,
+        metaImagePoiY: values.metaImagePoiY ?? null,
         seoImageUrl: null,
         canonicalPath: null,
         noIndex: false,
@@ -39,6 +42,8 @@ test('shows an available cover thumbnail before the page title', async ({
             pages={[
                 cmsPage({
                     id: 1,
+                    metaImagePoiX: 80,
+                    metaImagePoiY: 20,
                     metaImageUrl: coverUrl,
                     title: 'Objava s naslovnicom',
                 }),
@@ -67,6 +72,7 @@ test('shows an available cover thumbnail before the page title', async ({
         'srcset',
         /w=64&q=75 1x, .*w=128&q=75 2x$/,
     );
+    await expect(thumbnail).toHaveCSS('object-position', '80% 20%');
     await expect(pageWithoutCover.locator('img')).toHaveCount(0);
 
     const thumbnailPrecedesTitle = await thumbnail.evaluate((image) => {
