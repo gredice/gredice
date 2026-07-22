@@ -15,6 +15,7 @@ import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
 } from '../../cache/scheduleCache';
+import { getTimeZoneDateKey } from '../../helpers/timezoneUtils';
 import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
 import { enqueueAutomationRunsForEvent } from '../automationsRepo';
@@ -725,6 +726,7 @@ type SunflowersDailyPoint = {
 export async function getSunflowersDailyTotals(filter?: {
     from?: Date;
     to?: Date;
+    timeZone?: string;
 }) {
     const results = await storage().query.events.findMany({
         where: and(
@@ -742,7 +744,9 @@ export async function getSunflowersDailyTotals(filter?: {
     const byDay = new Map<string, SunflowersDailyPoint>();
 
     for (const event of results) {
-        const key = event.createdAt.toISOString().split('T')[0];
+        const key = filter?.timeZone
+            ? getTimeZoneDateKey(event.createdAt, filter.timeZone)
+            : event.createdAt.toISOString().split('T')[0];
         const existing = byDay.get(key) ?? { date: key, spent: 0, earned: 0 };
         const payload = event.data as
             | { amount?: unknown; reason?: unknown }

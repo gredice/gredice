@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveStatisticsPeriod } from './statisticsPeriod';
+import {
+    resolveCurrentWeekStatisticsPeriod,
+    resolveStatisticsPeriod,
+} from './statisticsPeriod';
 
 const julySeventeenth = new Date('2026-07-17T12:00:00.000Z');
 
@@ -85,4 +88,22 @@ test('falls back to the current year when all-time is unavailable', () => {
 
     assert.equal(period.key, 'current-year');
     assert.equal(period.pickerFrom, '2026-01-01');
+});
+
+test('resolves the current calendar week from Monday through today', () => {
+    const period = resolveCurrentWeekStatisticsPeriod(julySeventeenth);
+
+    assert.equal(period.pickerFrom, '2026-07-13');
+    assert.equal(period.pickerTo, '2026-07-17');
+    assert.equal(period.fromDate.toISOString(), '2026-07-12T22:00:00.000Z');
+    assert.equal(period.toDate.toISOString(), '2026-07-17T21:59:59.999Z');
+});
+
+test('keeps Monday as the week start when today is Sunday', () => {
+    const period = resolveCurrentWeekStatisticsPeriod(
+        new Date('2026-07-19T12:00:00.000Z'),
+    );
+
+    assert.equal(period.pickerFrom, '2026-07-13');
+    assert.equal(period.pickerTo, '2026-07-19');
 });

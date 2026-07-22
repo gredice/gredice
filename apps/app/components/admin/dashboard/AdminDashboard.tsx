@@ -5,6 +5,7 @@ import {
     getSetting,
     SettingsKeys,
 } from '@gredice/storage';
+import { resolveCurrentWeekStatisticsPeriod } from '../../../app/admin/statistics/statisticsPeriod';
 import { auth } from '../../../lib/auth/auth';
 import { getPendingAdminApprovalTaskCount } from '../../../src/approvalTasks';
 import {
@@ -13,7 +14,7 @@ import {
     getDefaultDashboardQuickActions,
 } from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
-import { getAnalyticsData } from './actions';
+import { getAnalyticsData, getDashboardWeeklyStatisticsData } from './actions';
 
 type AdminDashboardProps = {
     searchParams?: Promise<{ period?: string; from?: string; to?: string }>;
@@ -28,10 +29,11 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         params?.from,
         params?.to,
     );
-    const weeklyDataPromise =
-        selectedPeriod === '7' && !params?.from && !params?.to
-            ? selectedDataPromise
-            : getAnalyticsData(7);
+    const currentWeek = resolveCurrentWeekStatisticsPeriod();
+    const weeklyDataPromise = getDashboardWeeklyStatisticsData(
+        currentWeek.pickerFrom,
+        currentWeek.pickerTo,
+    );
 
     const [
         data,
@@ -72,7 +74,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     return (
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
-            initialEntitiesData={weeklyData.entities}
+            initialEntitiesData={data.entities}
             initialOperationsDurationData={weeklyData.operationsDuration}
             initialWeekdayRegistrations={weeklyData.weekdayRegistrations}
             initialAiData={data.ai}

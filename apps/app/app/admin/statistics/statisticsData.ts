@@ -18,6 +18,7 @@ const weekdayLabels = [
     'Petak',
     'Subota',
 ] as const;
+const statisticsTimeZone = 'Europe/Zagreb';
 
 type BoundedStatisticsPeriod = {
     fromDate: Date;
@@ -30,7 +31,11 @@ export async function getUserStatisticsData({
     fromDate,
     toDate,
 }: BoundedStatisticsPeriod) {
-    const counts = await getUserRegistrationsByWeekday(fromDate, toDate);
+    const counts = await getUserRegistrationsByWeekday(
+        fromDate,
+        toDate,
+        statisticsTimeZone,
+    );
 
     return weekdayLabels.map((label, index) => ({
         label,
@@ -80,6 +85,7 @@ export async function getSunflowersStatisticsData({
     const rawTotals = await getSunflowersDailyTotals({
         from: fromDate,
         to: toDate,
+        timeZone: statisticsTimeZone,
     });
     const totalsByDate = new Map(rawTotals.map((item) => [item.date, item]));
     const dailyTotals = [];

@@ -166,3 +166,16 @@ export function resolveBoundedStatisticsPeriod(
         toDate: period.toDate,
     };
 }
+
+export function resolveCurrentWeekStatisticsPeriod(now: Date = new Date()) {
+    const today = getTimeZoneDateKey(now, statisticsTimeZone);
+    const weekday = new Date(`${today}T00:00:00.000Z`).getUTCDay();
+    const daysSinceMonday = (weekday + 6) % 7;
+
+    return createBoundedPeriod(
+        'custom',
+        addCalendarDays(today, -daysSinceMonday),
+        today,
+        today,
+    );
+}
