@@ -366,6 +366,9 @@ Generated 2026-07-23 with:
 pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 ```
 
+Reports: `steps/15-foliage-baseline/latest.json` and
+`steps/16-atlas-repack/latest.json`.
+
 - All 22 grass, desert-grass, and flower sprite IDs now fit on one
   `1024x1024` page using a `5x5` grid. Each cell is `204px` with `16px`
   padding, leaving up to `172px` for the visible sprite.
@@ -376,8 +379,8 @@ pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 - Generated PNG payload falls from `894,792 -> 354,528 bytes` across pages
   (`-60.4%`), and WebP payload falls from `237,984 -> 136,632 bytes`
   (`-42.6%`). The obsolete second-page PNG and WebP are removed.
-- Garden and WWW copies have identical hashes. A second generation retained
-  the same IDs, slots, and output hashes, confirming stable repeat builds.
+- Garden and WWW copies have identical hashes. The generator retains existing
+  slot assignments whenever the manifest layout remains compatible.
 - This atlas is used by ground decorations, not procedural L-system leaves.
   It reduces decoration texture residency and page partitioning without
   changing plant-generation work, plant geometry, or L-system detail policy.
@@ -430,13 +433,19 @@ Reports: `steps/15-foliage-baseline/latest.json`,
 
 #### Rejected projected-size culling experiment
 
+Reports: `steps/17-projected-size-culling/latest.json`,
+`steps/19-culling-calibration-trial/latest.json`,
+`steps/20-culling-calibration-trial-4css/latest.json`, and
+`steps/21-culling-calibration-trial-6css/latest.json`.
+
 - A physical-pixel culling path was implemented and profiled after chunk and
-  frustum rejection. The proposed `2-3` backing-pixel cutoff culled `0/215`
-  desktop and `0/187` constrained-mobile candidates in the target close-up.
-- Constrained-only trials at `2`, `4`, and `6` CSS pixels also culled `0/187`.
-  Because the path added one camera-space projection per candidate without
-  removing target-scene render work, it was removed from the final change.
-  The result favors measured benefit over shipping speculative hot-loop cost.
+  frustum rejection. It culled `0/215` desktop and `0/187`
+  constrained-mobile candidates in the target close-up.
+- Progressively more aggressive constrained-only calibration trials also
+  culled `0/187`. Because the path added one camera-space projection per
+  candidate without removing target-scene render work, it was removed from the
+  final change. The result favors measured benefit over shipping speculative
+  hot-loop cost.
 
 ## Raised-bed close-up profiling foundation
 
