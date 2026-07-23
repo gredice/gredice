@@ -17,7 +17,7 @@
         "@posthog/next": "0.8.0",
         "@vercel/analytics": "2.0.1",
         "@vercel/toolbar": "0.2.6",
-        "next": "16.3.0-preview.6",
+        "next": "16.3.0-preview.7",
         "react": "19.2.7",
         "react-dom": "19.2.7",
         "server-only": "0.0.1"
