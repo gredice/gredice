@@ -1,204 +1,189 @@
 {
     "atlas": {
-        "cellSize": 512,
-        "columns": 4,
-        "height": 2048,
-        "innerSize": 480,
-        "offsetX": 0,
-        "offsetY": 0,
+        "cellSize": 204,
+        "columns": 5,
+        "height": 1024,
+        "innerSize": 172,
+        "offsetX": 2,
+        "offsetY": 2,
         "padding": 16,
-        "rows": 4,
-        "width": 2048
+        "rows": 5,
+        "width": 1024
     },
     "layout": {
-        "atlasSize": 2048,
-        "columns": 4,
-        "pageCapacity": 16,
+        "atlasSize": 1024,
+        "columns": 5,
+        "pageCapacity": 25,
         "padding": 16,
-        "rows": 4,
+        "rows": 5,
         "version": 2
     },
     "pages": [
         {
             "atlas": {
-                "cellSize": 512,
-                "columns": 4,
-                "height": 2048,
-                "innerSize": 480,
-                "offsetX": 0,
-                "offsetY": 0,
+                "cellSize": 204,
+                "columns": 5,
+                "height": 1024,
+                "innerSize": 172,
+                "offsetX": 2,
+                "offsetY": 2,
                 "padding": 16,
-                "rows": 4,
-                "width": 2048
+                "rows": 5,
+                "width": 1024
             },
             "index": 0,
-            "spriteCount": 16
-        },
-        {
-            "atlas": {
-                "cellSize": 512,
-                "columns": 4,
-                "height": 1024,
-                "innerSize": 480,
-                "offsetX": 0,
-                "offsetY": 0,
-                "padding": 16,
-                "rows": 2,
-                "width": 2048
-            },
-            "index": 1,
-            "spriteCount": 6
+            "spriteCount": 22
         }
     ],
     "sprites": {
         "desert__01": {
-            "aspect": 1.1851851851851851,
+            "aspect": 1.186206896551724,
             "cell": {
                 "column": 0,
-                "height": 512,
+                "height": 204,
                 "row": 0,
-                "width": 512,
-                "x": 0,
-                "y": 0
+                "width": 204,
+                "x": 2,
+                "y": 2
             },
             "frame": {
-                "height": 243,
-                "width": 288,
-                "x": 112,
-                "y": 253
+                "height": 145,
+                "width": 172,
+                "x": 18,
+                "y": 45
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/01.png"
         },
         "desert__02": {
-            "aspect": 1.2459893048128343,
+            "aspect": 1.2463768115942029,
             "cell": {
                 "column": 1,
-                "height": 512,
+                "height": 204,
                 "row": 0,
-                "width": 512,
-                "x": 512,
-                "y": 0
+                "width": 204,
+                "x": 206,
+                "y": 2
             },
             "frame": {
-                "height": 187,
-                "width": 233,
-                "x": 651,
-                "y": 309
+                "height": 138,
+                "width": 172,
+                "x": 222,
+                "y": 52
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/02.png"
         },
         "desert__03": {
-            "aspect": 1.306532663316583,
+            "aspect": 1.303030303030303,
             "cell": {
                 "column": 2,
-                "height": 512,
+                "height": 204,
                 "row": 0,
-                "width": 512,
-                "x": 1024,
-                "y": 0
+                "width": 204,
+                "x": 410,
+                "y": 2
             },
             "frame": {
-                "height": 199,
-                "width": 260,
-                "x": 1150,
-                "y": 297
+                "height": 132,
+                "width": 172,
+                "x": 426,
+                "y": 58
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/03.png"
         },
         "desert__04": {
-            "aspect": 1.3574660633484164,
+            "aspect": 1.3543307086614174,
             "cell": {
                 "column": 3,
-                "height": 512,
+                "height": 204,
                 "row": 0,
-                "width": 512,
-                "x": 1536,
-                "y": 0
+                "width": 204,
+                "x": 614,
+                "y": 2
             },
             "frame": {
-                "height": 221,
-                "width": 300,
-                "x": 1642,
-                "y": 275
+                "height": 127,
+                "width": 172,
+                "x": 630,
+                "y": 63
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/04.png"
         },
         "desert__05": {
-            "aspect": 1.1099476439790577,
+            "aspect": 1.1096774193548387,
             "cell": {
-                "column": 0,
-                "height": 512,
-                "row": 1,
-                "width": 512,
-                "x": 0,
-                "y": 512
+                "column": 4,
+                "height": 204,
+                "row": 0,
+                "width": 204,
+                "x": 818,
+                "y": 2
             },
             "frame": {
-                "height": 191,
-                "width": 212,
-                "x": 150,
-                "y": 817
+                "height": 155,
+                "width": 172,
+                "x": 834,
+                "y": 35
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/05.png"
         },
         "desert__06": {
-            "aspect": 1.3294117647058823,
+            "aspect": 1.3333333333333333,
             "cell": {
-                "column": 1,
-                "height": 512,
+                "column": 0,
+                "height": 204,
                 "row": 1,
-                "width": 512,
-                "x": 512,
-                "y": 512
+                "width": 204,
+                "x": 2,
+                "y": 206
             },
             "frame": {
-                "height": 170,
-                "width": 226,
-                "x": 655,
-                "y": 838
+                "height": 129,
+                "width": 172,
+                "x": 18,
+                "y": 265
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/06.png"
         },
         "desert__07": {
-            "aspect": 1.164021164021164,
+            "aspect": 1.162162162162162,
             "cell": {
-                "column": 2,
-                "height": 512,
+                "column": 1,
+                "height": 204,
                 "row": 1,
-                "width": 512,
-                "x": 1024,
-                "y": 512
+                "width": 204,
+                "x": 206,
+                "y": 206
             },
             "frame": {
-                "height": 189,
-                "width": 220,
-                "x": 1170,
-                "y": 819
+                "height": 148,
+                "width": 172,
+                "x": 222,
+                "y": 246
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/07.png"
         },
         "desert__08": {
-            "aspect": 1.2801418439716312,
+            "aspect": 1.2835820895522387,
             "cell": {
-                "column": 3,
-                "height": 512,
+                "column": 2,
+                "height": 204,
                 "row": 1,
-                "width": 512,
-                "x": 1536,
-                "y": 512
+                "width": 204,
+                "x": 410,
+                "y": 206
             },
             "frame": {
-                "height": 282,
-                "width": 361,
-                "x": 1611,
-                "y": 726
+                "height": 134,
+                "width": 172,
+                "x": 426,
+                "y": 260
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/08.png"
@@ -206,265 +191,265 @@
         "flower__blue": {
             "aspect": 1,
             "cell": {
-                "column": 0,
-                "height": 512,
-                "row": 0,
-                "width": 512,
-                "x": 0,
-                "y": 0
+                "column": 3,
+                "height": 204,
+                "row": 1,
+                "width": 204,
+                "x": 614,
+                "y": 206
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 128,
-                "y": 240
+                "height": 172,
+                "width": 172,
+                "x": 630,
+                "y": 222
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/blue.png"
         },
         "flower__cream": {
             "aspect": 1,
             "cell": {
-                "column": 1,
-                "height": 512,
-                "row": 0,
-                "width": 512,
-                "x": 512,
-                "y": 0
+                "column": 4,
+                "height": 204,
+                "row": 1,
+                "width": 204,
+                "x": 818,
+                "y": 206
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 640,
-                "y": 240
+                "height": 172,
+                "width": 172,
+                "x": 834,
+                "y": 222
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/cream.png"
         },
         "flower__orange": {
             "aspect": 1,
             "cell": {
-                "column": 2,
-                "height": 512,
-                "row": 0,
-                "width": 512,
-                "x": 1024,
-                "y": 0
+                "column": 0,
+                "height": 204,
+                "row": 2,
+                "width": 204,
+                "x": 2,
+                "y": 410
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 1152,
-                "y": 240
+                "height": 172,
+                "width": 172,
+                "x": 18,
+                "y": 426
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/orange.png"
         },
         "flower__pink": {
             "aspect": 1,
             "cell": {
-                "column": 3,
-                "height": 512,
-                "row": 0,
-                "width": 512,
-                "x": 1536,
-                "y": 0
+                "column": 1,
+                "height": 204,
+                "row": 2,
+                "width": 204,
+                "x": 206,
+                "y": 410
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 1664,
-                "y": 240
+                "height": 172,
+                "width": 172,
+                "x": 222,
+                "y": 426
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/pink.png"
         },
         "flower__violet": {
             "aspect": 1,
             "cell": {
-                "column": 0,
-                "height": 512,
-                "row": 1,
-                "width": 512,
-                "x": 0,
-                "y": 512
+                "column": 2,
+                "height": 204,
+                "row": 2,
+                "width": 204,
+                "x": 410,
+                "y": 410
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 128,
-                "y": 752
+                "height": 172,
+                "width": 172,
+                "x": 426,
+                "y": 426
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/violet.png"
         },
         "flower__yellow": {
             "aspect": 1,
             "cell": {
-                "column": 1,
-                "height": 512,
-                "row": 1,
-                "width": 512,
-                "x": 512,
-                "y": 512
+                "column": 3,
+                "height": 204,
+                "row": 2,
+                "width": 204,
+                "x": 614,
+                "y": 410
             },
             "frame": {
-                "height": 256,
-                "width": 256,
-                "x": 640,
-                "y": 752
+                "height": 172,
+                "width": 172,
+                "x": 630,
+                "y": 426
             },
-            "page": 1,
+            "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/flower/yellow.png"
         },
         "grass__01": {
-            "aspect": 1.919463087248322,
+            "aspect": 1.9111111111111112,
             "cell": {
-                "column": 0,
-                "height": 512,
+                "column": 4,
+                "height": 204,
                 "row": 2,
-                "width": 512,
-                "x": 0,
-                "y": 1024
+                "width": 204,
+                "x": 818,
+                "y": 410
             },
             "frame": {
-                "height": 149,
-                "width": 286,
-                "x": 113,
-                "y": 1371
+                "height": 90,
+                "width": 172,
+                "x": 834,
+                "y": 508
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/01.png"
         },
         "grass__02": {
-            "aspect": 2.0180722891566263,
+            "aspect": 2.023529411764706,
             "cell": {
-                "column": 1,
-                "height": 512,
-                "row": 2,
-                "width": 512,
-                "x": 512,
-                "y": 1024
+                "column": 0,
+                "height": 204,
+                "row": 3,
+                "width": 204,
+                "x": 2,
+                "y": 614
             },
             "frame": {
-                "height": 166,
-                "width": 335,
-                "x": 600,
-                "y": 1354
+                "height": 85,
+                "width": 172,
+                "x": 18,
+                "y": 717
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/02.png"
         },
         "grass__03": {
-            "aspect": 2.029940119760479,
+            "aspect": 2.023529411764706,
             "cell": {
-                "column": 2,
-                "height": 512,
-                "row": 2,
-                "width": 512,
-                "x": 1024,
-                "y": 1024
+                "column": 1,
+                "height": 204,
+                "row": 3,
+                "width": 204,
+                "x": 206,
+                "y": 614
             },
             "frame": {
-                "height": 167,
-                "width": 339,
-                "x": 1110,
-                "y": 1353
+                "height": 85,
+                "width": 172,
+                "x": 222,
+                "y": 717
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/03.png"
         },
         "grass__04": {
-            "aspect": 2.0546875,
+            "aspect": 2.0476190476190474,
             "cell": {
-                "column": 3,
-                "height": 512,
-                "row": 2,
-                "width": 512,
-                "x": 1536,
-                "y": 1024
+                "column": 2,
+                "height": 204,
+                "row": 3,
+                "width": 204,
+                "x": 410,
+                "y": 614
             },
             "frame": {
-                "height": 128,
-                "width": 263,
-                "x": 1660,
-                "y": 1392
+                "height": 84,
+                "width": 172,
+                "x": 426,
+                "y": 718
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/04.png"
         },
         "grass__05": {
-            "aspect": 2.0719424460431655,
+            "aspect": 2.072289156626506,
             "cell": {
-                "column": 0,
-                "height": 512,
+                "column": 3,
+                "height": 204,
                 "row": 3,
-                "width": 512,
-                "x": 0,
-                "y": 1536
+                "width": 204,
+                "x": 614,
+                "y": 614
             },
             "frame": {
-                "height": 139,
-                "width": 288,
-                "x": 112,
-                "y": 1893
+                "height": 83,
+                "width": 172,
+                "x": 630,
+                "y": 719
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/05.png"
         },
         "grass__06": {
-            "aspect": 2.0833333333333335,
+            "aspect": 2.072289156626506,
             "cell": {
-                "column": 1,
-                "height": 512,
+                "column": 4,
+                "height": 204,
                 "row": 3,
-                "width": 512,
-                "x": 512,
-                "y": 1536
+                "width": 204,
+                "x": 818,
+                "y": 614
             },
             "frame": {
-                "height": 156,
-                "width": 325,
-                "x": 605,
-                "y": 1876
+                "height": 83,
+                "width": 172,
+                "x": 834,
+                "y": 719
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/06.png"
         },
         "grass__07": {
-            "aspect": 2.0425531914893615,
+            "aspect": 2.0476190476190474,
             "cell": {
-                "column": 2,
-                "height": 512,
-                "row": 3,
-                "width": 512,
-                "x": 1024,
-                "y": 1536
+                "column": 0,
+                "height": 204,
+                "row": 4,
+                "width": 204,
+                "x": 2,
+                "y": 818
             },
             "frame": {
-                "height": 141,
-                "width": 288,
-                "x": 1136,
-                "y": 1891
+                "height": 84,
+                "width": 172,
+                "x": 18,
+                "y": 922
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/07.png"
         },
         "grass__08": {
-            "aspect": 2.2373737373737375,
+            "aspect": 2.2337662337662336,
             "cell": {
-                "column": 3,
-                "height": 512,
-                "row": 3,
-                "width": 512,
-                "x": 1536,
-                "y": 1536
+                "column": 1,
+                "height": 204,
+                "row": 4,
+                "width": 204,
+                "x": 206,
+                "y": 818
             },
             "frame": {
-                "height": 198,
-                "width": 443,
-                "x": 1570,
-                "y": 1834
+                "height": 77,
+                "width": 172,
+                "x": 222,
+                "y": 929
             },
             "page": 0,
             "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/08.png"

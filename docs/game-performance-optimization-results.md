@@ -68,6 +68,7 @@ baseline and the preceding row.
 | 12 | Make sky astronomy and projection event-driven | Complete | Clear + dense cloudy mobile | Clear p95 `-23%`, task time `-5.6%`; dense cloudy neutral with all eight clouds/casters retained |
 | 13 | Crop unused decoration-atlas page rows | Complete | Dense mobile + renderer memory + screenshots | Estimated mipmapped RGBA8 residency `42.7 -> 32.0 MiB` (`-25%`); all 914 decorations and render work retained |
 | 14 | Fade rain intensity and stop invisible transition-tail particles | Complete | Clear + rain-to-clear mobile | Rain unmounted `49%` sooner; transition calls/s `-3.2%` and triangles/s `-5.5%`; steady clear render work unchanged |
+| 15 | Repack small decoration sprites into one 1024px atlas | Complete | Atlas manifest + decoded residency + generated file sizes | One page replaces two; estimated mipmapped RGBA8 residency `32.0 -> 5.3 MiB` (`-83.3%`) with all 22 sprite IDs retained |
 
 ### Step 01: generated-plant batch effect
 
@@ -355,6 +356,30 @@ Reports: `steps/14-rain-lifecycle-before/latest.json` and
   mesh. The static JavaScript import remains intentional: lazy-loading this
   small shader path could delay the first visible rain and would not address
   the sustained GPU workload behind the thermal report.
+
+### Step 15: single-page 1024px decoration atlas
+
+Generated 2026-07-23 with:
+
+```bash
+pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
+```
+
+- All 22 grass, desert-grass, and flower sprite IDs now fit on one
+  `1024x1024` page using a `5x5` grid. Each cell is `204px` with `16px`
+  padding, leaving up to `172px` for the visible sprite.
+- Estimated decoded RGBA8 residency including mip levels falls from
+  `33,554,432 -> 5,592,404 bytes` (`32.0 -> 5.3 MiB`, `-83.3%`). The
+  `27,962,028-byte` reduction is the guaranteed runtime benefit; frame-time
+  impact depends on device GPU memory pressure and transparent overdraw.
+- Generated PNG payload falls from `894,792 -> 354,528 bytes` across pages
+  (`-60.4%`), and WebP payload falls from `237,984 -> 136,632 bytes`
+  (`-42.6%`). The obsolete second-page PNG and WebP are removed.
+- Garden and WWW copies have identical hashes. A second generation retained
+  the same IDs, slots, and output hashes, confirming stable repeat builds.
+- This atlas is used by ground decorations, not procedural L-system leaves.
+  It reduces decoration texture residency and page partitioning without
+  changing plant-generation work, plant geometry, or L-system detail policy.
 
 ## Raised-bed close-up profiling foundation
 
