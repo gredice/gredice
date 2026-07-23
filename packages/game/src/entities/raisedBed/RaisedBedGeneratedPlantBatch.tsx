@@ -453,7 +453,7 @@ export function RaisedBedGeneratedPlantBatch({
 
             for (const index of instanceIndexes) {
                 const instance = instances[index];
-                if (!profileActive || !instance?.fieldKey) {
+                if (!instance?.fieldKey) {
                     continue;
                 }
 

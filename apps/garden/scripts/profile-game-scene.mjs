@@ -2559,6 +2559,9 @@ function buildPlantCloseupAcceptance(runs) {
             profile?.lSystem?.workerFailureCount === 0 &&
             profile.lSystem.syncFallbackTaskCount === 0,
     );
+    const foliageCoveredPhaseCount = count(
+        ({ profile }) => (profile?.selected?.parts?.leaves ?? 0) > 0,
+    );
     const groupRejectionRatio = round(
         median(
             measurements.map(({ profile }) => {
@@ -2588,6 +2591,7 @@ function buildPlantCloseupAcceptance(runs) {
         cleanResourcePhaseCount,
         detailReadyPhaseCount,
         exactCapacityPhaseCount,
+        foliageCoveredPhaseCount,
         groupRejectionRatio,
         maxArchetypeCountPerBatch: medianProfileField(
             (profile) => profile?.renderData?.maxArchetypeCountPerBatch,
@@ -2602,6 +2606,7 @@ function buildPlantCloseupAcceptance(runs) {
             cleanResourcePhaseCount === phaseCount &&
             shaderReadyPhaseCount === phaseCount &&
             workerFailureFreePhaseCount === phaseCount &&
+            foliageCoveredPhaseCount === phaseCount &&
             (groupRejectionRatio ?? 0) >= 0.7 &&
             (projectionReduction ?? 0) >= 0.7 &&
             (warmCacheHit ?? 0) >= 0.9,
@@ -2610,7 +2615,16 @@ function buildPlantCloseupAcceptance(runs) {
         selectedDetailedFieldCount: medianProfileField(
             (profile) => profile?.selected?.detailedFields,
         ),
+        selectedCompactLeafInstanceCount: medianProfileField(
+            (profile) => profile?.selected?.parts?.compactLeafInstances,
+        ),
         selectedExactPhaseCount,
+        selectedLeafInstanceCount: medianProfileField(
+            (profile) => profile?.selected?.parts?.leaves,
+        ),
+        selectedLeafTriangleCount: medianProfileField(
+            (profile) => profile?.selected?.parts?.leafTriangles,
+        ),
         selectedNearFieldCount: medianProfileField(
             (profile) => profile?.selected?.nearFields,
         ),
@@ -2831,15 +2845,15 @@ function buildMarkdown(report) {
         lines.push('', '## Raised-bed Close-up Medians', '');
         lines.push('### Optimization acceptance gates', '');
         lines.push(
-            '| Scenario | Ready phases | Selected fields total/near/detailed | Background near | Group rejection | Projection avoided | Archetypes max/bounded phases | Warm cache hit | Exact/clean buffers | Shader ready/no swap compile | Worker/fallback clean | Status |',
-            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+            '| Scenario | Ready phases | Selected fields total/near/detailed | Selected leaves compact/total/triangles | Background near | Group rejection | Projection avoided | Archetypes max/bounded phases | Warm cache hit | Exact/clean buffers | Shader ready/no swap compile | Worker/fallback clean | Status |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
         );
         for (const [name, summary] of Object.entries(
             report.plantCloseupMedians,
         )) {
             const acceptance = summary.acceptance;
             lines.push(
-                `| ${name} | ${acceptance.detailReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.selectedTotalFieldCount ?? 'n/a'}/${acceptance.selectedNearFieldCount ?? 'n/a'}/${acceptance.selectedDetailedFieldCount ?? 'n/a'} (${acceptance.selectedExactPhaseCount}/${acceptance.phaseCount}) | ${acceptance.backgroundNearFieldCount ?? 'n/a'} (${acceptance.backgroundNearZeroPhaseCount}/${acceptance.phaseCount}) | ${acceptance.groupRejectionRatio ?? 'n/a'} | ${acceptance.projectionReductionRatio ?? 'n/a'} | ${acceptance.maxArchetypeCountPerBatch ?? 'n/a'} (${acceptance.archetypeBoundedPhaseCount}/${acceptance.phaseCount}) | ${acceptance.warmTemplateCacheHitRatio ?? 'n/a'} | ${acceptance.exactCapacityPhaseCount}/${acceptance.cleanResourcePhaseCount} of ${acceptance.phaseCount} | ${acceptance.shaderReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.workerFailureFreePhaseCount}/${acceptance.phaseCount} | ${acceptance.pass ? 'pass' : 'fail'} |`,
+                `| ${name} | ${acceptance.detailReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.selectedTotalFieldCount ?? 'n/a'}/${acceptance.selectedNearFieldCount ?? 'n/a'}/${acceptance.selectedDetailedFieldCount ?? 'n/a'} (${acceptance.selectedExactPhaseCount}/${acceptance.phaseCount}) | ${acceptance.selectedCompactLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafTriangleCount ?? 'n/a'} (${acceptance.foliageCoveredPhaseCount}/${acceptance.phaseCount}) | ${acceptance.backgroundNearFieldCount ?? 'n/a'} (${acceptance.backgroundNearZeroPhaseCount}/${acceptance.phaseCount}) | ${acceptance.groupRejectionRatio ?? 'n/a'} | ${acceptance.projectionReductionRatio ?? 'n/a'} | ${acceptance.maxArchetypeCountPerBatch ?? 'n/a'} (${acceptance.archetypeBoundedPhaseCount}/${acceptance.phaseCount}) | ${acceptance.warmTemplateCacheHitRatio ?? 'n/a'} | ${acceptance.exactCapacityPhaseCount}/${acceptance.cleanResourcePhaseCount} of ${acceptance.phaseCount} | ${acceptance.shaderReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.workerFailureFreePhaseCount}/${acceptance.phaseCount} | ${acceptance.pass ? 'pass' : 'fail'} |`,
             );
         }
         lines.push('');
