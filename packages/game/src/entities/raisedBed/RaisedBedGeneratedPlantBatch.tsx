@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
 import { useGeneratedLSystemSymbolsBatch } from '../../generators/plant/hooks/useGeneratedLSystem';
 import {
     buildPlantRenderData,
@@ -44,6 +45,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     instances: RaisedBedGeneratedPlantBatchInstance[];
     lodLevel?: PlantLodLevel;
     showProduce?: boolean;
+    taskPriority?: GeneratedLSystemTaskPriority;
 }
 
 const ROOT_QUATERNION = new THREE.Quaternion();
@@ -118,6 +120,7 @@ export function RaisedBedGeneratedPlantBatch({
     instances,
     lodLevel = 'near',
     showProduce = true,
+    taskPriority = 'normal',
 }: RaisedBedGeneratedPlantBatchProps) {
     const renderDetailedGeometry = lodLevel === 'near';
     const batchSeed = useMemo(() => {
@@ -148,7 +151,13 @@ export function RaisedBedGeneratedPlantBatch({
         () => buildGeneratedPlantLodTasks(definition, instances, lodLevel),
         [definition, instances, lodLevel],
     );
-    const { symbols } = useGeneratedLSystemSymbolsBatch(tasks);
+    const { symbols } = useGeneratedLSystemSymbolsBatch(tasks, {
+        priority: taskPriority,
+    });
+    const pendingBillboards = useMemo(
+        () => billboards.filter((_billboard, index) => symbols[index] === null),
+        [billboards, symbols],
+    );
     const profileFields = useMemo(() => {
         const fields = new Map<
             string,
@@ -188,10 +197,7 @@ export function RaisedBedGeneratedPlantBatch({
             };
         }
 
-        if (
-            symbols.length !== instances.length ||
-            symbols.some((result) => result === null)
-        ) {
+        if (symbols.length !== instances.length) {
             return {
                 data: null,
                 durationMs: 0,
@@ -214,7 +220,14 @@ export function RaisedBedGeneratedPlantBatch({
         const thorns: THREE.Matrix4[] = [];
         const partsByField = new Map<string, GeneratedPlantProfilePartCounts>();
         symbols.forEach((lSystemSymbols, index) => {
+            if (!lSystemSymbols) {
+                return;
+            }
+
             const instance = instances[index];
+            if (!instance) {
+                return;
+            }
             const clampedGeneration = Math.min(
                 MAX_PLANT_GENERATION,
                 Math.max(0, instance.generation),
@@ -294,15 +307,22 @@ export function RaisedBedGeneratedPlantBatch({
                 thorns.push(matrix.clone().premultiply(rootMatrix));
             });
         });
+        const detailedInstanceCount = symbols.reduce(
+            (count, result) => count + (result === null ? 0 : 1),
+            0,
+        );
         return {
-            data: {
-                flowers,
-                leafColors,
-                leaves,
-                stemSegments,
-                thorns,
-                vegetables,
-            },
+            data:
+                detailedInstanceCount === 0
+                    ? null
+                    : {
+                          flowers,
+                          leafColors,
+                          leaves,
+                          stemSegments,
+                          thorns,
+                          vegetables,
+                      },
             durationMs: profileActive ? performance.now() - startedAt : 0,
             partsByField,
         };
@@ -325,7 +345,7 @@ export function RaisedBedGeneratedPlantBatch({
         const status =
             lodLevel !== 'near'
                 ? 'billboard'
-                : batchedData
+                : batchedData && pendingBillboards.length === 0
                   ? 'detailed'
                   : 'pending-near';
         recordGeneratedPlantProfileBatch(profileBatchId, {
@@ -352,6 +372,7 @@ export function RaisedBedGeneratedPlantBatch({
         lodLevel,
         profileBatchId,
         profileFields,
+        pendingBillboards.length,
     ]);
 
     if (lodLevel !== 'near') {
@@ -367,10 +388,29 @@ export function RaisedBedGeneratedPlantBatch({
     if (!batchedData) {
         return (
             <PlantBillboardBatch
-                billboards={billboards}
+                billboards={pendingBillboards}
                 debugName={`RaisedBedPlantBillboards:${definition.name}:pending-near`}
                 level="mid"
             />
+        );
+    }
+
+    if (pendingBillboards.length > 0) {
+        return (
+            <group
+                name={`RaisedBedPlantBatch:${definition.name}:progressive-near`}
+            >
+                <RaisedBedDetailedPlantBatch
+                    batchSeed={batchSeed}
+                    batchedData={batchedData}
+                    definition={definition}
+                />
+                <PlantBillboardBatch
+                    billboards={pendingBillboards}
+                    debugName={`RaisedBedPlantBillboards:${definition.name}:progressive-near`}
+                    level="mid"
+                />
+            </group>
         );
     }
 

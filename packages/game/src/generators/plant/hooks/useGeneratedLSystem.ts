@@ -21,6 +21,10 @@ import { SeededRNG } from '../lib/rng';
 import { reconcileGeneratedLSystemBatchState } from './generatedLSystemBatchState';
 import { generatedLSystemCache } from './generatedLSystemCache';
 import {
+    type GeneratedLSystemTaskPriority,
+    GeneratedLSystemTaskScheduler,
+} from './generatedLSystemTaskScheduler';
+import {
     type GeneratedLSystemTaskResult,
     resolveGeneratedLSystemTaskSymbols,
 } from './generatedLSystemTaskState';
@@ -106,66 +110,98 @@ async function runWorkerTasks(tasks: LSystemGenerationTask[]) {
     });
 }
 
-export async function requestGeneratedLSystemSymbolsBatch(
-    tasks: LSystemGenerationTask[],
-) {
-    const results = Array<LSystemSymbol[] | null>(tasks.length).fill(null);
-    const missingTasks: LSystemGenerationTask[] = [];
-    const missingKeys: string[] = [];
-    const missingIndexes: number[] = [];
-
-    tasks.forEach((task, index) => {
-        const key = getLSystemGenerationTaskKey(task);
-        const cachedSymbols = lSystemCache.get(key);
-
-        if (cachedSymbols) {
-            results[index] = cachedSymbols;
-            return;
-        }
-
-        missingTasks.push(task);
-        missingKeys.push(key);
-        missingIndexes.push(index);
-    });
+const generatedLSystemTaskScheduler = new GeneratedLSystemTaskScheduler<
+    LSystemGenerationTask,
+    LSystemSymbol[]
+>(async (task) => {
     const profileActive = isGeneratedPlantProfileActive();
-    recordGeneratedPlantProfileLSystemRequest({
-        requestedTaskCount: tasks.length,
-        workerTaskCount: missingTasks.length,
-    });
-    const workerStartedAt = profileActive ? performance.now() : 0;
+    const startedAt = profileActive ? performance.now() : 0;
     let workerFailed = false;
+    let symbols: LSystemSymbol[];
 
-    if (missingTasks.length > 0) {
-        let generatedSymbols: LSystemSymbol[][];
+    recordGeneratedPlantProfileLSystemRequest({
+        requestedTaskCount: 0,
+        workerTaskCount: 1,
+    });
 
-        try {
-            generatedSymbols = await runWorkerTasks(missingTasks);
-        } catch {
-            workerFailed = true;
-            generatedSymbols = missingTasks.map(generateSymbolsSync);
+    try {
+        const [workerSymbols] = await runWorkerTasks([task]);
+        if (!workerSymbols) {
+            throw new Error('L-system worker returned no task result');
         }
-
-        generatedSymbols.forEach((symbols, index) => {
-            const resultIndex = missingIndexes[index];
-            const key = missingKeys[index];
-
-            lSystemCache.set(key, symbols);
-            results[resultIndex] = symbols;
-        });
+        symbols = workerSymbols;
+    } catch {
+        workerFailed = true;
+        symbols = generateSymbolsSync(task);
     }
+
+    lSystemCache.set(getLSystemGenerationTaskKey(task), symbols);
     recordGeneratedPlantProfileLSystemCompletion({
-        completedTaskCount: tasks.length,
-        durationMs:
-            profileActive && missingTasks.length > 0
-                ? performance.now() - workerStartedAt
-                : 0,
+        completedTaskCount: 0,
+        durationMs: profileActive ? performance.now() - startedAt : 0,
         workerFailed,
     });
+    return symbols;
+});
 
-    return results as LSystemSymbol[][];
+function isAbortError(error: unknown) {
+    return error instanceof Error && error.name === 'AbortError';
+}
+
+interface RequestGeneratedLSystemSymbolsOptions {
+    priority?: GeneratedLSystemTaskPriority;
+    signal?: AbortSignal;
+}
+
+async function requestGeneratedLSystemSymbols(
+    task: LSystemGenerationTask,
+    options: RequestGeneratedLSystemSymbolsOptions = {},
+) {
+    const taskKey = getLSystemGenerationTaskKey(task);
+    recordGeneratedPlantProfileLSystemRequest({
+        requestedTaskCount: 1,
+        workerTaskCount: 0,
+    });
+    const cachedSymbols = lSystemCache.get(taskKey);
+    if (cachedSymbols) {
+        recordGeneratedPlantProfileLSystemCompletion({
+            completedTaskCount: 1,
+            durationMs: 0,
+        });
+        return cachedSymbols;
+    }
+
+    try {
+        const symbols = await generatedLSystemTaskScheduler.schedule({
+            key: taskKey,
+            priority: options.priority,
+            signal: options.signal,
+            task,
+        });
+        recordGeneratedPlantProfileLSystemCompletion({
+            completedTaskCount: 1,
+            durationMs: 0,
+        });
+        return symbols;
+    } catch (error) {
+        if (isAbortError(error)) {
+            recordGeneratedPlantProfileLSystemCancellation(1);
+        }
+        throw error;
+    }
+}
+
+export async function requestGeneratedLSystemSymbolsBatch(
+    tasks: LSystemGenerationTask[],
+    options: RequestGeneratedLSystemSymbolsOptions = {},
+) {
+    return Promise.all(
+        tasks.map((task) => requestGeneratedLSystemSymbols(task, options)),
+    );
 }
 
 interface UseGeneratedLSystemSymbolsOptions {
+    priority?: GeneratedLSystemTaskPriority;
     syncInitialResult?: boolean;
 }
 
@@ -208,29 +244,33 @@ export function useGeneratedLSystemSymbols(
             return;
         }
 
-        let cancelled = false;
-        let settled = false;
+        const controller = new AbortController();
         setIsPending(true);
 
-        requestGeneratedLSystemSymbolsBatch([task]).then(([nextSymbols]) => {
-            settled = true;
-            if (cancelled) {
-                return;
-            }
+        requestGeneratedLSystemSymbols(task, {
+            priority: options.priority,
+            signal: controller.signal,
+        })
+            .then((nextSymbols) => {
+                if (controller.signal.aborted) {
+                    return;
+                }
 
-            startTransition(() => {
-                setResult({ symbols: nextSymbols, taskKey });
+                startTransition(() => {
+                    setResult({ symbols: nextSymbols, taskKey });
+                });
+                setIsPending(false);
+            })
+            .catch((error: unknown) => {
+                if (!isAbortError(error)) {
+                    setIsPending(false);
+                }
             });
-            setIsPending(false);
-        });
 
         return () => {
-            cancelled = true;
-            if (!settled) {
-                recordGeneratedPlantProfileLSystemCancellation(1);
-            }
+            controller.abort();
         };
-    }, [symbols, task, taskKey]);
+    }, [options.priority, symbols, task, taskKey]);
 
     return {
         isPending: isPending || symbols === null,
@@ -240,6 +280,7 @@ export function useGeneratedLSystemSymbols(
 
 export function useGeneratedLSystemSymbolsBatch(
     tasks: LSystemGenerationTask[],
+    options: Pick<UseGeneratedLSystemSymbolsOptions, 'priority'> = {},
 ) {
     const taskKeys = useMemo(
         () => tasks.map(getLSystemGenerationTaskKey),
@@ -300,39 +341,56 @@ export function useGeneratedLSystemSymbolsBatch(
             return;
         }
 
-        let cancelled = false;
-        let settled = false;
-        requestGeneratedLSystemSymbolsBatch(missingTasks).then((results) => {
-            settled = true;
-            if (cancelled) {
+        const controller = new AbortController();
+        let remainingTaskCount = missingTasks.length;
+
+        missingTasks.forEach((task, index) => {
+            const missingKey = missingKeys[index];
+            if (!missingKey) {
                 return;
             }
 
-            const nextEntries = Object.fromEntries(
-                results.map((symbols, index) => [missingKeys[index], symbols]),
-            );
+            requestGeneratedLSystemSymbols(task, {
+                priority: options.priority,
+                signal: controller.signal,
+            })
+                .then((nextSymbols) => {
+                    if (controller.signal.aborted) {
+                        return;
+                    }
 
-            startTransition(() => {
-                setSymbolsByKey((current) =>
-                    reconcileGeneratedLSystemBatchState(
-                        current,
-                        taskKeys,
-                        nextEntries,
-                    ),
-                );
-            });
-            setIsPending(false);
+                    startTransition(() => {
+                        setSymbolsByKey((current) =>
+                            reconcileGeneratedLSystemBatchState(
+                                current,
+                                taskKeys,
+                                {
+                                    [missingKey]: nextSymbols,
+                                },
+                            ),
+                        );
+                    });
+                    remainingTaskCount -= 1;
+                    if (remainingTaskCount === 0) {
+                        setIsPending(false);
+                    }
+                })
+                .catch((error: unknown) => {
+                    if (controller.signal.aborted || isAbortError(error)) {
+                        return;
+                    }
+
+                    remainingTaskCount -= 1;
+                    if (remainingTaskCount === 0) {
+                        setIsPending(false);
+                    }
+                });
         });
 
         return () => {
-            cancelled = true;
-            if (!settled) {
-                recordGeneratedPlantProfileLSystemCancellation(
-                    missingTasks.length,
-                );
-            }
+            controller.abort();
         };
-    }, [taskKeys, tasks]);
+    }, [options.priority, taskKeys, tasks]);
 
     const symbols = useMemo(() => {
         return taskKeys.map(
@@ -344,4 +402,8 @@ export function useGeneratedLSystemSymbolsBatch(
         isPending,
         symbols,
     };
+}
+
+export function getGeneratedLSystemTaskSchedulerSnapshot() {
+    return generatedLSystemTaskScheduler.snapshot();
 }

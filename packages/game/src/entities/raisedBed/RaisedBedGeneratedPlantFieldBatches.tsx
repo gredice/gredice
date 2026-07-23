@@ -12,6 +12,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
+import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
     calculateInGamePlantGeneration,
@@ -83,6 +84,7 @@ type GeneratedPlantBatch = {
     instances: RaisedBedGeneratedPlantBatchInstance[];
     lodLevel: PlantLodLevel;
     plantType: ResolvedInGamePlantPreset['plantType'];
+    taskPriority: GeneratedLSystemTaskPriority;
 };
 
 type GeneratedPlantRaisedBedGroup = {
@@ -604,6 +606,11 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances: [],
                     lodLevel: lod.level,
                     plantType: field.plantType,
+                    taskPriority: focused
+                        ? 'focused'
+                        : focusActive
+                          ? 'background'
+                          : 'normal',
                 };
                 batchMap.set(batchKey, batch);
             }
@@ -628,6 +635,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     definition={batch.definition}
                     instances={batch.instances}
                     lodLevel={batch.lodLevel}
+                    taskPriority={batch.taskPriority}
                 />
             ))}
         </group>
