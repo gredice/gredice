@@ -14,6 +14,9 @@ const markdownOperation = {
         instructions:
             '1. Pregledava se cijela gredica.\n2. Ručno se čupaju korovi.',
     },
+    attributes: {
+        appliesToAllTargets: true,
+    },
 } satisfies EntityStandardized;
 
 test('operation details render manual markdown fields', async ({
@@ -38,6 +41,8 @@ test('operation details render manual markdown fields', async ({
             .filter({ hasText: 'Pregledava se cijela gredica.' }),
     ).toBeVisible();
     await expect(page.getByText('* korovi')).toHaveCount(0);
+    await expect(page.getByText('Primjenjivo na sve ciljeve')).toBeVisible();
+    await expect(page.getByText('Da', { exact: true })).toBeVisible();
     await expect(page.getByText('Dodaj fotografiju (obavezno)')).toBeVisible();
     await expect(page.getByText('Dodaj napomenu (opcionalno)')).toBeVisible();
 

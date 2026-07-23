@@ -327,6 +327,7 @@ export function buildCartItem({
 }
 
 export function buildOperation({
+    appliesToAllTargets = false,
     id,
     name,
     label,
@@ -334,6 +335,7 @@ export function buildOperation({
     stageLabel,
     relativeDays,
 }: {
+    appliesToAllTargets?: boolean;
     id: number;
     name: string;
     label: string;
@@ -346,6 +348,7 @@ export function buildOperation({
         entityType: { id: 10, name: 'operation', label: 'Radnje' },
         slug: `mock-${name}`,
         attributes: {
+            appliesToAllTargets,
             frequency: 'once',
             stage: {
                 id,

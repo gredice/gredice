@@ -397,6 +397,7 @@ function greenhouseSeedlingScenario(): RaisedBedScenario {
         ],
         operations: [
             buildOperation({
+                appliesToAllTargets: true,
                 id: 402,
                 name: 'mock-seedling-check',
                 label: 'Kontrola sadnice',
