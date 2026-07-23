@@ -79,9 +79,15 @@ test('closeup acceptance bounds archetypes for the grown foliage fixture', () =>
         },
     ];
 
-    assert.equal(buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount, 2);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        2,
+    );
     runs[0].closeup.warm = phase(13);
-    assert.equal(buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount, 1);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        1,
+    );
 });
 
 test('plant closeup scenario set resolves deterministic desktop and mobile runs', () => {
