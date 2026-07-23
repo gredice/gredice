@@ -77,7 +77,9 @@ type ProfileState = {
 
 const emptyPartCounts = (): GeneratedPlantProfilePartCounts => ({
     billboardInstances: 0,
+    compactLeafInstances: 0,
     flowers: 0,
+    leafTriangles: 0,
     leaves: 0,
     produce: 0,
     shadowCasterSubmissions: 0,

@@ -5,7 +5,9 @@ import type { GameQualityProfileTier } from './gameQuality';
 
 export type GeneratedPlantProfilePartCounts = {
     billboardInstances: number;
+    compactLeafInstances: number;
     flowers: number;
+    leafTriangles: number;
     leaves: number;
     produce: number;
     shadowCasterSubmissions: number;
