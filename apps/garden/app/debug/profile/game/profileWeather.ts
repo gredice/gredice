@@ -2,7 +2,8 @@ import type { GameSceneProps } from '@gredice/game';
 
 export type GameProfileWeatherTransitionRequest =
     | 'clear-to-cloudy'
-    | 'cloudy-to-clear';
+    | 'cloudy-to-clear'
+    | 'rain-to-clear';
 
 export const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
@@ -31,7 +32,9 @@ export function readGameProfileWeatherTransitionRequest(value: unknown) {
     }
 
     const request = Reflect.get(value, 'request');
-    return request === 'clear-to-cloudy' || request === 'cloudy-to-clear'
+    return request === 'clear-to-cloudy' ||
+        request === 'cloudy-to-clear' ||
+        request === 'rain-to-clear'
         ? request
         : undefined;
 }

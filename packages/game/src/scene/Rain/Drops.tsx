@@ -10,18 +10,27 @@ import * as THREE from 'three';
 import { useGameState } from '../../useGameState';
 import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import { normalizeRainParticleIntensity } from './rainParticles';
 import { rainFragmentShader } from './rainShaders';
 
 interface DropsProps {
     count?: number;
+    intensity: number;
 }
 
-export const Drops = ({ count = 2000 }: DropsProps) => {
+export const Drops = ({ count = 2000, intensity }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
     const timeUniform = useSceneTimeUniform();
     useSceneTimeInvalidation();
+    const rainProgressUniformRef = useRef<THREE.IUniform<number> | null>(null);
+    if (!rainProgressUniformRef.current) {
+        rainProgressUniformRef.current = {
+            value: normalizeRainParticleIntensity(intensity),
+        };
+    }
+    const rainProgressUniform = rainProgressUniformRef.current;
 
     const size = 40;
     const speed = 15;
@@ -72,6 +81,10 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
     }, [count]);
 
     useEffect(() => () => geometry.dispose(), [geometry]);
+
+    useLayoutEffect(() => {
+        rainProgressUniform.value = normalizeRainParticleIntensity(intensity);
+    }, [intensity, rainProgressUniform]);
 
     const updateRainFieldPosition = useCallback((x: number, z: number) => {
         const group = fref.current;
@@ -146,11 +159,11 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
                 timeUniform,
                 uniforms: {
                     uRainFieldSize: { value: size },
-                    uRainProgress: { value: 1 },
+                    uRainProgress: rainProgressUniform,
                 },
                 vertexShader,
             }),
-        [timeUniform, vertexShader],
+        [rainProgressUniform, timeUniform, vertexShader],
     );
 
     useEffect(() => () => material.dispose(), [material]);

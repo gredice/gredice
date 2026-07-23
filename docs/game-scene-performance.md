@@ -100,7 +100,7 @@ Measured from the current workspace on 2026-04-29:
 | `castShadow` / `receiveShadow` occurrences | 109 | coarse source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |
 | Canvas DPR policy | low: cap 1, medium: cap 1.5, high: cap 2 | set as a DPR cap, not a forced upscale |
-| Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | profiler reports active rain/snow counts |
+| Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | rain fades through shader intensity and unmounts below the visible threshold; profiler reports active rain/snow counts |
 | Ground decoration policy | low: off, medium: 50%, high: 100% | skipped in far zoom and reported in profile metadata |
 | Snow overlay policy | low: min coverage 0.35, medium: 0.08, high: 0.02 | overlays are not mounted below the tier threshold |
 
@@ -173,6 +173,13 @@ Run every profiler scenario together:
 ```bash
 cd apps/garden
 pnpm run profile:game:all
+```
+
+Run the weather-transition matrix, including the rain-to-clear cutoff timing:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 ```
 
 Run the same production build/start flow as a CI gate with budget failures
@@ -268,6 +275,7 @@ GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
 pnpm run profile:game -- --scenario game-dense-25x25-rain-mobile
 GAME_PROFILE_SCENARIOS=game-dense-25x25-rain-mobile pnpm run profile:game

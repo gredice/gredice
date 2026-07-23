@@ -336,6 +336,15 @@ const weatherTransitionScenarios = [
         budget: 'weatherMobile',
         weatherTransition: 'cloudy-to-clear',
     },
+    {
+        name: 'game-weather-rain-to-clear-mobile',
+        path: '/debug/profile/game?mode=rain&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'weatherMobile',
+        weatherTransition: 'rain-to-clear',
+    },
 ];
 
 const scenarioSets = {
@@ -1041,6 +1050,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const intervals = [];
             const start = performance.now();
             let last = start;
+            const rainParticleCountAtStart =
+                typeof globalThis.__grediceGameProfile?.rainParticleCount ===
+                'number'
+                    ? globalThis.__grediceGameProfile.rainParticleCount
+                    : null;
+            const rainMountedAtStart = (rainParticleCountAtStart ?? 0) > 0;
+            let rainUnmountMs = null;
             const weatherTransitionDispatched = weatherTransitionRequest
                 ? globalThis.dispatchEvent(
                       new CustomEvent(weatherTransitionEventName, {
@@ -1053,6 +1069,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const step = (now) => {
                     intervals.push(now - last);
                     last = now;
+                    const rainParticleCount =
+                        globalThis.__grediceGameProfile?.rainParticleCount;
+                    if (
+                        rainMountedAtStart &&
+                        rainUnmountMs === null &&
+                        rainParticleCount === 0
+                    ) {
+                        rainUnmountMs = now - start;
+                    }
                     if (now - start >= sampleMs) {
                         resolveSample();
                         return;
@@ -1115,6 +1140,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p50FrameMs: percentile(0.5),
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
+                rainMountedAtStart,
+                rainParticleCountAtEnd:
+                    typeof globalThis.__grediceGameProfile
+                        ?.rainParticleCount === 'number'
+                        ? globalThis.__grediceGameProfile.rainParticleCount
+                        : null,
+                rainParticleCountAtStart,
+                rainUnmountMs,
                 reportedDpr: globalThis.devicePixelRatio,
                 renderedFps: renderedFrames / elapsedSeconds,
                 renderedFrames,
@@ -1391,6 +1424,7 @@ function roundSample(sample) {
         p50FrameMs: round(sample.p50FrameMs),
         p95FrameMs: round(sample.p95FrameMs),
         p99FrameMs: round(sample.p99FrameMs),
+        rainUnmountMs: round(sample.rainUnmountMs),
         renderedFps: round(sample.renderedFps, 1),
         trianglesPerFrame: Math.round(sample.trianglesPerFrame),
         trianglesPerRenderedFrame: Math.round(sample.trianglesPerRenderedFrame),
@@ -1445,8 +1479,8 @@ function buildMarkdown(report) {
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -1462,12 +1496,16 @@ function buildMarkdown(report) {
         const weather = scenario.runtime
             ? `${scenario.runtime.rainParticleCount ?? 0}/${scenario.runtime.snowParticleCount ?? 0}`
             : 'n/a';
+        const rainUnmount =
+            scenario.sample.rainUnmountMs === null
+                ? 'n/a'
+                : `${scenario.sample.rainUnmountMs} ms`;
         const detailCounts = scenario.runtime
             ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 
