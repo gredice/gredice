@@ -470,7 +470,7 @@ cd apps/garden
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 ```
 
-The completed implementation was profiled in a production build with five
+The original implementation was profiled in a production build with five
 independent desktop and five independent constrained-mobile runs. Each run
 captured a cold and warm transition. The ignored raw report and screenshots are
 under `steps/final-integrated/`.
@@ -484,6 +484,12 @@ implementation stages:
 | `bd3d8cb8d`, selected-bed LOD/culling | `1,711.4/664.4 ms` | `738.5/309.4 ms` | `295.8/173.4 ms` |
 | `7ef664ef0`, progressive/cancellable generation | `13,493.6/664.6 ms` | `1,635.0/171.0 ms` | `204.8/212.8 ms` |
 | completed branch, five repeats | `3,611.4/2,878.1 ms` | `1,528.8/2,054.5 ms` | `256.2/213.7 ms` |
+
+The historical fixture was later found to stamp plant lifecycle dates from the
+wall clock while the scene stayed frozen in 2024, producing zero leaves. These
+stage comparisons remain useful for their shared structural pipeline workload,
+but they are not foliage-workload evidence. Step 16 above records the corrected
+grown-fixture profile.
 
 The historical builds carry the same harness-only backports for production URL
 state, stable close-up callbacks, an independent plant Suspense boundary, and
@@ -506,32 +512,34 @@ bit-for-bit commit artifacts.
   `54.2 MB`. Desktop cold transition calls/render fell from `83.4` to `59.6`
   and triangles/render from `19,609` to `16,696`.
 
-The final pipeline uses a stricter exact-chunk milestone and four bounded
-archetypes per batch, so its detail-ready time is not a like-for-like
-continuation of the older single-completion milestone. The buffer optimization
-also predates the profiler, while packed workers, template reuse, shadow proxy,
-and shader prewarming land together in the final integration. Their individual
-proof therefore comes from the dedicated counters below rather than synthetic
-cherry-picked timing claims.
+The corrected fixture covers three growth generations with four deterministic
+variants each. Batches therefore remain bounded to four archetypes per
+generation and 12 across the fixture, with 36 templates/builds in total. The
+old four-per-batch and 20-template totals were artifacts of the generation-zero
+fixture. The final pipeline also uses a stricter exact-chunk milestone, so its
+detail-ready time is not a like-for-like continuation of the older
+single-completion milestone. The buffer optimization predates the profiler,
+while packed workers, template reuse, shadow proxy, and shader prewarming land
+together in the final integration. Their individual proof therefore comes from
+the dedicated counters below rather than synthetic cherry-picked timing claims.
 
 Both viewport suites passed every L-system-specific acceptance gate:
 
 | Optimization | Production profile evidence |
 | --- | --- |
 | #4277 deterministic profiler | All 20 cold/warm phases reached camera-settled, first-exact-chunk, and fully-detailed milestones, with normal, pending-near, and detailed screenshots. |
-| #4278 selected-bed LOD and hierarchical culling | The selected bed remained `18/18/18` total/near/detailed in every phase and background-near stayed zero. Median group rejection was `73.9%` desktop and `87.6%` mobile; avoided field projections were `76.1%` and `89.4%`. LOD update maximum was `0.2 ms`. |
-| #4279 progressive and cancellable detail | Desktop first-exact/full-detail medians were `2,067.5/3,611.4 ms` cold and `1,751.3/2,878.1 ms` warm. Mobile medians were `1,086.1/1,528.8 ms` cold and `1,152.7/2,054.5 ms` warm. Pending work retained billboards until the exact chunks arrived. |
-| #4280 packed worker output | Each phase completed 20 packed builds and transferable deliveries with zero worker failures, synchronous fallbacks, or stale results. `108,832 bytes` crossed the worker boundary; cold worker totals were `6.8 ms` desktop and `5.9 ms` mobile, falling to `0.8 ms` warm. |
-| #4281 bounded template and archetype reuse | Cold phases populated 20 templates; warm phases had `20/20` hits with zero misses or evictions. Render batches stayed at four archetypes maximum, 20 total, for 131 detailed plants and zero failed archetypes. |
-| #4282 exact instance-buffer ownership | Five active meshes held exactly `1,432/1,432` live/capacity instances and `108,832 bytes`, with zero empty meshes and zero orphaned resources. |
-| #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms` desktop and `0.1 ms` mobile. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
+| #4278 selected-bed LOD and hierarchical culling | The selected bed remained `18/18/18` total/near/detailed in every phase and background-near stayed zero. Median group rejection was `72.0%` desktop and `88.5%` mobile; avoided field projections were `74.3%` and `90.2%`. LOD update maximum was `0.2 ms`. |
+| #4279 progressive and cancellable detail | Desktop first-exact/full-detail medians were `2,295.1/6,473.9 ms` cold and `1,959.7/5,011.2 ms` warm. Mobile medians were `1,270.8/4,782.9 ms` cold and `1,105.4/4,257.5 ms` warm. Pending work retained billboards until the exact chunks arrived. |
+| #4280 packed worker output | Each phase completed 36 packed builds and transferable deliveries with zero worker failures, synchronous fallbacks, or stale results. `804,012 bytes` crossed the worker boundary; cold worker totals were `17.8 ms` desktop and `16.7 ms` mobile, falling to `1.2/1.4 ms` warm. |
+| #4281 bounded template and archetype reuse | Cold phases populated 36 templates; warm phases had `36/36` hits with zero misses or evictions. Render batches stayed at 12 archetypes maximum, 36 total, for 131 detailed plants and zero failed archetypes. |
+| #4282 exact instance-buffer ownership | Thirteen active meshes held exactly `10,176/10,176` live/capacity instances and `803,708 bytes`, with zero empty meshes and zero orphaned resources. |
+| #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms`. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
 
-The legacy top-level headless budget remains red: software WebGL reported
-steady median p95 values of `113.4-116.3 ms` desktop and `81.9-86.2 ms` mobile,
-plus
-repeated `ReadPixels` stalls. Draw-call, triangle, and heap budgets passed. This
-does not invalidate the L-system-specific gates, but it also is not thermal
-clearance.
+The top-level headless budget remains red: the corrected software-WebGL profile
+reported steady median p95 values of `221.1-224.2 ms` desktop and
+`187.4-187.5 ms` mobile, plus repeated `ReadPixels` stalls. Draw-call, triangle,
+and heap budgets passed. This does not invalidate the L-system-specific gates,
+but it also is not thermal clearance.
 
 Headless Chromium measurements remain directional. Release validation still
 requires separate 10-minute raised-bed close-up soaks on at least one mid-range
