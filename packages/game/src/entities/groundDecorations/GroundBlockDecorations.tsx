@@ -9,6 +9,7 @@ import {
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import type { GameQualityProfileTier } from '../../scene/gameQuality';
 import type { Stack } from '../../types/Stack';
 import { useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
@@ -23,6 +24,7 @@ const blockSurfaceYOffset = 0.2;
 type GroundBlockDecorationsProps = {
     density: number;
     farmId?: number | null;
+    qualityTier: GameQualityProfileTier;
     stacks: Stack[] | undefined;
 };
 
@@ -83,6 +85,7 @@ function useStableDecorationInstances(instances: GroundDecorationInstance[]) {
 export function GroundBlockDecorations({
     density,
     farmId,
+    qualityTier,
     stacks,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
@@ -228,6 +231,7 @@ export function GroundBlockDecorations({
         <GroundDecorationInstances
             farmId={farmId}
             instances={decorationInstances}
+            qualityTier={qualityTier}
         />
     );
 }

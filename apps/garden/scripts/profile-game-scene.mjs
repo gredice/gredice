@@ -1857,6 +1857,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationDensity === 'number'
                     ? metadata.groundDecorationDensity
                     : null,
+            groundDecorationProjectedSizeCulledCount:
+                typeof metadata.groundDecorationProjectedSizeCulledCount ===
+                'number'
+                    ? metadata.groundDecorationProjectedSizeCulledCount
+                    : null,
             groundDecorationVisibleCount:
                 typeof metadata.groundDecorationVisibleCount === 'number'
                     ? metadata.groundDecorationVisibleCount
@@ -2637,6 +2642,75 @@ function buildPlantCloseupAcceptance(runs) {
     };
 }
 
+function buildGroundDecorationRuntimeMedians(runs) {
+    const runtimeField = (run, field) => run.runtime?.[field];
+    const projectedSizeCullingRatio = (run) => {
+        const culled = runtimeField(
+            run,
+            'groundDecorationProjectedSizeCulledCount',
+        );
+        const visible = runtimeField(run, 'groundDecorationVisibleCount');
+        const candidateCount = (culled ?? 0) + (visible ?? 0);
+
+        return Number.isFinite(culled) &&
+            Number.isFinite(visible) &&
+            candidateCount > 0
+            ? culled / candidateCount
+            : null;
+    };
+    const projectedSizeCulledCount = round(
+        median(
+            runs.map((run) =>
+                runtimeField(run, 'groundDecorationProjectedSizeCulledCount'),
+            ),
+        ),
+    );
+    const candidateCount = round(
+        median(
+            runs.map((run) => {
+                const culled = runtimeField(
+                    run,
+                    'groundDecorationProjectedSizeCulledCount',
+                );
+                const visible = runtimeField(
+                    run,
+                    'groundDecorationVisibleCount',
+                );
+
+                return Number.isFinite(culled) && Number.isFinite(visible)
+                    ? culled + visible
+                    : null;
+            }),
+        ),
+    );
+    const visibleCount = round(
+        median(
+            runs.map((run) =>
+                runtimeField(run, 'groundDecorationVisibleCount'),
+            ),
+        ),
+    );
+
+    return {
+        groundDecorationProjectedSizeCulledCount: projectedSizeCulledCount,
+        groundDecorationProjectedSizeCullingCandidateCount: candidateCount,
+        groundDecorationProjectedSizeCullingRatio: round(
+            median(runs.map(projectedSizeCullingRatio)),
+            3,
+        ),
+        groundDecorationProjectedSizeCullingReportedRunCount: runs.filter(
+            (run) =>
+                Number.isFinite(
+                    runtimeField(
+                        run,
+                        'groundDecorationProjectedSizeCulledCount',
+                    ),
+                ),
+        ).length,
+        groundDecorationVisibleCount: visibleCount,
+    };
+}
+
 function buildPlantCloseupMedians(scenarios) {
     const groups = Map.groupBy(
         scenarios.filter((scenario) => scenario.closeup),
@@ -2648,6 +2722,7 @@ function buildPlantCloseupMedians(scenarios) {
             name,
             {
                 acceptance: buildPlantCloseupAcceptance(runs),
+                groundDecorations: buildGroundDecorationRuntimeMedians(runs),
                 runCount: runs.length,
                 cold: {
                     firstDetailChunkMs: round(
@@ -2822,7 +2897,7 @@ function buildMarkdown(report) {
                 ? 'n/a'
                 : `${scenario.sample.rainUnmountMs} ms`;
         const detailCounts = scenario.runtime
-            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
+            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, projected-size culled ${scenario.runtime.groundDecorationProjectedSizeCulledCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
@@ -2870,6 +2945,19 @@ function buildMarkdown(report) {
                     `| ${name} | ${summary.runCount} | ${phase} | ${metrics.firstDetailChunkMs ?? 'n/a'} ms | ${metrics.detailReadyMs ?? 'n/a'} ms | ${metrics.p95FrameMs ?? 'n/a'} ms | ${metrics.maxFrameMs ?? 'n/a'} ms | ${metrics.longTaskTotalMs ?? 'n/a'} ms |`,
                 );
             }
+        }
+        lines.push('', '### Ground-decoration projected-size culling', '');
+        lines.push(
+            '| Scenario | Runs reporting | Visible | Projected-size culled | Candidates | Culled ratio |',
+            '| --- | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            const decorations = summary.groundDecorations;
+            lines.push(
+                `| ${name} | ${decorations.groundDecorationProjectedSizeCullingReportedRunCount}/${summary.runCount} | ${decorations.groundDecorationVisibleCount ?? 'n/a'} | ${decorations.groundDecorationProjectedSizeCulledCount ?? 'n/a'} | ${decorations.groundDecorationProjectedSizeCullingCandidateCount ?? 'n/a'} | ${decorations.groundDecorationProjectedSizeCullingRatio ?? 'n/a'} |`,
+            );
         }
         lines.push('', '### Instance-buffer allocation and uploads', '');
         lines.push(

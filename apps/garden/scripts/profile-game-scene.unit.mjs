@@ -216,6 +216,10 @@ test('closeup medians include scheduler, template cache, and packed worker count
                 warm: closeupPhase(value + 3),
             },
             name: `run-${index + 1}`,
+            runtime: {
+                groundDecorationProjectedSizeCulledCount: value * 5,
+                groundDecorationVisibleCount: value * 10,
+            },
         })),
     );
     const summary = medians['game-plant-heavy-closeup-desktop'];
@@ -267,4 +271,11 @@ test('closeup medians include scheduler, template cache, and packed worker count
     assert.equal(summary.cold.steady.gpuSupportedRunCount, 2);
     assert.equal(summary.warm.pipeline.schedulerCancelledSubscriberCount, 5);
     assert.equal(summary.warm.pipeline.packedBuildDurationTotalMs, 10);
+    assert.deepEqual(summary.groundDecorations, {
+        groundDecorationProjectedSizeCulledCount: 10,
+        groundDecorationProjectedSizeCullingCandidateCount: 30,
+        groundDecorationProjectedSizeCullingRatio: 0.333,
+        groundDecorationProjectedSizeCullingReportedRunCount: 3,
+        groundDecorationVisibleCount: 20,
+    });
 });
