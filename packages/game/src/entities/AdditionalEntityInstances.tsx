@@ -692,7 +692,7 @@ type RaisedBedResolvedInstance = EntityBlockInstance & {
     shape: RaisedBedShapeKey;
 };
 
-function resolveRaisedBedInstance(
+export function resolveRaisedBedInstance(
     instance: EntityBlockInstance,
     stacks: Stack[] | undefined,
 ): RaisedBedResolvedInstance {

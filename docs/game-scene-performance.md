@@ -281,9 +281,10 @@ pending-near billboard fallback, first exact chunk, first detailed field, fully
 detailed field set, and settled camera milestones. Its raw JSON preserves the
 pending-or-first-detail and settled profile checkpoints. It also separates selected
 and non-selected field and plant counts by near/mid/far/invisible state;
-L-system requests, completions, consumer cancellations, worker duration and
-failures; main-thread render-data builds; detailed stem, leaf, flower, produce,
-and thorn instances; billboard instances; detailed shadow-caster
+L-system requests, completions, consumer cancellations, worker duration,
+failures, and synchronous fallback task count; main-thread render-data builds;
+detailed stem, leaf, flower, produce, and thorn instances; billboard instances;
+detailed shadow-caster
 submissions/primitive instances; and active/peak generated-plant buffer
 capacity, bytes, uploads, releases, empty meshes, and orphan detections.
 Transition and steady-state samples include
@@ -316,6 +317,11 @@ deltas are accumulated directly, so cache counters remain valid after a worker
 restart resets its internal lifetime counters. Each sub-record has
 an `observed` flag, and the Markdown report renders `n/a` rather than zero until
 the corresponding runtime integration submits a sample.
+
+The optimization acceptance gate requires both `workerFailureCount` and
+`syncFallbackTaskCount` to remain zero. Worker construction failure still uses
+the compatibility fallback for gameplay, but a profile cannot call that
+main-thread path worker-clean.
 
 `PackedPlantRenderWorkerResponseV1` consumers should pass the complete worker
 timing object rather than only its total:
@@ -406,6 +412,7 @@ GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+GAME_PROFILE_CLOSEUP_REPEAT=1 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
 pnpm run profile:game -- --scenario game-dense-25x25-rain-mobile
 GAME_PROFILE_SCENARIOS=game-dense-25x25-rain-mobile pnpm run profile:game

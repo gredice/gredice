@@ -192,6 +192,7 @@ function createState(sessionId = 0): ProfileState {
             cancelledTaskCount: 0,
             completedTaskCount: 0,
             requestedTaskCount: 0,
+            syncFallbackTaskCount: 0,
             workerDurationMaxMs: 0,
             workerDurationTotalMs: 0,
             workerFailureCount: 0,
@@ -712,6 +713,17 @@ export function recordGeneratedPlantProfileLSystemCompletion({
     if (workerFailed) {
         state.lSystem.workerFailureCount += 1;
     }
+    publish();
+}
+
+export function recordGeneratedPlantProfileLSystemSyncFallback(
+    taskCount: number,
+    sessionId?: number,
+) {
+    if (!acceptsSession(sessionId) || taskCount <= 0) {
+        return;
+    }
+    state.lSystem.syncFallbackTaskCount += taskCount;
     publish();
 }
 

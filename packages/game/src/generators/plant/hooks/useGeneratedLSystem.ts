@@ -13,6 +13,7 @@ import {
     recordGeneratedPlantProfileLSystemCancellation,
     recordGeneratedPlantProfileLSystemCompletion,
     recordGeneratedPlantProfileLSystemRequest,
+    recordGeneratedPlantProfileLSystemSyncFallback,
     recordGeneratedPlantProfilePackedWorkerResult,
     recordGeneratedPlantProfileSchedulerSnapshot,
     recordGeneratedPlantProfileTemplateCacheSnapshot,
@@ -615,6 +616,13 @@ const generatedPackedPlantRenderTaskScheduler =
                               });
                           },
             });
+        if (
+            executionKind === 'sync-fallback' &&
+            sessionId !== null &&
+            getGeneratedPlantProfileSessionId() === sessionId
+        ) {
+            recordGeneratedPlantProfileLSystemSyncFallback(1, sessionId);
+        }
         const [result] = response.results;
         if (!result) {
             if (executionKind === 'worker' && sessionId !== null) {

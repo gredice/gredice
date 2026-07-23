@@ -1,10 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     getScenarioRequest,
     resolveScenarios,
 } from './profile-game-scene.mjs';
+
+test('closeup acceptance rejects synchronous worker fallback', () => {
+    const phase = (syncFallbackTaskCount) => ({
+        detailOutcome: 'ready',
+        profile: {
+            lSystem: {
+                syncFallbackTaskCount,
+                workerFailureCount: 0,
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(0),
+                warm: phase(0),
+            },
+        },
+    ];
+
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).workerFailureFreePhaseCount,
+        2,
+    );
+    runs[0].closeup.warm = phase(1);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).workerFailureFreePhaseCount,
+        1,
+    );
+});
 
 test('plant closeup scenario set resolves deterministic desktop and mobile runs', () => {
     const scenarios = resolveScenarios('plant-closeup');

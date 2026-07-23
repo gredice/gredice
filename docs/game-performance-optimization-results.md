@@ -362,7 +362,7 @@ Added 2026-07-23 for the L-system close-up optimization series.
 
 The production profiler now has a deterministic `plant-closeup` matrix for
 center raised bed `29` in the plant-heavy mock garden. It captures desktop
-medium and constrained automatic-quality mobile runs. Each scenario gets three
+medium and constrained automatic-quality mobile runs. Each scenario gets five
 independent samples, and every sample records both a cold and warm
 normal-to-close-up transition plus steady state. Reports include the selected
 and surrounding plant LOD/render states, detail-readiness milestones,
@@ -377,14 +377,68 @@ cd apps/garden
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 ```
 
-The first production capture attempted on 2026-07-23 did not produce a
-measurement: the shared-worktree `next build` remained silent at “Creating an
-optimized production build” for about five minutes with no active build worker,
-so it was stopped. No timing or thermal claim is inferred from that failed
-capture. The matrix should be rerun from the completed optimization branch, and
-its `latest.json`, `latest.md`, and screenshots should be copied into the
-appropriate ignored `steps/<optimization>/` comparison directory before
-recording deltas here.
+The completed implementation was profiled in a production build with five
+independent desktop and five independent constrained-mobile runs. Each run
+captured a cold and warm transition. The ignored raw report and screenshots are
+under `steps/final-integrated/`.
+
+Three-repeat production comparisons were also captured for the historical
+implementation stages:
+
+| Stage | Desktop full detail cold/warm | Mobile full detail cold/warm | Cold transition p95 desktop/mobile |
+| --- | ---: | ---: | ---: |
+| `1975d497d`, buffer + profiler baseline | `2,159.3/1,316.3 ms` | `1,690.8/1,114.2 ms` | `245.5/171.8 ms` |
+| `bd3d8cb8d`, selected-bed LOD/culling | `1,711.4/664.4 ms` | `738.5/309.4 ms` | `295.8/173.4 ms` |
+| `7ef664ef0`, progressive/cancellable generation | `13,493.6/664.6 ms` | `1,635.0/171.0 ms` | `204.8/212.8 ms` |
+| completed branch, five repeats | `3,611.4/2,878.1 ms` | `1,528.8/2,054.5 ms` | `256.2/213.7 ms` |
+
+The historical builds carry the same harness-only backports for production URL
+state, stable close-up callbacks, an independent plant Suspense boundary, and
+connected-raised-bed positioning. Commits that predate scheduler snapshots omit
+only that controller field. They are therefore comparable patched builds, not
+bit-for-bit commit artifacts.
+
+- Selected-bed LOD cut full-detail readiness by `20.7%` cold and `49.5%` warm
+  on desktop, and by `56.3%` cold and `72.2%` warm on mobile. It also reduced
+  background-near mobile fields from two to zero.
+- Progressive scheduling reduced desktop cold transition p95 by `30.8%` and
+  calls/triangles per rendered transition frame by `67.7%/49.4%` versus the LOD
+  stage. Its serialized cold desktop completion regressed to `13.5 s`; the
+  packed-worker/final pipeline brought this back to `3.6 s`. On mobile, the
+  progressive stage reduced steady calls from 26 to 17 and steady triangles
+  from `19,494` to `17,978`, while warm detail readiness fell another `44.7%`.
+- Against the initial profile baseline, the completed cold mobile steady state
+  moved from `11.0` to `13.5` rendered FPS, p95 from `92.7` to `86.2 ms`,
+  triangles/render from `20,294` to `19,494`, and median heap from `104` to
+  `54.2 MB`. Desktop cold transition calls/render fell from `83.4` to `59.6`
+  and triangles/render from `19,609` to `16,696`.
+
+The final pipeline uses a stricter exact-chunk milestone and four bounded
+archetypes per batch, so its detail-ready time is not a like-for-like
+continuation of the older single-completion milestone. The buffer optimization
+also predates the profiler, while packed workers, template reuse, shadow proxy,
+and shader prewarming land together in the final integration. Their individual
+proof therefore comes from the dedicated counters below rather than synthetic
+cherry-picked timing claims.
+
+Both viewport suites passed every L-system-specific acceptance gate:
+
+| Optimization | Production profile evidence |
+| --- | --- |
+| #4277 deterministic profiler | All 20 cold/warm phases reached camera-settled, first-exact-chunk, and fully-detailed milestones, with normal, pending-near, and detailed screenshots. |
+| #4278 selected-bed LOD and hierarchical culling | The selected bed remained `18/18/18` total/near/detailed in every phase and background-near stayed zero. Median group rejection was `73.9%` desktop and `87.6%` mobile; avoided field projections were `76.1%` and `89.4%`. LOD update maximum was `0.2 ms`. |
+| #4279 progressive and cancellable detail | Desktop first-exact/full-detail medians were `2,067.5/3,611.4 ms` cold and `1,751.3/2,878.1 ms` warm. Mobile medians were `1,086.1/1,528.8 ms` cold and `1,152.7/2,054.5 ms` warm. Pending work retained billboards until the exact chunks arrived. |
+| #4280 packed worker output | Each phase completed 20 packed builds and transferable deliveries with zero worker failures, synchronous fallbacks, or stale results. `108,832 bytes` crossed the worker boundary; cold worker totals were `6.8 ms` desktop and `5.9 ms` mobile, falling to `0.8 ms` warm. |
+| #4281 bounded template and archetype reuse | Cold phases populated 20 templates; warm phases had `20/20` hits with zero misses or evictions. Render batches stayed at four archetypes maximum, 20 total, for 131 detailed plants and zero failed archetypes. |
+| #4282 exact instance-buffer ownership | Five active meshes held exactly `1,432/1,432` live/capacity instances and `108,832 bytes`, with zero empty meshes and zero orphaned resources. |
+| #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms` desktop and `0.1 ms` mobile. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
+
+The legacy top-level headless budget remains red: software WebGL reported
+steady median p95 values of `113.4-116.3 ms` desktop and `81.9-86.2 ms` mobile,
+plus
+repeated `ReadPixels` stalls. Draw-call, triangle, and heap budgets passed. This
+does not invalidate the L-system-specific gates, but it also is not thermal
+clearance.
 
 Headless Chromium measurements remain directional. Release validation still
 requires separate 10-minute raised-bed close-up soaks on at least one mid-range

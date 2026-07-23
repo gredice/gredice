@@ -2500,8 +2500,8 @@ function buildPlantCloseupAcceptance(runs) {
     const medianProfileField = (select) =>
         round(median(measurements.map(({ profile }) => select(profile))));
     const projectionReductionRatio = ({ profile }) => {
-        const updateCount = profile?.lodEvaluation.updateCount;
-        const projected = profile?.lodEvaluation.fieldProjectionTestCount;
+        const updateCount = profile?.lodEvaluation?.updateCount;
+        const projected = profile?.lodEvaluation?.fieldProjectionTestCount;
         const totalFields =
             (profile?.selected?.totalFields ?? 0) +
             (profile?.nonSelected?.totalFields ?? 0);
@@ -2514,8 +2514,8 @@ function buildPlantCloseupAcceptance(runs) {
         if (phase !== 'warm') {
             return null;
         }
-        const hits = profile?.pipeline.templateCache.hitCount;
-        const misses = profile?.pipeline.templateCache.missCount;
+        const hits = profile?.pipeline?.templateCache?.hitCount;
+        const misses = profile?.pipeline?.templateCache?.missCount;
         const total = (hits ?? 0) + (misses ?? 0);
         return Number.isFinite(hits) && total > 0 ? hits / total : null;
     };
@@ -2555,7 +2555,9 @@ function buildPlantCloseupAcceptance(runs) {
             profile.pipeline.shaderPrewarm.postSwapCompilationCount === 0,
     );
     const workerFailureFreePhaseCount = count(
-        ({ profile }) => profile?.lSystem?.workerFailureCount === 0,
+        ({ profile }) =>
+            profile?.lSystem?.workerFailureCount === 0 &&
+            profile.lSystem.syncFallbackTaskCount === 0,
     );
     const groupRejectionRatio = round(
         median(
@@ -2829,7 +2831,7 @@ function buildMarkdown(report) {
         lines.push('', '## Raised-bed Close-up Medians', '');
         lines.push('### Optimization acceptance gates', '');
         lines.push(
-            '| Scenario | Ready phases | Selected fields total/near/detailed | Background near | Group rejection | Projection avoided | Archetypes max/bounded phases | Warm cache hit | Exact/clean buffers | Shader ready/no swap compile | Worker failure-free | Status |',
+            '| Scenario | Ready phases | Selected fields total/near/detailed | Background near | Group rejection | Projection avoided | Archetypes max/bounded phases | Warm cache hit | Exact/clean buffers | Shader ready/no swap compile | Worker/fallback clean | Status |',
             '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
         );
         for (const [name, summary] of Object.entries(
@@ -3130,7 +3132,12 @@ async function main() {
     }
 }
 
-export { buildPlantCloseupMedians, getScenarioRequest, resolveScenarios };
+export {
+    buildPlantCloseupAcceptance,
+    buildPlantCloseupMedians,
+    getScenarioRequest,
+    resolveScenarios,
+};
 
 const invokedModuleUrl = process.argv[1]
     ? pathToFileURL(resolve(process.argv[1])).href

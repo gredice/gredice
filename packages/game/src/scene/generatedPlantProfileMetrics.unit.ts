@@ -9,6 +9,7 @@ import {
     recordGeneratedPlantProfileLSystemCancellation,
     recordGeneratedPlantProfileLSystemCompletion,
     recordGeneratedPlantProfileLSystemRequest,
+    recordGeneratedPlantProfileLSystemSyncFallback,
     recordGeneratedPlantProfilePackedWorkerResult,
     recordGeneratedPlantProfilePostSwapCompilation,
     recordGeneratedPlantProfileSchedulerSnapshot,
@@ -238,8 +239,25 @@ test('generated plant profile reset prevents counts leaking between sessions', (
     assert.equal(snapshot?.lSystem.requestedTaskCount, 0);
     assert.equal(snapshot?.lSystem.completedTaskCount, 0);
     assert.equal(snapshot?.lSystem.cancelledTaskCount, 0);
+    assert.equal(snapshot?.lSystem.syncFallbackTaskCount, 0);
     assert.equal(snapshot?.renderData.buildCount, 0);
     assert.equal(snapshot?.selected.totalFields, 0);
+});
+
+test('generated plant profile exposes synchronous worker fallback tasks', () => {
+    resetGeneratedPlantProfile();
+    const sessionId = startGeneratedPlantProfile({
+        selectedBlockId: 'bed:29:0',
+        selectedRaisedBedId: 29,
+    });
+
+    recordGeneratedPlantProfileLSystemSyncFallback(2, sessionId);
+    recordGeneratedPlantProfileLSystemSyncFallback(4, sessionId + 1);
+
+    assert.equal(
+        getGeneratedPlantProfileSnapshot()?.lSystem.syncFallbackTaskCount,
+        2,
+    );
 });
 
 test('generated plant profile attributes hierarchical LOD work', () => {

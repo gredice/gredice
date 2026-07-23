@@ -123,6 +123,7 @@ export type GeneratedPlantProfileSnapshot = {
         cancelledTaskCount: number;
         completedTaskCount: number;
         requestedTaskCount: number;
+        syncFallbackTaskCount: number;
         workerDurationMaxMs: number;
         workerDurationTotalMs: number;
         workerFailureCount: number;
