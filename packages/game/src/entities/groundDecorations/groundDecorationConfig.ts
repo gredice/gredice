@@ -31,7 +31,7 @@ const spriteNumbers = Array.from({ length: 8 }, (_, index) =>
 );
 
 export const groundDecorationAtlasBasePath =
-    '/assets/sprites/decorations/ground-cover.atlas';
+    '/assets/sprites/decorations/ground-cover-v2.atlas';
 
 export const groundDecorationOptions: Record<
     GroundDecorationSurface,

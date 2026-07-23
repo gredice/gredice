@@ -376,9 +376,11 @@ Reports: `steps/15-foliage-baseline/latest.json` and
   `33,554,432 -> 5,592,404 bytes` (`32.0 -> 5.3 MiB`, `-83.3%`). The
   `27,962,028-byte` reduction is the guaranteed runtime benefit; frame-time
   impact depends on device GPU memory pressure and transparent overdraw.
-- Generated PNG payload falls from `894,792 -> 354,528 bytes` across pages
+- Active PNG payload falls from `894,792 -> 354,528 bytes` across pages
   (`-60.4%`), and WebP payload falls from `237,984 -> 136,632 bytes`
-  (`-42.6%`). The obsolete second-page PNG and WebP are removed.
+  (`-42.6%`). The new one-page atlas uses a versioned URL; the old two-page
+  files remain dormant so browsers with a cached manifest keep rendering
+  correctly during the cache-transition window.
 - Garden and WWW copies have identical hashes. The generator retains existing
   slot assignments whenever the manifest layout remains compatible.
 - This atlas is used by ground decorations, not procedural L-system leaves.
@@ -424,7 +426,7 @@ Reports: `steps/15-foliage-baseline/latest.json`,
   improvement.
 - The final five-repeat production run passes all close-up optimization gates
   in all `10/10` desktop and `10/10` constrained-mobile cold/warm phases:
-  exact selected detail, non-zero foliage, bounded archetypes, warm cache hits,
+  selected detailed LOD, non-zero foliage, bounded archetypes, warm cache hits,
   exact buffers, clean resources, shader readiness, and zero worker fallback.
 - The generic frame/long-task budget remains red in local headless
   software-WebGL runs, and GPU timer queries are unavailable there. A sustained

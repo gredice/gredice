@@ -2525,7 +2525,7 @@ function buildPlantCloseupAcceptance(runs) {
     const detailReadyPhaseCount = count(
         ({ measurement }) => measurement.detailOutcome === 'ready',
     );
-    const selectedExactPhaseCount = count(
+    const selectedDetailedLodPhaseCount = count(
         ({ profile }) =>
             profile?.selected?.totalFields === 18 &&
             profile.selected.nearFields === 18 &&
@@ -2602,7 +2602,7 @@ function buildPlantCloseupAcceptance(runs) {
         pass:
             phaseCount > 0 &&
             detailReadyPhaseCount === phaseCount &&
-            selectedExactPhaseCount === phaseCount &&
+            selectedDetailedLodPhaseCount === phaseCount &&
             backgroundNearZeroPhaseCount === phaseCount &&
             archetypeBoundedPhaseCount === phaseCount &&
             exactCapacityPhaseCount === phaseCount &&
@@ -2621,7 +2621,7 @@ function buildPlantCloseupAcceptance(runs) {
         selectedCompactLeafInstanceCount: medianProfileField(
             (profile) => profile?.selected?.parts?.compactLeafInstances,
         ),
-        selectedExactPhaseCount,
+        selectedDetailedLodPhaseCount,
         selectedLeafInstanceCount: medianProfileField(
             (profile) => profile?.selected?.parts?.leaves,
         ),
@@ -2856,7 +2856,7 @@ function buildMarkdown(report) {
         )) {
             const acceptance = summary.acceptance;
             lines.push(
-                `| ${name} | ${acceptance.detailReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.selectedTotalFieldCount ?? 'n/a'}/${acceptance.selectedNearFieldCount ?? 'n/a'}/${acceptance.selectedDetailedFieldCount ?? 'n/a'} (${acceptance.selectedExactPhaseCount}/${acceptance.phaseCount}) | ${acceptance.selectedCompactLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafTriangleCount ?? 'n/a'} (${acceptance.foliageCoveredPhaseCount}/${acceptance.phaseCount}) | ${acceptance.backgroundNearFieldCount ?? 'n/a'} (${acceptance.backgroundNearZeroPhaseCount}/${acceptance.phaseCount}) | ${acceptance.groupRejectionRatio ?? 'n/a'} | ${acceptance.projectionReductionRatio ?? 'n/a'} | ${acceptance.maxArchetypeCountPerBatch ?? 'n/a'} (${acceptance.archetypeBoundedPhaseCount}/${acceptance.phaseCount}) | ${acceptance.warmTemplateCacheHitRatio ?? 'n/a'} | ${acceptance.exactCapacityPhaseCount}/${acceptance.cleanResourcePhaseCount} of ${acceptance.phaseCount} | ${acceptance.shaderReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.workerFailureFreePhaseCount}/${acceptance.phaseCount} | ${acceptance.pass ? 'pass' : 'fail'} |`,
+                `| ${name} | ${acceptance.detailReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.selectedTotalFieldCount ?? 'n/a'}/${acceptance.selectedNearFieldCount ?? 'n/a'}/${acceptance.selectedDetailedFieldCount ?? 'n/a'} (${acceptance.selectedDetailedLodPhaseCount}/${acceptance.phaseCount}) | ${acceptance.selectedCompactLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafInstanceCount ?? 'n/a'}/${acceptance.selectedLeafTriangleCount ?? 'n/a'} (${acceptance.foliageCoveredPhaseCount}/${acceptance.phaseCount}) | ${acceptance.backgroundNearFieldCount ?? 'n/a'} (${acceptance.backgroundNearZeroPhaseCount}/${acceptance.phaseCount}) | ${acceptance.groupRejectionRatio ?? 'n/a'} | ${acceptance.projectionReductionRatio ?? 'n/a'} | ${acceptance.maxArchetypeCountPerBatch ?? 'n/a'} (${acceptance.archetypeBoundedPhaseCount}/${acceptance.phaseCount}) | ${acceptance.warmTemplateCacheHitRatio ?? 'n/a'} | ${acceptance.exactCapacityPhaseCount}/${acceptance.cleanResourcePhaseCount} of ${acceptance.phaseCount} | ${acceptance.shaderReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.workerFailureFreePhaseCount}/${acceptance.phaseCount} | ${acceptance.pass ? 'pass' : 'fail'} |`,
             );
         }
         lines.push('');
