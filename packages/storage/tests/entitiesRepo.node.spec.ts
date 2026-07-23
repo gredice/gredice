@@ -1138,6 +1138,66 @@ test('CMS generated image attributes are configured by attribute definitions', a
     );
 });
 
+test('CMS boolean defaults stay virtual until explicitly overridden', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `boolean-default-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Boolean Default ${suffix}`,
+    });
+
+    const appliesToAllTargetsDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'appliesToAllTargets',
+        label: 'Primjenjivo na sve ciljeve',
+        entityTypeName,
+        dataType: 'boolean',
+        defaultValue: 'false',
+        display: false,
+        required: false,
+    });
+    const entityId = await createEntity(entityTypeName);
+
+    let rawEntity = await getEntityRaw(entityId);
+    let appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.equal(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'false');
+
+    let formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, false);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: appliesToAllTargetsDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'true',
+    });
+
+    rawEntity = await getEntityRaw(entityId);
+    appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.notEqual(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'true');
+
+    formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, true);
+});
+
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {
     createTestDb();
     const suffix = randomUUID();

@@ -1,4 +1,5 @@
 import type { OperationData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { Alert } from '@gredice/ui/Alert';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Search } from '@gredice/ui/icons';
@@ -16,6 +17,7 @@ import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+import { isPlantTargetMetadataResolved } from './plantTargetMetadata';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
 
 const MemoizedOperationsListItem = memo(OperationsListItem);
@@ -93,12 +95,19 @@ export function OperationsList({
         isLoading: isLoadingOperations,
         isError,
     } = useOperations();
-    const { data: plantSort, isLoading: isPlantSortLoading } =
-        usePlantSort(plantSortId);
+    const { data: plantSort } = usePlantSort(plantSortId);
     const favoriteOperationIds = useFavoriteIds('operation');
-    const isLoading =
-        isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const isPlantMetadataResolved = isPlantTargetMetadataResolved(
+        plantSortId,
+        plantSort,
+    );
+    const isLoading = isLoadingOperations || !isPlantMetadataResolved;
     const [search, setSearch] = useState('');
+    const linkedOperationNames = new Set(
+        plantSort?.information.plant.information?.operations
+            ?.map((operation) => operation.information?.name)
+            .filter((name): name is string => Boolean(name)) ?? [],
+    );
 
     const { shoppingCartOperationIds, scheduledOperationIds } =
         useOperationContextIndicators({
@@ -111,9 +120,8 @@ export function OperationsList({
         ?.filter(filterFunc)
         .filter((op) =>
             plantSortId
-                ? plantSort?.information.plant.information?.operations
-                      ?.map((op) => op.information?.name)
-                      .includes(op.information.name)
+                ? isPlantMetadataResolved &&
+                  isOperationApplicableToPlant(op, linkedOperationNames)
                 : true,
         )
         .filter((op) =>

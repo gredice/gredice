@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
@@ -71,13 +72,20 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const isRecipesEnabled = await recipesFlag();
+    const [isRecipesEnabled, operations] = await Promise.all([
+        recipesFlag(),
+        getOperationsData(),
+    ]);
     const recipes = isRecipesEnabled
         ? ((await getRecipesData())?.filter((r) =>
               r.plants.includes(plant.information.name),
           ) ?? [])
         : [];
-    const informationSections = getPlantInforationSections(plant);
+    const informationSections = getPlantInforationSections(
+        plant,
+        undefined,
+        operations,
+    );
 
     // Map section IDs to their corresponding attribute cards
     const getAttributeCardsForSection = (sectionId: string) => {
@@ -135,6 +143,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     ]}
                 />
                 <PlantPageHeader
+                    operations={operations}
                     plant={plant}
                     overviewEditTarget={{
                         entityTypeName: 'plant',

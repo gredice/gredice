@@ -1,4 +1,4 @@
-import type { PlantData } from '@gredice/client';
+import type { OperationData, PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
@@ -62,15 +62,21 @@ function formatAlternativeNames(
 }
 
 export function PlantPageHeader({
+    operations,
     overviewEditTarget,
     plant,
     sort,
 }: {
+    operations?: readonly OperationData[];
     overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
     sort?: PlantSortDataWithRelationships;
 }) {
-    const informationSections = getPlantInforationSections(plant, sort);
+    const informationSections = getPlantInforationSections(
+        plant,
+        sort,
+        operations,
+    );
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
     );
