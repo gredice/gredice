@@ -7,6 +7,7 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useState,
 } from 'react';
 import {
     CanvasTexture,
@@ -241,6 +242,8 @@ export function CloudLayer({
     const materialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
     const shadowMaterialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
     const cloudSlotsRef = useRef<Array<CloudSlot>>([]);
+    const cloudSlotsActiveRef = useRef(false);
+    const [hasActiveCloudSlots, setHasActiveCloudSlots] = useState(false);
     const camera = useThree((state) => state.camera);
     const { width: viewportWidth, height: viewportHeight } = useThree(
         (state) => state.size,
@@ -294,7 +297,9 @@ export function CloudLayer({
     const visibleOpacity =
         daylightVisibility * (0.2 + effectiveCloudiness * 0.26 + foggy * 0.035);
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
-    useSceneTimeInvalidation(visibleOpacity > 0.005);
+    const shouldAnimateCloudSlots =
+        visibleCloudCount > 0 || hasActiveCloudSlots;
+    useSceneTimeInvalidation(shouldAnimateCloudSlots);
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -399,6 +404,10 @@ export function CloudLayer({
     }, [gameCamera, updateCloudCameraFrame]);
 
     useFrame(({ clock }, delta) => {
+        if (visibleCloudCount === 0 && !cloudSlotsActiveRef.current) {
+            return;
+        }
+
         const orthographic = camera as OrthographicCamera;
         if (!orthographic.isOrthographicCamera) {
             return;
@@ -596,9 +605,17 @@ export function CloudLayer({
                 shadowMaterial.alphaTest = shadowAlphaTest;
             }
         }
+
+        const hasActiveSlots = cloudSlotsRef.current.some(
+            (slot) => slot.active,
+        );
+        if (hasActiveSlots !== cloudSlotsActiveRef.current) {
+            cloudSlotsActiveRef.current = hasActiveSlots;
+            setHasActiveCloudSlots(hasActiveSlots);
+        }
     });
 
-    if (!cloudAlphaTexture || visibleOpacity <= 0.005) {
+    if (!cloudAlphaTexture || !shouldAnimateCloudSlots) {
         return null;
     }
 

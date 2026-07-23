@@ -39,6 +39,10 @@ import {
     type MeshInstanceChunk,
     type MeshInstanceLocalTransform,
 } from './chunkedMeshGeometry';
+import {
+    getIndexedEntityBlocks,
+    useEntityBlockInstanceIndex,
+} from './entityBlockInstanceIndex';
 import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
 import { HoverOutline } from './helpers/HoverOutline';
 import { PlacementDropAnimation } from './helpers/PlacementDropAnimation';
@@ -194,7 +198,7 @@ function activeDragTargetKey(target: ActiveDragPreviewTarget) {
 
 function activeDragTargetTouchesBlockNames(
     target: ActiveDragPreviewTarget | null | undefined,
-    blockNameByActiveDragTargetKey: Map<string, string>,
+    blockNameByActiveDragTargetKey: ReadonlyMap<string, string>,
     name: string | undefined,
     names: readonly string[] | undefined,
 ) {
@@ -211,7 +215,7 @@ function activeDragTargetTouchesBlockNames(
 
 function activeDragPreviewTouchesBlockNames(
     preview: ActiveDragPreview | null,
-    blockNameByActiveDragTargetKey: Map<string, string>,
+    blockNameByActiveDragTargetKey: ReadonlyMap<string, string>,
     name: string | undefined,
     names: readonly string[] | undefined,
 ) {
@@ -249,20 +253,8 @@ export function useEntityBlockInstances({
     yOffset?: number;
 }) {
     const { data: blockData } = useBlockData();
-    const blockNameByActiveDragTargetKey = useMemo(() => {
-        const lookup = new Map<string, string>();
-
-        for (const stack of stacks ?? []) {
-            stack.blocks.forEach((block, blockIndex) => {
-                lookup.set(
-                    `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
-                    block.name,
-                );
-            });
-        }
-
-        return lookup;
-    }, [stacks]);
+    const entityBlockInstanceIndex = useEntityBlockInstanceIndex(stacks);
+    const { blockNameByActiveDragTargetKey } = entityBlockInstanceIndex;
     const activeDragPreview = useGameState((state) =>
         activeDragPreviewTouchesBlockNames(
             state.activeDragPreview,
@@ -284,56 +276,52 @@ export function useEntityBlockInstances({
             : null,
     );
 
+    const indexedBlocks = getIndexedEntityBlocks(
+        entityBlockInstanceIndex,
+        name,
+        names,
+    );
     const instances = stacks
-        ?.filter((stack) =>
-            stack.blocks.some((block) =>
-                blockNameMatches(block.name, name, names),
-            ),
-        )
-        .flatMap((stack) =>
-            stack.blocks
-                .map((block, blockIndex) => ({ block, blockIndex }))
-                .filter(({ block }) =>
-                    blockNameMatches(block.name, name, names),
-                )
-                .map(({ block, blockIndex }): EntityBlockInstance => {
-                    const stackHeight = getStackHeight(blockData, stack, block);
-                    const target = createActiveDragPreviewTarget({
-                        blockId: block.id,
-                        blockIndex,
-                        stackPosition: stack.position,
-                    });
-                    const dragPreviewOffset =
-                        getActiveDragPreviewTargetPositionOffset(
-                            target,
-                            activeDragPreview,
-                        );
-                    const stationaryPickupOutlineVisible =
-                        activeDragPreviewTargetMatches(
-                            stationaryPickupOutlineTarget,
-                            target,
-                        );
+        ? indexedBlocks.map(
+              ({ block, blockIndex, stack }): EntityBlockInstance => {
+                  const stackHeight = getStackHeight(blockData, stack, block);
+                  const target = createActiveDragPreviewTarget({
+                      blockId: block.id,
+                      blockIndex,
+                      stackPosition: stack.position,
+                  });
+                  const dragPreviewOffset =
+                      getActiveDragPreviewTargetPositionOffset(
+                          target,
+                          activeDragPreview,
+                      );
+                  const stationaryPickupOutlineVisible =
+                      activeDragPreviewTargetMatches(
+                          stationaryPickupOutlineTarget,
+                          target,
+                      );
 
-                    return {
-                        block,
-                        blockIndex,
-                        id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
-                        pickupOutlineVisible:
-                            Boolean(dragPreviewOffset) ||
-                            stationaryPickupOutlineVisible,
-                        position: [
-                            stack.position.x + (dragPreviewOffset?.x ?? 0),
-                            stackHeight +
-                                (yOffset ?? 0) +
-                                (dragPreviewOffset?.y ?? 0),
-                            stack.position.z + (dragPreviewOffset?.z ?? 0),
-                        ],
-                        rotation: block.rotation || 0,
-                        stack,
-                        stackHeight,
-                    };
-                }),
-        );
+                  return {
+                      block,
+                      blockIndex,
+                      id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
+                      pickupOutlineVisible:
+                          Boolean(dragPreviewOffset) ||
+                          stationaryPickupOutlineVisible,
+                      position: [
+                          stack.position.x + (dragPreviewOffset?.x ?? 0),
+                          stackHeight +
+                              (yOffset ?? 0) +
+                              (dragPreviewOffset?.y ?? 0),
+                          stack.position.z + (dragPreviewOffset?.z ?? 0),
+                      ],
+                      rotation: block.rotation || 0,
+                      stack,
+                      stackHeight,
+                  };
+              },
+          )
+        : undefined;
 
     return useStableEntityBlockInstances(instances);
 }
@@ -845,11 +833,33 @@ function InstancedRainWetOverlays({
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
     const visible = useRainWetOverlayVisible();
-    const material = useRainWetOverlayMaterial({ geometry });
 
     if (!visible) {
         return null;
     }
+
+    return (
+        <VisibleInstancedRainWetOverlays
+            chunks={chunks}
+            geometry={geometry}
+            localTransform={localTransform}
+            scale={scale}
+        />
+    );
+}
+
+function VisibleInstancedRainWetOverlays({
+    chunks,
+    geometry,
+    localTransform,
+    scale,
+}: {
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const material = useRainWetOverlayMaterial({ geometry });
 
     return chunks.map((chunk) => (
         <ChunkedInstancedMesh

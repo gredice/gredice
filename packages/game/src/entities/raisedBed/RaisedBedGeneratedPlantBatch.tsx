@@ -7,11 +7,13 @@ import {
     buildPlantRenderData,
     type PlantStemSegment,
 } from '../../generators/plant/lib/buildPlantRenderData';
+import { buildGeneratedPlantLodTasks } from '../../generators/plant/lib/generatedPlantLodTasks';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from '../../generators/plant/lib/plant-definitions';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
+import { buildApproximatePlantLodSummary } from '../../generators/plant/lib/plantLodSummary';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
 import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
@@ -37,13 +39,7 @@ interface RaisedBedGeneratedPlantBatchProps {
 
 const ROOT_QUATERNION = new THREE.Quaternion();
 
-type BatchedPlantRenderData = {
-    billboards: Array<{
-        position: readonly [number, number, number];
-        scale: number;
-        seed: string;
-        summary: ReturnType<typeof buildPlantRenderData>['lodSummary'];
-    }>;
+type DetailedBatchedPlantRenderData = {
     flowers: THREE.Matrix4[];
     leafColors: THREE.Color[];
     leaves: THREE.Matrix4[];
@@ -58,7 +54,7 @@ function RaisedBedDetailedPlantBatch({
     definition,
 }: {
     batchSeed: string;
-    batchedData: BatchedPlantRenderData;
+    batchedData: DetailedBatchedPlantRenderData;
     definition: PlantDefinition;
 }) {
     return (
@@ -109,26 +105,40 @@ export function RaisedBedGeneratedPlantBatch({
     showProduce = true,
 }: RaisedBedGeneratedPlantBatchProps) {
     const renderDetailedGeometry = lodLevel === 'near';
-    const batchSeed = useMemo(
+    const batchSeed = useMemo(() => {
+        if (!renderDetailedGeometry) {
+            return definition.name;
+        }
+
+        return `${definition.name}:${instances.map((instance) => instance.seed).join('|')}`;
+    }, [definition.name, instances, renderDetailedGeometry]);
+    const billboards = useMemo(
         () =>
-            `${definition.name}:${instances.map((instance) => instance.seed).join('|')}`,
-        [definition.name, instances],
+            instances.map((instance) => ({
+                position: instance.position,
+                scale: instance.scale,
+                seed: instance.seed,
+                summary: buildApproximatePlantLodSummary({
+                    flowerGrowth,
+                    fruitGrowth,
+                    generation: instance.generation,
+                    plantDefinition: definition,
+                    seed: instance.seed,
+                    showProduce,
+                }),
+            })),
+        [definition, flowerGrowth, fruitGrowth, instances, showProduce],
     );
-    const tasks = useMemo(() => {
-        return instances.map((instance) => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(
-                Math.min(
-                    MAX_PLANT_GENERATION,
-                    Math.max(0, instance.generation),
-                ),
-            ),
-            rules: definition.rules,
-            seed: instance.seed,
-        }));
-    }, [definition.axiom, definition.rules, instances]);
+    const tasks = useMemo(
+        () => buildGeneratedPlantLodTasks(definition, instances, lodLevel),
+        [definition, instances, lodLevel],
+    );
     const { symbols } = useGeneratedLSystemSymbolsBatch(tasks);
     const batchedData = useMemo(() => {
+        if (!renderDetailedGeometry) {
+            return null;
+        }
+
         if (
             symbols.length !== instances.length ||
             symbols.some((result) => result === null)
@@ -147,13 +157,6 @@ export function RaisedBedGeneratedPlantBatch({
             typeof buildPlantRenderData
         >['vegetables'] = [];
         const thorns: THREE.Matrix4[] = [];
-        const billboards: Array<{
-            position: readonly [number, number, number];
-            scale: number;
-            seed: string;
-            summary: ReturnType<typeof buildPlantRenderData>['lodSummary'];
-        }> = [];
-
         symbols.forEach((lSystemSymbols, index) => {
             const instance = instances[index];
             const clampedGeneration = Math.min(
@@ -170,20 +173,9 @@ export function RaisedBedGeneratedPlantBatch({
                 seed: instance.seed,
                 showProduce,
             });
-            billboards.push({
-                position: instance.position,
-                scale: instance.scale,
-                seed: instance.seed,
-                summary: plantData.lodSummary,
-            });
-
             rootPosition.set(...instance.position);
             rootScale.setScalar(instance.scale);
             rootMatrix.compose(rootPosition, ROOT_QUATERNION, rootScale);
-
-            if (!renderDetailedGeometry) {
-                return;
-            }
 
             plantData.stemSegments.forEach((segment) => {
                 stemSegments.push({
@@ -211,14 +203,13 @@ export function RaisedBedGeneratedPlantBatch({
             });
         });
         return {
-            billboards,
             flowers,
             leafColors,
             leaves,
             stemSegments,
             thorns,
             vegetables,
-        } satisfies BatchedPlantRenderData;
+        } satisfies DetailedBatchedPlantRenderData;
     }, [
         definition,
         flowerGrowth,
@@ -229,16 +220,22 @@ export function RaisedBedGeneratedPlantBatch({
         symbols,
     ]);
 
-    if (!batchedData) {
-        return null;
-    }
-
     if (lodLevel !== 'near') {
         return (
             <PlantBillboardBatch
-                billboards={batchedData.billboards}
+                billboards={billboards}
                 debugName={`RaisedBedPlantBillboards:${definition.name}`}
                 level={lodLevel}
+            />
+        );
+    }
+
+    if (!batchedData) {
+        return (
+            <PlantBillboardBatch
+                billboards={billboards}
+                debugName={`RaisedBedPlantBillboards:${definition.name}:pending-near`}
+                level="mid"
             />
         );
     }

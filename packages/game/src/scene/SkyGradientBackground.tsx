@@ -1,11 +1,14 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as SunCalc from 'suncalc';
 import { Color, DoubleSide, type Mesh, ShaderMaterial, Vector2 } from 'three';
+import { useGameState } from '../useGameState';
+import { useSceneTimeInvalidation } from './SceneTime';
 import {
     cloneSkyGradientColors,
+    isSkyGradientWithinEpsilon,
     lerpSkyGradientColors,
     resolveGroundViewSkyGradientColors,
     resolveSkyGradientColors,
@@ -13,11 +16,13 @@ import {
     type SkyGradientWeather,
 } from './skyGradient';
 import {
+    createSkyCameraProjectionSnapshot,
     createSkyViewBasis,
     getSunViewportTuning,
     projectSkyDirectionToScreen,
     SKY_FORWARD_DISTANCE,
     SUN_SCREEN_OFFSET_MULTIPLIER,
+    updateSkyCameraProjectionSnapshot,
     updateSkyViewBasis,
 } from './skyProjection';
 import {
@@ -28,6 +33,7 @@ import {
 import { smoothstep } from './visualDayNight';
 
 const SKY_GRADIENT_TRANSITION_SECONDS = 0.6;
+const SKY_GRADIENT_TRANSITION_EPSILON = 0.001;
 const HORIZON_FADE_START = -0.05;
 const HORIZON_FADE_END = 0.18;
 
@@ -134,6 +140,21 @@ function applyGradientUniforms(
     material.uniforms.uMoonGlowIntensity.value = gradient.moonGlowIntensity;
 }
 
+function applyVisibleGradientUniforms(
+    material: ShaderMaterial,
+    gradient: SkyGradientColors,
+    sunOpacity: number,
+    moonOpacity: number,
+    hideCelestialGlow: boolean,
+) {
+    applyGradientUniforms(material, gradient);
+    const glowVisibility = hideCelestialGlow ? 0 : 1;
+    material.uniforms.uSunGlowIntensity.value =
+        gradient.sunGlowIntensity * sunOpacity * glowVisibility;
+    material.uniforms.uMoonGlowIntensity.value =
+        gradient.moonGlowIntensity * moonOpacity * glowVisibility;
+}
+
 export function SkyGradientBackground({
     animate,
     backgroundColor,
@@ -147,18 +168,29 @@ export function SkyGradientBackground({
     weather,
 }: SkyGradientBackgroundProps) {
     const camera = useThree((state) => state.camera);
+    const invalidate = useThree((state) => state.invalidate);
     const { width: viewportWidth, height: viewportHeight } = useThree(
         (state) => state.size,
     );
+    const gameCamera = useGameState((state) => state.gameCamera);
     const meshRef = useRef<Mesh>(null);
     const basisRef = useRef(createSkyViewBasis());
+    const cameraProjectionSnapshotRef = useRef(
+        createSkyCameraProjectionSnapshot(),
+    );
     const sunScreenRef = useRef(new Vector2(0, 0));
     const moonScreenRef = useRef(new Vector2(0, 0));
+    const sunOpacityRef = useRef(0);
+    const moonOpacityRef = useRef(0);
     const displayedGradientRef = useRef<SkyGradientColors | null>(null);
     const targetGradientRef = useRef<SkyGradientColors | null>(null);
+    const [transitionActive, setTransitionActive] = useState(false);
     const backgroundRed = backgroundColor.r;
     const backgroundGreen = backgroundColor.g;
     const backgroundBlue = backgroundColor.b;
+    const currentTimeMs = currentTime.getTime();
+    const locationLat = location.lat;
+    const locationLon = location.lon;
 
     const material = useMemo(
         () =>
@@ -212,102 +244,194 @@ export function SkyGradientBackground({
         weather,
     ]);
 
-    useEffect(() => {
+    const celestialState = useMemo(() => {
+        const sceneDate = timeOfDayToDate(new Date(currentTimeMs), timeOfDay);
+        const sun = SunCalc.getPosition(sceneDate, locationLat, locationLon);
+        const moon = SunCalc.getMoonPosition(
+            sceneDate,
+            locationLat,
+            locationLon,
+        );
+
+        return {
+            moonDirection: altAzToScenePosition(
+                moon.altitude,
+                moon.azimuth,
+            ).normalize(),
+            moonOpacity: smoothstep(
+                HORIZON_FADE_START,
+                HORIZON_FADE_END,
+                degreesToRadians(moon.altitude),
+            ),
+            sunDirection: altAzToScenePosition(
+                sun.altitude,
+                sun.azimuth,
+            ).normalize(),
+            sunOpacity: smoothstep(
+                HORIZON_FADE_START,
+                HORIZON_FADE_END,
+                degreesToRadians(sun.altitude),
+            ),
+        };
+    }, [currentTimeMs, locationLat, locationLon, timeOfDay]);
+
+    const sunTuning = useMemo(
+        () => getSunViewportTuning(viewportWidth, viewportHeight),
+        [viewportHeight, viewportWidth],
+    );
+
+    useLayoutEffect(() => {
         targetGradientRef.current = targetGradient;
 
         if (!displayedGradientRef.current || !animate) {
             displayedGradientRef.current =
                 cloneSkyGradientColors(targetGradient);
-            applyGradientUniforms(material, displayedGradientRef.current);
-        }
-    }, [animate, material, targetGradient]);
-
-    useFrame((_, delta) => {
-        const mesh = meshRef.current;
-        if (!mesh || !updateSkyViewBasis(camera, basisRef.current)) {
+            applyVisibleGradientUniforms(
+                material,
+                displayedGradientRef.current,
+                sunOpacityRef.current,
+                moonOpacityRef.current,
+                hideCelestialGlow,
+            );
+            setTransitionActive(false);
+            invalidate();
             return;
         }
 
-        const basis = basisRef.current;
-        mesh.position
-            .copy(camera.position)
-            .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE);
-        mesh.quaternion.copy(camera.quaternion);
-        mesh.scale.set(basis.halfWidth * 2, basis.halfHeight * 2, 1);
-        material.uniforms.uAspect.value =
-            basis.halfHeight === 0 ? 1 : basis.halfWidth / basis.halfHeight;
+        const alreadySettled = isSkyGradientWithinEpsilon(
+            displayedGradientRef.current,
+            targetGradient,
+            SKY_GRADIENT_TRANSITION_EPSILON,
+        );
+        setTransitionActive(!alreadySettled);
+        invalidate();
+    }, [animate, hideCelestialGlow, invalidate, material, targetGradient]);
 
-        const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
-        const sun = SunCalc.getPosition(sceneDate, location.lat, location.lon);
-        const moon = SunCalc.getMoonPosition(
-            sceneDate,
-            location.lat,
-            location.lon,
-        );
-        const sunTuning = getSunViewportTuning(viewportWidth, viewportHeight);
-        const sunDirection = altAzToScenePosition(
-            sun.altitude,
-            sun.azimuth,
-        ).normalize();
-        const moonDirection = altAzToScenePosition(
-            moon.altitude,
-            moon.azimuth,
-        ).normalize();
+    const updateSkyProjection = useCallback(
+        (force = false, requestRender = true) => {
+            const mesh = meshRef.current;
+            const cameraChanged = updateSkyCameraProjectionSnapshot(
+                camera,
+                cameraProjectionSnapshotRef.current,
+            );
+            if (
+                !mesh ||
+                (!force && !cameraChanged) ||
+                !updateSkyViewBasis(camera, basisRef.current)
+            ) {
+                return;
+            }
 
-        projectSkyDirectionToScreen(
-            sunDirection,
-            basis,
-            {
-                horizontalOffsetMultiplier:
-                    sunTuning.horizontalOffsetMultiplier,
-                screenOffsetMultiplier: SUN_SCREEN_OFFSET_MULTIPLIER,
-                verticalOffsetMultiplier: sunTuning.verticalOffsetMultiplier,
-            },
-            sunScreenRef.current,
-        );
-        projectSkyDirectionToScreen(
-            moonDirection,
-            basis,
-            {},
-            moonScreenRef.current,
-        );
-        copyVectorUniform(material, 'uSunPosition', sunScreenRef.current);
-        copyVectorUniform(material, 'uMoonPosition', moonScreenRef.current);
+            const basis = basisRef.current;
+            mesh.position
+                .copy(camera.position)
+                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE);
+            mesh.quaternion.copy(camera.quaternion);
+            mesh.scale.set(basis.halfWidth * 2, basis.halfHeight * 2, 1);
+            material.uniforms.uAspect.value =
+                basis.halfHeight === 0 ? 1 : basis.halfWidth / basis.halfHeight;
 
-        const sunOpacity = smoothstep(
-            HORIZON_FADE_START,
-            HORIZON_FADE_END,
-            degreesToRadians(sun.altitude),
-        );
-        const moonOpacity = smoothstep(
-            HORIZON_FADE_START,
-            HORIZON_FADE_END,
-            degreesToRadians(moon.altitude),
-        );
+            projectSkyDirectionToScreen(
+                celestialState.sunDirection,
+                basis,
+                {
+                    horizontalOffsetMultiplier:
+                        sunTuning.horizontalOffsetMultiplier,
+                    screenOffsetMultiplier: SUN_SCREEN_OFFSET_MULTIPLIER,
+                    verticalOffsetMultiplier:
+                        sunTuning.verticalOffsetMultiplier,
+                },
+                sunScreenRef.current,
+            );
+            projectSkyDirectionToScreen(
+                celestialState.moonDirection,
+                basis,
+                {},
+                moonScreenRef.current,
+            );
+            copyVectorUniform(material, 'uSunPosition', sunScreenRef.current);
+            copyVectorUniform(material, 'uMoonPosition', moonScreenRef.current);
 
-        const displayed = displayedGradientRef.current;
-        const target = targetGradientRef.current;
-        if (displayed && target) {
-            if (animate) {
-                lerpSkyGradientColors(
+            sunOpacityRef.current = celestialState.sunOpacity;
+            moonOpacityRef.current = celestialState.moonOpacity;
+
+            const displayed = displayedGradientRef.current;
+            if (displayed) {
+                applyVisibleGradientUniforms(
+                    material,
                     displayed,
-                    target,
-                    1 -
-                        Math.exp(
-                            -(1 / SKY_GRADIENT_TRANSITION_SECONDS) * delta,
-                        ),
+                    celestialState.sunOpacity,
+                    celestialState.moonOpacity,
+                    hideCelestialGlow,
                 );
             }
 
-            const activeGradient = displayed;
-            applyGradientUniforms(material, activeGradient);
-            material.uniforms.uSunGlowIntensity.value =
-                (hideCelestialGlow ? 0 : activeGradient.sunGlowIntensity) *
-                sunOpacity;
-            material.uniforms.uMoonGlowIntensity.value =
-                (hideCelestialGlow ? 0 : activeGradient.moonGlowIntensity) *
-                moonOpacity;
+            if (requestRender) {
+                invalidate();
+            }
+        },
+        [
+            camera,
+            celestialState,
+            hideCelestialGlow,
+            invalidate,
+            material,
+            sunTuning,
+        ],
+    );
+
+    useLayoutEffect(() => {
+        updateSkyProjection(true);
+
+        if (!gameCamera) {
+            return;
         }
+
+        return gameCamera.subscribe(() => updateSkyProjection());
+    }, [gameCamera, updateSkyProjection]);
+
+    useSceneTimeInvalidation(transitionActive);
+
+    useFrame((_, delta) => {
+        updateSkyProjection(false, false);
+
+        if (!transitionActive) {
+            return;
+        }
+
+        const displayed = displayedGradientRef.current;
+        const target = targetGradientRef.current;
+        if (!displayed || !target) {
+            setTransitionActive(false);
+            return;
+        }
+
+        lerpSkyGradientColors(
+            displayed,
+            target,
+            1 -
+                Math.exp(
+                    -(1 / SKY_GRADIENT_TRANSITION_SECONDS) * Math.max(0, delta),
+                ),
+        );
+
+        const settled = isSkyGradientWithinEpsilon(
+            displayed,
+            target,
+            SKY_GRADIENT_TRANSITION_EPSILON,
+        );
+        if (settled) {
+            lerpSkyGradientColors(displayed, target, 1);
+            setTransitionActive(false);
+        }
+
+        applyVisibleGradientUniforms(
+            material,
+            displayed,
+            sunOpacityRef.current,
+            moonOpacityRef.current,
+            hideCelestialGlow,
+        );
     });
 
     return (

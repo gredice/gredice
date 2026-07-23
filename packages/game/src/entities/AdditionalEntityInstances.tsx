@@ -36,6 +36,10 @@ import {
     EntityInstancesGeometry,
     useEntityBlockInstances,
 } from './EntityInstancesBlock';
+import {
+    hasIndexedEntityBlocks,
+    useEntityBlockInstanceIndex,
+} from './entityBlockInstanceIndex';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import {
     type GroundPatchSurface,
@@ -219,20 +223,6 @@ export const additionalInstancedBlockNames = [
     ...Object.keys(giftBoxConfigs),
 ];
 
-function hasRenderableBlockInstance({
-    name,
-    stacks,
-}: {
-    name: string;
-    stacks: Stack[] | undefined;
-}) {
-    return (
-        stacks?.some((stack) =>
-            stack.blocks.some((block) => block.name === name),
-        ) ?? false
-    );
-}
-
 function LoadedAssetBlock({ assetName, geometry, ...props }: AssetBlockProps) {
     const gltf = useGameGLTF(assetName);
     const resolvedGeometry = geometry(gltf);
@@ -279,10 +269,8 @@ function LoadedAssetBlockMaterial({
 }
 
 function AssetBlock(props: AssetBlockProps) {
-    const hasInstances = hasRenderableBlockInstance({
-        name: props.name,
-        stacks: props.stacks,
-    });
+    const instanceIndex = useEntityBlockInstanceIndex(props.stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, props.name);
 
     if (!hasInstances) {
         return null;
@@ -1506,14 +1494,13 @@ function PotInstances({
     stacks,
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+
     return (
         <>
             {potConfigs
                 .filter((config) =>
-                    hasRenderableBlockInstance({
-                        name: config.name,
-                        stacks,
-                    }),
+                    hasIndexedEntityBlocks(instanceIndex, config.name),
                 )
                 .map((config) => (
                     <Suspense key={config.name} fallback={null}>

@@ -26,6 +26,7 @@ import type { SpriteAtlasPage, SpriteAtlasSprite } from '../../sprites/types';
 import { useSpriteAtlasManifest } from '../../sprites/useSpriteAtlasManifest';
 import { useSpriteAtlasTexture } from '../../sprites/useSpriteAtlasTexture';
 import { useGameState } from '../../useGameState';
+import { estimateRgba8MipmappedTextureBytes } from './groundDecorationAtlasMemory';
 import { groundDecorationAtlasBasePath } from './groundDecorationConfig';
 
 export type GroundDecorationInstance = {
@@ -379,10 +380,38 @@ export function GroundDecorationInstances({
 
         return byPage;
     }, [instances, manifest]);
+    const groundDecorationAtlasEstimatedGpuBytes = useMemo(() => {
+        if (!manifest) {
+            return 0;
+        }
+
+        let bytes = 0;
+        for (const pageIndex of instancesByPage.keys()) {
+            const page = resolveAtlasPage(
+                manifest.pages,
+                pageIndex,
+                manifest.atlas,
+            );
+            if (page) {
+                bytes += estimateRgba8MipmappedTextureBytes(
+                    page.atlas.width,
+                    page.atlas.height,
+                );
+            }
+        }
+        return bytes;
+    }, [instancesByPage, manifest]);
+
+    useLayoutEffect(() => {
+        updateGameProfileMetadata({
+            groundDecorationAtlasEstimatedGpuBytes,
+        });
+    }, [groundDecorationAtlasEstimatedGpuBytes]);
 
     useLayoutEffect(
         () => () => {
             updateGameProfileMetadata({
+                groundDecorationAtlasEstimatedGpuBytes: 0,
                 groundDecorationAtlasPageCount: 0,
                 groundDecorationChunkCount: 0,
                 groundDecorationVisibleCount: 0,

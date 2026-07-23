@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as SunCalc from 'suncalc';
-import { Color, type Vector3 } from 'three';
+import { Color } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
@@ -24,8 +24,13 @@ import { useSceneTimeInvalidation } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
 import { SkyGradientBackground } from './SkyGradientBackground';
 import Snow from './Snow/Snow';
+import { resolveSnowParticleCounts } from './Snow/snowParticles';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import {
+    buildDirectionalShadowDepthSignature,
+    cloudShadowRefreshMsByMode,
+} from './shadowMapScheduling';
 import {
     resolveEnvironmentSkyBackgroundColors,
     resolveSkyBackgroundColor,
@@ -40,6 +45,12 @@ import {
     visualDayNightTimes,
 } from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
+import {
+    advanceWeatherBlend,
+    type EnvironmentWeather,
+    resolveWeatherBlendTarget,
+    type WeatherBlendState,
+} from './weatherBlend';
 
 const sunTemperatureScale = chroma
     .scale([
@@ -69,27 +80,8 @@ const DEFAULT_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
     transitionSeconds: 0.35,
 };
-const WEATHER_BLEND_EPSILON = 0.0005;
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
-
-function dampNumber(
-    current: number,
-    target: number,
-    smoothing: number,
-    delta: number,
-) {
-    if (!Number.isFinite(current)) return target;
-    const t = 1 - Math.exp(-Math.max(0.0001, smoothing) * delta);
-    return current + (target - current) * t;
-}
-
-function isWithinBlendEpsilon(
-    current: number | null | undefined,
-    target: number | null | undefined,
-) {
-    return Math.abs((current ?? 0) - (target ?? 0)) <= WEATHER_BLEND_EPSILON;
-}
 
 function isWithinColorEpsilon(current: Color, target: Color) {
     return (
@@ -163,91 +155,37 @@ function useBlendedWeather(
     enabled: boolean,
     blendConfig: WeatherBlendConfig,
 ) {
-    const [blendedWeather, setBlendedWeather] = useState<
-        EnvironmentWeather | undefined
-    >(weather);
+    const [blendState, setBlendState] = useState<WeatherBlendState>(() => ({
+        isBlending: false,
+        weather,
+    }));
     const targetRef = useRef<EnvironmentWeather | undefined>(weather);
 
     useEffect(() => {
         targetRef.current = weather;
-        if (!enabled || !weather) {
-            setBlendedWeather(weather);
-        }
+        setBlendState((state) =>
+            resolveWeatherBlendTarget(state, weather, enabled),
+        );
     }, [enabled, weather]);
 
+    useSceneTimeInvalidation(blendState.isBlending);
+
     useFrame((_, delta) => {
-        if (!enabled || !targetRef.current) {
+        if (!blendState.isBlending) {
             return;
         }
 
-        const target = targetRef.current;
-        setBlendedWeather((current) => {
-            if (!current) {
-                return target;
-            }
-
-            const smoothing = 1 / blendConfig.transitionSeconds;
-            const next = {
-                ...target,
-                cloudy: dampNumber(
-                    current.cloudy ?? 0,
-                    target.cloudy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                foggy: dampNumber(
-                    current.foggy ?? 0,
-                    target.foggy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                rainy: dampNumber(
-                    current.rainy ?? 0,
-                    target.rainy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                snowy: dampNumber(
-                    current.snowy ?? 0,
-                    target.snowy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                windSpeed: dampNumber(
-                    current.windSpeed ?? 0,
-                    target.windSpeed ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                snowAccumulation: dampNumber(
-                    current.snowAccumulation ?? 0,
-                    target.snowAccumulation ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                // Keep direction and thunder discrete to preserve deterministic storm timing
-                // and prevent jitter around cardinal boundaries.
-                windDirection: target.windDirection,
-                thundery: target.thundery,
-            };
-            const changed =
-                !isWithinBlendEpsilon(current.cloudy, next.cloudy) ||
-                !isWithinBlendEpsilon(current.foggy, next.foggy) ||
-                !isWithinBlendEpsilon(current.rainy, next.rainy) ||
-                !isWithinBlendEpsilon(current.snowy, next.snowy) ||
-                !isWithinBlendEpsilon(current.windSpeed, next.windSpeed) ||
-                !isWithinBlendEpsilon(
-                    current.snowAccumulation,
-                    next.snowAccumulation,
-                ) ||
-                current.windDirection !== next.windDirection ||
-                current.thundery !== next.thundery;
-
-            return changed ? next : current;
-        });
+        setBlendState((state) =>
+            advanceWeatherBlend(
+                state,
+                targetRef.current,
+                blendConfig.transitionSeconds,
+                delta,
+            ),
+        );
     });
 
-    return blendedWeather;
+    return blendState.weather;
 }
 
 function getSunPosition(
@@ -287,17 +225,6 @@ export type EnvironmentProps = {
     noWeather?: boolean;
     quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
-};
-
-type EnvironmentWeather = {
-    cloudy?: number;
-    foggy?: number;
-    rainy?: number;
-    snowAccumulation?: number;
-    snowy?: number;
-    thundery?: number;
-    windDirection?: string | null;
-    windSpeed?: number;
 };
 
 const fallbackWeather = {
@@ -503,13 +430,6 @@ function useEnvironmentElements({
 }
 
 const baseCameraShadowSize = 20;
-const cloudShadowRefreshMsByMode: Record<
-    GameQualityProfile['cloudShadowMode'],
-    number
-> = {
-    hard: 96,
-    soft: 64,
-};
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 function roundShadowSignatureValue(value: number) {
@@ -529,44 +449,6 @@ function buildStackShadowSignature(stacks: Stack[] | undefined) {
             return `${roundShadowSignatureValue(stack.position.x)},${roundShadowSignatureValue(stack.position.y)},${roundShadowSignatureValue(stack.position.z)}:${blocks}`;
         })
         .join('|');
-}
-
-function buildLightShadowSignature({
-    currentTime,
-    directionalLight,
-    shadowCameraSize,
-    shadowMapSize,
-    shadowVisibility,
-    shadows,
-    timeOfDay,
-}: {
-    currentTime: Date;
-    directionalLight: {
-        color: Color;
-        intensity: number;
-        position: Vector3;
-    };
-    shadowCameraSize: number;
-    shadowMapSize: number;
-    shadowVisibility: number;
-    shadows: boolean;
-    timeOfDay: number;
-}) {
-    return [
-        shadows ? 'shadows' : 'no-shadows',
-        shadowMapSize,
-        roundShadowSignatureValue(shadowCameraSize),
-        roundShadowSignatureValue(timeOfDay),
-        currentTime.toISOString(),
-        roundShadowSignatureValue(shadowVisibility),
-        roundShadowSignatureValue(directionalLight.intensity),
-        roundShadowSignatureValue(directionalLight.position.x),
-        roundShadowSignatureValue(directionalLight.position.y),
-        roundShadowSignatureValue(directionalLight.position.z),
-        roundShadowSignatureValue(directionalLight.color.r),
-        roundShadowSignatureValue(directionalLight.color.g),
-        roundShadowSignatureValue(directionalLight.color.b),
-    ].join('|');
 }
 
 export function StaticEnvironment({
@@ -594,25 +476,12 @@ export function StaticEnvironment({
         timeOfDay,
         weather: undefined,
     });
-    const shadowInvalidationKey = useMemo(
-        () =>
-            buildLightShadowSignature({
-                currentTime,
-                directionalLight,
-                shadowCameraSize: baseCameraShadowSize,
-                shadowMapSize: qualityProfile.shadowMapSize,
-                shadowVisibility: 1,
-                shadows: qualityProfile.shadows,
-                timeOfDay,
-            }),
-        [
-            currentTime,
-            directionalLight,
-            qualityProfile.shadowMapSize,
-            qualityProfile.shadows,
-            timeOfDay,
-        ],
-    );
+    const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
+        lightPosition: directionalLight.position,
+        shadowCameraSize: baseCameraShadowSize,
+        shadowMapSize: qualityProfile.shadowMapSize,
+        shadows: qualityProfile.shadows,
+    });
     const waterDeep = waterColors.deep;
     const waterFoam = waterColors.foam;
     const waterShallow = waterColors.shallow;
@@ -927,9 +796,11 @@ export function Environment({
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = blendedWeather?.snowy ?? 0;
-    const snowParticleCount = Math.round(
-        snowParticles * 5000 * qualityProfile.snowParticleMultiplier,
-    );
+    const { activeCount: snowParticleCount, capacity: snowParticleCapacity } =
+        resolveSnowParticleCounts(
+            snowParticles,
+            qualityProfile.snowParticleMultiplier,
+        );
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -937,8 +808,14 @@ export function Environment({
                 !weatherDisabled && rain > 0 ? rainParticleCount : 0,
             shadowMapSize: qualityProfile.shadowMapSize,
             shadowsEnabled: qualityProfile.shadows,
+            snowParticleCapacity:
+                !weatherDisabled && snowParticleCount > 0
+                    ? snowParticleCapacity
+                    : 0,
             snowParticleCount:
-                !weatherDisabled && snowParticles > 0 ? snowParticleCount : 0,
+                !weatherDisabled && snowParticleCount > 0
+                    ? snowParticleCount
+                    : 0,
             weatherDisabled,
         });
     }, [
@@ -946,8 +823,8 @@ export function Environment({
         qualityProfile.shadows,
         rain,
         rainParticleCount,
+        snowParticleCapacity,
         snowParticleCount,
-        snowParticles,
         weatherDisabled,
     ]);
 
@@ -989,47 +866,23 @@ export function Environment({
         () => buildStackShadowSignature(garden?.stacks),
         [garden?.stacks],
     );
-    const shadowInvalidationKey = useMemo(
-        () =>
-            [
-                buildLightShadowSignature({
-                    currentTime,
-                    directionalLight,
-                    shadowCameraSize,
-                    shadowMapSize: qualityProfile.shadowMapSize,
-                    shadowVisibility,
-                    shadows: qualityProfile.shadows,
-                    timeOfDay,
-                }),
-                `cloud:${roundShadowSignatureValue(cloudShadowStrength)}:${cloudShadowDynamicRefreshMs ?? 0}`,
-                `garden:${gardenShadowSignature}`,
-                `view:${view}:${closeupBlockId ?? ''}`,
-                `pickup:${pickupBlockId ?? ''}`,
-                `drop:${dropAnimationSignature}`,
-                `winter:${winterMode}`,
-            ].join('||'),
-        [
-            closeupBlockId,
-            cloudShadowDynamicRefreshMs,
-            cloudShadowStrength,
-            currentTime,
-            directionalLight,
-            dropAnimationSignature,
-            gardenShadowSignature,
-            pickupBlockId,
-            qualityProfile.shadowMapSize,
-            qualityProfile.shadows,
-            shadowCameraSize,
-            shadowVisibility,
-            timeOfDay,
-            view,
-            winterMode,
-        ],
-    );
+    const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
+        lightPosition: directionalLight.position,
+        shadowCameraSize,
+        shadowMapSize: qualityProfile.shadowMapSize,
+        shadows: qualityProfile.shadows,
+    });
+    const shadowSettleKey = [
+        `garden:${gardenShadowSignature}`,
+        `view:${view}:${closeupBlockId ?? ''}`,
+        `pickup:${pickupBlockId ?? ''}`,
+        `drop:${dropAnimationSignature}`,
+        `winter:${winterMode}`,
+    ].join('||');
     const shadowMapSize = qualityProfile.shadows
         ? qualityProfile.shadowMapSize
         : 1;
-    const directionalLightKey = `directional-shadow:${qualityProfile.shadows ? qualityProfile.shadowMapSize : 0}:${qualityProfile.cloudShadowMode}`;
+    const directionalLightKey = `directional-shadow:${qualityProfile.shadows ? qualityProfile.shadowMapSize : 0}`;
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
@@ -1134,6 +987,7 @@ export function Environment({
                 dynamicRefreshMs={cloudShadowDynamicRefreshMs}
                 enabled={qualityProfile.shadows}
                 invalidationKey={shadowInvalidationKey}
+                settleKey={shadowSettleKey}
             />
             {!noBackground && (
                 <>
@@ -1228,9 +1082,10 @@ export function Environment({
             {!weatherDisabled && rain > 0 && (
                 <Drops count={rainParticleCount} />
             )}
-            {!weatherDisabled && snowParticles > 0 && (
+            {!weatherDisabled && snowParticleCount > 0 && (
                 <Snow
-                    count={snowParticleCount}
+                    activeCount={snowParticleCount}
+                    capacity={snowParticleCapacity}
                     windSpeed={windSpeed}
                     windDirection={windDirection}
                 />

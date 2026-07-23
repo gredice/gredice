@@ -725,6 +725,33 @@ function createStableAssignments(options: {
     return assignments;
 }
 
+function resolvePageAtlas(
+    pageIndex: number,
+    baseAtlas: AtlasGrid,
+    sprites: Record<string, SpriteFrame>,
+) {
+    const usedBottom = Object.values(sprites).reduce((bottom, sprite) => {
+        if (sprite.page !== pageIndex) {
+            return bottom;
+        }
+
+        return Math.max(bottom, sprite.cell.y + sprite.cell.height);
+    }, 0);
+    const height = Math.max(
+        baseAtlas.cellSize,
+        Math.min(baseAtlas.height, usedBottom),
+    );
+
+    return {
+        ...baseAtlas,
+        height,
+        rows: Math.max(
+            1,
+            Math.ceil((height - baseAtlas.offsetY) / baseAtlas.cellSize),
+        ),
+    } satisfies AtlasGrid;
+}
+
 async function removeStalePageImages(options: {
     outputPngPath: string;
     outputWebpPath: string;
@@ -915,8 +942,11 @@ async function main() {
         };
     }
 
+    const pageAtlases = Array.from({ length: pageCount }, (_, index) =>
+        resolvePageAtlas(index, pageAtlas, sprites),
+    );
     const manifest: AtlasManifest = {
-        atlas: pageAtlas,
+        atlas: pageAtlases[0] ?? pageAtlas,
         layout: {
             atlasSize: pageAtlas.width,
             columns: gridLayout.columns,
@@ -926,7 +956,7 @@ async function main() {
             version: 2,
         },
         pages: Array.from({ length: pageCount }, (_, index) => ({
-            atlas: pageAtlas,
+            atlas: pageAtlases[index] ?? pageAtlas,
             index,
             spriteCount: pageSpriteCounts[index] ?? 0,
         })),
@@ -948,8 +978,8 @@ async function main() {
                 create: {
                     background: { alpha: 0, b: 0, g: 0, r: 0 },
                     channels: 4,
-                    height: pageAtlas.height,
-                    width: pageAtlas.width,
+                    height: page.atlas.height,
+                    width: page.atlas.width,
                 },
             }).composite(pageComposites[page.index] ?? []);
 
@@ -969,7 +999,7 @@ async function main() {
         pageCount,
         previousManifest,
     });
-    await writeFile(outputJsonPath, JSON.stringify(manifest, null, 4));
+    await writeFile(outputJsonPath, `${JSON.stringify(manifest, null, 4)}\n`);
 
     console.info(
         `Created ${pageCount} atlas page(s) with ${inputFiles.length} sprites using stable slot assignment:`,

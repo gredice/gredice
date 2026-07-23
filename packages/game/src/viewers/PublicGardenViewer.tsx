@@ -341,6 +341,7 @@ function PublicGardenScene({
                     rendererOptions={
                         capture ? { preserveDrawingBuffer: true } : undefined
                     }
+                    suspendWhenOffscreen={!capture}
                     zoom={initialView.cameraZoom}
                     className="h-full w-full"
                 >

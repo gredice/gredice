@@ -38,12 +38,12 @@
             "atlas": {
                 "cellSize": 512,
                 "columns": 4,
-                "height": 2048,
+                "height": 1024,
                 "innerSize": 480,
                 "offsetX": 0,
                 "offsetY": 0,
                 "padding": 16,
-                "rows": 4,
+                "rows": 2,
                 "width": 2048
             },
             "index": 1,

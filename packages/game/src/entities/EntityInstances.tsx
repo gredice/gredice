@@ -19,6 +19,12 @@ import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
 } from './EntityInstancesBlock';
+import {
+    createEntityBlockInstanceIndex,
+    EntityBlockInstanceIndexContext,
+    hasIndexedEntityBlocks,
+    useEntityBlockInstanceIndex,
+} from './entityBlockInstanceIndex';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 import {
     type GroundPatchSurface,
@@ -156,20 +162,6 @@ type EntityInstancesAssetBlockProps = Omit<
     material: (gltf: GLTFResult) => Material | Material[];
 };
 
-function hasRenderableBlockInstance({
-    name,
-    stacks,
-}: {
-    name: string;
-    stacks: Stack[] | undefined;
-}) {
-    return (
-        stacks?.some((stack) =>
-            stack.blocks.some((block) => block.name === name),
-        ) ?? false
-    );
-}
-
 function LoadedEntityInstancesAssetBlock({
     assetName,
     groundPatch,
@@ -190,10 +182,8 @@ function LoadedEntityInstancesAssetBlock({
 }
 
 function EntityInstancesAssetBlock(props: EntityInstancesAssetBlockProps) {
-    const hasInstances = hasRenderableBlockInstance({
-        name: props.name,
-        stacks: props.stacks,
-    });
+    const instanceIndex = useEntityBlockInstanceIndex(props.stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, props.name);
 
     if (!hasInstances) {
         return null;
@@ -221,6 +211,10 @@ export function EntityInstances({
     stacks: Stack[] | undefined;
     renderDetails?: boolean;
 }) {
+    const entityBlockInstanceIndex = useMemo(
+        () => createEntityBlockInstanceIndex(stacks),
+        [stacks],
+    );
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const snowOverlaysVisible =
@@ -288,7 +282,9 @@ export function EntityInstances({
     };
 
     return (
-        <>
+        <EntityBlockInstanceIndexContext.Provider
+            value={entityBlockInstanceIndex}
+        >
             <EntityInstancesAssetBlock
                 assetName="BlockGrass"
                 stacks={stacks}
@@ -742,6 +738,6 @@ export function EntityInstances({
                     {...commonSnowProps}
                 />
             </Suspense>
-        </>
+        </EntityBlockInstanceIndexContext.Provider>
     );
 }

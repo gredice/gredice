@@ -435,3 +435,30 @@ export function lerpSkyGradientColors(
 
     return current;
 }
+
+function isColorWithinEpsilon(current: Color, target: Color, epsilon: number) {
+    return (
+        Math.abs(current.r - target.r) <= epsilon &&
+        Math.abs(current.g - target.g) <= epsilon &&
+        Math.abs(current.b - target.b) <= epsilon
+    );
+}
+
+export function isSkyGradientWithinEpsilon(
+    current: SkyGradientColors,
+    target: SkyGradientColors,
+    epsilon: number,
+) {
+    return (
+        isColorWithinEpsilon(current.zenith, target.zenith, epsilon) &&
+        isColorWithinEpsilon(current.upper, target.upper, epsilon) &&
+        isColorWithinEpsilon(current.horizon, target.horizon, epsilon) &&
+        isColorWithinEpsilon(current.lower, target.lower, epsilon) &&
+        isColorWithinEpsilon(current.sunGlow, target.sunGlow, epsilon) &&
+        isColorWithinEpsilon(current.moonGlow, target.moonGlow, epsilon) &&
+        Math.abs(current.sunGlowIntensity - target.sunGlowIntensity) <=
+            epsilon &&
+        Math.abs(current.moonGlowIntensity - target.moonGlowIntensity) <=
+            epsilon
+    );
+}
