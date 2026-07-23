@@ -67,6 +67,7 @@ baseline and the preceding row.
 | 11 | Centralize dense-garden block indexes and instance selection | Complete | Dense + camera motion | Camera canvas-ready `-5.5%`, script time `-2.7%`, p95 `-2.6%`; static dense task time `-4.0%` |
 | 12 | Make sky astronomy and projection event-driven | Complete | Clear + dense cloudy mobile | Clear p95 `-23%`, task time `-5.6%`; dense cloudy neutral with all eight clouds/casters retained |
 | 13 | Crop unused decoration-atlas page rows | Complete | Dense mobile + renderer memory + screenshots | Estimated mipmapped RGBA8 residency `42.7 -> 32.0 MiB` (`-25%`); all 914 decorations and render work retained |
+| 14 | Fade rain intensity and stop invisible transition-tail particles | Complete | Clear + rain-to-clear mobile | Rain unmounted `49%` sooner; transition calls/s `-3.2%` and triangles/s `-5.5%`; steady clear render work unchanged |
 
 ### Step 01: generated-plant batch effect
 
@@ -330,6 +331,31 @@ screenshots.
   directionally positive, but the guaranteed result is the measured texture
   allocation reduction.
 
+### Step 14: intensity-aware rain lifecycle
+
+Reports: `steps/14-rain-lifecycle-before/latest.json` and
+`steps/14-rain-lifecycle-after/latest.json`.
+
+- The profiler now includes a warmed rain-to-clear transition and records the
+  first frame where the rain particle count reaches zero.
+- Rain intensity is clamped and passed through the existing shader progress
+  uniform instead of remaining fixed at full strength throughout the fade.
+- The particle system unmounts once intensity reaches `0.03`. At that point the
+  shader's maximum possible alpha is already below its existing fragment
+  discard threshold, so the cutoff removes invisible work without shortening
+  the visible effect.
+- Rain unmounted at `2,798.7 -> 1,422.8 ms`, `49.2%` sooner. Across the same
+  five-second transition, calls/s fell `792.1 -> 767.0` (`-3.2%`) and
+  triangles/s fell `47,812 -> 45,162` (`-5.5%`). Calls and triangles per
+  rendered frame fell `52.6 -> 51.8` and `3,178 -> 3,049`.
+- Steady clear remained exact: zero rain particles, 40 calls/render, and 2,620
+  triangles/render in both samples. Its rendered FPS and p95 movement
+  (`19.7 -> 19.4`, `46.5 -> 46.9 ms`) is treated as headless variance.
+- A custom quality multiplier of zero no longer mounts a zero-instance rain
+  mesh. The static JavaScript import remains intentional: lazy-loading this
+  small shader path could delay the first visible rain and would not address
+  the sustained GPU workload behind the thermal report.
+
 ## Final validation and headless soak
 
 Report: `steps/final-soak/latest.json`. Each scenario warmed for 5 seconds,
@@ -351,7 +377,10 @@ soaked for 15 seconds, and sampled for 10 seconds in the production build.
   headless environment, which reports synchronous `ReadPixels` GPU stalls.
   This is not treated as release clearance; the physical thermal gates below
   remain mandatory.
-- Final validation passed: 480 game unit tests, game and garden typechecks,
+- The steady-state soak predates Step 14. That step does not change steady rain
+  or clear render work and is covered by the dedicated production
+  rain-to-clear profile above.
+- Final validation passed: 484 game unit tests, game and garden typechecks,
   the offscreen public-garden preview capture browser test, targeted Biome
   checks across all changed source files, production build, generated-atlas
   synchronization, and `git diff --check`.

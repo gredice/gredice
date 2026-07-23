@@ -20,6 +20,7 @@ import {
 } from './gameQuality';
 import { getMoonlitNightScales } from './moonlight';
 import { Drops } from './Rain/Drops';
+import { resolveRainParticleState } from './Rain/rainParticles';
 import { useSceneTimeInvalidation } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
 import { SkyGradientBackground } from './SkyGradientBackground';
@@ -789,10 +790,8 @@ export function Environment({
 
     // Handle rain
     const rain = blendedWeather?.rainy ?? 0;
-    const baseRainParticleCount = rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600;
-    const rainParticleCount = Math.round(
-        baseRainParticleCount * qualityProfile.rainParticleMultiplier,
-    );
+    const { activeCount: rainParticleCount, intensity: rainParticleIntensity } =
+        resolveRainParticleState(rain, qualityProfile.rainParticleMultiplier);
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = blendedWeather?.snowy ?? 0;
@@ -805,7 +804,9 @@ export function Environment({
     useEffect(() => {
         updateGameProfileMetadata({
             rainParticleCount:
-                !weatherDisabled && rain > 0 ? rainParticleCount : 0,
+                !weatherDisabled && rainParticleCount > 0
+                    ? rainParticleCount
+                    : 0,
             shadowMapSize: qualityProfile.shadowMapSize,
             shadowsEnabled: qualityProfile.shadows,
             snowParticleCapacity:
@@ -821,7 +822,6 @@ export function Environment({
     }, [
         qualityProfile.shadowMapSize,
         qualityProfile.shadows,
-        rain,
         rainParticleCount,
         snowParticleCapacity,
         snowParticleCount,
@@ -1079,8 +1079,11 @@ export function Environment({
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {!weatherDisabled && rain > 0 && (
-                <Drops count={rainParticleCount} />
+            {!weatherDisabled && rainParticleCount > 0 && (
+                <Drops
+                    count={rainParticleCount}
+                    intensity={rainParticleIntensity}
+                />
             )}
             {!weatherDisabled && snowParticleCount > 0 && (
                 <Snow
