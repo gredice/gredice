@@ -255,7 +255,7 @@ Both scenarios use the deterministic `plant-heavy` garden and select center
 raised bed `29`, rather than a corner bed, so neighboring generated fields stay
 in view. The desktop scenario uses the medium tier at `1280x720`/DPR 1. The
 mobile scenario uses the automatic quality resolver at `390x844`/DPR 3 while
-emulating a constrained 4 GiB, four-core device. Each scenario runs in three
+emulating a constrained 4 GiB, four-core device. Each scenario runs in five
 fresh browser contexts and records separate cold and warm close-up transitions;
 the report includes the individual samples and medians.
 
@@ -270,18 +270,97 @@ The close-up controller is enabled only when the debug profile route receives a
 valid `closeupRaisedBedId` query. It drives the real normal/close-up game-state
 transition while leaving the initial camera untouched. Outside an active debug
 session, the generated-plant instrumentation does not publish or retain
-profiling state.
+per-session field, scheduler, cache, worker, instance-buffer, shader, or
+render-build state. Shader prewarming starts when close-up intent becomes
+active, during the camera transition. Successful representative materials stay
+retained per renderer/quality variant so Three.js cannot release the compiled
+programs before detailed plants mount.
 
 Each close-up pass separates the selected field's near-LOD intent,
-pending-near billboard fallback, first detailed field, fully detailed field
-set, and settled camera milestones. Its JSON record also separates selected
+pending-near billboard fallback, first exact chunk, first detailed field, fully
+detailed field set, and settled camera milestones. Its raw JSON preserves the
+pending-or-first-detail and settled profile checkpoints. It also separates selected
 and non-selected field and plant counts by near/mid/far/invisible state;
 L-system requests, completions, consumer cancellations, worker duration and
 failures; main-thread render-data builds; detailed stem, leaf, flower, produce,
-and thorn instances; billboard instances; and detailed shadow-caster
-submissions/primitive instances. Transition and steady-state samples include
+and thorn instances; billboard instances; detailed shadow-caster
+submissions/primitive instances; and active/peak generated-plant buffer
+capacity, bytes, uploads, releases, empty meshes, and orphan detections.
+Transition and steady-state samples include
 browser/rendered frames, draw and instanced calls, submitted triangles, long
-tasks, heap, and CDP task/script/layout duration.
+tasks, heap, and CDP task/script/layout duration. The steady-state record also
+captures the final `generatedPlantProfile` snapshot so work which settles after
+the transition sample is not lost.
+
+Batch instrumentation can report partial field readiness with
+`resolvedInstanceCount` and `billboardInstanceCount` on each field. The
+profiler uses those values rather than treating a whole field as either
+billboard or detailed: resolved instances contribute their detailed part
+counts, unresolved fallback instances contribute to
+`pendingNearPlantInstances` and `parts.billboardInstances`, and the
+fully-detailed milestone is reached only after every selected field has no
+billboard fallback. Each batch may also report `activeArchetypeCount` and
+`failedArchetypeCount`. The snapshot exposes their totals together with
+`detailedPlantInstanceCount` under `renderData`, plus
+`maxArchetypeCountPerBatch` for the bounded-archetype acceptance gate.
+
+The `generatedPlantProfile.pipeline` record accepts scheduler queue/current and
+peak depth, cancellation, stale-result, deduplication, and delivery counters;
+template-cache hit/miss/eviction/current and peak byte counters; and packed
+worker phase-duration and transfer-byte counters. Packed timings retain total
+and maximum values for symbol generation, render-data construction, packing,
+root batching, and the complete worker request. Scheduler and cache cumulative
+counters are rebased to each cold or warm profile session. Pass the scheduler
+snapshot as `schedulerBaseline` when starting a session. Worker cache response
+deltas are accumulated directly, so cache counters remain valid after a worker
+restart resets its internal lifetime counters. Each sub-record has
+an `observed` flag, and the Markdown report renders `n/a` rather than zero until
+the corresponding runtime integration submits a sample.
+
+`PackedPlantRenderWorkerResponseV1` consumers should pass the complete worker
+timing object rather than only its total:
+
+```ts
+recordGeneratedPlantProfilePackedWorkerResult({
+    sessionId,
+    timings: response.timings,
+    transferByteLength: response.transferByteLength,
+});
+```
+
+The legacy `buildDurationMs` input remains accepted and maps to total worker
+duration, but it cannot populate the individual phase counters. Prewarm
+instrumentation records `scheduled`, `compiling`, `ready`, `failed`,
+`timed-out`, or `cancelled` status plus duration and program counts before and
+after compilation. Detail-swap instrumentation records any subsequent compile
+count and the post-swap program count:
+
+```ts
+recordGeneratedPlantProfileShaderPrewarm({
+    durationMs,
+    programCountAfter,
+    programCountBefore,
+    status: 'ready',
+});
+recordGeneratedPlantProfilePostSwapCompilation({
+    compilationCount,
+    prewarmReady,
+    programCount,
+    sessionId,
+});
+```
+
+All asynchronous generated-plant recorders accept an optional `sessionId`
+guard. Producers should capture the value returned by
+`startGeneratedPlantProfile()` (or
+`getGeneratedPlantProfileSessionId()`) before scheduling work and pass it on
+completion, so late results from a cold pass cannot contaminate a later warm
+pass. The first detailed swap is sampled once per session. If prewarm was not
+ready, `postSwapCompilationCount` stays `null` rather than reporting a
+misleading zero. The Markdown close-up summary includes transition and steady
+renderer/CDP/GPU medians, hierarchical LOD work per update, instance-buffer
+allocation/upload metrics, render-data counts, all packed worker phase
+totals/maxima, and shader status/deduplication/duration/program evidence.
 
 When WebGL2 exposes `EXT_disjoint_timer_query_webgl2`, transition and
 steady-state samples include directional GPU elapsed-time samples. The report

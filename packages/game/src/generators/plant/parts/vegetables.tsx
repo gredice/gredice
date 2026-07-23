@@ -5,26 +5,45 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import CSM from 'three-custom-shader-material';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
+import type {
+    PackedPlantBounds,
+    PackedPlantVegetableInstances,
+} from '../lib/packedPlantRenderData';
 import type { VegetableType } from '../lib/plant-definitions';
 import { generatedPlantInstanceBufferMetrics } from '../lib/plantInstanceBufferMetrics';
-import { finalizeStaticInstanceMatrixUpload } from '../lib/plantInstanceBuffers';
-
-export interface VegetableData {
-    matrix: THREE.Matrix4;
-    type: VegetableType;
-    growth: number;
-}
+import {
+    applyPackedPlantBounds,
+    copyPackedStaticInstancedAttribute,
+    copyPackedStaticInstanceMatrices,
+    createPlantGeometryShell,
+    createStaticInstancedBufferAttribute,
+    disposePlantGeometryShell,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
+import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    type VegetableData,
+    vegetableMaterialProps,
+} from '../lib/vegetableRenderMetadata';
 
 interface VegetablesProps {
+    bounds?: PackedPlantBounds;
     seed: string;
-    vegetables: VegetableData[];
+    vegetables?: VegetableData[];
+    packed?: PackedPlantVegetableInstances[];
     animate?: boolean;
+    castShadow?: boolean;
 }
 
 interface VegetableInstanceGroup {
     type: VegetableType;
-    data: VegetableData[];
+    count: number;
+    data?: VegetableData[];
+    geometry: THREE.BufferGeometry;
+    packed?: PackedPlantVegetableInstances;
     ref: React.RefObject<THREE.InstancedMesh | null>;
+    swayPhase: THREE.InstancedBufferAttribute;
 }
 
 interface LatheProducePoint {
@@ -251,68 +270,82 @@ const vegetableGeometries: Record<VegetableType, THREE.BufferGeometry> = {
     fennel: new THREE.SphereGeometry(0.44, 12, 8),
     kohlrabi: new THREE.SphereGeometry(0.46, 12, 8),
 };
-
-export const vegetableMaterialProps: Record<
-    VegetableType,
-    { color: string; roughness: number }
-> = {
-    strawberry: { color: '#cf3f4c', roughness: 0.52 },
-    blueberry: { color: '#5366bd', roughness: 0.58 },
-    raspberry: { color: '#c33b62', roughness: 0.5 },
-    tomato: { color: '#ff4500', roughness: 0.5 },
-    cucumber: { color: '#2e591a', roughness: 0.6 },
-    bellpepper: { color: '#d42a00', roughness: 0.4 },
-    carrot: { color: '#e56a1f', roughness: 0.7 },
-    onion: { color: '#d1b28a', roughness: 0.8 },
-    eggplant: { color: '#5f3478', roughness: 0.45 },
-    zucchini: { color: '#3f6a2a', roughness: 0.6 },
-    pumpkin: { color: '#d8771e', roughness: 0.72 },
-    melon: { color: '#a7bf69', roughness: 0.7 },
-    beet: { color: '#8c2444', roughness: 0.6 },
-    radish: { color: '#d04258', roughness: 0.6 },
-    turnip: { color: '#d7d0b0', roughness: 0.7 },
-    garlic: { color: '#efe7d1', roughness: 0.8 },
-    leek: { color: '#d9e1b7', roughness: 0.75 },
-    broccoli: { color: '#3f7c2c', roughness: 0.85 },
-    cauliflower: { color: '#e7e2c8', roughness: 0.86 },
-    cabbage: { color: '#7faa55', roughness: 0.8 },
-    beanpod: { color: '#4e8a34', roughness: 0.65 },
-    peapod: { color: '#6aa848', roughness: 0.62 },
-    artichoke: { color: '#6f8c4d', roughness: 0.78 },
-    okra: { color: '#73984e', roughness: 0.68 },
-    fennel: { color: '#d6e5a3', roughness: 0.75 },
-    kohlrabi: { color: '#9fc46f', roughness: 0.74 },
-};
+const EMPTY_PACKED_VEGETABLES: PackedPlantVegetableInstances[] = [];
+const EMPTY_VEGETABLES: VegetableData[] = [];
 
 export function Vegetables({
+    bounds,
     seed,
-    vegetables,
+    vegetables = EMPTY_VEGETABLES,
+    packed = EMPTY_PACKED_VEGETABLES,
     animate = true,
+    castShadow,
 }: VegetablesProps) {
+    const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-vegetables`, {
         amplitude: 0.08,
         enabled: animate,
         speed: 1.15,
     });
     const instances = useMemo(() => {
-        const instanceMap = new Map<VegetableType, VegetableInstanceGroup>();
+        if (packed.length > 0) {
+            return packed.map(
+                (data): VegetableInstanceGroup => ({
+                    count: data.count,
+                    geometry: createPlantGeometryShell(
+                        vegetableGeometries[data.type],
+                    ),
+                    packed: data,
+                    ref: React.createRef<THREE.InstancedMesh>(),
+                    swayPhase: createStaticInstancedBufferAttribute(
+                        data.count,
+                        1,
+                    ),
+                    type: data.type,
+                }),
+            );
+        }
+
+        const instanceMap = new Map<
+            VegetableType,
+            {
+                type: VegetableType;
+                count: number;
+                data: VegetableData[];
+            }
+        >();
 
         for (const veg of vegetables) {
             const group = instanceMap.get(veg.type);
-            if (group) {
+            if (group?.data) {
                 group.data.push(veg);
+                group.count += 1;
                 continue;
             }
 
             instanceMap.set(veg.type, {
                 type: veg.type,
+                count: 1,
                 data: [veg],
-                ref: React.createRef<THREE.InstancedMesh>(),
             });
         }
 
-        return Array.from(instanceMap.values());
-    }, [vegetables]);
+        return Array.from(
+            instanceMap.values(),
+            (group): VegetableInstanceGroup => ({
+                ...group,
+                geometry: createPlantGeometryShell(
+                    vegetableGeometries[group.type],
+                ),
+                ref: React.createRef<THREE.InstancedMesh>(),
+                swayPhase: createStaticInstancedBufferAttribute(group.count, 1),
+            }),
+        );
+    }, [packed, vegetables]);
+    const instanceCount = useMemo(
+        () => instances.reduce((total, group) => total + group.count, 0),
+        [instances],
+    );
 
     // Create temporary objects to avoid creating new ones in the render loop
     const tempPosition = useMemo(() => new THREE.Vector3(), []);
@@ -329,22 +362,67 @@ export function Vegetables({
                 continue;
             }
 
-            group.data.forEach((veg, i) => {
-                const { matrix, growth } = veg;
-                matrix.decompose(tempPosition, tempQuaternion, tempScale);
-                tempScale.multiplyScalar(growth);
-                tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
-                mesh.setMatrixAt(i, tempMatrix);
-            });
-            finalizeStaticInstanceMatrixUpload(mesh, group.data.length);
-            mesh.computeBoundingBox();
-            mesh.computeBoundingSphere();
+            mesh.geometry.setAttribute('instanceSwayPhase', group.swayPhase);
+            const packedGrowthIsBaked = group.packed?.growth.every(
+                (growth) => growth === 1,
+            );
+            if (group.packed && packedGrowthIsBaked) {
+                copyPackedStaticInstanceMatrices(
+                    mesh,
+                    group.packed.matrices,
+                    group.packed.count,
+                );
+                copyPackedStaticInstancedAttribute(
+                    group.swayPhase,
+                    group.packed.swayPhases,
+                    group.packed.count,
+                );
+            } else if (group.packed) {
+                for (let index = 0; index < group.packed.count; index += 1) {
+                    tempMatrix.fromArray(group.packed.matrices, index * 16);
+                    tempMatrix.decompose(
+                        tempPosition,
+                        tempQuaternion,
+                        tempScale,
+                    );
+                    tempScale.multiplyScalar(group.packed.growth[index] ?? 1);
+                    tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
+                    mesh.setMatrixAt(index, tempMatrix);
+                }
+                finalizeStaticInstanceMatrixUpload(mesh, group.packed.count);
+                copyPackedStaticInstancedAttribute(
+                    group.swayPhase,
+                    group.packed.swayPhases,
+                    group.packed.count,
+                );
+            } else {
+                group.data?.forEach((veg, index) => {
+                    const { matrix, growth } = veg;
+                    matrix.decompose(tempPosition, tempQuaternion, tempScale);
+                    tempScale.multiplyScalar(growth);
+                    tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
+                    mesh.setMatrixAt(index, tempMatrix);
+                });
+                finalizeStaticInstanceMatrixUpload(mesh, group.count);
+                markStaticInstancedAttributeForUpload(
+                    group.swayPhase,
+                    group.count,
+                );
+            }
+            if (bounds) {
+                applyPackedPlantBounds(mesh, bounds);
+            } else {
+                mesh.computeBoundingBox();
+                mesh.computeBoundingSphere();
+            }
             unregisterAllocations.push(
                 generatedPlantInstanceBufferMetrics.register({
-                    allocatedBytes: mesh.instanceMatrix.array.byteLength,
+                    allocatedBytes:
+                        mesh.instanceMatrix.array.byteLength +
+                        group.swayPhase.array.byteLength,
                     capacity: mesh.instanceMatrix.count,
                     kind: 'vegetable',
-                    liveCount: group.data.length,
+                    liveCount: group.count,
                 }),
             );
         }
@@ -354,9 +432,28 @@ export function Vegetables({
                 unregister();
             });
         };
-    }, [instances, tempPosition, tempQuaternion, tempScale, tempMatrix]);
+    }, [
+        bounds,
+        instances,
+        tempPosition,
+        tempQuaternion,
+        tempScale,
+        tempMatrix,
+    ]);
 
-    if (vegetables.length === 0) {
+    useLayoutEffect(
+        () => () => {
+            instances.forEach((group) => {
+                disposePlantGeometryShell(
+                    group.geometry,
+                    vegetableGeometries[group.type],
+                );
+            });
+        },
+        [instances],
+    );
+
+    if (instanceCount === 0) {
         return null;
     }
 
@@ -366,12 +463,8 @@ export function Vegetables({
                 <instancedMesh
                     key={group.type}
                     ref={group.ref}
-                    args={[
-                        vegetableGeometries[group.type],
-                        undefined,
-                        group.data.length,
-                    ]}
-                    castShadow
+                    args={[group.geometry, undefined, group.count]}
+                    castShadow={shouldCastShadow}
                 >
                     <CSM
                         baseMaterial={THREE.MeshStandardMaterial}

@@ -64,7 +64,7 @@ const BILLBOARD_IDENTITY_QUATERNION = new THREE.Quaternion();
 const billboardPlaneGeometry = new THREE.PlaneGeometry(1, 1);
 const billboardCircleGeometry = new THREE.CircleGeometry(1, 18);
 
-const billboardVertexShader = /* glsl */ `
+export const billboardVertexShader = /* glsl */ `
     attribute vec3 instanceTint;
 
     varying vec3 vInstanceTint;
@@ -82,7 +82,7 @@ const billboardVertexShader = /* glsl */ `
     }
 `;
 
-const billboardFragmentShader = /* glsl */ `
+export const billboardFragmentShader = /* glsl */ `
     uniform float uOpacity;
 
     varying vec3 vInstanceTint;

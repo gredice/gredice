@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedLSystem';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import { useGameState } from '../useGameState';
+import {
+    useRemoveRaisedBedCloseupParam,
+    useSetRaisedBedCloseupParam,
+} from '../useRaisedBedCloseup';
 import {
     failGeneratedPlantProfile,
     recordGeneratedPlantProfileCamera,
@@ -18,6 +23,7 @@ type ProfileGarden = {
     raisedBeds: Array<{
         blockId?: string | null;
         id: number;
+        name?: string | null;
     }>;
     stacks: Array<{
         blocks: Block[];
@@ -71,7 +77,8 @@ export function resolveGameProfileRaisedBedTarget(
     const raisedBed = garden.raisedBeds.find(
         (candidate) => candidate.id === raisedBedId,
     );
-    if (!raisedBed?.blockId) {
+    const raisedBedName = raisedBed?.name?.trim();
+    if (!raisedBed?.blockId || !raisedBedName) {
         return null;
     }
 
@@ -85,13 +92,13 @@ export function resolveGameProfileRaisedBedTarget(
     return {
         block,
         blockId: raisedBed.blockId,
+        raisedBedName,
         raisedBedId: raisedBed.id,
     };
 }
 
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
-    const setView = useGameState((current) => current.setView);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
         (current) => current.closeupCameraActive,
@@ -100,6 +107,9 @@ export function GameProfileController() {
         (current) => current.closeupCameraSettled,
     );
     const gameCamera = useGameState((current) => current.gameCamera);
+    const { mutate: removeRaisedBedCloseupParam } =
+        useRemoveRaisedBedCloseupParam();
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
 
     useEffect(() => {
         recordGeneratedPlantProfileCamera({
@@ -136,7 +146,7 @@ export function GameProfileController() {
                 return;
             }
             if (command.action === 'close') {
-                setView({ view: 'normal' });
+                void removeRaisedBedCloseupParam();
                 return;
             }
 
@@ -157,10 +167,12 @@ export function GameProfileController() {
             }
 
             startGeneratedPlantProfile({
+                schedulerBaseline:
+                    getGeneratedPackedPlantRenderTaskSchedulerSnapshot(),
                 selectedBlockId: target.blockId,
                 selectedRaisedBedId: target.raisedBedId,
             });
-            setView({ view: 'closeup', block: target.block });
+            void setRaisedBedCloseupParam(target.raisedBedName);
         };
 
         window.addEventListener(
@@ -174,7 +186,7 @@ export function GameProfileController() {
             );
             resetGeneratedPlantProfile();
         };
-    }, [garden, setView]);
+    }, [garden, removeRaisedBedCloseupParam, setRaisedBedCloseupParam]);
 
     return null;
 }

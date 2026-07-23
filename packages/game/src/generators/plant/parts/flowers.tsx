@@ -1,17 +1,34 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
 import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
-import { finalizeStaticInstanceMatrixUpload } from '../lib/plantInstanceBuffers';
+import type {
+    PackedPlantBounds,
+    PackedPlantMatrixInstances,
+} from '../lib/packedPlantRenderData';
+import {
+    applyPackedPlantBounds,
+    copyPackedStaticInstancedAttribute,
+    copyPackedStaticInstanceMatrices,
+    createPlantGeometryShell,
+    createStaticInstancedBufferAttribute,
+    disposePlantGeometryShell,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
+import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
 
 interface FlowersProps {
+    bounds?: PackedPlantBounds;
     seed: string;
-    matrices: THREE.Matrix4[];
+    matrices?: THREE.Matrix4[];
+    packed?: PackedPlantMatrixInstances;
     color: string;
     animate?: boolean;
+    castShadow?: boolean;
 }
 
 const flowerGeometry = (() => {
@@ -27,23 +44,38 @@ const flowerGeometry = (() => {
     }
     return new THREE.ShapeGeometry(shape);
 })();
+const EMPTY_FLOWER_MATRICES: THREE.Matrix4[] = [];
 
 export function Flowers({
+    bounds,
     seed,
-    matrices,
+    matrices = EMPTY_FLOWER_MATRICES,
+    packed,
     color,
     animate = true,
+    castShadow,
 }: FlowersProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = matrices.length;
+    const instanceCount = packed?.count ?? matrices.length;
+    const instanceCapacity = instanceCount;
+    const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
+    const geometry = useMemo(
+        () => createPlantGeometryShell(flowerGeometry),
+        [],
+    );
+    const swayPhase = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
+        [instanceCapacity],
+    );
     const swayUniforms = usePlantSway(`${seed}-flowers`, {
         amplitude: 0.14,
         enabled: animate,
         speed: 1.6,
     });
     usePlantInstanceBufferMetrics({
+        extraAllocatedBytes: swayPhase.array.byteLength,
         kind: 'flower',
-        liveCount: matrices.length,
+        liveCount: instanceCount,
         meshRef: ref,
     });
 
@@ -52,23 +84,47 @@ export function Flowers({
         if (!mesh) {
             return;
         }
-        matrices.forEach((matrix, i) => {
-            mesh.setMatrixAt(i, matrix);
-        });
-        finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
-        mesh.computeBoundingBox();
-        mesh.computeBoundingSphere();
-    }, [matrices]);
+        mesh.geometry.setAttribute('instanceSwayPhase', swayPhase);
+        if (packed) {
+            copyPackedStaticInstanceMatrices(
+                mesh,
+                packed.matrices,
+                packed.count,
+            );
+            copyPackedStaticInstancedAttribute(
+                swayPhase,
+                packed.swayPhases,
+                packed.count,
+            );
+        } else {
+            matrices.forEach((matrix, i) => {
+                mesh.setMatrixAt(i, matrix);
+            });
+            finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
+            markStaticInstancedAttributeForUpload(swayPhase, matrices.length);
+        }
+        if (bounds) {
+            applyPackedPlantBounds(mesh, bounds);
+        } else {
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
+        }
+    }, [bounds, matrices, packed, swayPhase]);
 
-    if (matrices.length === 0) {
+    useLayoutEffect(
+        () => () => disposePlantGeometryShell(geometry, flowerGeometry),
+        [geometry],
+    );
+
+    if (instanceCount === 0) {
         return null;
     }
 
     return (
         <instancedMesh
             ref={ref}
-            args={[flowerGeometry, undefined, instanceCapacity]}
-            castShadow
+            args={[geometry, undefined, instanceCapacity]}
+            castShadow={shouldCastShadow}
         >
             <CSM
                 baseMaterial={THREE.MeshBasicMaterial}

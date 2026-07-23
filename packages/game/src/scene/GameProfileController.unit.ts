@@ -20,6 +20,9 @@ test('profile closeup command validates the deterministic raised bed id', () => 
     assert.deepEqual(readGameProfileCloseupCommand({ action: 'close' }), {
         action: 'close',
     });
+    assert.deepEqual(readGameProfileCloseupCommand({ action: 'reset' }), {
+        action: 'reset',
+    });
     assert.equal(
         readGameProfileCloseupCommand({ action: 'open', raisedBedId: 0 }),
         null,
@@ -37,6 +40,7 @@ test('profile target resolution uses the raised bed primary block', () => {
                 {
                     blockId: firstBlock.id,
                     id: 29,
+                    name: '  Profile raised bed 29  ',
                 },
             ],
             stacks: [{ blocks: [firstBlock] }],
@@ -47,15 +51,38 @@ test('profile target resolution uses the raised bed primary block', () => {
     assert.deepEqual(target, {
         block: firstBlock,
         blockId: firstBlock.id,
+        raisedBedName: 'Profile raised bed 29',
         raisedBedId: 29,
     });
     assert.equal(
         resolveGameProfileRaisedBedTarget(
             {
-                raisedBeds: [{ blockId: 'missing', id: 2 }],
+                raisedBeds: [
+                    {
+                        blockId: 'missing',
+                        id: 2,
+                        name: 'Missing profile bed',
+                    },
+                ],
                 stacks: [{ blocks: [firstBlock] }],
             },
             2,
+        ),
+        null,
+    );
+    assert.equal(
+        resolveGameProfileRaisedBedTarget(
+            {
+                raisedBeds: [
+                    {
+                        blockId: firstBlock.id,
+                        id: 3,
+                        name: '   ',
+                    },
+                ],
+                stacks: [{ blocks: [firstBlock] }],
+            },
+            3,
         ),
         null,
     );

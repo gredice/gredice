@@ -1,5 +1,6 @@
 'use client';
 
+import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { GameQualityProfileTier } from './gameQuality';
 
 export type GeneratedPlantProfilePartCounts = {
@@ -15,6 +16,7 @@ export type GeneratedPlantProfilePartCounts = {
 
 export type GeneratedPlantProfileRenderCounts = {
     detailedFields: number;
+    detailedPlantInstances: number;
     farFields: number;
     farPlantInstances: number;
     invisibleFields: number;
@@ -30,6 +32,83 @@ export type GeneratedPlantProfileRenderCounts = {
     totalPlantInstances: number;
 };
 
+export type GeneratedPlantShaderPrewarmStatus =
+    | 'cancelled'
+    | 'compiling'
+    | 'failed'
+    | 'idle'
+    | 'ready'
+    | 'scheduled'
+    | 'timed-out';
+
+export type GeneratedPlantProfilePipelineCounts = {
+    packedWorker: {
+        buildCount: number;
+        buildDurationMaxMs: number;
+        buildDurationTotalMs: number;
+        observed: boolean;
+        packingDurationMaxMs: number;
+        packingDurationTotalMs: number;
+        renderDataBuildDurationMaxMs: number;
+        renderDataBuildDurationTotalMs: number;
+        rootBatchingDurationMaxMs: number;
+        rootBatchingDurationTotalMs: number;
+        symbolGenerationDurationMaxMs: number;
+        symbolGenerationDurationTotalMs: number;
+        totalDurationMaxMs: number;
+        totalDurationTotalMs: number;
+        transferByteLengthMax: number;
+        transferByteLengthTotal: number;
+        transferCount: number;
+    };
+    scheduler: {
+        activeSubscriberCount: number;
+        cancelledSubscriberCount: number;
+        completedTaskCount: number;
+        deduplicatedSubscriberCount: number;
+        deliveredSubscriberCount: number;
+        enqueuedTaskCount: number;
+        failedTaskCount: number;
+        focusedPromotionCount: number;
+        focusedQueuedTaskCount: number;
+        inFlightTaskCount: number;
+        lifetimePeakQueuedTaskCount: number;
+        observed: boolean;
+        peakQueuedTaskCount: number;
+        priorityPromotionCount: number;
+        queuedTaskCount: number;
+        queuedTaskRemovalCount: number;
+        staleResultCount: number;
+        startedTaskCount: number;
+        submittedSubscriberCount: number;
+    };
+    shaderPrewarm: {
+        deduplicated: boolean | null;
+        durationMs: number | null;
+        observed: boolean;
+        postSwapCompilationCount: number | null;
+        postSwapProgramCount: number | null;
+        programCountAfter: number | null;
+        programCountBefore: number | null;
+        readyAtFirstDetailSwap: boolean | null;
+        status: GeneratedPlantShaderPrewarmStatus;
+    };
+    templateCache: {
+        entryCount: number;
+        estimatedBytes: number;
+        evictionCount: number;
+        hitCount: number;
+        lifetimePeakEstimatedBytes: number;
+        maxEntryCount: number;
+        maxEstimatedBytes: number;
+        missCount: number;
+        observed: boolean;
+        oversizeSkipCount: number;
+        peakEstimatedBytes: number;
+        writeCount: number;
+    };
+};
+
 export type GeneratedPlantProfileSnapshot = {
     active: boolean;
     camera: {
@@ -39,6 +118,7 @@ export type GeneratedPlantProfileSnapshot = {
         zoom: number | null;
     };
     error: string | null;
+    instanceBuffers: PlantInstanceBufferMetricsSnapshot;
     lSystem: {
         cancelledTaskCount: number;
         completedTaskCount: number;
@@ -50,22 +130,33 @@ export type GeneratedPlantProfileSnapshot = {
         workerTaskCount: number;
     };
     lodEvaluation: {
+        durationMaxMs: number;
+        durationTotalMs: number;
         fieldEvaluationCount: number;
+        fieldProjectionTestCount: number;
+        groupRejectionCount: number;
+        groupTestCount: number;
         updateCount: number;
     };
     milestonesMs: {
         cameraSettled: number | null;
+        firstDetailedChunk: number | null;
         firstDetailedField: number | null;
         fullyDetailed: number | null;
         nearIntent: number | null;
         pendingNear: number | null;
     };
     nonSelected: GeneratedPlantProfileRenderCounts;
+    pipeline: GeneratedPlantProfilePipelineCounts;
     renderData: {
+        activeArchetypeCount: number;
         buildCount: number;
         buildDurationMaxMs: number;
         buildDurationTotalMs: number;
         builtPlantInstanceCount: number;
+        detailedPlantInstanceCount: number;
+        failedArchetypeCount: number;
+        maxArchetypeCountPerBatch: number;
     };
     selected: GeneratedPlantProfileRenderCounts;
     selectedBlockId: string;

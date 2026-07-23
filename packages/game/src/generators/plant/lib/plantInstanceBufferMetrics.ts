@@ -20,8 +20,10 @@ export interface PlantInstanceBufferMetricsSnapshot {
     activeLiveCount: number;
     activeMeshCount: number;
     bufferUploadCount: number;
+    orphanedResourceCount: number;
     peakAllocatedBytes: number;
     peakCapacity: number;
+    releasedAllocationCount: number;
     uploadedBytes: number;
 }
 
@@ -37,12 +39,47 @@ export class PlantInstanceBufferMetrics {
         PlantInstanceBufferAllocation
     >();
     private bufferUploadCount = 0;
+    private enabled: boolean;
     private nextAllocationId = 0;
+    private orphanedResourceCount = 0;
     private peakAllocatedBytes = 0;
     private peakCapacity = 0;
+    private releasedAllocationCount = 0;
     private uploadedBytes = 0;
 
+    constructor(enabled = true) {
+        this.enabled = enabled;
+    }
+
+    setEnabled(enabled: boolean) {
+        if (!enabled) {
+            this.enabled = false;
+            this.allocations.clear();
+            this.resetCounters();
+            return;
+        }
+
+        this.enabled = true;
+        this.resetCounters();
+        const snapshot = this.snapshot();
+        this.peakAllocatedBytes = snapshot.activeAllocatedBytes;
+        this.peakCapacity = snapshot.activeCapacity;
+    }
+
+    private resetCounters() {
+        this.bufferUploadCount = 0;
+        this.orphanedResourceCount = 0;
+        this.peakAllocatedBytes = 0;
+        this.peakCapacity = 0;
+        this.releasedAllocationCount = 0;
+        this.uploadedBytes = 0;
+    }
+
     register(allocation: PlantInstanceBufferAllocation) {
+        if (!this.enabled) {
+            return () => {};
+        }
+
         assertNonNegativeInteger(
             allocation.allocatedBytes,
             'Plant instance-buffer allocated bytes',
@@ -74,12 +111,25 @@ export class PlantInstanceBufferMetrics {
             snapshot.activeCapacity,
         );
 
+        let active = true;
         return () => {
-            this.allocations.delete(id);
+            if (!active) {
+                return;
+            }
+            active = false;
+            if (this.allocations.delete(id)) {
+                this.releasedAllocationCount += 1;
+            } else if (this.enabled) {
+                this.orphanedResourceCount += 1;
+            }
         };
     }
 
     recordUpload(uploadedBytes: number) {
+        if (!this.enabled) {
+            return;
+        }
+
         assertNonNegativeInteger(
             uploadedBytes,
             'Plant instance-buffer uploaded bytes',
@@ -114,18 +164,26 @@ export class PlantInstanceBufferMetrics {
             activeLiveCount,
             activeMeshCount: this.allocations.size,
             bufferUploadCount: this.bufferUploadCount,
+            orphanedResourceCount: this.orphanedResourceCount,
             peakAllocatedBytes: Math.max(
                 this.peakAllocatedBytes,
                 activeAllocatedBytes,
             ),
             peakCapacity: Math.max(this.peakCapacity, activeCapacity),
+            releasedAllocationCount: this.releasedAllocationCount,
             uploadedBytes: this.uploadedBytes,
         };
     }
 }
 
 export const generatedPlantInstanceBufferMetrics =
-    new PlantInstanceBufferMetrics();
+    new PlantInstanceBufferMetrics(false);
+
+export function setGeneratedPlantInstanceBufferMetricsEnabled(
+    enabled: boolean,
+) {
+    generatedPlantInstanceBufferMetrics.setEnabled(enabled);
+}
 
 /** Read-only polling entrypoint for scene/profile reporters. */
 export function getGeneratedPlantInstanceBufferMetricsSnapshot() {

@@ -233,7 +233,7 @@ const plantCloseupScenarios = [
         isMobile: false,
         budget: 'gameDensePlants',
         plantCloseup: {
-            repeat: 3,
+            repeat: 5,
             raisedBedId: 29,
         },
     },
@@ -245,7 +245,7 @@ const plantCloseupScenarios = [
         isMobile: true,
         budget: 'gameDensePlantsMobile',
         plantCloseup: {
-            repeat: 3,
+            repeat: 5,
             raisedBedId: 29,
         },
         ...constrainedAutoQualityDevice,
@@ -514,6 +514,9 @@ function parseArgs(argv) {
     const options = {
         baseUrl: process.env.GAME_PROFILE_BASE_URL ?? defaultBaseUrl,
         build: process.env.GAME_PROFILE_BUILD === '1',
+        closeupRepeat: process.env.GAME_PROFILE_CLOSEUP_REPEAT
+            ? Number(process.env.GAME_PROFILE_CLOSEUP_REPEAT)
+            : null,
         closeupTimeoutMs: Number(
             process.env.GAME_PROFILE_CLOSEUP_TIMEOUT_MS ?? 30000,
         ),
@@ -549,6 +552,10 @@ function parseArgs(argv) {
                 break;
             case '--closeup-timeout-ms':
                 options.closeupTimeoutMs = Number(next);
+                index += 1;
+                break;
+            case '--closeup-repeat':
+                options.closeupRepeat = Number(next);
                 index += 1;
                 break;
             case '--fail-on-budget':
@@ -607,6 +614,13 @@ function parseArgs(argv) {
         throw new Error('Close-up timeout must be a positive number.');
     }
 
+    if (
+        options.closeupRepeat !== null &&
+        (!Number.isInteger(options.closeupRepeat) || options.closeupRepeat <= 0)
+    ) {
+        throw new Error('Close-up repeat count must be a positive integer.');
+    }
+
     if (!Number.isFinite(options.soakMs) || options.soakMs < 0) {
         throw new Error('Soak duration must be zero or a positive number.');
     }
@@ -626,6 +640,7 @@ function printHelp(options) {
             'Options:',
             `  --base-url <url>       Garden server URL. Current: ${options.baseUrl}`,
             '  --build                Run pnpm run build before profiling.',
+            `  --closeup-repeat <n>   Override close-up scenario repeats. Current: ${options.closeupRepeat ?? 'scenario default'}`,
             `  --closeup-timeout-ms <ms> Maximum wait for close-up detail. Current: ${options.closeupTimeoutMs}`,
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
@@ -641,7 +656,7 @@ function printHelp(options) {
             '',
             'Environment aliases:',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
-            '  GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
+            '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -1359,9 +1374,12 @@ async function runPlantCloseupPass({
     await waitForProfileSession(page, raisedBedId, options.closeupTimeoutMs);
 
     let pendingScreenshotPath = null;
+    let pendingProfile = null;
     let timedOut = false;
     try {
         await waitForPendingOrDetailed(page, options.closeupTimeoutMs);
+        pendingProfile = (await readGameProfileRuntime(page))
+            ?.generatedPlantProfile;
         const pending = await page.evaluate(
             () =>
                 (globalThis.__grediceGameProfile?.generatedPlantProfile
@@ -1418,6 +1436,8 @@ async function runPlantCloseupPass({
     const steadyCdpAfter = metricsByName(
         await cdp.send('Performance.getMetrics'),
     );
+    const steadyProfile = (await readGameProfileRuntime(page))
+        ?.generatedPlantProfile;
 
     return {
         detailOutcome: transitionProfile?.error
@@ -1428,12 +1448,17 @@ async function runPlantCloseupPass({
                 ? 'timed-out'
                 : 'incomplete',
         profile: transitionProfile ?? null,
+        progressiveCheckpoints: {
+            pendingOrFirstDetail: pendingProfile ?? null,
+            settled: transitionProfile ?? null,
+        },
         screenshots: {
             detailed: detailedScreenshotPath,
             pendingNear: pendingScreenshotPath,
         },
         steady: {
             cdp: diffCdpMetrics(steadyCdpBefore, steadyCdpAfter),
+            profile: steadyProfile ?? transitionProfile ?? null,
             sample: steady,
         },
         transition: {
@@ -2100,6 +2125,502 @@ function median(values) {
         : finiteValues[middle];
 }
 
+function buildPlantPipelineMedians(runs, phase) {
+    const profile = (run) =>
+        run.closeup[phase].steady?.profile ??
+        run.closeup[phase].profile ??
+        undefined;
+    const pipeline = (run) => profile(run)?.pipeline;
+    const packedWorker = (run) => {
+        const value = pipeline(run)?.packedWorker;
+        return value?.observed ? value : undefined;
+    };
+    const scheduler = (run) => {
+        const value = pipeline(run)?.scheduler;
+        return value?.observed ? value : undefined;
+    };
+    const templateCache = (run) => {
+        const value = pipeline(run)?.templateCache;
+        return value?.observed ? value : undefined;
+    };
+    const shaderPrewarm = (run) => {
+        const value = pipeline(run)?.shaderPrewarm;
+        return value?.observed ? value : undefined;
+    };
+    const shaderPrewarmStatusCounts = Object.fromEntries(
+        Array.from(
+            Map.groupBy(
+                runs.map((run) => shaderPrewarm(run)?.status).filter(Boolean),
+                (status) => status,
+            ),
+            ([status, values]) => [status, values.length],
+        ),
+    );
+
+    return {
+        packedBuildCount: round(
+            median(runs.map((run) => packedWorker(run)?.buildCount)),
+        ),
+        packedBuildDurationMaxMs: round(
+            median(runs.map((run) => packedWorker(run)?.buildDurationMaxMs)),
+        ),
+        packedBuildDurationTotalMs: round(
+            median(runs.map((run) => packedWorker(run)?.buildDurationTotalMs)),
+        ),
+        packedPackingDurationMaxMs: round(
+            median(runs.map((run) => packedWorker(run)?.packingDurationMaxMs)),
+        ),
+        packedPackingDurationTotalMs: round(
+            median(
+                runs.map((run) => packedWorker(run)?.packingDurationTotalMs),
+            ),
+        ),
+        packedRenderDataBuildDurationMaxMs: round(
+            median(
+                runs.map(
+                    (run) => packedWorker(run)?.renderDataBuildDurationMaxMs,
+                ),
+            ),
+        ),
+        packedRenderDataBuildDurationTotalMs: round(
+            median(
+                runs.map(
+                    (run) => packedWorker(run)?.renderDataBuildDurationTotalMs,
+                ),
+            ),
+        ),
+        packedRootBatchingDurationMaxMs: round(
+            median(
+                runs.map((run) => packedWorker(run)?.rootBatchingDurationMaxMs),
+            ),
+        ),
+        packedRootBatchingDurationTotalMs: round(
+            median(
+                runs.map(
+                    (run) => packedWorker(run)?.rootBatchingDurationTotalMs,
+                ),
+            ),
+        ),
+        packedSymbolGenerationDurationMaxMs: round(
+            median(
+                runs.map(
+                    (run) => packedWorker(run)?.symbolGenerationDurationMaxMs,
+                ),
+            ),
+        ),
+        packedSymbolGenerationDurationTotalMs: round(
+            median(
+                runs.map(
+                    (run) => packedWorker(run)?.symbolGenerationDurationTotalMs,
+                ),
+            ),
+        ),
+        packedTotalDurationMaxMs: round(
+            median(runs.map((run) => packedWorker(run)?.totalDurationMaxMs)),
+        ),
+        packedTotalDurationTotalMs: round(
+            median(runs.map((run) => packedWorker(run)?.totalDurationTotalMs)),
+        ),
+        packedTransferByteLengthMax: round(
+            median(runs.map((run) => packedWorker(run)?.transferByteLengthMax)),
+        ),
+        packedTransferByteLengthTotal: round(
+            median(
+                runs.map((run) => packedWorker(run)?.transferByteLengthTotal),
+            ),
+        ),
+        packedTransferCount: round(
+            median(runs.map((run) => packedWorker(run)?.transferCount)),
+        ),
+        schedulerCancelledSubscriberCount: round(
+            median(runs.map((run) => scheduler(run)?.cancelledSubscriberCount)),
+        ),
+        schedulerDeduplicatedSubscriberCount: round(
+            median(
+                runs.map((run) => scheduler(run)?.deduplicatedSubscriberCount),
+            ),
+        ),
+        schedulerPeakQueuedTaskCount: round(
+            median(runs.map((run) => scheduler(run)?.peakQueuedTaskCount)),
+        ),
+        schedulerStaleResultCount: round(
+            median(runs.map((run) => scheduler(run)?.staleResultCount)),
+        ),
+        shaderPrewarmDurationMs: round(
+            median(runs.map((run) => shaderPrewarm(run)?.durationMs)),
+        ),
+        shaderPrewarmDeduplicatedRunCount: runs.filter(
+            (run) => shaderPrewarm(run)?.deduplicated === true,
+        ).length,
+        shaderPrewarmObservedRunCount: runs.filter((run) =>
+            Boolean(shaderPrewarm(run)),
+        ).length,
+        shaderPrewarmPostSwapCompilationCount: round(
+            median(
+                runs.map((run) => shaderPrewarm(run)?.postSwapCompilationCount),
+            ),
+        ),
+        shaderPrewarmPostSwapProgramCount: round(
+            median(runs.map((run) => shaderPrewarm(run)?.postSwapProgramCount)),
+        ),
+        shaderPrewarmReadyAtFirstDetailSwapRunCount: runs.filter(
+            (run) => shaderPrewarm(run)?.readyAtFirstDetailSwap === true,
+        ).length,
+        shaderPrewarmProgramCountAfter: round(
+            median(runs.map((run) => shaderPrewarm(run)?.programCountAfter)),
+        ),
+        shaderPrewarmProgramCountBefore: round(
+            median(runs.map((run) => shaderPrewarm(run)?.programCountBefore)),
+        ),
+        shaderPrewarmStatusCounts,
+        templateCacheEstimatedBytes: round(
+            median(runs.map((run) => templateCache(run)?.estimatedBytes)),
+        ),
+        templateCacheEvictionCount: round(
+            median(runs.map((run) => templateCache(run)?.evictionCount)),
+        ),
+        templateCacheHitCount: round(
+            median(runs.map((run) => templateCache(run)?.hitCount)),
+        ),
+        templateCacheMissCount: round(
+            median(runs.map((run) => templateCache(run)?.missCount)),
+        ),
+    };
+}
+
+function buildPlantRenderDataMedians(runs, phase) {
+    const renderData = (run) =>
+        (
+            run.closeup[phase].steady?.profile ??
+            run.closeup[phase].profile ??
+            undefined
+        )?.renderData;
+
+    return {
+        activeArchetypeCount: round(
+            median(runs.map((run) => renderData(run)?.activeArchetypeCount)),
+        ),
+        buildCount: round(
+            median(runs.map((run) => renderData(run)?.buildCount)),
+        ),
+        buildDurationMaxMs: round(
+            median(runs.map((run) => renderData(run)?.buildDurationMaxMs)),
+        ),
+        buildDurationTotalMs: round(
+            median(runs.map((run) => renderData(run)?.buildDurationTotalMs)),
+        ),
+        builtPlantInstanceCount: round(
+            median(runs.map((run) => renderData(run)?.builtPlantInstanceCount)),
+        ),
+        detailedPlantInstanceCount: round(
+            median(
+                runs.map((run) => renderData(run)?.detailedPlantInstanceCount),
+            ),
+        ),
+        failedArchetypeCount: round(
+            median(runs.map((run) => renderData(run)?.failedArchetypeCount)),
+        ),
+        maxArchetypeCountPerBatch: round(
+            median(
+                runs.map((run) => renderData(run)?.maxArchetypeCountPerBatch),
+            ),
+        ),
+    };
+}
+
+function buildPlantInstanceBufferMedians(runs, phase) {
+    const instanceBuffers = (run) =>
+        (
+            run.closeup[phase].steady?.profile ??
+            run.closeup[phase].profile ??
+            undefined
+        )?.instanceBuffers;
+    const medianField = (field) =>
+        round(median(runs.map((run) => instanceBuffers(run)?.[field])));
+
+    return {
+        activeAllocatedBytes: medianField('activeAllocatedBytes'),
+        activeCapacity: medianField('activeCapacity'),
+        activeEmptyMeshCount: medianField('activeEmptyMeshCount'),
+        activeLiveCount: medianField('activeLiveCount'),
+        activeMeshCount: medianField('activeMeshCount'),
+        bufferUploadCount: medianField('bufferUploadCount'),
+        orphanedResourceCount: medianField('orphanedResourceCount'),
+        peakAllocatedBytes: medianField('peakAllocatedBytes'),
+        peakCapacity: medianField('peakCapacity'),
+        releasedAllocationCount: medianField('releasedAllocationCount'),
+        uploadedBytes: medianField('uploadedBytes'),
+    };
+}
+
+function buildPlantLodMedians(runs, phase) {
+    const lodEvaluation = (run) =>
+        (
+            run.closeup[phase].steady?.profile ??
+            run.closeup[phase].profile ??
+            undefined
+        )?.lodEvaluation;
+
+    const perUpdate = (run, key) => {
+        const evaluation = lodEvaluation(run);
+        const updateCount = evaluation?.updateCount;
+        const value = evaluation?.[key];
+        return Number.isFinite(value) &&
+            Number.isFinite(updateCount) &&
+            updateCount > 0
+            ? value / updateCount
+            : null;
+    };
+    const rejectionRatio = (run) => {
+        const evaluation = lodEvaluation(run);
+        const groupTestCount = evaluation?.groupTestCount;
+        const groupRejectionCount = evaluation?.groupRejectionCount;
+        return Number.isFinite(groupRejectionCount) &&
+            Number.isFinite(groupTestCount) &&
+            groupTestCount > 0
+            ? groupRejectionCount / groupTestCount
+            : null;
+    };
+
+    return {
+        durationPerUpdateMs: round(
+            median(runs.map((run) => perUpdate(run, 'durationTotalMs'))),
+        ),
+        durationMaxMs: round(
+            median(runs.map((run) => lodEvaluation(run)?.durationMaxMs)),
+        ),
+        durationTotalMs: round(
+            median(runs.map((run) => lodEvaluation(run)?.durationTotalMs)),
+        ),
+        fieldEvaluationCount: round(
+            median(runs.map((run) => lodEvaluation(run)?.fieldEvaluationCount)),
+        ),
+        fieldProjectionTestCount: round(
+            median(
+                runs.map((run) => lodEvaluation(run)?.fieldProjectionTestCount),
+            ),
+        ),
+        fieldProjectionTestsPerUpdate: round(
+            median(
+                runs.map((run) => perUpdate(run, 'fieldProjectionTestCount')),
+            ),
+        ),
+        groupRejectionCount: round(
+            median(runs.map((run) => lodEvaluation(run)?.groupRejectionCount)),
+        ),
+        groupRejectionRatio: round(
+            median(runs.map((run) => rejectionRatio(run))),
+            3,
+        ),
+        groupTestCount: round(
+            median(runs.map((run) => lodEvaluation(run)?.groupTestCount)),
+        ),
+        updateCount: round(
+            median(runs.map((run) => lodEvaluation(run)?.updateCount)),
+        ),
+    };
+}
+
+function buildPlantCloseupSampleMedians(runs, phase, sampleKind) {
+    const measurement = (run) => run.closeup[phase][sampleKind];
+    const sample = (run) => measurement(run)?.sample;
+    const cdp = (run) => measurement(run)?.cdp;
+    const instancedCallsPerRenderedFrame = (run) => {
+        const value = sample(run);
+        return value?.renderedFrames > 0
+            ? value.instancedDrawCalls / value.renderedFrames
+            : null;
+    };
+
+    return {
+        cdpJsHeapMb: round(median(runs.map((run) => cdp(run)?.jsHeapMb)), 1),
+        cdpLayoutDuration: round(
+            median(runs.map((run) => cdp(run)?.layoutDuration)),
+            4,
+        ),
+        cdpScriptDuration: round(
+            median(runs.map((run) => cdp(run)?.scriptDuration)),
+            4,
+        ),
+        cdpTaskDuration: round(
+            median(runs.map((run) => cdp(run)?.taskDuration)),
+            4,
+        ),
+        drawCallsPerRenderedFrame: round(
+            median(runs.map((run) => sample(run)?.drawCallsPerRenderedFrame)),
+            1,
+        ),
+        gpuElapsedMaxMs: round(
+            median(runs.map((run) => sample(run)?.gpu?.elapsedMaxMs)),
+        ),
+        gpuElapsedP95Ms: round(
+            median(runs.map((run) => sample(run)?.gpu?.elapsedP95Ms)),
+        ),
+        gpuSupportedRunCount: runs.filter(
+            (run) => sample(run)?.gpu?.supported === true,
+        ).length,
+        instancedCallsPerRenderedFrame: round(
+            median(runs.map(instancedCallsPerRenderedFrame)),
+            1,
+        ),
+        jsHeapMb: round(median(runs.map((run) => sample(run)?.jsHeapMb)), 1),
+        longTaskCount: round(
+            median(runs.map((run) => sample(run)?.longTaskCount)),
+        ),
+        longTaskTotalMs: round(
+            median(runs.map((run) => sample(run)?.longTaskTotalMs)),
+        ),
+        maxFrameMs: round(median(runs.map((run) => sample(run)?.maxFrameMs))),
+        p95FrameMs: round(median(runs.map((run) => sample(run)?.p95FrameMs))),
+        renderedFps: round(
+            median(runs.map((run) => sample(run)?.renderedFps)),
+            1,
+        ),
+        trianglesPerRenderedFrame: round(
+            median(runs.map((run) => sample(run)?.trianglesPerRenderedFrame)),
+        ),
+    };
+}
+
+function buildPlantCloseupAcceptance(runs) {
+    const measurements = runs.flatMap((run) =>
+        ['cold', 'warm'].map((phase) => ({
+            measurement: run.closeup[phase],
+            phase,
+            profile:
+                run.closeup[phase].steady?.profile ??
+                run.closeup[phase].profile ??
+                null,
+        })),
+    );
+    const count = (predicate) =>
+        measurements.filter(({ measurement, phase, profile }) =>
+            predicate({ measurement, phase, profile }),
+        ).length;
+    const medianProfileField = (select) =>
+        round(median(measurements.map(({ profile }) => select(profile))));
+    const projectionReductionRatio = ({ profile }) => {
+        const updateCount = profile?.lodEvaluation.updateCount;
+        const projected = profile?.lodEvaluation.fieldProjectionTestCount;
+        const totalFields =
+            (profile?.selected?.totalFields ?? 0) +
+            (profile?.nonSelected?.totalFields ?? 0);
+        const unculledProjectionCount = totalFields * (updateCount ?? 0);
+        return Number.isFinite(projected) && unculledProjectionCount > 0
+            ? 1 - projected / unculledProjectionCount
+            : null;
+    };
+    const warmCacheHitRatio = ({ phase, profile }) => {
+        if (phase !== 'warm') {
+            return null;
+        }
+        const hits = profile?.pipeline.templateCache.hitCount;
+        const misses = profile?.pipeline.templateCache.missCount;
+        const total = (hits ?? 0) + (misses ?? 0);
+        return Number.isFinite(hits) && total > 0 ? hits / total : null;
+    };
+    const phaseCount = measurements.length;
+    const detailReadyPhaseCount = count(
+        ({ measurement }) => measurement.detailOutcome === 'ready',
+    );
+    const selectedExactPhaseCount = count(
+        ({ profile }) =>
+            profile?.selected?.totalFields === 18 &&
+            profile.selected.nearFields === 18 &&
+            profile.selected.detailedFields === 18,
+    );
+    const backgroundNearZeroPhaseCount = count(
+        ({ profile }) => profile?.nonSelected?.nearFields === 0,
+    );
+    const archetypeBoundedPhaseCount = count(
+        ({ profile }) =>
+            Number.isFinite(profile?.renderData?.maxArchetypeCountPerBatch) &&
+            profile.renderData.maxArchetypeCountPerBatch <= 4,
+    );
+    const exactCapacityPhaseCount = count(
+        ({ profile }) =>
+            Number.isFinite(profile?.instanceBuffers?.activeLiveCount) &&
+            profile.instanceBuffers.activeLiveCount > 0 &&
+            profile.instanceBuffers.activeLiveCount ===
+                profile.instanceBuffers.activeCapacity,
+    );
+    const cleanResourcePhaseCount = count(
+        ({ profile }) =>
+            profile?.instanceBuffers?.activeEmptyMeshCount === 0 &&
+            profile.instanceBuffers.orphanedResourceCount === 0,
+    );
+    const shaderReadyPhaseCount = count(
+        ({ profile }) =>
+            profile?.pipeline?.shaderPrewarm?.readyAtFirstDetailSwap === true &&
+            profile.pipeline.shaderPrewarm.postSwapCompilationCount === 0,
+    );
+    const workerFailureFreePhaseCount = count(
+        ({ profile }) => profile?.lSystem?.workerFailureCount === 0,
+    );
+    const groupRejectionRatio = round(
+        median(
+            measurements.map(({ profile }) => {
+                const rejected = profile?.lodEvaluation?.groupRejectionCount;
+                const tested = profile?.lodEvaluation?.groupTestCount;
+                return Number.isFinite(rejected) &&
+                    Number.isFinite(tested) &&
+                    tested > 0
+                    ? rejected / tested
+                    : null;
+            }),
+        ),
+        3,
+    );
+    const projectionReduction = round(
+        median(measurements.map(projectionReductionRatio)),
+        3,
+    );
+    const warmCacheHit = round(median(measurements.map(warmCacheHitRatio)), 3);
+
+    return {
+        archetypeBoundedPhaseCount,
+        backgroundNearFieldCount: medianProfileField(
+            (profile) => profile?.nonSelected?.nearFields,
+        ),
+        backgroundNearZeroPhaseCount,
+        cleanResourcePhaseCount,
+        detailReadyPhaseCount,
+        exactCapacityPhaseCount,
+        groupRejectionRatio,
+        maxArchetypeCountPerBatch: medianProfileField(
+            (profile) => profile?.renderData?.maxArchetypeCountPerBatch,
+        ),
+        pass:
+            phaseCount > 0 &&
+            detailReadyPhaseCount === phaseCount &&
+            selectedExactPhaseCount === phaseCount &&
+            backgroundNearZeroPhaseCount === phaseCount &&
+            archetypeBoundedPhaseCount === phaseCount &&
+            exactCapacityPhaseCount === phaseCount &&
+            cleanResourcePhaseCount === phaseCount &&
+            shaderReadyPhaseCount === phaseCount &&
+            workerFailureFreePhaseCount === phaseCount &&
+            (groupRejectionRatio ?? 0) >= 0.7 &&
+            (projectionReduction ?? 0) >= 0.7 &&
+            (warmCacheHit ?? 0) >= 0.9,
+        phaseCount,
+        projectionReductionRatio: projectionReduction,
+        selectedDetailedFieldCount: medianProfileField(
+            (profile) => profile?.selected?.detailedFields,
+        ),
+        selectedExactPhaseCount,
+        selectedNearFieldCount: medianProfileField(
+            (profile) => profile?.selected?.nearFields,
+        ),
+        selectedTotalFieldCount: medianProfileField(
+            (profile) => profile?.selected?.totalFields,
+        ),
+        shaderReadyPhaseCount,
+        warmTemplateCacheHitRatio: warmCacheHit,
+        workerFailureFreePhaseCount,
+    };
+}
+
 function buildPlantCloseupMedians(scenarios) {
     const groups = Map.groupBy(
         scenarios.filter((scenario) => scenario.closeup),
@@ -2110,8 +2631,18 @@ function buildPlantCloseupMedians(scenarios) {
         Array.from(groups, ([name, runs]) => [
             name,
             {
+                acceptance: buildPlantCloseupAcceptance(runs),
                 runCount: runs.length,
                 cold: {
+                    firstDetailChunkMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.cold.profile?.milestonesMs
+                                        .firstDetailedChunk,
+                            ),
+                        ),
+                    ),
                     detailReadyMs: round(
                         median(
                             runs.map(
@@ -2148,8 +2679,34 @@ function buildPlantCloseupMedians(scenarios) {
                             ),
                         ),
                     ),
+                    instanceBuffers: buildPlantInstanceBufferMedians(
+                        runs,
+                        'cold',
+                    ),
+                    lodEvaluation: buildPlantLodMedians(runs, 'cold'),
+                    pipeline: buildPlantPipelineMedians(runs, 'cold'),
+                    renderData: buildPlantRenderDataMedians(runs, 'cold'),
+                    steady: buildPlantCloseupSampleMedians(
+                        runs,
+                        'cold',
+                        'steady',
+                    ),
+                    transition: buildPlantCloseupSampleMedians(
+                        runs,
+                        'cold',
+                        'transition',
+                    ),
                 },
                 warm: {
+                    firstDetailChunkMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.warm.profile?.milestonesMs
+                                        .firstDetailedChunk,
+                            ),
+                        ),
+                    ),
                     detailReadyMs: round(
                         median(
                             runs.map(
@@ -2185,6 +2742,23 @@ function buildPlantCloseupMedians(scenarios) {
                                         .p95FrameMs,
                             ),
                         ),
+                    ),
+                    instanceBuffers: buildPlantInstanceBufferMedians(
+                        runs,
+                        'warm',
+                    ),
+                    lodEvaluation: buildPlantLodMedians(runs, 'warm'),
+                    pipeline: buildPlantPipelineMedians(runs, 'warm'),
+                    renderData: buildPlantRenderDataMedians(runs, 'warm'),
+                    steady: buildPlantCloseupSampleMedians(
+                        runs,
+                        'warm',
+                        'steady',
+                    ),
+                    transition: buildPlantCloseupSampleMedians(
+                        runs,
+                        'warm',
+                        'transition',
                     ),
                 },
             },
@@ -2253,9 +2827,23 @@ function buildMarkdown(report) {
 
     if (Object.keys(report.plantCloseupMedians).length > 0) {
         lines.push('', '## Raised-bed Close-up Medians', '');
+        lines.push('### Optimization acceptance gates', '');
         lines.push(
-            '| Scenario | Runs | Phase | Detail ready | p95 | Max | Long-task total |',
-            '| --- | ---: | --- | ---: | ---: | ---: | ---: |',
+            '| Scenario | Ready phases | Selected fields total/near/detailed | Background near | Group rejection | Projection avoided | Archetypes max/bounded phases | Warm cache hit | Exact/clean buffers | Shader ready/no swap compile | Worker failure-free | Status |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            const acceptance = summary.acceptance;
+            lines.push(
+                `| ${name} | ${acceptance.detailReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.selectedTotalFieldCount ?? 'n/a'}/${acceptance.selectedNearFieldCount ?? 'n/a'}/${acceptance.selectedDetailedFieldCount ?? 'n/a'} (${acceptance.selectedExactPhaseCount}/${acceptance.phaseCount}) | ${acceptance.backgroundNearFieldCount ?? 'n/a'} (${acceptance.backgroundNearZeroPhaseCount}/${acceptance.phaseCount}) | ${acceptance.groupRejectionRatio ?? 'n/a'} | ${acceptance.projectionReductionRatio ?? 'n/a'} | ${acceptance.maxArchetypeCountPerBatch ?? 'n/a'} (${acceptance.archetypeBoundedPhaseCount}/${acceptance.phaseCount}) | ${acceptance.warmTemplateCacheHitRatio ?? 'n/a'} | ${acceptance.exactCapacityPhaseCount}/${acceptance.cleanResourcePhaseCount} of ${acceptance.phaseCount} | ${acceptance.shaderReadyPhaseCount}/${acceptance.phaseCount} | ${acceptance.workerFailureFreePhaseCount}/${acceptance.phaseCount} | ${acceptance.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+        lines.push('');
+        lines.push(
+            '| Scenario | Runs | Phase | First exact chunk | Detail ready | p95 | Max | Long-task total |',
+            '| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |',
         );
         for (const [name, summary] of Object.entries(
             report.plantCloseupMedians,
@@ -2263,7 +2851,105 @@ function buildMarkdown(report) {
             for (const phase of ['cold', 'warm']) {
                 const metrics = summary[phase];
                 lines.push(
-                    `| ${name} | ${summary.runCount} | ${phase} | ${metrics.detailReadyMs ?? 'n/a'} ms | ${metrics.p95FrameMs ?? 'n/a'} ms | ${metrics.maxFrameMs ?? 'n/a'} ms | ${metrics.longTaskTotalMs ?? 'n/a'} ms |`,
+                    `| ${name} | ${summary.runCount} | ${phase} | ${metrics.firstDetailChunkMs ?? 'n/a'} ms | ${metrics.detailReadyMs ?? 'n/a'} ms | ${metrics.p95FrameMs ?? 'n/a'} ms | ${metrics.maxFrameMs ?? 'n/a'} ms | ${metrics.longTaskTotalMs ?? 'n/a'} ms |`,
+                );
+            }
+        }
+        lines.push('', '### Instance-buffer allocation and uploads', '');
+        lines.push(
+            '| Scenario | Phase | Meshes | Live/capacity | Active/peak bytes | Empty meshes | Uploads/bytes | Released/orphaned |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const buffers = summary[phase].instanceBuffers;
+                lines.push(
+                    `| ${name} | ${phase} | ${buffers.activeMeshCount ?? 'n/a'} | ${buffers.activeLiveCount ?? 'n/a'}/${buffers.activeCapacity ?? 'n/a'} | ${buffers.activeAllocatedBytes ?? 'n/a'}/${buffers.peakAllocatedBytes ?? 'n/a'} | ${buffers.activeEmptyMeshCount ?? 'n/a'} | ${buffers.bufferUploadCount ?? 'n/a'}/${buffers.uploadedBytes ?? 'n/a'} | ${buffers.releasedAllocationCount ?? 'n/a'}/${buffers.orphanedResourceCount ?? 'n/a'} |`,
+                );
+            }
+        }
+        lines.push('', '### Transition and steady renderer work', '');
+        lines.push(
+            '| Scenario | Phase | Window | Rendered FPS | p95/max | Calls/render | Instanced/render | Triangles/render | Long tasks (count/total) | Heap | GPU p95/max (supported runs) | CDP script/task/layout |',
+            '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                for (const windowName of ['transition', 'steady']) {
+                    const metrics = summary[phase][windowName];
+                    lines.push(
+                        `| ${name} | ${phase} | ${windowName} | ${metrics.renderedFps ?? 'n/a'} | ${metrics.p95FrameMs ?? 'n/a'}/${metrics.maxFrameMs ?? 'n/a'} ms | ${metrics.drawCallsPerRenderedFrame ?? 'n/a'} | ${metrics.instancedCallsPerRenderedFrame ?? 'n/a'} | ${metrics.trianglesPerRenderedFrame ?? 'n/a'} | ${metrics.longTaskCount ?? 'n/a'}/${metrics.longTaskTotalMs ?? 'n/a'} ms | ${metrics.jsHeapMb ?? metrics.cdpJsHeapMb ?? 'n/a'} MB | ${metrics.gpuElapsedP95Ms ?? 'n/a'}/${metrics.gpuElapsedMaxMs ?? 'n/a'} ms (${metrics.gpuSupportedRunCount}) | ${metrics.cdpScriptDuration ?? 'n/a'}/${metrics.cdpTaskDuration ?? 'n/a'}/${metrics.cdpLayoutDuration ?? 'n/a'} s |`,
+                    );
+                }
+            }
+        }
+        lines.push('', '### Pipeline counters', '');
+        lines.push(
+            '| Scenario | Phase | Queue peak | Cancelled | Stale | Deduplicated | Template hit/miss | Template evictions | Template bytes | Packed transfer bytes | Packed build duration |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const pipeline = summary[phase].pipeline;
+                lines.push(
+                    `| ${name} | ${phase} | ${pipeline.schedulerPeakQueuedTaskCount ?? 'n/a'} | ${pipeline.schedulerCancelledSubscriberCount ?? 'n/a'} | ${pipeline.schedulerStaleResultCount ?? 'n/a'} | ${pipeline.schedulerDeduplicatedSubscriberCount ?? 'n/a'} | ${pipeline.templateCacheHitCount ?? 'n/a'}/${pipeline.templateCacheMissCount ?? 'n/a'} | ${pipeline.templateCacheEvictionCount ?? 'n/a'} | ${pipeline.templateCacheEstimatedBytes ?? 'n/a'} | ${pipeline.packedTransferByteLengthTotal ?? 'n/a'} | ${pipeline.packedBuildDurationTotalMs ?? 'n/a'} ms |`,
+                );
+            }
+        }
+        lines.push('', '### Hierarchical LOD work', '');
+        lines.push(
+            '| Scenario | Phase | Updates | LOD max/total/per update | Groups tested/rejected (ratio) | Fields evaluated/projected (projected per update) |',
+            '| --- | --- | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const lod = summary[phase].lodEvaluation;
+                lines.push(
+                    `| ${name} | ${phase} | ${lod.updateCount ?? 'n/a'} | ${lod.durationMaxMs ?? 'n/a'}/${lod.durationTotalMs ?? 'n/a'}/${lod.durationPerUpdateMs ?? 'n/a'} ms | ${lod.groupTestCount ?? 'n/a'}/${lod.groupRejectionCount ?? 'n/a'} (${lod.groupRejectionRatio ?? 'n/a'}) | ${lod.fieldEvaluationCount ?? 'n/a'}/${lod.fieldProjectionTestCount ?? 'n/a'} (${lod.fieldProjectionTestsPerUpdate ?? 'n/a'}) |`,
+                );
+            }
+        }
+        lines.push('', '### Packed worker phase timings', '');
+        lines.push(
+            '| Scenario | Phase | Builds | Symbol max/total | Render-data max/total | Packing max/total | Root batching max/total | Worker max/total | Transfer count | Transfer max/total |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const pipeline = summary[phase].pipeline;
+                lines.push(
+                    `| ${name} | ${phase} | ${pipeline.packedBuildCount ?? 'n/a'} | ${pipeline.packedSymbolGenerationDurationMaxMs ?? 'n/a'}/${pipeline.packedSymbolGenerationDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRenderDataBuildDurationMaxMs ?? 'n/a'}/${pipeline.packedRenderDataBuildDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedPackingDurationMaxMs ?? 'n/a'}/${pipeline.packedPackingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRootBatchingDurationMaxMs ?? 'n/a'}/${pipeline.packedRootBatchingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTotalDurationMaxMs ?? 'n/a'}/${pipeline.packedTotalDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTransferCount ?? 'n/a'} | ${pipeline.packedTransferByteLengthMax ?? 'n/a'}/${pipeline.packedTransferByteLengthTotal ?? 'n/a'} |`,
+                );
+            }
+        }
+        lines.push('', '### Render-data and shader readiness', '');
+        lines.push(
+            '| Scenario | Phase | Active archetypes total/max batch | Detailed plants | Failed archetypes | Render builds | Render build max/total | Built plants | Shader status (runs) | Deduplicated runs | Ready at first detail | Prewarm duration | Programs before/after | Post-swap compilations/programs |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const metrics = summary[phase];
+                const pipeline = metrics.pipeline;
+                const renderData = metrics.renderData;
+                const shaderStatuses =
+                    Object.entries(pipeline.shaderPrewarmStatusCounts)
+                        .map(([status, count]) => `${status}:${count}`)
+                        .join(', ') || 'n/a';
+                lines.push(
+                    `| ${name} | ${phase} | ${renderData.activeArchetypeCount ?? 'n/a'}/${renderData.maxArchetypeCountPerBatch ?? 'n/a'} | ${renderData.detailedPlantInstanceCount ?? 'n/a'} | ${renderData.failedArchetypeCount ?? 'n/a'} | ${renderData.buildCount ?? 'n/a'} | ${renderData.buildDurationMaxMs ?? 'n/a'}/${renderData.buildDurationTotalMs ?? 'n/a'} ms | ${renderData.builtPlantInstanceCount ?? 'n/a'} | ${shaderStatuses} | ${pipeline.shaderPrewarmDeduplicatedRunCount ?? 'n/a'} | ${pipeline.shaderPrewarmReadyAtFirstDetailSwapRunCount ?? 'n/a'} | ${pipeline.shaderPrewarmDurationMs ?? 'n/a'} ms | ${pipeline.shaderPrewarmProgramCountBefore ?? 'n/a'}/${pipeline.shaderPrewarmProgramCountAfter ?? 'n/a'} | ${pipeline.shaderPrewarmPostSwapCompilationCount ?? 'n/a'}/${pipeline.shaderPrewarmPostSwapProgramCount ?? 'n/a'} |`,
                 );
             }
         }
@@ -2373,7 +3059,9 @@ async function main() {
     try {
         const scenarios = [];
         for (const scenario of profileScenarios) {
-            const repeat = scenario.plantCloseup?.repeat ?? 1;
+            const repeat = scenario.plantCloseup
+                ? (options.closeupRepeat ?? scenario.plantCloseup.repeat)
+                : 1;
             for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
                 const runScenario =
                     repeat === 1
@@ -2405,6 +3093,7 @@ async function main() {
             generatedAt: new Date().toISOString(),
             options: {
                 build: options.build,
+                closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
@@ -2441,7 +3130,7 @@ async function main() {
     }
 }
 
-export { getScenarioRequest, resolveScenarios };
+export { buildPlantCloseupMedians, getScenarioRequest, resolveScenarios };
 
 const invokedModuleUrl = process.argv[1]
     ? pathToFileURL(resolve(process.argv[1])).href

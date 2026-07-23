@@ -18,6 +18,7 @@ import {
 import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
+    useEntityBlockInstances,
 } from './EntityInstancesBlock';
 import {
     createEntityBlockInstanceIndex,
@@ -31,6 +32,7 @@ import {
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
+import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -149,6 +151,31 @@ function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
                 0,
             ),
         0,
+    );
+}
+
+function RaisedBedGeneratedPlantInstances({
+    stacks,
+}: {
+    stacks: Stack[] | undefined;
+}) {
+    const instances = useEntityBlockInstances({
+        name: 'Raised_Bed',
+        stacks,
+        yOffset: 1,
+    });
+
+    if (!instances?.length) {
+        return null;
+    }
+
+    return (
+        <RaisedBedGeneratedPlantFieldBatches
+            blocks={instances.map((instance) => ({
+                blockId: instance.block.id,
+                position: instance.position,
+            }))}
+        />
     );
 }
 
@@ -731,6 +758,9 @@ export function EntityInstances({
                 geometry={(gltf) => gltf.nodes.Seed.geometry}
                 material={(gltf) => gltf.nodes.Seed.material}
             />
+            <Suspense fallback={null}>
+                <RaisedBedGeneratedPlantInstances stacks={stacks} />
+            </Suspense>
             <Suspense fallback={null}>
                 <AdditionalEntityInstances
                     enableBlockGeometryMerging={enableBlockGeometryMerging}

@@ -6,6 +6,10 @@ import CSM from 'three-custom-shader-material';
 import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { usePlantSway } from '../hooks/usePlantSway';
 import type { PlantStemSegment } from '../lib/buildPlantRenderData';
+import type {
+    PackedPlantBounds,
+    PackedPlantStemInstances,
+} from '../lib/packedPlantRenderData';
 import type { PlantDefinition } from '../lib/plant-definitions';
 import {
     createStemSurfaceUniforms,
@@ -13,80 +17,46 @@ import {
     stemSurfaceFragmentShader,
 } from '../lib/plant-stem-material';
 import {
+    applyPackedPlantBounds,
+    copyPackedStaticInstancedAttribute,
+    copyPackedStaticInstanceMatrices,
     createStaticInstancedBufferAttribute,
     finalizeStaticInstanceMatrixUpload,
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
+import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    createPlantStemGeometryShell,
+    disposePlantStemGeometryShell,
+} from '../lib/plantStemGeometry';
 
 interface StemsProps {
+    bounds?: PackedPlantBounds;
     seed: string;
-    segments: PlantStemSegment[];
+    segments?: PlantStemSegment[];
+    packed?: PackedPlantStemInstances;
     stem: PlantDefinition['stem'];
     animate?: boolean;
+    castShadow?: boolean;
     debugName?: string;
 }
 
-const STEM_RADIAL_SEGMENTS = 5;
-
-function createStemSegmentGeometry() {
-    const vertices: number[] = [];
-    const normals: number[] = [];
-    const indices: number[] = [];
-
-    for (let ringIndex = 0; ringIndex <= 1; ringIndex += 1) {
-        const y = ringIndex;
-
-        for (
-            let radialIndex = 0;
-            radialIndex <= STEM_RADIAL_SEGMENTS;
-            radialIndex += 1
-        ) {
-            const angle = (radialIndex / STEM_RADIAL_SEGMENTS) * Math.PI * 2;
-            const x = Math.cos(angle);
-            const z = Math.sin(angle);
-
-            vertices.push(x, y, z);
-            normals.push(x, 0, z);
-        }
-    }
-
-    const ringSize = STEM_RADIAL_SEGMENTS + 1;
-    for (
-        let radialIndex = 0;
-        radialIndex < STEM_RADIAL_SEGMENTS;
-        radialIndex += 1
-    ) {
-        const a = radialIndex;
-        const b = ringSize + radialIndex;
-        const c = radialIndex + 1;
-        const d = ringSize + radialIndex + 1;
-
-        indices.push(a, b, c);
-        indices.push(c, b, d);
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(vertices, 3),
-    );
-    geometry.setAttribute(
-        'normal',
-        new THREE.Float32BufferAttribute(normals, 3),
-    );
-    geometry.setIndex(indices);
-    return geometry;
-}
+const EMPTY_STEM_SEGMENTS: PlantStemSegment[] = [];
 
 export function Stems({
+    bounds,
     seed,
-    segments,
+    segments = EMPTY_STEM_SEGMENTS,
+    packed,
     stem,
     animate = true,
+    castShadow,
     debugName,
 }: StemsProps) {
     const stemRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = segments.length;
+    const instanceCount = packed?.count ?? segments.length;
+    const instanceCapacity = instanceCount;
+    const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-stems`, {
         amplitude: 0.055,
         enabled: animate,
@@ -96,15 +66,20 @@ export function Stems({
         () => createStemSurfaceUniforms(stem),
         [stem],
     );
-    const geometry = useMemo(() => createStemSegmentGeometry(), []);
+    const geometry = useMemo(() => createPlantStemGeometryShell(), []);
     const stemRadius = useMemo(
         () => createStaticInstancedBufferAttribute(instanceCapacity, 2),
         [instanceCapacity],
     );
+    const swayPhase = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
+        [instanceCapacity],
+    );
     usePlantInstanceBufferMetrics({
-        extraAllocatedBytes: stemRadius.array.byteLength,
+        extraAllocatedBytes:
+            stemRadius.array.byteLength + swayPhase.array.byteLength,
         kind: 'stem',
-        liveCount: segments.length,
+        liveCount: instanceCount,
         meshRef: stemRef,
     });
 
@@ -115,28 +90,55 @@ export function Stems({
         }
 
         mesh.geometry.setAttribute('stemRadius', stemRadius);
-        segments.forEach((segment, index) => {
-            mesh.setMatrixAt(index, segment.matrix);
-            stemRadius.setXY(index, segment.startRadius, segment.endRadius);
-        });
-        finalizeStaticInstanceMatrixUpload(mesh, segments.length);
-        markStaticInstancedAttributeForUpload(stemRadius, segments.length);
-        mesh.computeBoundingBox();
-        mesh.computeBoundingSphere();
-    }, [segments, stemRadius]);
+        mesh.geometry.setAttribute('instanceSwayPhase', swayPhase);
+        if (packed) {
+            copyPackedStaticInstanceMatrices(
+                mesh,
+                packed.matrices,
+                packed.count,
+            );
+            copyPackedStaticInstancedAttribute(
+                stemRadius,
+                packed.radii,
+                packed.count,
+            );
+            copyPackedStaticInstancedAttribute(
+                swayPhase,
+                packed.swayPhases,
+                packed.count,
+            );
+        } else {
+            segments.forEach((segment, index) => {
+                mesh.setMatrixAt(index, segment.matrix);
+                stemRadius.setXY(index, segment.startRadius, segment.endRadius);
+            });
+            finalizeStaticInstanceMatrixUpload(mesh, segments.length);
+            markStaticInstancedAttributeForUpload(stemRadius, segments.length);
+            markStaticInstancedAttributeForUpload(swayPhase, segments.length);
+        }
+        if (bounds) {
+            applyPackedPlantBounds(mesh, bounds);
+        } else {
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
+        }
+    }, [bounds, packed, segments, stemRadius, swayPhase]);
 
-    useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+    useLayoutEffect(
+        () => () => disposePlantStemGeometryShell(geometry),
+        [geometry],
+    );
 
-    if (segments.length === 0) {
+    if (instanceCount === 0) {
         return null;
     }
 
     return (
         <instancedMesh
             ref={stemRef}
-            name={debugName ?? `PlantStems:segments:${segments.length}`}
+            name={debugName ?? `PlantStems:segments:${instanceCount}`}
             args={[geometry, undefined, instanceCapacity]}
-            castShadow
+            castShadow={shouldCastShadow}
         >
             <CSM
                 baseMaterial={THREE.MeshStandardMaterial}

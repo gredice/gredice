@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildGeneratedPlantLodTasks } from './generatedPlantLodTasks';
+import {
+    getGeneratedPlantTemplateSeed,
+    resolveGeneratedPlantTemplateVariant,
+} from './generatedPlantTemplates';
 import { plantTypes } from './plant-definitions';
 
 const instances = [
@@ -20,7 +24,7 @@ test('mid and far plant LODs do not create L-system tasks', () => {
     );
 });
 
-test('near plant LOD keeps the exact clamped generation tasks', () => {
+test('near plant LOD keeps exact generations with bounded template seeds', () => {
     const tasks = buildGeneratedPlantLodTasks(
         plantTypes.tomato,
         instances,
@@ -33,9 +37,30 @@ test('near plant LOD keeps the exact clamped generation tasks', () => {
             seed: task.seed,
         })),
         [
-            { iterations: 0, seed: 'seedling' },
-            { iterations: 3, seed: 'growing' },
-            { iterations: 12, seed: 'mature' },
+            {
+                iterations: 0,
+                seed: getGeneratedPlantTemplateSeed({
+                    definition: plantTypes.tomato,
+                    generation: 0,
+                    variant: resolveGeneratedPlantTemplateVariant('seedling'),
+                }),
+            },
+            {
+                iterations: 3,
+                seed: getGeneratedPlantTemplateSeed({
+                    definition: plantTypes.tomato,
+                    generation: 3,
+                    variant: resolveGeneratedPlantTemplateVariant('growing'),
+                }),
+            },
+            {
+                iterations: 12,
+                seed: getGeneratedPlantTemplateSeed({
+                    definition: plantTypes.tomato,
+                    generation: 12,
+                    variant: resolveGeneratedPlantTemplateVariant('mature'),
+                }),
+            },
         ],
     );
     assert.ok(

@@ -29,7 +29,7 @@ import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import {
-    isGeneratedPlantProfileActive,
+    getGeneratedPlantProfileSessionId,
     recordGeneratedPlantProfileFields,
     recordGeneratedPlantProfileLodEvaluation,
 } from '../../scene/generatedPlantProfileMetrics';
@@ -70,6 +70,7 @@ type DisplayedRaisedBedField = {
 
 type GeneratedPlantField = {
     approximatePlantHeight: number;
+    blockId: string;
     definition: ResolvedInGamePlantPreset['definition'];
     fieldKey: string;
     instances: RaisedBedGeneratedPlantBatchInstance[];
@@ -231,6 +232,9 @@ function useGeneratedPlantFieldLods({
             return;
         }
 
+        const profileSessionId = getGeneratedPlantProfileSessionId();
+        const profileActive = profileSessionId !== null;
+        const profileStartedAt = profileActive ? performance.now() : 0;
         const next = new Map<
             string,
             { level: PlantLodLevel; visible: boolean }
@@ -245,8 +249,14 @@ function useGeneratedPlantFieldLods({
         );
         frustum.setFromProjectionMatrix(projectionViewMatrix);
         let evaluatedFieldCount = 0;
+        let fieldProjectionTestCount = 0;
+        let groupRejectionCount = 0;
+        let groupTestCount = 0;
 
         for (const group of raisedBedGroups) {
+            if (profileActive) {
+                groupTestCount += 1;
+            }
             const isSelectedRaisedBed =
                 group.raisedBedId === selectedRaisedBedId;
             const groupVisible = isGeneratedPlantRaisedBedGroupVisible({
@@ -257,6 +267,9 @@ function useGeneratedPlantFieldLods({
             });
 
             if (!groupVisible) {
+                if (profileActive) {
+                    groupRejectionCount += 1;
+                }
                 for (const field of group.fields) {
                     next.set(field.fieldKey, {
                         level: 'far',
@@ -267,22 +280,26 @@ function useGeneratedPlantFieldLods({
             }
 
             for (const field of group.fields) {
-                evaluatedFieldCount += 1;
+                if (profileActive) {
+                    evaluatedFieldCount += 1;
+                }
                 worldPosition.set(...field.position);
                 const screenOccupancy =
                     Math.max(field.approximatePlantHeight, 0.25) /
                     viewportHeight;
-                const visible =
-                    focusActive && isSelectedRaisedBed
-                        ? true
-                        : resolveGeneratedFieldVisibility({
-                              approximatePlantHeight:
-                                  field.approximatePlantHeight,
-                              camera,
-                              projectedPosition,
-                              viewportHeight,
-                              worldPosition,
-                          });
+                let visible = true;
+                if (!(focusActive && isSelectedRaisedBed)) {
+                    if (profileActive) {
+                        fieldProjectionTestCount += 1;
+                    }
+                    visible = resolveGeneratedFieldVisibility({
+                        approximatePlantHeight: field.approximatePlantHeight,
+                        camera,
+                        projectedPosition,
+                        viewportHeight,
+                        worldPosition,
+                    });
+                }
                 const previousLevel =
                     lodByFieldKeyRef.current.get(field.fieldKey)?.level ??
                     'far';
@@ -300,7 +317,18 @@ function useGeneratedPlantFieldLods({
                 });
             }
         }
-        recordGeneratedPlantProfileLodEvaluation(evaluatedFieldCount);
+        if (profileActive) {
+            recordGeneratedPlantProfileLodEvaluation(
+                {
+                    durationMs: performance.now() - profileStartedAt,
+                    fieldEvaluationCount: evaluatedFieldCount,
+                    fieldProjectionTestCount,
+                    groupRejectionCount,
+                    groupTestCount,
+                },
+                profileSessionId ?? undefined,
+            );
+        }
 
         setLodByFieldKey((current) => {
             if (current.size !== next.size) {
@@ -524,6 +552,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
 
                 fields.push({
                     approximatePlantHeight,
+                    blockId: block.blockId,
                     definition: resolvedPlantPreset.definition,
                     fieldKey: getFieldRenderKey(block.blockId, field),
                     instances,
@@ -563,7 +592,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
         selectedRaisedBedId,
     });
     useEffect(() => {
-        if (!isGeneratedPlantProfileActive()) {
+        const sessionId = getGeneratedPlantProfileSessionId();
+        if (sessionId === null) {
             return;
         }
 
@@ -578,6 +608,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     visible: lod?.visible ?? false,
                 };
             }),
+            sessionId,
         );
     }, [generatedFields, lods]);
     const batches = useMemo(() => {
