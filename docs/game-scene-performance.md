@@ -159,7 +159,16 @@ cd apps/garden
 pnpm run profile:game:dense
 ```
 
-Run every core and dense scenario together:
+Run the dense mobile matrix to cover baseline, details, camera motion, rain,
+snow, cloudy, windy, and plant-heavy scenes with the mobile viewport and
+budgets:
+
+```bash
+cd apps/garden
+pnpm run profile:game:dense-mobile
+```
+
+Run every profiler scenario together:
 
 ```bash
 cd apps/garden
@@ -218,16 +227,39 @@ The `dense` scenario set samples:
 - `game-dense-25x25-windy-desktop`
 - `game-plant-heavy-25x25-desktop`
 
+The `dense-mobile` scenario set samples:
+
+- `game-dense-25x25-baseline-mobile`
+- `game-dense-25x25-details-mobile`
+- `game-dense-25x25-camera-motion-mobile`
+- `game-dense-25x25-rain-mobile`
+- `game-dense-25x25-snow-mobile`
+- `game-dense-25x25-cloudy-mobile`
+- `game-dense-25x25-windy-mobile`
+- `game-plant-heavy-25x25-mobile`
+
 Each scenario records startup readiness, canvas backing size, reported DPR,
 requested mode, garden profile, controls mode, camera-motion mode, active
 quality tier, DPR cap, shadow map size, rain/snow particle counts, active snow
 overlay count, raised-bed mulch overlay count, ground decoration count, FPS,
 frame-time percentiles, long tasks, draw calls, instanced draw calls, submitted
 triangles, JS heap, CDP task/script/layout duration, console warnings, and
-budget pass/fail. Budgets warn during local runs and fail the process only when
-`GAME_PROFILE_FAIL_ON_BUDGET=1` is set, which `profile:game:ci` does for
-production checks. Managed production profiling refuses to reuse an already
-reachable base URL so it cannot silently profile a running `next dev` server.
+budget pass/fail. `fps` remains the browser requestAnimationFrame cadence;
+`renderedFps` and `renderedFrames` count only animation ticks that submit WebGL
+draw calls, so demand-rendering changes remain visible. Per-rendered-frame and
+per-second draw-call and triangle fields keep scene cost attributable when the
+browser and renderer cadences differ. Budgets warn during local runs and fail
+the process only when `GAME_PROFILE_FAIL_ON_BUDGET=1` is set, which
+`profile:game:ci` does for production checks. Managed production profiling
+refuses to reuse an already reachable base URL so it cannot silently profile a
+running `next dev` server.
+
+Use `--scenario` (or `GAME_PROFILE_SCENARIOS`) to run one or more exact scenario
+names independently of the selected scenario set. Repeat the option or provide
+a comma-separated list. Use `--soak-ms` (or `GAME_PROFILE_SOAK_MS`) to keep each
+scene running after warmup before collecting the existing `sample-ms` window.
+This provides a consistent post-soak measurement without changing sample
+semantics.
 
 Useful overrides:
 
@@ -235,8 +267,12 @@ Useful overrides:
 GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
+pnpm run profile:game -- --scenario game-dense-25x25-rain-mobile
+GAME_PROFILE_SCENARIOS=game-dense-25x25-rain-mobile pnpm run profile:game
 GAME_PROFILE_WARMUP_MS=8000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
+GAME_PROFILE_SOAK_MS=600000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
 GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game
 ```
 

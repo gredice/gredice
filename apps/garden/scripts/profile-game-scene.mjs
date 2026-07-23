@@ -8,6 +8,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
+const gameProfileWeatherTransitionEventName =
+    'gredice:game-profile-weather-transition';
 
 const coreScenarios = [
     {
@@ -136,6 +138,174 @@ const denseScenarios = [
     },
 ];
 
+const denseMobileScenarios = [
+    {
+        name: 'game-dense-25x25-baseline-mobile',
+        path: '/debug/profile/game?mode=baseline&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseMobile',
+    },
+    {
+        name: 'game-dense-25x25-details-mobile',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseMobile',
+    },
+    {
+        name: 'game-dense-25x25-camera-motion-mobile',
+        path: '/debug/profile/game?mode=details&profile=dense&controls=1&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseMotionMobile',
+        motion: 'pan-zoom-rotate',
+    },
+    {
+        name: 'game-dense-25x25-rain-mobile',
+        path: '/debug/profile/game?mode=rain&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+    },
+    {
+        name: 'game-dense-25x25-snow-mobile',
+        path: '/debug/profile/game?mode=snow&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+    },
+    {
+        name: 'game-dense-25x25-cloudy-mobile',
+        path: '/debug/profile/game?mode=cloudy&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+    },
+    {
+        name: 'game-dense-25x25-windy-mobile',
+        path: '/debug/profile/game?mode=windy&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+    },
+    {
+        name: 'game-plant-heavy-25x25-mobile',
+        path: '/debug/profile/game?mode=details&profile=plant-heavy&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDensePlantsMobile',
+    },
+];
+
+const constrainedAutoQualityDevice = {
+    autoQualityDeviceClass: 'constrained',
+    navigatorMetrics: {
+        deviceMemory: 4,
+        hardwareConcurrency: 4,
+    },
+};
+
+const standardAutoQualityDevice = {
+    autoQualityDeviceClass: 'standard',
+    navigatorMetrics: {
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+    },
+};
+
+const autoQualityScenarios = [
+    {
+        name: 'game-auto-quality-standard-desktop',
+        path: '/debug/profile/game?mode=baseline&quality=auto',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'game',
+        ...standardAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-medium-dense-mobile',
+        path: '/debug/profile/game?mode=baseline&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-auto-dense-mobile',
+        path: '/debug/profile/game?mode=baseline&profile=dense&quality=auto',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-medium-dense-rain-mobile',
+        path: '/debug/profile/game?mode=rain&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-auto-dense-rain-mobile',
+        path: '/debug/profile/game?mode=rain&profile=dense&quality=auto',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-medium-dense-snow-mobile',
+        path: '/debug/profile/game?mode=snow&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-auto-dense-snow-mobile',
+        path: '/debug/profile/game?mode=snow&profile=dense&quality=auto',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-medium-dense-cloudy-mobile',
+        path: '/debug/profile/game?mode=cloudy&profile=dense&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-auto-quality-auto-dense-cloudy-mobile',
+        path: '/debug/profile/game?mode=cloudy&profile=dense&quality=auto',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+];
+
 const rewardScenarios = [
     {
         name: 'game-operation-rewards-matrix-desktop',
@@ -147,10 +317,34 @@ const rewardScenarios = [
     },
 ];
 
+const weatherTransitionScenarios = [
+    {
+        name: 'game-weather-clear-to-cloudy-mobile',
+        path: '/debug/profile/game?mode=baseline&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'weatherMobile',
+        weatherTransition: 'clear-to-cloudy',
+    },
+    {
+        name: 'game-weather-cloudy-to-clear-mobile',
+        path: '/debug/profile/game?mode=cloudy&quality=medium',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'weatherMobile',
+        weatherTransition: 'cloudy-to-clear',
+    },
+];
+
 const scenarioSets = {
+    'auto-quality': autoQualityScenarios,
     core: coreScenarios,
     dense: denseScenarios,
+    'dense-mobile': denseMobileScenarios,
     rewards: rewardScenarios,
+    'weather-transitions': weatherTransitionScenarios,
 };
 
 const budgets = {
@@ -234,6 +428,38 @@ const budgets = {
         trianglesPerFrame: 7000000,
         jsHeapMb: 520,
     },
+    gameDenseMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 220,
+        longTaskCount: 4,
+        drawCallsPerFrame: 1200,
+        trianglesPerFrame: 4000000,
+        jsHeapMb: 360,
+    },
+    gameDenseMotionMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 260,
+        longTaskCount: 6,
+        drawCallsPerFrame: 1400,
+        trianglesPerFrame: 5000000,
+        jsHeapMb: 420,
+    },
+    gameDenseWeatherMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 280,
+        longTaskCount: 8,
+        drawCallsPerFrame: 1500,
+        trianglesPerFrame: 5500000,
+        jsHeapMb: 440,
+    },
+    gameDensePlantsMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 320,
+        longTaskCount: 10,
+        drawCallsPerFrame: 1800,
+        trianglesPerFrame: 7000000,
+        jsHeapMb: 520,
+    },
     gameRewards: {
         p95FrameMs: 1000,
         maxFrameMs: 1200,
@@ -253,8 +479,13 @@ function parseArgs(argv) {
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
         sampleMs: Number(process.env.GAME_PROFILE_SAMPLE_MS ?? 5000),
+        scenarios: (process.env.GAME_PROFILE_SCENARIOS ?? '')
+            .split(',')
+            .map((scenario) => scenario.trim())
+            .filter(Boolean),
         scenarioSet: process.env.GAME_PROFILE_SCENARIO_SET ?? 'core',
         screenshots: process.env.GAME_PROFILE_SCREENSHOTS === '1',
+        soakMs: Number(process.env.GAME_PROFILE_SOAK_MS ?? 0),
         startServer: process.env.GAME_PROFILE_START_SERVER === '1',
         warmupMs: Number(process.env.GAME_PROFILE_WARMUP_MS ?? 5000),
     };
@@ -287,6 +518,15 @@ function parseArgs(argv) {
                 options.sampleMs = Number(next);
                 index += 1;
                 break;
+            case '--scenario':
+                options.scenarios.push(
+                    ...next
+                        .split(',')
+                        .map((scenario) => scenario.trim())
+                        .filter(Boolean),
+                );
+                index += 1;
+                break;
             case '--scenario-set':
                 options.scenarioSet = next;
                 index += 1;
@@ -296,6 +536,10 @@ function parseArgs(argv) {
                 break;
             case '--start-server':
                 options.startServer = true;
+                break;
+            case '--soak-ms':
+                options.soakMs = Number(next);
+                index += 1;
                 break;
             case '--warmup-ms':
                 options.warmupMs = Number(next);
@@ -308,6 +552,10 @@ function parseArgs(argv) {
 
     if (!Number.isFinite(options.sampleMs) || options.sampleMs <= 0) {
         throw new Error('Sample duration must be a positive number.');
+    }
+
+    if (!Number.isFinite(options.soakMs) || options.soakMs < 0) {
+        throw new Error('Soak duration must be zero or a positive number.');
     }
 
     if (!Number.isFinite(options.warmupMs) || options.warmupMs < 0) {
@@ -329,8 +577,10 @@ function printHelp(options) {
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
+            '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
             '  --help                 Show this help.',
@@ -338,8 +588,9 @@ function printHelp(options) {
             'Environment aliases:',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_START_SERVER=1,',
-            '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SAMPLE_MS,',
-            '  GAME_PROFILE_OUT_DIR, GAME_PROFILE_SCENARIO_SET,',
+            '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
+            '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
+            '  GAME_PROFILE_SCENARIO_SET, GAME_PROFILE_SCENARIOS,',
             '  GAME_PROFILE_SCREENSHOTS=1,',
             '  GAME_PROFILE_FAIL_ON_BUDGET=1',
             '',
@@ -348,14 +599,23 @@ function printHelp(options) {
 }
 
 function allScenarios() {
-    return [...coreScenarios, ...denseScenarios, ...rewardScenarios];
+    return [
+        ...coreScenarios,
+        ...denseScenarios,
+        ...denseMobileScenarios,
+        ...autoQualityScenarios,
+        ...rewardScenarios,
+        ...weatherTransitionScenarios,
+    ];
 }
 
-function resolveScenarios(scenarioSet) {
-    const tokens = scenarioSet
-        .split(',')
-        .map((token) => token.trim())
-        .filter(Boolean);
+function resolveScenarios(scenarioSet, scenarioNames = []) {
+    const tokens = scenarioNames.length
+        ? scenarioNames
+        : scenarioSet
+              .split(',')
+              .map((token) => token.trim())
+              .filter(Boolean);
     const selected =
         tokens.length > 0
             ? tokens
@@ -373,7 +633,7 @@ function resolveScenarios(scenarioSet) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, rewards, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -401,6 +661,19 @@ function getScenarioRequest(path) {
     };
 }
 
+function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
+    Object.defineProperties(globalThis.navigator, {
+        deviceMemory: {
+            configurable: true,
+            get: () => deviceMemory,
+        },
+        hardwareConcurrency: {
+            configurable: true,
+            get: () => hardwareConcurrency,
+        },
+    });
+}
+
 function installBrowserMetrics() {
     if (globalThis.__gameProfileMetrics) {
         return;
@@ -409,9 +682,18 @@ function installBrowserMetrics() {
     globalThis.__gameProfileMetrics = {
         drawCalls: 0,
         instancedDrawCalls: 0,
+        lastRenderedRafTick: -1,
+        renderedFrames: 0,
         submittedTriangles: 0,
     };
     globalThis.__gameProfileLongTasks = [];
+
+    let rafTick = 0;
+    const trackRafTick = () => {
+        rafTick += 1;
+        requestAnimationFrame(trackRafTick);
+    };
+    requestAnimationFrame(trackRafTick);
 
     try {
         globalThis.__gameProfileLongTaskObserver = new PerformanceObserver(
@@ -448,6 +730,11 @@ function installBrowserMetrics() {
 
         const original = prototype[name];
         prototype[name] = function patchedDrawCall(...args) {
+            const metrics = globalThis.__gameProfileMetrics;
+            if (metrics.lastRenderedRafTick !== rafTick) {
+                metrics.lastRenderedRafTick = rafTick;
+                metrics.renderedFrames += 1;
+            }
             measure(this, args);
             return original.apply(this, args);
         };
@@ -645,6 +932,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const pageErrors = [];
 
     await cdp.send('Performance.enable');
+    if (scenario.navigatorMetrics) {
+        await page.addInitScript(
+            installNavigatorMetrics,
+            scenario.navigatorMetrics,
+        );
+    }
     await page.addInitScript(installBrowserMetrics);
 
     page.on('console', (message) => {
@@ -689,14 +982,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             new Promise((resolveWarmup) => setTimeout(resolveWarmup, warmupMs)),
         options.warmupMs,
     );
+    if (options.soakMs > 0) {
+        await wait(options.soakMs);
+    }
     const request = getScenarioRequest(scenario.path);
     const profileMetadata = await page.evaluate(() => {
         const element = document.querySelector('[data-game-profile-mode]');
         if (!(element instanceof HTMLElement)) {
             return null;
         }
+        const deviceMemory = Reflect.get(window.navigator, 'deviceMemory');
 
         return {
+            autoQualityMetrics: {
+                coarsePointer:
+                    typeof window.matchMedia === 'function' &&
+                    window.matchMedia('(pointer: coarse)').matches,
+                coreCount: window.navigator.hardwareConcurrency,
+                dpr: window.devicePixelRatio,
+                memoryGb:
+                    typeof deviceMemory === 'number' ? deviceMemory : null,
+                narrowViewport: window.innerWidth <= 640,
+            },
             controls: element.dataset.gameProfileControls ?? null,
             details: element.dataset.gameProfileDetails ?? null,
             debugHud: element.dataset.gameProfileDebugHud ?? null,
@@ -712,80 +1019,122 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         beforeMetrics.metrics.map((metric) => [metric.name, metric.value]),
     );
 
-    const samplePromise = page.evaluate(async (sampleMs) => {
-        const canvas = document.querySelector('canvas');
-        const metrics = globalThis.__gameProfileMetrics;
-        if (metrics) {
-            metrics.drawCalls = 0;
-            metrics.instancedDrawCalls = 0;
-            metrics.submittedTriangles = 0;
-        }
-        globalThis.__gameProfileLongTasks = [];
+    const weatherTransitionRequest = scenario.weatherTransition ?? null;
+    const samplePromise = page.evaluate(
+        async (sampleOptions) => {
+            const {
+                sampleMs,
+                weatherTransitionEventName,
+                weatherTransitionRequest,
+            } = sampleOptions;
+            const canvas = document.querySelector('canvas');
+            const metrics = globalThis.__gameProfileMetrics;
+            if (metrics) {
+                metrics.drawCalls = 0;
+                metrics.instancedDrawCalls = 0;
+                metrics.lastRenderedRafTick = -1;
+                metrics.renderedFrames = 0;
+                metrics.submittedTriangles = 0;
+            }
+            globalThis.__gameProfileLongTasks = [];
 
-        const intervals = [];
-        const start = performance.now();
-        let last = start;
+            const intervals = [];
+            const start = performance.now();
+            let last = start;
+            const weatherTransitionDispatched = weatherTransitionRequest
+                ? globalThis.dispatchEvent(
+                      new CustomEvent(weatherTransitionEventName, {
+                          detail: { request: weatherTransitionRequest },
+                      }),
+                  )
+                : false;
 
-        await new Promise((resolveSample) => {
-            const step = (now) => {
-                intervals.push(now - last);
-                last = now;
-                if (now - start >= sampleMs) {
-                    resolveSample();
-                    return;
-                }
+            await new Promise((resolveSample) => {
+                const step = (now) => {
+                    intervals.push(now - last);
+                    last = now;
+                    if (now - start >= sampleMs) {
+                        resolveSample();
+                        return;
+                    }
+                    requestAnimationFrame(step);
+                };
                 requestAnimationFrame(step);
+            });
+
+            const frameIntervals = intervals.slice(1);
+            const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
+            const percentile = (value) =>
+                sortedIntervals[
+                    Math.min(
+                        sortedIntervals.length - 1,
+                        Math.floor(sortedIntervals.length * value),
+                    )
+                ] ?? 0;
+            const averageFrameMs =
+                frameIntervals.reduce((sum, value) => sum + value, 0) /
+                Math.max(1, frameIntervals.length);
+            const longTasks = globalThis.__gameProfileLongTasks ?? [];
+            const drawCalls = metrics?.drawCalls ?? 0;
+            const renderedFrames = metrics?.renderedFrames ?? 0;
+            const submittedTriangles = Math.round(
+                metrics?.submittedTriangles ?? 0,
+            );
+            const frames = frameIntervals.length;
+            const elapsedSeconds = (performance.now() - start) / 1000;
+            const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
+
+            return {
+                averageFrameMs,
+                canvas: canvas
+                    ? {
+                          clientHeight: canvas.clientHeight,
+                          clientWidth: canvas.clientWidth,
+                          height: canvas.height,
+                          width: canvas.width,
+                      }
+                    : null,
+                drawCalls,
+                drawCallsPerFrame: drawCalls / Math.max(1, frames),
+                drawCallsPerRenderedFrame:
+                    renderedFrames > 0 ? drawCalls / renderedFrames : 0,
+                drawCallsPerSecond: drawCalls / safeElapsedSeconds,
+                fps: frames / elapsedSeconds,
+                frames,
+                instancedDrawCalls: metrics?.instancedDrawCalls ?? 0,
+                jsHeapMb: performance.memory
+                    ? performance.memory.usedJSHeapSize / 1024 / 1024
+                    : null,
+                longTaskCount: longTasks.length,
+                longTaskMaxMs: Math.max(0, ...longTasks),
+                longTaskTotalMs: longTasks.reduce(
+                    (sum, value) => sum + value,
+                    0,
+                ),
+                maxFrameMs: sortedIntervals.at(-1) ?? 0,
+                p50FrameMs: percentile(0.5),
+                p95FrameMs: percentile(0.95),
+                p99FrameMs: percentile(0.99),
+                reportedDpr: globalThis.devicePixelRatio,
+                renderedFps: renderedFrames / elapsedSeconds,
+                renderedFrames,
+                submittedTriangles,
+                trianglesPerFrame: submittedTriangles / Math.max(1, frames),
+                trianglesPerRenderedFrame:
+                    renderedFrames > 0
+                        ? submittedTriangles / renderedFrames
+                        : 0,
+                trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
+                weatherTransitionDispatched,
+                weatherTransitionRequest,
             };
-            requestAnimationFrame(step);
-        });
-
-        const frameIntervals = intervals.slice(1);
-        const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
-        const percentile = (value) =>
-            sortedIntervals[
-                Math.min(
-                    sortedIntervals.length - 1,
-                    Math.floor(sortedIntervals.length * value),
-                )
-            ] ?? 0;
-        const averageFrameMs =
-            frameIntervals.reduce((sum, value) => sum + value, 0) /
-            Math.max(1, frameIntervals.length);
-        const longTasks = globalThis.__gameProfileLongTasks ?? [];
-        const drawCalls = metrics?.drawCalls ?? 0;
-        const submittedTriangles = Math.round(metrics?.submittedTriangles ?? 0);
-        const frames = frameIntervals.length;
-
-        return {
-            averageFrameMs,
-            canvas: canvas
-                ? {
-                      clientHeight: canvas.clientHeight,
-                      clientWidth: canvas.clientWidth,
-                      height: canvas.height,
-                      width: canvas.width,
-                  }
-                : null,
-            drawCalls,
-            drawCallsPerFrame: drawCalls / Math.max(1, frames),
-            fps: frames / ((performance.now() - start) / 1000),
-            frames,
-            instancedDrawCalls: metrics?.instancedDrawCalls ?? 0,
-            jsHeapMb: performance.memory
-                ? performance.memory.usedJSHeapSize / 1024 / 1024
-                : null,
-            longTaskCount: longTasks.length,
-            longTaskMaxMs: Math.max(0, ...longTasks),
-            longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
-            maxFrameMs: sortedIntervals.at(-1) ?? 0,
-            p50FrameMs: percentile(0.5),
-            p95FrameMs: percentile(0.95),
-            p99FrameMs: percentile(0.99),
-            reportedDpr: globalThis.devicePixelRatio,
-            submittedTriangles,
-            trianglesPerFrame: submittedTriangles / Math.max(1, frames),
-        };
-    }, options.sampleMs);
+        },
+        {
+            sampleMs: options.sampleMs,
+            weatherTransitionEventName: gameProfileWeatherTransitionEventName,
+            weatherTransitionRequest,
+        },
+    );
     if (scenario.motion) {
         await runScenarioMotion(page, scenario, options.sampleMs);
     }
@@ -812,6 +1161,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     : null,
             dprCap:
                 typeof metadata.dprCap === 'number' ? metadata.dprCap : null,
+            groundDecorationAtlasEstimatedGpuBytes:
+                typeof metadata.groundDecorationAtlasEstimatedGpuBytes ===
+                'number'
+                    ? metadata.groundDecorationAtlasEstimatedGpuBytes
+                    : null,
             groundDecorationAtlasPageCount:
                 typeof metadata.groundDecorationAtlasPageCount === 'number'
                     ? metadata.groundDecorationAtlasPageCount
@@ -832,6 +1186,49 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationVisibleCount === 'number'
                     ? metadata.groundDecorationVisibleCount
                     : null,
+            generatedLSystemCacheEntryCount:
+                typeof metadata.generatedLSystemCacheEntryCount === 'number'
+                    ? metadata.generatedLSystemCacheEntryCount
+                    : null,
+            generatedLSystemCacheEstimatedBytes:
+                typeof metadata.generatedLSystemCacheEstimatedBytes === 'number'
+                    ? metadata.generatedLSystemCacheEstimatedBytes
+                    : null,
+            generatedLSystemCacheEvictionCount:
+                typeof metadata.generatedLSystemCacheEvictionCount === 'number'
+                    ? metadata.generatedLSystemCacheEvictionCount
+                    : null,
+            generatedLSystemCacheHitCount:
+                typeof metadata.generatedLSystemCacheHitCount === 'number'
+                    ? metadata.generatedLSystemCacheHitCount
+                    : null,
+            generatedLSystemCacheMaxEntryCount:
+                typeof metadata.generatedLSystemCacheMaxEntryCount === 'number'
+                    ? metadata.generatedLSystemCacheMaxEntryCount
+                    : null,
+            generatedLSystemCacheMaxEstimatedBytes:
+                typeof metadata.generatedLSystemCacheMaxEstimatedBytes ===
+                'number'
+                    ? metadata.generatedLSystemCacheMaxEstimatedBytes
+                    : null,
+            generatedLSystemCacheMissCount:
+                typeof metadata.generatedLSystemCacheMissCount === 'number'
+                    ? metadata.generatedLSystemCacheMissCount
+                    : null,
+            generatedLSystemCacheOversizeSkipCount:
+                typeof metadata.generatedLSystemCacheOversizeSkipCount ===
+                'number'
+                    ? metadata.generatedLSystemCacheOversizeSkipCount
+                    : null,
+            generatedLSystemCachePeakEstimatedBytes:
+                typeof metadata.generatedLSystemCachePeakEstimatedBytes ===
+                'number'
+                    ? metadata.generatedLSystemCachePeakEstimatedBytes
+                    : null,
+            generatedLSystemCacheWriteCount:
+                typeof metadata.generatedLSystemCacheWriteCount === 'number'
+                    ? metadata.generatedLSystemCacheWriteCount
+                    : null,
             instancedSnowOverlayCount:
                 typeof metadata.instancedSnowOverlayCount === 'number'
                     ? metadata.instancedSnowOverlayCount
@@ -843,6 +1240,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             rainParticleCount:
                 typeof metadata.rainParticleCount === 'number'
                     ? metadata.rainParticleCount
+                    : null,
+            rainWetOverlayDistinctUniformCount:
+                typeof metadata.rainWetOverlayDistinctUniformCount === 'number'
+                    ? metadata.rainWetOverlayDistinctUniformCount
+                    : null,
+            rainWetOverlayMaterialConsumerCount:
+                typeof metadata.rainWetOverlayMaterialConsumerCount === 'number'
+                    ? metadata.rainWetOverlayMaterialConsumerCount
                     : null,
             raisedBedMulchOverlayCount:
                 typeof metadata.raisedBedMulchOverlayCount === 'number'
@@ -864,13 +1269,29 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.shadowsEnabled === 'boolean'
                     ? metadata.shadowsEnabled
                     : null,
+            snowOverlayDistinctUniformCount:
+                typeof metadata.snowOverlayDistinctUniformCount === 'number'
+                    ? metadata.snowOverlayDistinctUniformCount
+                    : null,
+            snowOverlayMaterialConsumerCount:
+                typeof metadata.snowOverlayMaterialConsumerCount === 'number'
+                    ? metadata.snowOverlayMaterialConsumerCount
+                    : null,
             snowOverlayMinCoverage:
                 typeof metadata.snowOverlayMinCoverage === 'number'
                     ? metadata.snowOverlayMinCoverage
                     : null,
+            snowParticleCapacity:
+                typeof metadata.snowParticleCapacity === 'number'
+                    ? metadata.snowParticleCapacity
+                    : null,
             snowParticleCount:
                 typeof metadata.snowParticleCount === 'number'
                     ? metadata.snowParticleCount
+                    : null,
+            snowParticleGeometryBuildCount:
+                typeof metadata.snowParticleGeometryBuildCount === 'number'
+                    ? metadata.snowParticleGeometryBuildCount
                     : null,
             weatherDisabled:
                 typeof metadata.weatherDisabled === 'boolean'
@@ -921,6 +1342,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         pageErrors,
         path: scenario.path,
         requested: {
+            autoQualityDeviceClass:
+                scenario.autoQualityDeviceClass ?? 'unspecified',
+            autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
             controls: profileMetadata?.controls ?? request.controls,
             details: profileMetadata?.details ?? request.details,
             debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -933,6 +1357,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             motion: scenario.motion ?? 'none',
             quality: profileMetadata?.quality ?? request.quality,
             viewport: scenario.viewport,
+            weatherTransition: weatherTransitionRequest ?? 'none',
         },
         runtime,
         sample: roundedSample,
@@ -956,6 +1381,8 @@ function roundSample(sample) {
         ...sample,
         averageFrameMs: round(sample.averageFrameMs),
         drawCallsPerFrame: round(sample.drawCallsPerFrame, 1),
+        drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
+        drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
         fps: round(sample.fps, 1),
         jsHeapMb: round(sample.jsHeapMb, 1),
         longTaskMaxMs: round(sample.longTaskMaxMs, 1),
@@ -964,7 +1391,10 @@ function roundSample(sample) {
         p50FrameMs: round(sample.p50FrameMs),
         p95FrameMs: round(sample.p95FrameMs),
         p99FrameMs: round(sample.p99FrameMs),
+        renderedFps: round(sample.renderedFps, 1),
         trianglesPerFrame: Math.round(sample.trianglesPerFrame),
+        trianglesPerRenderedFrame: Math.round(sample.trianglesPerRenderedFrame),
+        trianglesPerSecond: Math.round(sample.trianglesPerSecond),
     };
 }
 
@@ -1008,13 +1438,15 @@ function buildMarkdown(report) {
         `Build: ${report.options.build ? 'yes' : 'no'}`,
         `Server: ${report.options.managedServer ? 'managed pnpm start' : 'external'}`,
         `Scenario set: ${report.options.scenarioSet}`,
+        `Scenario filter: ${report.options.scenarios.length ? report.options.scenarios.join(', ') : 'none'}`,
         `Warmup: ${report.options.warmupMs} ms`,
+        `Soak: ${report.options.soakMs} ms`,
         `Sample: ${report.options.sampleMs} ms`,
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -1031,11 +1463,11 @@ function buildMarkdown(report) {
             ? `${scenario.runtime.rainParticleCount ?? 0}/${scenario.runtime.snowParticleCount ?? 0}`
             : 'n/a';
         const detailCounts = scenario.runtime
-            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}`
+            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 
@@ -1089,7 +1521,10 @@ async function main() {
         return;
     }
 
-    const profileScenarios = resolveScenarios(options.scenarioSet);
+    const profileScenarios = resolveScenarios(
+        options.scenarioSet,
+        options.scenarios,
+    );
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -1172,7 +1607,9 @@ async function main() {
                 build: options.build,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
+                scenarios: options.scenarios,
                 scenarioSet: options.scenarioSet,
+                soakMs: options.soakMs,
                 warmupMs: options.warmupMs,
             },
             scenarios,

@@ -23,13 +23,15 @@ import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
+import { getGeneratedLSystemCacheSnapshot } from '../generators/plant/hooks/generatedLSystemCache';
 import { useOptionalGameState } from '../useGameState';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
-import { SceneTimeProvider } from './SceneTime';
+import { SceneTimeProvider, sceneFrameRates } from './SceneTime';
+import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
@@ -39,6 +41,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         position: FiberVector3;
         quality?: GameQualityProfile;
         rendererOptions?: WebGLRendererParameters;
+        suspendWhenOffscreen?: boolean;
         zoom: number;
     }>;
 
@@ -136,6 +139,35 @@ function RendererStatsReporter() {
     return null;
 }
 
+function GeneratedLSystemCacheStatsReporter() {
+    const lastUpdateRef = useRef(0);
+
+    useFrame(() => {
+        const now = performance.now();
+        if (now - lastUpdateRef.current < rendererStatsUpdateMs) {
+            return;
+        }
+
+        lastUpdateRef.current = now;
+        const snapshot = getGeneratedLSystemCacheSnapshot();
+        updateGameProfileMetadata({
+            generatedLSystemCacheEntryCount: snapshot.entryCount,
+            generatedLSystemCacheEstimatedBytes: snapshot.estimatedBytes,
+            generatedLSystemCacheEvictionCount: snapshot.evictionCount,
+            generatedLSystemCacheHitCount: snapshot.hitCount,
+            generatedLSystemCacheMaxEntryCount: snapshot.maxEntryCount,
+            generatedLSystemCacheMaxEstimatedBytes: snapshot.maxEstimatedBytes,
+            generatedLSystemCacheMissCount: snapshot.missCount,
+            generatedLSystemCacheOversizeSkipCount: snapshot.oversizeSkipCount,
+            generatedLSystemCachePeakEstimatedBytes:
+                snapshot.peakEstimatedBytes,
+            generatedLSystemCacheWriteCount: snapshot.writeCount,
+        });
+    });
+
+    return null;
+}
+
 function SceneWireframeMode({ enabled }: { enabled: boolean }) {
     const scene = useThree((state) => state.scene);
     const previousStatesRef = useRef(new Map<string, WireframeMaterialState>());
@@ -190,6 +222,7 @@ export function Scene({
     position,
     quality,
     rendererOptions,
+    suspendWhenOffscreen,
     zoom,
     ...rest
 }: SceneProps) {
@@ -230,17 +263,27 @@ export function Scene({
                 near: 0.01,
             }}
             {...rest}
+            frameloop="demand"
         >
-            <SceneTimeProvider fixedTimeSeconds={fixedTimeSeconds}>
-                <HoverOutlineProvider>
-                    <SceneDebugName />
-                    {debugStats && <RendererStatsReporter />}
-                    <SceneWireframeMode
-                        enabled={Boolean(debugStats && wireframeDebugVisible)}
-                    />
-                    {children}
-                    <HoverOutlineEffect />
-                </HoverOutlineProvider>
+            <SceneTimeProvider
+                baseFramesPerSecond={sceneFrameRates.ambient}
+                fixedTimeSeconds={fixedTimeSeconds}
+                suspendWhenOffscreen={suspendWhenOffscreen}
+            >
+                <WeatherSurfaceUniformProvider>
+                    <HoverOutlineProvider>
+                        <SceneDebugName />
+                        <GeneratedLSystemCacheStatsReporter />
+                        {debugStats && <RendererStatsReporter />}
+                        <SceneWireframeMode
+                            enabled={Boolean(
+                                debugStats && wireframeDebugVisible,
+                            )}
+                        />
+                        {children}
+                        <HoverOutlineEffect />
+                    </HoverOutlineProvider>
+                </WeatherSurfaceUniformProvider>
             </SceneTimeProvider>
         </Canvas>
     );

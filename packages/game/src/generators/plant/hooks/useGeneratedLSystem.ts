@@ -12,8 +12,14 @@ import {
     type LSystemWorkerResponse,
 } from '../lib/l-system-worker-types';
 import { SeededRNG } from '../lib/rng';
+import { reconcileGeneratedLSystemBatchState } from './generatedLSystemBatchState';
+import { generatedLSystemCache } from './generatedLSystemCache';
+import {
+    type GeneratedLSystemTaskResult,
+    resolveGeneratedLSystemTaskSymbols,
+} from './generatedLSystemTaskState';
 
-const lSystemCache = new Map<string, LSystemSymbol[]>();
+const lSystemCache = generatedLSystemCache;
 const pendingRequests = new Map<
     number,
     {
@@ -146,30 +152,36 @@ export function useGeneratedLSystemSymbols(
     options: UseGeneratedLSystemSymbolsOptions = {},
 ) {
     const taskKey = getLSystemGenerationTaskKey(task);
-    const [symbols, setSymbols] = useState<LSystemSymbol[] | null>(() => {
-        const cachedSymbols = lSystemCache.get(taskKey);
-        if (cachedSymbols) {
-            return cachedSymbols;
-        }
+    const [result, setResult] = useState<GeneratedLSystemTaskResult | null>(
+        () => {
+            const cachedSymbols = lSystemCache.get(taskKey);
+            if (cachedSymbols) {
+                return { symbols: cachedSymbols, taskKey };
+            }
 
-        if (options.syncInitialResult) {
-            const initialSymbols = generateSymbolsSync(task);
-            lSystemCache.set(taskKey, initialSymbols);
-            return initialSymbols;
-        }
+            if (options.syncInitialResult) {
+                const initialSymbols = generateSymbolsSync(task);
+                lSystemCache.set(taskKey, initialSymbols);
+                return { symbols: initialSymbols, taskKey };
+            }
 
-        return null;
-    });
+            return null;
+        },
+    );
+    const symbols = resolveGeneratedLSystemTaskSymbols(result, taskKey);
     const [isPending, setIsPending] = useState(!symbols);
 
     useEffect(() => {
+        if (symbols) {
+            setIsPending(false);
+            return;
+        }
+
         const cachedSymbols = lSystemCache.get(taskKey);
         if (cachedSymbols) {
-            if (symbols !== cachedSymbols) {
-                startTransition(() => {
-                    setSymbols(cachedSymbols);
-                });
-            }
+            startTransition(() => {
+                setResult({ symbols: cachedSymbols, taskKey });
+            });
             setIsPending(false);
             return;
         }
@@ -183,7 +195,7 @@ export function useGeneratedLSystemSymbols(
             }
 
             startTransition(() => {
-                setSymbols(nextSymbols);
+                setResult({ symbols: nextSymbols, taskKey });
             });
             setIsPending(false);
         });
@@ -194,7 +206,7 @@ export function useGeneratedLSystemSymbols(
     }, [symbols, task, taskKey]);
 
     return {
-        isPending,
+        isPending: isPending || symbols === null,
         symbols,
     };
 }
@@ -202,7 +214,10 @@ export function useGeneratedLSystemSymbols(
 export function useGeneratedLSystemSymbolsBatch(
     tasks: LSystemGenerationTask[],
 ) {
-    const taskKeys = tasks.map(getLSystemGenerationTaskKey);
+    const taskKeys = useMemo(
+        () => tasks.map(getLSystemGenerationTaskKey),
+        [tasks],
+    );
     const [symbolsByKey, setSymbolsByKey] = useState<
         Record<string, LSystemSymbol[]>
     >(() =>
@@ -232,30 +247,50 @@ export function useGeneratedLSystemSymbolsBatch(
         );
         if (Object.keys(cachedEntries).length > 0) {
             startTransition(() => {
-                setSymbolsByKey((current) => ({
-                    ...current,
-                    ...cachedEntries,
-                }));
+                setSymbolsByKey((current) =>
+                    reconcileGeneratedLSystemBatchState(
+                        current,
+                        taskKeys,
+                        cachedEntries,
+                    ),
+                );
             });
         }
 
-        let cancelled = false;
-        setIsPending(taskKeys.some((key) => !lSystemCache.has(key)));
+        const missingTasks: LSystemGenerationTask[] = [];
+        const missingKeys: string[] = [];
+        tasks.forEach((task, index) => {
+            if (lSystemCache.has(taskKeys[index])) {
+                return;
+            }
 
-        requestGeneratedLSystemSymbolsBatch(tasks).then((results) => {
+            missingTasks.push(task);
+            missingKeys.push(taskKeys[index]);
+        });
+
+        setIsPending(missingTasks.length > 0);
+        if (missingTasks.length === 0) {
+            return;
+        }
+
+        let cancelled = false;
+        requestGeneratedLSystemSymbolsBatch(missingTasks).then((results) => {
             if (cancelled) {
                 return;
             }
 
             const nextEntries = Object.fromEntries(
-                results.map((symbols, index) => [taskKeys[index], symbols]),
+                results.map((symbols, index) => [missingKeys[index], symbols]),
             );
 
             startTransition(() => {
-                setSymbolsByKey((current) => ({
-                    ...current,
-                    ...nextEntries,
-                }));
+                setSymbolsByKey((current) =>
+                    reconcileGeneratedLSystemBatchState(
+                        current,
+                        taskKeys,
+                        nextEntries,
+                    ),
+                );
             });
             setIsPending(false);
         });

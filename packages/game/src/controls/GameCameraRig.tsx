@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -169,7 +170,7 @@ export function GameCameraRig({
     initialViewKey?: string | number | null;
     initialZoom?: number;
 }) {
-    const { camera, gl, size } = useThree();
+    const { camera, gl, invalidate, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
     const setGameCameraSnapshot = useGameState(
@@ -182,6 +183,8 @@ export function GameCameraRig({
         (state) => state.setCloseupCameraSettled,
     );
     const [isAnimating, setIsAnimating] = useState(false);
+    const [isKeyboardPanning, setIsKeyboardPanning] = useState(false);
+    const isDragging = useGameState((state) => state.isDragging);
     const setIsDragging = useGameState((state) => state.setIsDragging);
     const worldRotation = useGameState((state) => state.worldRotation);
     const worldRotate = useGameState((state) => state.worldRotate);
@@ -193,6 +196,10 @@ export function GameCameraRig({
             Boolean(state.pickupBlock) || Boolean(state.hudPlacementDrag),
     );
     const { data: garden } = useCurrentGarden();
+    useSceneTimeInvalidation(
+        isAnimating || isDragging || isKeyboardPanning,
+        sceneFrameRates.interactive,
+    );
 
     const resolvedInitialView = useMemo(
         () =>
@@ -332,7 +339,8 @@ export function GameCameraRig({
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
         publishSnapshot();
-    }, [camera, isOrthographicCamera, publishSnapshot]);
+        invalidate();
+    }, [camera, invalidate, isOrthographicCamera, publishSnapshot]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -823,21 +831,41 @@ export function GameCameraRig({
             const panValue = panKeys[event.code];
             if (panValue) {
                 activePanDirectionRef.current = panValue;
+                setIsKeyboardPanning(true);
             }
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
             if (panKeys[event.code]) {
                 activePanDirectionRef.current = null;
+                setIsKeyboardPanning(false);
+            }
+        };
+
+        const clearKeyboardPan = () => {
+            activePanDirectionRef.current = null;
+            setIsKeyboardPanning(false);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                clearKeyboardPan();
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keyup', handleKeyUp);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', clearKeyboardPan);
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('keyup', handleKeyUp);
-            activePanDirectionRef.current = null;
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
+            window.removeEventListener('blur', clearKeyboardPan);
+            clearKeyboardPan();
         };
     }, [controlsDisabled, worldRotate]);
 

@@ -1,8 +1,11 @@
 'use client';
 
 export type GameQualityTier = 'low' | 'medium' | 'high';
-type GameQualityAutoTier = Exclude<GameQualityTier, 'low'>;
-export type GameQualityProfileTier = GameQualityTier | 'custom';
+type GameQualityAutoDeviceClass = 'constrained' | 'standard';
+export type GameQualityProfileTier =
+    | GameQualityTier
+    | 'auto-constrained'
+    | 'custom';
 export type GameQualitySetting = GameQualityTier | 'auto' | 'custom';
 export type GameCloudShadowMode = 'hard' | 'soft';
 
@@ -66,10 +69,21 @@ export const gameQualityProfiles = {
 const GAME_QUALITY_SETTING_STORAGE_KEY = 'game-quality-setting';
 const GAME_QUALITY_CUSTOM_PROFILE_STORAGE_KEY = 'game-quality-custom-profile';
 const shadowMapSizeOptions = [1024, 2048, 4096];
-const autoGameQualityTiers = {
-    constrained: 'medium',
-    standard: 'medium',
-} satisfies Record<'constrained' | 'standard', GameQualityAutoTier>;
+const autoConstrainedGameQualityProfile = {
+    cloudShadowMode: 'hard',
+    dpr: 1,
+    groundDecorationDensity: 0.25,
+    rainParticleMultiplier: 0.5,
+    shadowMapSize: 1024,
+    shadows: true,
+    snowOverlayMinCoverage: 0.18,
+    snowParticleMultiplier: 0.45,
+    tier: 'auto-constrained',
+} satisfies GameQualityProfile;
+const autoGameQualityProfiles = {
+    constrained: autoConstrainedGameQualityProfile,
+    standard: gameQualityProfiles.medium,
+} satisfies Record<GameQualityAutoDeviceClass, GameQualityProfile>;
 let cachedGameQualitySetting: GameQualitySetting | undefined;
 let cachedGameQualityCustomProfile: GameQualityCustomProfile | undefined;
 
@@ -258,11 +272,11 @@ export function getGameQualityAutoProfileMetrics():
     };
 }
 
-function resolveAutoGameQualityTier(
+function resolveAutoGameQualityProfile(
     metrics = getGameQualityAutoProfileMetrics(),
-): GameQualityAutoTier {
+): GameQualityProfile {
     if (metrics === undefined) {
-        return autoGameQualityTiers.standard;
+        return autoGameQualityProfiles.standard;
     }
 
     if (
@@ -274,10 +288,10 @@ function resolveAutoGameQualityTier(
             metrics.coreCount <= 4 &&
             metrics.dpr > 1.25)
     ) {
-        return autoGameQualityTiers.constrained;
+        return autoGameQualityProfiles.constrained;
     }
 
-    return autoGameQualityTiers.standard;
+    return autoGameQualityProfiles.standard;
 }
 
 export function resolveGameQualityProfile(
@@ -292,9 +306,9 @@ export function resolveGameQualityProfile(
         };
     }
 
-    const tier =
-        quality === undefined || quality === 'auto'
-            ? resolveAutoGameQualityTier(autoMetrics)
-            : quality;
-    return gameQualityProfiles[tier];
+    if (quality === undefined || quality === 'auto') {
+        return resolveAutoGameQualityProfile(autoMetrics);
+    }
+
+    return gameQualityProfiles[quality];
 }

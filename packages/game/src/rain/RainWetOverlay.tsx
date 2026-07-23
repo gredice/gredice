@@ -1,14 +1,11 @@
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, Vector3Tuple } from 'three';
-import {
-    MathUtils,
-    ShaderMaterial,
-    UniformsLib,
-    UniformsUtils,
-    Vector3,
-} from 'three';
+import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
 import { useGameFlags } from '../GameFlagsContext';
+import {
+    useRainSurfacePuddleStrengthUniform,
+    useRainSurfaceWetnessUniform,
+} from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
@@ -132,7 +129,12 @@ export function useRainWetOverlayMaterial({
     | 'topSurfaceBias'
     | 'wetSpeed'
 >) {
-    const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
+    const wetnessUniform = useRainSurfaceWetnessUniform({
+        drySpeed,
+        intensityMultiplier,
+        wetSpeed,
+    });
+    const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const resolvedBounds = useMemo(() => {
         if (bounds) return bounds;
         if (!geometry.boundingBox) {
@@ -168,6 +170,8 @@ export function useRainWetOverlayMaterial({
             vertexShader: rainOverlayVertexShader,
             fragmentShader: rainOverlayFragmentShader,
         });
+        mat.uniforms.uWetness = wetnessUniform;
+        mat.uniforms.uPuddleStrength = puddleStrengthUniform;
         mat.polygonOffset = true;
         mat.polygonOffsetFactor = -1;
         mat.polygonOffsetUnits = -1;
@@ -175,18 +179,18 @@ export function useRainWetOverlayMaterial({
     }, [
         darkness,
         glossiness,
+        puddleStrengthUniform,
         resolvedBounds.max,
         resolvedBounds.min,
         topSurfaceBias,
+        wetnessUniform,
     ]);
 
     useEffect(() => {
         material.uniforms.uTopSurfaceBias.value = topSurfaceBias;
         material.uniforms.uDarkness.value = darkness;
         material.uniforms.uGlossiness.value = glossiness;
-        material.uniforms.uPuddleStrength.value =
-            Math.max(0, rainAmount - 0.66) / 0.34;
-    }, [darkness, glossiness, material, rainAmount, topSurfaceBias]);
+    }, [darkness, glossiness, material, topSurfaceBias]);
 
     useEffect(() => {
         material.uniforms.uBoundsMin.value.set(...resolvedBounds.min);
@@ -194,21 +198,6 @@ export function useRainWetOverlayMaterial({
     }, [material, resolvedBounds.max, resolvedBounds.min]);
 
     useEffect(() => () => material.dispose(), [material]);
-
-    useFrame((_, delta) => {
-        const target = Math.min(
-            1,
-            Math.max(0, rainAmount * intensityMultiplier),
-        );
-        const speed =
-            target > material.uniforms.uWetness.value ? wetSpeed : drySpeed;
-        material.uniforms.uWetness.value = MathUtils.damp(
-            material.uniforms.uWetness.value,
-            target,
-            speed,
-            delta,
-        );
-    });
 
     return material;
 }

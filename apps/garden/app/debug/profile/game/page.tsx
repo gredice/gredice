@@ -1,10 +1,14 @@
 import {
-    GameScene,
     type GameSceneProps,
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugProfile,
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
+import { ProfileGameScene } from './ProfileGameScene';
+import {
+    gameProfileClearWeather,
+    gameProfileCloudyWeather,
+} from './profileWeather';
 
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
@@ -24,16 +28,6 @@ type GameProfileMode =
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
 >;
-
-const clearWeather = {
-    cloudy: 0,
-    rainy: 0,
-    snowy: 0,
-    foggy: 0,
-    windSpeed: 0,
-    windDirection: 0,
-    snowAccumulation: 0,
-} satisfies NonNullable<GameSceneProps['weather']>;
 
 const debugGameFlags = {
     enableDebugHudFlag: true,
@@ -66,8 +60,15 @@ function resolveMode(value: string | undefined): GameProfileMode {
     return 'baseline';
 }
 
-function resolveQuality(value: string | undefined): GameSceneProps['quality'] {
-    if (value === 'low' || value === 'medium' || value === 'high') {
+function resolveQuality(
+    value: string | undefined,
+): GameSceneProps['initialQualitySetting'] {
+    if (
+        value === 'auto' ||
+        value === 'low' ||
+        value === 'medium' ||
+        value === 'high'
+    ) {
         return value;
     }
 
@@ -92,13 +93,7 @@ function resolveWeather(
     mode: GameProfileMode,
 ): NonNullable<GameSceneProps['weather']> {
     if (mode === 'cloudy') {
-        return {
-            ...clearWeather,
-            cloudy: 0.85,
-            foggy: 0.06,
-            windSpeed: 0.35,
-            windDirection: 80,
-        };
+        return gameProfileCloudyWeather;
     }
 
     if (mode === 'rain') {
@@ -127,7 +122,7 @@ function resolveWeather(
 
     if (mode === 'night') {
         return {
-            ...clearWeather,
+            ...gameProfileClearWeather,
             cloudy: 0.1,
             windSpeed: 0.2,
             windDirection: 45,
@@ -149,7 +144,7 @@ function resolveWeather(
 
     if (mode === 'autumn') {
         return {
-            ...clearWeather,
+            ...gameProfileClearWeather,
             cloudy: 0.35,
             foggy: 0.08,
             windSpeed: 0.7,
@@ -159,7 +154,7 @@ function resolveWeather(
 
     if (mode === 'windy') {
         return {
-            ...clearWeather,
+            ...gameProfileClearWeather,
             cloudy: 0.45,
             foggy: 0.04,
             windSpeed: 2.4,
@@ -167,7 +162,7 @@ function resolveWeather(
         };
     }
 
-    return clearWeather;
+    return gameProfileClearWeather;
 }
 
 function resolveFreezeTime(mode: GameProfileMode) {
@@ -269,7 +264,8 @@ export default async function GameProfilePage({
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
         >
-            <GameScene
+            <ProfileGameScene
+                key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}

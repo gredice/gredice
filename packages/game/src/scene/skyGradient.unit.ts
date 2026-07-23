@@ -6,6 +6,9 @@ import {
 } from './backgroundPalettes';
 import { resolveMoonlitNightScales } from './moonlight';
 import {
+    cloneSkyGradientColors,
+    isSkyGradientWithinEpsilon,
+    lerpSkyGradientColors,
     resolveEnvironmentSkyBackgroundColors,
     resolveGroundViewSkyGradientColors,
     resolveSkyBackgroundColor,
@@ -144,4 +147,40 @@ test('ground view collapses the sky to the gradient lower color without celestia
     assert.equal(groundView.sunGlowIntensity, 0);
     assert.equal(groundView.moonGlowIntensity, 0);
     assert.notEqual(groundView.lower, gradient.lower);
+});
+
+test('gradient convergence detects both color and glow intensity changes', () => {
+    const target = resolveGradient({ timeOfDay: 0.5 });
+    const displayed = cloneSkyGradientColors(target);
+
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), true);
+
+    displayed.horizon.r += 0.01;
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), false);
+
+    displayed.horizon.copy(target.horizon);
+    displayed.sunGlowIntensity += 0.01;
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), false);
+});
+
+test('gradient transition converges and can release its render lease', () => {
+    const displayed = resolveGradient({
+        moonlight: 0.8,
+        timeOfDay: 0.92,
+    });
+    const target = resolveGradient({ timeOfDay: 0.5 });
+    const transitionSeconds = 0.6;
+
+    for (let frame = 0; frame < 600; frame += 1) {
+        lerpSkyGradientColors(
+            displayed,
+            target,
+            1 - Math.exp(-(1 / transitionSeconds) * (1 / 60)),
+        );
+        if (isSkyGradientWithinEpsilon(displayed, target, 0.001)) {
+            break;
+        }
+    }
+
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), true);
 });

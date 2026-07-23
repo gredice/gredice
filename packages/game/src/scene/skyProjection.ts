@@ -24,6 +24,92 @@ export type SunViewportTuning = {
     verticalOffsetMultiplier: number;
 };
 
+export type SkyCameraProjectionSnapshot = {
+    bottom: number;
+    initialized: boolean;
+    left: number;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+    quaternionW: number;
+    quaternionX: number;
+    quaternionY: number;
+    quaternionZ: number;
+    right: number;
+    top: number;
+    upX: number;
+    upY: number;
+    upZ: number;
+    zoom: number;
+};
+
+export function createSkyCameraProjectionSnapshot(): SkyCameraProjectionSnapshot {
+    return {
+        bottom: 0,
+        initialized: false,
+        left: 0,
+        positionX: 0,
+        positionY: 0,
+        positionZ: 0,
+        quaternionW: 0,
+        quaternionX: 0,
+        quaternionY: 0,
+        quaternionZ: 0,
+        right: 0,
+        top: 0,
+        upX: 0,
+        upY: 0,
+        upZ: 0,
+        zoom: 0,
+    };
+}
+
+export function updateSkyCameraProjectionSnapshot(
+    camera: Camera,
+    snapshot: SkyCameraProjectionSnapshot,
+) {
+    if (!(camera instanceof OrthographicCamera)) {
+        return false;
+    }
+
+    const changed =
+        !snapshot.initialized ||
+        snapshot.bottom !== camera.bottom ||
+        snapshot.left !== camera.left ||
+        snapshot.positionX !== camera.position.x ||
+        snapshot.positionY !== camera.position.y ||
+        snapshot.positionZ !== camera.position.z ||
+        snapshot.quaternionW !== camera.quaternion.w ||
+        snapshot.quaternionX !== camera.quaternion.x ||
+        snapshot.quaternionY !== camera.quaternion.y ||
+        snapshot.quaternionZ !== camera.quaternion.z ||
+        snapshot.right !== camera.right ||
+        snapshot.top !== camera.top ||
+        snapshot.upX !== camera.up.x ||
+        snapshot.upY !== camera.up.y ||
+        snapshot.upZ !== camera.up.z ||
+        snapshot.zoom !== camera.zoom;
+
+    snapshot.bottom = camera.bottom;
+    snapshot.initialized = true;
+    snapshot.left = camera.left;
+    snapshot.positionX = camera.position.x;
+    snapshot.positionY = camera.position.y;
+    snapshot.positionZ = camera.position.z;
+    snapshot.quaternionW = camera.quaternion.w;
+    snapshot.quaternionX = camera.quaternion.x;
+    snapshot.quaternionY = camera.quaternion.y;
+    snapshot.quaternionZ = camera.quaternion.z;
+    snapshot.right = camera.right;
+    snapshot.top = camera.top;
+    snapshot.upX = camera.up.x;
+    snapshot.upY = camera.up.y;
+    snapshot.upZ = camera.up.z;
+    snapshot.zoom = camera.zoom;
+
+    return changed;
+}
+
 export function createSkyViewBasis(): SkyViewBasis {
     return {
         forward: new Vector3(),
