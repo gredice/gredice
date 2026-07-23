@@ -520,7 +520,6 @@ export function EntityInstances({
                 <GroundBlockDecorations
                     density={qualityProfile.groundDecorationDensity}
                     farmId={farmId}
-                    qualityTier={qualityProfile.tier}
                     stacks={stacks}
                 />
             )}

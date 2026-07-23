@@ -12,16 +12,13 @@ import {
     type IUniform,
     Matrix4,
     MeshLambertMaterial,
-    PerspectiveCamera,
     PlaneGeometry,
     Quaternion,
-    Vector2,
     Vector3,
 } from 'three';
 import { SeededRNG } from '../../generators/plant/lib/rng';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
-import type { GameQualityProfileTier } from '../../scene/gameQuality';
 import { useSceneTimeUniform } from '../../scene/SceneTime';
 import { resolveSpriteAtlasAssetPaths } from '../../sprites/resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from '../../sprites/spriteLighting';
@@ -31,10 +28,6 @@ import { useSpriteAtlasTexture } from '../../sprites/useSpriteAtlasTexture';
 import { useGameState } from '../../useGameState';
 import { estimateRgba8MipmappedTextureBytes } from './groundDecorationAtlasMemory';
 import { groundDecorationAtlasBasePath } from './groundDecorationConfig';
-import {
-    resolveGroundDecorationMinimumProjectedBackingPixels,
-    shouldCullGroundDecorationByProjectedSize,
-} from './groundDecorationProjectedSize';
 
 export type GroundDecorationInstance = {
     alphaTest: number;
@@ -77,7 +70,6 @@ type GroundDecorationProfileBatchStats = {
     atlasPageIndex: number;
     chunkKeys: string[];
     instanceCount: number;
-    projectedSizeCulledCount: number;
     visibleCount: number;
 };
 
@@ -323,11 +315,9 @@ if ( diffuseColor.a < vGroundDecorationAlphaTest ) discard;
 export function GroundDecorationInstances({
     farmId,
     instances,
-    qualityTier,
 }: {
     farmId?: number | null;
     instances: GroundDecorationInstance[];
-    qualityTier: GameQualityProfileTier;
 }) {
     const profileBatchesRef = useRef(
         new Map<string, GroundDecorationProfileBatchStats>(),
@@ -343,22 +333,18 @@ export function GroundDecorationInstances({
 
             const groundDecorationAtlasPages = new Set<number>();
             const groundDecorationChunks = new Set<string>();
-            let groundDecorationProjectedSizeCulledCount = 0;
             let groundDecorationVisibleCount = 0;
             for (const batchStats of profileBatches.values()) {
                 groundDecorationAtlasPages.add(batchStats.atlasPageIndex);
                 for (const chunkKey of batchStats.chunkKeys) {
                     groundDecorationChunks.add(chunkKey);
                 }
-                groundDecorationProjectedSizeCulledCount +=
-                    batchStats.projectedSizeCulledCount;
                 groundDecorationVisibleCount += batchStats.visibleCount;
             }
 
             updateGameProfileMetadata({
                 groundDecorationAtlasPageCount: groundDecorationAtlasPages.size,
                 groundDecorationChunkCount: groundDecorationChunks.size,
-                groundDecorationProjectedSizeCulledCount,
                 groundDecorationVisibleCount,
             });
         },
@@ -428,7 +414,6 @@ export function GroundDecorationInstances({
                 groundDecorationAtlasEstimatedGpuBytes: 0,
                 groundDecorationAtlasPageCount: 0,
                 groundDecorationChunkCount: 0,
-                groundDecorationProjectedSizeCulledCount: 0,
                 groundDecorationVisibleCount: 0,
             });
         },
@@ -468,7 +453,6 @@ export function GroundDecorationInstances({
                             farmId={farmId}
                             instances={pageInstances}
                             manifestSprites={manifest.sprites}
-                            qualityTier={qualityTier}
                             recordProfileBatch={recordProfileBatch}
                         />
                     );
@@ -483,14 +467,12 @@ function GroundDecorationPageInstances({
     farmId,
     instances,
     manifestSprites,
-    qualityTier,
     recordProfileBatch,
 }: {
     atlasPage: SpriteAtlasPage;
     farmId?: number | null;
     instances: GroundDecorationInstance[];
     manifestSprites: Record<string, SpriteAtlasSprite>;
-    qualityTier: GameQualityProfileTier;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
 }) {
     const pageAssetPaths = useMemo(
@@ -550,7 +532,6 @@ function GroundDecorationPageInstances({
         <GroundDecorationInstancedBatch
             batch={batch}
             farmId={farmId}
-            qualityTier={qualityTier}
             recordProfileBatch={recordProfileBatch}
             texture={texture}
         />
@@ -560,24 +541,16 @@ function GroundDecorationPageInstances({
 function GroundDecorationInstancedBatch({
     batch,
     farmId,
-    qualityTier,
     recordProfileBatch,
     texture,
 }: {
     batch: GroundDecorationBatch;
     farmId?: number | null;
-    qualityTier: GameQualityProfileTier;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
     texture: NonNullable<ReturnType<typeof useSpriteAtlasTexture>['texture']>;
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
     const camera = useThree((state) => state.camera);
-    const gl = useThree((state) => state.gl);
-    const viewportHeight = useThree((state) => state.size.height);
-    const viewportWidth = useThree((state) => state.size.width);
-    const viewportDpr = useThree((state) => state.viewport.dpr);
-    const drawingBufferSize = useMemo(() => new Vector2(), []);
-    const cameraSpacePosition = useMemo(() => new Vector3(), []);
     const matrix = useMemo(() => new Matrix4(), []);
     const frustumMatrix = useMemo(() => new Matrix4(), []);
     const frustum = useMemo(() => new Frustum(), []);
@@ -611,8 +584,6 @@ function GroundDecorationInstancedBatch({
     const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
     const brightness = getSpriteBrightness(timeOfDay, weather);
     const timeUniform = useSceneTimeUniform();
-    const minimumProjectedBackingPixels =
-        resolveGroundDecorationMinimumProjectedBackingPixels(qualityTier);
     const material = useMemo(() => {
         const batchMaterial = new MeshLambertMaterial({
             color: 'white',
@@ -655,8 +626,6 @@ function GroundDecorationInstancedBatch({
                 camera.matrixWorldInverse,
             );
             frustum.setFromProjectionMatrix(frustumMatrix);
-            gl.getDrawingBufferSize(drawingBufferSize);
-            const projectionScaleY = camera.projectionMatrix.elements[5] ?? 0;
 
             const wobbleAttribute = geometry.getAttribute(
                 'instanceWobble',
@@ -668,7 +637,6 @@ function GroundDecorationInstancedBatch({
                 'instanceUvTransform',
             ) as InstancedBufferAttribute;
             let visibleIndex = 0;
-            let projectedSizeCulledCount = 0;
 
             for (const chunk of chunks) {
                 if (!frustum.intersectsBox(chunk.bounds)) {
@@ -677,25 +645,6 @@ function GroundDecorationInstancedBatch({
 
                 for (const instance of chunk.instances) {
                     position.set(...instance.position);
-                    const viewDepth =
-                        camera instanceof PerspectiveCamera
-                            ? -cameraSpacePosition
-                                  .copy(position)
-                                  .applyMatrix4(camera.matrixWorldInverse).z
-                            : 1;
-                    if (
-                        shouldCullGroundDecorationByProjectedSize(
-                            instance.height,
-                            projectionScaleY,
-                            drawingBufferSize.y,
-                            viewDepth,
-                            minimumProjectedBackingPixels,
-                        )
-                    ) {
-                        projectedSizeCulledCount += 1;
-                        continue;
-                    }
-
                     rotationZ.setFromEuler(new Euler(0, 0, instance.rotationZ));
                     quaternion.copy(cameraQuaternion).multiply(rotationZ);
                     scale.set(
@@ -731,7 +680,6 @@ function GroundDecorationInstancedBatch({
                 atlasPageIndex: batch.atlasPageIndex,
                 chunkKeys: chunks.map((chunk) => chunk.key),
                 instanceCount: batch.instances.length,
-                projectedSizeCulledCount,
                 visibleCount: visibleIndex,
             });
         },
@@ -740,15 +688,11 @@ function GroundDecorationInstancedBatch({
             batch.key,
             batch.atlasPageIndex,
             camera,
-            cameraSpacePosition,
             chunks,
-            drawingBufferSize,
             frustum,
             frustumMatrix,
             geometry,
-            gl,
             matrix,
-            minimumProjectedBackingPixels,
             position,
             quaternion,
             recordProfileBatch,
@@ -758,24 +702,13 @@ function GroundDecorationInstancedBatch({
     );
 
     useLayoutEffect(() => {
-        if (viewportDpr <= 0 || viewportHeight <= 0 || viewportWidth <= 0) {
+        if (!gameCamera) {
+            updateMatrices(camera.quaternion);
             return;
         }
 
-        updateMatrices(camera.quaternion);
-        if (gameCamera) {
-            return gameCamera.subscribe(() =>
-                updateMatrices(camera.quaternion),
-            );
-        }
-    }, [
-        camera,
-        gameCamera,
-        updateMatrices,
-        viewportDpr,
-        viewportHeight,
-        viewportWidth,
-    ]);
+        return gameCamera.subscribe(() => updateMatrices(camera.quaternion));
+    }, [camera, gameCamera, updateMatrices]);
 
     useLayoutEffect(
         () => () => {

@@ -177,7 +177,6 @@ export type GameProfileMetadata = {
     groundDecorationChunkCount?: number;
     groundDecorationCount?: number;
     groundDecorationDensity?: number;
-    groundDecorationProjectedSizeCulledCount?: number;
     groundDecorationVisibleCount?: number;
     generatedLSystemCacheEntryCount?: number;
     generatedLSystemCacheEstimatedBytes?: number;
