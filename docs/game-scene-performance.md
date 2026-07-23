@@ -245,6 +245,56 @@ The `dense-mobile` scenario set samples:
 - `game-dense-25x25-windy-mobile`
 - `game-plant-heavy-25x25-mobile`
 
+The `plant-closeup` scenario set isolates the expensive transition from the
+normal garden camera into a plant-heavy raised bed:
+
+- `game-plant-heavy-closeup-desktop`
+- `game-plant-heavy-closeup-mobile`
+
+Both scenarios use the deterministic `plant-heavy` garden and select center
+raised bed `29`, rather than a corner bed, so neighboring generated fields stay
+in view. The desktop scenario uses the medium tier at `1280x720`/DPR 1. The
+mobile scenario uses the automatic quality resolver at `390x844`/DPR 3 while
+emulating a constrained 4 GiB, four-core device. Each scenario runs in three
+fresh browser contexts and records separate cold and warm close-up transitions;
+the report includes the individual samples and medians.
+
+Run only this matrix with:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+```
+
+The close-up controller is enabled only when the debug profile route receives a
+valid `closeupRaisedBedId` query. It drives the real normal/close-up game-state
+transition while leaving the initial camera untouched. Outside an active debug
+session, the generated-plant instrumentation does not publish or retain
+profiling state.
+
+Each close-up pass separates the selected field's near-LOD intent,
+pending-near billboard fallback, first detailed field, fully detailed field
+set, and settled camera milestones. Its JSON record also separates selected
+and non-selected field and plant counts by near/mid/far/invisible state;
+L-system requests, completions, consumer cancellations, worker duration and
+failures; main-thread render-data builds; detailed stem, leaf, flower, produce,
+and thorn instances; billboard instances; and detailed shadow-caster
+submissions/primitive instances. Transition and steady-state samples include
+browser/rendered frames, draw and instanced calls, submitted triangles, long
+tasks, heap, and CDP task/script/layout duration.
+
+When WebGL2 exposes `EXT_disjoint_timer_query_webgl2`, transition and
+steady-state samples include directional GPU elapsed-time samples. The report
+sets `supported: false` and records the reason when the extension is
+unavailable, so a missing GPU number is not mistaken for zero work.
+
+Normal, cold pending-near (when the transition remains pending long enough to
+capture), and detailed screenshots are written below
+`apps/garden/test-results/game-profile/screenshots/<scenario>/`. The JSON and
+Markdown reports remain under `apps/garden/test-results/game-profile/`; use the
+raw JSON when comparing optimization implementations because it preserves all
+per-run cold/warm metadata.
+
 Each scenario records startup readiness, canvas backing size, reported DPR,
 requested mode, garden profile, controls mode, camera-motion mode, active
 quality tier, DPR cap, shadow map size, rain/snow particle counts, active snow
@@ -276,10 +326,12 @@ GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
 pnpm run profile:game -- --scenario game-dense-25x25-rain-mobile
 GAME_PROFILE_SCENARIOS=game-dense-25x25-rain-mobile pnpm run profile:game
 GAME_PROFILE_WARMUP_MS=8000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=45000 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_SOAK_MS=600000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
 GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game
 ```

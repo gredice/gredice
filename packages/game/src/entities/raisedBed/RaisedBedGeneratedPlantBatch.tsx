@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGeneratedLSystemSymbolsBatch } from '../../generators/plant/hooks/useGeneratedLSystem';
 import {
@@ -20,10 +20,19 @@ import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard
 import { Stems } from '../../generators/plant/parts/stems';
 import { Thorns } from '../../generators/plant/parts/thorns';
 import { Vegetables } from '../../generators/plant/parts/vegetables';
+import type { GeneratedPlantProfilePartCounts } from '../../scene/gameProfileMetadata';
+import {
+    isGeneratedPlantProfileActive,
+    recordGeneratedPlantProfileBatch,
+    recordGeneratedPlantProfileBuild,
+    removeGeneratedPlantProfileBatch,
+} from '../../scene/generatedPlantProfileMetrics';
 
 export interface RaisedBedGeneratedPlantBatchInstance {
+    fieldKey?: string;
     generation: number;
     position: readonly [number, number, number];
+    raisedBedId?: number;
     scale: number;
     seed: string;
 }
@@ -46,6 +55,12 @@ type DetailedBatchedPlantRenderData = {
     stemSegments: PlantStemSegment[];
     thorns: THREE.Matrix4[];
     vegetables: ReturnType<typeof buildPlantRenderData>['vegetables'];
+};
+
+type DetailedBatchBuildResult = {
+    data: DetailedBatchedPlantRenderData | null;
+    durationMs: number;
+    partsByField: Map<string, GeneratedPlantProfilePartCounts>;
 };
 
 function RaisedBedDetailedPlantBatch({
@@ -134,18 +149,58 @@ export function RaisedBedGeneratedPlantBatch({
         [definition, instances, lodLevel],
     );
     const { symbols } = useGeneratedLSystemSymbolsBatch(tasks);
-    const batchedData = useMemo(() => {
+    const profileFields = useMemo(() => {
+        const fields = new Map<
+            string,
+            {
+                fieldKey: string;
+                instanceCount: number;
+                raisedBedId: number;
+            }
+        >();
+        for (const instance of instances) {
+            if (
+                instance.fieldKey === undefined ||
+                instance.raisedBedId === undefined
+            ) {
+                continue;
+            }
+
+            const current = fields.get(instance.fieldKey);
+            if (current) {
+                current.instanceCount += 1;
+            } else {
+                fields.set(instance.fieldKey, {
+                    fieldKey: instance.fieldKey,
+                    instanceCount: 1,
+                    raisedBedId: instance.raisedBedId,
+                });
+            }
+        }
+        return Array.from(fields.values());
+    }, [instances]);
+    const batchBuild = useMemo<DetailedBatchBuildResult>(() => {
         if (!renderDetailedGeometry) {
-            return null;
+            return {
+                data: null,
+                durationMs: 0,
+                partsByField: new Map(),
+            };
         }
 
         if (
             symbols.length !== instances.length ||
             symbols.some((result) => result === null)
         ) {
-            return null;
+            return {
+                data: null,
+                durationMs: 0,
+                partsByField: new Map(),
+            };
         }
 
+        const profileActive = isGeneratedPlantProfileActive();
+        const startedAt = profileActive ? performance.now() : 0;
         const rootPosition = new THREE.Vector3();
         const rootScale = new THREE.Vector3();
         const rootMatrix = new THREE.Matrix4();
@@ -157,6 +212,7 @@ export function RaisedBedGeneratedPlantBatch({
             typeof buildPlantRenderData
         >['vegetables'] = [];
         const thorns: THREE.Matrix4[] = [];
+        const partsByField = new Map<string, GeneratedPlantProfilePartCounts>();
         symbols.forEach((lSystemSymbols, index) => {
             const instance = instances[index];
             const clampedGeneration = Math.min(
@@ -173,6 +229,42 @@ export function RaisedBedGeneratedPlantBatch({
                 seed: instance.seed,
                 showProduce,
             });
+            if (profileActive && instance.fieldKey) {
+                const stemCount = plantData.stemSegments.length;
+                const leafCount = plantData.leaves.length;
+                const flowerCount = plantData.flowers.length;
+                const produceCount = plantData.vegetables.length;
+                const thornCount = plantData.thorns.length;
+                const current = partsByField.get(instance.fieldKey) ?? {
+                    billboardInstances: 0,
+                    flowers: 0,
+                    leaves: 0,
+                    produce: 0,
+                    shadowCasterSubmissions: 0,
+                    shadowPrimitiveInstances: 0,
+                    stems: 0,
+                    thorns: 0,
+                };
+                current.stems += stemCount;
+                current.leaves += leafCount;
+                current.flowers += flowerCount;
+                current.produce += produceCount;
+                current.thorns += thornCount;
+                current.shadowCasterSubmissions += [
+                    stemCount,
+                    leafCount,
+                    flowerCount,
+                    produceCount,
+                    thornCount,
+                ].filter((count) => count > 0).length;
+                current.shadowPrimitiveInstances +=
+                    stemCount +
+                    leafCount +
+                    flowerCount +
+                    produceCount +
+                    thornCount;
+                partsByField.set(instance.fieldKey, current);
+            }
             rootPosition.set(...instance.position);
             rootScale.setScalar(instance.scale);
             rootMatrix.compose(rootPosition, ROOT_QUATERNION, rootScale);
@@ -203,13 +295,17 @@ export function RaisedBedGeneratedPlantBatch({
             });
         });
         return {
-            flowers,
-            leafColors,
-            leaves,
-            stemSegments,
-            thorns,
-            vegetables,
-        } satisfies DetailedBatchedPlantRenderData;
+            data: {
+                flowers,
+                leafColors,
+                leaves,
+                stemSegments,
+                thorns,
+                vegetables,
+            },
+            durationMs: profileActive ? performance.now() - startedAt : 0,
+            partsByField,
+        };
     }, [
         definition,
         flowerGrowth,
@@ -218,6 +314,44 @@ export function RaisedBedGeneratedPlantBatch({
         renderDetailedGeometry,
         showProduce,
         symbols,
+    ]);
+    const batchedData = batchBuild.data;
+    const profileBatchId = `${batchSeed}:${lodLevel}`;
+    useEffect(() => {
+        if (!isGeneratedPlantProfileActive() || profileFields.length === 0) {
+            return;
+        }
+
+        const status =
+            lodLevel !== 'near'
+                ? 'billboard'
+                : batchedData
+                  ? 'detailed'
+                  : 'pending-near';
+        recordGeneratedPlantProfileBatch(profileBatchId, {
+            fields: profileFields.map((field) => ({
+                ...field,
+                parts: batchBuild.partsByField.get(field.fieldKey),
+            })),
+            status,
+        });
+        if (batchedData && batchBuild.durationMs > 0) {
+            recordGeneratedPlantProfileBuild({
+                buildId: profileBatchId,
+                durationMs: batchBuild.durationMs,
+                instanceCount: instances.length,
+            });
+        }
+
+        return () => removeGeneratedPlantProfileBatch(profileBatchId);
+    }, [
+        batchBuild.durationMs,
+        batchBuild.partsByField,
+        batchedData,
+        instances.length,
+        lodLevel,
+        profileBatchId,
+        profileFields,
     ]);
 
     if (lodLevel !== 'near') {

@@ -356,6 +356,41 @@ Reports: `steps/14-rain-lifecycle-before/latest.json` and
   small shader path could delay the first visible rain and would not address
   the sustained GPU workload behind the thermal report.
 
+## Raised-bed close-up profiling foundation
+
+Added 2026-07-23 for the L-system close-up optimization series.
+
+The production profiler now has a deterministic `plant-closeup` matrix for
+center raised bed `29` in the plant-heavy mock garden. It captures desktop
+medium and constrained automatic-quality mobile runs. Each scenario gets three
+independent samples, and every sample records both a cold and warm
+normal-to-close-up transition plus steady state. Reports include the selected
+and surrounding plant LOD/render states, detail-readiness milestones,
+L-system/worker and main-thread build work, primitive and shadow submissions,
+renderer work, long tasks, heap, optional WebGL2 GPU timing, and normal,
+pending-near, and detailed screenshots.
+
+Run:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+```
+
+The first production capture attempted on 2026-07-23 did not produce a
+measurement: the shared-worktree `next build` remained silent at “Creating an
+optimized production build” for about five minutes with no active build worker,
+so it was stopped. No timing or thermal claim is inferred from that failed
+capture. The matrix should be rerun from the completed optimization branch, and
+its `latest.json`, `latest.md`, and screenshots should be copied into the
+appropriate ignored `steps/<optimization>/` comparison directory before
+recording deltas here.
+
+Headless Chromium measurements remain directional. Release validation still
+requires separate 10-minute raised-bed close-up soaks on at least one mid-range
+iPhone and one mid-range Android device, recording frame stability, heap trend,
+visual detail readiness, battery/thermal state, and any OS throttling signal.
+
 ## Final validation and headless soak
 
 Report: `steps/final-soak/latest.json`. Each scenario warmed for 5 seconds,

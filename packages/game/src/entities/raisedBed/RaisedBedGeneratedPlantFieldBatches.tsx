@@ -2,7 +2,14 @@
 
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import * as THREE from 'three';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
@@ -23,6 +30,11 @@ import {
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import {
+    isGeneratedPlantProfileActive,
+    recordGeneratedPlantProfileFields,
+    recordGeneratedPlantProfileLodEvaluation,
+} from '../../scene/generatedPlantProfileMetrics';
 import { useGameState } from '../../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -59,6 +71,7 @@ type GeneratedPlantField = {
     instances: RaisedBedGeneratedPlantBatchInstance[];
     plantType: ResolvedInGamePlantPreset['plantType'];
     position: readonly [number, number, number];
+    raisedBedId: number;
 };
 
 type GeneratedPlantBatch = {
@@ -176,6 +189,7 @@ function useGeneratedPlantFieldLods(generatedFields: GeneratedPlantField[]) {
             string,
             { level: PlantLodLevel; visible: boolean }
         >();
+        recordGeneratedPlantProfileLodEvaluation(generatedFields.length);
 
         for (const field of generatedFields) {
             worldPosition.set(...field.position);
@@ -398,12 +412,14 @@ export function RaisedBedGeneratedPlantFieldBatches({
 
                     instances.push({
                         generation: plantGeneration,
+                        fieldKey: getFieldRenderKey(block.blockId, field),
                         position: [
                             fieldPosition[0] + slotX,
                             fieldPosition[1] + 0.02,
                             fieldPosition[2] + slotZ,
                         ],
                         scale: plantInstanceScale,
+                        raisedBedId: raisedBed.id,
                         seed: `${block.blockId}:${plantSortId}:${field.positionIndex}:${index}`,
                     });
                 }
@@ -415,6 +431,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances,
                     plantType: resolvedPlantPreset.plantType,
                     position: fieldPosition,
+                    raisedBedId: raisedBed.id,
                 });
             }
         }
@@ -431,6 +448,24 @@ export function RaisedBedGeneratedPlantFieldBatches({
         sortData,
     ]);
     const lods = useGeneratedPlantFieldLods(generatedFields);
+    useEffect(() => {
+        if (!isGeneratedPlantProfileActive()) {
+            return;
+        }
+
+        recordGeneratedPlantProfileFields(
+            generatedFields.map((field) => {
+                const lod = lods.get(field.fieldKey);
+                return {
+                    fieldKey: field.fieldKey,
+                    instanceCount: field.instances.length,
+                    lodLevel: lod?.level ?? 'far',
+                    raisedBedId: field.raisedBedId,
+                    visible: lod?.visible ?? false,
+                };
+            }),
+        );
+    }, [generatedFields, lods]);
     const batches = useMemo(() => {
         const batchMap = new Map<string, GeneratedPlantBatch>();
 

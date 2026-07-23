@@ -38,6 +38,15 @@ function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
 }
 
+function resolvePositiveInteger(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function resolveMode(value: string | undefined): GameProfileMode {
     if (value === 'autum') {
         return 'autumn';
@@ -247,6 +256,9 @@ export default async function GameProfilePage({
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
+    const closeupRaisedBedId = resolvePositiveInteger(
+        firstValue(params.closeupRaisedBedId),
+    );
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -263,6 +275,9 @@ export default async function GameProfilePage({
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
+            data-game-profile-closeup-raised-bed-id={
+                closeupRaisedBedId ?? undefined
+            }
         >
             <ProfileGameScene
                 key={mode}
@@ -273,6 +288,7 @@ export default async function GameProfilePage({
                 debugHud={showDebugHud}
                 hideHud={!showHud}
                 initialQualitySetting={quality}
+                enableGameProfileController={closeupRaisedBedId !== null}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

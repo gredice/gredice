@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
 import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
+import { GameProfileController } from './scene/GameProfileController';
 import {
     createGameState,
     GameStateContext,
@@ -19,6 +20,7 @@ export function GameSceneWrapper({
     freezeTime,
     dayNightCycleDisabled,
     initialQualitySetting,
+    enableGameProfileController,
     mockGarden,
     mockGardenProfile,
     localSandboxStorageKey,
@@ -81,6 +83,7 @@ export function GameSceneWrapper({
         <GameStateContext.Provider value={storeRef.current}>
             <GameFlagsContext.Provider value={flags ?? {}}>
                 <GameScene flags={flags} {...rest} />
+                {enableGameProfileController ? <GameProfileController /> : null}
             </GameFlagsContext.Provider>
         </GameStateContext.Provider>
     );

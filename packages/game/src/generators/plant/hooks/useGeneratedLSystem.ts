@@ -2,6 +2,12 @@
 
 import { startTransition, useEffect, useMemo, useState } from 'react';
 import {
+    isGeneratedPlantProfileActive,
+    recordGeneratedPlantProfileLSystemCancellation,
+    recordGeneratedPlantProfileLSystemCompletion,
+    recordGeneratedPlantProfileLSystemRequest,
+} from '../../../scene/generatedPlantProfileMetrics';
+import {
     generateLSystemStringWithGenerations,
     type LSystemSymbol,
 } from '../lib/l-system';
@@ -121,6 +127,13 @@ export async function requestGeneratedLSystemSymbolsBatch(
         missingKeys.push(key);
         missingIndexes.push(index);
     });
+    const profileActive = isGeneratedPlantProfileActive();
+    recordGeneratedPlantProfileLSystemRequest({
+        requestedTaskCount: tasks.length,
+        workerTaskCount: missingTasks.length,
+    });
+    const workerStartedAt = profileActive ? performance.now() : 0;
+    let workerFailed = false;
 
     if (missingTasks.length > 0) {
         let generatedSymbols: LSystemSymbol[][];
@@ -128,6 +141,7 @@ export async function requestGeneratedLSystemSymbolsBatch(
         try {
             generatedSymbols = await runWorkerTasks(missingTasks);
         } catch {
+            workerFailed = true;
             generatedSymbols = missingTasks.map(generateSymbolsSync);
         }
 
@@ -139,6 +153,14 @@ export async function requestGeneratedLSystemSymbolsBatch(
             results[resultIndex] = symbols;
         });
     }
+    recordGeneratedPlantProfileLSystemCompletion({
+        completedTaskCount: tasks.length,
+        durationMs:
+            profileActive && missingTasks.length > 0
+                ? performance.now() - workerStartedAt
+                : 0,
+        workerFailed,
+    });
 
     return results as LSystemSymbol[][];
 }
@@ -187,9 +209,11 @@ export function useGeneratedLSystemSymbols(
         }
 
         let cancelled = false;
+        let settled = false;
         setIsPending(true);
 
         requestGeneratedLSystemSymbolsBatch([task]).then(([nextSymbols]) => {
+            settled = true;
             if (cancelled) {
                 return;
             }
@@ -202,6 +226,9 @@ export function useGeneratedLSystemSymbols(
 
         return () => {
             cancelled = true;
+            if (!settled) {
+                recordGeneratedPlantProfileLSystemCancellation(1);
+            }
         };
     }, [symbols, task, taskKey]);
 
@@ -274,7 +301,9 @@ export function useGeneratedLSystemSymbolsBatch(
         }
 
         let cancelled = false;
+        let settled = false;
         requestGeneratedLSystemSymbolsBatch(missingTasks).then((results) => {
+            settled = true;
             if (cancelled) {
                 return;
             }
@@ -297,6 +326,11 @@ export function useGeneratedLSystemSymbolsBatch(
 
         return () => {
             cancelled = true;
+            if (!settled) {
+                recordGeneratedPlantProfileLSystemCancellation(
+                    missingTasks.length,
+                );
+            }
         };
     }, [taskKeys, tasks]);
 

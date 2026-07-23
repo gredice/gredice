@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -10,6 +10,8 @@ const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
+const gameProfileCloseupCommandEventName =
+    'gredice:game-profile-closeup-command';
 
 const coreScenarios = [
     {
@@ -222,6 +224,34 @@ const standardAutoQualityDevice = {
     },
 };
 
+const plantCloseupScenarios = [
+    {
+        name: 'game-plant-heavy-closeup-desktop',
+        path: '/debug/profile/game?mode=details&profile=plant-heavy&quality=medium&controls=0&details=1&hud=0&debugHud=0&closeupRaisedBedId=29',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDensePlants',
+        plantCloseup: {
+            repeat: 3,
+            raisedBedId: 29,
+        },
+    },
+    {
+        name: 'game-plant-heavy-closeup-mobile',
+        path: '/debug/profile/game?mode=details&profile=plant-heavy&quality=auto&controls=0&details=1&hud=0&debugHud=0&closeupRaisedBedId=29',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDensePlantsMobile',
+        plantCloseup: {
+            repeat: 3,
+            raisedBedId: 29,
+        },
+        ...constrainedAutoQualityDevice,
+    },
+];
+
 const autoQualityScenarios = [
     {
         name: 'game-auto-quality-standard-desktop',
@@ -352,6 +382,7 @@ const scenarioSets = {
     core: coreScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
+    'plant-closeup': plantCloseupScenarios,
     rewards: rewardScenarios,
     'weather-transitions': weatherTransitionScenarios,
 };
@@ -483,6 +514,9 @@ function parseArgs(argv) {
     const options = {
         baseUrl: process.env.GAME_PROFILE_BASE_URL ?? defaultBaseUrl,
         build: process.env.GAME_PROFILE_BUILD === '1',
+        closeupTimeoutMs: Number(
+            process.env.GAME_PROFILE_CLOSEUP_TIMEOUT_MS ?? 30000,
+        ),
         failOnBudget: process.env.GAME_PROFILE_FAIL_ON_BUDGET === '1',
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
@@ -512,6 +546,10 @@ function parseArgs(argv) {
                 break;
             case '--build':
                 options.build = true;
+                break;
+            case '--closeup-timeout-ms':
+                options.closeupTimeoutMs = Number(next);
+                index += 1;
                 break;
             case '--fail-on-budget':
                 options.failOnBudget = true;
@@ -562,6 +600,12 @@ function parseArgs(argv) {
     if (!Number.isFinite(options.sampleMs) || options.sampleMs <= 0) {
         throw new Error('Sample duration must be a positive number.');
     }
+    if (
+        !Number.isFinite(options.closeupTimeoutMs) ||
+        options.closeupTimeoutMs <= 0
+    ) {
+        throw new Error('Close-up timeout must be a positive number.');
+    }
 
     if (!Number.isFinite(options.soakMs) || options.soakMs < 0) {
         throw new Error('Soak duration must be zero or a positive number.');
@@ -582,13 +626,14 @@ function printHelp(options) {
             'Options:',
             `  --base-url <url>       Garden server URL. Current: ${options.baseUrl}`,
             '  --build                Run pnpm run build before profiling.',
+            `  --closeup-timeout-ms <ms> Maximum wait for close-up detail. Current: ${options.closeupTimeoutMs}`,
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -596,6 +641,7 @@ function printHelp(options) {
             '',
             'Environment aliases:',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
+            '  GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -612,6 +658,7 @@ function allScenarios() {
         ...coreScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...plantCloseupScenarios,
         ...autoQualityScenarios,
         ...rewardScenarios,
         ...weatherTransitionScenarios,
@@ -642,7 +689,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -661,6 +708,11 @@ function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
         controls: url.searchParams.get('controls') ?? '0',
+        closeupRaisedBedId:
+            Number.parseInt(
+                url.searchParams.get('closeupRaisedBedId') ?? '',
+                10,
+            ) || null,
         details: url.searchParams.get('details') ?? '1',
         debugHud: url.searchParams.get('debugHud') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
@@ -698,8 +750,138 @@ function installBrowserMetrics() {
     globalThis.__gameProfileLongTasks = [];
 
     let rafTick = 0;
+    const gpuTimer = {
+        active: null,
+        context: null,
+        disjoint: false,
+        extension: null,
+        generation: 0,
+        pending: [],
+        reason: 'no WebGL2 draw observed',
+        samples: [],
+        supported: null,
+    };
+    const pollGpuQueries = () => {
+        const gl = gpuTimer.context;
+        const extension = gpuTimer.extension;
+        if (!gl || !extension) {
+            return;
+        }
+
+        if (gl.getParameter(extension.GPU_DISJOINT_EXT)) {
+            gpuTimer.disjoint = true;
+        }
+        gpuTimer.pending = gpuTimer.pending.filter((entry) => {
+            if (!gl.getQueryParameter(entry.query, gl.QUERY_RESULT_AVAILABLE)) {
+                return true;
+            }
+            const elapsedNanoseconds = gl.getQueryParameter(
+                entry.query,
+                gl.QUERY_RESULT,
+            );
+            if (
+                entry.generation === gpuTimer.generation &&
+                !gpuTimer.disjoint &&
+                Number.isFinite(elapsedNanoseconds)
+            ) {
+                gpuTimer.samples.push(elapsedNanoseconds / 1_000_000);
+            }
+            gl.deleteQuery(entry.query);
+            return false;
+        });
+    };
+    const endGpuQuery = () => {
+        const gl = gpuTimer.context;
+        const extension = gpuTimer.extension;
+        if (!gl || !extension || !gpuTimer.active) {
+            return;
+        }
+        gl.endQuery(extension.TIME_ELAPSED_EXT);
+        gpuTimer.pending.push(gpuTimer.active);
+        gpuTimer.active = null;
+    };
+    const beginGpuFrame = (gl) => {
+        if (
+            typeof WebGL2RenderingContext === 'undefined' ||
+            !(gl instanceof WebGL2RenderingContext)
+        ) {
+            if (gpuTimer.supported === null) {
+                gpuTimer.supported = false;
+                gpuTimer.reason = 'WebGL2 is unavailable';
+            }
+            return;
+        }
+        if (!gpuTimer.context) {
+            gpuTimer.context = gl;
+            gpuTimer.extension = gl.getExtension(
+                'EXT_disjoint_timer_query_webgl2',
+            );
+            gpuTimer.supported = Boolean(gpuTimer.extension);
+            gpuTimer.reason = gpuTimer.extension
+                ? null
+                : 'EXT_disjoint_timer_query_webgl2 is unavailable';
+        }
+        if (!gpuTimer.extension || gpuTimer.context !== gl) {
+            return;
+        }
+        if (gpuTimer.active?.rafTick === rafTick) {
+            return;
+        }
+
+        endGpuQuery();
+        pollGpuQueries();
+        const query = gl.createQuery();
+        if (!query) {
+            gpuTimer.supported = false;
+            gpuTimer.reason = 'Unable to allocate a WebGL timer query';
+            return;
+        }
+        gl.beginQuery(gpuTimer.extension.TIME_ELAPSED_EXT, query);
+        gpuTimer.active = {
+            generation: gpuTimer.generation,
+            query,
+            rafTick,
+        };
+    };
+    globalThis.__gameProfileGpuTimer = {
+        async finish() {
+            endGpuQuery();
+            await new Promise((resolveFrame) =>
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(resolveFrame),
+                ),
+            );
+            pollGpuQueries();
+        },
+        reset() {
+            gpuTimer.generation += 1;
+            gpuTimer.disjoint = false;
+            gpuTimer.samples = [];
+        },
+        snapshot() {
+            pollGpuQueries();
+            const sorted = [...gpuTimer.samples].sort((a, b) => a - b);
+            const totalMs = sorted.reduce((total, value) => total + value, 0);
+            return {
+                disjoint: gpuTimer.disjoint,
+                elapsedMaxMs: sorted.at(-1) ?? null,
+                elapsedP95Ms:
+                    sorted[
+                        Math.min(
+                            sorted.length - 1,
+                            Math.floor(sorted.length * 0.95),
+                        )
+                    ] ?? null,
+                elapsedTotalMs: sorted.length > 0 ? totalMs : null,
+                reason: gpuTimer.reason,
+                sampleCount: sorted.length,
+                supported: gpuTimer.supported === true,
+            };
+        },
+    };
     const trackRafTick = () => {
         rafTick += 1;
+        pollGpuQueries();
         requestAnimationFrame(trackRafTick);
     };
     requestAnimationFrame(trackRafTick);
@@ -740,6 +922,7 @@ function installBrowserMetrics() {
         const original = prototype[name];
         prototype[name] = function patchedDrawCall(...args) {
             const metrics = globalThis.__gameProfileMetrics;
+            beginGpuFrame(this);
             if (metrics.lastRenderedRafTick !== rafTick) {
                 metrics.lastRenderedRafTick = rafTick;
                 metrics.renderedFrames += 1;
@@ -777,6 +960,116 @@ function installBrowserMetrics() {
 
     patchContext(globalThis.WebGLRenderingContext);
     patchContext(globalThis.WebGL2RenderingContext);
+}
+
+function beginInteractiveProfileSample() {
+    const metrics = globalThis.__gameProfileMetrics;
+    if (metrics) {
+        metrics.drawCalls = 0;
+        metrics.instancedDrawCalls = 0;
+        metrics.lastRenderedRafTick = -1;
+        metrics.renderedFrames = 0;
+        metrics.submittedTriangles = 0;
+    }
+    globalThis.__gameProfileLongTasks = [];
+    globalThis.__gameProfileGpuTimer?.reset();
+
+    const startedAt = performance.now();
+    const sample = {
+        intervals: [],
+        lastFrameAt: startedAt,
+        running: true,
+        startedAt,
+    };
+    globalThis.__gameProfileInteractiveSample = sample;
+    const step = (timestamp) => {
+        if (!sample.running) {
+            return;
+        }
+        sample.intervals.push(timestamp - sample.lastFrameAt);
+        sample.lastFrameAt = timestamp;
+        requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+async function finishInteractiveProfileSample() {
+    const sample = globalThis.__gameProfileInteractiveSample;
+    if (!sample) {
+        throw new Error('No interactive game profile sample is active.');
+    }
+    sample.running = false;
+    await globalThis.__gameProfileGpuTimer?.finish();
+
+    const canvas = document.querySelector('canvas');
+    const metrics = globalThis.__gameProfileMetrics;
+    const frameIntervals = sample.intervals.slice(1);
+    const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
+    const percentile = (value) =>
+        sortedIntervals[
+            Math.min(
+                sortedIntervals.length - 1,
+                Math.floor(sortedIntervals.length * value),
+            )
+        ] ?? 0;
+    const averageFrameMs =
+        frameIntervals.reduce((sum, value) => sum + value, 0) /
+        Math.max(1, frameIntervals.length);
+    const longTasks = globalThis.__gameProfileLongTasks ?? [];
+    const drawCalls = metrics?.drawCalls ?? 0;
+    const renderedFrames = metrics?.renderedFrames ?? 0;
+    const submittedTriangles = Math.round(metrics?.submittedTriangles ?? 0);
+    const frames = frameIntervals.length;
+    const elapsedSeconds = (performance.now() - sample.startedAt) / 1000;
+    const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
+
+    globalThis.__gameProfileInteractiveSample = null;
+    return {
+        averageFrameMs,
+        canvas: canvas
+            ? {
+                  clientHeight: canvas.clientHeight,
+                  clientWidth: canvas.clientWidth,
+                  height: canvas.height,
+                  width: canvas.width,
+              }
+            : null,
+        drawCalls,
+        drawCallsPerFrame: drawCalls / Math.max(1, frames),
+        drawCallsPerRenderedFrame:
+            renderedFrames > 0 ? drawCalls / renderedFrames : 0,
+        drawCallsPerSecond: drawCalls / safeElapsedSeconds,
+        elapsedMs: elapsedSeconds * 1000,
+        fps: frames / safeElapsedSeconds,
+        frames,
+        gpu: globalThis.__gameProfileGpuTimer?.snapshot() ?? {
+            disjoint: false,
+            elapsedMaxMs: null,
+            elapsedP95Ms: null,
+            elapsedTotalMs: null,
+            reason: 'GPU timer instrumentation was not installed',
+            sampleCount: 0,
+            supported: false,
+        },
+        instancedDrawCalls: metrics?.instancedDrawCalls ?? 0,
+        jsHeapMb: performance.memory
+            ? performance.memory.usedJSHeapSize / 1024 / 1024
+            : null,
+        longTaskCount: longTasks.length,
+        longTaskMaxMs: Math.max(0, ...longTasks),
+        longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
+        maxFrameMs: sortedIntervals.at(-1) ?? 0,
+        p50FrameMs: percentile(0.5),
+        p95FrameMs: percentile(0.95),
+        p99FrameMs: percentile(0.99),
+        renderedFps: renderedFrames / safeElapsedSeconds,
+        renderedFrames,
+        submittedTriangles,
+        trianglesPerFrame: submittedTriangles / Math.max(1, frames),
+        trianglesPerRenderedFrame:
+            renderedFrames > 0 ? submittedTriangles / renderedFrames : 0,
+        trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
+    };
 }
 
 async function wait(milliseconds) {
@@ -928,6 +1221,270 @@ function startServer(baseUrl) {
     };
 }
 
+function metricsByName(payload) {
+    return Object.fromEntries(
+        payload.metrics.map((metric) => [metric.name, metric.value]),
+    );
+}
+
+function diffCdpMetrics(before, after) {
+    return {
+        jsHeapMb: round((after.JSHeapUsedSize ?? 0) / 1024 / 1024, 1),
+        layoutDuration: round(
+            (after.LayoutDuration ?? 0) - (before.LayoutDuration ?? 0),
+            4,
+        ),
+        scriptDuration: round(
+            (after.ScriptDuration ?? 0) - (before.ScriptDuration ?? 0),
+            4,
+        ),
+        taskDuration: round(
+            (after.TaskDuration ?? 0) - (before.TaskDuration ?? 0),
+            4,
+        ),
+    };
+}
+
+async function readGameProfileRuntime(page) {
+    return page.evaluate(() => {
+        const metadata = globalThis.__grediceGameProfile;
+        return metadata && typeof metadata === 'object' ? metadata : null;
+    });
+}
+
+async function dispatchCloseupCommand(page, detail) {
+    await page.evaluate(
+        ({ command, eventName }) => {
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, { detail: command }),
+            );
+        },
+        {
+            command: detail,
+            eventName: gameProfileCloseupCommandEventName,
+        },
+    );
+}
+
+async function captureProfileScreenshot(page, outputPath) {
+    await mkdir(dirname(outputPath), { recursive: true });
+    await page.screenshot({
+        path: outputPath,
+        animations: 'disabled',
+        fullPage: false,
+    });
+    return outputPath;
+}
+
+async function waitForProfileSession(page, raisedBedId, timeoutMs) {
+    await page.waitForFunction(
+        (expectedRaisedBedId) => {
+            const profile =
+                globalThis.__grediceGameProfile?.generatedPlantProfile;
+            return Boolean(
+                profile?.active &&
+                    profile.selectedRaisedBedId === expectedRaisedBedId,
+            );
+        },
+        raisedBedId,
+        { timeout: timeoutMs },
+    );
+}
+
+async function waitForPendingOrDetailed(page, timeoutMs) {
+    await page.waitForFunction(
+        () => {
+            const profile =
+                globalThis.__grediceGameProfile?.generatedPlantProfile;
+            return Boolean(
+                profile?.error ||
+                    (profile?.selected.pendingNearFields ?? 0) > 0 ||
+                    typeof profile?.milestonesMs.fullyDetailed === 'number',
+            );
+        },
+        undefined,
+        { timeout: timeoutMs },
+    );
+}
+
+async function waitForDetailedAndSettled(page, timeoutMs) {
+    await page.waitForFunction(
+        () => {
+            const profile =
+                globalThis.__grediceGameProfile?.generatedPlantProfile;
+            return Boolean(
+                profile?.error ||
+                    (profile?.camera.settled &&
+                        profile.milestonesMs.fullyDetailed !== null),
+            );
+        },
+        undefined,
+        { timeout: timeoutMs },
+    );
+}
+
+async function waitForNormalCamera(page, timeoutMs) {
+    await page.waitForFunction(
+        () => {
+            const profile =
+                globalThis.__grediceGameProfile?.generatedPlantProfile;
+            return Boolean(
+                profile &&
+                    profile.camera.view === 'normal' &&
+                    !profile.camera.active,
+            );
+        },
+        undefined,
+        { timeout: timeoutMs },
+    );
+}
+
+async function runPlantCloseupPass({
+    cdp,
+    options,
+    page,
+    phase,
+    raisedBedId,
+    screenshotDirectory,
+    scenarioName,
+}) {
+    const transitionCdpBefore = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+    await page.evaluate(beginInteractiveProfileSample);
+    await dispatchCloseupCommand(page, {
+        action: 'open',
+        raisedBedId,
+    });
+    await waitForProfileSession(page, raisedBedId, options.closeupTimeoutMs);
+
+    let pendingScreenshotPath = null;
+    let timedOut = false;
+    try {
+        await waitForPendingOrDetailed(page, options.closeupTimeoutMs);
+        const pending = await page.evaluate(
+            () =>
+                (globalThis.__grediceGameProfile?.generatedPlantProfile
+                    ?.selected.pendingNearFields ?? 0) > 0,
+        );
+        if (pending && phase === 'cold') {
+            pendingScreenshotPath = await captureProfileScreenshot(
+                page,
+                resolve(
+                    screenshotDirectory,
+                    `${scenarioName}-${phase}-pending-near.png`,
+                ),
+            );
+        }
+        await waitForDetailedAndSettled(page, options.closeupTimeoutMs);
+    } catch {
+        timedOut = true;
+    }
+
+    const transition = roundSample(
+        await page.evaluate(finishInteractiveProfileSample),
+    );
+    const transitionCdpAfter = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+    const transitionProfile = (await readGameProfileRuntime(page))
+        ?.generatedPlantProfile;
+    const ready =
+        !transitionProfile?.error &&
+        transitionProfile?.camera.settled === true &&
+        transitionProfile?.milestonesMs.fullyDetailed !== null;
+    let detailedScreenshotPath = null;
+    if (ready) {
+        detailedScreenshotPath = await captureProfileScreenshot(
+            page,
+            resolve(
+                screenshotDirectory,
+                `${scenarioName}-${phase}-detailed.png`,
+            ),
+        );
+    }
+
+    if (options.soakMs > 0) {
+        await wait(options.soakMs);
+    }
+    const steadyCdpBefore = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+    await page.evaluate(beginInteractiveProfileSample);
+    await wait(options.sampleMs);
+    const steady = roundSample(
+        await page.evaluate(finishInteractiveProfileSample),
+    );
+    const steadyCdpAfter = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+
+    return {
+        detailOutcome: transitionProfile?.error
+            ? 'error'
+            : ready
+              ? 'ready'
+              : timedOut
+                ? 'timed-out'
+                : 'incomplete',
+        profile: transitionProfile ?? null,
+        screenshots: {
+            detailed: detailedScreenshotPath,
+            pendingNear: pendingScreenshotPath,
+        },
+        steady: {
+            cdp: diffCdpMetrics(steadyCdpBefore, steadyCdpAfter),
+            sample: steady,
+        },
+        transition: {
+            cdp: diffCdpMetrics(transitionCdpBefore, transitionCdpAfter),
+            sample: transition,
+        },
+    };
+}
+
+async function measurePlantCloseup({ cdp, options, page, scenario }) {
+    const screenshotDirectory = resolve(
+        options.outDir,
+        'screenshots',
+        scenario.name,
+    );
+    const normalScreenshotPath = await captureProfileScreenshot(
+        page,
+        resolve(screenshotDirectory, `${scenario.name}-normal.png`),
+    );
+    const common = {
+        cdp,
+        options,
+        page,
+        raisedBedId: scenario.plantCloseup.raisedBedId,
+        screenshotDirectory,
+        scenarioName: scenario.name,
+    };
+    const cold = await runPlantCloseupPass({
+        ...common,
+        phase: 'cold',
+    });
+
+    await dispatchCloseupCommand(page, { action: 'close' });
+    await waitForNormalCamera(page, options.closeupTimeoutMs);
+    await wait(250);
+
+    const warm = await runPlantCloseupPass({
+        ...common,
+        phase: 'warm',
+    });
+    const runtime = await readGameProfileRuntime(page);
+    await dispatchCloseupCommand(page, { action: 'close' });
+
+    return {
+        cold,
+        normalScreenshotPath,
+        runtime,
+        warm,
+    };
+}
+
 async function measureScenario(browser, baseUrl, scenario, options) {
     const context = await browser.newContext({
         deviceScaleFactor: scenario.dpr,
@@ -1014,6 +1571,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 narrowViewport: window.innerWidth <= 640,
             },
             controls: element.dataset.gameProfileControls ?? null,
+            closeupRaisedBedId:
+                Number.parseInt(
+                    element.dataset.gameProfileCloseupRaisedBedId ?? '',
+                    10,
+                ) || null,
             details: element.dataset.gameProfileDetails ?? null,
             debugHud: element.dataset.gameProfileDebugHud ?? null,
             gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
@@ -1022,6 +1584,61 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             quality: element.dataset.gameProfileQuality ?? null,
         };
     });
+    if (scenario.plantCloseup) {
+        const closeup = await measurePlantCloseup({
+            cdp,
+            options,
+            page,
+            scenario,
+        });
+        const sample = closeup.cold.steady.sample;
+        const request = getScenarioRequest(scenario.path);
+        await context.close();
+
+        return {
+            budget: evaluateBudget(sample, budgets[scenario.budget]),
+            closeup: {
+                cold: closeup.cold,
+                normalScreenshotPath: closeup.normalScreenshotPath,
+                raisedBedId: scenario.plantCloseup.raisedBedId,
+                warm: closeup.warm,
+            },
+            consoleMessages: consoleMessages.slice(0, 8),
+            cdp: closeup.cold.transition.cdp,
+            domContentLoadedMs,
+            canvasReadyMs,
+            pageErrors,
+            path: scenario.path,
+            requested: {
+                autoQualityDeviceClass:
+                    scenario.autoQualityDeviceClass ?? 'unspecified',
+                autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
+                closeupRaisedBedId:
+                    profileMetadata?.closeupRaisedBedId ??
+                    request.closeupRaisedBedId,
+                controls: profileMetadata?.controls ?? request.controls,
+                details: profileMetadata?.details ?? request.details,
+                debugHud: profileMetadata?.debugHud ?? request.debugHud,
+                dpr: scenario.dpr,
+                gardenProfile:
+                    profileMetadata?.gardenProfile ?? request.gardenProfile,
+                hud: profileMetadata?.hud ?? request.hud,
+                isMobile: scenario.isMobile,
+                mode: profileMetadata?.mode ?? request.mode,
+                motion: 'raised-bed-closeup',
+                quality: profileMetadata?.quality ?? request.quality,
+                viewport: scenario.viewport,
+                weatherTransition: 'none',
+            },
+            runtime: closeup.runtime,
+            sample,
+            screenshotPath:
+                closeup.cold.screenshots.detailed ??
+                closeup.normalScreenshotPath,
+            url,
+            name: scenario.name,
+        };
+    }
 
     const beforeMetrics = await cdp.send('Performance.getMetrics');
     const before = Object.fromEntries(
@@ -1416,7 +2033,16 @@ function roundSample(sample) {
         drawCallsPerFrame: round(sample.drawCallsPerFrame, 1),
         drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
         drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
+        elapsedMs: round(sample.elapsedMs),
         fps: round(sample.fps, 1),
+        gpu: sample.gpu
+            ? {
+                  ...sample.gpu,
+                  elapsedMaxMs: round(sample.gpu.elapsedMaxMs),
+                  elapsedP95Ms: round(sample.gpu.elapsedP95Ms),
+                  elapsedTotalMs: round(sample.gpu.elapsedTotalMs),
+              }
+            : undefined,
         jsHeapMb: round(sample.jsHeapMb, 1),
         longTaskMaxMs: round(sample.longTaskMaxMs, 1),
         longTaskTotalMs: round(sample.longTaskTotalMs, 1),
@@ -1459,6 +2085,111 @@ function evaluateBudget(sample, budget) {
         checks,
         pass: checks.every((check) => check.pass),
     };
+}
+
+function median(values) {
+    const finiteValues = values
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => a - b);
+    if (finiteValues.length === 0) {
+        return null;
+    }
+    const middle = Math.floor(finiteValues.length / 2);
+    return finiteValues.length % 2 === 0
+        ? (finiteValues[middle - 1] + finiteValues[middle]) / 2
+        : finiteValues[middle];
+}
+
+function buildPlantCloseupMedians(scenarios) {
+    const groups = Map.groupBy(
+        scenarios.filter((scenario) => scenario.closeup),
+        (scenario) => scenario.baseName ?? scenario.name,
+    );
+
+    return Object.fromEntries(
+        Array.from(groups, ([name, runs]) => [
+            name,
+            {
+                runCount: runs.length,
+                cold: {
+                    detailReadyMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.cold.profile?.milestonesMs
+                                        .fullyDetailed,
+                            ),
+                        ),
+                    ),
+                    longTaskTotalMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.cold.transition.sample
+                                        .longTaskTotalMs,
+                            ),
+                        ),
+                    ),
+                    maxFrameMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.cold.transition.sample
+                                        .maxFrameMs,
+                            ),
+                        ),
+                    ),
+                    p95FrameMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.cold.transition.sample
+                                        .p95FrameMs,
+                            ),
+                        ),
+                    ),
+                },
+                warm: {
+                    detailReadyMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.warm.profile?.milestonesMs
+                                        .fullyDetailed,
+                            ),
+                        ),
+                    ),
+                    longTaskTotalMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.warm.transition.sample
+                                        .longTaskTotalMs,
+                            ),
+                        ),
+                    ),
+                    maxFrameMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.warm.transition.sample
+                                        .maxFrameMs,
+                            ),
+                        ),
+                    ),
+                    p95FrameMs: round(
+                        median(
+                            runs.map(
+                                (run) =>
+                                    run.closeup.warm.transition.sample
+                                        .p95FrameMs,
+                            ),
+                        ),
+                    ),
+                },
+            },
+        ]),
+    );
 }
 
 function buildMarkdown(report) {
@@ -1519,6 +2250,24 @@ function buildMarkdown(report) {
             ),
     );
     lines.push(...(failures.length ? failures : ['- None']));
+
+    if (Object.keys(report.plantCloseupMedians).length > 0) {
+        lines.push('', '## Raised-bed Close-up Medians', '');
+        lines.push(
+            '| Scenario | Runs | Phase | Detail ready | p95 | Max | Long-task total |',
+            '| --- | ---: | --- | ---: | ---: | ---: | ---: |',
+        );
+        for (const [name, summary] of Object.entries(
+            report.plantCloseupMedians,
+        )) {
+            for (const phase of ['cold', 'warm']) {
+                const metrics = summary[phase];
+                lines.push(
+                    `| ${name} | ${summary.runCount} | ${phase} | ${metrics.detailReadyMs ?? 'n/a'} ms | ${metrics.p95FrameMs ?? 'n/a'} ms | ${metrics.maxFrameMs ?? 'n/a'} ms | ${metrics.longTaskTotalMs ?? 'n/a'} ms |`,
+                );
+            }
+        }
+    }
 
     lines.push('', '## Console Warnings And Errors', '');
     for (const scenario of report.scenarios) {
@@ -1624,15 +2373,28 @@ async function main() {
     try {
         const scenarios = [];
         for (const scenario of profileScenarios) {
-            console.log(`Profiling ${scenario.name}...`);
-            scenarios.push(
-                await measureScenario(
+            const repeat = scenario.plantCloseup?.repeat ?? 1;
+            for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
+                const runScenario =
+                    repeat === 1
+                        ? scenario
+                        : {
+                              ...scenario,
+                              name: `${scenario.name}-run-${runIndex}`,
+                          };
+                console.log(
+                    `Profiling ${scenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
+                );
+                const result = await measureScenario(
                     browser,
                     options.baseUrl,
-                    scenario,
+                    runScenario,
                     options,
-                ),
-            );
+                );
+                result.baseName = scenario.name;
+                result.profileRun = runIndex;
+                scenarios.push(result);
+            }
         }
 
         const failedScenarios = scenarios.filter(
@@ -1643,6 +2405,7 @@ async function main() {
             generatedAt: new Date().toISOString(),
             options: {
                 build: options.build,
+                closeupTimeoutMs: options.closeupTimeoutMs,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
@@ -1651,6 +2414,7 @@ async function main() {
                 warmupMs: options.warmupMs,
             },
             scenarios,
+            plantCloseupMedians: buildPlantCloseupMedians(scenarios),
             summary: {
                 durationMs: Date.now() - startedAt,
                 failedScenarios: failedScenarios.length,
@@ -1677,7 +2441,14 @@ async function main() {
     }
 }
 
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+export { getScenarioRequest, resolveScenarios };
+
+const invokedModuleUrl = process.argv[1]
+    ? pathToFileURL(resolve(process.argv[1])).href
+    : null;
+if (import.meta.url === invokedModuleUrl) {
+    main().catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });
+}
