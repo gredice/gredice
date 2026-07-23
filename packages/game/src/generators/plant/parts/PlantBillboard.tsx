@@ -10,6 +10,12 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../../useGameState';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
+import {
+    createStaticInstancedBufferAttribute,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
 import type { PlantLodLevel } from '../lib/plantLod';
 
 export interface PlantBillboardSummary {
@@ -143,22 +149,24 @@ function BillboardInstanceMesh({
     opacity,
 }: BillboardInstanceMeshProps) {
     const meshRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = Math.max(items.length, 1);
+    const instanceCapacity = items.length;
     const geometry = useMemo(() => sourceGeometry.clone(), [sourceGeometry]);
-    const tintAttribute = useMemo(() => {
-        const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(instanceCapacity * 3),
-            3,
-        );
-        attribute.setUsage(THREE.DynamicDrawUsage);
-        return attribute;
-    }, [instanceCapacity]);
+    const tintAttribute = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
+        [instanceCapacity],
+    );
     const uniforms = useMemo(
         () => ({
             uOpacity: { value: opacity },
         }),
         [opacity],
     );
+    usePlantInstanceBufferMetrics({
+        extraAllocatedBytes: tintAttribute.array.byteLength,
+        kind: 'billboard',
+        liveCount: items.length,
+        meshRef,
+    });
 
     useLayoutEffect(() => {
         const mesh = meshRef.current;
@@ -176,10 +184,8 @@ function BillboardInstanceMesh({
                 item.color.b,
             );
         });
-        mesh.count = items.length;
-        mesh.visible = items.length > 0;
-        mesh.instanceMatrix.needsUpdate = true;
-        tintAttribute.needsUpdate = true;
+        finalizeStaticInstanceMatrixUpload(mesh, items.length);
+        markStaticInstancedAttributeForUpload(tintAttribute, items.length);
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
     }, [items, tintAttribute]);
@@ -341,24 +347,30 @@ export function PlantBillboardBatch({
                 items={midStemItems}
                 opacity={0.9}
             />
-            <BillboardInstanceMesh
-                debugName={`${debugName}:mid:canopyA:${midCanopyPrimaryItems.length}`}
-                geometry={billboardCircleGeometry}
-                items={midCanopyPrimaryItems}
-                opacity={0.88}
-            />
-            <BillboardInstanceMesh
-                debugName={`${debugName}:mid:canopyB:${midCanopySecondaryItems.length}`}
-                geometry={billboardCircleGeometry}
-                items={midCanopySecondaryItems}
-                opacity={0.78}
-            />
-            <BillboardInstanceMesh
-                debugName={`${debugName}:mid:accents:${midAccentItems.length}`}
-                geometry={billboardCircleGeometry}
-                items={midAccentItems}
-                opacity={0.95}
-            />
+            {midCanopyPrimaryItems.length > 0 ? (
+                <BillboardInstanceMesh
+                    debugName={`${debugName}:mid:canopyA:${midCanopyPrimaryItems.length}`}
+                    geometry={billboardCircleGeometry}
+                    items={midCanopyPrimaryItems}
+                    opacity={0.88}
+                />
+            ) : null}
+            {midCanopySecondaryItems.length > 0 ? (
+                <BillboardInstanceMesh
+                    debugName={`${debugName}:mid:canopyB:${midCanopySecondaryItems.length}`}
+                    geometry={billboardCircleGeometry}
+                    items={midCanopySecondaryItems}
+                    opacity={0.78}
+                />
+            ) : null}
+            {midAccentItems.length > 0 ? (
+                <BillboardInstanceMesh
+                    debugName={`${debugName}:mid:accents:${midAccentItems.length}`}
+                    geometry={billboardCircleGeometry}
+                    items={midAccentItems}
+                    opacity={0.95}
+                />
+            ) : null}
         </group>
     );
 }

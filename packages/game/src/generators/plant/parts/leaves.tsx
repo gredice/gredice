@@ -3,8 +3,14 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 import type { PlantDefinition } from '../lib/plant-definitions';
+import {
+    createStaticInstancedBufferAttribute,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
 
 interface LeavesProps {
     seed: string;
@@ -108,7 +114,7 @@ export function Leaves({
     debugName,
 }: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = Math.max(matrices.length, 1);
+    const instanceCapacity = matrices.length;
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
         amplitude: 0.11,
         enabled: animate,
@@ -119,14 +125,16 @@ export function Leaves({
         () => (leafGeometries[type] || leafGeometries.round).clone(),
         [type],
     );
-    const leafInstanceColor = useMemo(() => {
-        const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(instanceCapacity * 3),
-            3,
-        );
-        attribute.setUsage(THREE.DynamicDrawUsage);
-        return attribute;
-    }, [instanceCapacity]);
+    const leafInstanceColor = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
+        [instanceCapacity],
+    );
+    usePlantInstanceBufferMetrics({
+        extraAllocatedBytes: leafInstanceColor.array.byteLength,
+        kind: 'leaf',
+        liveCount: matrices.length,
+        meshRef: leafRef,
+    });
 
     useLayoutEffect(() => {
         const updateInstances = (
@@ -144,13 +152,11 @@ export function Leaves({
                 const color = instanceColors[i] ?? fallbackColor;
                 colorAttribute.setXYZ(i, color.r, color.g, color.b);
             });
-            mesh.instanceMatrix.needsUpdate = true;
-            colorAttribute.needsUpdate = true;
-            if (!Array.isArray(mesh.material)) {
-                mesh.material.needsUpdate = true;
-            }
-            mesh.count = matrices.length;
-            mesh.visible = matrices.length > 0;
+            finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
+            markStaticInstancedAttributeForUpload(
+                colorAttribute,
+                matrices.length,
+            );
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
         };

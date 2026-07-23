@@ -3,7 +3,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
+import { finalizeStaticInstanceMatrixUpload } from '../lib/plantInstanceBuffers';
 
 interface ThornsProps {
     seed: string;
@@ -17,10 +19,16 @@ thornGeometry.translate(0, 0.5, 0);
 
 export function Thorns({ seed, matrices, color, animate = true }: ThornsProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
+    const instanceCapacity = matrices.length;
     const swayUniforms = usePlantSway(`${seed}-thorns`, {
         amplitude: 0.045,
         enabled: animate,
         speed: 1.1,
+    });
+    usePlantInstanceBufferMetrics({
+        kind: 'thorn',
+        liveCount: matrices.length,
+        meshRef: ref,
     });
 
     useLayoutEffect(() => {
@@ -32,14 +40,19 @@ export function Thorns({ seed, matrices, color, animate = true }: ThornsProps) {
         matrices.forEach((matrix, index) => {
             mesh.setMatrixAt(index, matrix);
         });
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.count = matrices.length;
+        finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
+        mesh.computeBoundingBox();
+        mesh.computeBoundingSphere();
     }, [matrices]);
+
+    if (matrices.length === 0) {
+        return null;
+    }
 
     return (
         <instancedMesh
             ref={ref}
-            args={[thornGeometry, undefined, 6000]}
+            args={[thornGeometry, undefined, instanceCapacity]}
             castShadow
         >
             <CSM

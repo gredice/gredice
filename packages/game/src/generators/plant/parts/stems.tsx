@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { usePlantSway } from '../hooks/usePlantSway';
 import type { PlantStemSegment } from '../lib/buildPlantRenderData';
 import type { PlantDefinition } from '../lib/plant-definitions';
@@ -11,6 +12,11 @@ import {
     instancedStemSurfaceVertexShader,
     stemSurfaceFragmentShader,
 } from '../lib/plant-stem-material';
+import {
+    createStaticInstancedBufferAttribute,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
 
 interface StemsProps {
     seed: string;
@@ -80,7 +86,7 @@ export function Stems({
     debugName,
 }: StemsProps) {
     const stemRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = Math.max(segments.length, 1);
+    const instanceCapacity = segments.length;
     const swayUniforms = usePlantSway(`${seed}-stems`, {
         amplitude: 0.055,
         enabled: animate,
@@ -91,14 +97,16 @@ export function Stems({
         [stem],
     );
     const geometry = useMemo(() => createStemSegmentGeometry(), []);
-    const stemRadius = useMemo(() => {
-        const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(instanceCapacity * 2),
-            2,
-        );
-        attribute.setUsage(THREE.DynamicDrawUsage);
-        return attribute;
-    }, [instanceCapacity]);
+    const stemRadius = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 2),
+        [instanceCapacity],
+    );
+    usePlantInstanceBufferMetrics({
+        extraAllocatedBytes: stemRadius.array.byteLength,
+        kind: 'stem',
+        liveCount: segments.length,
+        meshRef: stemRef,
+    });
 
     useLayoutEffect(() => {
         const mesh = stemRef.current;
@@ -111,16 +119,10 @@ export function Stems({
             mesh.setMatrixAt(index, segment.matrix);
             stemRadius.setXY(index, segment.startRadius, segment.endRadius);
         });
-        mesh.count = segments.length;
-        mesh.visible = segments.length > 0;
-        mesh.instanceMatrix.needsUpdate = true;
-        stemRadius.needsUpdate = true;
+        finalizeStaticInstanceMatrixUpload(mesh, segments.length);
+        markStaticInstancedAttributeForUpload(stemRadius, segments.length);
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
-
-        if (!Array.isArray(mesh.material)) {
-            mesh.material.needsUpdate = true;
-        }
     }, [segments, stemRadius]);
 
     useLayoutEffect(() => () => geometry.dispose(), [geometry]);

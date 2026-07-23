@@ -6,6 +6,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import CSM from 'three-custom-shader-material';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 import type { VegetableType } from '../lib/plant-definitions';
+import { generatedPlantInstanceBufferMetrics } from '../lib/plantInstanceBufferMetrics';
+import { finalizeStaticInstanceMatrixUpload } from '../lib/plantInstanceBuffers';
 
 export interface VegetableData {
     matrix: THREE.Matrix4;
@@ -319,27 +321,44 @@ export function Vegetables({
     const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
 
     useLayoutEffect(() => {
+        const unregisterAllocations: Array<() => void> = [];
+
         for (const group of instances) {
-            if (group.ref.current) {
-                group.data.forEach((veg, i) => {
-                    const { matrix, growth } = veg;
-                    // Decompose the vegetable's base matrix into position, rotation, and scale
-                    matrix.decompose(tempPosition, tempQuaternion, tempScale);
-
-                    // Apply the current growth factor to the scale
-                    tempScale.multiplyScalar(growth);
-
-                    // Recompose the matrix with the new, grown scale
-                    tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
-
-                    // Update the instance in the InstancedMesh
-                    group.ref.current?.setMatrixAt(i, tempMatrix);
-                });
-                group.ref.current.instanceMatrix.needsUpdate = true;
-                group.ref.current.count = group.data.length;
+            const mesh = group.ref.current;
+            if (!mesh) {
+                continue;
             }
+
+            group.data.forEach((veg, i) => {
+                const { matrix, growth } = veg;
+                matrix.decompose(tempPosition, tempQuaternion, tempScale);
+                tempScale.multiplyScalar(growth);
+                tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
+                mesh.setMatrixAt(i, tempMatrix);
+            });
+            finalizeStaticInstanceMatrixUpload(mesh, group.data.length);
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
+            unregisterAllocations.push(
+                generatedPlantInstanceBufferMetrics.register({
+                    allocatedBytes: mesh.instanceMatrix.array.byteLength,
+                    capacity: mesh.instanceMatrix.count,
+                    kind: 'vegetable',
+                    liveCount: group.data.length,
+                }),
+            );
         }
+
+        return () => {
+            unregisterAllocations.forEach((unregister) => {
+                unregister();
+            });
+        };
     }, [instances, tempPosition, tempQuaternion, tempScale, tempMatrix]);
+
+    if (vegetables.length === 0) {
+        return null;
+    }
 
     return (
         <group>

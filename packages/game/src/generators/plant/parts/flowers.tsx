@@ -3,7 +3,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
+import { finalizeStaticInstanceMatrixUpload } from '../lib/plantInstanceBuffers';
 
 interface FlowersProps {
     seed: string;
@@ -33,10 +35,16 @@ export function Flowers({
     animate = true,
 }: FlowersProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
+    const instanceCapacity = matrices.length;
     const swayUniforms = usePlantSway(`${seed}-flowers`, {
         amplitude: 0.14,
         enabled: animate,
         speed: 1.6,
+    });
+    usePlantInstanceBufferMetrics({
+        kind: 'flower',
+        liveCount: matrices.length,
+        meshRef: ref,
     });
 
     useLayoutEffect(() => {
@@ -47,14 +55,19 @@ export function Flowers({
         matrices.forEach((matrix, i) => {
             mesh.setMatrixAt(i, matrix);
         });
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.count = matrices.length;
+        finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
+        mesh.computeBoundingBox();
+        mesh.computeBoundingSphere();
     }, [matrices]);
+
+    if (matrices.length === 0) {
+        return null;
+    }
 
     return (
         <instancedMesh
             ref={ref}
-            args={[flowerGeometry, undefined, 5000]}
+            args={[flowerGeometry, undefined, instanceCapacity]}
             castShadow
         >
             <CSM
