@@ -37,6 +37,59 @@ test('closeup acceptance rejects synchronous worker fallback', () => {
     );
 });
 
+test('closeup acceptance requires the selected bed to exercise foliage', () => {
+    const phase = (leaves) => ({
+        detailOutcome: 'ready',
+        profile: {
+            selected: {
+                parts: {
+                    leaves,
+                },
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(120),
+                warm: phase(120),
+            },
+        },
+    ];
+
+    assert.equal(buildPlantCloseupAcceptance(runs).foliageCoveredPhaseCount, 2);
+    runs[0].closeup.warm = phase(0);
+    assert.equal(buildPlantCloseupAcceptance(runs).foliageCoveredPhaseCount, 1);
+});
+
+test('closeup acceptance bounds archetypes for the grown foliage fixture', () => {
+    const phase = (maxArchetypeCountPerBatch) => ({
+        profile: {
+            renderData: {
+                maxArchetypeCountPerBatch,
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(12),
+                warm: phase(12),
+            },
+        },
+    ];
+
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        2,
+    );
+    runs[0].closeup.warm = phase(13);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        1,
+    );
+});
+
 test('plant closeup scenario set resolves deterministic desktop and mobile runs', () => {
     const scenarios = resolveScenarios('plant-closeup');
 

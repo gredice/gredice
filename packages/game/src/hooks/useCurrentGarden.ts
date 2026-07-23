@@ -34,6 +34,7 @@ import {
 } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
 import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
+import { resolveMockGardenProfileReferenceDate } from './mockGardenProfileFixtures';
 import { useGardens, useGardensKeys } from './useGardens';
 
 const GARDEN_POSITION_X_OFFSET = -1;
@@ -818,7 +819,7 @@ function denseMockGarden(
     winterMode: WinterMode,
     profile: Extract<MockGardenProfile, 'dense' | 'plant-heavy'>,
 ): useCurrentGardenResponse {
-    const now = new Date().toISOString();
+    const now = resolveMockGardenProfileReferenceDate(profile);
     const { stackByPosition, stacks } = createDenseMockStacks(winterMode);
     const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
 

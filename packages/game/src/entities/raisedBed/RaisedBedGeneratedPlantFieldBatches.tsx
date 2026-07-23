@@ -20,6 +20,7 @@ import {
     type ResolvedInGamePlantPreset,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { resolvePlantLeafGeometryDetail } from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import {
     useCurrentGarden,
@@ -28,6 +29,7 @@ import {
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import type { GameQualityProfile } from '../../scene/gameQuality';
 import {
     getGeneratedPlantProfileSessionId,
     recordGeneratedPlantProfileFields,
@@ -384,8 +386,10 @@ function useGeneratedPlantFieldLods({
 
 export function RaisedBedGeneratedPlantFieldBatches({
     blocks,
+    quality,
 }: {
     blocks: RaisedBedGeneratedPlantFieldBatchBlock[];
+    quality: GameQualityProfile;
 }) {
     const { includePendingCartPlants, renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
@@ -586,6 +590,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
     const focusActive =
         selectedRaisedBedId !== null &&
         (view === 'closeup' || closeupCameraActive);
+    const leafGeometryDetail = resolvePlantLeafGeometryDetail(quality.tier);
     const lods = useGeneratedPlantFieldLods({
         focusActive,
         generatedFields,
@@ -665,6 +670,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     key={batch.batchKey}
                     definition={batch.definition}
                     instances={batch.instances}
+                    leafGeometryDetail={leafGeometryDetail}
                     lodLevel={batch.lodLevel}
                     taskPriority={batch.taskPriority}
                 />

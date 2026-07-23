@@ -21,6 +21,10 @@ import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from '../../generators/plant/lib/plant-definitions';
+import {
+    getPlantLeafGeometryTriangleCount,
+    type PlantLeafGeometryDetail,
+} from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { buildApproximatePlantLodSummary } from '../../generators/plant/lib/plantLodSummary';
 import { Flowers } from '../../generators/plant/parts/flowers';
@@ -55,6 +59,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     flowerGrowth?: number;
     fruitGrowth?: number;
     instances: RaisedBedGeneratedPlantBatchInstance[];
+    leafGeometryDetail?: PlantLeafGeometryDetail;
     lodLevel?: PlantLodLevel;
     showProduce?: boolean;
     taskPriority?: GeneratedLSystemTaskPriority;
@@ -87,9 +92,11 @@ type GeneratedPackedPlantRenderChunk = GeneratedPackedPlantRenderTask & {
 function RaisedBedDetailedPlantBatch({
     batchedData,
     definition,
+    leafGeometryDetail,
 }: {
     batchedData: PackedPlantRenderData;
     definition: PlantDefinition;
+    leafGeometryDetail: PlantLeafGeometryDetail;
 }) {
     const gl = useThree((state) => state.gl);
     const swaySeed = `raised-bed:${definition.name}:near`;
@@ -134,7 +141,8 @@ function RaisedBedDetailedPlantBatch({
                 packed={batchedData.leaves}
                 type={definition.leaf.type}
                 castShadow={false}
-                debugName={`RaisedBedPlantLeaves:${definition.name}:count:${batchedData.leaves.count}`}
+                geometryDetail={leafGeometryDetail}
+                debugName={`RaisedBedPlantLeaves:${definition.name}:${leafGeometryDetail}:count:${batchedData.leaves.count}`}
             />
             {definition.flower.enabled && (
                 <Flowers
@@ -171,6 +179,7 @@ export function RaisedBedGeneratedPlantBatch({
     flowerGrowth = 1,
     fruitGrowth = 1,
     instances,
+    leafGeometryDetail = 'full',
     lodLevel = 'near',
     showProduce = true,
     taskPriority = 'normal',
@@ -441,6 +450,12 @@ export function RaisedBedGeneratedPlantBatch({
             detailedInstanceCount += instanceIndexes.length;
             const stemCount = packedChunk.stems.count / instanceIndexes.length;
             const leafCount = packedChunk.leaves.count / instanceIndexes.length;
+            const leafTriangleCount =
+                leafCount *
+                getPlantLeafGeometryTriangleCount(
+                    definition.leaf.type,
+                    leafGeometryDetail,
+                );
             const flowerCount =
                 packedChunk.flowers.count / instanceIndexes.length;
             const produceCount =
@@ -453,13 +468,15 @@ export function RaisedBedGeneratedPlantBatch({
 
             for (const index of instanceIndexes) {
                 const instance = instances[index];
-                if (!profileActive || !instance?.fieldKey) {
+                if (!instance?.fieldKey) {
                     continue;
                 }
 
                 const current = partsByField.get(instance.fieldKey) ?? {
                     billboardInstances: 0,
+                    compactLeafInstances: 0,
                     flowers: 0,
+                    leafTriangles: 0,
                     leaves: 0,
                     produce: 0,
                     shadowCasterSubmissions: 0,
@@ -469,6 +486,9 @@ export function RaisedBedGeneratedPlantBatch({
                 };
                 current.stems += stemCount;
                 current.leaves += leafCount;
+                current.compactLeafInstances +=
+                    leafGeometryDetail === 'compact' ? leafCount : 0;
+                current.leafTriangles += leafTriangleCount;
                 current.flowers += flowerCount;
                 current.produce += produceCount;
                 current.thorns += thornCount;
@@ -504,7 +524,9 @@ export function RaisedBedGeneratedPlantBatch({
             resolvedInstanceCount: detailedInstanceCount,
         };
     }, [
+        definition.leaf.type,
         instances,
+        leafGeometryDetail,
         packedChunks,
         renderChunks,
         renderChunkSignature,
@@ -641,6 +663,7 @@ export function RaisedBedGeneratedPlantBatch({
                         key={chunk.key}
                         batchedData={chunk.data}
                         definition={definition}
+                        leafGeometryDetail={leafGeometryDetail}
                     />
                 ))}
                 <PlantBillboardBatch
@@ -661,6 +684,7 @@ export function RaisedBedGeneratedPlantBatch({
             <RaisedBedDetailedPlantBatch
                 batchedData={batchedData}
                 definition={definition}
+                leafGeometryDetail={leafGeometryDetail}
             />
             <RaisedBedPlantShadowProxy
                 key="plant-shadow-proxy"

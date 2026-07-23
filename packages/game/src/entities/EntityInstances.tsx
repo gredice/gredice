@@ -156,8 +156,10 @@ function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
 }
 
 function RaisedBedGeneratedPlantInstances({
+    quality,
     stacks,
 }: {
+    quality: GameQualityProfile;
     stacks: Stack[] | undefined;
 }) {
     const instances = useEntityBlockInstances({
@@ -176,6 +178,7 @@ function RaisedBedGeneratedPlantInstances({
                 blockId: instance.block.id,
                 position: instance.position,
             }))}
+            quality={quality}
         />
     );
 }
@@ -760,7 +763,10 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Seed.material}
             />
             <Suspense fallback={null}>
-                <RaisedBedGeneratedPlantInstances stacks={stacks} />
+                <RaisedBedGeneratedPlantInstances
+                    quality={qualityProfile}
+                    stacks={stacks}
+                />
             </Suspense>
             <Suspense fallback={null}>
                 <AdditionalEntityInstances
