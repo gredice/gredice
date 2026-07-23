@@ -1,10 +1,13 @@
 import type { GameQualityProfileTier } from '../../scene/gameQuality';
 
+// Eighteen backing pixels are six CSS pixels at the constrained mobile DPR cap.
+// Standard tiers stay more conservative because their close-up budget is less
+// constrained and their canvas usually renders at a lower DPR.
 const minimumProjectedBackingPixelsByQuality = {
-    'auto-constrained': 3,
+    'auto-constrained': 18,
     custom: 2.5,
     high: 2,
-    low: 3,
+    low: 18,
     medium: 2.5,
 } satisfies Record<GameQualityProfileTier, number>;
 

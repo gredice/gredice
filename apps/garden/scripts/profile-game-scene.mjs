@@ -2487,6 +2487,8 @@ function buildPlantCloseupSampleMedians(runs, phase, sampleKind) {
     };
 }
 
+const plantCloseupMaximumArchetypesPerBatch = 12;
+
 function buildPlantCloseupAcceptance(runs) {
     const measurements = runs.flatMap((run) =>
         ['cold', 'warm'].map((phase) => ({
@@ -2540,7 +2542,8 @@ function buildPlantCloseupAcceptance(runs) {
     const archetypeBoundedPhaseCount = count(
         ({ profile }) =>
             Number.isFinite(profile?.renderData?.maxArchetypeCountPerBatch) &&
-            profile.renderData.maxArchetypeCountPerBatch <= 4,
+            profile.renderData.maxArchetypeCountPerBatch <=
+                plantCloseupMaximumArchetypesPerBatch,
     );
     const exactCapacityPhaseCount = count(
         ({ profile }) =>

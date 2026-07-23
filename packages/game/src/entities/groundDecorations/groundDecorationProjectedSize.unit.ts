@@ -42,35 +42,26 @@ describe('ground decoration projected size', () => {
         );
     });
 
-    it('uses conservative quality-aware physical-pixel thresholds', () => {
+    it('uses quality-aware physical-pixel thresholds', () => {
         const qualityTiers = [
             'high',
             'medium',
+            'custom',
             'auto-constrained',
+            'low',
         ] satisfies GameQualityProfileTier[];
 
         assert.deepEqual(
-            qualityTiers.map((qualityTier) => {
-                const minimumBackingPixels =
-                    resolveGroundDecorationMinimumProjectedBackingPixels(
-                        qualityTier,
-                    );
-                return [
-                    minimumBackingPixels,
-                    shouldCullGroundDecorationByProjectedSize(
-                        0.5,
-                        1,
-                        1_000,
-                        100,
-                        minimumBackingPixels,
-                    ),
-                ];
-            }),
-            [
-                [2, false],
-                [2.5, false],
-                [3, true],
-            ],
+            qualityTiers.map((qualityTier) =>
+                resolveGroundDecorationMinimumProjectedBackingPixels(
+                    qualityTier,
+                ),
+            ),
+            [2, 2.5, 2.5, 18, 18],
+        );
+        assert.equal(
+            shouldCullGroundDecorationByProjectedSize(0.5, 1, 1_000, 100, 18),
+            true,
         );
     });
 
