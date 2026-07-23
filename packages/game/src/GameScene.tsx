@@ -98,6 +98,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
+    enableGameProfileController?: boolean;
     flags?: GameFeatureFlags;
 };
 

@@ -1,34 +1,16 @@
-import {
-    generateLSystemStringWithGenerations,
-    type LSystemSymbol,
-} from '../lib/l-system';
-import type {
-    LSystemWorkerRequest,
-    LSystemWorkerResponse,
-} from '../lib/l-system-worker-types';
-import { SeededRNG } from '../lib/rng';
+import { GeneratedPlantTemplateCache } from '../hooks/generatedPlantTemplateCache';
+import type { LSystemWorkerMessageRequest } from '../lib/l-system-worker-types';
+import { handleLSystemWorkerRequest } from './l-system-worker-handler';
 
 const workerScope = self as DedicatedWorkerGlobalScope;
+const templateCache = new GeneratedPlantTemplateCache();
 
-function generateSymbols({
-    axiom,
-    rules,
-    iterations,
-    seed,
-}: LSystemWorkerRequest['tasks'][number]): LSystemSymbol[] {
-    return generateLSystemStringWithGenerations(
-        axiom,
-        rules,
-        iterations,
-        new SeededRNG(seed),
+workerScope.onmessage = (event: MessageEvent<LSystemWorkerMessageRequest>) => {
+    const { response, transferables } = handleLSystemWorkerRequest(
+        event.data,
+        undefined,
+        templateCache,
     );
-}
 
-workerScope.onmessage = (event: MessageEvent<LSystemWorkerRequest>) => {
-    const response: LSystemWorkerResponse = {
-        id: event.data.id,
-        results: event.data.tasks.map(generateSymbols),
-    };
-
-    workerScope.postMessage(response);
+    workerScope.postMessage(response, transferables);
 };

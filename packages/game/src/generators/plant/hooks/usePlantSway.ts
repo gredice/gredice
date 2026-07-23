@@ -65,23 +65,29 @@ export const plantSwayVertexShader = /* glsl */ `
     uniform float uWindStrength;
     uniform vec2 uWindDirection;
 
+    #ifdef USE_INSTANCING
+        attribute float instanceSwayPhase;
+    #endif
+
     void main() {
         vec4 localPosition = vec4(position, 1.0);
         vec4 swayReferencePosition = localPosition;
+        float swayPhase = uSwayPhase;
 
         #ifdef USE_INSTANCING
             swayReferencePosition = instanceMatrix * localPosition;
+            swayPhase += instanceSwayPhase;
         #endif
 
         float heightFactor = smoothstep(0.0, 1.5, max(swayReferencePosition.y, 0.0));
         float primaryWave = sin(
             uTime * uSwaySpeed +
-            uSwayPhase +
+            swayPhase +
             swayReferencePosition.y * 2.15
         );
         float secondaryWave = cos(
             uTime * (uSwaySpeed * 1.31) +
-            uSwayPhase * 1.7 +
+            swayPhase * 1.7 +
             swayReferencePosition.x * 1.35 +
             swayReferencePosition.z * 0.85
         );
@@ -91,7 +97,7 @@ export const plantSwayVertexShader = /* glsl */ `
         float windBias = sin(
             dot(swayReferencePosition.xz, windDirection) * 0.85 +
             uTime * (uSwaySpeed * 0.72) +
-            uSwayPhase * 0.4
+            swayPhase * 0.4
         );
         float amplitude = uSwayAmplitude * (1.0 + uWindStrength * 0.75);
         float sway = (
