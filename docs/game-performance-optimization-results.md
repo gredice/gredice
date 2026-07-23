@@ -69,6 +69,7 @@ baseline and the preceding row.
 | 13 | Crop unused decoration-atlas page rows | Complete | Dense mobile + renderer memory + screenshots | Estimated mipmapped RGBA8 residency `42.7 -> 32.0 MiB` (`-25%`); all 914 decorations and render work retained |
 | 14 | Fade rain intensity and stop invisible transition-tail particles | Complete | Clear + rain-to-clear mobile | Rain unmounted `49%` sooner; transition calls/s `-3.2%` and triangles/s `-5.5%`; steady clear render work unchanged |
 | 15 | Repack small decoration sprites into one 1024px atlas | Complete | Atlas manifest + decoded residency + generated file sizes | One page replaces two; estimated mipmapped RGBA8 residency `32.0 -> 5.3 MiB` (`-83.3%`) with all 22 sprite IDs retained |
+| 16 | Use compact procedural leaf silhouettes on constrained tiers | Complete | Deterministic leaf-heavy raised-bed close-up | All `7,741` selected leaves retained; leaf triangles `177,883 -> 68,970` (`-61.2%`) and steady renderer triangles `210,461 -> 101,548` (`-51.7%`) |
 
 ### Step 01: generated-plant batch effect
 
@@ -380,6 +381,62 @@ pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 - This atlas is used by ground decorations, not procedural L-system leaves.
   It reduces decoration texture residency and page partitioning without
   changing plant-generation work, plant geometry, or L-system detail policy.
+- The corrected leaf-heavy production profile confirms the runtime result:
+  atlas pages `2 -> 1` and estimated residency
+  `33,554,432 -> 5,592,404 bytes`. Removing the second page also removes one
+  instanced atlas draw per rendered close-up frame: desktop calls/instances
+  `28/27 -> 27/26`, and constrained mobile `25/24 -> 24/23`; triangles are
+  unchanged.
+- Three-repeat headless steady timing was neutral: desktop p95
+  `228.1 -> 231.8 ms` and mobile `187.0 -> 188.1 ms`, both at effectively
+  unchanged rendered FPS. The atlas is therefore classified as a guaranteed
+  memory and one-draw-call improvement, not a standalone FPS claim.
+- The generated sheet and in-game desktop/mobile screenshots were inspected
+  without clipped sprites, edge bleed, or visible close-up degradation.
+
+### Step 16: constrained procedural leaf geometry
+
+Reports: `steps/15-foliage-baseline/latest.json`,
+`steps/18-compact-leaves/latest.json`, and
+`steps/22-final-foliage-atlas/latest.json`.
+
+- The plant-heavy fixture previously stamped lifecycle dates from the wall
+  clock while the profile scene stayed frozen in 2024. That future-dated every
+  plant, reduced generation to zero, and made the old profile report zero
+  leaves. The fixture now has a deterministic reference date and the
+  acceptance gate requires non-zero selected foliage in every phase.
+- The corrected selected bed renders all `18/18` fields at exact detailed LOD
+  and contains `7,741` leaves in every cold and warm phase.
+- Medium, high, custom, and unspecified/editor quality keep the original leaf
+  geometry. The final desktop profile reports `177,883` leaf triangles.
+- Low and automatically constrained quality keep the same exact L-system leaf
+  count, transforms, colors, and sway, but use compact silhouettes. The
+  constrained profile reports `68,970` leaf triangles, a reduction of
+  `108,913` (`-61.2%`).
+- Constrained steady renderer work falls from
+  `210,461 -> 101,548 triangles/render` (`-51.7%`) in the cold comparison.
+  Calls and instanced draws stay at `24/23`. Headless p95 and rendered FPS are
+  neutral within variance (`187.0 -> 187.4 ms`, `6.0 -> 5.8`), so the claim is
+  the directly counted GPU geometry reduction rather than an unsupported FPS
+  improvement.
+- The final five-repeat production run passes all close-up optimization gates
+  in all `10/10` desktop and `10/10` constrained-mobile cold/warm phases:
+  exact selected detail, non-zero foliage, bounded archetypes, warm cache hits,
+  exact buffers, clean resources, shader readiness, and zero worker fallback.
+- The generic frame/long-task budget remains red in local headless
+  software-WebGL runs, and GPU timer queries are unavailable there. A sustained
+  physical iPhone/Android thermal run remains the release evidence for device
+  temperature and real GPU frame time.
+
+#### Rejected projected-size culling experiment
+
+- A physical-pixel culling path was implemented and profiled after chunk and
+  frustum rejection. The proposed `2-3` backing-pixel cutoff culled `0/215`
+  desktop and `0/187` constrained-mobile candidates in the target close-up.
+- Constrained-only trials at `2`, `4`, and `6` CSS pixels also culled `0/187`.
+  Because the path added one camera-space projection per candidate without
+  removing target-scene render work, it was removed from the final change.
+  The result favors measured benefit over shipping speculative hot-loop cost.
 
 ## Raised-bed close-up profiling foundation
 
