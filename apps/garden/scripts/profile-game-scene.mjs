@@ -12,6 +12,8 @@ const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
 const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
+const gameProfilePlacementCommandEventName =
+    'gredice:game-profile-placement-command';
 
 const coreScenarios = [
     {
@@ -208,6 +210,21 @@ const denseMobileScenarios = [
     },
 ];
 
+const placementScenarios = [
+    {
+        name: 'game-dense-25x25-placement-desktop',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=medium&placement=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gameDenseMotion',
+        placementProfile: {
+            action: 'run',
+            staggerMs: 120,
+        },
+    },
+];
+
 const constrainedAutoQualityDevice = {
     autoQualityDeviceClass: 'constrained',
     navigatorMetrics: {
@@ -382,6 +399,7 @@ const scenarioSets = {
     core: coreScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
+    placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
     rewards: rewardScenarios,
     'weather-transitions': weatherTransitionScenarios,
@@ -648,7 +666,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -673,6 +691,7 @@ function allScenarios() {
         ...coreScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...placementScenarios,
         ...plantCloseupScenarios,
         ...autoQualityScenarios,
         ...rewardScenarios,
@@ -704,7 +723,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -733,6 +752,7 @@ function getScenarioRequest(path) {
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
+        placement: url.searchParams.get('placement') ?? '0',
         quality: url.searchParams.get('quality') ?? 'auto',
     };
 }
@@ -1671,9 +1691,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     );
 
     const weatherTransitionRequest = scenario.weatherTransition ?? null;
+    const placementProfileRequest = scenario.placementProfile ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
+                placementProfileEventName,
+                placementProfileRequest,
                 sampleMs,
                 weatherTransitionEventName,
                 weatherTransitionRequest,
@@ -1703,6 +1726,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 ? globalThis.dispatchEvent(
                       new CustomEvent(weatherTransitionEventName, {
                           detail: { request: weatherTransitionRequest },
+                      }),
+                  )
+                : false;
+            const placementProfileDispatched = placementProfileRequest
+                ? globalThis.dispatchEvent(
+                      new CustomEvent(placementProfileEventName, {
+                          detail: placementProfileRequest,
                       }),
                   )
                 : false;
@@ -1782,6 +1812,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p50FrameMs: percentile(0.5),
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
+                placementProfileDispatched,
                 rainMountedAtStart,
                 rainParticleCountAtEnd:
                     typeof globalThis.__grediceGameProfile
@@ -1805,6 +1836,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             };
         },
         {
+            placementProfileEventName: gameProfilePlacementCommandEventName,
+            placementProfileRequest,
             sampleMs: options.sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
@@ -1927,6 +1960,33 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             instancedSnowOverlayCount:
                 typeof metadata.instancedSnowOverlayCount === 'number'
                     ? metadata.instancedSnowOverlayCount
+                    : null,
+            placementChunkLogicalTouchedCount:
+                typeof metadata.placementChunkLogicalTouchedCount === 'number'
+                    ? metadata.placementChunkLogicalTouchedCount
+                    : null,
+            placementChunkLogicalUpdateCount:
+                typeof metadata.placementChunkLogicalUpdateCount === 'number'
+                    ? metadata.placementChunkLogicalUpdateCount
+                    : null,
+            placementChunkPhysicalRebuildCount:
+                typeof metadata.placementChunkPhysicalRebuildCount === 'number'
+                    ? metadata.placementChunkPhysicalRebuildCount
+                    : null,
+            placementChunkPhysicalRebuildDurationMaxMs:
+                typeof metadata.placementChunkPhysicalRebuildDurationMaxMs ===
+                'number'
+                    ? metadata.placementChunkPhysicalRebuildDurationMaxMs
+                    : null,
+            placementChunkPhysicalRebuildDurationP95Ms:
+                typeof metadata.placementChunkPhysicalRebuildDurationP95Ms ===
+                'number'
+                    ? metadata.placementChunkPhysicalRebuildDurationP95Ms
+                    : null,
+            placementChunkPhysicalTransformedInstanceCount:
+                typeof metadata.placementChunkPhysicalTransformedInstanceCount ===
+                'number'
+                    ? metadata.placementChunkPhysicalTransformedInstanceCount
                     : null,
             qualityTier:
                 typeof metadata.qualityTier === 'string'
@@ -2054,6 +2114,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             isMobile: scenario.isMobile,
             mode: profileMetadata?.mode ?? request.mode,
             motion: scenario.motion ?? 'none',
+            placementProfile:
+                placementProfileRequest === null ? 'none' : 'placement-drop',
             quality: profileMetadata?.quality ?? request.quality,
             viewport: scenario.viewport,
             weatherTransition: weatherTransitionRequest ?? 'none',
@@ -2867,6 +2929,39 @@ function buildMarkdown(report) {
             ),
     );
     lines.push(...(failures.length ? failures : ['- None']));
+
+    const placementProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested.placementProfile === 'placement-drop',
+    );
+    if (placementProfiles.length > 0) {
+        lines.push('', '## Placement Animation Evidence', '');
+        lines.push(
+            '| Scenario | Command | Logical updates/touched | Physical rebuilds/transformed | Rebuild p95/max | Frame p95/max | Draw/render | Triangles/render | Evidence |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of placementProfiles) {
+            const dispatched =
+                scenario.sample.placementProfileDispatched === true;
+            const logicalUpdateCount =
+                scenario.runtime?.placementChunkLogicalUpdateCount;
+            const logicalTouchedCount =
+                scenario.runtime?.placementChunkLogicalTouchedCount;
+            const physicalRebuildCount =
+                scenario.runtime?.placementChunkPhysicalRebuildCount;
+            const transformedInstanceCount =
+                scenario.runtime
+                    ?.placementChunkPhysicalTransformedInstanceCount;
+            const evidenceCaptured =
+                dispatched &&
+                typeof logicalUpdateCount === 'number' &&
+                logicalUpdateCount > 0 &&
+                typeof physicalRebuildCount === 'number' &&
+                physicalRebuildCount > 0;
+            lines.push(
+                `| ${scenario.name} | ${dispatched ? 'dispatched' : 'missing'} | ${logicalUpdateCount ?? 'n/a'}/${logicalTouchedCount ?? 'n/a'} | ${physicalRebuildCount ?? 'n/a'}/${transformedInstanceCount ?? 'n/a'} | ${round(scenario.runtime?.placementChunkPhysicalRebuildDurationP95Ms) ?? 'n/a'}/${round(scenario.runtime?.placementChunkPhysicalRebuildDurationMaxMs) ?? 'n/a'} ms | ${scenario.sample.p95FrameMs}/${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${evidenceCaptured ? 'captured' : 'missing'} |`,
+            );
+        }
+    }
 
     if (Object.keys(report.plantCloseupMedians).length > 0) {
         lines.push('', '## Raised-bed Close-up Medians', '');

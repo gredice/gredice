@@ -8,6 +8,8 @@ import {
 import type { Block } from '../../types/Block';
 import {
     type BlockPlacementDropAnimation,
+    getBlockPlacementDropAnimationByRenderId,
+    getBlockPlacementDropAnimationForBlockId,
     useGameState,
 } from '../../useGameState';
 
@@ -64,8 +66,9 @@ export function PlacementDropAnimation({
         }
 
         startedSequence.current = animation.sequence;
+        const animationRenderId = animation.renderId;
         const spawnLandingParticles = () => {
-            if (!markParticlesSpawned(block.id)) {
+            if (!markParticlesSpawned(animationRenderId)) {
                 return;
             }
 
@@ -77,7 +80,7 @@ export function PlacementDropAnimation({
         };
         const finish = () => {
             spawnLandingParticles();
-            completeAnimation(block.id);
+            completeAnimation(animationRenderId);
         };
 
         if (prefersReducedMotion()) {
@@ -94,7 +97,6 @@ export function PlacementDropAnimation({
     }, [
         animation,
         api,
-        block.id,
         block.name,
         completeAnimation,
         markParticlesSpawned,
@@ -118,17 +120,27 @@ export function PlacementDropAnimation({
 }
 
 export function QueuedPlacementDropAnimation({
+    animationRenderId,
     block,
     children,
     particlePosition,
     position,
 }: PropsWithChildren<{
+    animationRenderId?: number;
     block: Block;
     particlePosition: Vector3 | [number, number, number];
     position?: [number, number, number];
 }>) {
-    const animation = useGameState(
-        (state) => state.blockPlacementDropAnimations[block.id] ?? null,
+    const animation = useGameState((state) =>
+        animationRenderId === undefined
+            ? getBlockPlacementDropAnimationForBlockId(
+                  state.blockPlacementDropAnimations,
+                  block.id,
+              )
+            : getBlockPlacementDropAnimationByRenderId(
+                  state.blockPlacementDropAnimations,
+                  animationRenderId,
+              ),
     );
 
     return (

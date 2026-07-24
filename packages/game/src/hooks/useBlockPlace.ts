@@ -127,6 +127,12 @@ export function useBlockPlace() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
+    const rekeyBlockPlacementDropAnimation = useGameState(
+        (state) => state.rekeyBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (state) => state.cancelBlockPlacementDropAnimation,
+    );
     const gardenQueryKey = currentGardenKeys(
         winterMode,
         garden?.id,
@@ -273,6 +279,10 @@ export function useBlockPlace() {
                 return;
             }
 
+            rekeyBlockPlacementDropAnimation(
+                context.optimisticBlockId,
+                data.id,
+            );
             queryClient.setQueryData<CurrentGardenData | null>(
                 gardenQueryKey,
                 (currentGarden) =>
@@ -288,6 +298,7 @@ export function useBlockPlace() {
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
             if (context?.optimisticBlockId) {
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
                 queryClient.setQueryData<CurrentGardenData | null>(
                     gardenQueryKey,
                     (currentGarden) =>

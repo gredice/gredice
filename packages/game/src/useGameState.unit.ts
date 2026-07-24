@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
 import type { ActiveDragPreview } from './useGameState';
-import { activeDragPreviewsEqual, createGameState } from './useGameState';
+import {
+    activeDragPreviewsEqual,
+    createGameState,
+    getBlockPlacementDropAnimationRenderIdForBlockId,
+    resolveBlockPlacementDropAnimationRenderIdentity,
+} from './useGameState';
 import { getGameSunriseSunset, getGameTimeOfDay } from './utils/timeOfDay';
 
 function createPreview(): ActiveDragPreview {
@@ -186,6 +191,122 @@ test('clearPickupSelectionTargets resets every active pickup target', () => {
         store.getState().clearPickupSelectionTargets();
 
         assert.deepEqual(store.getState().pickupSelectionTargets, []);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('placement animation keeps render and completion identity through optimistic rekey', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+        const animation =
+            store.getState().blockPlacementDropAnimations.optimistic;
+        assert.ok(animation);
+        const optimisticRenderIdentity =
+            resolveBlockPlacementDropAnimationRenderIdentity(
+                'optimistic',
+                store.getState().blockPlacementDropAnimations,
+            );
+        const optimisticRenderId =
+            getBlockPlacementDropAnimationRenderIdForBlockId(
+                store.getState().blockPlacementDropAnimations,
+                'optimistic',
+            );
+
+        store.getState().queueBlockPlacementDropAnimation('unrelated');
+        assert.equal(
+            getBlockPlacementDropAnimationRenderIdForBlockId(
+                store.getState().blockPlacementDropAnimations,
+                'optimistic',
+            ),
+            optimisticRenderId,
+        );
+        store.getState().cancelBlockPlacementDropAnimation('unrelated');
+
+        store
+            .getState()
+            .rekeyBlockPlacementDropAnimation('optimistic', 'persisted');
+
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.optimistic,
+            undefined,
+        );
+        assert.strictEqual(
+            store.getState().blockPlacementDropAnimations.persisted,
+            animation,
+        );
+        assert.equal(
+            resolveBlockPlacementDropAnimationRenderIdentity(
+                'optimistic',
+                store.getState().blockPlacementDropAnimations,
+            ),
+            optimisticRenderIdentity,
+        );
+        assert.equal(
+            resolveBlockPlacementDropAnimationRenderIdentity(
+                'persisted',
+                store.getState().blockPlacementDropAnimations,
+            ),
+            optimisticRenderIdentity,
+        );
+
+        assert.equal(
+            store
+                .getState()
+                .markBlockPlacementDropParticlesSpawned(animation.renderId),
+            true,
+        );
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.persisted
+                ?.particlesSpawned,
+            true,
+        );
+        assert.equal(
+            store
+                .getState()
+                .markBlockPlacementDropParticlesSpawned(animation.renderId),
+            false,
+        );
+
+        store
+            .getState()
+            .completeBlockPlacementDropAnimation(animation.renderId);
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+        assert.equal(
+            resolveBlockPlacementDropAnimationRenderIdentity(
+                'persisted',
+                store.getState().blockPlacementDropAnimations,
+            ),
+            'block:persisted',
+        );
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('placement animation cancellation resolves the optimistic source after rekey', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+        store
+            .getState()
+            .rekeyBlockPlacementDropAnimation('optimistic', 'persisted');
+        store.getState().cancelBlockPlacementDropAnimation('optimistic');
+
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+        store.getState().cancelBlockPlacementDropAnimation('missing');
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
     } finally {
         store.getState().audio.dispose();
     }

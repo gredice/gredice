@@ -195,6 +195,12 @@ export type GameProfileMetadata = {
     generatedLSystemCacheWriteCount?: number;
     generatedPlantProfile?: GeneratedPlantProfileSnapshot | null;
     instancedSnowOverlayCount?: number;
+    placementChunkLogicalTouchedCount?: number;
+    placementChunkLogicalUpdateCount?: number;
+    placementChunkPhysicalRebuildCount?: number;
+    placementChunkPhysicalRebuildDurationMaxMs?: number;
+    placementChunkPhysicalRebuildDurationP95Ms?: number;
+    placementChunkPhysicalTransformedInstanceCount?: number;
     qualityTier?: GameQualityProfileTier;
     rainParticleCount?: number;
     rainWetOverlayDistinctUniformCount?: number;

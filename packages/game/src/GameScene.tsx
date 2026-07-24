@@ -61,9 +61,12 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
+    formatBlockPlacementDropAnimationRenderIdentity,
     type GameState,
+    getBlockPlacementDropAnimationRenderIdForBlockId,
     type MockGardenProfile,
     useGameState,
     type WinterMode,
@@ -174,6 +177,47 @@ function shouldRenderEntityFactoryForBlock({
     }
 
     return blockIndex >= 0 && blockIndex < stackLength;
+}
+
+function GameSceneEntitySlot({
+    block,
+    noControls,
+    stack,
+    stacks,
+}: {
+    block: Block;
+    noControls: boolean | undefined;
+    stack: Stack;
+    stacks: Stack[];
+}) {
+    const placementDropAnimationRenderId = useGameState((state) =>
+        getBlockPlacementDropAnimationRenderIdForBlockId(
+            state.blockPlacementDropAnimations,
+            block.id,
+        ),
+    );
+    const renderIdentity = formatBlockPlacementDropAnimationRenderIdentity(
+        block.id,
+        placementDropAnimationRenderId,
+    );
+    const entityFactory = (
+        <EntityFactory
+            name={block.name}
+            stack={stack}
+            block={block}
+            stacks={stacks}
+            rotation={block.rotation}
+            variant={block.variant}
+            noRenderInView={instancedBlockNames}
+            noControl={noControls}
+        />
+    );
+
+    return (
+        <Suspense key={renderIdentity} fallback={null}>
+            {entityFactory}
+        </Suspense>
+    );
 }
 
 export function GameScene({
@@ -345,38 +389,41 @@ export function GameScene({
                                             return null;
                                         }
 
-                                        const entityFactory = (
-                                            <EntityFactory
-                                                name={block.name}
-                                                stack={stack}
-                                                block={block}
-                                                stacks={garden.stacks}
-                                                rotation={block.rotation}
-                                                variant={block.variant}
-                                                noRenderInView={
-                                                    instancedBlockNames
-                                                }
-                                                noControl={noControls}
-                                            />
-                                        );
-                                        const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
-
                                         if (
                                             instancedBlockNames.includes(
                                                 block.name,
                                             )
                                         ) {
+                                            const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
                                             return (
                                                 <Fragment key={key}>
-                                                    {entityFactory}
+                                                    <EntityFactory
+                                                        name={block.name}
+                                                        stack={stack}
+                                                        block={block}
+                                                        stacks={garden.stacks}
+                                                        rotation={
+                                                            block.rotation
+                                                        }
+                                                        variant={block.variant}
+                                                        noRenderInView={
+                                                            instancedBlockNames
+                                                        }
+                                                        noControl={noControls}
+                                                    />
                                                 </Fragment>
                                             );
                                         }
 
+                                        const slotKey = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`;
                                         return (
-                                            <Suspense key={key} fallback={null}>
-                                                {entityFactory}
-                                            </Suspense>
+                                            <GameSceneEntitySlot
+                                                key={slotKey}
+                                                block={block}
+                                                noControls={noControls}
+                                                stack={stack}
+                                                stacks={garden.stacks}
+                                            />
                                         );
                                     }),
                                 )}

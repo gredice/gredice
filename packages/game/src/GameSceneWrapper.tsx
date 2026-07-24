@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
+import { resetPlacementAnimationProfileMetrics } from './entities/placementAnimationProfileMetrics';
 import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
 import { GameProfileController } from './scene/GameProfileController';
@@ -44,6 +45,10 @@ export function GameSceneWrapper({
         });
     }
     useDisposeGameStateStore(storeRef.current);
+
+    useEffect(() => {
+        resetPlacementAnimationProfileMetrics();
+    }, []);
 
     // Sync winterMode prop changes to the store
     useEffect(() => {
