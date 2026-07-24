@@ -123,6 +123,7 @@ export async function getStripeCheckoutSession(sessionId: string) {
             paymentStatus: session.payment_status,
             lineItems: line_items,
             amountTotal: session.amount_total,
+            metadata: session.metadata,
         };
     } catch (error) {
         if (error instanceof Error) {
@@ -172,6 +173,7 @@ export async function stripeCheckout(
         items: CheckoutItem[];
         expiresAt?: Date;
         allowPromotionCodes?: boolean;
+        metadata?: Record<string, string | number | null>;
     },
 ) {
     try {
@@ -199,6 +201,7 @@ export async function stripeCheckout(
             locale: 'hr',
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
+            metadata: data.metadata,
         };
         if (data.expiresAt) {
             params.expires_at = Math.floor(data.expiresAt.getTime() / 1000);

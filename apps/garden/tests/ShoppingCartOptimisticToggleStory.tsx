@@ -358,8 +358,8 @@ function ShoppingCartItemsPresencePanel({
                 <ShoppingCartHud />
             ) : (
                 <ShoppingCart
-                    showDeliveryStep={false}
-                    onShowDeliveryStepChange={() => undefined}
+                    checkoutStep="cart"
+                    onCheckoutStepChange={() => undefined}
                 />
             )}
         </div>

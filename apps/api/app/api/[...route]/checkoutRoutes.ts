@@ -1,10 +1,17 @@
 import {
     assignStripeCustomerId,
+    cartContainsDeliverableItems,
     consumeInventoryItem,
     getAccount,
+    getDeliveryAddress,
+    getHarvestScheduleForCart,
+    getPickupLocation,
     getShoppingCart,
     getSunflowerPackageEligibilityForAccount,
+    getTimeSlot,
+    getTimeSlotEffectiveClosesAt,
     getUser,
+    HarvestScheduleConflictError,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
@@ -16,6 +23,7 @@ import {
     setCartItemPaid,
     spendSunflowers,
     sunflowerPackageEntityTypeName,
+    validateHarvestDateSelections,
 } from '@gredice/storage';
 import {
     type CheckoutItem,
@@ -27,6 +35,14 @@ import { Hono } from 'hono';
 import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import {
+    CheckoutDeliverySelectionError,
+    validateCheckoutDeliverySelection,
+} from '../../../lib/checkout/deliverySelection';
+import {
+    buildCheckoutAdditionalData,
+    encodeHarvestDatesMetadata,
+} from '../../../lib/checkout/harvestCheckout';
 import {
     buildOrderConfirmationItems,
     notifyOrderConfirmationEmail,
@@ -111,11 +127,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         notes: z.string().max(500).optional(),
                     })
                     .optional(),
+                harvestDates: z
+                    .array(
+                        z.object({
+                            cartItemId: z.number().int().positive(),
+                            scheduledDate: z
+                                .string()
+                                .regex(/^\d{4}-\d{2}-\d{2}$/),
+                        }),
+                    )
+                    .max(100)
+                    .optional(),
             }),
         ),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
-            const { cartId, deliveryInfo } = context.req.valid('json');
+            const { cartId, deliveryInfo, harvestDates } =
+                context.req.valid('json');
 
             // Retrieve data
             const [account, user, initialCart] = await Promise.all([
@@ -132,6 +160,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
+            if (initialCart.accountId !== accountId) {
+                console.warn('Account ID mismatch', {
+                    accountId,
+                    cartAccountId: initialCart.accountId,
+                });
+                return context.json({ error: 'Cart not found' }, 404);
+            }
+            if (initialCart.status === 'paid') {
+                return context.json({ error: 'Cart already paid' }, 400);
+            }
+
             const inventoryNormalizedCart =
                 (await normalizeShoppingCartInventoryUsage(cartId)) ??
                 initialCart;
@@ -142,19 +181,88 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         defaultMissingScheduledDates: true,
                     },
                 )) ?? inventoryNormalizedCart;
-            if (cart.accountId !== accountId) {
-                console.warn('Account ID mismatch', {
-                    accountId,
-                    cartAccountId: cart.accountId,
+            const requiresDelivery = await cartContainsDeliverableItems(
+                cart.id,
+            );
+            const [slot, address, location] = await Promise.all([
+                deliveryInfo
+                    ? getTimeSlot(deliveryInfo.slotId)
+                    : Promise.resolve(undefined),
+                deliveryInfo?.mode === 'delivery' && deliveryInfo.addressId
+                    ? getDeliveryAddress(deliveryInfo.addressId, accountId)
+                    : Promise.resolve(undefined),
+                deliveryInfo?.mode === 'pickup' && deliveryInfo.locationId
+                    ? getPickupLocation(deliveryInfo.locationId)
+                    : Promise.resolve(undefined),
+            ]);
+            let canonicalHarvestDates: Array<{
+                cartItemId: number;
+                scheduledDate: string;
+            }> = [];
+
+            try {
+                validateCheckoutDeliverySelection({
+                    address,
+                    location,
+                    requiresDelivery,
+                    selection: deliveryInfo,
+                    slot: slot
+                        ? {
+                              ...slot,
+                              effectiveClosesAt:
+                                  getTimeSlotEffectiveClosesAt(slot),
+                          }
+                        : undefined,
                 });
-                return context.json({ error: 'Cart not found' }, 404);
+
+                if (deliveryInfo) {
+                    const schedule = await getHarvestScheduleForCart({
+                        accountId,
+                        cartId: cart.id,
+                        deliverySlotId: deliveryInfo.slotId,
+                    });
+                    canonicalHarvestDates = validateHarvestDateSelections(
+                        schedule,
+                        harvestDates ?? [],
+                    );
+                } else if (harvestDates?.length) {
+                    return context.json(
+                        {
+                            error: 'Delivery selection is required for harvest dates',
+                        },
+                        400,
+                    );
+                }
+            } catch (error) {
+                if (error instanceof CheckoutDeliverySelectionError) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: error.code,
+                        },
+                        error.status,
+                    );
+                }
+                if (error instanceof HarvestScheduleConflictError) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: error.code,
+                            details: error.details,
+                        },
+                        error.statusCode,
+                    );
+                }
+
+                throw error;
             }
 
-            // Validate cart status
-            if (cart.status === 'paid') {
-                return context.json({ error: 'Cart already paid' }, 400);
-            }
-
+            const harvestDateByCartItemId = new Map(
+                canonicalHarvestDates.map((selection) => [
+                    selection.cartItemId,
+                    selection.scheduledDate,
+                ]),
+            );
             // Retrieve entities data
             const cartInfo = await getCartInfo(cart.items, accountId);
             if (!cartInfo.allowPurchase) {
@@ -204,6 +312,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const requiresStripePayment = cartInfo.items.some(
                 (item) => item.status !== 'paid' && item.currency === 'eur',
             );
+            const expectedNonStripeCartItemIds = cartInfo.items.flatMap(
+                (item) =>
+                    item.status !== 'paid' &&
+                    (item.currency === 'sunflower' ||
+                        item.currency === 'inventory' ||
+                        item.usesInventory)
+                        ? [item.id]
+                        : [],
+            );
 
             // Handle sunflower items
             if (!requiresStripePayment) {
@@ -215,6 +332,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 if (sunflowerCartItemsWithShopData.length > 0) {
                     // Check if there are enough sunflowers in the account
                     for (const item of sunflowerCartItemsWithShopData) {
+                        const scheduledHarvestDate =
+                            harvestDateByCartItemId.get(item.id);
                         const sunflowerAmount = calculateSunflowerAmount(item);
                         let didPaySunflowers = false;
                         try {
@@ -242,14 +361,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     ...item,
                                     amount_total: sunflowerAmount,
                                     scheduledDeliveryEmailKeys,
-                                    additionalData: {
-                                        ...(item.additionalData
-                                            ? JSON.parse(item.additionalData)
-                                            : {}),
-                                        ...(deliveryInfo
-                                            ? { delivery: deliveryInfo }
-                                            : {}),
-                                    },
+                                    additionalData: buildCheckoutAdditionalData(
+                                        {
+                                            additionalData: item.additionalData,
+                                            deliveryInfo,
+                                            scheduledHarvestDate,
+                                        },
+                                    ),
                                 }),
                             ]);
                         }
@@ -268,6 +386,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
                 if (inventoryCartItems.length > 0) {
                     for (const item of inventoryCartItems) {
+                        const scheduledHarvestDate =
+                            harvestDateByCartItemId.get(item.id);
                         if ((item.inventoryAvailable ?? 0) < item.amount) {
                             return context.json(
                                 { error: 'Nema dovoljno predmeta u ruksaku' },
@@ -289,14 +409,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 ...item,
                                 amount_total: 0,
                                 scheduledDeliveryEmailKeys,
-                                additionalData: {
-                                    ...(item.additionalData
-                                        ? JSON.parse(item.additionalData)
-                                        : {}),
-                                    ...(deliveryInfo
-                                        ? { delivery: deliveryInfo }
-                                        : {}),
-                                },
+                                additionalData: buildCheckoutAdditionalData({
+                                    additionalData: item.additionalData,
+                                    deliveryInfo,
+                                    scheduledHarvestDate,
+                                }),
                             }),
                         ]);
                     }
@@ -327,6 +444,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             for (const item of stripeCartItemsWithShopData) {
                 // TODO: Apply discounted price if available
 
+                const scheduledHarvestDate = harvestDateByCartItemId.get(
+                    item.id,
+                );
                 const name = item.shopData?.name;
                 const description = item.shopData?.description || undefined;
                 const finalPrice =
@@ -381,14 +501,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             raisedBedId: item.raisedBedId,
                             positionIndex:
                                 item.positionIndex?.toString() ?? null,
-                            additionalData: JSON.stringify({
-                                ...(item.additionalData
-                                    ? JSON.parse(item.additionalData)
-                                    : {}),
-                                ...(deliveryInfo
-                                    ? { delivery: deliveryInfo }
-                                    : {}),
-                            }),
+                            additionalData: JSON.stringify(
+                                buildCheckoutAdditionalData({
+                                    additionalData: item.additionalData,
+                                    deliveryInfo,
+                                    scheduledHarvestDate,
+                                }),
+                            ),
                             outletOfferId: item.outlet?.offerId ?? null,
                             outletReservationId:
                                 item.outlet?.reservationId ?? null,
@@ -427,6 +546,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         expiresAt: hasOutletStripeItems
                             ? outletCheckoutExpiresAt
                             : undefined,
+                        metadata: encodeHarvestDatesMetadata(
+                            canonicalHarvestDates,
+                            expectedNonStripeCartItemIds,
+                        ),
                     },
                 );
 

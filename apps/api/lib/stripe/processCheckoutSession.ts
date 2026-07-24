@@ -63,6 +63,10 @@ import {
     type ShoppingCartItemWithShopData,
 } from '../checkout/cartInfo';
 import {
+    decodeExpectedNonStripeCartItemIdsMetadata,
+    decodeHarvestDatesMetadata,
+} from '../checkout/harvestCheckout';
+import {
     buildOrderConfirmationItems,
     notifyOrderConfirmationEmail,
 } from '../checkout/orderConfirmationEmail';
@@ -336,6 +340,8 @@ async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
     deliveryInfo?: unknown,
+    harvestDateByCartItemId = new Map<number, string>(),
+    expectedNonStripeCartItemIds: ReadonlySet<number> | null = null,
     scheduledDeliveryEmailKeys?: Set<string>,
     checkoutSessionId?: string | null,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
@@ -364,9 +370,29 @@ async function processNonStripeCartItems(
         );
         return [];
     }
+    const isExpectedNonStripeItem = (item: { id: number }) =>
+        expectedNonStripeCartItemIds === null ||
+        expectedNonStripeCartItemIds.has(item.id);
+    for (const item of cartInfo.items) {
+        if (
+            expectedNonStripeCartItemIds?.has(item.id) &&
+            item.status !== 'paid' &&
+            item.entityTypeName === 'operation' &&
+            item.entityData.attributes?.deliverable === true &&
+            item.entityData.attributes.stage?.information.name === 'harvest' &&
+            !harvestDateByCartItemId.has(item.id)
+        ) {
+            throw new Error(
+                `Missing canonical harvest date for non-Stripe cart item ${item.id.toString()}`,
+            );
+        }
+    }
 
     const sunflowerCartItemsWithShopData = cartInfo.items.filter(
-        (item) => item.status !== 'paid' && item.currency === 'sunflower',
+        (item) =>
+            item.status !== 'paid' &&
+            item.currency === 'sunflower' &&
+            isExpectedNonStripeItem(item),
     );
 
     // Precompute sunflower amounts and total required, so we can spend in a single operation
@@ -410,6 +436,11 @@ async function processNonStripeCartItems(
             const additionalData = {
                 ...baseAdditionalData,
                 ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                ...(harvestDateByCartItemId.has(item.id)
+                    ? {
+                          scheduledDate: harvestDateByCartItemId.get(item.id),
+                      }
+                    : {}),
             };
 
             await Promise.all([
@@ -440,7 +471,8 @@ async function processNonStripeCartItems(
     const inventoryCartItems = cartInfo.items.filter(
         (item) =>
             item.status !== 'paid' &&
-            (item.currency === 'inventory' || item.usesInventory),
+            (item.currency === 'inventory' || item.usesInventory) &&
+            isExpectedNonStripeItem(item),
     );
 
     // Helper function to generate inventory key
@@ -491,6 +523,11 @@ async function processNonStripeCartItems(
             const additionalData = {
                 ...baseAdditionalData,
                 ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                ...(harvestDateByCartItemId.has(item.id)
+                    ? {
+                          scheduledDate: harvestDateByCartItemId.get(item.id),
+                      }
+                    : {}),
             };
 
             await Promise.all([
@@ -1287,12 +1324,19 @@ async function processPaidCheckoutSession(
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
+    const harvestDateByCartItemId = decodeHarvestDatesMetadata(
+        session.metadata,
+    );
+    const expectedNonStripeCartItemIds =
+        decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
             const nonStripeItems = await processNonStripeCartItems(
                 cartId,
                 accountId,
                 deliveryInfo,
+                harvestDateByCartItemId,
+                expectedNonStripeCartItemIds,
                 scheduledDeliveryEmailKeys,
                 session.id,
                 dependencies,

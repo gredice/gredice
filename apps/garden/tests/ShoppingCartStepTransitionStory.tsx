@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { ShoppingCartStepTransition } from '../../../packages/game/src/hud/components/shopping-cart/ShoppingCartStepTransition';
 
 export function ShoppingCartStepTransitionStory() {
-    const [step, setStep] = useState<'cart' | 'delivery'>('cart');
+    const [step, setStep] = useState<'cart' | 'delivery' | 'harvest'>('cart');
+    const [direction, setDirection] = useState<'forward' | 'backward'>(
+        'forward',
+    );
     const [cartUpdateCount, setCartUpdateCount] = useState(0);
     const [proceedCount, setProceedCount] = useState(0);
 
     return (
         <div className="w-80 p-8">
-            <ShoppingCartStepTransition step={step}>
+            <ShoppingCartStepTransition direction={direction} step={step}>
                 {step === 'cart' ? (
                     <div>
                         <button
@@ -24,15 +27,45 @@ export function ShoppingCartStepTransitionStory() {
                         </output>
                         <button
                             type="button"
-                            onClick={() => setStep('delivery')}
+                            onClick={() => {
+                                setDirection('forward');
+                                setStep('delivery');
+                            }}
                         >
                             Dostava
                         </button>
                     </div>
+                ) : step === 'delivery' ? (
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDirection('backward');
+                                setStep('cart');
+                            }}
+                        >
+                            Natrag
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDirection('forward');
+                                setStep('harvest');
+                            }}
+                        >
+                            Nastavi
+                        </button>
+                    </div>
                 ) : (
                     <div>
-                        <button type="button" onClick={() => setStep('cart')}>
-                            Natrag
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDirection('backward');
+                                setStep('delivery');
+                            }}
+                        >
+                            Natrag na dostavu
                         </button>
                         <button
                             type="button"
@@ -40,7 +73,7 @@ export function ShoppingCartStepTransitionStory() {
                                 setProceedCount((count) => count + 1)
                             }
                         >
-                            Nastavi
+                            Potvrdi datume
                         </button>
                         <output aria-label="Broj nastavaka">
                             {proceedCount}
