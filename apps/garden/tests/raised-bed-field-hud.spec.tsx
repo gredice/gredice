@@ -6,6 +6,7 @@ import type {
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import {
+    GreenhouseOverviewHudStory,
     RaisedBedCloseupHudStory,
     RaisedBedFieldDndDialogStory,
     RaisedBedFieldHudStory,
@@ -405,6 +406,45 @@ function greenhouseSeedlingScenario(): RaisedBedScenario {
                 stageLabel: 'Održavanje',
                 relativeDays: 2,
             }),
+            buildOperation({
+                id: 593,
+                name: 'seedlingTranslanting',
+                label: 'Presađivanje sadnice',
+                stageName: 'planting',
+                stageLabel: 'Sadnja',
+                relativeDays: 14,
+            }),
+        ],
+    };
+}
+
+function greenhouseOverviewScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'sprouted',
+                sowingLocation: 'greenhouse',
+                plantSowDate: '2026-05-01T00:00:00.000Z',
+                plantGrowthDate: '2026-05-10T00:00:00.000Z',
+            },
+            {
+                positionIndex: 1,
+                plantSortId: testSorts.basil.id,
+                plantStatus: 'sowed',
+                sowingLocation: 'greenhouse',
+                plantSowDate: '2026-05-12T00:00:00.000Z',
+            },
+            {
+                positionIndex: 2,
+                plantSortId: testSorts.lettuce.id,
+                plantStatus: 'sprouted',
+                plantSowDate: '2026-05-01T00:00:00.000Z',
+                plantGrowthDate: '2026-05-10T00:00:00.000Z',
+            },
+        ],
+        operations: [
             buildOperation({
                 id: 593,
                 name: 'seedlingTranslanting',
@@ -955,6 +995,43 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.locator('[data-greenhouse-transplant-action]'),
         ).toContainText('Presađivanje sadnice');
+    });
+
+    test('greenhouse overview lists greenhouse seedlings and progress', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <GreenhouseOverviewHudStory
+                scenario={greenhouseOverviewScenario()}
+            />,
+        );
+
+        await page
+            .getByRole('button', { name: 'Staklenik: 2 sadnice' })
+            .click();
+
+        const overview = page.locator('[data-greenhouse-overview-panel]');
+        await expect(overview).toBeVisible();
+        await expect(
+            overview.locator('[data-greenhouse-overview-item]'),
+        ).toHaveCount(2);
+        await expect(overview.getByText('Cherry rajčica')).toBeVisible();
+        await expect(overview.getByText('Klasični bosiljak')).toBeVisible();
+        await expect(overview.getByText('Maslac salata')).toHaveCount(0);
+        await expect(
+            overview.getByText('Raised Bed 1 · Polje 1'),
+        ).toBeVisible();
+        await expect(
+            overview.getByText('U stakleniku', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            overview.getByText('Klijanje', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            overview.locator('[data-greenhouse-overview-progress]').first(),
+        ).toHaveAttribute('aria-valuenow', '56');
+        await expect(overview.getByText('56%')).toBeVisible();
     });
 
     test('ready-to-harvest field shows the sprout status badge', async ({

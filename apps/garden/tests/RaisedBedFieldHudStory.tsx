@@ -12,6 +12,7 @@ import { operationDefinitionsQueryKey } from '../../../packages/game/src/hooks/u
 import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
+import { GreenhouseOverviewHud } from '../../../packages/game/src/hud/GreenhouseOverviewHud';
 import { RaisedBedFieldHud } from '../../../packages/game/src/hud/RaisedBedFieldHud';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
@@ -357,6 +358,18 @@ export function RaisedBedFieldSuggestionsStory({
                 gardenId={TEST_GARDEN_ID}
                 raisedBedId={TEST_RAISED_BED_ID}
             />
+        </RaisedBedHudTestProviders>
+    );
+}
+
+export function GreenhouseOverviewHudStory({
+    scenario,
+}: {
+    scenario: RaisedBedScenario;
+}) {
+    return (
+        <RaisedBedHudTestProviders scenario={scenario}>
+            <GreenhouseOverviewHud />
         </RaisedBedHudTestProviders>
     );
 }
