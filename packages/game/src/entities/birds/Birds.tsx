@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
+import { useAnimatedCasterShadowMapRefresh } from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
@@ -2055,6 +2056,7 @@ export function Birds({ stacks }: { stacks: Stack[] | undefined }) {
         () => createBirdHabitats(stacks, blockData),
         [blockData, stacks],
     );
+    useAnimatedCasterShadowMapRefresh(habitats.length > 0);
 
     if (habitats.length <= 0) {
         return null;

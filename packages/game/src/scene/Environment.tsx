@@ -37,10 +37,7 @@ import Snow from './Snow/Snow';
 import { resolveSnowParticleCounts } from './Snow/snowParticles';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
-import {
-    buildDirectionalShadowDepthSignature,
-    cloudShadowRefreshMsByMode,
-} from './shadowMapScheduling';
+import { buildDirectionalShadowDepthSignature } from './shadowMapScheduling';
 import {
     resolveEnvironmentSkyBackgroundColors,
     resolveSkyBackgroundColor,
@@ -898,10 +895,6 @@ export function Environment({
         : daylightVisibility *
           smoothstep(0.08, 0.22, cloudCover) *
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
-    const cloudShadowDynamicRefreshMs =
-        qualityProfile.shadows && cloudShadowStrength > 0
-            ? cloudShadowRefreshMsByMode[qualityProfile.cloudShadowMode]
-            : undefined;
     const gardenShadowSignature = useMemo(
         () => buildStackShadowSignature(garden?.stacks),
         [garden?.stacks],
@@ -1030,7 +1023,6 @@ export function Environment({
                 }
             />
             <ShadowMapController
-                dynamicRefreshMs={cloudShadowDynamicRefreshMs}
                 enabled={qualityProfile.shadows}
                 invalidationKey={shadowInvalidationKey}
                 settleKey={shadowSettleKey}
@@ -1109,11 +1101,12 @@ export function Environment({
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
-                    shadowMode={qualityProfile.cloudShadowMode}
+                    quality={qualityProfile}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }
                     stacks={garden?.stacks}
+                    sunPosition={directionalLight.position}
                     timeOfDay={timeOfDay}
                     windDirection={windDirection}
                     windSpeed={windSpeed}

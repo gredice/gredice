@@ -168,6 +168,11 @@ export type GeneratedPlantProfileSnapshot = {
 };
 
 export type GameProfileMetadata = {
+    animatedCasterShadowRefreshCount?: number;
+    cloudAttenuationMaskResolution?: number;
+    cloudAttenuationMaterialCount?: number;
+    cloudAttenuationUpdateCount?: number;
+    cloudAttenuationUpdateMs?: number;
     cloudProjectedShadowCount?: number;
     cloudRealShadowCasterCount?: number;
     cloudVisualCount?: number;
@@ -195,6 +200,7 @@ export type GameProfileMetadata = {
     rainWetOverlayDistinctUniformCount?: number;
     rainWetOverlayMaterialConsumerCount?: number;
     raisedBedMulchOverlayCount?: number;
+    primaryShadowRefreshCount?: number;
     rendererGeometries?: number;
     rendererLines?: number;
     rendererMatrices?: number;
