@@ -34,7 +34,9 @@ import {
 } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
 import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
+import { resolveCurrentAccountGardenId } from './gardenSelection';
 import { resolveMockGardenProfileReferenceDate } from './mockGardenProfileFixtures';
+import { useGardenAccountGroups } from './useGardenAccountGroups';
 import { useGardens, useGardensKeys } from './useGardens';
 
 const GARDEN_POSITION_X_OFFSET = -1;
@@ -1184,6 +1186,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
+    const { data: accountGroups } = useGardenAccountGroups(
+        isMock || isLocalSandbox,
+    );
     let selectedGardenId: number | null = null;
     if (!isMock && !isLocalSandbox) {
         // biome-ignore lint/correctness/useHookAtTopLevel: store mode is fixed when the game state is created.
@@ -1191,10 +1196,13 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         selectedGardenId = gardenId;
     }
 
-    // Use the selected garden ID from URL, or default to the first garden
-    const currentGardenId =
-        (isLocalSandbox ? localSandboxGardenId : selectedGardenId) ??
-        (gardens && gardens.length > 0 ? gardens[0].id : null);
+    const currentGardenId = isLocalSandbox
+        ? localSandboxGardenId
+        : resolveCurrentAccountGardenId({
+              accountGroups,
+              currentAccountGardens: gardens,
+              selectedGardenId,
+          });
 
     return useQuery({
         queryKey: currentGardenKeys(
@@ -1314,15 +1322,22 @@ export function useCurrentGardenCache() {
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
+    const { data: accountGroups } = useGardenAccountGroups(
+        isMock || isLocalSandbox,
+    );
     let selectedGardenId: number | null = null;
     if (!isMock && !isLocalSandbox) {
         // biome-ignore lint/correctness/useHookAtTopLevel: store mode is fixed when the game state is created.
         const [gardenId] = useCurrentGardenIdParam();
         selectedGardenId = gardenId;
     }
-    const currentGardenId =
-        (isLocalSandbox ? localSandboxGardenId : selectedGardenId) ??
-        (gardens && gardens.length > 0 ? gardens[0].id : null);
+    const currentGardenId = isLocalSandbox
+        ? localSandboxGardenId
+        : resolveCurrentAccountGardenId({
+              accountGroups,
+              currentAccountGardens: gardens,
+              selectedGardenId,
+          });
     const gardenQueryKey = useMemo(
         () =>
             currentGardenKeys(

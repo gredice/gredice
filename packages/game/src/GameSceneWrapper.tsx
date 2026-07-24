@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
 import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
+import { GardenSelectionGate } from './GardenSelectionGate';
 import { GameProfileController } from './scene/GameProfileController';
 import {
     createGameState,
@@ -82,8 +83,14 @@ export function GameSceneWrapper({
     return (
         <GameStateContext.Provider value={storeRef.current}>
             <GameFlagsContext.Provider value={flags ?? {}}>
-                <GameScene flags={flags} {...rest} />
-                {enableGameProfileController ? <GameProfileController /> : null}
+                <GardenSelectionGate
+                    disabled={Boolean(mockGarden || localSandboxStorageKey)}
+                >
+                    <GameScene flags={flags} {...rest} />
+                    {enableGameProfileController ? (
+                        <GameProfileController />
+                    ) : null}
+                </GardenSelectionGate>
             </GameFlagsContext.Provider>
         </GameStateContext.Provider>
     );
