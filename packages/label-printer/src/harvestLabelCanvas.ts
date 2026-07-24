@@ -393,7 +393,6 @@ function renderFieldOperationLabelWithTraceQr(
     const logoY = paddingY + Math.round(height * 0.01);
     const headerTextX = paddingX + logoSize + Math.round(width * 0.025);
     const headerTop = paddingY + Math.round(height * 0.015);
-    const headerLineHeight = Math.round(height * 0.16);
     const topBedText = sanitizeText(data.raisedBedPhysicalId);
     const topFieldText = sanitizeText(data.fieldLabel);
     const detailText = sanitizeText(data.detailLabel);
@@ -410,49 +409,6 @@ function renderFieldOperationLabelWithTraceQr(
     context.fillStyle = '#000000';
     context.textBaseline = 'alphabetic';
     context.textAlign = 'left';
-
-    const headerLabelFontSize = fitSingleLineFont(
-        context,
-        'Gredica',
-        Math.max(width * 0.16, headerContentRight - headerTextX - width * 0.18),
-        Math.round(height * 0.085),
-        Math.round(height * 0.06),
-        500,
-    );
-    const headerValueMaxWidth = Math.max(
-        width * 0.12,
-        headerContentRight - headerTextX - Math.round(width * 0.21),
-    );
-    const bedFontSize = fitSingleLineFont(
-        context,
-        topBedText,
-        headerValueMaxWidth,
-        Math.round(height * 0.22),
-        Math.round(height * 0.13),
-        800,
-    );
-    const fieldFontSize = fitSingleLineFont(
-        context,
-        topFieldText,
-        headerValueMaxWidth,
-        Math.round(height * 0.2),
-        Math.round(height * 0.12),
-        800,
-    );
-    const bedBaseline = headerTop + bedFontSize;
-    const fieldBaseline = bedBaseline + headerLineHeight;
-
-    context.font = `500 ${headerLabelFontSize}px ${FONT_FAMILY}`;
-    context.textAlign = 'left';
-    context.fillText('Gredica', headerTextX, bedBaseline);
-    context.fillText('Polje', headerTextX, fieldBaseline);
-
-    context.font = `800 ${bedFontSize}px ${FONT_FAMILY}`;
-    context.textAlign = 'right';
-    context.fillText(topBedText, headerContentRight, bedBaseline);
-
-    context.font = `800 ${fieldFontSize}px ${FONT_FAMILY}`;
-    context.fillText(topFieldText, headerContentRight, fieldBaseline);
 
     let dateTextLeft = qrMetrics.contentRight;
     if (dateLabel) {
@@ -511,6 +467,84 @@ function renderFieldOperationLabelWithTraceQr(
         Math.round(height * 0.38),
         bottomY - contentBlockHeight,
     );
+    const headerLabelFontSize = fitSingleLineFont(
+        context,
+        'Gredica',
+        Math.max(width * 0.16, headerContentRight - headerTextX - width * 0.18),
+        Math.round(height * 0.085),
+        Math.round(height * 0.06),
+        500,
+    );
+    const headerValueMaxWidth = Math.max(
+        width * 0.12,
+        headerContentRight - headerTextX - Math.round(width * 0.21),
+    );
+    const expandedHeaderLineHeight = Math.round(height * 0.16);
+    const expandedBedFontSize = fitSingleLineFont(
+        context,
+        topBedText,
+        headerValueMaxWidth,
+        Math.round(height * 0.22),
+        Math.round(height * 0.13),
+        800,
+    );
+    const expandedFieldFontSize = fitSingleLineFont(
+        context,
+        topFieldText,
+        headerValueMaxWidth,
+        Math.round(height * 0.2),
+        Math.round(height * 0.12),
+        800,
+    );
+    const headerContentGap = Math.round(height * 0.04);
+    const expandedFieldBaseline =
+        headerTop + expandedBedFontSize + expandedHeaderLineHeight;
+    // Keep the large header unless the wrapped content needs that vertical space.
+    const useCompactHeader =
+        expandedFieldBaseline + headerContentGap > contentBlockTop;
+    const compactHeaderLineHeight = Math.round(height * 0.12);
+    const headerLineHeight = useCompactHeader
+        ? compactHeaderLineHeight
+        : expandedHeaderLineHeight;
+    const fieldFontSize = useCompactHeader
+        ? fitSingleLineFont(
+              context,
+              topFieldText,
+              headerValueMaxWidth,
+              Math.round(height * 0.12),
+              Math.round(height * 0.085),
+              800,
+          )
+        : expandedFieldFontSize;
+    const compactBedMaxFontSize = Math.max(
+        Math.round(height * 0.1),
+        contentBlockTop - headerContentGap - headerTop - headerLineHeight,
+    );
+    const bedFontSize = useCompactHeader
+        ? fitSingleLineFont(
+              context,
+              topBedText,
+              headerValueMaxWidth,
+              Math.min(expandedBedFontSize, compactBedMaxFontSize),
+              Math.round(height * 0.09),
+              800,
+          )
+        : expandedBedFontSize;
+    const bedBaseline = headerTop + bedFontSize;
+    const fieldBaseline = bedBaseline + headerLineHeight;
+
+    context.font = `500 ${headerLabelFontSize}px ${FONT_FAMILY}`;
+    context.textAlign = 'left';
+    context.fillText('Gredica', headerTextX, bedBaseline);
+    context.fillText('Polje', headerTextX, fieldBaseline);
+
+    context.font = `800 ${bedFontSize}px ${FONT_FAMILY}`;
+    context.textAlign = 'right';
+    context.fillText(topBedText, headerContentRight, bedBaseline);
+
+    context.font = `800 ${fieldFontSize}px ${FONT_FAMILY}`;
+    context.fillText(topFieldText, headerContentRight, fieldBaseline);
+
     let detailBaseline = contentBlockTop + detailLayout.fontSize;
 
     context.font = `700 ${detailLayout.fontSize}px ${FONT_FAMILY}`;
