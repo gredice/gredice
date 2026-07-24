@@ -6,11 +6,13 @@ import {
 import {
     cartContainsDeliverableItems,
     deleteShoppingCart,
+    getHarvestScheduleForCart,
     getOrCreateShoppingCart,
     getOutletOffer,
     getRaisedBed,
     getShoppingCart,
     getSunflowers,
+    HarvestScheduleConflictError,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     OutletOfferUnavailableError,
@@ -30,6 +32,50 @@ import {
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/harvest-schedule',
+        describeRoute({
+            description:
+                'Preview allowed harvest dates for the current cart and delivery slot',
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'query',
+            z.object({
+                slotId: z.coerce.number().int().positive(),
+            }),
+        ),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { slotId } = context.req.valid('query');
+            const cart = await getOrCreateShoppingCart(accountId, 'new');
+            if (!cart) {
+                return context.json({ error: 'Cart not found' }, 404);
+            }
+
+            try {
+                const schedule = await getHarvestScheduleForCart({
+                    accountId,
+                    cartId: cart.id,
+                    deliverySlotId: slotId,
+                });
+                return context.json(schedule);
+            } catch (error) {
+                if (error instanceof HarvestScheduleConflictError) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: error.code,
+                            details: error.details,
+                        },
+                        error.statusCode,
+                    );
+                }
+
+                throw error;
+            }
+        },
+    )
     .get(
         '/',
         describeRoute({
