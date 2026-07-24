@@ -742,6 +742,13 @@ export function DebugHud() {
             : 'n/a';
     const shadowMapMode =
         profileSnapshot?.shadowMapAutoUpdate === false ? 'cached' : 'auto';
+    const interactionResolutionCount =
+        profileSnapshot?.instancedInteractionResolutionCount ?? 0;
+    const interactionResolutionAverageMs =
+        interactionResolutionCount > 0
+            ? (profileSnapshot?.instancedInteractionResolutionTotalMs ?? 0) /
+              interactionResolutionCount
+            : undefined;
 
     return (
         <div
@@ -863,6 +870,11 @@ export function DebugHud() {
                                     icon={Layers}
                                     label="Overlays"
                                     value={`snow ${profileSnapshot?.instancedSnowOverlayCount ?? 0} · mulch ${profileSnapshot?.raisedBedMulchOverlayCount ?? 0} · decor ${profileSnapshot?.groundDecorationCount ?? 0}`}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Block interactions"
+                                    value={`${profileSnapshot?.instancedInteractionControllerCount ?? 0} controller · ${profileSnapshot?.instancedInteractionTargetCount ?? 0} targets · ${interactionResolutionCount} resolves · avg ${formatMetric(interactionResolutionAverageMs)} ms · max ${formatMetric(profileSnapshot?.instancedInteractionResolutionMaxMs)} ms`}
                                 />
                                 <InfoRow
                                     icon={Settings}
