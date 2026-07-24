@@ -424,6 +424,10 @@ test.describe('Garden account menu items', () => {
         const accountSwitchCanComplete = new Promise<void>((resolve) => {
             completeAccountSwitch = resolve;
         });
+        let completeGardenListRefresh: () => void = () => undefined;
+        const gardenListRefreshCanComplete = new Promise<void>((resolve) => {
+            completeGardenListRefresh = resolve;
+        });
         await page.route(
             '**/api/gredice/api/accounts/switch',
             async (route) => {
@@ -446,6 +450,7 @@ test.describe('Garden account menu items', () => {
             });
         });
         await page.route('**/api/gredice/api/gardens', async (route) => {
+            await gardenListRefreshCanComplete;
             await route.fulfill({
                 contentType: 'application/json',
                 body: JSON.stringify(otherAccountGardenList),
@@ -463,6 +468,7 @@ test.describe('Garden account menu items', () => {
         await expect(page.getByTestId('default-garden-ready')).toBeVisible();
         await expect(page.getByTestId('current-garden-id')).toHaveText('3');
         await expect.poll(() => gardenDetailRequests.length).toBe(1);
+        completeGardenListRefresh();
         expect(accountSwitchRequests).toEqual([
             JSON.stringify({ accountId: 'other-account' }),
         ]);

@@ -47,6 +47,7 @@ const otherAccountGarden = {
 
 type GardenAccountMenuStoryOptions = {
     defaultGardenId?: number;
+    emptyCurrentAccount?: boolean;
     includeOtherAccount?: boolean;
     initialGardenId?: number;
     sandboxFirst?: boolean;
@@ -55,6 +56,7 @@ type GardenAccountMenuStoryOptions = {
 
 function createGardenAccountMenuQueryClient({
     defaultGardenId,
+    emptyCurrentAccount = false,
     includeOtherAccount = true,
     sandboxFirst = false,
     seedOtherGardenDetails = true,
@@ -71,11 +73,12 @@ function createGardenAccountMenuQueryClient({
         ...garden,
         isDefault: garden.id === defaultGardenId,
     });
-    const currentAccountGardens = (
-        sandboxFirst
-            ? [sandboxGarden, currentGarden]
-            : [currentGarden, sandboxGarden]
-    ).map(withDefaultState);
+    const currentAccountGardens = emptyCurrentAccount
+        ? []
+        : (sandboxFirst
+              ? [sandboxGarden, currentGarden]
+              : [currentGarden, sandboxGarden]
+          ).map(withDefaultState);
     const currentAccountGroup = {
         accountId: 'test-account',
         name: 'test@example.com račun',
@@ -94,7 +97,9 @@ function createGardenAccountMenuQueryClient({
         currentAccountGroup,
         ...(includeOtherAccount ? [otherAccountGroup] : []),
     ]);
-    const seededGardens = [currentGarden, sandboxGarden];
+    const seededGardens = emptyCurrentAccount
+        ? []
+        : [currentGarden, sandboxGarden];
     if (seedOtherGardenDetails) {
         seededGardens.push(otherAccountGarden);
     }
@@ -122,6 +127,7 @@ function GardenAccountMenuItemsTestProviders({
 }>) {
     const {
         defaultGardenId,
+        emptyCurrentAccount,
         includeOtherAccount,
         initialGardenId,
         sandboxFirst,
@@ -131,6 +137,7 @@ function GardenAccountMenuItemsTestProviders({
         () =>
             createGardenAccountMenuQueryClient({
                 defaultGardenId,
+                emptyCurrentAccount,
                 includeOtherAccount,
                 initialGardenId,
                 sandboxFirst,
@@ -138,6 +145,7 @@ function GardenAccountMenuItemsTestProviders({
             }),
         [
             defaultGardenId,
+            emptyCurrentAccount,
             includeOtherAccount,
             initialGardenId,
             sandboxFirst,
@@ -303,6 +311,7 @@ export function SingleRealGardenAccountMenuItemsStory() {
 export function DefaultGardenSelectionGateStory() {
     const options = {
         defaultGardenId: otherAccountGarden.id,
+        emptyCurrentAccount: true,
         seedOtherGardenDetails: false,
     };
 

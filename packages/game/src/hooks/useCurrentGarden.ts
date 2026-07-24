@@ -1223,20 +1223,20 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 return mockGarden(winterMode, mockGardenProfile);
             }
 
-            if (!gardens) {
-                console.error('Failed to load gardens.');
-                throw new Error('Failed to load gardens');
-            }
-
-            if (gardens.length <= 0) {
-                console.warn(
-                    'No gardens found. Number of available gardens:',
-                    gardens?.length,
-                );
-                return null;
-            }
-
             if (currentGardenId == null) {
+                if (!gardens) {
+                    console.error('Failed to load gardens.');
+                    throw new Error('Failed to load gardens');
+                }
+
+                if (gardens.length <= 0) {
+                    console.warn(
+                        'No gardens found. Number of available gardens:',
+                        gardens.length,
+                    );
+                    return null;
+                }
+
                 console.error('No garden ID available.');
                 return null;
             }
@@ -1308,7 +1308,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         structuralSharing: shareCurrentGardenQueryData,
         retry: false,
         staleTime: 1000 * 60, // 1m
-        enabled: isLocalSandbox || isMock || Boolean(gardens),
+        enabled:
+            isLocalSandbox ||
+            isMock ||
+            (gardens !== null &&
+                (currentGardenId !== null || gardens !== undefined)),
     });
 }
 
