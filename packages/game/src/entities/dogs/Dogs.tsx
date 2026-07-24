@@ -7,6 +7,7 @@ import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import { useAnimatedCasterShadowMapRefresh } from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
@@ -2002,6 +2003,7 @@ export function Dogs({
         () => createDogHabitats(stacks, blockData),
         [blockData, stacks],
     );
+    useAnimatedCasterShadowMapRefresh(habitats.length > 0);
 
     if (habitats.length <= 0) {
         return null;

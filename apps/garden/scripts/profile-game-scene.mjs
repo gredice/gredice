@@ -1822,6 +1822,26 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
 
         return {
+            animatedCasterShadowRefreshCount:
+                typeof metadata.animatedCasterShadowRefreshCount === 'number'
+                    ? metadata.animatedCasterShadowRefreshCount
+                    : null,
+            cloudAttenuationMaskResolution:
+                typeof metadata.cloudAttenuationMaskResolution === 'number'
+                    ? metadata.cloudAttenuationMaskResolution
+                    : null,
+            cloudAttenuationMaterialCount:
+                typeof metadata.cloudAttenuationMaterialCount === 'number'
+                    ? metadata.cloudAttenuationMaterialCount
+                    : null,
+            cloudAttenuationUpdateCount:
+                typeof metadata.cloudAttenuationUpdateCount === 'number'
+                    ? metadata.cloudAttenuationUpdateCount
+                    : null,
+            cloudAttenuationUpdateMs:
+                typeof metadata.cloudAttenuationUpdateMs === 'number'
+                    ? metadata.cloudAttenuationUpdateMs
+                    : null,
             cloudProjectedShadowCount:
                 typeof metadata.cloudProjectedShadowCount === 'number'
                     ? metadata.cloudProjectedShadowCount
@@ -1927,6 +1947,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             raisedBedMulchOverlayCount:
                 typeof metadata.raisedBedMulchOverlayCount === 'number'
                     ? metadata.raisedBedMulchOverlayCount
+                    : null,
+            primaryShadowRefreshCount:
+                typeof metadata.primaryShadowRefreshCount === 'number'
+                    ? metadata.primaryShadowRefreshCount
                     : null,
             shadowMapAutoUpdate:
                 typeof metadata.shadowMapAutoUpdate === 'boolean'
@@ -2814,7 +2838,7 @@ function buildMarkdown(report) {
         const quality = scenario.runtime?.qualityTier ?? 'n/a';
         const shadow = scenario.runtime
             ? scenario.runtime.shadowsEnabled
-                ? `${scenario.runtime.shadowMapSize}px, ${scenario.runtime.shadowMapAutoUpdate === false ? 'cached' : 'auto'}, invalidations ${scenario.runtime.shadowMapInvalidationCount ?? 'n/a'}, cloud ${scenario.runtime.cloudProjectedShadowCount ?? 'n/a'} projected/${scenario.runtime.cloudRealShadowCasterCount ?? 'n/a'} real`
+                ? `${scenario.runtime.shadowMapSize}px, ${scenario.runtime.shadowMapAutoUpdate === false ? 'cached' : 'auto'}, refreshes ${scenario.runtime.primaryShadowRefreshCount ?? 'n/a'} (${scenario.runtime.animatedCasterShadowRefreshCount ?? 'n/a'} animated), invalidations ${scenario.runtime.shadowMapInvalidationCount ?? 'n/a'}, cloud ${scenario.runtime.cloudProjectedShadowCount ?? 'n/a'} projected/${scenario.runtime.cloudRealShadowCasterCount ?? 'n/a'} real, attenuation ${scenario.runtime.cloudAttenuationMaskResolution ?? 'n/a'}px/${scenario.runtime.cloudAttenuationUpdateMs ?? 'n/a'}ms/${scenario.runtime.cloudAttenuationUpdateCount ?? 'n/a'} updates/${scenario.runtime.cloudAttenuationMaterialCount ?? 'n/a'} materials`
                 : 'off'
             : 'n/a';
         const weather = scenario.runtime

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    animatedCasterShadowRefreshMs,
     buildDirectionalShadowDepthSignature,
-    cloudShadowRefreshMsByMode,
-    hasShadowDynamicCadenceChanged,
-    resolveShadowMapRefreshTick,
+    requestPrimaryShadowMapRefresh,
+    resolveAnimatedCasterShadowRefreshTick,
 } from './shadowMapScheduling';
 
 const baseShadowDepth = {
@@ -60,79 +60,95 @@ describe('buildDirectionalShadowDepthSignature', () => {
     });
 });
 
-describe('shadow map scheduling', () => {
-    it('uses reduced hard and soft cloud-shadow refresh rates', () => {
-        assert.deepEqual(cloudShadowRefreshMsByMode, {
-            hard: 160,
-            soft: 96,
+describe('primary shadow refresh accounting', () => {
+    it('marks and counts an enabled primary shadow refresh', () => {
+        const shadowMap = { enabled: false, needsUpdate: false };
+
+        assert.equal(requestPrimaryShadowMapRefresh(shadowMap, true, 4), 5);
+        assert.deepEqual(shadowMap, {
+            enabled: true,
+            needsUpdate: true,
         });
     });
 
-    it('detects dynamic cadence start, change, and removal', () => {
-        assert.equal(hasShadowDynamicCadenceChanged(undefined, 96), true);
-        assert.equal(hasShadowDynamicCadenceChanged(96, 96), false);
-        assert.equal(hasShadowDynamicCadenceChanged(96, 64), true);
-        assert.equal(hasShadowDynamicCadenceChanged(64, undefined), true);
-    });
+    it('does not touch or count the primary map while shadows are disabled', () => {
+        const shadowMap = { enabled: false, needsUpdate: false };
 
-    it('refreshes throughout settlement and stops after its deadline', () => {
+        assert.equal(requestPrimaryShadowMapRefresh(shadowMap, false, 4), 4);
+        assert.deepEqual(shadowMap, {
+            enabled: false,
+            needsUpdate: false,
+        });
+    });
+});
+
+describe('animated caster shadow refresh scheduling', () => {
+    it('waits for settlement and refreshes animated casters at a bounded cadence', () => {
+        const settling = resolveAnimatedCasterShadowRefreshTick({
+            enabled: true,
+            nextRefreshAt: 0,
+            now: 900,
+            refreshMs: animatedCasterShadowRefreshMs,
+            settleUntil: 900,
+        });
+        assert.deepEqual(settling, {
+            nextRefreshAt: 0,
+            shouldRefresh: false,
+        });
+
+        const due = resolveAnimatedCasterShadowRefreshTick({
+            enabled: true,
+            nextRefreshAt: settling.nextRefreshAt,
+            now: 901,
+            refreshMs: animatedCasterShadowRefreshMs,
+            settleUntil: 900,
+        });
+        assert.deepEqual(due, {
+            nextRefreshAt: 1_061,
+            shouldRefresh: true,
+        });
+
         assert.deepEqual(
-            resolveShadowMapRefreshTick({
-                dynamicRefreshMs: undefined,
-                nextDynamicRefreshAt: 0,
-                now: 800,
+            resolveAnimatedCasterShadowRefreshTick({
+                enabled: true,
+                nextRefreshAt: due.nextRefreshAt,
+                now: 1_000,
+                refreshMs: animatedCasterShadowRefreshMs,
                 settleUntil: 900,
             }),
             {
-                nextDynamicRefreshAt: 0,
-                shouldRefresh: true,
-                shouldRefreshDynamic: false,
-                shouldRefreshSettling: true,
+                nextRefreshAt: 1_061,
+                shouldRefresh: false,
             },
         );
-        assert.equal(
-            resolveShadowMapRefreshTick({
-                dynamicRefreshMs: undefined,
-                nextDynamicRefreshAt: 0,
-                now: 901,
-                settleUntil: 900,
-            }).shouldRefresh,
-            false,
+    });
+
+    it('does not catch up after stalls or refresh while shadows are disabled', () => {
+        assert.deepEqual(
+            resolveAnimatedCasterShadowRefreshTick({
+                enabled: true,
+                nextRefreshAt: 1_000,
+                now: 2_000,
+                refreshMs: animatedCasterShadowRefreshMs,
+                settleUntil: 0,
+            }),
+            {
+                nextRefreshAt: 2_160,
+                shouldRefresh: true,
+            },
         );
-    });
-
-    it('refreshes dynamic shadows only when due without catch-up bursts', () => {
-        const earlyTick = resolveShadowMapRefreshTick({
-            dynamicRefreshMs: 96,
-            nextDynamicRefreshAt: 1_000,
-            now: 999,
-            settleUntil: 0,
-        });
-        assert.equal(earlyTick.shouldRefresh, false);
-        assert.equal(earlyTick.nextDynamicRefreshAt, 1_000);
-
-        const dueTick = resolveShadowMapRefreshTick({
-            dynamicRefreshMs: 96,
-            nextDynamicRefreshAt: 1_000,
-            now: 1_400,
-            settleUntil: 0,
-        });
-        assert.equal(dueTick.shouldRefresh, true);
-        assert.equal(dueTick.shouldRefreshDynamic, true);
-        assert.equal(dueTick.nextDynamicRefreshAt, 1_496);
-    });
-
-    it('requests one update when dynamic and settlement refresh overlap', () => {
-        const tick = resolveShadowMapRefreshTick({
-            dynamicRefreshMs: 64,
-            nextDynamicRefreshAt: 500,
-            now: 500,
-            settleUntil: 900,
-        });
-
-        assert.equal(tick.shouldRefresh, true);
-        assert.equal(tick.shouldRefreshDynamic, true);
-        assert.equal(tick.shouldRefreshSettling, true);
-        assert.equal(tick.nextDynamicRefreshAt, 564);
+        assert.deepEqual(
+            resolveAnimatedCasterShadowRefreshTick({
+                enabled: false,
+                nextRefreshAt: 1_000,
+                now: 2_000,
+                refreshMs: animatedCasterShadowRefreshMs,
+                settleUntil: 0,
+            }),
+            {
+                nextRefreshAt: 1_000,
+                shouldRefresh: false,
+            },
+        );
     });
 });

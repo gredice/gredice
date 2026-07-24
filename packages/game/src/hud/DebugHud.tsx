@@ -741,11 +741,7 @@ export function DebugHud() {
             ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
             : 'n/a';
     const shadowMapMode =
-        profileSnapshot?.shadowMapAutoUpdate === false
-            ? profileSnapshot.shadowMapDynamicRefreshMs
-                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
-                : 'cached'
-            : 'auto';
+        profileSnapshot?.shadowMapAutoUpdate === false ? 'cached' : 'auto';
 
     return (
         <div
@@ -849,14 +845,14 @@ export function DebugHud() {
                                     label="Shadows"
                                     value={
                                         profileSnapshot?.shadowsEnabled
-                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.primaryShadowRefreshCount ?? 0} refreshes (${profileSnapshot.animatedCasterShadowRefreshCount ?? 0} animated) · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
                                             : 'off'
                                     }
                                 />
                                 <InfoRow
                                     icon={Cloud}
                                     label="Cloud shadows"
-                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real`}
+                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real · ${profileSnapshot?.cloudAttenuationMaskResolution ?? 0}px/${profileSnapshot?.cloudAttenuationUpdateMs ?? 0}ms · ${profileSnapshot?.cloudAttenuationUpdateCount ?? 0} updates · ${profileSnapshot?.cloudAttenuationMaterialCount ?? 0} materials`}
                                 />
                                 <InfoRow
                                     icon={Droplets}

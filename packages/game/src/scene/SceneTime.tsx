@@ -25,6 +25,10 @@ export const sceneFrameRates = {
 
 type SceneTimeContextValue = {
     acquireContinuousRender: (framesPerSecond?: number) => () => void;
+    requestAnimatedCasterShadowRefresh: (now: number) => void;
+    subscribeAnimatedCasterShadowRefresh: (
+        listener: (now: number) => void,
+    ) => () => void;
     subscribeSceneResume: (listener: () => void) => () => void;
     timeUniform: IUniform<number>;
 };
@@ -54,6 +58,9 @@ export function SceneTimeProvider({
     const animationFrameRef = useRef<number | null>(null);
     const baseFramesPerSecondRef = useRef(
         normalizeSceneFramesPerSecond(baseFramesPerSecond),
+    );
+    const animatedCasterShadowRefreshListenersRef = useRef(
+        new Set<(now: number) => void>(),
     );
     const canvasVisibleRef = useRef(true);
     const continuousRenderLeasesRef = useRef(new Map<symbol, number>());
@@ -91,6 +98,24 @@ export function SceneTimeProvider({
             sceneResumeListenersRef.current.delete(listener);
         };
     }, []);
+
+    const requestAnimatedCasterShadowRefresh = useCallback((now: number) => {
+        for (const listener of animatedCasterShadowRefreshListenersRef.current) {
+            listener(now);
+        }
+    }, []);
+
+    const subscribeAnimatedCasterShadowRefresh = useCallback(
+        (listener: (now: number) => void) => {
+            animatedCasterShadowRefreshListenersRef.current.add(listener);
+            return () => {
+                animatedCasterShadowRefreshListenersRef.current.delete(
+                    listener,
+                );
+            };
+        },
+        [],
+    );
 
     const startContinuousRenderLoop = useCallback(() => {
         if (
@@ -214,6 +239,7 @@ export function SceneTimeProvider({
         return () => {
             disposedRef.current = true;
             stopContinuousRenderLoop();
+            animatedCasterShadowRefreshListenersRef.current.clear();
             continuousRenderLeasesRef.current.clear();
             sceneResumeListenersRef.current.clear();
         };
@@ -293,10 +319,18 @@ export function SceneTimeProvider({
     const contextValue = useMemo(
         () => ({
             acquireContinuousRender,
+            requestAnimatedCasterShadowRefresh,
+            subscribeAnimatedCasterShadowRefresh,
             subscribeSceneResume,
             timeUniform,
         }),
-        [acquireContinuousRender, subscribeSceneResume, timeUniform],
+        [
+            acquireContinuousRender,
+            requestAnimatedCasterShadowRefresh,
+            subscribeAnimatedCasterShadowRefresh,
+            subscribeSceneResume,
+            timeUniform,
+        ],
     );
 
     return (
@@ -341,6 +375,35 @@ export function useSceneResume(listener: () => void) {
 
     useEffect(
         () => sceneTime.subscribeSceneResume(listener),
+        [listener, sceneTime],
+    );
+}
+
+// Actual moving cast-shadow owners opt into this contract. Secondary effects
+// such as moving cloud shade intentionally never request primary-map refreshes.
+export function useAnimatedCasterShadowMapRefresh(enabled = true) {
+    const sceneTime = useContext(SceneTimeContext);
+    if (!sceneTime) {
+        throw new Error('Missing SceneTimeProvider in the scene tree');
+    }
+
+    useFrame(() => {
+        if (enabled) {
+            sceneTime.requestAnimatedCasterShadowRefresh(performance.now());
+        }
+    });
+}
+
+export function useAnimatedCasterShadowMapRefreshSubscription(
+    listener: (now: number) => void,
+) {
+    const sceneTime = useContext(SceneTimeContext);
+    if (!sceneTime) {
+        throw new Error('Missing SceneTimeProvider in the scene tree');
+    }
+
+    useEffect(
+        () => sceneTime.subscribeAnimatedCasterShadowRefresh(listener),
         [listener, sceneTime],
     );
 }
