@@ -393,7 +393,7 @@ function renderFieldOperationLabelWithTraceQr(
     const logoY = paddingY + Math.round(height * 0.01);
     const headerTextX = paddingX + logoSize + Math.round(width * 0.025);
     const headerTop = paddingY + Math.round(height * 0.015);
-    const headerLineHeight = Math.round(height * 0.11);
+    const headerLineHeight = Math.round(height * 0.16);
     const topBedText = sanitizeText(data.raisedBedPhysicalId);
     const topFieldText = sanitizeText(data.fieldLabel);
     const detailText = sanitizeText(data.detailLabel);
@@ -419,14 +419,6 @@ function renderFieldOperationLabelWithTraceQr(
         Math.round(height * 0.06),
         500,
     );
-    context.font = `500 ${headerLabelFontSize}px ${FONT_FAMILY}`;
-    context.fillText('Gredica', headerTextX, headerTop + headerLabelFontSize);
-    context.fillText(
-        'Polje',
-        headerTextX,
-        headerTop + headerLabelFontSize + headerLineHeight,
-    );
-
     const headerValueMaxWidth = Math.max(
         width * 0.12,
         headerContentRight - headerTextX - Math.round(width * 0.21),
@@ -435,28 +427,32 @@ function renderFieldOperationLabelWithTraceQr(
         context,
         topBedText,
         headerValueMaxWidth,
-        Math.round(height * 0.095),
-        Math.round(height * 0.065),
+        Math.round(height * 0.22),
+        Math.round(height * 0.13),
         800,
     );
-    context.font = `800 ${bedFontSize}px ${FONT_FAMILY}`;
-    context.textAlign = 'right';
-    context.fillText(topBedText, headerContentRight, headerTop + bedFontSize);
-
     const fieldFontSize = fitSingleLineFont(
         context,
         topFieldText,
         headerValueMaxWidth,
-        Math.round(height * 0.09),
-        Math.round(height * 0.06),
+        Math.round(height * 0.2),
+        Math.round(height * 0.12),
         800,
     );
+    const bedBaseline = headerTop + bedFontSize;
+    const fieldBaseline = bedBaseline + headerLineHeight;
+
+    context.font = `500 ${headerLabelFontSize}px ${FONT_FAMILY}`;
+    context.textAlign = 'left';
+    context.fillText('Gredica', headerTextX, bedBaseline);
+    context.fillText('Polje', headerTextX, fieldBaseline);
+
+    context.font = `800 ${bedFontSize}px ${FONT_FAMILY}`;
+    context.textAlign = 'right';
+    context.fillText(topBedText, headerContentRight, bedBaseline);
+
     context.font = `800 ${fieldFontSize}px ${FONT_FAMILY}`;
-    context.fillText(
-        topFieldText,
-        headerContentRight,
-        headerTop + bedFontSize + headerLineHeight,
-    );
+    context.fillText(topFieldText, headerContentRight, fieldBaseline);
 
     let dateTextLeft = qrMetrics.contentRight;
     if (dateLabel) {
