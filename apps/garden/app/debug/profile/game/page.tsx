@@ -259,6 +259,7 @@ export default async function GameProfilePage({
     const closeupRaisedBedId = resolvePositiveInteger(
         firstValue(params.closeupRaisedBedId),
     );
+    const placementProfile = firstValue(params.placement) === '1';
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -278,6 +279,7 @@ export default async function GameProfilePage({
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
+            data-game-profile-placement={placementProfile ? '1' : '0'}
         >
             <ProfileGameScene
                 key={mode}
@@ -288,7 +290,9 @@ export default async function GameProfilePage({
                 debugHud={showDebugHud}
                 hideHud={!showHud}
                 initialQualitySetting={quality}
-                enableGameProfileController={closeupRaisedBedId !== null}
+                enableGameProfileController={
+                    closeupRaisedBedId !== null || placementProfile
+                }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

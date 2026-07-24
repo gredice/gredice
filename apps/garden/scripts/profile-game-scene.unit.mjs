@@ -115,6 +115,29 @@ test('profile request reads the deterministic closeup target', () => {
     assert.equal(request.quality, 'medium');
 });
 
+test('placement scenario resolves a deterministic staggered two-chunk run', () => {
+    const scenarios = resolveScenarios('placement');
+
+    assert.equal(scenarios.length, 1);
+    assert.equal(scenarios[0].name, 'game-dense-25x25-placement-desktop');
+    assert.deepEqual(scenarios[0].placementProfile, {
+        action: 'run',
+        staggerMs: 120,
+    });
+    assert.match(scenarios[0].path, /placement=1/);
+    assert.match(scenarios[0].path, /profile=dense/);
+});
+
+test('profile request exposes placement profiling mode', () => {
+    const request = getScenarioRequest(
+        '/debug/profile/game?profile=dense&quality=medium&placement=1',
+    );
+
+    assert.equal(request.gardenProfile, 'dense');
+    assert.equal(request.placement, '1');
+    assert.equal(request.quality, 'medium');
+});
+
 function closeupPhase(value) {
     const sample = {
         drawCallsPerRenderedFrame: value * 10,
