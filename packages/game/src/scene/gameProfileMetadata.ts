@@ -194,6 +194,11 @@ export type GameProfileMetadata = {
     generatedLSystemCachePeakEstimatedBytes?: number;
     generatedLSystemCacheWriteCount?: number;
     generatedPlantProfile?: GeneratedPlantProfileSnapshot | null;
+    instancedInteractionControllerCount?: number;
+    instancedInteractionResolutionCount?: number;
+    instancedInteractionResolutionMaxMs?: number;
+    instancedInteractionResolutionTotalMs?: number;
+    instancedInteractionTargetCount?: number;
     instancedSnowOverlayCount?: number;
     placementChunkLogicalTouchedCount?: number;
     placementChunkLogicalUpdateCount?: number;

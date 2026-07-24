@@ -2,7 +2,6 @@
 
 import { cx } from '@gredice/ui/utils';
 import {
-    Fragment,
     type HTMLAttributes,
     Suspense,
     useEffect,
@@ -157,28 +156,6 @@ function useAutoQualityProfileMetrics(enabled: boolean) {
     return metrics;
 }
 
-function shouldRenderEntityFactoryForBlock({
-    blockName,
-    blockIndex,
-    noControls,
-    stackLength,
-}: {
-    blockName: string;
-    blockIndex: number;
-    noControls: boolean | undefined;
-    stackLength: number;
-}) {
-    if (!instancedBlockNames.includes(blockName)) {
-        return true;
-    }
-
-    if (noControls) {
-        return false;
-    }
-
-    return blockIndex >= 0 && blockIndex < stackLength;
-}
-
 function GameSceneEntitySlot({
     block,
     noControls,
@@ -219,7 +196,6 @@ function GameSceneEntitySlot({
         </Suspense>
     );
 }
-
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -378,41 +354,11 @@ export function GameScene({
                                 {garden?.stacks.map((stack) =>
                                     stack.blocks?.map((block, i) => {
                                         if (
-                                            !shouldRenderEntityFactoryForBlock({
-                                                blockName: block.name,
-                                                blockIndex: i,
-                                                noControls,
-                                                stackLength:
-                                                    stack.blocks.length,
-                                            })
-                                        ) {
-                                            return null;
-                                        }
-
-                                        if (
                                             instancedBlockNames.includes(
                                                 block.name,
                                             )
                                         ) {
-                                            const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
-                                            return (
-                                                <Fragment key={key}>
-                                                    <EntityFactory
-                                                        name={block.name}
-                                                        stack={stack}
-                                                        block={block}
-                                                        stacks={garden.stacks}
-                                                        rotation={
-                                                            block.rotation
-                                                        }
-                                                        variant={block.variant}
-                                                        noRenderInView={
-                                                            instancedBlockNames
-                                                        }
-                                                        noControl={noControls}
-                                                    />
-                                                </Fragment>
-                                            );
+                                            return null;
                                         }
 
                                         const slotKey = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`;
@@ -459,6 +405,7 @@ export function GameScene({
                                 )}
                                 <BlockInteractionLayer
                                     controlsEnabled={!noControls}
+                                    sharedControllerEnabled
                                     stacks={garden?.stacks}
                                 />
                                 {renderDetails && zoom !== 'far' && (

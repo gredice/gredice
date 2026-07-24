@@ -1957,6 +1957,27 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedLSystemCacheWriteCount === 'number'
                     ? metadata.generatedLSystemCacheWriteCount
                     : null,
+            instancedInteractionControllerCount:
+                typeof metadata.instancedInteractionControllerCount === 'number'
+                    ? metadata.instancedInteractionControllerCount
+                    : null,
+            instancedInteractionResolutionCount:
+                typeof metadata.instancedInteractionResolutionCount === 'number'
+                    ? metadata.instancedInteractionResolutionCount
+                    : null,
+            instancedInteractionResolutionMaxMs:
+                typeof metadata.instancedInteractionResolutionMaxMs === 'number'
+                    ? metadata.instancedInteractionResolutionMaxMs
+                    : null,
+            instancedInteractionResolutionTotalMs:
+                typeof metadata.instancedInteractionResolutionTotalMs ===
+                'number'
+                    ? metadata.instancedInteractionResolutionTotalMs
+                    : null,
+            instancedInteractionTargetCount:
+                typeof metadata.instancedInteractionTargetCount === 'number'
+                    ? metadata.instancedInteractionTargetCount
+                    : null,
             instancedSnowOverlayCount:
                 typeof metadata.instancedSnowOverlayCount === 'number'
                     ? metadata.instancedSnowOverlayCount
