@@ -73,7 +73,13 @@ export function DeliveryStep({
     });
     const { data: addresses, isLoading: isLoadingAddresses } =
         useDeliveryAddresses();
-    const { data: pickupLocations } = usePickupLocations();
+    const {
+        data: pickupLocations,
+        isError: pickupLocationsError,
+        isFetching: pickupLocationsFetching,
+        isPending: pickupLocationsPending,
+        refetch: refetchPickupLocations,
+    } = usePickupLocations();
     const { data: timeSlots, isLoading: slotsLoading } = useTimeSlots({
         from: slotRange.from,
         includeArchived: true,
@@ -237,7 +243,7 @@ export function DeliveryStep({
                 onValueChange={handleSlotChange}
             />
 
-            {selectedTimeSlot?.type === 'pickup' && (
+            {selectedTimeSlot?.type === 'pickup' && selectedPickupLocation ? (
                 <Alert
                     color="warning"
                     startDecorator={<Info className="size-5 shrink-0" />}
@@ -246,7 +252,48 @@ export function DeliveryStep({
                     preuzimaš na {pickupDestinationLabel}; neće biti dostavljena
                     na tvoju adresu.
                 </Alert>
-            )}
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsPending ? (
+                <div
+                    aria-label="Učitavanje lokacije za osobno preuzimanje"
+                    role="status"
+                >
+                    <Skeleton className="h-16 w-full rounded-md" />
+                </div>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsError ? (
+                <Stack spacing={3}>
+                    <Alert color="danger">
+                        Nije moguće učitati lokaciju za osobno preuzimanje.
+                        Pokušaj ponovno ili odaberi drugi termin.
+                    </Alert>
+                    <Row justifyContent="end">
+                        <Button
+                            loading={pickupLocationsFetching}
+                            variant="outlined"
+                            onClick={() => refetchPickupLocations()}
+                        >
+                            Pokušaj ponovno
+                        </Button>
+                    </Row>
+                </Stack>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            !pickupLocationsPending &&
+            !pickupLocationsError ? (
+                <Alert color="danger">
+                    Lokacija za odabrani termin osobnog preuzimanja više nije
+                    dostupna. Odaberi drugi termin.
+                </Alert>
+            ) : null}
 
             {selectedTimeSlot?.type === 'delivery' && (
                 <Row alignItems="end" className="min-w-0" spacing={2}>
