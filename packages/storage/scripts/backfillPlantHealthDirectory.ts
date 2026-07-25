@@ -14,9 +14,12 @@ import {
     closeStorage,
     createAttributeDefinition,
     createAttributeDefinitionCategory,
+    createAttributeValueMutationSideEffects,
     createEntity,
+    deleteAttributeValue,
     entityTypeCategories,
     entityTypes,
+    flushAttributeValueMutationSideEffects,
     getAttributeDefinitions,
     getEntitiesRaw,
     getEntityTypeByName,
@@ -54,11 +57,40 @@ type ImportIssueResult = {
     created: boolean;
     updatedFields: string[];
     skippedExistingRefs: string[];
+    removedExistingRefs: string[];
     missingPlants: string[];
     missingOperations: string[];
 };
 
+type PublishedPlant = {
+    id: number;
+    name: string;
+};
+
+type PlantCoverage = {
+    plant: PublishedPlant;
+    diseaseIssues: Set<string>;
+    pestIssues: Set<string>;
+};
+
+type PreflightProblem = {
+    kind:
+        | 'duplicate-issue-identity'
+        | 'duplicate-affected-plant'
+        | 'insufficient-disease-coverage'
+        | 'insufficient-pest-coverage'
+        | 'missing-plant'
+        | 'missing-operation'
+        | 'missing-recommendation';
+    issueName: string;
+    value: string;
+    message: string;
+};
+
 const apply = process.argv.includes('--apply');
+const backfillActor = {
+    name: 'Plant health directory backfill',
+};
 const reportPath = resolve(
     process.cwd(),
     '..',
@@ -246,6 +278,118 @@ function syntheticAttributeDefinition(
 
 function normalizedName(value: string) {
     return slugify(value.trim());
+}
+
+function preflightDataset({
+    operationIdsByName,
+    plantIdsByName,
+    publishedPlants,
+}: {
+    operationIdsByName: Map<string, number>;
+    plantIdsByName: Map<string, number>;
+    publishedPlants: PublishedPlant[];
+}) {
+    const problems: PreflightProblem[] = [];
+    const issueIdentities = new Map<string, string>();
+    const diseaseCoverage = new Map<string, Set<string>>();
+    const pestCoverage = new Map<string, Set<string>>();
+
+    for (const entry of plantHealthDirectoryDataset) {
+        const issueIdentity = `${entry.kind}:${normalizedName(entry.name)}`;
+        for (const identityName of [entry.name, ...(entry.legacyNames ?? [])]) {
+            const candidateIdentity = `${entry.kind}:${normalizedName(identityName)}`;
+            const existingIssueName = issueIdentities.get(candidateIdentity);
+            if (existingIssueName && existingIssueName !== entry.name) {
+                problems.push({
+                    kind: 'duplicate-issue-identity',
+                    issueName: entry.name,
+                    value: candidateIdentity,
+                    message: `Duplicate ${entry.kind} identity "${identityName}" on "${entry.name}" (already used by "${existingIssueName}").`,
+                });
+            } else {
+                issueIdentities.set(candidateIdentity, entry.name);
+            }
+        }
+
+        const affectedPlantNames = new Set<string>();
+        for (const plantName of entry.affectedPlants) {
+            const normalizedPlantName = normalizedName(plantName);
+            if (affectedPlantNames.has(normalizedPlantName)) {
+                problems.push({
+                    kind: 'duplicate-affected-plant',
+                    issueName: entry.name,
+                    value: plantName,
+                    message: `Duplicate affected plant "${plantName}" on "${entry.name}".`,
+                });
+            } else {
+                affectedPlantNames.add(normalizedPlantName);
+            }
+
+            const coverage =
+                entry.kind === 'disease' ? diseaseCoverage : pestCoverage;
+            const plantIssues = coverage.get(normalizedPlantName) ?? new Set();
+            plantIssues.add(issueIdentity);
+            coverage.set(normalizedPlantName, plantIssues);
+
+            if (!plantIdsByName.has(normalizedPlantName)) {
+                problems.push({
+                    kind: 'missing-plant',
+                    issueName: entry.name,
+                    value: plantName,
+                    message: `Missing published plant "${plantName}" referenced by "${entry.name}".`,
+                });
+            }
+        }
+
+        const recommendedOperationNames = Object.values(
+            entry.operations ?? {},
+        ).flat();
+        if (recommendedOperationNames.length === 0) {
+            problems.push({
+                kind: 'missing-recommendation',
+                issueName: entry.name,
+                value: entry.name,
+                message: `"${entry.name}" has no recommended operation.`,
+            });
+        }
+
+        for (const operationName of recommendedOperationNames) {
+            if (!operationIdsByName.has(operationName)) {
+                problems.push({
+                    kind: 'missing-operation',
+                    issueName: entry.name,
+                    value: operationName,
+                    message: `Missing published operation "${operationName}" referenced by "${entry.name}".`,
+                });
+            }
+        }
+    }
+
+    for (const plant of publishedPlants) {
+        const normalizedPlantName = normalizedName(plant.name);
+        const diseaseCount =
+            diseaseCoverage.get(normalizedPlantName)?.size ?? 0;
+        if (diseaseCount < 2) {
+            problems.push({
+                kind: 'insufficient-disease-coverage',
+                issueName: plant.name,
+                value: plant.name,
+                message: `Published plant "${plant.name}" has ${diseaseCount} disease entries; at least 2 are required.`,
+            });
+        }
+
+        const pestCount = pestCoverage.get(normalizedPlantName)?.size ?? 0;
+        if (pestCount < 2) {
+            problems.push({
+                kind: 'insufficient-pest-coverage',
+                issueName: plant.name,
+                value: plant.name,
+                message: `Published plant "${plant.name}" has ${pestCount} pest entries; at least 2 are required.`,
+            });
+        }
+    }
+
+    return problems;
 }
 
 function attributeKey(category: string, name: string) {
@@ -522,11 +666,13 @@ async function setSingleAttribute({
     definition,
     entityId,
     entityTypeName,
+    sideEffects,
     value,
 }: {
     definition: SelectAttributeDefinition;
     entityId: number;
     entityTypeName: HealthEntityTypeName;
+    sideEffects: ReturnType<typeof createAttributeValueMutationSideEffects>;
     value: string | null;
 }) {
     const existing = await storage().query.attributeValues.findFirst({
@@ -541,13 +687,17 @@ async function setSingleAttribute({
     }
 
     if (apply) {
-        await upsertAttributeValue({
-            id: existing?.id,
-            attributeDefinitionId: definition.id,
-            entityTypeName,
-            entityId,
-            value,
-        });
+        await upsertAttributeValue(
+            {
+                id: existing?.id,
+                attributeDefinitionId: definition.id,
+                entityTypeName,
+                entityId,
+                value,
+            },
+            backfillActor,
+            { sideEffects },
+        );
     }
 
     return true;
@@ -557,11 +707,13 @@ async function addMultipleAttributeValues({
     definition,
     entityId,
     entityTypeName,
+    sideEffects,
     values,
 }: {
     definition: SelectAttributeDefinition;
     entityId: number;
     entityTypeName: HealthEntityTypeName;
+    sideEffects: ReturnType<typeof createAttributeValueMutationSideEffects>;
     values: string[];
 }) {
     const existingValues = await storage().query.attributeValues.findMany({
@@ -585,12 +737,16 @@ async function addMultipleAttributeValues({
         }
 
         if (apply) {
-            await upsertAttributeValue({
-                attributeDefinitionId: definition.id,
-                entityTypeName,
-                entityId,
-                value,
-            });
+            await upsertAttributeValue(
+                {
+                    attributeDefinitionId: definition.id,
+                    entityTypeName,
+                    entityId,
+                    value,
+                },
+                backfillActor,
+                { sideEffects },
+            );
         }
         createdValues.push(value);
     }
@@ -601,18 +757,57 @@ async function addMultipleAttributeValues({
     };
 }
 
+async function removeUnexpectedMultipleAttributeValues({
+    definition,
+    desiredValues,
+    entityId,
+    sideEffects,
+}: {
+    definition: SelectAttributeDefinition;
+    desiredValues: string[];
+    entityId: number;
+    sideEffects: ReturnType<typeof createAttributeValueMutationSideEffects>;
+}) {
+    const desiredValueSet = new Set(desiredValues);
+    const existingValues = await storage().query.attributeValues.findMany({
+        where: and(
+            eq(attributeValues.attributeDefinitionId, definition.id),
+            eq(attributeValues.entityId, entityId),
+            eq(attributeValues.isDeleted, false),
+        ),
+    });
+    const unexpectedValues = existingValues.filter(
+        (attributeValue) =>
+            attributeValue.value !== null &&
+            !desiredValueSet.has(attributeValue.value),
+    );
+
+    if (apply) {
+        for (const unexpectedValue of unexpectedValues) {
+            await deleteAttributeValue(unexpectedValue.id, backfillActor, {
+                sideEffects,
+            });
+        }
+    }
+
+    return unexpectedValues.flatMap((attributeValue) =>
+        attributeValue.value === null ? [] : [attributeValue.value],
+    );
+}
+
 async function existingIssueEntityId(
     entityTypeName: HealthEntityTypeName,
     nameDefinitionId: number,
-    name: string,
+    names: readonly string[],
 ) {
     const entities = await getEntitiesRaw(entityTypeName);
+    const normalizedNames = new Set(names.map(normalizedName));
     return (
         entities.find((entity) =>
             entity.attributes.some(
                 (attribute) =>
                     attribute.attributeDefinitionId === nameDefinitionId &&
-                    attribute.value === name,
+                    normalizedNames.has(normalizedName(attribute.value)),
             ),
         )?.id ?? null
     );
@@ -644,25 +839,20 @@ async function importIssue({
     const existingId = await existingIssueEntityId(
         entityTypeName,
         nameDefinition.id,
-        entry.name,
+        [entry.name, ...(entry.legacyNames ?? [])],
     );
     const created = !existingId;
-    const entityId =
-        existingId ?? (apply ? await createEntity(entityTypeName) : null);
     const result: ImportIssueResult = {
         entry,
         entityTypeName,
-        entityId,
+        entityId: existingId,
         created,
         updatedFields: [],
         skippedExistingRefs: [],
+        removedExistingRefs: [],
         missingPlants: [],
         missingOperations: [],
     };
-
-    if (!entityId) {
-        return result;
-    }
 
     const singleFields: Array<[string, string, string | null]> = [
         ['information', 'name', entry.name],
@@ -675,18 +865,6 @@ async function importIssue({
         ['review', 'reviewNotes', entry.reviewNotes?.join('\n') ?? null],
     ];
 
-    for (const [category, name, value] of singleFields) {
-        const changed = await setSingleAttribute({
-            definition: definitionOrThrow(definitions, category, name),
-            entityId,
-            entityTypeName,
-            value,
-        });
-        if (changed) {
-            result.updatedFields.push(attributeKey(category, name));
-        }
-    }
-
     const affectedPlantIds: string[] = [];
     for (const plantName of entry.affectedPlants) {
         const plantId = plantIdsByName.get(normalizedName(plantName));
@@ -696,30 +874,8 @@ async function importIssue({
         }
         affectedPlantIds.push(String(plantId));
     }
-    const affectedPlantResult = await addMultipleAttributeValues({
-        definition: definitionOrThrow(
-            definitions,
-            plantHealthRelationshipCategory,
-            plantHealthAffectedPlantsAttributeName,
-        ),
-        entityId,
-        entityTypeName,
-        values: affectedPlantIds,
-    });
-    result.updatedFields.push(
-        ...affectedPlantResult.createdValues.map(() =>
-            attributeKey(
-                plantHealthRelationshipCategory,
-                plantHealthAffectedPlantsAttributeName,
-            ),
-        ),
-    );
-    result.skippedExistingRefs.push(
-        ...affectedPlantResult.skippedExistingValues.map(
-            (value) => `plant#${value}`,
-        ),
-    );
 
+    const operationIdsByAttributeName = new Map<string, string[]>();
     for (const [intent, attributeName] of Object.entries(
         plantHealthOperationAttributeNames,
     )) {
@@ -736,15 +892,121 @@ async function importIssue({
             }
             operationIds.push(String(operationId));
         }
+        operationIdsByAttributeName.set(attributeName, operationIds);
+    }
 
-        const operationResult = await addMultipleAttributeValues({
-            definition: definitionOrThrow(
-                definitions,
-                plantHealthOperationCategory,
-                attributeName,
+    const sourceValues = entry.sources.map((sourceKey) =>
+        JSON.stringify(plantHealthDirectorySources[sourceKey]),
+    );
+    const entityId =
+        existingId ??
+        (apply ? await createEntity(entityTypeName, backfillActor) : null);
+    result.entityId = entityId;
+
+    if (!entityId) {
+        result.updatedFields.push(
+            ...singleFields.map(([category, name]) =>
+                attributeKey(category, name),
             ),
+            ...Array.from(new Set(affectedPlantIds)).map(() =>
+                attributeKey(
+                    plantHealthRelationshipCategory,
+                    plantHealthAffectedPlantsAttributeName,
+                ),
+            ),
+            ...Array.from(operationIdsByAttributeName.entries()).flatMap(
+                ([attributeName, operationIds]) =>
+                    Array.from(new Set(operationIds)).map(() =>
+                        attributeKey(
+                            plantHealthOperationCategory,
+                            attributeName,
+                        ),
+                    ),
+            ),
+            ...Array.from(new Set(sourceValues)).map(() =>
+                attributeKey('review', 'sources'),
+            ),
+        );
+        return result;
+    }
+
+    const sideEffects = createAttributeValueMutationSideEffects();
+    for (const [category, name, value] of singleFields) {
+        const changed = await setSingleAttribute({
+            definition: definitionOrThrow(definitions, category, name),
             entityId,
             entityTypeName,
+            sideEffects,
+            value,
+        });
+        if (changed) {
+            result.updatedFields.push(attributeKey(category, name));
+        }
+    }
+
+    const affectedPlantResult = await addMultipleAttributeValues({
+        definition: definitionOrThrow(
+            definitions,
+            plantHealthRelationshipCategory,
+            plantHealthAffectedPlantsAttributeName,
+        ),
+        entityId,
+        entityTypeName,
+        sideEffects,
+        values: affectedPlantIds,
+    });
+    result.updatedFields.push(
+        ...affectedPlantResult.createdValues.map(() =>
+            attributeKey(
+                plantHealthRelationshipCategory,
+                plantHealthAffectedPlantsAttributeName,
+            ),
+        ),
+    );
+    result.skippedExistingRefs.push(
+        ...affectedPlantResult.skippedExistingValues.map(
+            (value) => `plant#${value}`,
+        ),
+    );
+    if (entry.reconcileAffectedPlants) {
+        const removedAffectedPlantIds =
+            await removeUnexpectedMultipleAttributeValues({
+                definition: definitionOrThrow(
+                    definitions,
+                    plantHealthRelationshipCategory,
+                    plantHealthAffectedPlantsAttributeName,
+                ),
+                desiredValues: affectedPlantIds,
+                entityId,
+                sideEffects,
+            });
+        result.updatedFields.push(
+            ...removedAffectedPlantIds.map(() =>
+                attributeKey(
+                    plantHealthRelationshipCategory,
+                    plantHealthAffectedPlantsAttributeName,
+                ),
+            ),
+        );
+        result.removedExistingRefs.push(
+            ...removedAffectedPlantIds.map(
+                (plantId) =>
+                    `${plantHealthRelationshipCategory}.${plantHealthAffectedPlantsAttributeName}:plant#${plantId}`,
+            ),
+        );
+    }
+
+    for (const [attributeName, operationIds] of operationIdsByAttributeName) {
+        const definition = definitionOrThrow(
+            definitions,
+            plantHealthOperationCategory,
+            attributeName,
+        );
+        const operationResult = await addMultipleAttributeValues({
+            definition,
+            entityId,
+            entityTypeName,
+            sideEffects,
             values: operationIds,
         });
         result.updatedFields.push(
@@ -757,15 +1019,33 @@ async function importIssue({
                 (value) => `operation#${value}`,
             ),
         );
+        if (entry.reconcileOperations) {
+            const removedOperationIds =
+                await removeUnexpectedMultipleAttributeValues({
+                    definition,
+                    desiredValues: operationIds,
+                    entityId,
+                    sideEffects,
+                });
+            result.updatedFields.push(
+                ...removedOperationIds.map(() =>
+                    attributeKey(plantHealthOperationCategory, attributeName),
+                ),
+            );
+            result.removedExistingRefs.push(
+                ...removedOperationIds.map(
+                    (operationId) =>
+                        `${plantHealthOperationCategory}.${attributeName}:operation#${operationId}`,
+                ),
+            );
+        }
     }
 
-    const sourceValues = entry.sources.map((sourceKey) =>
-        JSON.stringify(plantHealthDirectorySources[sourceKey]),
-    );
     const sourceResult = await addMultipleAttributeValues({
         definition: definitionOrThrow(definitions, 'review', 'sources'),
         entityId,
         entityTypeName,
+        sideEffects,
         values: sourceValues,
     });
     result.updatedFields.push(
@@ -773,13 +1053,31 @@ async function importIssue({
             attributeKey('review', 'sources'),
         ),
     );
+    if (entry.reconcileSources) {
+        const removedSourceValues =
+            await removeUnexpectedMultipleAttributeValues({
+                definition: definitionOrThrow(definitions, 'review', 'sources'),
+                desiredValues: sourceValues,
+                entityId,
+                sideEffects,
+            });
+        result.updatedFields.push(
+            ...removedSourceValues.map(() => attributeKey('review', 'sources')),
+        );
+        result.removedExistingRefs.push(
+            ...removedSourceValues.map(() => 'review.sources'),
+        );
+    }
 
+    if (apply) {
+        await flushAttributeValueMutationSideEffects(sideEffects);
+    }
     if (
         apply &&
         result.missingPlants.length === 0 &&
         result.missingOperations.length === 0
     ) {
-        await updateEntity({ id: entityId, state: 'published' });
+        await updateEntity({ id: entityId, state: 'published' }, backfillActor);
     }
 
     return result;
@@ -788,38 +1086,86 @@ async function importIssue({
 async function writeCoverageReport({
     operationIdsByName,
     plantIdsByName,
+    preflightProblems,
+    publishedPlants,
     results,
 }: {
     operationIdsByName: Map<string, number>;
     plantIdsByName: Map<string, number>;
+    preflightProblems: PreflightProblem[];
+    publishedPlants: PublishedPlant[];
     results: ImportIssueResult[];
 }) {
-    const affectedPlants = new Map<
-        string,
-        { diseases: number; pests: number }
-    >();
+    const coverageByPlantId = new Map<number, PlantCoverage>();
+    for (const plant of publishedPlants) {
+        coverageByPlantId.set(plant.id, {
+            plant,
+            diseaseIssues: new Set<string>(),
+            pestIssues: new Set<string>(),
+        });
+    }
     for (const entry of plantHealthDirectoryDataset) {
+        const issueIdentity = `${entry.kind}:${normalizedName(entry.name)}`;
+        const seenPlantIds = new Set<number>();
         for (const plantName of entry.affectedPlants) {
-            const key = normalizedName(plantName);
-            const current = affectedPlants.get(key) ?? {
-                diseases: 0,
-                pests: 0,
-            };
-            if (entry.kind === 'disease') {
-                current.diseases += 1;
-            } else {
-                current.pests += 1;
+            const plantId = plantIdsByName.get(normalizedName(plantName));
+            if (!plantId || seenPlantIds.has(plantId)) {
+                continue;
             }
-            affectedPlants.set(key, current);
+            seenPlantIds.add(plantId);
+
+            const coverage = coverageByPlantId.get(plantId);
+            if (!coverage) {
+                continue;
+            }
+            if (entry.kind === 'disease') {
+                coverage.diseaseIssues.add(issueIdentity);
+            } else {
+                coverage.pestIssues.add(issueIdentity);
+            }
         }
     }
 
+    const coverageRows = Array.from(coverageByPlantId.values()).sort(
+        (left, right) =>
+            left.plant.name.localeCompare(right.plant.name, 'hr') ||
+            left.plant.id - right.plant.id,
+    );
+    const noCoverage = coverageRows.filter(
+        ({ diseaseIssues, pestIssues }) =>
+            diseaseIssues.size === 0 && pestIssues.size === 0,
+    );
+    const noDiseaseCoverage = coverageRows.filter(
+        ({ diseaseIssues }) => diseaseIssues.size === 0,
+    );
+    const noPestCoverage = coverageRows.filter(
+        ({ pestIssues }) => pestIssues.size === 0,
+    );
+    const issuesWithoutRecommendations = plantHealthDirectoryDataset.filter(
+        (entry) => Object.values(entry.operations ?? {}).flat().length === 0,
+    );
+    const preflightMissingPlants = preflightProblems
+        .filter((problem) => problem.kind === 'missing-plant')
+        .map((problem) => problem.value);
+    const preflightMissingOperations = preflightProblems
+        .filter((problem) => problem.kind === 'missing-operation')
+        .map((problem) => problem.value);
     const missingPlants = Array.from(
-        new Set(results.flatMap((result) => result.missingPlants)),
+        new Set([
+            ...preflightMissingPlants,
+            ...results.flatMap((result) => result.missingPlants),
+        ]),
     ).sort((left, right) => left.localeCompare(right, 'hr'));
     const missingOperations = Array.from(
-        new Set(results.flatMap((result) => result.missingOperations)),
+        new Set([
+            ...preflightMissingOperations,
+            ...results.flatMap((result) => result.missingOperations),
+        ]),
     ).sort((left, right) => left.localeCompare(right, 'hr'));
+    const importStoppedByPreflight =
+        apply && preflightProblems.length > 0 && results.length === 0;
+    const formatCoverageGap = ({ plant }: PlantCoverage) =>
+        `- ${plant.name} (#${plant.id})`;
 
     const lines = [
         '# Plant Health Directory Coverage',
@@ -829,7 +1175,7 @@ async function writeCoverageReport({
         '',
         '## Source Notes',
         '',
-        'This first-release dataset imports only source-backed disease and pest entries that map to current published Gredice plant and operation entities. Broad host ranges are narrowed to current Gredice plants named by the reviewed sources.',
+        'This dataset imports only source-backed disease and pest entries that map to current published Gredice plant and operation entities. Broad host ranges are narrowed to current Gredice plants named by the reviewed sources.',
         '',
         ...Object.entries(plantHealthDirectorySources).map(
             ([key, source]) => `- ${key}: [${source.label}](${source.url})`,
@@ -838,12 +1184,24 @@ async function writeCoverageReport({
         '## Import Summary',
         '',
         `- Dataset issues: ${plantHealthDirectoryDataset.length}`,
-        `- Created issue entities this run: ${results.filter((result) => result.created).length}`,
-        `- Issue entities with field/ref changes planned or written: ${results.filter((result) => result.updatedFields.length > 0).length}`,
+        `- Preflight problems: ${preflightProblems.length}`,
+        `- Import stopped by preflight: ${importStoppedByPreflight ? 'yes' : 'no'}`,
+        `- Created issue entities this run: ${importStoppedByPreflight ? 'not attempted' : results.filter((result) => result.created).length}`,
+        `- Issue entities with field/ref changes planned or written: ${importStoppedByPreflight ? 'not attempted' : results.filter((result) => result.updatedFields.length > 0).length}`,
         `- Missing referenced plant names: ${missingPlants.length}`,
         `- Missing referenced operation names: ${missingOperations.length}`,
-        `- Published plants with disease coverage: ${Array.from(affectedPlants.values()).filter((coverage) => coverage.diseases > 0).length}`,
-        `- Published plants with pest coverage: ${Array.from(affectedPlants.values()).filter((coverage) => coverage.pests > 0).length}`,
+        `- Issues with at least one recommended operation: ${plantHealthDirectoryDataset.length - issuesWithoutRecommendations.length}/${plantHealthDirectoryDataset.length}`,
+        `- Published plants in catalog: ${coverageRows.length}`,
+        `- Published plants covered by disease dataset: ${coverageRows.filter(({ diseaseIssues }) => diseaseIssues.size > 0).length}`,
+        `- Published plants covered by pest dataset: ${coverageRows.filter(({ pestIssues }) => pestIssues.size > 0).length}`,
+        '',
+        '## Preflight Problems',
+        '',
+        ...(preflightProblems.length > 0
+            ? preflightProblems.map(
+                  (problem) => `- [${problem.kind}] ${problem.message}`,
+              )
+            : ['- None']),
         '',
         '## Missing References',
         '',
@@ -859,72 +1217,110 @@ async function writeCoverageReport({
             ? missingOperations.map((name) => `- ${name}`)
             : ['- None']),
         '',
-        '## Dataset Issues',
+        '## Recommendation Gaps',
         '',
-        ...results.map((result) => {
-            const entityLabel = result.entityId
-                ? `${result.entry.name} (#${result.entityId})`
-                : result.entry.name;
-            const operations = Object.values(result.entry.operations ?? {})
-                .flat()
-                .map((operationName) => {
-                    const operationId = operationIdsByName.get(operationName);
-                    return operationId
-                        ? `${operationName} (#${operationId})`
-                        : operationName;
-                });
-            const plants = result.entry.affectedPlants.map((plantName) => {
-                const plantId = plantIdsByName.get(normalizedName(plantName));
-                return plantId ? `${plantName} (#${plantId})` : plantName;
-            });
-            return [
-                `### ${entityLabel}`,
-                '',
-                `- Kind: ${result.entry.kind}`,
-                `- Affected plants: ${plants.join(', ')}`,
-                `- Helpful operations: ${operations.length > 0 ? operations.join(', ') : 'informational only'}`,
-                `- Sources: ${result.entry.sources.map((sourceKey) => plantHealthDirectorySources[sourceKey].label).join('; ')}`,
-                result.entry.reviewNotes?.length
-                    ? `- Review notes: ${result.entry.reviewNotes.join(' ')}`
-                    : null,
-                `- Fields/refs changed: ${result.updatedFields.length}`,
-                `- Existing refs skipped: ${result.skippedExistingRefs.length}`,
-                '',
-            ]
-                .filter((line): line is string => line !== null)
-                .join('\n');
+        ...(issuesWithoutRecommendations.length > 0
+            ? issuesWithoutRecommendations.map(
+                  (entry) => `- ${entry.kind}: ${entry.name}`,
+              )
+            : ['- None']),
+        '',
+        '## Per-Plant Dataset Coverage',
+        '',
+        '| Plant ID | Plant | Diseases | Pests | Total |',
+        '| ---: | --- | ---: | ---: | ---: |',
+        ...coverageRows.map(({ plant, diseaseIssues, pestIssues }) => {
+            const diseaseCount = diseaseIssues.size;
+            const pestCount = pestIssues.size;
+            return `| ${plant.id} | ${plant.name.replaceAll('|', '\\|')} | ${diseaseCount} | ${pestCount} | ${diseaseCount + pestCount} |`;
         }),
         '',
+        '### No coverage',
+        '',
+        ...(noCoverage.length > 0
+            ? noCoverage.map(formatCoverageGap)
+            : ['- None']),
+        '',
+        '### No disease coverage',
+        '',
+        ...(noDiseaseCoverage.length > 0
+            ? noDiseaseCoverage.map(formatCoverageGap)
+            : ['- None']),
+        '',
+        '### No pest coverage',
+        '',
+        ...(noPestCoverage.length > 0
+            ? noPestCoverage.map(formatCoverageGap)
+            : ['- None']),
+        '',
+        '## Dataset Issues',
+        '',
+        ...(results.length > 0
+            ? results.map((result) => {
+                  const entityLabel = result.entityId
+                      ? `${result.entry.name} (#${result.entityId})`
+                      : result.entry.name;
+                  const operations = Object.values(
+                      result.entry.operations ?? {},
+                  )
+                      .flat()
+                      .map((operationName) => {
+                          const operationId =
+                              operationIdsByName.get(operationName);
+                          return operationId
+                              ? `${operationName} (#${operationId})`
+                              : operationName;
+                      });
+                  const plants = result.entry.affectedPlants.map(
+                      (plantName) => {
+                          const plantId = plantIdsByName.get(
+                              normalizedName(plantName),
+                          );
+                          const resolvedPlantName = publishedPlants.find(
+                              (plant) => plant.id === plantId,
+                          )?.name;
+                          return plantId
+                              ? `${resolvedPlantName ?? plantName} (#${plantId})`
+                              : plantName;
+                      },
+                  );
+                  return [
+                      `### ${entityLabel}`,
+                      '',
+                      `- Kind: ${result.entry.kind}`,
+                      `- Affected plants: ${plants.join(', ')}`,
+                      `- Helpful operations: ${operations.length > 0 ? operations.join(', ') : 'informational only'}`,
+                      `- Sources: ${result.entry.sources.map((sourceKey) => plantHealthDirectorySources[sourceKey].label).join('; ')}`,
+                      result.entry.reviewNotes?.length
+                          ? `- Review notes: ${result.entry.reviewNotes.join(' ')}`
+                          : null,
+                      `- Fields/refs changed: ${result.updatedFields.length}`,
+                      `- Existing refs skipped: ${result.skippedExistingRefs.length}`,
+                      `- Existing refs removed: ${result.removedExistingRefs.length}`,
+                      '',
+                  ]
+                      .filter((line): line is string => line !== null)
+                      .join('\n');
+              })
+            : ['- Import was not attempted because preflight failed.']),
     ];
 
-    await writeFile(reportPath, `${lines.join('\n')}\n`, 'utf8');
+    await writeFile(reportPath, `${lines.join('\n').trimEnd()}\n`, 'utf8');
 }
 
 async function main() {
-    const categoryId = await ensureEntityTypeCategory();
-    await ensureHealthEntityTypes(categoryId);
-    const [diseaseDefinitions, pestDefinitions, plants, operations] =
-        await Promise.all([
-            ensureAttributeDefinitions(plantHealthIssueTypeNames.disease),
-            ensureAttributeDefinitions(plantHealthIssueTypeNames.pest),
-            getEntitiesRaw('plant', 'published'),
-            getEntitiesRaw('operation', 'published'),
-        ]);
-
-    const plantIdsByName = new Map(
-        plants
-            .map(
-                (plant) =>
-                    [
-                        textAttribute(plant, 'information', 'name'),
-                        plant.id,
-                    ] as const,
-            )
-            .filter((entry): entry is readonly [string, number] =>
-                Boolean(entry[0]),
-            )
-            .map(([name, id]) => [normalizedName(name), id]),
-    );
+    const [plants, operations] = await Promise.all([
+        getEntitiesRaw('plant', 'published'),
+        getEntitiesRaw('operation', 'published'),
+    ]);
+    const publishedPlants = plants.flatMap((plant): PublishedPlant[] => {
+        const name = textAttribute(plant, 'information', 'name');
+        return name ? [{ id: plant.id, name: name.trim() }] : [];
+    });
+    const plantIdsByName = new Map<string, number>();
+    for (const plant of publishedPlants) {
+        plantIdsByName.set(normalizedName(plant.name), plant.id);
+    }
     const operationIdsByName = new Map(
         operations
             .map(
@@ -938,6 +1334,46 @@ async function main() {
                 Boolean(entry[0]),
             ),
     );
+    const preflightProblems = preflightDataset({
+        operationIdsByName,
+        plantIdsByName,
+        publishedPlants,
+    });
+
+    if (apply && preflightProblems.length > 0) {
+        await writeCoverageReport({
+            operationIdsByName,
+            plantIdsByName,
+            preflightProblems,
+            publishedPlants,
+            results: [],
+        });
+        console.log(
+            JSON.stringify(
+                {
+                    mode: 'apply',
+                    issues: plantHealthDirectoryDataset.length,
+                    importStoppedByPreflight: true,
+                    preflightProblems: preflightProblems.map(
+                        (problem) => problem.message,
+                    ),
+                    reportPath,
+                },
+                null,
+                2,
+            ),
+        );
+        throw new Error(
+            `Plant health directory preflight failed with ${preflightProblems.length} problem(s). No schema or entity writes were attempted.`,
+        );
+    }
+
+    const categoryId = await ensureEntityTypeCategory();
+    await ensureHealthEntityTypes(categoryId);
+    const [diseaseDefinitions, pestDefinitions] = await Promise.all([
+        ensureAttributeDefinitions(plantHealthIssueTypeNames.disease),
+        ensureAttributeDefinitions(plantHealthIssueTypeNames.pest),
+    ]);
 
     const results: ImportIssueResult[] = [];
     for (const entry of plantHealthDirectoryDataset) {
@@ -957,6 +1393,8 @@ async function main() {
     await writeCoverageReport({
         operationIdsByName,
         plantIdsByName,
+        preflightProblems,
+        publishedPlants,
         results,
     });
 
@@ -969,13 +1407,31 @@ async function main() {
                 changed: results.filter(
                     (result) => result.updatedFields.length > 0,
                 ).length,
+                preflightProblems: preflightProblems.map(
+                    (problem) => problem.message,
+                ),
                 missingPlants: Array.from(
-                    new Set(results.flatMap((result) => result.missingPlants)),
+                    new Set([
+                        ...preflightProblems
+                            .filter(
+                                (problem) => problem.kind === 'missing-plant',
+                            )
+                            .map((problem) => problem.value),
+                        ...results.flatMap((result) => result.missingPlants),
+                    ]),
                 ).sort((left, right) => left.localeCompare(right, 'hr')),
                 missingOperations: Array.from(
-                    new Set(
-                        results.flatMap((result) => result.missingOperations),
-                    ),
+                    new Set([
+                        ...preflightProblems
+                            .filter(
+                                (problem) =>
+                                    problem.kind === 'missing-operation',
+                            )
+                            .map((problem) => problem.value),
+                        ...results.flatMap(
+                            (result) => result.missingOperations,
+                        ),
+                    ]),
                 ).sort((left, right) => left.localeCompare(right, 'hr')),
                 reportPath,
             },

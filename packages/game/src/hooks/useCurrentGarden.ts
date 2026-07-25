@@ -361,7 +361,7 @@ const denseMockGardenBounds = {
 
 const operationRewardDebugGardenBounds = {
     maxX: 10,
-    maxZ: 8,
+    maxZ: 13,
     minX: -8,
     minZ: -6,
 };
@@ -735,6 +735,41 @@ function applyOperationRewardDebugState({
                               id: 9508,
                               entityId:
                                   operationVisualRewardDebugOperationIds.removeAgrotextile,
+                              raisedBedId: raisedBed.id,
+                              completedAt:
+                                  operationVisualRewardDebugNewerTimestamp,
+                          }),
+                      ]
+                    : []),
+            ];
+            break;
+        case 'insectMesh':
+            if (isAfter) {
+                raisedBed.appliedOperations = [
+                    completedDebugAppliedOperation({
+                        id: 9511,
+                        entityId:
+                            operationVisualRewardDebugOperationIds.insectMesh,
+                        raisedBedId: raisedBed.id,
+                        completedAt: operationVisualRewardDebugTimestamp,
+                    }),
+                ];
+            }
+            break;
+        case 'removeInsectMesh':
+            raisedBed.appliedOperations = [
+                completedDebugAppliedOperation({
+                    id: 9512,
+                    entityId: operationVisualRewardDebugOperationIds.insectMesh,
+                    raisedBedId: raisedBed.id,
+                    completedAt: operationVisualRewardDebugOlderTimestamp,
+                }),
+                ...(isAfter
+                    ? [
+                          completedDebugAppliedOperation({
+                              id: 9513,
+                              entityId:
+                                  operationVisualRewardDebugOperationIds.removeInsectMesh,
                               raisedBedId: raisedBed.id,
                               completedAt:
                                   operationVisualRewardDebugNewerTimestamp,
