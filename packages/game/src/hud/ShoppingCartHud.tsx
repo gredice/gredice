@@ -14,7 +14,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -478,12 +478,18 @@ export function ShoppingCart({
 }
 
 export function ShoppingCartHud() {
-    const { data: cart } = useShoppingCart();
+    const { data: cart, refetch: refetchCart } = useShoppingCart();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
     const [checkoutStep, setCheckoutStep] =
         useState<ShoppingCartCheckoutStep>('cart');
     const showTransientHub = useShoppingCartTransientHub(isOpen);
+
+    useEffect(() => {
+        if (isOpen) {
+            void refetchCart();
+        }
+    }, [isOpen, refetchCart]);
 
     if (!cart?.items.length && !showTransientHub && !isOpen) {
         return null;
