@@ -359,7 +359,9 @@ function ShoppingCartItemsPresencePanel({
             ) : (
                 <ShoppingCart
                     checkoutStep="cart"
+                    deliverySummary={null}
                     onCheckoutStepChange={() => undefined}
+                    onDeliverySummaryChange={() => undefined}
                 />
             )}
         </div>

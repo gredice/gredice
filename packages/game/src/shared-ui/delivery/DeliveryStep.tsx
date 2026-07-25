@@ -315,7 +315,7 @@ export function DeliveryStep({
                         />
                     ) : (
                         <NoDataPlaceholder className="min-w-0 flex-1">
-                            Dodaj adresu za dostavu kako bi mogao nastaviti.
+                            Dodaj adresu za dostavu kako bi mogao/la nastaviti.
                         </NoDataPlaceholder>
                     )}
                     <Button

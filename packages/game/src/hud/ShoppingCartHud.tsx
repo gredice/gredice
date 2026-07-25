@@ -74,12 +74,16 @@ export type ShoppingCartCheckoutStep = 'cart' | 'delivery' | 'harvest';
 
 interface ShoppingCartProps {
     checkoutStep: ShoppingCartCheckoutStep;
+    deliverySummary: DeliveryStepSummary | null;
     onCheckoutStepChange: (step: ShoppingCartCheckoutStep) => void;
+    onDeliverySummaryChange: (summary: DeliveryStepSummary) => void;
 }
 
 export function ShoppingCart({
     checkoutStep,
+    deliverySummary,
     onCheckoutStepChange,
+    onDeliverySummaryChange,
 }: ShoppingCartProps) {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
@@ -91,8 +95,6 @@ export function ShoppingCart({
     // State for delivery flow
     const [deliverySelection, setDeliverySelection] =
         useState<DeliverySelectionData | null>(null);
-    const [deliverySummary, setDeliverySummary] =
-        useState<DeliveryStepSummary | null>(null);
     const [harvestDates, setHarvestDates] = useState<
         readonly HarvestScheduleDateSelection[]
     >([]);
@@ -180,7 +182,7 @@ export function ShoppingCart({
 
     function handleDeliveryProceed(summary: DeliveryStepSummary) {
         if (isCompleteDeliverySelection(deliverySelection)) {
-            setDeliverySummary(summary);
+            onDeliverySummaryChange(summary);
             setHarvestDates([]);
             setTransitionDirection('forward');
             onCheckoutStepChange('harvest');
@@ -484,6 +486,8 @@ export function ShoppingCartHud() {
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
     const [checkoutStep, setCheckoutStep] =
         useState<ShoppingCartCheckoutStep>('cart');
+    const [deliverySummary, setDeliverySummary] =
+        useState<DeliveryStepSummary | null>(null);
     const showTransientHub = useShoppingCartTransientHub(isOpen);
 
     useEffect(() => {
@@ -515,7 +519,9 @@ export function ShoppingCartHud() {
                             ? 'Košara'
                             : checkoutStep === 'delivery'
                               ? 'Dostava'
-                              : 'Branje'
+                              : deliverySummary?.mode === 'pickup'
+                                ? 'Sažetak preuzimanja'
+                                : 'Sažetak dostave'
                     }
                     className="md:max-w-2xl"
                     headerIcon={
@@ -561,7 +567,9 @@ export function ShoppingCartHud() {
                 >
                     <ShoppingCart
                         checkoutStep={checkoutStep}
+                        deliverySummary={deliverySummary}
                         onCheckoutStepChange={setCheckoutStep}
+                        onDeliverySummaryChange={setDeliverySummary}
                     />
                 </GameModal>
             </Row>
