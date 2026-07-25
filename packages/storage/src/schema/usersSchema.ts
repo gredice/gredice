@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+    type AnyPgColumn,
     boolean,
     index,
     integer,
@@ -12,7 +13,7 @@ import {
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { farms } from './farmsSchema';
-import { raisedBeds } from './gardenSchema';
+import { gardens, raisedBeds } from './gardenSchema';
 
 export const accounts = pgTable('accounts', {
     id: text('id').primaryKey(),
@@ -131,12 +132,19 @@ export const users = pgTable(
         )
             .notNull()
             .default(true),
+        defaultGardenId: integer('default_garden_id').references(
+            (): AnyPgColumn => gardens.id,
+            { onDelete: 'set null' },
+        ),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
             .$onUpdate(() => new Date()),
     },
-    (table) => [index('users_u_username_idx').on(table.userName)],
+    (table) => [
+        index('users_u_username_idx').on(table.userName),
+        index('users_u_default_garden_id_idx').on(table.defaultGardenId),
+    ],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -154,7 +162,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 export type InsertUser = typeof users.$inferInsert;
 export type UpdateUserInfo = Omit<
     typeof users.$inferInsert,
-    'id' | 'createdAt' | 'updatedAt' | 'role'
+    'id' | 'createdAt' | 'updatedAt' | 'role' | 'defaultGardenId'
 >;
 export type SelectUser = typeof users.$inferSelect;
 
