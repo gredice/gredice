@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     createHarvestScheduleDateSelections,
+    getSuggestedHarvestDate,
     type HarvestScheduleItem,
     harvestCalendarDateKey,
     isHarvestDateWithinRange,
@@ -42,6 +43,36 @@ test('accepts both inclusive harvest range boundaries', () => {
     );
     assert.equal(isHarvestDateWithinRange('2026-07-20', flexibleItem), false);
     assert.equal(isHarvestDateWithinRange('2026-07-25', flexibleItem), false);
+});
+
+test('suggests the nearest allowed date without changing valid selections', () => {
+    assert.equal(
+        getSuggestedHarvestDate('2026-07-20', flexibleItem),
+        flexibleItem.allowedFrom,
+    );
+    assert.equal(
+        getSuggestedHarvestDate('2026-07-25', flexibleItem),
+        flexibleItem.allowedTo,
+    );
+    assert.equal(
+        getSuggestedHarvestDate('2026-07-22', flexibleItem),
+        '2026-07-22',
+    );
+    assert.equal(
+        getSuggestedHarvestDate(null, flexibleItem),
+        flexibleItem.allowedTo,
+    );
+    assert.equal(
+        getSuggestedHarvestDate('not-a-date', flexibleItem),
+        flexibleItem.allowedTo,
+    );
+    assert.equal(
+        getSuggestedHarvestDate('2026-07-22', {
+            allowedFrom: '2026-07-24',
+            allowedTo: '2026-07-21',
+        }),
+        null,
+    );
 });
 
 test('keeps valid dates, preserves flexible corrections, and fixes same-day crops', () => {
