@@ -21,8 +21,8 @@ import {
     RaisedBedPlantField,
 } from './RaisedBedPlantField';
 import {
-    hasActiveRaisedBedAgrotextileCover,
-    resolveRaisedBedAgrotextileCoverPositions,
+    hasActiveRaisedBedProtectiveCover,
+    resolveRaisedBedProtectiveCoverPositions,
 } from './raisedBedAgrotextileRewards';
 import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
 import { getRaisedBedFieldSurfacePosition } from './raisedBedSoilWetPatches';
@@ -616,23 +616,23 @@ export function RaisedBedFields({
               } => Boolean(visual),
           )
         : [];
-    const agrotextileCoverPositions = raisedBed
-        ? resolveRaisedBedAgrotextileCoverPositions({
+    const protectiveCoverPositions = raisedBed
+        ? resolveRaisedBedProtectiveCoverPositions({
               blockOffset,
               fields: raisedBed.fields,
               raisedBedId: raisedBed.id,
               visualRewards,
           })
         : [];
-    const agrotextileCoverPositionSet = new Set(agrotextileCoverPositions);
-    const hasRaisedBedAgrotextileCover = raisedBed
-        ? hasActiveRaisedBedAgrotextileCover({
+    const protectiveCoverPositionSet = new Set(protectiveCoverPositions);
+    const hasRaisedBedProtectiveCover = raisedBed
+        ? hasActiveRaisedBedProtectiveCover({
               raisedBedId: raisedBed.id,
               visualRewards,
           })
         : false;
-    const wholeBedAgrotextileCoverLayout =
-        hasRaisedBedAgrotextileCover &&
+    const wholeBedProtectiveCoverLayout =
+        hasRaisedBedProtectiveCover &&
         currentGarden &&
         blockIds.length > 0 &&
         blockIndex === 0
@@ -643,9 +643,9 @@ export function RaisedBedFields({
                   orientation,
               })
             : null;
-    const fieldAgrotextileCoverPositions = hasRaisedBedAgrotextileCover
+    const fieldProtectiveCoverPositions = hasRaisedBedProtectiveCover
         ? []
-        : agrotextileCoverPositions;
+        : protectiveCoverPositions;
     const supportPositions = raisedBed
         ? resolveRaisedBedSupportPositions({
               blockOffset,
@@ -655,7 +655,7 @@ export function RaisedBedFields({
           })
         : [];
     const visibleSupportPositions = supportPositions.filter(
-        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+        (positionIndex) => !protectiveCoverPositionSet.has(positionIndex),
     );
     const harvestPositions = raisedBed
         ? resolveRaisedBedHarvestPositions({
@@ -666,7 +666,7 @@ export function RaisedBedFields({
           })
         : [];
     const visibleHarvestPositions = harvestPositions.filter(
-        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+        (positionIndex) => !protectiveCoverPositionSet.has(positionIndex),
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
     const highlightedPositionIndex =
@@ -696,7 +696,7 @@ export function RaisedBedFields({
                 />
             ) : null}
             {weedFieldVisuals.map((visual) =>
-                agrotextileCoverPositionSet.has(visual.positionIndex) ? null : (
+                protectiveCoverPositionSet.has(visual.positionIndex) ? null : (
                     <RaisedBedFieldWeeds
                         key={`raised-bed-field-weed-${blockId}-${visual.positionIndex}`}
                         blockIndex={blockIndex}
@@ -710,7 +710,7 @@ export function RaisedBedFields({
                 if (!field) return null;
                 const localPositionIndex = field.positionIndex - blockOffset;
 
-                if (agrotextileCoverPositionSet.has(localPositionIndex)) {
+                if (protectiveCoverPositionSet.has(localPositionIndex)) {
                     return null;
                 }
 
@@ -758,14 +758,14 @@ export function RaisedBedFields({
                     positionIndex={positionIndex}
                 />
             ))}
-            {wholeBedAgrotextileCoverLayout && (
+            {wholeBedProtectiveCoverLayout && (
                 <RaisedBedWholeAgrotextileCover
-                    layout={wholeBedAgrotextileCoverLayout}
+                    layout={wholeBedProtectiveCoverLayout}
                 />
             )}
-            {fieldAgrotextileCoverPositions.map((positionIndex) => (
+            {fieldProtectiveCoverPositions.map((positionIndex) => (
                 <RaisedBedFieldAgrotextileCover
-                    key={`raised-bed-field-agrotextile-${blockId}-${positionIndex}`}
+                    key={`raised-bed-field-protective-cover-${blockId}-${positionIndex}`}
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={positionIndex}

@@ -100,6 +100,16 @@ const operations = [
         name: 'raisedBedPhotography',
         visualReward: 'photographyUpdate',
     }),
+    operation(10, {
+        label: 'Postavljanje zaštitne mreže protiv kukaca',
+        name: 'installInsectProtectionMesh',
+        visualReward: 'insectMesh',
+    }),
+    operation(11, {
+        label: 'Uklanjanje zaštitne mreže protiv kukaca',
+        name: 'removeInsectProtectionMesh',
+        visualReward: 'removeInsectMesh',
+    }),
 ];
 
 function applied(
@@ -166,6 +176,10 @@ describe('operation visual reward kind mapping', () => {
             resolveOperationVisualRewardKind(operations[4]),
             'removeAgrotextile',
         );
+        assert.strictEqual(
+            resolveOperationVisualRewardKind(operations[10]),
+            'removeInsectMesh',
+        );
     });
 
     it('maps known plant actions', () => {
@@ -180,6 +194,13 @@ describe('operation visual reward kind mapping', () => {
         assert.strictEqual(
             resolveOperationVisualRewardKind(operations[7]),
             'harvest',
+        );
+    });
+
+    it('maps insect mesh to an explicit visual reward', () => {
+        assert.strictEqual(
+            resolveOperationVisualRewardKind(operations[9]),
+            'insectMesh',
         );
     });
 
@@ -369,6 +390,52 @@ describe('resolveOperationVisualRewards', () => {
                 kind: 'agrotextile',
                 polarity: 'apply',
             },
+        );
+    });
+
+    it('keeps insect mesh state independent from agrotextile state', () => {
+        const rewards = resolveOperationVisualRewards({
+            appliedOperations: [
+                applied(351, {
+                    completedAt: '2026-06-01T08:00:00.000Z',
+                    entityId: 4,
+                    raisedBedId: 10,
+                }),
+                applied(352, {
+                    completedAt: '2026-06-01T09:00:00.000Z',
+                    entityId: 10,
+                    raisedBedId: 10,
+                }),
+                applied(353, {
+                    completedAt: '2026-06-02T08:00:00.000Z',
+                    entityId: 11,
+                    raisedBedId: 10,
+                }),
+            ],
+            operations,
+        });
+
+        assert.equal(rewards.length, 2);
+        assert.deepStrictEqual(
+            rewards
+                .map((reward) => ({
+                    active: reward.active,
+                    family: reward.family,
+                    kind: reward.kind,
+                }))
+                .sort((a, b) => a.family.localeCompare(b.family)),
+            [
+                {
+                    active: true,
+                    family: 'agrotextile',
+                    kind: 'agrotextile',
+                },
+                {
+                    active: false,
+                    family: 'insectMesh',
+                    kind: 'removeInsectMesh',
+                },
+            ],
         );
     });
 

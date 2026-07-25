@@ -12,8 +12,10 @@ export const operationVisualRewardDebugNewerTimestamp =
 export const operationVisualRewardDebugOperationIds = {
     agrotextile: 9405,
     harvest: 9408,
+    insectMesh: 9409,
     mulch: 9403,
     removeAgrotextile: 9406,
+    removeInsectMesh: 9410,
     removeMulch: 9404,
     supports: 9407,
     watering: 9401,
@@ -122,6 +124,36 @@ export const operationVisualRewardDebugScenarios = [
         after: {
             label: 'After',
             raisedBedId: 112,
+            state: 'Visible plants again',
+        },
+    },
+    {
+        title: 'Insect protection mesh',
+        kind: 'insectMesh',
+        operationId: operationVisualRewardDebugOperationIds.insectMesh,
+        before: {
+            label: 'Before',
+            raisedBedId: 117,
+            state: 'Exposed bed',
+        },
+        after: {
+            label: 'After',
+            raisedBedId: 118,
+            state: 'Covered protected bed',
+        },
+    },
+    {
+        title: 'Remove insect protection mesh',
+        kind: 'removeInsectMesh',
+        operationId: operationVisualRewardDebugOperationIds.removeInsectMesh,
+        before: {
+            label: 'Before',
+            raisedBedId: 119,
+            state: 'Covered bed',
+        },
+        after: {
+            label: 'After',
+            raisedBedId: 120,
             state: 'Visible plants again',
         },
     },
@@ -257,6 +289,20 @@ export const operationVisualRewardDebugOperationDefinitions = [
         kind: 'removeAgrotextile',
         name: 'debugRemoveAgrotextileReward',
         label: 'Debug remove agrotextile reward',
+        application: 'raisedBedFull',
+    }),
+    debugOperation({
+        id: operationVisualRewardDebugOperationIds.insectMesh,
+        kind: 'insectMesh',
+        name: 'debugInsectMeshReward',
+        label: 'Debug insect protection mesh reward',
+        application: 'raisedBedFull',
+    }),
+    debugOperation({
+        id: operationVisualRewardDebugOperationIds.removeInsectMesh,
+        kind: 'removeInsectMesh',
+        name: 'debugRemoveInsectMeshReward',
+        label: 'Debug remove insect protection mesh reward',
         application: 'raisedBedFull',
     }),
     debugOperation({
