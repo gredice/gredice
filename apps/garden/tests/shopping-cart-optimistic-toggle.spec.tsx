@@ -613,6 +613,46 @@ test.describe('shopping cart item presence', () => {
         ).toContainText('Košara je prazna');
     });
 
+    test('keeps cached cart items visible when the modal refresh fails', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify({ error: 'Temporary failure' }),
+                contentType: 'application/json',
+                status: 500,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await page.getByTitle('Košara').click();
+
+        await expect.poll(() => shoppingCartGetCount).toBe(1);
+        await expect(
+            page.getByText('Greška prilikom učitavanja košare'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-item-id="1"]'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-summary]'),
+        ).toContainText('2.50 €');
+        await expect(
+            page.getByRole('button', { name: 'Očisti košaru' }),
+        ).toBeEnabled();
+        await expect(page.getByRole('button', { name: 'Plati' })).toBeEnabled();
+    });
+
     test('reuses an exiting row when an optimistic removal rolls back', async ({
         mount,
         page,

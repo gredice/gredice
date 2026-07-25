@@ -86,6 +86,7 @@ export function ShoppingCart({
     const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+    const shouldRenderCartItems = !isLoading && (!isError || Boolean(cart));
 
     // State for delivery flow
     const [deliverySelection, setDeliverySelection] =
@@ -357,7 +358,7 @@ export function ShoppingCart({
                                 Greška prilikom učitavanja košare
                             </Typography>
                         )}
-                        {!isLoading && !isError ? (
+                        {shouldRenderCartItems ? (
                             <ShoppingCartItemsPresence
                                 items={cart?.items ?? []}
                             />
