@@ -14,7 +14,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -86,6 +86,7 @@ export function ShoppingCart({
     const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+    const shouldRenderCartItems = !isLoading && (!isError || Boolean(cart));
 
     // State for delivery flow
     const [deliverySelection, setDeliverySelection] =
@@ -357,7 +358,7 @@ export function ShoppingCart({
                                 Greška prilikom učitavanja košare
                             </Typography>
                         )}
-                        {!isLoading && !isError ? (
+                        {shouldRenderCartItems ? (
                             <ShoppingCartItemsPresence
                                 items={cart?.items ?? []}
                             />
@@ -478,12 +479,18 @@ export function ShoppingCart({
 }
 
 export function ShoppingCartHud() {
-    const { data: cart } = useShoppingCart();
+    const { data: cart, refetch: refetchCart } = useShoppingCart();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
     const [checkoutStep, setCheckoutStep] =
         useState<ShoppingCartCheckoutStep>('cart');
     const showTransientHub = useShoppingCartTransientHub(isOpen);
+
+    useEffect(() => {
+        if (isOpen) {
+            void refetchCart();
+        }
+    }, [isOpen, refetchCart]);
 
     if (!cart?.items.length && !showTransientHub && !isOpen) {
         return null;

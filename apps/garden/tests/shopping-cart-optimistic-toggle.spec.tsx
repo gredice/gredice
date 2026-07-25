@@ -9,6 +9,53 @@ import {
     ShoppingCartPlantSortStory,
 } from './ShoppingCartOptimisticToggleStory';
 
+const shoppingCartServerItem = {
+    id: 1,
+    cartId: 1,
+    entityId: 'operation-1',
+    entityTypeName: 'operation',
+    gardenId: null,
+    raisedBedId: null,
+    positionIndex: null,
+    additionalData: null,
+    amount: 1,
+    currency: 'eur',
+    status: 'new',
+    isDeleted: false,
+    createdAt: '2026-05-21T00:00:00.000Z',
+    updatedAt: '2026-05-21T00:00:00.000Z',
+    shopData: {
+        name: 'Zalijevanje',
+        description: 'Mock operation.',
+        image: '',
+        price: 2.5,
+    },
+    entityData: {
+        id: 1,
+        entityType: { id: 10, name: 'operation', label: 'Radnje' },
+        slug: 'mock-watering',
+        information: {
+            name: 'watering',
+            label: 'Zalijevanje',
+            shortDescription: 'Mock operation.',
+        },
+    },
+};
+
+function createShoppingCartServerData(
+    items: (typeof shoppingCartServerItem)[] = [shoppingCartServerItem],
+) {
+    return {
+        allowPurchase: true,
+        hasDeliverableItems: false,
+        id: 1,
+        items,
+        notes: [],
+        total: items.reduce((total, item) => total + item.shopData.price, 0),
+        totalSunflowers: 0,
+    };
+}
+
 async function getPresenceAnimation(locator: Locator) {
     return locator.evaluate((node) => {
         const style = window.getComputedStyle(node);
@@ -468,6 +515,19 @@ test.describe('shopping cart item presence', () => {
         mount,
         page,
     }) => {
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(createShoppingCartServerData()),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
         await mount(<ShoppingCartHudItemsPresenceStory />);
 
         const cartTrigger = page.getByTitle('Košara');
@@ -515,6 +575,82 @@ test.describe('shopping cart item presence', () => {
 
         await expect(cartDialog).toHaveCount(0);
         await expect(cartTrigger).toHaveCount(0);
+    });
+
+    test('refreshes the shopping cart when the production modal opens', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify(createShoppingCartServerData([])),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText('1');
+        expect(shoppingCartGetCount).toBe(0);
+
+        await page.getByTitle('Košara').click();
+
+        await expect.poll(() => shoppingCartGetCount).toBe(1);
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText(
+            'empty',
+        );
+        await expect(
+            page.getByRole('dialog', { name: 'Košara' }),
+        ).toContainText('Košara je prazna');
+    });
+
+    test('keeps cached cart items visible when the modal refresh fails', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify({ error: 'Temporary failure' }),
+                contentType: 'application/json',
+                status: 500,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await page.getByTitle('Košara').click();
+
+        await expect.poll(() => shoppingCartGetCount).toBe(1);
+        await expect(
+            page.getByText('Greška prilikom učitavanja košare'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-item-id="1"]'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-summary]'),
+        ).toContainText('2.50 €');
+        await expect(
+            page.getByRole('button', { name: 'Očisti košaru' }),
+        ).toBeEnabled();
+        await expect(page.getByRole('button', { name: 'Plati' })).toBeEnabled();
     });
 
     test('reuses an exiting row when an optimistic removal rolls back', async ({
