@@ -170,6 +170,7 @@ function RaisedBedAiOperationChip({
     return (
         <OperationScheduleModal
             gardenId={gardenId}
+            initialScheduledDate={target.scheduledDate}
             operation={operation}
             onConfirm={async (scheduledDate) => {
                 await setShoppingCartItem.mutateAsync({
