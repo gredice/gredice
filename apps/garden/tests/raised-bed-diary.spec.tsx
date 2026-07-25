@@ -387,7 +387,8 @@ test('saved AI operation scheduling failures stay recoverable', async ({
     const scheduleDialog = page.getByRole('dialog', {
         name: 'Zakaži radnju: Malčiranje gredice',
     });
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(2);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {
