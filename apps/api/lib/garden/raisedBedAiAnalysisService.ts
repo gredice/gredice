@@ -470,6 +470,71 @@ type AnalysisParams = {
     referenceDate?: Date | string | null;
 };
 
+type AnalysisOperationEntity = {
+    id: string;
+    slug?: string;
+    attributes?: {
+        application?: string | null;
+        internal?: boolean | null;
+    };
+    information?: { label?: string; name?: string };
+};
+
+export function buildAvailableOperationsContext(
+    operations: AnalysisOperationEntity[],
+    raisedBedId: number,
+) {
+    return operations
+        .filter((operation) => operation.attributes?.internal !== true)
+        .map((operation) => {
+            const application = operation.attributes?.application ?? null;
+            const isRaisedBedOperation =
+                application === 'raisedBedFull' ||
+                application === 'raisedBed1m';
+            const isPlantFieldOperation = application === 'plant';
+            const publicOperationUrl = operation.slug
+                ? `https://www.gredice.com/radnje/${operation.slug}`
+                : null;
+
+            return {
+                id: operation.id,
+                name:
+                    operation.information?.label ??
+                    operation.information?.name ??
+                    operation.id,
+                slug: operation.slug ?? null,
+                application,
+                raisedBedOperationUrl:
+                    isRaisedBedOperation && publicOperationUrl
+                        ? `${publicOperationUrl}#raisedBedId=${raisedBedId}&scheduledDate={scheduledDate}`
+                        : null,
+                plantFieldOperationUrlTemplate:
+                    isPlantFieldOperation && publicOperationUrl
+                        ? `${publicOperationUrl}#raisedBedId=${raisedBedId}&positionIndex={positionIndex}&scheduledDate={scheduledDate}`
+                        : null,
+            };
+        });
+}
+
+export function getOperationSchedulingDateOptions(now = new Date()) {
+    const localNow = tz(WEATHER_CONTEXT_TIME_ZONE)(now);
+
+    return Array.from({ length: 3 }, (_, index) =>
+        formatLocalDateKey(
+            new TZDate(
+                localNow.getFullYear(),
+                localNow.getMonth(),
+                localNow.getDate() + index + 1,
+                0,
+                0,
+                0,
+                0,
+                WEATHER_CONTEXT_TIME_ZONE,
+            ),
+        ),
+    );
+}
+
 async function buildAnalysisPrompt({
     accountId,
     gardenId,
@@ -488,12 +553,7 @@ async function buildAnalysisPrompt({
                 information?: { name?: string };
             }>('plantSort'),
             getOperations(accountId, gardenId, raisedBed.id),
-            getEntitiesFormatted<{
-                id: string;
-                slug?: string;
-                attributes?: { application?: string | null };
-                information?: { label?: string; name?: string };
-            }>('operation'),
+            getEntitiesFormatted<AnalysisOperationEntity>('operation'),
             buildWeatherContext(referenceDate),
         ],
     );
@@ -510,33 +570,10 @@ async function buildAnalysisPrompt({
             entity.information?.label ?? entity.information?.name ?? entity.id,
         ]),
     );
-    const availableOperations = operationsData.map((entity) => {
-        const application = entity.attributes?.application ?? null;
-        const isRaisedBedOperation =
-            application === 'raisedBedFull' || application === 'raisedBed1m';
-        const isPlantFieldOperation = application === 'plant';
-        const publicOperationUrl = entity.slug
-            ? `https://www.gredice.com/radnje/${entity.slug}`
-            : null;
-
-        return {
-            id: entity.id,
-            name:
-                entity.information?.label ??
-                entity.information?.name ??
-                entity.id,
-            slug: entity.slug ?? null,
-            application,
-            raisedBedOperationUrl:
-                isRaisedBedOperation && publicOperationUrl
-                    ? `${publicOperationUrl}#raisedBedId=${raisedBed.id}`
-                    : null,
-            plantFieldOperationUrlTemplate:
-                isPlantFieldOperation && publicOperationUrl
-                    ? `${publicOperationUrl}#raisedBedId=${raisedBed.id}&positionIndex={positionIndex}`
-                    : null,
-        };
-    });
+    const availableOperations = buildAvailableOperationsContext(
+        operationsData,
+        raisedBed.id,
+    );
 
     const plantedFields = raisedBed.fields
         .filter((field) => field.active && field.plantSortId)
@@ -592,7 +629,8 @@ async function buildAnalysisPrompt({
         raisedBed.fields.length || RAISED_BED_FIELDS_PER_BLOCK * 2;
     const rows = Math.max(1, Math.ceil(totalFields / RAISED_BED_COLUMNS));
     const orientation = raisedBed.orientation ?? 'vertical';
-    const nowIso = new Date().toISOString();
+    const analysisNow = new Date();
+    const nowIso = analysisNow.toISOString();
     const referenceDateIso = referenceDate.toISOString();
     const imageDateSource = inputReferenceDateValue
         ? 'requestReferenceDate'
@@ -601,10 +639,13 @@ async function buildAnalysisPrompt({
         typeof positionIndex === 'number'
             ? toPositionLabel(positionIndex)
             : null;
+    const operationSchedulingDates =
+        getOperationSchedulingDateOptions(analysisNow);
 
     return {
         system: [
             'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
+            'Internu radnju nikada ne predlaži kao korisnikov sljedeći korak. Radnju smiješ preporučiti samo ako postoji u `availableOperations`; `executedOperations` je isključivo povijesni kontekst i nije izvor novih preporuka.',
             'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `positionIndex`, `positionLabel`, `needsRemoval`, `removalRecommendation`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
             'Kad trebaš identificirati lokaciju, napiši samo "polje N" koristeći korisniku vidljivu oznaku polja. Nikada ne dodaj 0-bazirani indeks polja u tekst odgovora.',
             'Statuse, bool vrijednosti i interne oznake pretvori u normalan hrvatski tekst, npr. "označeno za uklanjanje", "spremno za berbu" ili "u stakleniku".',
@@ -619,8 +660,9 @@ async function buildAnalysisPrompt({
             '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
             '- `pastPlantFields` navodi samo nazive biljaka koje su ranije bile u polju; ne sadrži povijest događaja ni datume.',
             '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
-            '- Kada preporučiš konkretnu radnju, napiši je kao markdown poveznicu s apsolutnim URL-om iz konteksta, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId})`.',
+            '- Kada preporučiš konkretnu radnju, napiši je kao markdown poveznicu s apsolutnim URL-om iz konteksta, npr. `[Naziv radnje](https://www.gredice.com/radnje/{slug}#raisedBedId={raisedBedId}&scheduledDate=YYYY-MM-DD)`.',
             '- Za radnje nad pojedinom biljkom/poljem koristi točan URL predložak iz konteksta. Interna vrijednost polja smije postojati samo u URL-u markdown poveznice, nikada u vidljivom tekstu.',
+            '- Svakoj preporučenoj radnji odaberi konkretan datum iz `operationSchedulingDates` koji odgovara tekstu preporuke. U URL-u zamijeni `{scheduledDate}` tim datumom u formatu `YYYY-MM-DD`; ne ostavljaj placeholder i ne koristi drugi datum.',
             '- Koristi samo apsolutne `https://www.gredice.com/radnje/...` URL predloške iz `availableOperations`; ne izmišljaj slugove, ne piši sirovi URL bez markdown oznake i ne dodaj link ako za radnju ne postoji odgovarajući URL predložak.',
         ].join('\n'),
         messages: [
@@ -669,6 +711,7 @@ async function buildAnalysisPrompt({
                                         pastPlantFields.length > 0
                                             ? pastPlantFields
                                             : undefined,
+                                    operationSchedulingDates,
                                     availableOperations,
                                     executedOperations,
                                 },

@@ -75,6 +75,19 @@ function todayUtcIso() {
     ).toISOString();
 }
 
+function futureLocalDateInput(daysFromToday: number) {
+    const today = new Date();
+    const date = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + daysFromToday,
+    );
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 const diaryEntries: DiaryEntry[] = [
     {
         id: 1,
@@ -94,8 +107,7 @@ const diaryEntries: DiaryEntry[] = [
     {
         id: 2,
         name: 'AI analysis with operation links',
-        description:
-            '## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5) for the stressed plant.',
+        description: `## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101&scheduledDate=${futureLocalDateInput(2)}) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5&scheduledDate=${futureLocalDateInput(3)}) for the stressed plant.`,
         status: null,
         timestamp: new Date('2026-05-12T12:00:00.000Z'),
         imageUrls,
