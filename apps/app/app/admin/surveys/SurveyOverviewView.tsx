@@ -143,6 +143,15 @@ export function SurveyOverviewView({
                                 >
                                     Pregledaj odgovore
                                 </Button>
+                                <Button
+                                    href={KnownPages.SurveyStatistics(
+                                        survey.id,
+                                    )}
+                                    variant="outlined"
+                                    fullWidth
+                                >
+                                    Pregledaj statistiku
+                                </Button>
                             </Stack>
                         </CardContent>
                     </Card>

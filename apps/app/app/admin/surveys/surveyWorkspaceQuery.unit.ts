@@ -121,6 +121,13 @@ describe('survey admin navigation', () => {
             ),
             'Odgovori ankete',
         );
+        assert.equal(
+            resolveAdminRouteTitle(
+                KnownPages.SurveyStatistics('survey-id'),
+                undefined,
+            ),
+            'Statistika ankete',
+        );
     });
 
     it('offers surveys as a configurable dashboard quick action', () => {
@@ -140,6 +147,12 @@ describe('survey admin navigation', () => {
         assert.ok(communicationAdminPageHrefs.includes(KnownPages.Surveys));
         assert.equal(
             includesSelectedPath(KnownPages.SurveyResponses('survey-id'), [
+                ...communicationAdminPageHrefs,
+            ]),
+            true,
+        );
+        assert.equal(
+            includesSelectedPath(KnownPages.SurveyStatistics('survey-id'), [
                 ...communicationAdminPageHrefs,
             ]),
             true,

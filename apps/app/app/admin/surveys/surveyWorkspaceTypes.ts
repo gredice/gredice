@@ -4,4 +4,5 @@ export type SurveyWorkspaceView =
     | 'index'
     | 'overview'
     | 'responses'
+    | 'statistics'
     | 'sends';

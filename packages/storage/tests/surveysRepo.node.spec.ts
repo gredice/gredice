@@ -1128,6 +1128,14 @@ test('survey response explorer filters, paginates, and protects version ownershi
     assert.equal(clampedPageSize?.pageSize, 100);
     assert.equal(clampedPageSize?.pageCount, 1);
 
+    const responsePageWithoutAggregates = await getSurveyResponsePageAdmin({
+        surveyId,
+        page: 1,
+        pageSize: 1,
+        includeNumericAggregates: false,
+    });
+    assert.deepEqual(responsePageWithoutAggregates?.numericAggregates, []);
+
     assert.deepEqual(
         allResults.numericAggregates.map((aggregate) => ({
             versionId: aggregate.versionId,

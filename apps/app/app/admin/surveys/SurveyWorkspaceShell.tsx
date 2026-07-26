@@ -24,6 +24,7 @@ const sectionLabels = {
     overview: 'Pregled',
     responses: 'Odgovori',
     sends: 'Slanja',
+    statistics: 'Statistika',
 } as const;
 
 function surveyWorkspaceTabs(surveyId: string) {
@@ -48,6 +49,11 @@ function surveyWorkspaceTabs(surveyId: string) {
             label: sectionLabels.responses,
             view: 'responses',
         },
+        {
+            href: KnownPages.SurveyStatistics(surveyId),
+            label: sectionLabels.statistics,
+            view: 'statistics',
+        },
     ] satisfies Array<{
         href: string;
         label: string;
@@ -67,7 +73,12 @@ function documentTitle(
         return survey.title;
     }
 
-    if (view === 'design' || view === 'responses' || view === 'sends') {
+    if (
+        view === 'design' ||
+        view === 'responses' ||
+        view === 'sends' ||
+        view === 'statistics'
+    ) {
         return `${survey.title} · ${sectionLabels[view]}`;
     }
 
@@ -99,7 +110,12 @@ function workspaceBreadcrumbs(
         label: survey.title,
     });
 
-    if (view === 'design' || view === 'responses' || view === 'sends') {
+    if (
+        view === 'design' ||
+        view === 'responses' ||
+        view === 'sends' ||
+        view === 'statistics'
+    ) {
         items.push({ label: sectionLabels[view] });
     }
 

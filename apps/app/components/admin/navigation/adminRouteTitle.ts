@@ -199,7 +199,7 @@ function resolveSurveyTitle(pathname: string) {
     }
 
     const surveyMatch = pathname.match(
-        /^\/admin\/surveys\/([^/]+)(?:\/(design|responses|sends))?$/,
+        /^\/admin\/surveys\/([^/]+)(?:\/(design|responses|sends|statistics))?$/,
     );
     const surveyId = surveyMatch?.[1];
     if (!surveyId) {
@@ -210,6 +210,7 @@ function resolveSurveyTitle(pathname: string) {
     if (section === 'design') return 'Dizajn ankete';
     if (section === 'responses') return 'Odgovori ankete';
     if (section === 'sends') return 'Slanja ankete';
+    if (section === 'statistics') return 'Statistika ankete';
     return `Anketa ${decodePathSegment(surveyId)}`;
 }
 
