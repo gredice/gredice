@@ -670,6 +670,9 @@ export function HoverOutlineEffect() {
         horizontal: 0,
         mask: 0,
     });
+    const publishProfileMetadata =
+        typeof window !== 'undefined' &&
+        window.location.pathname.startsWith('/debug/profile/game');
     const wasActiveRef = useRef(false);
 
     useEffect(() => () => maskMaterial.dispose(), [maskMaterial]);
@@ -748,16 +751,18 @@ export function HoverOutlineEffect() {
             }
 
             if (preparedGroups.length === 0) {
-                updateGameProfileMetadata({
-                    hoverOutlineActiveTargetCount: 0,
-                    hoverOutlineCropClippedCount: 0,
-                    hoverOutlineCropPixelCount: 0,
-                    hoverOutlineDrawingBufferPixelCount:
-                        drawingBufferSize.x * drawingBufferSize.y,
-                    hoverOutlineRoiRatio: 0,
-                    hoverOutlineStyleGroupCount: 0,
-                    hoverOutlineThickness: 0,
-                });
+                if (publishProfileMetadata) {
+                    updateGameProfileMetadata({
+                        hoverOutlineActiveTargetCount: 0,
+                        hoverOutlineCropClippedCount: 0,
+                        hoverOutlineCropPixelCount: 0,
+                        hoverOutlineDrawingBufferPixelCount:
+                            drawingBufferSize.x * drawingBufferSize.y,
+                        hoverOutlineRoiRatio: 0,
+                        hoverOutlineStyleGroupCount: 0,
+                        hoverOutlineThickness: 0,
+                    });
+                }
                 return;
             }
 
@@ -873,28 +878,35 @@ export function HoverOutlineEffect() {
             const drawingBufferPixelCount =
                 drawingBufferSize.x * drawingBufferSize.y;
             const allocatedPixelCount = allocationWidth * allocationHeight;
-            updateGameProfileMetadata({
-                hoverOutlineActiveTargetCount: renderedTargetCount,
-                hoverOutlineAllocatedHeight: allocationHeight,
-                hoverOutlineAllocatedPixelCount: allocatedPixelCount,
-                hoverOutlineAllocatedWidth: allocationWidth,
-                hoverOutlineAllocationEstimatedBytes: allocatedPixelCount * 2,
-                hoverOutlineCompositePassCount: passCountsRef.current.composite,
-                hoverOutlineCropClippedCount: cropClippedCount,
-                hoverOutlineCropPixelCount: cropPixelCount,
-                hoverOutlineDrawingBufferPixelCount: drawingBufferPixelCount,
-                hoverOutlineFormat: 'r8',
-                hoverOutlineHorizontalPassCount:
-                    passCountsRef.current.horizontal,
-                hoverOutlineKernelSampleCount: kernelSampleCount,
-                hoverOutlineMaskPassCount: passCountsRef.current.mask,
-                hoverOutlineMaxKernelSampleCount: maxOutlineThickness * 4 + 3,
-                hoverOutlinePipeline: 'cropped-bounded-separable-r8',
-                hoverOutlineRenderTargetCount: 2,
-                hoverOutlineRoiRatio: cropPixelCount / drawingBufferPixelCount,
-                hoverOutlineStyleGroupCount: preparedGroups.length,
-                hoverOutlineThickness: maximumThickness,
-            });
+            if (publishProfileMetadata) {
+                updateGameProfileMetadata({
+                    hoverOutlineActiveTargetCount: renderedTargetCount,
+                    hoverOutlineAllocatedHeight: allocationHeight,
+                    hoverOutlineAllocatedPixelCount: allocatedPixelCount,
+                    hoverOutlineAllocatedWidth: allocationWidth,
+                    hoverOutlineAllocationEstimatedBytes:
+                        allocatedPixelCount * 2,
+                    hoverOutlineCompositePassCount:
+                        passCountsRef.current.composite,
+                    hoverOutlineCropClippedCount: cropClippedCount,
+                    hoverOutlineCropPixelCount: cropPixelCount,
+                    hoverOutlineDrawingBufferPixelCount:
+                        drawingBufferPixelCount,
+                    hoverOutlineFormat: 'r8',
+                    hoverOutlineHorizontalPassCount:
+                        passCountsRef.current.horizontal,
+                    hoverOutlineKernelSampleCount: kernelSampleCount,
+                    hoverOutlineMaskPassCount: passCountsRef.current.mask,
+                    hoverOutlineMaxKernelSampleCount:
+                        maxOutlineThickness * 4 + 3,
+                    hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+                    hoverOutlineRenderTargetCount: 2,
+                    hoverOutlineRoiRatio:
+                        cropPixelCount / drawingBufferPixelCount,
+                    hoverOutlineStyleGroupCount: preparedGroups.length,
+                    hoverOutlineThickness: maximumThickness,
+                });
+            }
         };
 
         return addAfterEffect(renderOutline);
@@ -909,6 +921,7 @@ export function HoverOutlineEffect() {
         outlineMaterial,
         outlineMesh,
         outlineScene,
+        publishProfileMetadata,
         renderTargets,
         registry,
         scene,
@@ -920,7 +933,7 @@ export function HoverOutlineEffect() {
         if (wasActiveRef.current || hasActiveTargets) {
             invalidate();
         }
-        if (!hasActiveTargets) {
+        if (!hasActiveTargets && publishProfileMetadata) {
             updateGameProfileMetadata({
                 hoverOutlineActiveTargetCount: 0,
                 hoverOutlineCropClippedCount: 0,
@@ -931,7 +944,7 @@ export function HoverOutlineEffect() {
             });
         }
         wasActiveRef.current = hasActiveTargets;
-    }, [hasActiveTargets, invalidate, registryVersion]);
+    }, [hasActiveTargets, invalidate, publishProfileMetadata, registryVersion]);
 
     return null;
 }
