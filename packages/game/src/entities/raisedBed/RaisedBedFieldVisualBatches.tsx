@@ -37,10 +37,7 @@ import {
     type OperationVisualDefinitionInput,
     resolveOperationVisualRewards,
 } from '../../operationVisualRewards';
-import {
-    readGameProfileMetadata,
-    updateGameProfileMetadata,
-} from '../../scene/gameProfileMetadata';
+import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { useGameState } from '../../useGameState';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -638,6 +635,23 @@ function createFieldVisualGeometries() {
     };
 }
 
+const fieldVisualProfileUploads = new Map<
+    string,
+    {
+        instanceCount: number;
+        token: symbol;
+    }
+>();
+
+function publishFieldVisualProfileUploads() {
+    updateGameProfileMetadata({
+        raisedBedFieldVisualMatrixUploadCount: fieldVisualProfileUploads.size,
+        raisedBedFieldVisualUploadedInstanceCount: Array.from(
+            fieldVisualProfileUploads.values(),
+        ).reduce((total, upload) => total + upload.instanceCount, 0),
+    });
+}
+
 const FieldVisualInstancedMesh = memo(function FieldVisualInstancedMesh({
     batch,
     castShadow = false,
@@ -657,6 +671,7 @@ const FieldVisualInstancedMesh = memo(function FieldVisualInstancedMesh({
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
     const scratch = useMemo(() => new Object3D(), []);
+    const profileUploadToken = useRef(Symbol(batch.key)).current;
 
     useLayoutEffect(() => {
         const mesh = meshRef.current;
@@ -681,16 +696,24 @@ const FieldVisualInstancedMesh = memo(function FieldVisualInstancedMesh({
             typeof window !== 'undefined' &&
             window.location.pathname.startsWith('/debug/profile/game')
         ) {
-            const metadata = readGameProfileMetadata();
-            updateGameProfileMetadata({
-                raisedBedFieldVisualMatrixUploadCount:
-                    (metadata?.raisedBedFieldVisualMatrixUploadCount ?? 0) + 1,
-                raisedBedFieldVisualUploadedInstanceCount:
-                    (metadata?.raisedBedFieldVisualUploadedInstanceCount ?? 0) +
-                    batch.instances.length,
+            fieldVisualProfileUploads.set(batch.key, {
+                instanceCount: batch.instances.length,
+                token: profileUploadToken,
             });
+            publishFieldVisualProfileUploads();
         }
-    }, [batch, scratch]);
+
+        return () => {
+            if (
+                fieldVisualProfileUploads.get(batch.key)?.token !==
+                profileUploadToken
+            ) {
+                return;
+            }
+            fieldVisualProfileUploads.delete(batch.key);
+            publishFieldVisualProfileUploads();
+        };
+    }, [batch, profileUploadToken, scratch]);
 
     return (
         <instancedMesh
