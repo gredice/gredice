@@ -5,7 +5,11 @@ import {
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
 import { ProfileGameScene } from './ProfileGameScene';
-import { resolveGameProfileFlags } from './profileFlags';
+import {
+    highTargetOperationVisualHighlightTarget,
+    resolveGameProfileFlags,
+    resolveGameProfileOperationVisuals,
+} from './profileFlags';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
@@ -258,6 +262,9 @@ export default async function GameProfilePage({
     );
     const outlineProfile = firstValue(params.outline) === '1';
     const placementProfile = firstValue(params.placement) === '1';
+    const operationVisuals =
+        mockGardenProfile === 'high-target' &&
+        resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.blockGeometryMerging),
         firstValue(params.adaptiveHigh),
@@ -289,6 +296,22 @@ export default async function GameProfilePage({
             }
             data-game-profile-outline={outlineProfile ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
+            data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
+            data-game-profile-operation-visual-highlight-raised-bed-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.raisedBedId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-field-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.fieldId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-position-index={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.positionIndex
+                    : undefined
+            }
         >
             <ProfileGameScene
                 key={mode}
@@ -303,7 +326,8 @@ export default async function GameProfilePage({
                     adaptiveHigh ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
-                    placementProfile
+                    placementProfile ||
+                    operationVisuals
                 }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}

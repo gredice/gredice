@@ -20,6 +20,13 @@ const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
+const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
+const highTargetOperationVisualExpectedGeneratedPlantInstanceCount = 286;
+const highTargetOperationVisualExpectedFieldInstanceCount = 396;
+const highTargetOperationVisualExpectedMulchInstanceCount = 54;
+const highTargetOperationVisualHighlightObjectCount = 2;
+const highTargetOperationVisualLegacyObjectCount = 452;
+const highTargetOperationVisualRenderedObjectLimit = 64;
 const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
 
 const coreScenarios = [
@@ -204,6 +211,18 @@ const highTargetScenarios = [
     {
         name: 'game-high-target-snow-desktop',
         path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+];
+
+const highTargetOperationVisualScenarios = [
+    {
+        name: 'game-high-target-operation-visuals-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&operationVisuals=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -590,6 +609,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     'high-target': highTargetScenarios,
+    'high-target-operation-visuals': highTargetOperationVisualScenarios,
     outline: outlineScenarios,
     placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
@@ -878,7 +898,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -906,6 +926,7 @@ function allScenarios() {
         ...denseScenarios,
         ...denseMobileScenarios,
         ...highTargetScenarios,
+        ...highTargetOperationVisualScenarios,
         ...outlineScenarios,
         ...placementScenarios,
         ...plantCloseupScenarios,
@@ -939,7 +960,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -971,6 +992,7 @@ function getScenarioRequest(path) {
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
+        operationVisuals: url.searchParams.get('operationVisuals') ?? '0',
         outline: url.searchParams.get('outline') ?? '0',
         placement: url.searchParams.get('placement') ?? '0',
         quality: url.searchParams.get('quality') ?? 'auto',
@@ -2172,7 +2194,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const request = getScenarioRequest(scenario.path);
     if (request.gardenProfile === 'high-target') {
         await page.waitForFunction(
-            ({ expectedFieldCount, expectedInstanceCount }) => {
+            ({
+                expectedFieldCount,
+                expectedFieldVisualInstanceCount,
+                expectedInstanceCount,
+                expectedMulchInstanceCount,
+                operationVisuals,
+            }) => {
                 const profile = globalThis.__grediceGameProfile;
                 return Boolean(
                     profile?.qualityTier === 'high' &&
@@ -2185,13 +2213,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         profile.generatedPlantVisibleFieldCount ===
                             expectedFieldCount &&
                         profile.generatedPlantVisibleInstanceCount ===
-                            expectedInstanceCount,
+                            expectedInstanceCount &&
+                        (!operationVisuals ||
+                            (profile.raisedBedFieldVisualInstanceCount ===
+                                expectedFieldVisualInstanceCount &&
+                                profile.raisedBedMulchInstanceCount ===
+                                    expectedMulchInstanceCount)),
                 );
             },
             {
-                expectedFieldCount: highTargetExpectedGeneratedPlantFieldCount,
+                expectedFieldCount:
+                    request.operationVisuals === '1'
+                        ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
+                        : highTargetExpectedGeneratedPlantFieldCount,
+                expectedFieldVisualInstanceCount:
+                    highTargetOperationVisualExpectedFieldInstanceCount,
                 expectedInstanceCount:
-                    highTargetExpectedGeneratedPlantInstanceCount,
+                    request.operationVisuals === '1'
+                        ? highTargetOperationVisualExpectedGeneratedPlantInstanceCount
+                        : highTargetExpectedGeneratedPlantInstanceCount,
+                expectedMulchInstanceCount:
+                    highTargetOperationVisualExpectedMulchInstanceCount,
+                operationVisuals: request.operationVisuals === '1',
             },
             { timeout: 60000 },
         );
@@ -2247,6 +2290,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
             hud: element.dataset.gameProfileHud ?? null,
             mode: element.dataset.gameProfileMode ?? null,
+            operationVisuals:
+                element.dataset.gameProfileOperationVisuals ?? null,
             outline: element.dataset.gameProfileOutline ?? null,
             quality: element.dataset.gameProfileQuality ?? null,
         };
@@ -2320,6 +2365,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 isMobile: scenario.isMobile,
                 mode: profileMetadata?.mode ?? request.mode,
                 motion: 'raised-bed-closeup',
+                operationVisuals:
+                    profileMetadata?.operationVisuals ??
+                    request.operationVisuals,
                 outline: profileMetadata?.outline ?? request.outline,
                 outlineProfile: 'none',
                 quality: profileMetadata?.quality ?? request.quality,
@@ -3162,6 +3210,21 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantVisibleInstanceCount === 'number'
                     ? metadata.generatedPlantVisibleInstanceCount
                     : null,
+            operationVisualHighlightProfileDispatched: booleanOrNull(
+                metadata.operationVisualHighlightProfileDispatched,
+            ),
+            operationVisualHighlightProfileTargetFieldId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetFieldId,
+            ),
+            operationVisualHighlightProfileTargetGardenId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetGardenId,
+            ),
+            operationVisualHighlightProfileTargetPositionIndex: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetPositionIndex,
+            ),
+            operationVisualHighlightProfileTargetRaisedBedId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetRaisedBedId,
+            ),
             instancedInteractionControllerCount:
                 typeof metadata.instancedInteractionControllerCount === 'number'
                     ? metadata.instancedInteractionControllerCount
@@ -3260,6 +3323,36 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.rainWetOverlayMaterialConsumerCount === 'number'
                     ? metadata.rainWetOverlayMaterialConsumerCount
                     : null,
+            raisedBedFieldVisualBatchCount: numberOrNull(
+                metadata.raisedBedFieldVisualBatchCount,
+            ),
+            raisedBedFieldVisualChunkCount: numberOrNull(
+                metadata.raisedBedFieldVisualChunkCount,
+            ),
+            raisedBedFieldVisualInstanceCount: numberOrNull(
+                metadata.raisedBedFieldVisualInstanceCount,
+            ),
+            raisedBedFieldVisualMatrixUploadCount: numberOrNull(
+                metadata.raisedBedFieldVisualMatrixUploadCount,
+            ),
+            raisedBedFieldVisualObjectCount: numberOrNull(
+                metadata.raisedBedFieldVisualObjectCount,
+            ),
+            raisedBedFieldVisualUploadedInstanceCount: numberOrNull(
+                metadata.raisedBedFieldVisualUploadedInstanceCount,
+            ),
+            raisedBedMulchBatchCount: numberOrNull(
+                metadata.raisedBedMulchBatchCount,
+            ),
+            raisedBedMulchGroupCount: numberOrNull(
+                metadata.raisedBedMulchGroupCount,
+            ),
+            raisedBedMulchInstanceCount: numberOrNull(
+                metadata.raisedBedMulchInstanceCount,
+            ),
+            raisedBedMulchObjectCount: numberOrNull(
+                metadata.raisedBedMulchObjectCount,
+            ),
             raisedBedMulchOverlayCount:
                 typeof metadata.raisedBedMulchOverlayCount === 'number'
                     ? metadata.raisedBedMulchOverlayCount
@@ -3350,6 +3443,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
         motion: scenario.motion ?? scenario.interaction ?? 'none',
+        operationVisuals:
+            profileMetadata?.operationVisuals ?? request.operationVisuals,
         outline: profileMetadata?.outline ?? request.outline,
         outlineProfile:
             outlineProfileRequest === null ? 'none' : 'connected-raised-bed',
@@ -3606,6 +3701,20 @@ function evaluateHighTargetAcceptance({
     const adaptiveHighDprCap = adaptiveHighRequested
         ? (sample.adaptiveHighDprCapAtEnd ?? runtime?.adaptiveHighDprCap)
         : null;
+    const operationVisualsRequested = requested.operationVisuals === '1';
+    const expectedGeneratedPlantFieldCount = operationVisualsRequested
+        ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
+        : highTargetExpectedGeneratedPlantFieldCount;
+    const expectedGeneratedPlantInstanceCount = operationVisualsRequested
+        ? highTargetOperationVisualExpectedGeneratedPlantInstanceCount
+        : highTargetExpectedGeneratedPlantInstanceCount;
+    const operationVisualRenderedObjectCount =
+        typeof runtime?.raisedBedFieldVisualObjectCount === 'number' &&
+        typeof runtime?.raisedBedMulchObjectCount === 'number'
+            ? runtime.raisedBedFieldVisualObjectCount +
+              runtime.raisedBedMulchObjectCount +
+              highTargetOperationVisualHighlightObjectCount
+            : null;
     const effectiveDpr = adaptiveHighRequested
         ? (sample.effectiveDprAtEnd ?? adaptiveHighDprCap)
         : sample.reportedDpr;
@@ -3675,12 +3784,12 @@ function evaluateHighTargetAcceptance({
         exact(
             'highTargetGeneratedPlantFields',
             runtime?.generatedPlantFieldCount,
-            highTargetExpectedGeneratedPlantFieldCount,
+            expectedGeneratedPlantFieldCount,
         ),
         exact(
             'highTargetExpectedGeneratedPlantInstances',
             runtime?.generatedPlantExpectedInstanceCount,
-            highTargetExpectedGeneratedPlantInstanceCount,
+            expectedGeneratedPlantInstanceCount,
         ),
         exact(
             'highTargetGeneratedPlantInstances',
@@ -3690,12 +3799,12 @@ function evaluateHighTargetAcceptance({
         exact(
             'highTargetVisiblePlantFields',
             runtime?.generatedPlantVisibleFieldCount,
-            highTargetExpectedGeneratedPlantFieldCount,
+            expectedGeneratedPlantFieldCount,
         ),
         exact(
             'highTargetVisiblePlantInstances',
             runtime?.generatedPlantVisibleInstanceCount,
-            highTargetExpectedGeneratedPlantInstanceCount,
+            expectedGeneratedPlantInstanceCount,
         ),
         exact(
             'highTargetActorGroundingShadowCount',
@@ -3748,6 +3857,105 @@ function evaluateHighTargetAcceptance({
         exact('highTargetApiErrors', apiErrors.length, 0),
         exact('highTargetPageErrors', pageErrors.length, 0),
     ];
+    if (operationVisualsRequested) {
+        checks.push(
+            exact(
+                'highTargetOperationVisualHighlightDispatched',
+                runtime?.operationVisualHighlightProfileDispatched,
+                true,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightGarden',
+                runtime?.operationVisualHighlightProfileTargetGardenId,
+                99_996,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightRaisedBed',
+                runtime?.operationVisualHighlightProfileTargetRaisedBedId,
+                2,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightField',
+                runtime?.operationVisualHighlightProfileTargetFieldId,
+                201,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightPosition',
+                runtime?.operationVisualHighlightProfileTargetPositionIndex,
+                0,
+            ),
+            range(
+                'highTargetOperationVisualFieldBatches',
+                runtime?.raisedBedFieldVisualBatchCount,
+                1,
+                16,
+            ),
+            range(
+                'highTargetOperationVisualFieldChunks',
+                runtime?.raisedBedFieldVisualChunkCount,
+                1,
+                3,
+            ),
+            exact(
+                'highTargetOperationVisualFieldInstances',
+                runtime?.raisedBedFieldVisualInstanceCount,
+                highTargetOperationVisualExpectedFieldInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualFieldObjects',
+                runtime?.raisedBedFieldVisualObjectCount,
+                1,
+                highTargetOperationVisualRenderedObjectLimit,
+            ),
+            exact(
+                'highTargetOperationVisualFieldMatrixUploads',
+                runtime?.raisedBedFieldVisualMatrixUploadCount,
+                runtime?.raisedBedFieldVisualBatchCount,
+            ),
+            exact(
+                'highTargetOperationVisualFieldUploadedInstances',
+                runtime?.raisedBedFieldVisualUploadedInstanceCount,
+                highTargetOperationVisualExpectedFieldInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualMulchBatches',
+                runtime?.raisedBedMulchBatchCount,
+                1,
+                32,
+            ),
+            range(
+                'highTargetOperationVisualMulchGroups',
+                runtime?.raisedBedMulchGroupCount,
+                1,
+                16,
+            ),
+            exact(
+                'highTargetOperationVisualMulchInstances',
+                runtime?.raisedBedMulchInstanceCount,
+                highTargetOperationVisualExpectedMulchInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualMulchObjects',
+                runtime?.raisedBedMulchObjectCount,
+                1,
+                highTargetOperationVisualRenderedObjectLimit,
+            ),
+            exact(
+                'highTargetOperationVisualMulchOverlays',
+                runtime?.raisedBedMulchOverlayCount,
+                highTargetOperationVisualExpectedMulchInstanceCount,
+            ),
+            {
+                ...range(
+                    'highTargetOperationVisualRenderedObjects',
+                    operationVisualRenderedObjectCount,
+                    4,
+                    highTargetOperationVisualRenderedObjectLimit,
+                ),
+                legacy: highTargetOperationVisualLegacyObjectCount,
+            },
+        );
+    }
     if (adaptiveHighRequested) {
         checks.push(
             exact(
@@ -5208,8 +5416,21 @@ function buildMarkdown(report) {
             scenario.sample.rainUnmountMs === null
                 ? 'n/a'
                 : `${scenario.sample.rainUnmountMs} ms`;
+        const operationVisualObjectCount =
+            scenario.requested.operationVisuals === '1' &&
+            typeof scenario.runtime?.raisedBedFieldVisualObjectCount ===
+                'number' &&
+            typeof scenario.runtime?.raisedBedMulchObjectCount === 'number'
+                ? scenario.runtime.raisedBedFieldVisualObjectCount +
+                  scenario.runtime.raisedBedMulchObjectCount +
+                  highTargetOperationVisualHighlightObjectCount
+                : null;
+        const operationVisualObjectDetail =
+            operationVisualObjectCount === null
+                ? ''
+                : `; operation objects ${operationVisualObjectCount}/${highTargetOperationVisualLegacyObjectCount} legacy`;
         const detailCounts = scenario.runtime
-            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
+            ? `field visuals ${scenario.runtime.raisedBedFieldVisualInstanceCount ?? 0} instances/${scenario.runtime.raisedBedFieldVisualObjectCount ?? 0} objects/${scenario.runtime.raisedBedFieldVisualBatchCount ?? 0} batches/${scenario.runtime.raisedBedFieldVisualChunkCount ?? 0} chunks, uploads ${scenario.runtime.raisedBedFieldVisualMatrixUploadCount ?? 0}/${scenario.runtime.raisedBedFieldVisualUploadedInstanceCount ?? 0}; mulch ${scenario.runtime.raisedBedMulchInstanceCount ?? scenario.runtime.raisedBedMulchOverlayCount ?? 0} instances/${scenario.runtime.raisedBedMulchObjectCount ?? 0} objects/${scenario.runtime.raisedBedMulchBatchCount ?? 0} batches/${scenario.runtime.raisedBedMulchGroupCount ?? 0} groups${operationVisualObjectDetail}; snow/decor ${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0}, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(

@@ -24,15 +24,19 @@ import { resolvePlantLeafGeometryDetail } from '../../generators/plant/lib/plant
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import {
     getHighTargetMockGardenPlantInstanceCount,
+    getHighTargetOperationVisualFixtureCounts,
     highTargetMockPlantRenderAttributesBySortId,
+    resolveHighTargetOperationVisualsEnabled,
 } from '../../hooks/mockGardenProfileFixtures';
 import {
     useCurrentGarden,
     useIsSandboxGarden,
 } from '../../hooks/useCurrentGarden';
+import { useOperations } from '../../hooks/useOperations';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import type { GameQualityProfile } from '../../scene/gameQuality';
 import {
@@ -61,6 +65,7 @@ import {
     type RaisedBedGeneratedPlantBatchInstance,
 } from './RaisedBedGeneratedPlantBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
+import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
     blockId: string;
@@ -398,6 +403,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
 }) {
     const { includePendingCartPlants, renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: operations } = useOperations();
     const isMock = useGameState((state) => state.isMock);
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const { data: sortData } = useAllSorts(!isMock);
@@ -421,6 +427,22 @@ export function RaisedBedGeneratedPlantFieldBatches({
             return fields;
         }
 
+        const visualRewardsByRaisedBedId = new Map(
+            currentGarden.raisedBeds.map((raisedBed) => [
+                raisedBed.id,
+                resolveOperationVisualRewards({
+                    appliedOperations: (raisedBed.appliedOperations ?? []).map(
+                        (operation) => ({
+                            ...operation,
+                            raisedBedId: raisedBed.id,
+                        }),
+                    ),
+                    operationItems: [],
+                    operations: operations ?? [],
+                }),
+            ]),
+        );
+
         for (const block of blocks) {
             const raisedBed = findRaisedBedByBlockId(
                 currentGarden,
@@ -435,6 +457,15 @@ export function RaisedBedGeneratedPlantFieldBatches({
             const blockIndex = blockIds.indexOf(block.blockId);
             const blockOffset =
                 Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+            const protectiveCoverPositionSet = new Set(
+                resolveRaisedBedProtectiveCoverPositions({
+                    blockOffset,
+                    fields: raisedBed.fields,
+                    raisedBedId: raisedBed.id,
+                    visualRewards:
+                        visualRewardsByRaisedBedId.get(raisedBed.id) ?? [],
+                }),
+            );
             const cartItems = cart?.items.filter(
                 (item) =>
                     item.gardenId === currentGarden.id &&
@@ -475,6 +506,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
             ];
 
             for (const field of displayedFields) {
+                if (
+                    protectiveCoverPositionSet.has(
+                        field.positionIndex - blockOffset,
+                    )
+                ) {
+                    continue;
+                }
                 const plantSortId = field.plantSortId;
                 const sort = sortData?.find((item) => item.id === plantSortId);
                 const highTargetAttributes =
@@ -592,6 +630,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
         isMock,
         isSandbox,
         mockGardenProfile,
+        operations,
         renderDetails,
         sortData,
     ]);
@@ -673,6 +712,11 @@ export function RaisedBedGeneratedPlantFieldBatches({
 
         return Array.from(batchMap.values());
     }, [focusActive, generatedFields, lods, selectedRaisedBedId]);
+    const highTargetOperationVisuals =
+        mockGardenProfile === 'high-target' &&
+        resolveHighTargetOperationVisualsEnabled(
+            typeof window === 'undefined' ? undefined : window.location.search,
+        );
     useEffect(() => {
         updateGameProfileMetadata({
             generatedPlantBatchCount: batches.length,
@@ -683,7 +727,10 @@ export function RaisedBedGeneratedPlantFieldBatches({
             ),
             generatedPlantExpectedInstanceCount:
                 mockGardenProfile === 'high-target'
-                    ? getHighTargetMockGardenPlantInstanceCount()
+                    ? highTargetOperationVisuals
+                        ? getHighTargetOperationVisualFixtureCounts()
+                              .generatedPlantInstanceCount
+                        : getHighTargetMockGardenPlantInstanceCount()
                     : undefined,
             generatedPlantVisibleFieldCount: generatedFields.filter(
                 (field) => lods.get(field.fieldKey)?.visible === true,
@@ -696,7 +743,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 0,
             ),
         });
-    }, [batches.length, generatedFields, lods, mockGardenProfile]);
+    }, [
+        batches.length,
+        generatedFields,
+        highTargetOperationVisuals,
+        lods,
+        mockGardenProfile,
+    ]);
 
     if (!renderDetails || batches.length === 0) {
         return null;

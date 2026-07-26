@@ -1,7 +1,7 @@
 'use client';
 
 import { invalidate } from '@react-three/fiber';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { meshChunkSize } from '../entities/chunkedMeshGeometry';
 import { instancedBlockNames } from '../entities/EntityInstances';
@@ -14,7 +14,10 @@ import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
-import { updateGameProfileMetadata } from './gameProfileMetadata';
+import {
+    type GameProfileMetadata,
+    updateGameProfileMetadata,
+} from './gameProfileMetadata';
 import {
     failGeneratedPlantProfile,
     recordGeneratedPlantProfileCamera,
@@ -30,8 +33,14 @@ export const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
 
 type ProfileGarden = {
+    id?: number;
     raisedBeds: Array<{
         blockId?: string | null;
+        fields?: Array<{
+            active: boolean;
+            id?: number | null;
+            positionIndex: number;
+        }>;
         id: number;
         name?: string | null;
     }>;
@@ -73,6 +82,112 @@ export type GameProfileOutlineCommand =
           action: 'show';
           raisedBedId: number;
       };
+
+export type GameProfileOperationVisualHighlightRequest = {
+    fieldId: number;
+    positionIndex: number;
+    raisedBedId: number;
+};
+
+type OperationVisualHighlightProfileMetadataUpdate = Pick<
+    GameProfileMetadata,
+    | 'operationVisualHighlightProfileDispatched'
+    | 'operationVisualHighlightProfileTargetFieldId'
+    | 'operationVisualHighlightProfileTargetGardenId'
+    | 'operationVisualHighlightProfileTargetPositionIndex'
+    | 'operationVisualHighlightProfileTargetRaisedBedId'
+>;
+
+function readProfileInteger(value: string | null | undefined, minimum: number) {
+    if (typeof value !== 'string' || value.length === 0) {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= minimum ? parsed : null;
+}
+
+export function readGameProfileOperationVisualHighlightRequest({
+    enabled,
+    fieldId,
+    positionIndex,
+    raisedBedId,
+}: {
+    enabled?: string | null;
+    fieldId?: string | null;
+    positionIndex?: string | null;
+    raisedBedId?: string | null;
+}): GameProfileOperationVisualHighlightRequest | null {
+    if (enabled !== '1') {
+        return null;
+    }
+
+    const parsedFieldId = readProfileInteger(fieldId, 1);
+    const parsedPositionIndex = readProfileInteger(positionIndex, 0);
+    const parsedRaisedBedId = readProfileInteger(raisedBedId, 1);
+    if (
+        parsedFieldId === null ||
+        parsedPositionIndex === null ||
+        parsedRaisedBedId === null
+    ) {
+        return null;
+    }
+
+    return {
+        fieldId: parsedFieldId,
+        positionIndex: parsedPositionIndex,
+        raisedBedId: parsedRaisedBedId,
+    };
+}
+
+export function resolveGameProfileOperationVisualHighlight(
+    garden: ProfileGarden | null | undefined,
+    request: GameProfileOperationVisualHighlightRequest | null,
+) {
+    const gardenId = garden?.id;
+    if (
+        !garden ||
+        !request ||
+        typeof gardenId !== 'number' ||
+        !Number.isInteger(gardenId) ||
+        gardenId <= 0
+    ) {
+        return null;
+    }
+
+    const raisedBed = garden.raisedBeds.find(
+        (candidate) => candidate.id === request.raisedBedId,
+    );
+    if (!raisedBed) {
+        return null;
+    }
+
+    const field = raisedBed.fields?.find(
+        (candidate) =>
+            candidate.active &&
+            candidate.id === request.fieldId &&
+            candidate.positionIndex === request.positionIndex,
+    );
+    if (!field || typeof field.id !== 'number') {
+        return null;
+    }
+
+    const raisedBedName = raisedBed?.name?.trim() || null;
+    return {
+        fieldId: field.id,
+        gardenId,
+        label: `Polje ${field.positionIndex + 1}`,
+        message: 'Profil operacijskih vizuala',
+        positionIndex: field.positionIndex,
+        raisedBedId: raisedBed.id,
+        raisedBedName,
+    };
+}
+
+function updateOperationVisualHighlightProfileMetadata(
+    metadata: OperationVisualHighlightProfileMetadataUpdate,
+) {
+    updateGameProfileMetadata(metadata);
+}
 
 export function readGameProfileCloseupCommand(
     value: unknown,
@@ -231,6 +346,7 @@ export function resolveGameProfileRaisedBedTarget(
 
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
+    const operationVisualHighlightDispatchKeyRef = useRef<string | null>(null);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
         (current) => current.closeupCameraActive,
@@ -244,6 +360,12 @@ export function GameProfileController() {
     );
     const cancelBlockPlacementDropAnimation = useGameState(
         (current) => current.cancelBlockPlacementDropAnimation,
+    );
+    const setGardenVisitSummaryHighlight = useGameState(
+        (current) => current.setGardenVisitSummaryHighlight,
+    );
+    const clearGardenVisitSummaryHighlight = useGameState(
+        (current) => current.clearGardenVisitSummaryHighlight,
     );
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
@@ -269,6 +391,98 @@ export function GameProfileController() {
             recordGeneratedPlantProfileCamera({ zoom: snapshot.zoom });
         });
     }, [gameCamera]);
+
+    useEffect(() => {
+        const profileElement = document.querySelector(
+            '[data-game-profile-operation-visuals]',
+        );
+        if (!(profileElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const request = readGameProfileOperationVisualHighlightRequest({
+            enabled: profileElement.getAttribute(
+                'data-game-profile-operation-visuals',
+            ),
+            fieldId: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-field-id',
+            ),
+            positionIndex: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-position-index',
+            ),
+            raisedBedId: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-raised-bed-id',
+            ),
+        });
+        if (
+            !request ||
+            !garden ||
+            typeof garden.id !== 'number' ||
+            !Number.isInteger(garden.id) ||
+            garden.id <= 0
+        ) {
+            return;
+        }
+
+        const highlight = resolveGameProfileOperationVisualHighlight(
+            garden,
+            request,
+        );
+        if (!highlight) {
+            if (operationVisualHighlightDispatchKeyRef.current !== null) {
+                clearGardenVisitSummaryHighlight();
+                operationVisualHighlightDispatchKeyRef.current = null;
+            }
+            updateOperationVisualHighlightProfileMetadata({
+                operationVisualHighlightProfileDispatched: false,
+                operationVisualHighlightProfileTargetFieldId: request.fieldId,
+                operationVisualHighlightProfileTargetGardenId: garden.id,
+                operationVisualHighlightProfileTargetPositionIndex:
+                    request.positionIndex,
+                operationVisualHighlightProfileTargetRaisedBedId:
+                    request.raisedBedId,
+            });
+            return;
+        }
+
+        const dispatchKey = [
+            highlight.gardenId,
+            highlight.raisedBedId,
+            highlight.fieldId,
+            highlight.positionIndex,
+        ].join(':');
+        if (operationVisualHighlightDispatchKeyRef.current === dispatchKey) {
+            return;
+        }
+
+        setGardenVisitSummaryHighlight(highlight);
+        operationVisualHighlightDispatchKeyRef.current = dispatchKey;
+        invalidate(undefined, 2);
+        updateOperationVisualHighlightProfileMetadata({
+            operationVisualHighlightProfileDispatched: true,
+            operationVisualHighlightProfileTargetFieldId: highlight.fieldId,
+            operationVisualHighlightProfileTargetGardenId: highlight.gardenId,
+            operationVisualHighlightProfileTargetPositionIndex:
+                highlight.positionIndex,
+            operationVisualHighlightProfileTargetRaisedBedId:
+                highlight.raisedBedId,
+        });
+    }, [
+        clearGardenVisitSummaryHighlight,
+        garden,
+        setGardenVisitSummaryHighlight,
+    ]);
+
+    useEffect(
+        () => () => {
+            if (operationVisualHighlightDispatchKeyRef.current === null) {
+                return;
+            }
+            clearGardenVisitSummaryHighlight();
+            operationVisualHighlightDispatchKeyRef.current = null;
+        },
+        [clearGardenVisitSummaryHighlight],
+    );
 
     useEffect(() => {
         const handleCommand = (event: Event) => {

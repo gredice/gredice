@@ -3,8 +3,10 @@ import test from 'node:test';
 import type { Block } from '../types/Block';
 import {
     readGameProfileCloseupCommand,
+    readGameProfileOperationVisualHighlightRequest,
     readGameProfileOutlineCommand,
     readGameProfilePlacementCommand,
+    resolveGameProfileOperationVisualHighlight,
     resolveGameProfilePlacementBlockIds,
     resolveGameProfileRaisedBedTarget,
 } from './GameProfileController';
@@ -87,6 +89,124 @@ test('profile target resolution uses the raised bed primary block', () => {
             },
             3,
         ),
+        null,
+    );
+});
+
+test('profile operation visual highlight request requires the exact opt-in and target', () => {
+    assert.deepEqual(
+        readGameProfileOperationVisualHighlightRequest({
+            enabled: '1',
+            fieldId: '201',
+            positionIndex: '0',
+            raisedBedId: '2',
+        }),
+        {
+            fieldId: 201,
+            positionIndex: 0,
+            raisedBedId: 2,
+        },
+    );
+    assert.equal(
+        readGameProfileOperationVisualHighlightRequest({
+            enabled: '0',
+            fieldId: '201',
+            positionIndex: '0',
+            raisedBedId: '2',
+        }),
+        null,
+    );
+    assert.equal(
+        readGameProfileOperationVisualHighlightRequest({
+            enabled: '1',
+            fieldId: '201-extra',
+            positionIndex: '0',
+            raisedBedId: '2',
+        }),
+        null,
+    );
+    assert.equal(
+        readGameProfileOperationVisualHighlightRequest({
+            enabled: '1',
+            fieldId: '201',
+            positionIndex: '-1',
+            raisedBedId: '2',
+        }),
+        null,
+    );
+});
+
+test('profile operation visual highlight resolves one exact active field after garden readiness', () => {
+    const request = {
+        fieldId: 201,
+        positionIndex: 0,
+        raisedBedId: 2,
+    };
+    const garden = {
+        id: 99996,
+        raisedBeds: [
+            {
+                fields: [
+                    {
+                        active: true,
+                        id: 201,
+                        positionIndex: 0,
+                    },
+                    {
+                        active: true,
+                        id: 202,
+                        positionIndex: 1,
+                    },
+                ],
+                id: 2,
+                name: '  Profile raised bed 2  ',
+            },
+        ],
+        stacks: [],
+    };
+
+    assert.deepEqual(
+        resolveGameProfileOperationVisualHighlight(garden, request),
+        {
+            fieldId: 201,
+            gardenId: 99996,
+            label: 'Polje 1',
+            message: 'Profil operacijskih vizuala',
+            positionIndex: 0,
+            raisedBedId: 2,
+            raisedBedName: 'Profile raised bed 2',
+        },
+    );
+    assert.equal(
+        resolveGameProfileOperationVisualHighlight(garden, {
+            ...request,
+            positionIndex: 1,
+        }),
+        null,
+    );
+    assert.equal(
+        resolveGameProfileOperationVisualHighlight(
+            {
+                ...garden,
+                raisedBeds: [
+                    {
+                        ...garden.raisedBeds[0],
+                        fields: [
+                            {
+                                active: false,
+                                id: 201,
+                                positionIndex: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            request,
+        ),
+        null,
+    );
+    assert.equal(
+        resolveGameProfileOperationVisualHighlight(null, request),
         null,
     );
 });
