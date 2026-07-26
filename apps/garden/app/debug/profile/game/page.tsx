@@ -256,6 +256,7 @@ export default async function GameProfilePage({
     const closeupRaisedBedId = resolvePositiveInteger(
         firstValue(params.closeupRaisedBedId),
     );
+    const outlineProfile = firstValue(params.outline) === '1';
     const placementProfile = firstValue(params.placement) === '1';
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.blockGeometryMerging),
@@ -286,6 +287,7 @@ export default async function GameProfilePage({
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
+            data-game-profile-outline={outlineProfile ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
         >
             <ProfileGameScene
@@ -300,6 +302,7 @@ export default async function GameProfilePage({
                 enableGameProfileController={
                     adaptiveHigh ||
                     closeupRaisedBedId !== null ||
+                    outlineProfile ||
                     placementProfile
                 }
                 mockGarden

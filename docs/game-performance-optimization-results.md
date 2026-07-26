@@ -662,6 +662,52 @@ samples each time. The software renderer's absolute p95 and long-task budgets
 remain red because of its documented `ReadPixels` stalls; draw, triangle,
 workload-preservation, and controller-lifecycle gates pass independently.
 
+### Cropped separable hover outlines
+
+Issue `#4324` replaces the full-frame RGBA8 hover-outline dilation pass with a
+projected region of interest and a bounded separable squared-distance
+transform. Targets sharing color, opacity, priority, and thickness still form
+one union before expansion, so connected raised-bed blocks retain one
+continuous outside-only outline. The camera and scene are unchanged; only the
+render-target viewport and scissor are offset to the crop.
+
+The deterministic DPR-2 component fixture covers two touching same-style
+targets plus a higher-priority translucent target. Its optimized WebGL output
+matches the checked-in legacy 720x480 drawing-buffer golden with zero
+differing physical pixels. Exact CPU equivalence tests also cover isolated,
+diagonal, edge, connected-union, interior-hole, fractional-thickness, and
+deterministic sparse masks through the supported 12px radius.
+
+The three-repeat High target profile selected raised bed `2`, resolved its
+primary block as `profile-raised-bed:2:0`, and rendered both connected blocks
+as exactly two targets in one style group. All budget and acceptance checks
+passed:
+
+- the active crop was `127,500 / 3,686,400` physical pixels, or `3.46%` of the
+  DPR-2 drawing buffer;
+- the two bucketed R8 work targets allocated `448x320` pixels each, or
+  `286,720 bytes` total, compared with `14,745,600 bytes` for the former
+  full-frame RGBA8 target (`98.1%` less working allocation);
+- default 5px outlines perform at most 23 texture reads per output pixel
+  instead of the legacy circular kernel's 82 (`72.0%` fewer), while the
+  supported 12px maximum is bounded to 51 reads instead of 625 fixed
+  two-dimensional loop candidates;
+- mask, horizontal-distance, and composite pass counts stayed exactly aligned
+  in every run, with zero clipped target groups; and
+- hardware-backed ANGLE/Metal GPU timer p95 was `18.54 ms` median
+  (`18.34-18.56 ms`) on the Apple M4 Pro. This is an optimized absolute
+  measurement, not a before/after GPU-time claim.
+
+The profiler now selects ANGLE/Metal on macOS and rejects the hardware run
+unless Chromium reports an ANGLE/Metal renderer plus supported, complete,
+non-disjoint GPU timer samples. Chromium's default headless OpenGL path omitted
+the raised-bed/detail instance subtree while still reporting plant readiness,
+so it was not valid target-scene evidence. An explicit default-backend override
+keeps portable and software runs available without treating them as the
+hardware proof. The profile additionally gates the exact raised-bed/block
+command acknowledgment, active target count, style grouping, crop/allocation
+contract, R8 pipeline, kernel bound, and pass alignment.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.

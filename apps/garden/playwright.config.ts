@@ -18,6 +18,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
 ];
+const webglTestPattern = /(garden-preview-capture|hover-outline)\.spec\.tsx/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -63,12 +64,14 @@ export const config: PlaywrightTestConfig = {
     projects: [
         {
             name: 'chromium',
-            testIgnore: /garden-preview-capture\.spec\.tsx/,
+            testIgnore: webglTestPattern,
             use: { ...devices['Desktop Chrome'] },
         },
         {
             name: 'chromium-webgl',
-            testMatch: /garden-preview-capture\.spec\.tsx/,
+            testMatch: webglTestPattern,
+            snapshotPathTemplate:
+                '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',
             use: {
                 ...devices['Desktop Chrome'],
                 launchOptions: {

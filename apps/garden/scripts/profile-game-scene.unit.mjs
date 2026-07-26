@@ -14,8 +14,12 @@ import {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    isOutlineProfileTelemetryReady,
     mergeProfileSampleDrain,
     normalizeRenderWork,
+    parseArgs,
+    resolveChromiumGraphicsArgs,
+    resolveChromiumGraphicsBackend,
     resolveScenarios,
 } from './profile-game-scene.mjs';
 
@@ -166,6 +170,100 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
     assert.equal(getScenarioRequest(scenarios[3].path).placement, '1');
 });
 
+test('outline scenario deterministically targets the connected raised bed after warmup', () => {
+    const scenarios = resolveScenarios('outline');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    assert.equal(
+        scenario.name,
+        'game-high-target-connected-raised-bed-outline-desktop',
+    );
+    assert.deepEqual(scenario.outlineProfile, {
+        action: 'show',
+        raisedBedId: 2,
+    });
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.repeat, 3);
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+});
+
+test('outline telemetry readiness requires the connected target and one style group', () => {
+    assert.equal(isOutlineProfileTelemetryReady(null), false);
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 1,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineProfileTargetRaisedBedId: 2,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        true,
+    );
+});
+
+test('graphics backend auto-selects macOS Metal with an explicit portable override', () => {
+    assert.equal(resolveChromiumGraphicsBackend('darwin'), 'angle-metal');
+    assert.equal(resolveChromiumGraphicsBackend('linux'), 'default');
+    assert.equal(
+        resolveChromiumGraphicsBackend('darwin', 'default'),
+        'default',
+    );
+    assert.equal(
+        resolveChromiumGraphicsBackend('darwin', 'angle-metal'),
+        'angle-metal',
+    );
+    assert.deepEqual(resolveChromiumGraphicsArgs('darwin', 'auto'), [
+        '--use-gl=angle',
+        '--use-angle=metal',
+    ]);
+    assert.deepEqual(resolveChromiumGraphicsArgs('darwin', 'default'), []);
+    assert.deepEqual(resolveChromiumGraphicsArgs('linux', 'auto'), []);
+    assert.deepEqual(resolveChromiumGraphicsArgs('win32', 'default'), []);
+    assert.throws(
+        () => resolveChromiumGraphicsBackend('linux', 'angle-metal'),
+        /requires macOS/,
+    );
+});
+
+test('graphics backend CLI overrides the portable auto default explicitly', () => {
+    assert.equal(
+        parseArgs(['--graphics-backend', 'default']).graphicsBackend,
+        'default',
+    );
+    assert.equal(
+        parseArgs(['--graphics-backend', 'angle-metal']).graphicsBackend,
+        'angle-metal',
+    );
+    assert.throws(
+        () => parseArgs(['--graphics-backend', 'unsupported']),
+        /Graphics backend must be one of/,
+    );
+});
+
 test('adaptive High scenario set pairs fixed and adaptive motion and preserves runtime features', () => {
     const scenarios = resolveScenarios('adaptive-high');
 
@@ -242,6 +340,7 @@ test('profile request parses the High target fixture contract', () => {
         gardenProfile: 'high-target',
         hud: '0',
         mode: 'snow',
+        outline: '0',
         placement: '0',
         quality: 'high',
     });
@@ -831,6 +930,288 @@ test('high target acceptance proves the intended workload rendered', () => {
         )?.pass,
         false,
     );
+});
+
+test('outline acceptance gates deterministic dispatch and telemetry when available', () => {
+    const validOutlineRuntime = {
+        hoverOutlineActiveTargetCount: 2,
+        hoverOutlineAllocatedHeight: 256,
+        hoverOutlineAllocatedPixelCount: 131_072,
+        hoverOutlineAllocatedWidth: 512,
+        hoverOutlineAllocationEstimatedBytes: 262_144,
+        hoverOutlineCompositePassCount: 2,
+        hoverOutlineCropClippedCount: 0,
+        hoverOutlineCropPixelCount: 100_000,
+        hoverOutlineDrawingBufferPixelCount: 3_686_400,
+        hoverOutlineFormat: 'r8',
+        hoverOutlineHorizontalPassCount: 2,
+        hoverOutlineKernelSampleCount: 23,
+        hoverOutlineMaskPassCount: 2,
+        hoverOutlineMaxKernelSampleCount: 51,
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+        hoverOutlineProfileCommandAction: 'show',
+        hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+        hoverOutlineProfileTargetRaisedBedId: 2,
+        hoverOutlineRenderTargetCount: 2,
+        hoverOutlineRoiRatio: 0.04,
+        hoverOutlineStyleGroupCount: 1,
+        hoverOutlineThickness: 5,
+    };
+    const createInput = ({
+        environment,
+        requested = {},
+        runtime = {},
+        sample = {},
+    } = {}) => ({
+        apiErrors: [],
+        environment,
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
+            ...requested,
+        },
+        runtime,
+        sample: {
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: false,
+            ...sample,
+        },
+    });
+    const withoutTelemetry = evaluateHighTargetAcceptance(createInput());
+    assert.equal(
+        withoutTelemetry.checks.find(
+            (check) => check.name === 'highTargetOutlineProfileDispatched',
+        )?.pass,
+        true,
+    );
+    assert.equal(
+        withoutTelemetry.checks.some(
+            (check) => check.name === 'highTargetOutlineActiveTargets',
+        ),
+        false,
+    );
+
+    const withTelemetry = evaluateHighTargetAcceptance(
+        createInput({
+            runtime: validOutlineRuntime,
+            sample: {
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    assert.equal(
+        withTelemetry.checks
+            .filter((check) => check.name.startsWith('highTargetOutline'))
+            .every((check) => check.pass),
+        true,
+    );
+
+    const metalEvidence = evaluateHighTargetAcceptance(
+        createInput({
+            environment: {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            requested: {
+                graphicsBackend: 'angle-metal',
+            },
+            runtime: validOutlineRuntime,
+            sample: {
+                gpu: {
+                    elapsedP95Ms: 12.5,
+                    sampleCount: 45,
+                    supported: true,
+                    valid: true,
+                },
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    const metalCheckNames = [
+        'highTargetOutlineAngleMetalRenderer',
+        'highTargetOutlineGpuTimerSupported',
+        'highTargetOutlineGpuTimerValid',
+        'highTargetOutlineGpuTimerSamples',
+        'highTargetOutlineGpuElapsedP95Ms',
+    ];
+    assert.equal(
+        metalEvidence.checks
+            .filter((check) => metalCheckNames.includes(check.name))
+            .every((check) => check.pass),
+        true,
+    );
+
+    for (const [environment, gpu, checkName] of [
+        [
+            { renderer: 'ANGLE (Apple, OpenGL 4.1)' },
+            {
+                elapsedP95Ms: 12.5,
+                sampleCount: 45,
+                supported: true,
+                valid: true,
+            },
+            'highTargetOutlineAngleMetalRenderer',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: null,
+                sampleCount: 0,
+                supported: false,
+                valid: false,
+            },
+            'highTargetOutlineGpuTimerSupported',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: null,
+                sampleCount: 0,
+                supported: true,
+                valid: false,
+            },
+            'highTargetOutlineGpuTimerValid',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: Number.POSITIVE_INFINITY,
+                sampleCount: 45,
+                supported: true,
+                valid: true,
+            },
+            'highTargetOutlineGpuElapsedP95Ms',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                environment,
+                requested: {
+                    graphicsBackend: 'angle-metal',
+                },
+                runtime: validOutlineRuntime,
+                sample: {
+                    gpu,
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject missing hardware evidence`,
+        );
+    }
+
+    const portableOutline = evaluateHighTargetAcceptance(
+        createInput({
+            environment: { renderer: 'SwiftShader' },
+            requested: {
+                graphicsBackend: 'default',
+            },
+            runtime: validOutlineRuntime,
+            sample: {
+                gpu: {
+                    elapsedP95Ms: null,
+                    sampleCount: 0,
+                    supported: false,
+                    valid: false,
+                },
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    assert.equal(
+        portableOutline.checks.some((check) =>
+            metalCheckNames.includes(check.name),
+        ),
+        false,
+    );
+
+    for (const [field, invalidValue, checkName] of [
+        ['hoverOutlineActiveTargetCount', 1, 'highTargetOutlineActiveTargets'],
+        ['hoverOutlineStyleGroupCount', 2, 'highTargetOutlineStyleGroups'],
+        [
+            'hoverOutlineProfileCommandAction',
+            'hide',
+            'highTargetOutlineProfileCommandAction',
+        ],
+        [
+            'hoverOutlineProfileTargetBlockId',
+            'profile-raised-bed:3:0',
+            'highTargetOutlineProfileTargetBlockId',
+        ],
+        [
+            'hoverOutlineProfileTargetRaisedBedId',
+            3,
+            'highTargetOutlineProfileTargetRaisedBedId',
+        ],
+        ['hoverOutlinePipeline', 'legacy', 'highTargetOutlinePipeline'],
+        ['hoverOutlineFormat', 'rgba8', 'highTargetOutlineFormat'],
+        ['hoverOutlineRenderTargetCount', 3, 'highTargetOutlineRenderTargets'],
+        [
+            'hoverOutlineDrawingBufferPixelCount',
+            1,
+            'highTargetOutlineDrawingBufferPixels',
+        ],
+        ['hoverOutlineCropPixelCount', 0, 'highTargetOutlineCropPixels'],
+        ['hoverOutlineAllocatedWidth', 0, 'highTargetOutlineAllocatedWidth'],
+        ['hoverOutlineAllocatedHeight', 0, 'highTargetOutlineAllocatedHeight'],
+        ['hoverOutlineRoiRatio', 0.26, 'highTargetOutlineRoiRatio'],
+        ['hoverOutlineCropClippedCount', 1, 'highTargetOutlineCropClipping'],
+        ['hoverOutlineThickness', 4, 'highTargetOutlineThickness'],
+        ['hoverOutlineKernelSampleCount', 21, 'highTargetOutlineKernelSamples'],
+        [
+            'hoverOutlineMaxKernelSampleCount',
+            49,
+            'highTargetOutlineMaximumKernelSamples',
+        ],
+        ['hoverOutlineMaskPassCount', 0, 'highTargetOutlineMaskPasses'],
+        [
+            'hoverOutlineHorizontalPassCount',
+            1,
+            'highTargetOutlineHorizontalPassAlignment',
+        ],
+        [
+            'hoverOutlineCompositePassCount',
+            1,
+            'highTargetOutlineCompositePassAlignment',
+        ],
+        [
+            'hoverOutlineAllocationEstimatedBytes',
+            1,
+            'highTargetOutlineAllocationBytes',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                runtime: {
+                    ...validOutlineRuntime,
+                    [field]: invalidValue,
+                },
+                sample: {
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${invalidValue}`,
+        );
+    }
 });
 
 test('adaptive High acceptance allows bounded effective DPR during interaction', () => {

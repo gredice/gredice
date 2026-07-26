@@ -52,6 +52,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.61.1",
         "@playwright/test": "1.61.1",
+        "@react-three/fiber": "9.6.1",
         "@tailwindcss/postcss": "4.3.2",
         "@tailwindcss/typography": "0.5.20",
         "@tanstack/react-query": "5.101.2",

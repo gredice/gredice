@@ -14,10 +14,13 @@ const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+const gameProfileOutlineCommandEventName =
+    'gredice:game-profile-outline-command';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
+const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
 
 const coreScenarios = [
     {
@@ -205,6 +208,22 @@ const highTargetScenarios = [
         dpr: 2,
         isMobile: false,
         budget: 'gameHighTarget',
+        repeat: 3,
+    },
+];
+
+const outlineScenarios = [
+    {
+        name: 'game-high-target-connected-raised-bed-outline-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&outline=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        outlineProfile: {
+            action: 'show',
+            raisedBedId: 2,
+        },
         repeat: 3,
     },
 ];
@@ -571,6 +590,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     'high-target': highTargetScenarios,
+    outline: outlineScenarios,
     placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
     rewards: rewardScenarios,
@@ -720,6 +740,7 @@ function parseArgs(argv) {
             process.env.GAME_PROFILE_CLOSEUP_TIMEOUT_MS ?? 30000,
         ),
         failOnBudget: process.env.GAME_PROFILE_FAIL_ON_BUDGET === '1',
+        graphicsBackend: process.env.GAME_PROFILE_GRAPHICS_BACKEND ?? 'auto',
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
@@ -759,6 +780,10 @@ function parseArgs(argv) {
                 break;
             case '--fail-on-budget':
                 options.failOnBudget = true;
+                break;
+            case '--graphics-backend':
+                options.graphicsBackend = next;
+                index += 1;
                 break;
             case '--help':
                 options.help = true;
@@ -806,6 +831,11 @@ function parseArgs(argv) {
     if (!Number.isFinite(options.sampleMs) || options.sampleMs <= 0) {
         throw new Error('Sample duration must be a positive number.');
     }
+    if (!chromiumGraphicsBackends.includes(options.graphicsBackend)) {
+        throw new Error(
+            `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
+        );
+    }
     if (
         !Number.isFinite(options.closeupTimeoutMs) ||
         options.closeupTimeoutMs <= 0
@@ -843,11 +873,12 @@ function printHelp(options) {
             `  --closeup-timeout-ms <ms> Maximum wait for close-up detail. Current: ${options.closeupTimeoutMs}`,
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
+            `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -856,6 +887,7 @@ function printHelp(options) {
             'Environment aliases:',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
+            '  GAME_PROFILE_GRAPHICS_BACKEND,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -874,6 +906,7 @@ function allScenarios() {
         ...denseScenarios,
         ...denseMobileScenarios,
         ...highTargetScenarios,
+        ...outlineScenarios,
         ...placementScenarios,
         ...plantCloseupScenarios,
         ...autoQualityScenarios,
@@ -906,7 +939,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -938,6 +971,7 @@ function getScenarioRequest(path) {
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
+        outline: url.searchParams.get('outline') ?? '0',
         placement: url.searchParams.get('placement') ?? '0',
         quality: url.searchParams.get('quality') ?? 'auto',
     };
@@ -1503,6 +1537,98 @@ async function startAdaptiveHighProfileControl(page) {
         { timeout: 10_000 },
     );
     return dispatched;
+}
+
+function isOutlineProfileTelemetryReady(
+    profile,
+    {
+        activeTargetCount = 2,
+        styleGroupCount = 1,
+        targetBlockId = 'profile-raised-bed:2:0',
+        targetRaisedBedId = 2,
+    } = {},
+) {
+    return (
+        profile?.hoverOutlineActiveTargetCount === activeTargetCount &&
+        profile.hoverOutlineStyleGroupCount === styleGroupCount &&
+        profile.hoverOutlineProfileTargetBlockId === targetBlockId &&
+        profile.hoverOutlineProfileTargetRaisedBedId === targetRaisedBedId
+    );
+}
+
+async function dispatchOutlineProfileCommand(page, command) {
+    const dispatched = await page.evaluate(
+        ({ detail, eventName }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail,
+                }),
+            ),
+        {
+            detail: command,
+            eventName: gameProfileOutlineCommandEventName,
+        },
+    );
+    const expected = {
+        activeTargetCount: 2,
+        styleGroupCount: 1,
+        targetBlockId: `profile-raised-bed:${command.raisedBedId.toString()}:0`,
+        targetRaisedBedId: command.raisedBedId,
+    };
+    await page.waitForFunction(
+        ({
+            activeTargetCount,
+            styleGroupCount,
+            targetBlockId,
+            targetRaisedBedId,
+        }) => {
+            const profile = globalThis.__grediceGameProfile;
+            return (
+                profile?.hoverOutlineActiveTargetCount === activeTargetCount &&
+                profile.hoverOutlineStyleGroupCount === styleGroupCount &&
+                profile.hoverOutlineProfileTargetBlockId === targetBlockId &&
+                profile.hoverOutlineProfileTargetRaisedBedId ===
+                    targetRaisedBedId
+            );
+        },
+        expected,
+        { timeout: 20_000 },
+    );
+
+    return {
+        dispatched,
+        telemetryAvailable: true,
+    };
+}
+
+function resolveChromiumGraphicsBackend(
+    platform = process.platform,
+    backend = 'auto',
+) {
+    if (!chromiumGraphicsBackends.includes(backend)) {
+        throw new Error(
+            `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
+        );
+    }
+    if (backend === 'auto') {
+        return platform === 'darwin' ? 'angle-metal' : 'default';
+    }
+    if (backend === 'angle-metal' && platform !== 'darwin') {
+        throw new Error('The angle-metal graphics backend requires macOS.');
+    }
+
+    return backend;
+}
+
+function resolveChromiumGraphicsArgs(
+    platform = process.platform,
+    backend = 'auto',
+) {
+    if (resolveChromiumGraphicsBackend(platform, backend) !== 'angle-metal') {
+        return [];
+    }
+
+    return ['--use-gl=angle', '--use-angle=metal'];
 }
 
 async function runScenarioMotion(page, scenario, sampleMs) {
@@ -2082,6 +2208,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const adaptiveHighProfileControlStarted = scenario.profileControl
         ? await startAdaptiveHighProfileControl(page)
         : false;
+    const outlineProfileRequest = scenario.outlineProfile ?? null;
+    const outlineProfileState = outlineProfileRequest
+        ? await dispatchOutlineProfileCommand(page, outlineProfileRequest)
+        : {
+              dispatched: false,
+              telemetryAvailable: false,
+          };
     const profileMetadata = await page.evaluate(() => {
         const element = document.querySelector('[data-game-profile-mode]');
         if (!(element instanceof HTMLElement)) {
@@ -2114,6 +2247,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
             hud: element.dataset.gameProfileHud ?? null,
             mode: element.dataset.gameProfileMode ?? null,
+            outline: element.dataset.gameProfileOutline ?? null,
             quality: element.dataset.gameProfileQuality ?? null,
         };
     });
@@ -2186,6 +2320,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 isMobile: scenario.isMobile,
                 mode: profileMetadata?.mode ?? request.mode,
                 motion: 'raised-bed-closeup',
+                outline: profileMetadata?.outline ?? request.outline,
+                outlineProfile: 'none',
                 quality: profileMetadata?.quality ?? request.quality,
                 viewport: scenario.viewport,
                 weatherTransition: 'none',
@@ -2214,6 +2350,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 adaptiveHighProfileControlEventName,
                 adaptiveHighProfileControlRecovery,
                 adaptiveHighProfileControlStarted,
+                outlineProfileDispatched,
+                outlineProfileTelemetryAvailable,
                 placementProfileEventName,
                 placementProfileRequest,
                 sampleMs,
@@ -2652,6 +2790,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p50FrameMs: percentile(0.5),
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
+                outlineProfileDispatched,
+                outlineProfileTelemetryAvailable,
                 placementProfileDispatched,
                 placementShadowDeferredChangeCountDelta:
                     placementShadowDeferredChangeCountAtStart === null ||
@@ -2710,6 +2850,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             adaptiveHighProfileControlRecovery:
                 scenario.profileControlRecovery === true,
             adaptiveHighProfileControlStarted,
+            outlineProfileDispatched: outlineProfileState.dispatched,
+            outlineProfileTelemetryAvailable:
+                outlineProfileState.telemetryAvailable,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
             sampleMs,
@@ -2894,6 +3037,64 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationVisibleCount === 'number'
                     ? metadata.groundDecorationVisibleCount
                     : null,
+            hoverOutlineActiveTargetCount: numberOrNull(
+                metadata.hoverOutlineActiveTargetCount,
+            ),
+            hoverOutlineAllocatedHeight: numberOrNull(
+                metadata.hoverOutlineAllocatedHeight,
+            ),
+            hoverOutlineAllocatedPixelCount: numberOrNull(
+                metadata.hoverOutlineAllocatedPixelCount,
+            ),
+            hoverOutlineAllocatedWidth: numberOrNull(
+                metadata.hoverOutlineAllocatedWidth,
+            ),
+            hoverOutlineAllocationEstimatedBytes: numberOrNull(
+                metadata.hoverOutlineAllocationEstimatedBytes,
+            ),
+            hoverOutlineCompositePassCount: numberOrNull(
+                metadata.hoverOutlineCompositePassCount,
+            ),
+            hoverOutlineCropClippedCount: numberOrNull(
+                metadata.hoverOutlineCropClippedCount,
+            ),
+            hoverOutlineCropPixelCount: numberOrNull(
+                metadata.hoverOutlineCropPixelCount,
+            ),
+            hoverOutlineDrawingBufferPixelCount: numberOrNull(
+                metadata.hoverOutlineDrawingBufferPixelCount,
+            ),
+            hoverOutlineFormat: stringOrNull(metadata.hoverOutlineFormat),
+            hoverOutlineHorizontalPassCount: numberOrNull(
+                metadata.hoverOutlineHorizontalPassCount,
+            ),
+            hoverOutlineKernelSampleCount: numberOrNull(
+                metadata.hoverOutlineKernelSampleCount,
+            ),
+            hoverOutlineMaskPassCount: numberOrNull(
+                metadata.hoverOutlineMaskPassCount,
+            ),
+            hoverOutlineMaxKernelSampleCount: numberOrNull(
+                metadata.hoverOutlineMaxKernelSampleCount,
+            ),
+            hoverOutlinePipeline: stringOrNull(metadata.hoverOutlinePipeline),
+            hoverOutlineProfileCommandAction: stringOrNull(
+                metadata.hoverOutlineProfileCommandAction,
+            ),
+            hoverOutlineProfileTargetBlockId: stringOrNull(
+                metadata.hoverOutlineProfileTargetBlockId,
+            ),
+            hoverOutlineProfileTargetRaisedBedId: numberOrNull(
+                metadata.hoverOutlineProfileTargetRaisedBedId,
+            ),
+            hoverOutlineRenderTargetCount: numberOrNull(
+                metadata.hoverOutlineRenderTargetCount,
+            ),
+            hoverOutlineRoiRatio: numberOrNull(metadata.hoverOutlineRoiRatio),
+            hoverOutlineStyleGroupCount: numberOrNull(
+                metadata.hoverOutlineStyleGroupCount,
+            ),
+            hoverOutlineThickness: numberOrNull(metadata.hoverOutlineThickness),
             generatedLSystemCacheEntryCount:
                 typeof metadata.generatedLSystemCacheEntryCount === 'number'
                     ? metadata.generatedLSystemCacheEntryCount
@@ -3144,10 +3345,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
         gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
+        graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
         motion: scenario.motion ?? scenario.interaction ?? 'none',
+        outline: profileMetadata?.outline ?? request.outline,
+        outlineProfile:
+            outlineProfileRequest === null ? 'none' : 'connected-raised-bed',
+        outlineRaisedBedId: outlineProfileRequest?.raisedBedId ?? null,
         scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
@@ -3162,6 +3368,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
+        environment,
         pageErrors,
         requested,
         runtime,
@@ -3322,6 +3529,7 @@ function evaluateBudget(sample, budget) {
 
 function evaluateHighTargetAcceptance({
     apiErrors = [],
+    environment,
     pageErrors,
     requested,
     runtime,
@@ -3344,6 +3552,16 @@ function evaluateHighTargetAcceptance({
         limit,
         name,
         pass: typeof actual === 'number' && actual >= limit,
+    });
+    const finiteMinimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'finite-minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
     });
     const range = (name, actual, minimumValue, maximumValue) => ({
         actual,
@@ -3711,6 +3929,177 @@ function evaluateHighTargetAcceptance({
                 1,
             ),
         );
+    }
+    if (requested.outlineProfile === 'connected-raised-bed') {
+        checks.push(
+            exact('highTargetOutlineProfileFlag', requested.outline, '1'),
+            exact(
+                'highTargetOutlineRaisedBedId',
+                requested.outlineRaisedBedId,
+                2,
+            ),
+            exact(
+                'highTargetOutlineProfileDispatched',
+                sample.outlineProfileDispatched,
+                true,
+            ),
+            exact(
+                'highTargetOutlineTelemetryAvailable',
+                sample.outlineProfileTelemetryAvailable,
+                true,
+            ),
+        );
+        if (requested.graphicsBackend === 'angle-metal') {
+            const renderer = environment?.renderer ?? null;
+            checks.push(
+                {
+                    actual: renderer,
+                    comparison: 'contains',
+                    limit: ['ANGLE', 'Metal'],
+                    name: 'highTargetOutlineAngleMetalRenderer',
+                    pass:
+                        typeof renderer === 'string' &&
+                        /\bANGLE\b/i.test(renderer) &&
+                        /\bMetal\b/i.test(renderer),
+                },
+                exact(
+                    'highTargetOutlineGpuTimerSupported',
+                    sample.gpu?.supported,
+                    true,
+                ),
+                exact(
+                    'highTargetOutlineGpuTimerValid',
+                    sample.gpu?.valid,
+                    true,
+                ),
+                minimum(
+                    'highTargetOutlineGpuTimerSamples',
+                    sample.gpu?.sampleCount,
+                    1,
+                ),
+                finiteMinimum(
+                    'highTargetOutlineGpuElapsedP95Ms',
+                    sample.gpu?.elapsedP95Ms,
+                    0,
+                ),
+            );
+        }
+        const outlineTelemetryAvailable =
+            sample.outlineProfileTelemetryAvailable === true ||
+            (typeof runtime?.hoverOutlineActiveTargetCount === 'number' &&
+                typeof runtime.hoverOutlineStyleGroupCount === 'number');
+        if (outlineTelemetryAvailable) {
+            checks.push(
+                exact(
+                    'highTargetOutlineActiveTargets',
+                    runtime?.hoverOutlineActiveTargetCount,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlineStyleGroups',
+                    runtime?.hoverOutlineStyleGroupCount,
+                    1,
+                ),
+                exact(
+                    'highTargetOutlineProfileCommandAction',
+                    runtime?.hoverOutlineProfileCommandAction,
+                    'show',
+                ),
+                exact(
+                    'highTargetOutlineProfileTargetBlockId',
+                    runtime?.hoverOutlineProfileTargetBlockId,
+                    'profile-raised-bed:2:0',
+                ),
+                exact(
+                    'highTargetOutlineProfileTargetRaisedBedId',
+                    runtime?.hoverOutlineProfileTargetRaisedBedId,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlinePipeline',
+                    runtime?.hoverOutlinePipeline,
+                    'cropped-bounded-separable-r8',
+                ),
+                exact(
+                    'highTargetOutlineFormat',
+                    runtime?.hoverOutlineFormat,
+                    'r8',
+                ),
+                exact(
+                    'highTargetOutlineRenderTargets',
+                    runtime?.hoverOutlineRenderTargetCount,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlineDrawingBufferPixels',
+                    runtime?.hoverOutlineDrawingBufferPixelCount,
+                    2_560 * 1_440,
+                ),
+                minimum(
+                    'highTargetOutlineCropPixels',
+                    runtime?.hoverOutlineCropPixelCount,
+                    1,
+                ),
+                minimum(
+                    'highTargetOutlineAllocatedWidth',
+                    runtime?.hoverOutlineAllocatedWidth,
+                    1,
+                ),
+                minimum(
+                    'highTargetOutlineAllocatedHeight',
+                    runtime?.hoverOutlineAllocatedHeight,
+                    1,
+                ),
+                range(
+                    'highTargetOutlineRoiRatio',
+                    runtime?.hoverOutlineRoiRatio,
+                    0,
+                    0.25,
+                ),
+                exact(
+                    'highTargetOutlineCropClipping',
+                    runtime?.hoverOutlineCropClippedCount,
+                    0,
+                ),
+                exact(
+                    'highTargetOutlineThickness',
+                    runtime?.hoverOutlineThickness,
+                    5,
+                ),
+                exact(
+                    'highTargetOutlineKernelSamples',
+                    runtime?.hoverOutlineKernelSampleCount,
+                    23,
+                ),
+                exact(
+                    'highTargetOutlineMaximumKernelSamples',
+                    runtime?.hoverOutlineMaxKernelSampleCount,
+                    51,
+                ),
+                minimum(
+                    'highTargetOutlineMaskPasses',
+                    runtime?.hoverOutlineMaskPassCount,
+                    1,
+                ),
+                exact(
+                    'highTargetOutlineHorizontalPassAlignment',
+                    runtime?.hoverOutlineHorizontalPassCount,
+                    runtime?.hoverOutlineMaskPassCount,
+                ),
+                exact(
+                    'highTargetOutlineCompositePassAlignment',
+                    runtime?.hoverOutlineCompositePassCount,
+                    runtime?.hoverOutlineMaskPassCount,
+                ),
+                exact(
+                    'highTargetOutlineAllocationBytes',
+                    runtime?.hoverOutlineAllocationEstimatedBytes,
+                    typeof runtime?.hoverOutlineAllocatedPixelCount === 'number'
+                        ? runtime.hoverOutlineAllocatedPixelCount * 2
+                        : null,
+                ),
+            );
+        }
     }
     if (requested.placementProfile === 'placement-drop') {
         checks.push(
@@ -5153,6 +5542,10 @@ async function main() {
         printHelp(options);
         return;
     }
+    options.graphicsBackend = resolveChromiumGraphicsBackend(
+        process.platform,
+        options.graphicsBackend,
+    );
 
     const profileScenarios = resolveScenarios(
         options.scenarioSet,
@@ -5200,6 +5593,10 @@ async function main() {
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
+                ...resolveChromiumGraphicsArgs(
+                    process.platform,
+                    options.graphicsBackend,
+                ),
             ],
             headless: true,
         });
@@ -5264,6 +5661,7 @@ async function main() {
                 build: options.build,
                 closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,
+                graphicsBackend: options.graphicsBackend,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
@@ -5313,8 +5711,12 @@ export {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    isOutlineProfileTelemetryReady,
     mergeProfileSampleDrain,
     normalizeRenderWork,
+    parseArgs,
+    resolveChromiumGraphicsArgs,
+    resolveChromiumGraphicsBackend,
     resolveScenarios,
 };
 
