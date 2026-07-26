@@ -183,6 +183,7 @@ export type SurveyResponsePageRequest = SurveyResponseFilters & {
     surveyId: string;
     page?: number;
     pageSize?: number;
+    includeNumericAggregates?: boolean;
 };
 
 export type SurveyResponseAnswerDetail = {
@@ -1881,6 +1882,7 @@ export async function getSurveyResponsePageAdmin({
     surveyId,
     page: requestedPage,
     pageSize: requestedPageSize,
+    includeNumericAggregates = true,
     ...filters
 }: SurveyResponsePageRequest): Promise<SurveyResponsePage | null> {
     const survey = await getSurveyById(surveyId);
@@ -1952,18 +1954,17 @@ export async function getSurveyResponsePageAdmin({
             .groupBy(surveyResponses.versionId),
     ]);
     const questions = sortSurveyQuestionsByVersion(questionRows, versions);
-    const responseCountByVersion = new Map(
-        countRows.map((row) => [row.versionId, row.count]),
-    );
     const totalCount = countRows.reduce((total, row) => total + row.count, 0);
     const pageCount = Math.ceil(totalCount / pageSize);
     const normalizedPage = normalizePositiveInteger(requestedPage, 1);
     const page = pageCount > 0 ? Math.min(normalizedPage, pageCount) : 1;
     const resolvedAccountId = resolvedSurveyResponseAccountId();
     const resolvedUserId = resolvedSurveyResponseUserId();
-    const numericQuestionIds = questions
-        .filter((question) => question.type === 'opinion_scale')
-        .map((question) => question.id);
+    const numericQuestionIds = includeNumericAggregates
+        ? questions
+              .filter((question) => question.type === 'opinion_scale')
+              .map((question) => question.id)
+        : [];
     const [responseRows, numericAnswerRows] = await Promise.all([
         storage()
             .select({
@@ -2110,11 +2111,13 @@ export async function getSurveyResponsePageAdmin({
         versions,
         questions,
         responses,
-        numericAggregates: buildNumericAggregatesFromRows(
-            questions,
-            responseCountByVersion,
-            numericAnswerRows,
-        ),
+        numericAggregates: includeNumericAggregates
+            ? buildNumericAggregatesFromRows(
+                  questions,
+                  new Map(countRows.map((row) => [row.versionId, row.count])),
+                  numericAnswerRows,
+              )
+            : [],
         totalCount,
         page,
         pageSize,

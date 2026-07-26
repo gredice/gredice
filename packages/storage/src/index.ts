@@ -91,6 +91,8 @@ export * from './repositories/socialPostsRepo';
 export * from './repositories/sunflowerDropsRepo';
 export * from './repositories/sunflowerLedgerRepo';
 export * from './repositories/sunflowerPackagesRepo';
+export * from './repositories/surveyAnalytics';
+export * from './repositories/surveyAnalyticsRepo';
 export * from './repositories/surveysRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';

@@ -57,6 +57,7 @@ function revalidateSurveyWorkspace(surveyId?: string | null) {
     revalidatePath(KnownPages.SurveyDesign(surveyId));
     revalidatePath(KnownPages.SurveySends(surveyId));
     revalidatePath(KnownPages.SurveyResponses(surveyId));
+    revalidatePath(KnownPages.SurveyStatistics(surveyId));
 }
 
 function textField(formData: FormData, key: string) {

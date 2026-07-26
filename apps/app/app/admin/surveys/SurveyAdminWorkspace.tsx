@@ -11,7 +11,10 @@ import { SurveyIndexView } from './SurveyIndexView';
 import { SurveyOverviewView } from './SurveyOverviewView';
 import { SurveyResponsesWorkspace } from './SurveyResponsesWorkspace';
 import { SurveySendsView } from './SurveySendsView';
-import type { SurveyResponseSearchParams } from './surveyResponseQuery';
+import {
+    type SurveyAnalyticsSearchParams,
+    SurveyStatisticsWorkspace,
+} from './SurveyStatisticsWorkspace';
 import type { SurveyWorkspaceSearchParams } from './surveyWorkspaceQuery';
 import type { SurveyWorkspaceView } from './surveyWorkspaceTypes';
 
@@ -24,7 +27,7 @@ export async function SurveyAdminWorkspace({
 }: {
     surveyId?: string | null;
     searchParams?: Promise<
-        SurveyWorkspaceSearchParams & SurveyResponseSearchParams
+        SurveyWorkspaceSearchParams & SurveyAnalyticsSearchParams
     >;
     view: SurveyWorkspaceView;
 }) {
@@ -74,6 +77,12 @@ export async function SurveyAdminWorkspace({
         }
 
         return <SurveySendsView details={details} targetUsers={targetUsers} />;
+    }
+
+    if (view === 'statistics') {
+        return (
+            <SurveyStatisticsWorkspace params={params} surveyId={surveyId} />
+        );
     }
 
     const details = await getSurveyWorkspaceAdminDetails(surveyId);
