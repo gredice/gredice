@@ -227,6 +227,7 @@ export function CmsOgImage({
                         alt=""
                         src={normalizedImageUrl ?? undefined}
                         style={{
+                            borderRadius: 30,
                             height: '100%',
                             objectFit: 'cover',
                             objectPosition: cmsImageObjectPosition(
@@ -234,20 +235,6 @@ export function CmsOgImage({
                                 pointOfInterestY,
                             ),
                             width: '100%',
-                        }}
-                    />
-                    <div
-                        style={{
-                            borderColor: '#FFFFFFA6',
-                            borderRadius: 30,
-                            borderStyle: 'solid',
-                            borderWidth: 10,
-                            bottom: 0,
-                            display: 'flex',
-                            left: 0,
-                            position: 'absolute',
-                            right: 0,
-                            top: 0,
                         }}
                     />
                 </div>
