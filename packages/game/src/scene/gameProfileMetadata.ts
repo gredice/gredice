@@ -259,6 +259,11 @@ export type GameProfileMetadata = {
     instancedInteractionResolvedTargetCount?: number;
     instancedInteractionTargetCount?: number;
     instancedSnowOverlayCount?: number;
+    operationVisualHighlightProfileDispatched?: boolean;
+    operationVisualHighlightProfileTargetFieldId?: number;
+    operationVisualHighlightProfileTargetGardenId?: number;
+    operationVisualHighlightProfileTargetPositionIndex?: number;
+    operationVisualHighlightProfileTargetRaisedBedId?: number;
     placementChunkLogicalTouchedCount?: number;
     placementChunkLogicalUpdateCount?: number;
     placementChunkPhysicalRebuildCount?: number;
@@ -275,6 +280,16 @@ export type GameProfileMetadata = {
     rainParticleCount?: number;
     rainWetOverlayDistinctUniformCount?: number;
     rainWetOverlayMaterialConsumerCount?: number;
+    raisedBedFieldVisualBatchCount?: number;
+    raisedBedFieldVisualChunkCount?: number;
+    raisedBedFieldVisualInstanceCount?: number;
+    raisedBedFieldVisualMatrixUploadCount?: number;
+    raisedBedFieldVisualObjectCount?: number;
+    raisedBedFieldVisualUploadedInstanceCount?: number;
+    raisedBedMulchBatchCount?: number;
+    raisedBedMulchGroupCount?: number;
+    raisedBedMulchInstanceCount?: number;
+    raisedBedMulchObjectCount?: number;
     raisedBedMulchOverlayCount?: number;
     primaryShadowRefreshCount?: number;
     rendererGeometries?: number;

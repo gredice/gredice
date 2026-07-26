@@ -160,6 +160,7 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
         assert.equal(request.details, '1');
         assert.equal(request.gardenProfile, 'high-target');
         assert.equal(request.hud, '0');
+        assert.equal(request.operationVisuals, '0');
         assert.equal(request.quality, 'high');
         assert.equal(scenario.repeat, 3);
     }
@@ -168,6 +169,40 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
     assert.equal(scenarios[2].interaction, 'hover-scan');
     assert.equal(scenarios[3].placementProfile.action, 'run');
     assert.equal(getScenarioRequest(scenarios[3].path).placement, '1');
+});
+
+test('operation-visual High scenario is isolated behind its own opt-in set', () => {
+    const scenarios = resolveScenarios('high-target-operation-visuals');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    assert.equal(scenario.name, 'game-high-target-operation-visuals-desktop');
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.repeat, 3);
+    assert.deepEqual(getScenarioRequest(scenario.path), {
+        adaptiveHigh: '0',
+        blockGeometryMerging: '1',
+        closeupRaisedBedId: null,
+        controls: '1',
+        debugHud: '0',
+        details: '1',
+        gardenProfile: 'high-target',
+        hud: '0',
+        mode: 'details',
+        operationVisuals: '1',
+        outline: '0',
+        placement: '0',
+        quality: 'high',
+    });
+    assert.equal(
+        resolveScenarios('high-target').some(
+            (candidate) =>
+                getScenarioRequest(candidate.path).operationVisuals === '1',
+        ),
+        false,
+    );
 });
 
 test('outline scenario deterministically targets the connected raised bed after warmup', () => {
@@ -264,6 +299,15 @@ test('graphics backend CLI overrides the portable auto default explicitly', () =
     );
 });
 
+test('legacy operation visual profiling bypass is explicit', () => {
+    assert.equal(parseArgs([]).allowLegacyOperationVisuals, false);
+    assert.equal(
+        parseArgs(['--allow-legacy-operation-visuals'])
+            .allowLegacyOperationVisuals,
+        true,
+    );
+});
+
 test('adaptive High scenario set pairs fixed and adaptive motion and preserves runtime features', () => {
     const scenarios = resolveScenarios('adaptive-high');
 
@@ -340,6 +384,7 @@ test('profile request parses the High target fixture contract', () => {
         gardenProfile: 'high-target',
         hud: '0',
         mode: 'snow',
+        operationVisuals: '0',
         outline: '0',
         placement: '0',
         quality: 'high',
@@ -927,6 +972,213 @@ test('high target acceptance proves the intended workload rendered', () => {
         casterResult.checks.find(
             (check) =>
                 check.name === 'highTargetActorGroundingShadowPrimaryCasters',
+        )?.pass,
+        false,
+    );
+});
+
+test('operation-visual High acceptance gates batching, uploads, mulch, and highlight identity', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            blockGeometryMerging: '1',
+            gardenProfile: 'high-target',
+            mode: 'details',
+            motion: 'none',
+            operationVisuals: '1',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 5,
+            animatedCasterShadowRefreshCount: 0,
+            generatedPlantExpectedInstanceCount: 286,
+            generatedPlantFieldCount: 34,
+            generatedPlantInstanceCount: 286,
+            generatedPlantVisibleFieldCount: 34,
+            generatedPlantVisibleInstanceCount: 286,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            operationVisualHighlightProfileDispatched: true,
+            operationVisualHighlightProfileTargetFieldId: 201,
+            operationVisualHighlightProfileTargetGardenId: 99_996,
+            operationVisualHighlightProfileTargetPositionIndex: 0,
+            operationVisualHighlightProfileTargetRaisedBedId: 2,
+            qualityTier: 'high',
+            raisedBedFieldVisualBatchCount: 7,
+            raisedBedFieldVisualChunkCount: 2,
+            raisedBedFieldVisualInstanceCount: 396,
+            raisedBedFieldVisualMatrixUploadCount: 7,
+            raisedBedFieldVisualObjectCount: 7,
+            raisedBedFieldVisualUploadedInstanceCount: 396,
+            raisedBedMulchBatchCount: 12,
+            raisedBedMulchGroupCount: 12,
+            raisedBedMulchInstanceCount: 54,
+            raisedBedMulchObjectCount: 12,
+            raisedBedMulchOverlayCount: 54,
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateHighTargetAcceptance(input);
+
+    assert.equal(result.pass, true);
+    assert.deepEqual(
+        result.checks.find(
+            (check) =>
+                check.name === 'highTargetOperationVisualRenderedObjects',
+        ),
+        {
+            actual: 21,
+            comparison: 'range',
+            legacy: 452,
+            limit: {
+                maximum: 64,
+                minimum: 4,
+            },
+            name: 'highTargetOperationVisualRenderedObjects',
+            pass: true,
+        },
+    );
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-27T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'high-target-operation-visuals',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks: result.checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-high-target-operation-visuals-desktop',
+                pageErrors: [],
+                requested: {
+                    controls: '1',
+                    debugHud: '0',
+                    details: '1',
+                    hud: '0',
+                    ...input.requested,
+                },
+                runtime: input.runtime,
+                sample: {
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 20,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 15_000,
+                    trianglesPerRenderedFrame: 300_000,
+                    ...input.sample,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        summary: { failedScenarios: 0 },
+    });
+    assert.match(
+        markdown,
+        /field visuals 396 instances\/7 objects\/7 batches\/2 chunks, uploads 7\/396; mulch 54 instances\/12 objects\/12 batches\/12 groups; operation objects 21\/452 legacy/,
+    );
+
+    for (const [field, value, checkName] of [
+        [
+            'generatedPlantExpectedInstanceCount',
+            287,
+            'highTargetExpectedGeneratedPlantInstances',
+        ],
+        [
+            'operationVisualHighlightProfileDispatched',
+            false,
+            'highTargetOperationVisualHighlightDispatched',
+        ],
+        [
+            'raisedBedFieldVisualInstanceCount',
+            395,
+            'highTargetOperationVisualFieldInstances',
+        ],
+        [
+            'raisedBedFieldVisualMatrixUploadCount',
+            8,
+            'highTargetOperationVisualFieldMatrixUploads',
+        ],
+        [
+            'raisedBedFieldVisualUploadedInstanceCount',
+            395,
+            'highTargetOperationVisualFieldUploadedInstances',
+        ],
+        [
+            'raisedBedMulchInstanceCount',
+            53,
+            'highTargetOperationVisualMulchInstances',
+        ],
+        [
+            'raisedBedMulchOverlayCount',
+            53,
+            'highTargetOperationVisualMulchOverlays',
+        ],
+    ]) {
+        const invalid = evaluateHighTargetAcceptance({
+            ...input,
+            runtime: {
+                ...input.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            invalid.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    const tooManyObjects = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            raisedBedFieldVisualObjectCount: 32,
+            raisedBedMulchObjectCount: 33,
+        },
+    });
+    assert.equal(
+        tooManyObjects.checks.find(
+            (check) =>
+                check.name === 'highTargetOperationVisualRenderedObjects',
         )?.pass,
         false,
     );

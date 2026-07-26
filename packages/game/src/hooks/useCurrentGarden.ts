@@ -17,6 +17,7 @@ import {
     localSandboxGardenId,
 } from '../localSandboxGarden';
 import {
+    highTargetOperationVisualOperationIds,
     isOperationVisualRewardDebugProfile,
     type OperationVisualRewardDebugBedState,
     type OperationVisualRewardDebugScenario,
@@ -39,7 +40,9 @@ import {
     createHighTargetMockGardenStackPositions,
     highTargetMockGardenDetailFixtures,
     highTargetMockGardenRaisedBedFixtures,
+    highTargetOperationVisualFixture,
     mockRaisedBedFieldFixtures,
+    resolveHighTargetOperationVisualsEnabled,
     resolveMockGardenProfileReferenceDate,
 } from './mockGardenProfileFixtures';
 import { useGardenAccountGroups } from './useGardenAccountGroups';
@@ -53,6 +56,7 @@ export const currentGardenKeys = (
     gardenId?: number | null,
     mockGardenProfile?: MockGardenProfile,
     localSandboxStorageKey?: string | null,
+    mockGardenVariant?: string | null,
 ) => [
     ...useGardensKeys,
     'current',
@@ -62,6 +66,7 @@ export const currentGardenKeys = (
         ? ['local-sandbox', localSandboxStorageKey]
         : []),
     ...(mockGardenProfile != null ? [mockGardenProfile] : []),
+    ...(mockGardenVariant ? [mockGardenVariant] : []),
 ];
 
 type useCurrentGardenResponse = Omit<
@@ -778,8 +783,107 @@ function denseMockGarden(
     };
 }
 
+function applyHighTargetOperationVisualFixture(
+    raisedBeds: useCurrentGardenResponse['raisedBeds'],
+) {
+    const heavyWeedRaisedBed = raisedBeds.find(
+        (raisedBed) =>
+            raisedBed.id ===
+            highTargetOperationVisualFixture.heavyWeedRaisedBedId,
+    );
+    const supportRaisedBed = raisedBeds.find(
+        (raisedBed) =>
+            raisedBed.id ===
+            highTargetOperationVisualFixture.supportRaisedBedId,
+    );
+    const coverRaisedBed = raisedBeds.find(
+        (raisedBed) =>
+            raisedBed.id === highTargetOperationVisualFixture.coverRaisedBedId,
+    );
+    if (!heavyWeedRaisedBed || !supportRaisedBed || !coverRaisedBed) {
+        throw new Error(
+            'High-target operation visual fixture raised beds are missing.',
+        );
+    }
+
+    heavyWeedRaisedBed.weedState = heavyDebugWeedState(
+        operationVisualRewardDebugOlderTimestamp,
+        9601,
+    );
+    supportRaisedBed.appliedOperations = [
+        completedDebugAppliedOperation({
+            completedAt: operationVisualRewardDebugTimestamp,
+            entityId: operationVisualRewardDebugOperationIds.supports,
+            id: 9602,
+            raisedBedId: supportRaisedBed.id,
+        }),
+    ];
+
+    for (const raisedBed of raisedBeds) {
+        for (const field of raisedBed.fields) {
+            if (typeof field.id !== 'number') {
+                continue;
+            }
+
+            raisedBed.appliedOperations.push(
+                completedDebugAppliedOperation({
+                    completedAt: operationVisualRewardDebugTimestamp,
+                    entityId: highTargetOperationVisualOperationIds.fieldMulch,
+                    id: 9700 + raisedBed.id * 100 + field.positionIndex,
+                    raisedBedFieldId: field.id,
+                    raisedBedId: raisedBed.id,
+                }),
+            );
+        }
+    }
+
+    for (const field of coverRaisedBed.fields) {
+        if (typeof field.id !== 'number') {
+            continue;
+        }
+
+        coverRaisedBed.appliedOperations.push(
+            completedDebugAppliedOperation({
+                completedAt: operationVisualRewardDebugTimestamp,
+                entityId: operationVisualRewardDebugOperationIds.agrotextile,
+                id: 10_300 + field.positionIndex,
+                raisedBedFieldId: field.id,
+                raisedBedId: coverRaisedBed.id,
+            }),
+        );
+    }
+
+    const pendingSeedField = supportRaisedBed.fields.find(
+        (field) =>
+            field.id === highTargetOperationVisualFixture.pendingSeed.fieldId &&
+            field.positionIndex ===
+                highTargetOperationVisualFixture.pendingSeed.positionIndex,
+    );
+    const sownSeedField = supportRaisedBed.fields.find(
+        (field) =>
+            field.id === highTargetOperationVisualFixture.sownSeed.fieldId &&
+            field.positionIndex ===
+                highTargetOperationVisualFixture.sownSeed.positionIndex,
+    );
+    if (!pendingSeedField || !sownSeedField) {
+        throw new Error(
+            'High-target operation visual seed fields are missing.',
+        );
+    }
+
+    pendingSeedField.plantStatus = 'planned';
+    pendingSeedField.plantSowDate = undefined;
+    pendingSeedField.plantGrowthDate = undefined;
+    pendingSeedField.plantReadyDate = undefined;
+
+    sownSeedField.plantStatus = 'new';
+    sownSeedField.plantGrowthDate = undefined;
+    sownSeedField.plantReadyDate = undefined;
+}
+
 function highTargetMockGarden(
     winterMode: WinterMode,
+    operationVisuals = false,
 ): useCurrentGardenResponse {
     const now = resolveMockGardenProfileReferenceDate('high-target');
     const { stackByPosition, stacks } = createHighTargetMockStacks(winterMode);
@@ -800,6 +904,10 @@ function highTargetMockGarden(
                 `High-target raised bed ${fixture.id.toString()} is outside the fixture grid.`,
             );
         }
+    }
+
+    if (operationVisuals) {
+        applyHighTargetOperationVisualFixture(raisedBeds);
     }
 
     return {
@@ -868,6 +976,7 @@ function operationRewardDebugMockGarden(
 function mockGarden(
     winterMode: WinterMode,
     profile: MockGardenProfile,
+    highTargetOperationVisuals = false,
 ): useCurrentGardenResponse {
     if (isOperationVisualRewardDebugProfile(profile)) {
         return operationRewardDebugMockGarden(winterMode);
@@ -878,7 +987,7 @@ function mockGarden(
     }
 
     if (profile === 'high-target') {
-        return highTargetMockGarden(winterMode);
+        return highTargetMockGarden(winterMode, highTargetOperationVisuals);
     }
 
     const treeName =
@@ -1134,6 +1243,15 @@ function mockGarden(
     };
 }
 
+function isHighTargetOperationVisualsProfile(profile: MockGardenProfile) {
+    return (
+        profile === 'high-target' &&
+        resolveHighTargetOperationVisualsEnabled(
+            typeof window === 'undefined' ? undefined : window.location.search,
+        )
+    );
+}
+
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
@@ -1145,6 +1263,8 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
+    const highTargetOperationVisuals =
+        isMock && isHighTargetOperationVisualsProfile(mockGardenProfile);
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
     const { data: accountGroups } = useGardenAccountGroups(
         isMock || isLocalSandbox,
@@ -1170,6 +1290,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
             currentGardenId,
             isMock ? mockGardenProfile : undefined,
             localSandboxStorageKey,
+            highTargetOperationVisuals ? 'operation-visuals' : undefined,
         ),
         queryFn: async () => {
             if (localSandboxStorageKey) {
@@ -1180,7 +1301,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
 
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(winterMode, mockGardenProfile);
+                return mockGarden(
+                    winterMode,
+                    mockGardenProfile,
+                    highTargetOperationVisuals,
+                );
             }
 
             if (currentGardenId == null) {
@@ -1285,6 +1410,8 @@ export function useCurrentGardenCache() {
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
+    const highTargetOperationVisuals =
+        isMock && isHighTargetOperationVisualsProfile(mockGardenProfile);
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
     const { data: accountGroups } = useGardenAccountGroups(
         isMock || isLocalSandbox,
@@ -1309,9 +1436,11 @@ export function useCurrentGardenCache() {
                 currentGardenId,
                 isMock ? mockGardenProfile : undefined,
                 localSandboxStorageKey,
+                highTargetOperationVisuals ? 'operation-visuals' : undefined,
             ),
         [
             currentGardenId,
+            highTargetOperationVisuals,
             isMock,
             localSandboxStorageKey,
             mockGardenProfile,

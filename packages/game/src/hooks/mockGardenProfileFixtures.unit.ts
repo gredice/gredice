@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Vector3 } from 'three';
 import {
+    highTargetOperationVisualOperationDefinitions,
+    highTargetOperationVisualOperationIds,
+} from '../operationVisualRewardDebugProfile';
+import {
     getConnectedRaisedBedBlockIds,
     getRaisedBedBlockIds,
     isRaisedBedShapeValid,
@@ -10,12 +14,15 @@ import {
     createHighTargetMockGardenStackPositions,
     getHighTargetMockGardenCardinality,
     getHighTargetMockGardenPlantInstanceCount,
+    getHighTargetOperationVisualFixtureCounts,
     highTargetMockGardenDetailFixtures,
     highTargetMockGardenRaisedBedFixtures,
     highTargetMockGardenReferenceDate,
     highTargetMockPlantRenderAttributesBySortId,
+    highTargetOperationVisualFixture,
     mockRaisedBedFieldFixtures,
     plantHeavyMockGardenReferenceDate,
+    resolveHighTargetOperationVisualsEnabled,
     resolveMockGardenProfileReferenceDate,
 } from './mockGardenProfileFixtures';
 
@@ -121,6 +128,83 @@ test('high-target garden cardinality matches the high-quality workload', () => {
             ({ plantSortId }) =>
                 highTargetMockPlantRenderAttributesBySortId[plantSortId] !==
                 undefined,
+        ),
+        true,
+    );
+});
+
+test('high-target operation visuals retain the target and expose exact legacy work', () => {
+    assert.deepEqual(highTargetOperationVisualFixture, {
+        coverRaisedBedId: 3,
+        heavyWeedRaisedBedId: 1,
+        highlight: {
+            fieldId: 201,
+            gardenId: 99996,
+            positionIndex: 0,
+            raisedBedId: 2,
+        },
+        pendingSeed: {
+            fieldId: 201,
+            positionIndex: 0,
+            raisedBedId: 2,
+        },
+        sownSeed: {
+            fieldId: 202,
+            positionIndex: 1,
+            raisedBedId: 2,
+        },
+        supportRaisedBedId: 2,
+    });
+    assert.deepEqual(getHighTargetOperationVisualFixtureCounts(), {
+        assignedFieldCount: 54,
+        fieldCoverCount: 18,
+        fieldCoverMeshCount: 126,
+        fieldMulchCount: 54,
+        generatedPlantInstanceCount: 286,
+        heavyWeedBladeCount: 180,
+        heavyWeedFieldCount: 18,
+        legacyClearMeshCount: 452,
+        legacySnowMeshCount: 506,
+        pendingSeedFieldCount: 1,
+        seedInstanceCount: 72,
+        sownSeedFieldCount: 1,
+        supportCount: 18,
+        transientHighlightMeshCount: 2,
+    });
+    assert.deepEqual(getHighTargetMockGardenCardinality(), {
+        stackCount: 270,
+        baseBlockCount: 270,
+        detailBlockCount: 24,
+        raisedBedCount: 3,
+        raisedBedBlockCount: 6,
+        occupiedFieldCount: 54,
+        totalBlockCount: 300,
+    });
+
+    const fieldMulchDefinition =
+        highTargetOperationVisualOperationDefinitions.find(
+            ({ id }) => id === highTargetOperationVisualOperationIds.fieldMulch,
+        );
+    assert.equal(fieldMulchDefinition?.attributes.application, 'plant');
+    assert.equal(fieldMulchDefinition?.attributes.visualReward, 'mulch');
+});
+
+test('high-target operation visuals require the exact query opt-in', () => {
+    assert.equal(resolveHighTargetOperationVisualsEnabled(undefined), false);
+    assert.equal(resolveHighTargetOperationVisualsEnabled(''), false);
+    assert.equal(
+        resolveHighTargetOperationVisualsEnabled('?operationVisuals=0'),
+        false,
+    );
+    assert.equal(
+        resolveHighTargetOperationVisualsEnabled(
+            '?profile=high-target&operationVisuals=unexpected',
+        ),
+        false,
+    );
+    assert.equal(
+        resolveHighTargetOperationVisualsEnabled(
+            '?profile=high-target&operationVisuals=1',
         ),
         true,
     );
