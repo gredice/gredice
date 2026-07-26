@@ -38,6 +38,14 @@ export type GroundDecorationInstance = {
     spriteName: string;
 };
 
+export type GroundDecorationWeather = {
+    cloudy?: number;
+    foggy?: number;
+    rainy?: number;
+    windDirection?: number;
+    windSpeed?: number;
+};
+
 type GroundDecorationBatch = {
     atlasPageIndex: number;
     instances: GroundDecorationBatchInstance[];
@@ -315,9 +323,11 @@ if ( diffuseColor.a < vGroundDecorationAlphaTest ) discard;
 export function GroundDecorationInstances({
     farmId,
     instances,
+    weather,
 }: {
     farmId?: number | null;
     instances: GroundDecorationInstance[];
+    weather?: GroundDecorationWeather;
 }) {
     const profileBatchesRef = useRef(
         new Map<string, GroundDecorationProfileBatchStats>(),
@@ -454,6 +464,7 @@ export function GroundDecorationInstances({
                             instances={pageInstances}
                             manifestSprites={manifest.sprites}
                             recordProfileBatch={recordProfileBatch}
+                            weather={weather}
                         />
                     );
                 },
@@ -468,12 +479,14 @@ function GroundDecorationPageInstances({
     instances,
     manifestSprites,
     recordProfileBatch,
+    weather,
 }: {
     atlasPage: SpriteAtlasPage;
     farmId?: number | null;
     instances: GroundDecorationInstance[];
     manifestSprites: Record<string, SpriteAtlasSprite>;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
+    weather?: GroundDecorationWeather;
 }) {
     const pageAssetPaths = useMemo(
         () =>
@@ -534,6 +547,7 @@ function GroundDecorationPageInstances({
             farmId={farmId}
             recordProfileBatch={recordProfileBatch}
             texture={texture}
+            weather={weather}
         />
     );
 }
@@ -543,11 +557,13 @@ function GroundDecorationInstancedBatch({
     farmId,
     recordProfileBatch,
     texture,
+    weather: weatherOverride,
 }: {
     batch: GroundDecorationBatch;
     farmId?: number | null;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
     texture: NonNullable<ReturnType<typeof useSpriteAtlasTexture>['texture']>;
+    weather?: GroundDecorationWeather;
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
     const camera = useThree((state) => state.camera);
@@ -567,8 +583,9 @@ function GroundDecorationInstancedBatch({
     );
     const gameCamera = useGameState((state) => state.gameCamera);
     const timeOfDay = useGameState((state) => state.timeOfDay);
-    const weather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(true, farmId);
+    const gameWeather = useGameState((state) => state.weather);
+    const weather = weatherOverride ?? gameWeather;
+    const { data: weatherNow } = useWeatherNow(weather == null, farmId);
     const windSpeed =
         typeof weather?.windSpeed === 'number'
             ? weather.windSpeed
@@ -582,7 +599,16 @@ function GroundDecorationInstancedBatch({
     const windDirectionX = Math.sin((windDirectionDegrees * Math.PI) / 180);
     const windDirectionZ = -Math.cos((windDirectionDegrees * Math.PI) / 180);
     const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
-    const brightness = getSpriteBrightness(timeOfDay, weather);
+    const brightness = getSpriteBrightness(
+        timeOfDay,
+        weather
+            ? {
+                  cloudy: weather.cloudy ?? 0,
+                  foggy: weather.foggy ?? 0,
+                  rainy: weather.rainy ?? 0,
+              }
+            : undefined,
+    );
     const timeUniform = useSceneTimeUniform();
     const material = useMemo(() => {
         const batchMaterial = new MeshLambertMaterial({

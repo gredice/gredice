@@ -193,11 +193,18 @@ export type GameProfileMetadata = {
     generatedLSystemCacheOversizeSkipCount?: number;
     generatedLSystemCachePeakEstimatedBytes?: number;
     generatedLSystemCacheWriteCount?: number;
+    generatedPlantBatchCount?: number;
+    generatedPlantExpectedInstanceCount?: number;
+    generatedPlantFieldCount?: number;
+    generatedPlantInstanceCount?: number;
     generatedPlantProfile?: GeneratedPlantProfileSnapshot | null;
+    generatedPlantVisibleFieldCount?: number;
+    generatedPlantVisibleInstanceCount?: number;
     instancedInteractionControllerCount?: number;
     instancedInteractionResolutionCount?: number;
     instancedInteractionResolutionMaxMs?: number;
     instancedInteractionResolutionTotalMs?: number;
+    instancedInteractionResolvedTargetCount?: number;
     instancedInteractionTargetCount?: number;
     instancedSnowOverlayCount?: number;
     placementChunkLogicalTouchedCount?: number;

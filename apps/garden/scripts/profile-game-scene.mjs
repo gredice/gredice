@@ -14,6 +14,8 @@ const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+const highTargetExpectedGeneratedPlantFieldCount = 54;
+const highTargetExpectedGeneratedPlantInstanceCount = 537;
 
 const coreScenarios = [
     {
@@ -139,6 +141,69 @@ const denseScenarios = [
         dpr: 1,
         isMobile: false,
         budget: 'gameDensePlants',
+    },
+];
+
+const highTargetScenarios = [
+    {
+        name: 'game-high-target-clear-idle-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-camera-motion-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        motion: 'pan-zoom-rotate',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-hover-selection-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        interaction: 'hover-scan',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-placement-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        placementProfile: {
+            action: 'run',
+            staggerMs: 120,
+        },
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-rain-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-snow-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
     },
 ];
 
@@ -399,6 +464,7 @@ const scenarioSets = {
     core: coreScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
+    'high-target': highTargetScenarios,
     placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
     rewards: rewardScenarios,
@@ -461,6 +527,15 @@ const budgets = {
         drawCallsPerFrame: 1400,
         trianglesPerFrame: 5000000,
         jsHeapMb: 420,
+    },
+    gameHighTarget: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 180,
+        longTaskCount: 2,
+        drawCallsPerRenderedFrame: 600,
+        gpuElapsedP95Ms: 33.3,
+        trianglesPerRenderedFrame: 3000000,
+        jsHeapMb: 320,
     },
     gameDenseMotion: {
         p95FrameMs: 66.7,
@@ -666,7 +741,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -691,6 +766,7 @@ function allScenarios() {
         ...coreScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...highTargetScenarios,
         ...placementScenarios,
         ...plantCloseupScenarios,
         ...autoQualityScenarios,
@@ -723,7 +799,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -741,6 +817,8 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
+        blockGeometryMerging:
+            url.searchParams.get('blockGeometryMerging') ?? 'default',
         controls: url.searchParams.get('controls') ?? '0',
         closeupRaisedBedId:
             Number.parseInt(
@@ -787,12 +865,14 @@ function installBrowserMetrics() {
     let rafTick = 0;
     const gpuTimer = {
         active: null,
+        complete: false,
         context: null,
         disjoint: false,
         extension: null,
         generation: 0,
         pending: [],
         reason: 'no WebGL2 draw observed',
+        recording: false,
         samples: [],
         supported: null,
     };
@@ -805,6 +885,13 @@ function installBrowserMetrics() {
 
         if (gl.getParameter(extension.GPU_DISJOINT_EXT)) {
             gpuTimer.disjoint = true;
+            gpuTimer.samples = [];
+            gpuTimer.reason = 'GPU timer query results became disjoint';
+            for (const entry of gpuTimer.pending) {
+                gl.deleteQuery(entry.query);
+            }
+            gpuTimer.pending = [];
+            return;
         }
         gpuTimer.pending = gpuTimer.pending.filter((entry) => {
             if (!gl.getQueryParameter(entry.query, gl.QUERY_RESULT_AVAILABLE)) {
@@ -836,6 +923,9 @@ function installBrowserMetrics() {
         gpuTimer.active = null;
     };
     const beginGpuFrame = (gl) => {
+        if (!gpuTimer.recording || gpuTimer.disjoint) {
+            return;
+        }
         if (
             typeof WebGL2RenderingContext === 'undefined' ||
             !(gl instanceof WebGL2RenderingContext)
@@ -859,12 +949,14 @@ function installBrowserMetrics() {
         if (!gpuTimer.extension || gpuTimer.context !== gl) {
             return;
         }
-        if (gpuTimer.active?.rafTick === rafTick) {
+        if (gpuTimer.active) {
             return;
         }
 
-        endGpuQuery();
         pollGpuQueries();
+        if (gpuTimer.disjoint) {
+            return;
+        }
         const query = gl.createQuery();
         if (!query) {
             gpuTimer.supported = false;
@@ -872,47 +964,99 @@ function installBrowserMetrics() {
             return;
         }
         gl.beginQuery(gpuTimer.extension.TIME_ELAPSED_EXT, query);
+        gpuTimer.reason = null;
         gpuTimer.active = {
             generation: gpuTimer.generation,
             query,
-            rafTick,
         };
+        queueMicrotask(endGpuQuery);
+    };
+    const stopGpuTimer = () => {
+        gpuTimer.recording = false;
+        endGpuQuery();
     };
     globalThis.__gameProfileGpuTimer = {
         async finish() {
-            endGpuQuery();
-            await new Promise((resolveFrame) =>
-                requestAnimationFrame(() =>
+            stopGpuTimer();
+            const generation = gpuTimer.generation;
+            const deadline = performance.now() + 2_000;
+            const pendingForGeneration = () =>
+                gpuTimer.pending.some(
+                    (entry) => entry.generation === generation,
+                );
+
+            while (pendingForGeneration() && !gpuTimer.disjoint) {
+                pollGpuQueries();
+                if (!pendingForGeneration() || performance.now() >= deadline) {
+                    break;
+                }
+                await new Promise((resolveFrame) =>
                     requestAnimationFrame(resolveFrame),
-                ),
-            );
+                );
+            }
             pollGpuQueries();
+            gpuTimer.complete =
+                gpuTimer.supported === true &&
+                !gpuTimer.disjoint &&
+                !pendingForGeneration();
+            if (
+                gpuTimer.supported === true &&
+                !gpuTimer.disjoint &&
+                pendingForGeneration()
+            ) {
+                gpuTimer.reason =
+                    'Timed out while draining GPU timer query results';
+            } else if (
+                gpuTimer.supported === true &&
+                gpuTimer.complete &&
+                gpuTimer.samples.length === 0
+            ) {
+                gpuTimer.reason = 'No GPU render-pass samples were recorded';
+            }
         },
         reset() {
+            gpuTimer.recording = false;
+            endGpuQuery();
+            pollGpuQueries();
             gpuTimer.generation += 1;
+            gpuTimer.complete = false;
             gpuTimer.disjoint = false;
             gpuTimer.samples = [];
+            gpuTimer.reason =
+                gpuTimer.supported === false
+                    ? gpuTimer.reason
+                    : 'no WebGL2 draw observed';
+            gpuTimer.recording = true;
         },
         snapshot() {
             pollGpuQueries();
             const sorted = [...gpuTimer.samples].sort((a, b) => a - b);
             const totalMs = sorted.reduce((total, value) => total + value, 0);
+            const supported = gpuTimer.supported === true;
+            const valid =
+                supported &&
+                gpuTimer.complete &&
+                !gpuTimer.disjoint &&
+                sorted.length > 0;
             return {
+                complete: gpuTimer.complete,
                 disjoint: gpuTimer.disjoint,
                 elapsedMaxMs: sorted.at(-1) ?? null,
                 elapsedP95Ms:
                     sorted[
                         Math.min(
                             sorted.length - 1,
-                            Math.floor(sorted.length * 0.95),
+                            Math.max(0, Math.ceil(sorted.length * 0.95) - 1),
                         )
                     ] ?? null,
                 elapsedTotalMs: sorted.length > 0 ? totalMs : null,
                 reason: gpuTimer.reason,
                 sampleCount: sorted.length,
-                supported: gpuTimer.supported === true,
+                supported,
+                valid,
             };
         },
+        stop: stopGpuTimer,
     };
     const trackRafTick = () => {
         rafTick += 1;
@@ -921,13 +1065,17 @@ function installBrowserMetrics() {
     };
     requestAnimationFrame(trackRafTick);
 
+    const recordLongTasks = (entries) => {
+        for (const entry of entries) {
+            globalThis.__gameProfileLongTasks.push({
+                duration: entry.duration,
+                startTime: entry.startTime,
+            });
+        }
+    };
     try {
         globalThis.__gameProfileLongTaskObserver = new PerformanceObserver(
-            (list) => {
-                for (const entry of list.getEntries()) {
-                    globalThis.__gameProfileLongTasks.push(entry.duration);
-                }
-            },
+            (list) => recordLongTasks(list.getEntries()),
         );
         globalThis.__gameProfileLongTaskObserver.observe({
             type: 'longtask',
@@ -936,6 +1084,17 @@ function installBrowserMetrics() {
     } catch (error) {
         globalThis.__gameProfileLongTaskObserverError = String(error);
     }
+    globalThis.__gameProfileReadLongTasks = (startedAt, endedAt) => {
+        recordLongTasks(
+            globalThis.__gameProfileLongTaskObserver?.takeRecords() ?? [],
+        );
+        return globalThis.__gameProfileLongTasks
+            .filter(
+                (entry) =>
+                    entry.startTime >= startedAt && entry.startTime <= endedAt,
+            )
+            .map((entry) => entry.duration);
+    };
 
     const addTriangles = (gl, mode, count, instances = 1) => {
         let triangles = 0;
@@ -967,12 +1126,33 @@ function installBrowserMetrics() {
         };
         prototype[name].__gameProfilePatched = true;
     };
+    const patchGpuRenderPassStart = (prototype, name) => {
+        if (!prototype?.[name] || prototype[name].__gameProfilePatched) {
+            return;
+        }
+
+        const original = prototype[name];
+        prototype[name] = function patchedRenderPassStart(...args) {
+            beginGpuFrame(this);
+            return original.apply(this, args);
+        };
+        prototype[name].__gameProfilePatched = true;
+    };
 
     const patchContext = (Context) => {
         if (!Context) {
             return;
         }
 
+        for (const name of [
+            'clear',
+            'clearBufferfi',
+            'clearBufferfv',
+            'clearBufferiv',
+            'clearBufferuiv',
+        ]) {
+            patchGpuRenderPassStart(Context.prototype, name);
+        }
         patch(Context.prototype, 'drawArrays', (gl, args) => {
             globalThis.__gameProfileMetrics.drawCalls += 1;
             addTriangles(gl, args[0], args[2]);
@@ -1034,7 +1214,7 @@ async function finishInteractiveProfileSample() {
         throw new Error('No interactive game profile sample is active.');
     }
     sample.running = false;
-    await globalThis.__gameProfileGpuTimer?.finish();
+    const sampleEndedAt = performance.now();
 
     const canvas = document.querySelector('canvas');
     const metrics = globalThis.__gameProfileMetrics;
@@ -1050,16 +1230,16 @@ async function finishInteractiveProfileSample() {
     const averageFrameMs =
         frameIntervals.reduce((sum, value) => sum + value, 0) /
         Math.max(1, frameIntervals.length);
-    const longTasks = globalThis.__gameProfileLongTasks ?? [];
     const drawCalls = metrics?.drawCalls ?? 0;
+    const instancedDrawCalls = metrics?.instancedDrawCalls ?? 0;
     const renderedFrames = metrics?.renderedFrames ?? 0;
     const submittedTriangles = Math.round(metrics?.submittedTriangles ?? 0);
-    const frames = frameIntervals.length;
-    const elapsedSeconds = (performance.now() - sample.startedAt) / 1000;
+    const rafFrames = frameIntervals.length;
+    const elapsedSeconds = (sampleEndedAt - sample.startedAt) / 1000;
     const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
-
-    globalThis.__gameProfileInteractiveSample = null;
-    return {
+    const safeRafFrames = Math.max(1, rafFrames);
+    const safeRenderedFrames = Math.max(1, renderedFrames);
+    const nonGpuSample = {
         averageFrameMs,
         canvas: canvas
             ? {
@@ -1070,29 +1250,18 @@ async function finishInteractiveProfileSample() {
               }
             : null,
         drawCalls,
-        drawCallsPerFrame: drawCalls / Math.max(1, frames),
+        drawCallsPerFrame: drawCalls / safeRafFrames,
+        drawCallsPerRafFrame: drawCalls / safeRafFrames,
         drawCallsPerRenderedFrame:
-            renderedFrames > 0 ? drawCalls / renderedFrames : 0,
+            renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
         drawCallsPerSecond: drawCalls / safeElapsedSeconds,
         elapsedMs: elapsedSeconds * 1000,
-        fps: frames / safeElapsedSeconds,
-        frames,
-        gpu: globalThis.__gameProfileGpuTimer?.snapshot() ?? {
-            disjoint: false,
-            elapsedMaxMs: null,
-            elapsedP95Ms: null,
-            elapsedTotalMs: null,
-            reason: 'GPU timer instrumentation was not installed',
-            sampleCount: 0,
-            supported: false,
-        },
-        instancedDrawCalls: metrics?.instancedDrawCalls ?? 0,
+        fps: rafFrames / safeElapsedSeconds,
+        frames: rafFrames,
+        instancedDrawCalls,
         jsHeapMb: performance.memory
             ? performance.memory.usedJSHeapSize / 1024 / 1024
             : null,
-        longTaskCount: longTasks.length,
-        longTaskMaxMs: Math.max(0, ...longTasks),
-        longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
         maxFrameMs: sortedIntervals.at(-1) ?? 0,
         p50FrameMs: percentile(0.5),
         p95FrameMs: percentile(0.95),
@@ -1100,10 +1269,77 @@ async function finishInteractiveProfileSample() {
         renderedFps: renderedFrames / safeElapsedSeconds,
         renderedFrames,
         submittedTriangles,
-        trianglesPerFrame: submittedTriangles / Math.max(1, frames),
+        trianglesPerFrame: submittedTriangles / safeRafFrames,
+        trianglesPerRafFrame: submittedTriangles / safeRafFrames,
         trianglesPerRenderedFrame:
-            renderedFrames > 0 ? submittedTriangles / renderedFrames : 0,
+            renderedFrames > 0 ? submittedTriangles / safeRenderedFrames : 0,
         trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
+    };
+    globalThis.__gameProfileGpuTimer?.stop();
+    globalThis.__gameProfileInteractiveSample = null;
+
+    return {
+        ...nonGpuSample,
+        sampleWindow: {
+            endedAt: sampleEndedAt,
+            startedAt: sample.startedAt,
+        },
+    };
+}
+
+async function drainProfileSample(sampleWindow) {
+    await globalThis.__gameProfileGpuTimer?.finish();
+    await new Promise((resolveDrain) => setTimeout(resolveDrain, 0));
+    const longTasks =
+        globalThis.__gameProfileReadLongTasks?.(
+            sampleWindow.startedAt,
+            sampleWindow.endedAt,
+        ) ?? [];
+    const gpu = globalThis.__gameProfileGpuTimer?.snapshot() ?? {
+        complete: false,
+        disjoint: false,
+        elapsedMaxMs: null,
+        elapsedP95Ms: null,
+        elapsedTotalMs: null,
+        reason: 'GPU timer instrumentation was not installed',
+        sampleCount: 0,
+        supported: false,
+        valid: false,
+    };
+
+    return {
+        gpu,
+        longTasks,
+    };
+}
+
+function mergeProfileSampleDrain(sampleAtEndpoint, drainedSample) {
+    const { sampleWindow: _sampleWindow, ...sample } = sampleAtEndpoint;
+    const longTasks = drainedSample.longTasks ?? [];
+
+    return {
+        ...sample,
+        gpu: drainedSample.gpu,
+        longTaskCount: longTasks.length,
+        longTaskMaxMs: Math.max(0, ...longTasks),
+        longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
+    };
+}
+
+async function finalizeProfileSampleAtEndpoint({
+    cdp,
+    page,
+    sampleAtEndpoint,
+}) {
+    const endpointMetrics = await cdp.send('Performance.getMetrics');
+    const drainedSample = await page.evaluate(
+        drainProfileSample,
+        sampleAtEndpoint.sampleWindow,
+    );
+
+    return {
+        endpointMetrics,
+        sample: mergeProfileSampleDrain(sampleAtEndpoint, drainedSample),
     };
 }
 
@@ -1112,7 +1348,10 @@ async function wait(milliseconds) {
 }
 
 async function runScenarioMotion(page, scenario, sampleMs) {
-    if (scenario.motion !== 'pan-zoom-rotate') {
+    if (
+        scenario.motion !== 'pan-zoom-rotate' &&
+        scenario.interaction !== 'hover-scan'
+    ) {
         await wait(sampleMs);
         return;
     }
@@ -1126,17 +1365,42 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     const centerX = canvasBox.x + canvasBox.width * 0.52;
     const centerY = canvasBox.y + canvasBox.height * 0.52;
     const startedAt = Date.now();
+    if (scenario.interaction === 'hover-scan') {
+        const points = [
+            [-0.08, -0.04],
+            [0, 0],
+            [0.08, -0.04],
+            [0.08, 0.06],
+            [0, 0.08],
+            [-0.08, 0.06],
+        ];
+        await page.mouse.move(centerX, centerY);
+        await page.mouse.click(centerX, centerY);
+        let pointIndex = 0;
+        while (Date.now() - startedAt < sampleMs - 80) {
+            const [offsetX, offsetY] = points[pointIndex] ?? [0, 0];
+            await page.mouse.move(
+                centerX + canvasBox.width * offsetX,
+                centerY + canvasBox.height * offsetY,
+                { steps: 8 },
+            );
+            pointIndex = (pointIndex + 1) % points.length;
+            await wait(80);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return;
+    }
+
     let direction = 1;
 
     while (Date.now() - startedAt < sampleMs - 120) {
-        await page.mouse.move(centerX, centerY);
-        await page.mouse.down();
-        await page.mouse.move(
-            centerX + 180 * direction,
-            centerY + 80 * direction,
-            { steps: 14 },
-        );
-        await page.mouse.up();
+        const panKey = direction > 0 ? 'ArrowLeft' : 'ArrowRight';
+        await page.keyboard.down(panKey);
+        await wait(120);
+        await page.keyboard.up(panKey);
         await page.mouse.wheel(0, direction > 0 ? -420 : 360);
         await page.keyboard.press(direction > 0 ? 'KeyQ' : 'KeyW');
         direction *= -1;
@@ -1419,11 +1683,19 @@ async function runPlantCloseupPass({
         timedOut = true;
     }
 
+    const transitionAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const transitionCompletion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint: transitionAtEndpoint,
+    });
     const transition = roundSample(
-        await page.evaluate(finishInteractiveProfileSample),
+        normalizeRenderWork(transitionCompletion.sample),
     );
     const transitionCdpAfter = metricsByName(
-        await cdp.send('Performance.getMetrics'),
+        transitionCompletion.endpointMetrics,
     );
     const transitionProfile = (await readGameProfileRuntime(page))
         ?.generatedPlantProfile;
@@ -1450,12 +1722,16 @@ async function runPlantCloseupPass({
     );
     await page.evaluate(beginInteractiveProfileSample);
     await wait(options.sampleMs);
-    const steady = roundSample(
-        await page.evaluate(finishInteractiveProfileSample),
+    const steadyAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
     );
-    const steadyCdpAfter = metricsByName(
-        await cdp.send('Performance.getMetrics'),
-    );
+    const steadyCompletion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint: steadyAtEndpoint,
+    });
+    const steady = roundSample(normalizeRenderWork(steadyCompletion.sample));
+    const steadyCdpAfter = metricsByName(steadyCompletion.endpointMetrics);
     const steadyProfile = (await readGameProfileRuntime(page))
         ?.generatedPlantProfile;
 
@@ -1539,6 +1815,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     });
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
+    const apiErrors = [];
     const consoleMessages = [];
     const pageErrors = [];
 
@@ -1553,14 +1830,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     page.on('console', (message) => {
         if (message.type() === 'error' || message.type() === 'warning') {
+            const location = message.location();
             consoleMessages.push({
                 type: message.type(),
                 text: message.text().slice(0, 300),
+                url: location.url || null,
             });
         }
     });
     page.on('pageerror', (error) => {
         pageErrors.push(error.message.slice(0, 300));
+    });
+    page.on('response', (response) => {
+        const responseUrl = response.url();
+        if (
+            response.status() >= 400 &&
+            new URL(responseUrl).pathname.includes('/api/')
+        ) {
+            apiErrors.push({
+                status: response.status(),
+                url: responseUrl,
+            });
+        }
     });
 
     const url = new URL(scenario.path, baseUrl).toString();
@@ -1587,6 +1878,33 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
     );
     const canvasReadyMs = Date.now() - navigationStart;
+    const request = getScenarioRequest(scenario.path);
+    if (request.gardenProfile === 'high-target') {
+        await page.waitForFunction(
+            ({ expectedFieldCount, expectedInstanceCount }) => {
+                const profile = globalThis.__grediceGameProfile;
+                return Boolean(
+                    profile?.qualityTier === 'high' &&
+                        profile.generatedPlantFieldCount ===
+                            expectedFieldCount &&
+                        profile.generatedPlantExpectedInstanceCount ===
+                            expectedInstanceCount &&
+                        profile.generatedPlantInstanceCount ===
+                            profile.generatedPlantExpectedInstanceCount &&
+                        profile.generatedPlantVisibleFieldCount ===
+                            expectedFieldCount &&
+                        profile.generatedPlantVisibleInstanceCount ===
+                            expectedInstanceCount,
+                );
+            },
+            {
+                expectedFieldCount: highTargetExpectedGeneratedPlantFieldCount,
+                expectedInstanceCount:
+                    highTargetExpectedGeneratedPlantInstanceCount,
+            },
+            { timeout: 60000 },
+        );
+    }
 
     await page.evaluate(
         (warmupMs) =>
@@ -1596,7 +1914,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     if (options.soakMs > 0) {
         await wait(options.soakMs);
     }
-    const request = getScenarioRequest(scenario.path);
     const profileMetadata = await page.evaluate(() => {
         const element = document.querySelector('[data-game-profile-mode]');
         if (!(element instanceof HTMLElement)) {
@@ -1615,6 +1932,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     typeof deviceMemory === 'number' ? deviceMemory : null,
                 narrowViewport: window.innerWidth <= 640,
             },
+            blockGeometryMerging:
+                element.dataset.gameProfileBlockGeometryMerging ?? null,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -1629,6 +1948,26 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             quality: element.dataset.gameProfileQuality ?? null,
         };
     });
+    const environment = await page.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        const gl =
+            canvas instanceof HTMLCanvasElement
+                ? canvas.getContext('webgl2')
+                : null;
+        const rendererInfo = gl?.getExtension('WEBGL_debug_renderer_info');
+
+        return {
+            renderer:
+                gl && rendererInfo
+                    ? gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL)
+                    : null,
+            userAgent: window.navigator.userAgent,
+            vendor:
+                gl && rendererInfo
+                    ? gl.getParameter(rendererInfo.UNMASKED_VENDOR_WEBGL)
+                    : null,
+        };
+    });
     if (scenario.plantCloseup) {
         const closeup = await measurePlantCloseup({
             cdp,
@@ -1641,6 +1980,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         await context.close();
 
         return {
+            apiErrors: apiErrors.slice(0, 8),
             budget: evaluateBudget(sample, budgets[scenario.budget]),
             closeup: {
                 cold: closeup.cold,
@@ -1651,6 +1991,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             consoleMessages: consoleMessages.slice(0, 8),
             cdp: closeup.cold.transition.cdp,
             domContentLoadedMs,
+            environment,
             canvasReadyMs,
             pageErrors,
             path: scenario.path,
@@ -1658,6 +1999,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 autoQualityDeviceClass:
                     scenario.autoQualityDeviceClass ?? 'unspecified',
                 autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
+                blockGeometryMerging:
+                    profileMetadata?.blockGeometryMerging ??
+                    request.blockGeometryMerging,
                 closeupRaisedBedId:
                     profileMetadata?.closeupRaisedBedId ??
                     request.closeupRaisedBedId,
@@ -1711,10 +2055,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 metrics.submittedTriangles = 0;
             }
             globalThis.__gameProfileLongTasks = [];
+            globalThis.__gameProfileGpuTimer?.reset();
 
             const intervals = [];
             const start = performance.now();
             let last = start;
+            const interactionResolvedTargetCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.instancedInteractionResolvedTargetCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .instancedInteractionResolvedTargetCount
+                    : null;
             const rainParticleCountAtStart =
                 typeof globalThis.__grediceGameProfile?.rainParticleCount ===
                 'number'
@@ -1759,6 +2110,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 requestAnimationFrame(step);
             });
 
+            const sampleEndedAt = performance.now();
             const frameIntervals = intervals.slice(1);
             const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
             const percentile = (value) =>
@@ -1771,17 +2123,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const averageFrameMs =
                 frameIntervals.reduce((sum, value) => sum + value, 0) /
                 Math.max(1, frameIntervals.length);
-            const longTasks = globalThis.__gameProfileLongTasks ?? [];
             const drawCalls = metrics?.drawCalls ?? 0;
+            const instancedDrawCalls = metrics?.instancedDrawCalls ?? 0;
             const renderedFrames = metrics?.renderedFrames ?? 0;
             const submittedTriangles = Math.round(
                 metrics?.submittedTriangles ?? 0,
             );
-            const frames = frameIntervals.length;
-            const elapsedSeconds = (performance.now() - start) / 1000;
+            const rafFrames = frameIntervals.length;
+            const elapsedSeconds = (sampleEndedAt - start) / 1000;
             const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
-
-            return {
+            const safeRafFrames = Math.max(1, rafFrames);
+            const safeRenderedFrames = Math.max(1, renderedFrames);
+            const interactionResolvedTargetCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.instancedInteractionResolvedTargetCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .instancedInteractionResolvedTargetCount
+                    : null;
+            const nonGpuSample = {
                 averageFrameMs,
                 canvas: canvas
                     ? {
@@ -1792,22 +2151,27 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                       }
                     : null,
                 drawCalls,
-                drawCallsPerFrame: drawCalls / Math.max(1, frames),
+                drawCallsPerFrame: drawCalls / safeRafFrames,
+                drawCallsPerRafFrame: drawCalls / safeRafFrames,
                 drawCallsPerRenderedFrame:
-                    renderedFrames > 0 ? drawCalls / renderedFrames : 0,
+                    renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
                 drawCallsPerSecond: drawCalls / safeElapsedSeconds,
-                fps: frames / elapsedSeconds,
-                frames,
-                instancedDrawCalls: metrics?.instancedDrawCalls ?? 0,
+                elapsedMs: elapsedSeconds * 1000,
+                fps: rafFrames / safeElapsedSeconds,
+                frames: rafFrames,
+                instancedDrawCalls,
+                instancedInteractionResolvedTargetCountDelta:
+                    interactionResolvedTargetCountAtStart === null ||
+                    interactionResolvedTargetCountAtEnd === null
+                        ? null
+                        : Math.max(
+                              0,
+                              interactionResolvedTargetCountAtEnd -
+                                  interactionResolvedTargetCountAtStart,
+                          ),
                 jsHeapMb: performance.memory
                     ? performance.memory.usedJSHeapSize / 1024 / 1024
                     : null,
-                longTaskCount: longTasks.length,
-                longTaskMaxMs: Math.max(0, ...longTasks),
-                longTaskTotalMs: longTasks.reduce(
-                    (sum, value) => sum + value,
-                    0,
-                ),
                 maxFrameMs: sortedIntervals.at(-1) ?? 0,
                 p50FrameMs: percentile(0.5),
                 p95FrameMs: percentile(0.95),
@@ -1822,17 +2186,27 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 rainParticleCountAtStart,
                 rainUnmountMs,
                 reportedDpr: globalThis.devicePixelRatio,
-                renderedFps: renderedFrames / elapsedSeconds,
+                renderedFps: renderedFrames / safeElapsedSeconds,
                 renderedFrames,
                 submittedTriangles,
-                trianglesPerFrame: submittedTriangles / Math.max(1, frames),
+                trianglesPerFrame: submittedTriangles / safeRafFrames,
+                trianglesPerRafFrame: submittedTriangles / safeRafFrames,
                 trianglesPerRenderedFrame:
                     renderedFrames > 0
-                        ? submittedTriangles / renderedFrames
+                        ? submittedTriangles / safeRenderedFrames
                         : 0,
                 trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
                 weatherTransitionDispatched,
                 weatherTransitionRequest,
+            };
+            globalThis.__gameProfileGpuTimer?.stop();
+
+            return {
+                ...nonGpuSample,
+                sampleWindow: {
+                    endedAt: sampleEndedAt,
+                    startedAt: start,
+                },
             };
         },
         {
@@ -1843,10 +2217,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             weatherTransitionRequest,
         },
     );
-    if (scenario.motion) {
-        await runScenarioMotion(page, scenario, options.sampleMs);
-    }
-    const sample = await samplePromise;
+    const sampleCompletionPromise = samplePromise.then((sampleAtEndpoint) =>
+        finalizeProfileSampleAtEndpoint({
+            cdp,
+            page,
+            sampleAtEndpoint,
+        }),
+    );
+    const motionPromise =
+        scenario.motion || scenario.interaction
+            ? runScenarioMotion(page, scenario, options.sampleMs)
+            : Promise.resolve();
+    const [sampleCompletion] = await Promise.all([
+        sampleCompletionPromise,
+        motionPromise,
+    ]);
+    const sample = normalizeRenderWork(sampleCompletion.sample);
+    const after = Object.fromEntries(
+        sampleCompletion.endpointMetrics.metrics.map((metric) => [
+            metric.name,
+            metric.value,
+        ]),
+    );
 
     const runtime = await page.evaluate(() => {
         const metadata = globalThis.__grediceGameProfile;
@@ -1957,6 +2349,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedLSystemCacheWriteCount === 'number'
                     ? metadata.generatedLSystemCacheWriteCount
                     : null,
+            generatedPlantBatchCount:
+                typeof metadata.generatedPlantBatchCount === 'number'
+                    ? metadata.generatedPlantBatchCount
+                    : null,
+            generatedPlantFieldCount:
+                typeof metadata.generatedPlantFieldCount === 'number'
+                    ? metadata.generatedPlantFieldCount
+                    : null,
+            generatedPlantExpectedInstanceCount:
+                typeof metadata.generatedPlantExpectedInstanceCount === 'number'
+                    ? metadata.generatedPlantExpectedInstanceCount
+                    : null,
+            generatedPlantInstanceCount:
+                typeof metadata.generatedPlantInstanceCount === 'number'
+                    ? metadata.generatedPlantInstanceCount
+                    : null,
+            generatedPlantVisibleFieldCount:
+                typeof metadata.generatedPlantVisibleFieldCount === 'number'
+                    ? metadata.generatedPlantVisibleFieldCount
+                    : null,
+            generatedPlantVisibleInstanceCount:
+                typeof metadata.generatedPlantVisibleInstanceCount === 'number'
+                    ? metadata.generatedPlantVisibleInstanceCount
+                    : null,
             instancedInteractionControllerCount:
                 typeof metadata.instancedInteractionControllerCount === 'number'
                     ? metadata.instancedInteractionControllerCount
@@ -1973,6 +2389,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.instancedInteractionResolutionTotalMs ===
                 'number'
                     ? metadata.instancedInteractionResolutionTotalMs
+                    : null,
+            instancedInteractionResolvedTargetCount:
+                typeof metadata.instancedInteractionResolvedTargetCount ===
+                'number'
+                    ? metadata.instancedInteractionResolvedTargetCount
                     : null,
             instancedInteractionTargetCount:
                 typeof metadata.instancedInteractionTargetCount === 'number'
@@ -2080,10 +2501,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         };
     });
 
-    const afterMetrics = await cdp.send('Performance.getMetrics');
-    const after = Object.fromEntries(
-        afterMetrics.metrics.map((metric) => [metric.name, metric.value]),
-    );
     const screenshotPath = options.screenshots
         ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
         : null;
@@ -2099,8 +2516,44 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     await context.close();
 
     const roundedSample = roundSample(sample);
+    const requested = {
+        autoQualityDeviceClass:
+            scenario.autoQualityDeviceClass ?? 'unspecified',
+        autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
+        blockGeometryMerging:
+            profileMetadata?.blockGeometryMerging ??
+            request.blockGeometryMerging,
+        controls: profileMetadata?.controls ?? request.controls,
+        details: profileMetadata?.details ?? request.details,
+        debugHud: profileMetadata?.debugHud ?? request.debugHud,
+        dpr: scenario.dpr,
+        gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
+        hud: profileMetadata?.hud ?? request.hud,
+        isMobile: scenario.isMobile,
+        mode: profileMetadata?.mode ?? request.mode,
+        motion: scenario.motion ?? scenario.interaction ?? 'none',
+        placementProfile:
+            placementProfileRequest === null ? 'none' : 'placement-drop',
+        quality: profileMetadata?.quality ?? request.quality,
+        viewport: scenario.viewport,
+        weatherTransition: weatherTransitionRequest ?? 'none',
+    };
+    const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
+    const acceptance = evaluateHighTargetAcceptance({
+        apiErrors,
+        pageErrors,
+        requested,
+        runtime,
+        sample: roundedSample,
+    });
     return {
-        budget: evaluateBudget(roundedSample, budgets[scenario.budget]),
+        acceptance,
+        apiErrors: apiErrors.slice(0, 8),
+        budget: {
+            checks: [...budget.checks, ...acceptance.checks],
+            pass: budget.pass && acceptance.pass,
+        },
+        budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
         cdp: {
             jsHeapMb: round((after.JSHeapUsedSize ?? 0) / 1024 / 1024, 1),
@@ -2118,29 +2571,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
         },
         domContentLoadedMs,
+        environment,
         canvasReadyMs,
         pageErrors,
         path: scenario.path,
-        requested: {
-            autoQualityDeviceClass:
-                scenario.autoQualityDeviceClass ?? 'unspecified',
-            autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
-            controls: profileMetadata?.controls ?? request.controls,
-            details: profileMetadata?.details ?? request.details,
-            debugHud: profileMetadata?.debugHud ?? request.debugHud,
-            dpr: scenario.dpr,
-            gardenProfile:
-                profileMetadata?.gardenProfile ?? request.gardenProfile,
-            hud: profileMetadata?.hud ?? request.hud,
-            isMobile: scenario.isMobile,
-            mode: profileMetadata?.mode ?? request.mode,
-            motion: scenario.motion ?? 'none',
-            placementProfile:
-                placementProfileRequest === null ? 'none' : 'placement-drop',
-            quality: profileMetadata?.quality ?? request.quality,
-            viewport: scenario.viewport,
-            weatherTransition: weatherTransitionRequest ?? 'none',
-        },
+        performanceBudget: budget,
+        requested,
         runtime,
         sample: roundedSample,
         screenshotPath,
@@ -2158,11 +2594,32 @@ function round(value, digits = 2) {
     return Math.round(value * multiplier) / multiplier;
 }
 
+function normalizeRenderWork(sample) {
+    const rafFrames = Math.max(1, sample.frames ?? 0);
+    const renderedFrames = Math.max(1, sample.renderedFrames ?? 0);
+    const hasRenderedFrames = (sample.renderedFrames ?? 0) > 0;
+
+    return {
+        ...sample,
+        drawCallsPerFrame: sample.drawCalls / rafFrames,
+        drawCallsPerRafFrame: sample.drawCalls / rafFrames,
+        drawCallsPerRenderedFrame: hasRenderedFrames
+            ? sample.drawCalls / renderedFrames
+            : 0,
+        trianglesPerFrame: sample.submittedTriangles / rafFrames,
+        trianglesPerRafFrame: sample.submittedTriangles / rafFrames,
+        trianglesPerRenderedFrame: hasRenderedFrames
+            ? sample.submittedTriangles / renderedFrames
+            : 0,
+    };
+}
+
 function roundSample(sample) {
     return {
         ...sample,
         averageFrameMs: round(sample.averageFrameMs),
         drawCallsPerFrame: round(sample.drawCallsPerFrame, 1),
+        drawCallsPerRafFrame: round(sample.drawCallsPerRafFrame, 1),
         drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
         drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
         elapsedMs: round(sample.elapsedMs),
@@ -2185,6 +2642,7 @@ function roundSample(sample) {
         rainUnmountMs: round(sample.rainUnmountMs),
         renderedFps: round(sample.renderedFps, 1),
         trianglesPerFrame: Math.round(sample.trianglesPerFrame),
+        trianglesPerRafFrame: Math.round(sample.trianglesPerRafFrame),
         trianglesPerRenderedFrame: Math.round(sample.trianglesPerRenderedFrame),
         trianglesPerSecond: Math.round(sample.trianglesPerSecond),
     };
@@ -2195,16 +2653,6 @@ function evaluateBudget(sample, budget) {
         ['p95FrameMs', sample.p95FrameMs, budget.p95FrameMs],
         ['maxFrameMs', sample.maxFrameMs, budget.maxFrameMs],
         ['longTaskCount', sample.longTaskCount, budget.longTaskCount],
-        [
-            'drawCallsPerFrame',
-            sample.drawCallsPerFrame,
-            budget.drawCallsPerFrame,
-        ],
-        [
-            'trianglesPerFrame',
-            sample.trianglesPerFrame,
-            budget.trianglesPerFrame,
-        ],
         ['jsHeapMb', sample.jsHeapMb ?? 0, budget.jsHeapMb],
     ].map(([name, actual, limit]) => ({
         actual,
@@ -2212,6 +2660,157 @@ function evaluateBudget(sample, budget) {
         name,
         pass: actual <= limit,
     }));
+    for (const name of [
+        'drawCallsPerFrame',
+        'drawCallsPerRenderedFrame',
+        'trianglesPerFrame',
+        'trianglesPerRenderedFrame',
+    ]) {
+        if (budget[name] === undefined) {
+            continue;
+        }
+        checks.push({
+            actual: sample[name],
+            limit: budget[name],
+            name,
+            pass: sample[name] <= budget[name],
+        });
+    }
+    if (budget.gpuElapsedP95Ms !== undefined) {
+        const actual = sample.gpu?.elapsedP95Ms ?? null;
+        const valid = sample.gpu?.valid === true && Number.isFinite(actual);
+        checks.push({
+            actual,
+            limit: budget.gpuElapsedP95Ms,
+            name: 'gpuElapsedP95Ms',
+            pass: !valid || actual <= budget.gpuElapsedP95Ms,
+            skipped: !valid,
+        });
+    }
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function evaluateHighTargetAcceptance({
+    apiErrors = [],
+    pageErrors,
+    requested,
+    runtime,
+    sample,
+}) {
+    if (requested.gardenProfile !== 'high-target') {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass: typeof actual === 'number' && actual >= limit,
+    });
+    const minimumRenderedFrames = Math.max(
+        1,
+        Math.floor((sample.elapsedMs ?? 0) / 1_000),
+    );
+    const checks = [
+        exact('highTargetQualityRequest', requested.quality, 'high'),
+        exact('highTargetQualityTier', runtime?.qualityTier, 'high'),
+        exact('highTargetGeometryMerging', requested.blockGeometryMerging, '1'),
+        exact('highTargetReportedDpr', sample.reportedDpr, 2),
+        exact('highTargetCanvasClientWidth', sample.canvas?.clientWidth, 1280),
+        exact('highTargetCanvasClientHeight', sample.canvas?.clientHeight, 720),
+        exact('highTargetCanvasWidth', sample.canvas?.width, 2560),
+        exact('highTargetCanvasHeight', sample.canvas?.height, 1440),
+        exact(
+            'highTargetGeneratedPlantFields',
+            runtime?.generatedPlantFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'highTargetExpectedGeneratedPlantInstances',
+            runtime?.generatedPlantExpectedInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'highTargetGeneratedPlantInstances',
+            runtime?.generatedPlantInstanceCount,
+            runtime?.generatedPlantExpectedInstanceCount,
+        ),
+        exact(
+            'highTargetVisiblePlantFields',
+            runtime?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'highTargetVisiblePlantInstances',
+            runtime?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        minimum(
+            'highTargetAnimatedCasterShadowRefreshes',
+            runtime?.animatedCasterShadowRefreshCount,
+            1,
+        ),
+        minimum('highTargetRenderedFps', sample.renderedFps, 1),
+        minimum(
+            'highTargetRenderedFrames',
+            sample.renderedFrames,
+            minimumRenderedFrames,
+        ),
+        minimum('highTargetDrawCalls', sample.drawCalls, 1),
+        minimum('highTargetSubmittedTriangles', sample.submittedTriangles, 1),
+        exact('highTargetApiErrors', apiErrors.length, 0),
+        exact('highTargetPageErrors', pageErrors.length, 0),
+    ];
+    if (requested.motion === 'hover-scan') {
+        checks.push(
+            minimum(
+                'highTargetInteractionResolutions',
+                runtime?.instancedInteractionResolutionCount,
+                1,
+            ),
+            minimum(
+                'highTargetInteractionResolvedTargetsDuringSample',
+                sample.instancedInteractionResolvedTargetCountDelta,
+                1,
+            ),
+        );
+    }
+    if (requested.placementProfile === 'placement-drop') {
+        checks.push(
+            exact(
+                'highTargetPlacementDispatched',
+                sample.placementProfileDispatched,
+                true,
+            ),
+            minimum(
+                'highTargetPlacementRebuilds',
+                runtime?.placementChunkPhysicalRebuildCount,
+                1,
+            ),
+        );
+    }
+    if (requested.mode === 'rain') {
+        checks.push(
+            minimum('highTargetRainParticles', runtime?.rainParticleCount, 1),
+        );
+    }
+    if (requested.mode === 'snow') {
+        checks.push(
+            minimum('highTargetSnowParticles', runtime?.snowParticleCount, 1),
+        );
+    }
 
     return {
         checks,
@@ -2230,6 +2829,137 @@ function median(values) {
     return finiteValues.length % 2 === 0
         ? (finiteValues[middle - 1] + finiteValues[middle]) / 2
         : finiteValues[middle];
+}
+
+function buildHighTargetMedians(scenarios) {
+    const groups = Map.groupBy(
+        scenarios.filter(
+            (scenario) => scenario.requested?.gardenProfile === 'high-target',
+        ),
+        (scenario) => scenario.baseName ?? scenario.name,
+    );
+    const metric = (runs, select) => {
+        const values = runs
+            .map(select)
+            .filter((value) => Number.isFinite(value));
+        return {
+            max: values.length > 0 ? round(Math.max(...values)) : null,
+            median: round(median(values)),
+            min: values.length > 0 ? round(Math.min(...values)) : null,
+        };
+    };
+
+    return Object.fromEntries(
+        Array.from(groups, ([name, runs]) => {
+            const drawCallsPerFrame = metric(
+                runs,
+                (run) => run.sample.drawCallsPerFrame,
+            );
+            const drawCallsPerRenderedFrame = metric(
+                runs,
+                (run) => run.sample.drawCallsPerRenderedFrame,
+            );
+            const gpuElapsedP95Ms = metric(runs, (run) =>
+                run.sample.gpu?.valid ? run.sample.gpu.elapsedP95Ms : null,
+            );
+            const jsHeapMb = metric(runs, (run) => run.sample.jsHeapMb);
+            const longTaskCount = metric(
+                runs,
+                (run) => run.sample.longTaskCount,
+            );
+            const maxFrameMs = metric(runs, (run) => run.sample.maxFrameMs);
+            const p95FrameMs = metric(runs, (run) => run.sample.p95FrameMs);
+            const renderedFps = metric(runs, (run) => run.sample.renderedFps);
+            const trianglesPerFrame = metric(
+                runs,
+                (run) => run.sample.trianglesPerFrame,
+            );
+            const trianglesPerRenderedFrame = metric(
+                runs,
+                (run) => run.sample.trianglesPerRenderedFrame,
+            );
+            const medianSample = {
+                drawCallsPerFrame: drawCallsPerFrame.median,
+                drawCallsPerRenderedFrame: drawCallsPerRenderedFrame.median,
+                gpu: {
+                    elapsedP95Ms: gpuElapsedP95Ms.median,
+                    valid: gpuElapsedP95Ms.median !== null,
+                },
+                jsHeapMb: jsHeapMb.median,
+                longTaskCount: longTaskCount.median,
+                maxFrameMs: maxFrameMs.median,
+                p95FrameMs: p95FrameMs.median,
+                trianglesPerFrame: trianglesPerFrame.median,
+                trianglesPerRenderedFrame: trianglesPerRenderedFrame.median,
+            };
+            const budgetName = runs[0]?.budgetName ?? 'gameHighTarget';
+            const performanceBudget = evaluateBudget(
+                medianSample,
+                budgets[budgetName] ?? budgets.gameHighTarget,
+            );
+            const failedAcceptanceRuns = runs
+                .filter((run) => run.acceptance?.pass !== true)
+                .map((run) => run.name);
+            const acceptancePass = failedAcceptanceRuns.length === 0;
+
+            return [
+                name,
+                {
+                    acceptancePass,
+                    acceptedRunCount: runs.length - failedAcceptanceRuns.length,
+                    budgetName,
+                    drawCallsPerRenderedFrame,
+                    failedAcceptanceRuns,
+                    gpuElapsedP95Ms,
+                    jsHeapMb,
+                    longTaskCount,
+                    maxFrameMs,
+                    medianSample,
+                    p95FrameMs,
+                    pass: acceptancePass && performanceBudget.pass,
+                    passedRunCount: runs.filter((run) => run.budget.pass)
+                        .length,
+                    performanceBudget,
+                    performancePassedRunCount: runs.filter(
+                        (run) => run.performanceBudget?.pass === true,
+                    ).length,
+                    renderedFps,
+                    runCount: runs.length,
+                    trianglesPerRenderedFrame,
+                },
+            ];
+        }),
+    );
+}
+
+function buildProfileSummary(scenarios, highTargetMedians) {
+    const nonHighTargetScenarios = scenarios.filter(
+        (scenario) => scenario.requested?.gardenProfile !== 'high-target',
+    );
+    const highTargetResults = Object.entries(highTargetMedians);
+    const failedScenarioNames = [
+        ...nonHighTargetScenarios
+            .filter((scenario) => !scenario.budget.pass)
+            .map((scenario) => scenario.name),
+        ...highTargetResults
+            .filter(([, result]) => !result.pass)
+            .map(([name]) => name),
+    ];
+    const totalScenarios =
+        nonHighTargetScenarios.length + highTargetResults.length;
+    const failedRuns = scenarios.filter(
+        (scenario) => !scenario.budget.pass,
+    ).length;
+
+    return {
+        failedScenarioNames,
+        failedScenarios: failedScenarioNames.length,
+        failedRuns,
+        passedRuns: scenarios.length - failedRuns,
+        passedScenarios: totalScenarios - failedScenarioNames.length,
+        totalRuns: scenarios.length,
+        totalScenarios,
+    };
 }
 
 function buildPlantPipelineMedians(runs, phase) {
@@ -2898,6 +3628,9 @@ function buildMarkdown(report) {
         '',
         `Generated: ${report.generatedAt}`,
         '',
+        `Schema: ${report.schemaVersion}`,
+        `Source commit: ${report.sourceCommit ?? 'unknown'}`,
+        '',
         `Base URL: ${report.baseUrl}`,
         '',
         `Build: ${report.options.build ? 'yes' : 'no'}`,
@@ -2907,11 +3640,13 @@ function buildMarkdown(report) {
         `Warmup: ${report.options.warmupMs} ms`,
         `Soak: ${report.options.soakMs} ms`,
         `Sample: ${report.options.sampleMs} ms`,
+        `Browser: ${report.scenarios[0]?.environment?.userAgent ?? 'unknown'}`,
+        `GPU: ${report.scenarios[0]?.environment?.vendor ?? 'unknown'} / ${report.scenarios[0]?.environment?.renderer ?? 'unknown'}`,
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Triangles/frame | Long tasks | Heap | Budget | Screenshot |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        '| Scenario | Mode | Profile | Merged | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Draw/render | Triangles/frame | Triangles/render | Long tasks | Heap | Run diagnostic | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -2936,18 +3671,59 @@ function buildMarkdown(report) {
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.blockGeometryMerging} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 
-    lines.push('', '## Failed Budget Checks', '');
-    const failures = report.scenarios.flatMap((scenario) =>
-        scenario.budget.checks
+    const highTargetMedians = Object.entries(report.highTargetMedians ?? {});
+    if (highTargetMedians.length > 0) {
+        lines.push(
+            '',
+            '## High-target repeated-run summary',
+            '',
+            '| Scenario | Accepted runs | Diagnostic passing runs | Median budget | Final | p95 median [min, max] | Rendered FPS median [min, max] | Draw/render median [min, max] | Triangles/render median [min, max] | GPU p95 median [min, max] |',
+            '| --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |',
+        );
+        const formatRange = (range) =>
+            `${range.median ?? 'n/a'} [${range.min ?? 'n/a'}, ${range.max ?? 'n/a'}]`;
+        for (const [name, summary] of highTargetMedians) {
+            lines.push(
+                `| ${name} | ${summary.acceptedRunCount}/${summary.runCount} | ${summary.passedRunCount}/${summary.runCount} | ${summary.performanceBudget.pass ? 'pass' : 'fail'} | ${summary.pass ? 'pass' : 'fail'} | ${formatRange(summary.p95FrameMs)} | ${formatRange(summary.renderedFps)} | ${formatRange(summary.drawCallsPerRenderedFrame)} | ${formatRange(summary.trianglesPerRenderedFrame)} | ${formatRange(summary.gpuElapsedP95Ms)} |`,
+            );
+        }
+    }
+
+    lines.push('', '## High-target Aggregate Failures', '');
+    const highTargetFailures = highTargetMedians.flatMap(([name, summary]) => [
+        ...(summary.acceptancePass
+            ? []
+            : [
+                  `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
+              ]),
+        ...summary.performanceBudget.checks
             .filter((check) => !check.pass)
             .map(
                 (check) =>
-                    `- ${scenario.name}: ${check.name} ${check.actual} > ${check.limit}`,
+                    `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
             ),
+    ]);
+    lines.push(
+        ...(highTargetFailures.length ? highTargetFailures : ['- None']),
+    );
+
+    lines.push('', '## Per-run Diagnostic Failures', '');
+    const failures = report.scenarios.flatMap((scenario) =>
+        scenario.budget.checks
+            .filter((check) => !check.pass)
+            .map((check) => {
+                const operator =
+                    check.comparison === 'minimum'
+                        ? '<'
+                        : check.comparison === 'equal'
+                          ? '!='
+                          : '>';
+                return `- ${scenario.name}: ${check.name} ${check.actual} ${operator} ${check.limit}`;
+            }),
     );
     lines.push(...(failures.length ? failures : ['- None']));
 
@@ -3116,15 +3892,24 @@ function buildMarkdown(report) {
 
     lines.push('', '## Console Warnings And Errors', '');
     for (const scenario of report.scenarios) {
-        if (!scenario.consoleMessages.length && !scenario.pageErrors.length) {
+        if (
+            !scenario.apiErrors?.length &&
+            !scenario.consoleMessages.length &&
+            !scenario.pageErrors.length
+        ) {
             continue;
         }
         lines.push(`### ${scenario.name}`, '');
+        for (const error of scenario.apiErrors ?? []) {
+            lines.push(`- API error: ${error.status} ${error.url}`);
+        }
         for (const error of scenario.pageErrors) {
             lines.push(`- page error: ${error}`);
         }
         for (const message of scenario.consoleMessages) {
-            lines.push(`- ${message.type}: ${message.text}`);
+            lines.push(
+                `- ${message.type}: ${message.text}${message.url ? ` (${message.url})` : ''}`,
+            );
         }
         lines.push('');
     }
@@ -3220,7 +4005,7 @@ async function main() {
         for (const scenario of profileScenarios) {
             const repeat = scenario.plantCloseup
                 ? (options.closeupRepeat ?? scenario.plantCloseup.repeat)
-                : 1;
+                : (scenario.repeat ?? 1);
             for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
                 const runScenario =
                     repeat === 1
@@ -3244,12 +4029,19 @@ async function main() {
             }
         }
 
-        const failedScenarios = scenarios.filter(
-            (scenario) => !scenario.budget.pass,
+        const highTargetMedians = buildHighTargetMedians(scenarios);
+        const profileSummary = buildProfileSummary(
+            scenarios,
+            highTargetMedians,
         );
         const report = {
             baseUrl: options.baseUrl,
             generatedAt: new Date().toISOString(),
+            schemaVersion: 2,
+            sourceCommit:
+                process.env.VERCEL_GIT_COMMIT_SHA ??
+                process.env.GITHUB_SHA ??
+                null,
             options: {
                 build: options.build,
                 closeupRepeat: options.closeupRepeat,
@@ -3262,12 +4054,11 @@ async function main() {
                 warmupMs: options.warmupMs,
             },
             scenarios,
+            highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
             summary: {
                 durationMs: Date.now() - startedAt,
-                failedScenarios: failedScenarios.length,
-                passedScenarios: scenarios.length - failedScenarios.length,
-                totalScenarios: scenarios.length,
+                ...profileSummary,
             },
         };
 
@@ -3275,10 +4066,10 @@ async function main() {
 
         console.log(`Wrote ${resolve(options.outDir, 'latest.md')}`);
         console.log(
-            `Budget status: ${failedScenarios.length === 0 ? 'pass' : 'fail'}`,
+            `Budget status: ${profileSummary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         );
 
-        if (failedScenarios.length > 0 && options.failOnBudget) {
+        if (profileSummary.failedScenarios > 0 && options.failOnBudget) {
             process.exitCode = 1;
         }
     } finally {
@@ -3290,9 +4081,19 @@ async function main() {
 }
 
 export {
+    buildHighTargetMedians,
+    buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
+    buildProfileSummary,
+    drainProfileSample,
+    evaluateBudget,
+    evaluateHighTargetAcceptance,
+    finalizeProfileSampleAtEndpoint,
+    finishInteractiveProfileSample,
     getScenarioRequest,
+    mergeProfileSampleDrain,
+    normalizeRenderWork,
     resolveScenarios,
 };
 

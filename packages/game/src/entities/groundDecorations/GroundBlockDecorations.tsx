@@ -15,6 +15,7 @@ import { getStackHeight } from '../../utils/getStackHeight';
 import {
     type GroundDecorationInstance,
     GroundDecorationInstances,
+    type GroundDecorationWeather,
 } from './GroundDecorationInstances';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import { getGroundDecorationBlocks } from './groundDecorationBlocks';
@@ -24,6 +25,7 @@ type GroundBlockDecorationsProps = {
     density: number;
     farmId?: number | null;
     stacks: Stack[] | undefined;
+    weather?: GroundDecorationWeather;
 };
 
 function activeDragTargetKey(target: ActiveDragPreviewTarget) {
@@ -84,6 +86,7 @@ export function GroundBlockDecorations({
     density,
     farmId,
     stacks,
+    weather,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
@@ -228,6 +231,7 @@ export function GroundBlockDecorations({
         <GroundDecorationInstances
             farmId={farmId}
             instances={decorationInstances}
+            weather={weather}
         />
     );
 }

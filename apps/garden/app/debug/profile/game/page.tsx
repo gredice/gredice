@@ -5,6 +5,7 @@ import {
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
 import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileFlags } from './profileFlags';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
@@ -28,11 +29,6 @@ type GameProfileMode =
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
 >;
-
-const debugGameFlags = {
-    enableDebugHudFlag: true,
-    enableRainWetOverlayFlag: true,
-} satisfies NonNullable<GameSceneProps['flags']>;
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
@@ -89,6 +85,7 @@ function resolveMockGardenProfile(
 ): GameProfileMockGardenProfile {
     if (
         value === 'dense' ||
+        value === 'high-target' ||
         value === operationVisualRewardDebugProfile ||
         value === 'plant-heavy'
     ) {
@@ -260,6 +257,10 @@ export default async function GameProfilePage({
         firstValue(params.closeupRaisedBedId),
     );
     const placementProfile = firstValue(params.placement) === '1';
+    const debugGameFlags = resolveGameProfileFlags(
+        firstValue(params.blockGeometryMerging),
+    );
+    const blockGeometryMerging = debugGameFlags.enableBlockGeometryMergingFlag;
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -276,6 +277,9 @@ export default async function GameProfilePage({
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
+            data-game-profile-block-geometry-merging={
+                blockGeometryMerging ? '1' : '0'
+            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }

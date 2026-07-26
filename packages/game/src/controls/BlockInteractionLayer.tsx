@@ -107,6 +107,7 @@ export function BlockInteractionLayer({
     const resolutionProfileRef = useRef({
         count: 0,
         maxMs: 0,
+        resolvedTargetCount: 0,
         totalMs: 0,
     });
     const resolutionProfileFlushTimerRef = useRef<number | null>(null);
@@ -158,12 +159,14 @@ export function BlockInteractionLayer({
         resolutionProfileRef.current = {
             count: 0,
             maxMs: 0,
+            resolvedTargetCount: 0,
             totalMs: 0,
         };
         updateGameProfileMetadata({
             instancedInteractionResolutionCount: 0,
             instancedInteractionResolutionMaxMs: 0,
             instancedInteractionResolutionTotalMs: 0,
+            instancedInteractionResolvedTargetCount: 0,
         });
 
         return () => {
@@ -181,6 +184,8 @@ export function BlockInteractionLayer({
             instancedInteractionResolutionCount: profile.count,
             instancedInteractionResolutionMaxMs: profile.maxMs,
             instancedInteractionResolutionTotalMs: profile.totalMs,
+            instancedInteractionResolvedTargetCount:
+                profile.resolvedTargetCount,
         });
     }
 
@@ -199,6 +204,10 @@ export function BlockInteractionLayer({
                 250,
             );
         }
+    }
+
+    function recordResolvedTarget() {
+        resolutionProfileRef.current.resolvedTargetCount += 1;
     }
 
     function getResolvedTarget<TEvent extends PointerEvent | MouseEvent>(
@@ -234,6 +243,7 @@ export function BlockInteractionLayer({
             return null;
         }
 
+        recordResolvedTarget();
         return {
             event: createLayerEvent(event, resolvedLayerTarget.hitPoint),
             key: resolvedLayerTarget.target.key,

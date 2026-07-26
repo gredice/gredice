@@ -342,7 +342,7 @@ export function GameScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
-                            <HudPlacementDragPreview />
+                            {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
                                 noBackground={noBackground}
                                 noWeather={weatherDisabled}
@@ -391,11 +391,12 @@ export function GameScene({
                                     }
                                     stacks={garden?.stacks}
                                     renderDetails={renderDetails}
+                                    weather={weather}
                                 />
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward
-                                            enabled={!isLocalSandbox}
+                                            enabled={!isLocalSandbox && !isMock}
                                             garden={garden}
                                             onClaimed={
                                                 setSunflowerDropFlyOrigin

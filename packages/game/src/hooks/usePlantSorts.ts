@@ -1,5 +1,6 @@
 import { directoriesClient } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { useOptionalGameState } from '../useGameState';
 
 async function getPlantSorts() {
     const sorts = await directoriesClient().GET('/entities/plantSort');
@@ -36,13 +37,27 @@ export function usePlantSort(sortId: number | null | undefined) {
     });
 }
 
-export function useAllSorts() {
+export function useAllSorts(enabled = true) {
+    const isMock = useOptionalGameState((state) => state.isMock, false);
+    const mockGardenProfile = useOptionalGameState(
+        (state) => state.mockGardenProfile,
+        'default',
+    );
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
+
     return useQuery({
-        queryKey: ['sorts'],
+        queryKey: isDeterministicEmptyMock
+            ? ['sorts', mockGardenProfile]
+            : ['sorts'],
         queryFn: async () => {
+            if (isDeterministicEmptyMock) {
+                return [];
+            }
             const sorts = await getPlantSorts();
             return sorts ?? [];
         },
+        enabled,
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
