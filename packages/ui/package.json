@@ -12,6 +12,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "test": "node --import tsx --test src/cms/CmsOgImage.unit.ts",
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
@@ -25,6 +26,7 @@
         "@types/suncalc": "1.9.2",
         "tailwindcss": "4.3.2",
         "tailwindcss-animate": "1.0.7",
+        "tsx": "4.23.0",
         "typescript": "7.0.2"
     },
     "dependencies": {

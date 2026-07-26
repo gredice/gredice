@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import type { VegetableData } from '../parts/vegetables';
-import { vegetableMaterialProps } from '../parts/vegetables';
 import type { LSystemSymbol } from './l-system';
 import {
     defaultThornDefinition,
@@ -10,6 +8,10 @@ import {
     TERMINAL_STEM_SYMBOL,
 } from './plant-definitions';
 import { SeededRNG } from './rng';
+import {
+    type VegetableData,
+    vegetableMaterialProps,
+} from './vegetableRenderMetadata';
 
 const RADIAL_SEGMENTS = 5;
 const STEM_CURVE_SUBDIVISIONS = 4;

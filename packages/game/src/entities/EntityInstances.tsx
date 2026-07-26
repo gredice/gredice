@@ -14,10 +14,12 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     AdditionalEntityInstances,
     additionalInstancedBlockNames,
+    resolveRaisedBedInstance,
 } from './AdditionalEntityInstances';
 import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
+    useEntityBlockInstances,
 } from './EntityInstancesBlock';
 import {
     createEntityBlockInstanceIndex,
@@ -26,11 +28,13 @@ import {
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
+import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -152,6 +156,34 @@ function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
     );
 }
 
+function RaisedBedGeneratedPlantInstances({
+    quality,
+    stacks,
+}: {
+    quality: GameQualityProfile;
+    stacks: Stack[] | undefined;
+}) {
+    const instances = useEntityBlockInstances({
+        name: 'Raised_Bed',
+        stacks,
+        yOffset: 1,
+    })?.map((instance) => resolveRaisedBedInstance(instance, stacks));
+
+    if (!instances?.length) {
+        return null;
+    }
+
+    return (
+        <RaisedBedGeneratedPlantFieldBatches
+            blocks={instances.map((instance) => ({
+                blockId: instance.block.id,
+                position: instance.position,
+            }))}
+            quality={quality}
+        />
+    );
+}
+
 type EntityInstancesAssetBlockProps = Omit<
     EntityInstancesBlockBaseProps,
     'geometry'
@@ -203,6 +235,7 @@ export function EntityInstances({
     renderGroundDecorations,
     stacks,
     renderDetails = true,
+    weather,
 }: {
     enableBlockGeometryMerging?: boolean;
     farmId?: number | null;
@@ -210,6 +243,7 @@ export function EntityInstances({
     renderGroundDecorations?: boolean;
     stacks: Stack[] | undefined;
     renderDetails?: boolean;
+    weather?: GroundDecorationWeather;
 }) {
     const entityBlockInstanceIndex = useMemo(
         () => createEntityBlockInstanceIndex(stacks),
@@ -490,6 +524,7 @@ export function EntityInstances({
                     density={qualityProfile.groundDecorationDensity}
                     farmId={farmId}
                     stacks={stacks}
+                    weather={weather}
                 />
             )}
             <EntityInstancesAssetBlock
@@ -731,6 +766,12 @@ export function EntityInstances({
                 geometry={(gltf) => gltf.nodes.Seed.geometry}
                 material={(gltf) => gltf.nodes.Seed.material}
             />
+            <Suspense fallback={null}>
+                <RaisedBedGeneratedPlantInstances
+                    quality={qualityProfile}
+                    stacks={stacks}
+                />
+            </Suspense>
             <Suspense fallback={null}>
                 <AdditionalEntityInstances
                     enableBlockGeometryMerging={enableBlockGeometryMerging}

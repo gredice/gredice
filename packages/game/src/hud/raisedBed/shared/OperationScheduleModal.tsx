@@ -32,6 +32,7 @@ function parseLocalDateInput(value: string) {
 
 export function OperationScheduleModal({
     gardenId,
+    initialScheduledDate,
     operation,
     onConfirm,
     positionIndex,
@@ -40,6 +41,7 @@ export function OperationScheduleModal({
     trigger,
 }: {
     gardenId: number;
+    initialScheduledDate?: string;
     operation: OperationData;
     onConfirm: (date: Date) => Promise<void>;
     positionIndex?: number;
@@ -65,7 +67,15 @@ export function OperationScheduleModal({
         tomorrow.getMonth() + 3,
         tomorrow.getDate(),
     );
-    const operationDefaultDate = formatLocalDate(tomorrow);
+    const parsedInitialScheduledDate = initialScheduledDate
+        ? parseLocalDateInput(initialScheduledDate)
+        : null;
+    const operationDefaultDate =
+        parsedInitialScheduledDate &&
+        parsedInitialScheduledDate >= tomorrow &&
+        parsedInitialScheduledDate <= threeMonthsFromTomorrow
+            ? formatLocalDate(parsedInitialScheduledDate)
+            : formatLocalDate(tomorrow);
     const selectedDateInput = scheduledDateInput ?? operationDefaultDate;
     const selectedDate = parseLocalDateInput(selectedDateInput);
     const showWateringCalendar =

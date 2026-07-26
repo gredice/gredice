@@ -41,6 +41,17 @@ describe('resolveSceneFramesPerSecond', () => {
         leases.delete(interactionLease);
         assert.equal(resolveSceneFramesPerSecond(30, leases.values()), 30);
     });
+
+    it('lets ambient leases inherit a changing provider base', () => {
+        const leases = new Map<symbol, number | undefined>();
+        leases.set(Symbol('ambient'), undefined);
+
+        assert.equal(resolveSceneFramesPerSecond(30, leases.values()), 30);
+        assert.equal(resolveSceneFramesPerSecond(20, leases.values()), 20);
+
+        leases.set(Symbol('interactive'), 60);
+        assert.equal(resolveSceneFramesPerSecond(20, leases.values()), 60);
+    });
 });
 
 describe('resolveSceneVisibility', () => {

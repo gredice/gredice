@@ -2,7 +2,6 @@
 
 import { cx } from '@gredice/ui/utils';
 import {
-    Fragment,
     type HTMLAttributes,
     Suspense,
     useEffect,
@@ -24,6 +23,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
+import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -52,6 +52,10 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
+import {
+    type AdaptiveHighQualityLevelProfile,
+    adaptiveHighQualityLevels,
+} from './scene/adaptiveHighQuality';
 import { Environment } from './scene/Environment';
 import {
     type GameQualityAutoProfileMetrics,
@@ -61,11 +65,15 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
+    formatBlockPlacementDropAnimationRenderIdentity,
     type GameState,
+    getBlockPlacementDropAnimationRenderIdForBlockId,
     type MockGardenProfile,
     useGameState,
+    useGameStateStore,
     type WinterMode,
 } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
@@ -98,10 +106,12 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
+    enableGameProfileController?: boolean;
     flags?: GameFeatureFlags;
 };
 
 type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
+const adaptiveHighInteractionHoldMs = 350;
 
 function useAutoQualityProfileMetrics(enabled: boolean) {
     const [metrics, setMetrics] = useState<
@@ -153,28 +163,122 @@ function useAutoQualityProfileMetrics(enabled: boolean) {
     return metrics;
 }
 
-function shouldRenderEntityFactoryForBlock({
-    blockName,
-    blockIndex,
-    noControls,
-    stackLength,
-}: {
-    blockName: string;
-    blockIndex: number;
-    noControls: boolean | undefined;
-    stackLength: number;
-}) {
-    if (!instancedBlockNames.includes(blockName)) {
-        return true;
-    }
+function useAdaptiveHighInteractionActivity(enabled: boolean) {
+    const gameStateStore = useGameStateStore();
+    const placementActive = useGameState(
+        (state) =>
+            enabled &&
+            (state.isDragging ||
+                state.pickupBlock !== null ||
+                state.activeDragPreview !== null ||
+                state.hudPlacementDrag !== null ||
+                Object.keys(state.blockPlacementDropAnimations).length > 0),
+    );
+    const [cameraActive, setCameraActive] = useState(false);
+    const cameraActiveRef = useRef(false);
+    const cameraActivityTimeoutRef = useRef<number | null>(null);
 
-    if (noControls) {
-        return false;
-    }
+    useEffect(() => {
+        if (!enabled) {
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+                cameraActivityTimeoutRef.current = null;
+            }
+            cameraActiveRef.current = false;
+            setCameraActive(false);
+            return;
+        }
 
-    return blockIndex >= 0 && blockIndex < stackLength;
+        let previousCameraVersion =
+            gameStateStore.getState().gameCameraSnapshot?.version ?? null;
+        const unsubscribe = gameStateStore.subscribe((state) => {
+            const cameraVersion = state.gameCameraSnapshot?.version ?? null;
+            if (
+                previousCameraVersion === null ||
+                cameraVersion === null ||
+                cameraVersion === previousCameraVersion
+            ) {
+                previousCameraVersion = cameraVersion;
+                return;
+            }
+            previousCameraVersion = cameraVersion;
+
+            if (!cameraActiveRef.current) {
+                cameraActiveRef.current = true;
+                setCameraActive(true);
+            }
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+            }
+            cameraActivityTimeoutRef.current = window.setTimeout(() => {
+                cameraActivityTimeoutRef.current = null;
+                cameraActiveRef.current = false;
+                setCameraActive(false);
+            }, adaptiveHighInteractionHoldMs);
+        });
+
+        return () => {
+            unsubscribe();
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+                cameraActivityTimeoutRef.current = null;
+            }
+            cameraActiveRef.current = false;
+        };
+    }, [enabled, gameStateStore]);
+
+    useEffect(
+        () => () => {
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+            }
+        },
+        [],
+    );
+
+    return enabled && (placementActive || cameraActive);
 }
 
+function GameSceneEntitySlot({
+    block,
+    noControls,
+    stack,
+    stacks,
+}: {
+    block: Block;
+    noControls: boolean | undefined;
+    stack: Stack;
+    stacks: Stack[];
+}) {
+    const placementDropAnimationRenderId = useGameState((state) =>
+        getBlockPlacementDropAnimationRenderIdForBlockId(
+            state.blockPlacementDropAnimations,
+            block.id,
+        ),
+    );
+    const renderIdentity = formatBlockPlacementDropAnimationRenderIdentity(
+        block.id,
+        placementDropAnimationRenderId,
+    );
+    const entityFactory = (
+        <EntityFactory
+            name={block.name}
+            stack={stack}
+            block={block}
+            stacks={stacks}
+            rotation={block.rotation}
+            variant={block.variant}
+            noRenderInView={instancedBlockNames}
+            noControl={noControls}
+        />
+    );
+
+    return (
+        <Suspense key={renderIdentity} fallback={null}>
+            {entityFactory}
+        </Suspense>
+    );
+}
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -191,6 +295,7 @@ export function GameScene({
     weather,
     deferDetails,
     renderDetails: renderDetailsOverride,
+    enableGameProfileController,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -235,6 +340,16 @@ export function GameScene({
         gameQualitySetting,
         quality,
     ]);
+    const adaptiveHighEnabled = Boolean(
+        flags?.enableAdaptiveHighQualityFlag &&
+            qualityProfile.tier === 'high' &&
+            (quality === 'high' ||
+                (quality === undefined && gameQualitySetting === 'high')),
+    );
+    const adaptiveHighInteractionActive =
+        useAdaptiveHighInteractionActivity(adaptiveHighEnabled);
+    const [adaptiveHighProfile, setAdaptiveHighProfile] =
+        useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
@@ -312,6 +427,15 @@ export function GameScene({
                 value={{ includePendingCartPlants: true, renderDetails }}
             >
                 <Scene
+                    adaptiveHighEnabled={adaptiveHighEnabled}
+                    adaptiveHighInteractionActive={
+                        adaptiveHighInteractionActive
+                    }
+                    adaptiveHighProfileControlEnabled={Boolean(
+                        enableGameProfileController && adaptiveHighEnabled,
+                    )}
+                    adaptiveHighProfile={adaptiveHighProfile}
+                    onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
@@ -321,61 +445,42 @@ export function GameScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
-                            <HudPlacementDragPreview />
+                            {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
+                                cloudShadowUpdateMs={
+                                    adaptiveHighEnabled
+                                        ? adaptiveHighProfile.cloudShadowUpdateMs
+                                        : undefined
+                                }
                                 noBackground={noBackground}
                                 noWeather={weatherDisabled}
                                 noSound={noSound}
                                 quality={qualityProfile}
                                 weather={weather}
                             />
+                            <PlacementGroundingShadows
+                                stacks={garden?.stacks}
+                            />
                             <group name="GameScene:Entities">
                                 {garden?.stacks.map((stack) =>
                                     stack.blocks?.map((block, i) => {
-                                        if (
-                                            !shouldRenderEntityFactoryForBlock({
-                                                blockName: block.name,
-                                                blockIndex: i,
-                                                noControls,
-                                                stackLength:
-                                                    stack.blocks.length,
-                                            })
-                                        ) {
-                                            return null;
-                                        }
-
-                                        const entityFactory = (
-                                            <EntityFactory
-                                                name={block.name}
-                                                stack={stack}
-                                                block={block}
-                                                stacks={garden.stacks}
-                                                rotation={block.rotation}
-                                                variant={block.variant}
-                                                noRenderInView={
-                                                    instancedBlockNames
-                                                }
-                                                noControl={noControls}
-                                            />
-                                        );
-                                        const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
-
                                         if (
                                             instancedBlockNames.includes(
                                                 block.name,
                                             )
                                         ) {
-                                            return (
-                                                <Fragment key={key}>
-                                                    {entityFactory}
-                                                </Fragment>
-                                            );
+                                            return null;
                                         }
 
+                                        const slotKey = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`;
                                         return (
-                                            <Suspense key={key} fallback={null}>
-                                                {entityFactory}
-                                            </Suspense>
+                                            <GameSceneEntitySlot
+                                                key={slotKey}
+                                                block={block}
+                                                noControls={noControls}
+                                                stack={stack}
+                                                stacks={garden.stacks}
+                                            />
                                         );
                                     }),
                                 )}
@@ -397,11 +502,12 @@ export function GameScene({
                                     }
                                     stacks={garden?.stacks}
                                     renderDetails={renderDetails}
+                                    weather={weather}
                                 />
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward
-                                            enabled={!isLocalSandbox}
+                                            enabled={!isLocalSandbox && !isMock}
                                             garden={garden}
                                             onClaimed={
                                                 setSunflowerDropFlyOrigin
@@ -411,6 +517,7 @@ export function GameScene({
                                 )}
                                 <BlockInteractionLayer
                                     controlsEnabled={!noControls}
+                                    sharedControllerEnabled
                                     stacks={garden?.stacks}
                                 />
                                 {renderDetails && zoom !== 'far' && (

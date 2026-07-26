@@ -1,20 +1,29 @@
 import { decodeUriComponentSafe } from '@gredice/js/uri';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useGameState } from './useGameState';
 import { useRaisedBedCloseupParams } from './useUrlState';
 
 export function useRemoveRaisedBedCloseupParam() {
     const [, setRaisedBedCloseupParams] = useRaisedBedCloseupParams();
+    const mutate = useCallback(
+        () =>
+            setRaisedBedCloseupParams({
+                gredica: null,
+                polje: null,
+            }),
+        [setRaisedBedCloseupParams],
+    );
+
     return {
-        mutate: () => setRaisedBedCloseupParams({ gredica: null, polje: null }),
+        mutate,
     };
 }
 
 export function useSetRaisedBedCloseupParam() {
     const [, setRaisedBedCloseupParams] = useRaisedBedCloseupParams();
-    return {
-        mutate: (value: string, positionIndex?: number | null) =>
+    const mutate = useCallback(
+        (value: string, positionIndex?: number | null) =>
             setRaisedBedCloseupParams({
                 gredica: value,
                 polje:
@@ -22,6 +31,11 @@ export function useSetRaisedBedCloseupParam() {
                         ? positionIndex + 1
                         : null,
             }),
+        [setRaisedBedCloseupParams],
+    );
+
+    return {
+        mutate,
     };
 }
 

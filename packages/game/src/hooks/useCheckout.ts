@@ -10,12 +10,18 @@ export interface CheckoutData {
         locationId?: number;
         notes?: string;
     };
+    harvestDates?: Array<{
+        cartItemId: number;
+        scheduledDate: string;
+    }>;
 }
 
 // Type guard to check if delivery selection is complete
 export function isCompleteDeliverySelection(
-    // biome-ignore lint/suspicious/noExplicitAny: Valid for validation
-    selection: any,
+    selection:
+        | Partial<NonNullable<CheckoutData['deliveryInfo']>>
+        | null
+        | undefined,
 ): selection is CheckoutData['deliveryInfo'] {
     return (
         Boolean(selection) &&
@@ -37,18 +43,17 @@ export function useCheckout() {
                     json: data,
                 });
             if (!response.ok) {
-                console.error(
-                    'Failed to create checkout session:',
-                    response.statusText,
+                throw new Error(
+                    response.statusText ||
+                        'Nije moguće pokrenuti plaćanje. Provjeri odabrane datume.',
                 );
-                // TODO: Show notification to user
-                return;
             }
 
             const responseData = await response.json();
             if (!responseData) {
-                console.error('Failed to create checkout session');
-                return;
+                throw new Error(
+                    'Poslužitelj nije vratio podatke za pokretanje plaćanja.',
+                );
             }
 
             if ('success' in responseData) {
@@ -58,9 +63,9 @@ export function useCheckout() {
 
             const { url } = responseData;
             if (!url) {
-                console.error('No URL returned from checkout session');
-                // TODO: Show notification to user
-                return;
+                throw new Error(
+                    'Poslužitelj nije vratio poveznicu za plaćanje.',
+                );
             }
 
             // If a URL is provided, redirect the user to that URL

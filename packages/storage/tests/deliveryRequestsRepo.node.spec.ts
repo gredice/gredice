@@ -356,7 +356,34 @@ test('createDeliveryRequest enforces operation and address ownership', async () 
         postalCode: '10000',
         countryCode: 'HR',
     });
+    const otherPickupLocationId = await createPickupLocation({
+        name: `Other pickup location ${randomUUID()}`,
+        street1: 'Druga 1',
+        city: 'Zagreb',
+        postalCode: '10000',
+        countryCode: 'HR',
+    });
 
+    await assert.rejects(
+        createDeliveryRequest({
+            operationId: operation.id,
+            slotId: pickupSlotId,
+            mode: 'delivery',
+            addressId: foreignAddressId,
+            accountId: ownerAccountId,
+        }),
+        /Delivery mode does not match the selected time slot/,
+    );
+    await assert.rejects(
+        createDeliveryRequest({
+            operationId: operation.id,
+            slotId: pickupSlotId,
+            mode: 'pickup',
+            locationId: otherPickupLocationId,
+            accountId: ownerAccountId,
+        }),
+        /Pickup location does not match the selected time slot/,
+    );
     await assert.rejects(
         createDeliveryRequest({
             operationId: operation.id,

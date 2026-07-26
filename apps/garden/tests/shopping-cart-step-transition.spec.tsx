@@ -99,7 +99,18 @@ test.describe('shopping cart step transition', () => {
         const proceed = page.getByRole('button', { name: 'Nastavi' });
         await proceed.focus();
         await expect(proceed).toBeFocused();
-        await proceed.dispatchEvent('click');
+        await proceed.click();
+
+        const harvestTransition = page.locator(
+            '[data-shopping-cart-step="harvest"]',
+        );
+        await expect(harvestTransition).toHaveAttribute(
+            'data-step-direction',
+            'forward',
+        );
+        await page
+            .getByRole('button', { name: 'Potvrdi datume' })
+            .dispatchEvent('click');
         await expect(page.getByLabel('Broj nastavaka')).toHaveText('1');
     });
 
@@ -154,5 +165,19 @@ test.describe('shopping cart step transition', () => {
                 { opacity: '1', transform: undefined },
             ],
         });
+    });
+
+    test('uses the reverse motion when returning from harvest to delivery', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<ShoppingCartStepTransitionStory />);
+        await page.getByRole('button', { name: 'Dostava' }).click();
+        await page.getByRole('button', { name: 'Nastavi' }).click();
+        await page.getByRole('button', { name: 'Natrag na dostavu' }).click();
+
+        await expect(
+            page.locator('[data-shopping-cart-step="delivery"]'),
+        ).toHaveAttribute('data-step-direction', 'backward');
     });
 });

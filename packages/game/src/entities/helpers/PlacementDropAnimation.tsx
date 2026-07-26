@@ -1,6 +1,11 @@
 import { animated, useSpring } from '@react-spring/three';
-import { type PropsWithChildren, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
+import {
+    type PropsWithChildren,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+} from 'react';
+import { type Group, Vector3 } from 'three';
 import {
     resolveBlockParticleType,
     useParticles,
@@ -8,8 +13,11 @@ import {
 import type { Block } from '../../types/Block';
 import {
     type BlockPlacementDropAnimation,
+    getBlockPlacementDropAnimationByRenderId,
+    getBlockPlacementDropAnimationForBlockId,
     useGameState,
 } from '../../useGameState';
+import { suppressPlacementShadowCasters } from './placementShadowCasters';
 
 const placementDropLift = 0.1;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
@@ -44,9 +52,13 @@ export function PlacementDropAnimation({
     const markParticlesSpawned = useGameState(
         (state) => state.markBlockPlacementDropParticlesSpawned,
     );
-    const completeAnimation = useGameState(
-        (state) => state.completeBlockPlacementDropAnimation,
+    const markVisualStarted = useGameState(
+        (state) => state.markBlockPlacementDropVisualStarted,
     );
+    const markVisualComplete = useGameState(
+        (state) => state.markBlockPlacementDropVisualComplete,
+    );
+    const placementRootRef = useRef<Group | null>(null);
     const startedSequence = useRef<number | null>(null);
     const [{ dropOffsetY }, api] = useSpring(() => ({
         dropOffsetY:
@@ -57,15 +69,36 @@ export function PlacementDropAnimation({
             friction: 10,
         },
     }));
+    const animationRenderId = animation?.renderId;
+    const visualStarted = animation?.visualStarted === true;
+
+    useLayoutEffect(() => {
+        if (animationRenderId !== undefined && !visualStarted) {
+            markVisualStarted(animationRenderId);
+        }
+    }, [animationRenderId, markVisualStarted, visualStarted]);
+
+    useLayoutEffect(() => {
+        const root = placementRootRef.current;
+        if (!visualStarted || animationRenderId === undefined || !root) {
+            return;
+        }
+
+        return suppressPlacementShadowCasters(root);
+    }, [animationRenderId, visualStarted]);
 
     useEffect(() => {
-        if (!animation || startedSequence.current === animation.sequence) {
+        if (
+            !animation?.visualStarted ||
+            startedSequence.current === animation.sequence
+        ) {
             return;
         }
 
         startedSequence.current = animation.sequence;
+        const animationRenderId = animation.renderId;
         const spawnLandingParticles = () => {
-            if (!markParticlesSpawned(block.id)) {
+            if (!markParticlesSpawned(animationRenderId)) {
                 return;
             }
 
@@ -77,7 +110,7 @@ export function PlacementDropAnimation({
         };
         const finish = () => {
             spawnLandingParticles();
-            completeAnimation(block.id);
+            markVisualComplete(animationRenderId);
         };
 
         if (prefersReducedMotion()) {
@@ -94,9 +127,8 @@ export function PlacementDropAnimation({
     }, [
         animation,
         api,
-        block.id,
         block.name,
-        completeAnimation,
+        markVisualComplete,
         markParticlesSpawned,
         particlePosition,
         spawn,
@@ -104,6 +136,7 @@ export function PlacementDropAnimation({
 
     return (
         <group
+            ref={placementRootRef}
             name={`Animation:PlacementDrop:${block.name}:${block.id}`}
             position={position}
         >
@@ -118,17 +151,27 @@ export function PlacementDropAnimation({
 }
 
 export function QueuedPlacementDropAnimation({
+    animationRenderId,
     block,
     children,
     particlePosition,
     position,
 }: PropsWithChildren<{
+    animationRenderId?: number;
     block: Block;
     particlePosition: Vector3 | [number, number, number];
     position?: [number, number, number];
 }>) {
-    const animation = useGameState(
-        (state) => state.blockPlacementDropAnimations[block.id] ?? null,
+    const animation = useGameState((state) =>
+        animationRenderId === undefined
+            ? getBlockPlacementDropAnimationForBlockId(
+                  state.blockPlacementDropAnimations,
+                  block.id,
+              )
+            : getBlockPlacementDropAnimationByRenderId(
+                  state.blockPlacementDropAnimations,
+                  animationRenderId,
+              ),
     );
 
     return (

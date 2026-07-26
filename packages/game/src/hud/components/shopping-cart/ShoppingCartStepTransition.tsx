@@ -1,9 +1,10 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import styles from './ShoppingCartStepTransition.module.css';
 
 interface ShoppingCartStepTransitionProps {
     children: ReactNode;
-    step: 'cart' | 'delivery';
+    direction?: 'forward' | 'backward';
+    step: 'cart' | 'delivery' | 'harvest';
 }
 
 interface ShoppingCartStepContentProps extends ShoppingCartStepTransitionProps {
@@ -13,24 +14,43 @@ interface ShoppingCartStepContentProps extends ShoppingCartStepTransitionProps {
 function ShoppingCartStepContent({
     animate,
     children,
+    direction,
     step,
 }: ShoppingCartStepContentProps) {
     const [shouldAnimate] = useState(animate);
-    const direction = step === 'delivery' ? 'forward' : 'backward';
+    const contentRef = useRef<HTMLElement>(null);
+    const resolvedDirection =
+        direction ?? (step === 'cart' ? 'backward' : 'forward');
+    const accessibleStepLabel =
+        step === 'cart'
+            ? 'Košarica'
+            : step === 'delivery'
+              ? 'Dostava'
+              : 'Branje';
+
+    useEffect(() => {
+        if (step === 'harvest') {
+            contentRef.current?.focus();
+        }
+    }, [step]);
 
     return (
-        <div
+        <section
+            aria-label={accessibleStepLabel}
             className={shouldAnimate ? styles.step : undefined}
             data-shopping-cart-step={step}
-            data-step-direction={direction}
+            data-step-direction={resolvedDirection}
+            ref={contentRef}
+            tabIndex={step === 'harvest' ? -1 : undefined}
         >
             {children}
-        </div>
+        </section>
     );
 }
 
 export function ShoppingCartStepTransition({
     children,
+    direction,
     step,
 }: ShoppingCartStepTransitionProps) {
     const [hasMounted, setHasMounted] = useState(false);
@@ -40,7 +60,12 @@ export function ShoppingCartStepTransition({
     }, []);
 
     return (
-        <ShoppingCartStepContent animate={hasMounted} key={step} step={step}>
+        <ShoppingCartStepContent
+            animate={hasMounted}
+            direction={direction}
+            key={step}
+            step={step}
+        >
             {children}
         </ShoppingCartStepContent>
     );

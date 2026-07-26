@@ -56,7 +56,9 @@ export function SceneTimeProvider({
         normalizeSceneFramesPerSecond(baseFramesPerSecond),
     );
     const canvasVisibleRef = useRef(true);
-    const continuousRenderLeasesRef = useRef(new Map<symbol, number>());
+    const continuousRenderLeasesRef = useRef(
+        new Map<symbol, number | undefined>(),
+    );
     const disposedRef = useRef(false);
     const documentVisibleRef = useRef(
         typeof document !== 'undefined' ? !document.hidden : false,
@@ -162,9 +164,11 @@ export function SceneTimeProvider({
     ]);
 
     const acquireContinuousRender = useCallback(
-        (framesPerSecond: number = sceneFrameRates.ambient) => {
+        (framesPerSecond?: number) => {
             const normalizedFramesPerSecond =
-                normalizeSceneFramesPerSecond(framesPerSecond);
+                framesPerSecond === undefined
+                    ? undefined
+                    : normalizeSceneFramesPerSecond(framesPerSecond);
             if (normalizedFramesPerSecond === 0) {
                 return () => undefined;
             }
@@ -317,7 +321,7 @@ export function useSceneTimeUniform() {
 
 export function useSceneTimeInvalidation(
     enabled = true,
-    framesPerSecond: number = sceneFrameRates.ambient,
+    framesPerSecond?: number,
 ) {
     const sceneTime = useContext(SceneTimeContext);
     if (!sceneTime) {

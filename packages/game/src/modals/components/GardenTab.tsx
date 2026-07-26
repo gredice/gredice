@@ -70,7 +70,7 @@ function GardensSelector() {
     const selectedGarden =
         gardens?.find((g) => g.id === selectedGardenId) ??
         currentGarden ??
-        gardens?.[0];
+        gardens?.find((garden) => !garden.isSandbox);
 
     return (
         <>
@@ -122,9 +122,10 @@ export function GardenTab() {
     } = useGardens();
     const { data: accountGroups, isLoading: accountGroupsLoading } =
         useGardenAccountGroups();
-    const [selectedGardenId] = useCurrentGardenIdParam();
-    const selectedGarden =
-        gardens?.find((g) => g.id === selectedGardenId) ?? gardens?.[0];
+    const { data: currentGarden } = useCurrentGarden();
+    const selectedGarden = gardens?.find(
+        (garden) => garden.id === currentGarden?.id,
+    );
     const hasAnyGarden =
         (gardens?.length ?? 0) > 0 ||
         (accountGroups?.some((group) => group.gardens.length > 0) ?? false);

@@ -1,3 +1,7 @@
+import {
+    getGeneratedPlantTemplateSeed,
+    resolveGeneratedPlantTemplateVariant,
+} from './generatedPlantTemplates';
 import type { LSystemGenerationTask } from './l-system-worker-types';
 import {
     MAX_PLANT_GENERATION,
@@ -19,12 +23,20 @@ export function buildGeneratedPlantLodTasks(
         return [];
     }
 
-    return instances.map((instance) => ({
-        axiom: definition.axiom,
-        iterations: Math.ceil(
+    return instances.map((instance) => {
+        const iterations = Math.ceil(
             Math.min(MAX_PLANT_GENERATION, Math.max(0, instance.generation)),
-        ),
-        rules: definition.rules,
-        seed: instance.seed,
-    }));
+        );
+
+        return {
+            axiom: definition.axiom,
+            iterations,
+            rules: definition.rules,
+            seed: getGeneratedPlantTemplateSeed({
+                definition,
+                generation: iterations,
+                variant: resolveGeneratedPlantTemplateVariant(instance.seed),
+            }),
+        };
+    });
 }

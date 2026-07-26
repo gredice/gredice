@@ -3,130 +3,91 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
-import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
+import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
+import { usePlantSway } from '../hooks/usePlantSway';
+import type {
+    PackedPlantBounds,
+    PackedPlantLeafInstances,
+} from '../lib/packedPlantRenderData';
 import type { PlantDefinition } from '../lib/plant-definitions';
+import {
+    applyPackedPlantBounds,
+    copyPackedStaticInstancedAttribute,
+    copyPackedStaticInstanceMatrices,
+    createPlantGeometryShell,
+    createStaticInstancedBufferAttribute,
+    disposePlantGeometryShell,
+    finalizeStaticInstanceMatrixUpload,
+    markStaticInstancedAttributeForUpload,
+} from '../lib/plantInstanceBuffers';
+import {
+    getPlantLeafGeometry,
+    type PlantLeafGeometryDetail,
+} from '../lib/plantLeafGeometry';
+import {
+    leafColorFragmentShader,
+    leafColorVertexShader,
+} from '../lib/plantLeafMaterial';
+import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
 
 interface LeavesProps {
+    bounds?: PackedPlantBounds;
     seed: string;
-    matrices: THREE.Matrix4[];
-    colors: THREE.Color[];
+    matrices?: THREE.Matrix4[];
+    colors?: THREE.Color[];
+    packed?: PackedPlantLeafInstances;
     type: PlantDefinition['leaf']['type'];
     animate?: boolean;
+    castShadow?: boolean;
     debugName?: string;
+    geometryDetail?: PlantLeafGeometryDetail;
 }
 
-const leafGeometries = {
-    round: new THREE.CircleGeometry(1, 6),
-    oval: (() => {
-        const shape = new THREE.Shape();
-        shape.ellipse(0, 0, 0.7, 1, 0, Math.PI * 2, false, 0);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    heart: (() => {
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 0.5);
-        shape.bezierCurveTo(0, 0.5, -0.5, 1, -0.5, 0.5);
-        shape.bezierCurveTo(-0.5, 0, 0, -0.5, 0, -0.5);
-        shape.bezierCurveTo(0, -0.5, 0.5, 0, 0.5, 0.5);
-        shape.bezierCurveTo(0.5, 1, 0, 0.5, 0, 0.5);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    serrated: (() => {
-        const shape = new THREE.Shape();
-        const points = [];
-        for (let i = 0; i <= 12; i++) {
-            const angle = (i / 12) * Math.PI * 2;
-            const radius = i % 2 === 0 ? 1 : 0.6;
-            points.push(
-                new THREE.Vector2(
-                    Math.cos(angle) * radius,
-                    Math.sin(angle) * radius,
-                ),
-            );
-        }
-        shape.setFromPoints(points);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    compound: (() => {
-        const group = new THREE.BufferGeometry();
-        const positions = [];
-        const indices = [];
-        for (let i = 0; i < 5; i++) {
-            const angle = (i / 4) * Math.PI - Math.PI / 2;
-            const x = Math.sin(angle) * i * 0.15;
-            const y = Math.cos(angle) * i * 0.15;
-            const baseIndex = i * 7;
-            for (let j = 0; j <= 6; j++) {
-                const leafletAngle = (j / 6) * Math.PI * 2;
-                positions.push(
-                    x + Math.cos(leafletAngle) * 0.2,
-                    y + Math.sin(leafletAngle) * 0.2,
-                    0,
-                );
-            }
-            for (let j = 1; j < 6; j++) {
-                indices.push(baseIndex, baseIndex + j, baseIndex + j + 1);
-            }
-        }
-        group.setIndex(indices);
-        group.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(positions, 3),
-        );
-        group.computeVertexNormals();
-        return group;
-    })(),
-};
-
-const leafColorVertexShader = /* glsl */ `
-    attribute vec3 leafInstanceColor;
-    varying vec3 vLeafInstanceColor;
-
-    ${plantSwayVertexShader.replace(
-        'void main() {',
-        `
-        void main() {
-            vLeafInstanceColor = leafInstanceColor;
-        `,
-    )}
-`;
-
-const leafColorFragmentShader = /* glsl */ `
-    varying vec3 vLeafInstanceColor;
-
-    void main() {
-        csm_DiffuseColor = vec4(vLeafInstanceColor, 1.0);
-    }
-`;
+const EMPTY_LEAF_COLORS: THREE.Color[] = [];
+const EMPTY_LEAF_MATRICES: THREE.Matrix4[] = [];
 
 export function Leaves({
+    bounds,
     seed,
-    matrices,
-    colors,
+    matrices = EMPTY_LEAF_MATRICES,
+    colors = EMPTY_LEAF_COLORS,
+    packed,
     type,
     animate = true,
+    castShadow,
     debugName,
+    geometryDetail = 'full',
 }: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = Math.max(matrices.length, 1);
+    const instanceCount = packed?.count ?? matrices.length;
+    const instanceCapacity = instanceCount;
+    const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
         amplitude: 0.11,
         enabled: animate,
         speed: 1.45,
     });
     const fallbackColor = useMemo(() => new THREE.Color('#ffffff'), []);
+    const sourceGeometry = getPlantLeafGeometry(type, geometryDetail);
     const geometry = useMemo(
-        () => (leafGeometries[type] || leafGeometries.round).clone(),
-        [type],
+        () => createPlantGeometryShell(sourceGeometry),
+        [sourceGeometry],
     );
-    const leafInstanceColor = useMemo(() => {
-        const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(instanceCapacity * 3),
-            3,
-        );
-        attribute.setUsage(THREE.DynamicDrawUsage);
-        return attribute;
-    }, [instanceCapacity]);
+    const leafInstanceColor = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
+        [instanceCapacity],
+    );
+    const swayPhase = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
+        [instanceCapacity],
+    );
+    usePlantInstanceBufferMetrics({
+        extraAllocatedBytes:
+            leafInstanceColor.array.byteLength + swayPhase.array.byteLength,
+        kind: 'leaf',
+        liveCount: instanceCount,
+        meshRef: leafRef,
+    });
 
     useLayoutEffect(() => {
         const updateInstances = (
@@ -139,41 +100,77 @@ export function Leaves({
             }
 
             mesh.geometry.setAttribute('leafInstanceColor', colorAttribute);
-            matrices.forEach((matrix, i) => {
-                mesh.setMatrixAt(i, matrix);
-                const color = instanceColors[i] ?? fallbackColor;
-                colorAttribute.setXYZ(i, color.r, color.g, color.b);
-            });
-            mesh.instanceMatrix.needsUpdate = true;
-            colorAttribute.needsUpdate = true;
-            if (!Array.isArray(mesh.material)) {
-                mesh.material.needsUpdate = true;
+            mesh.geometry.setAttribute('instanceSwayPhase', swayPhase);
+            if (packed) {
+                copyPackedStaticInstanceMatrices(
+                    mesh,
+                    packed.matrices,
+                    packed.count,
+                );
+                copyPackedStaticInstancedAttribute(
+                    colorAttribute,
+                    packed.colors,
+                    packed.count,
+                );
+                copyPackedStaticInstancedAttribute(
+                    swayPhase,
+                    packed.swayPhases,
+                    packed.count,
+                );
+            } else {
+                matrices.forEach((matrix, i) => {
+                    mesh.setMatrixAt(i, matrix);
+                    const color = instanceColors[i] ?? fallbackColor;
+                    colorAttribute.setXYZ(i, color.r, color.g, color.b);
+                });
+                finalizeStaticInstanceMatrixUpload(mesh, matrices.length);
+                markStaticInstancedAttributeForUpload(
+                    colorAttribute,
+                    matrices.length,
+                );
+                markStaticInstancedAttributeForUpload(
+                    swayPhase,
+                    matrices.length,
+                );
             }
-            mesh.count = matrices.length;
-            mesh.visible = matrices.length > 0;
-            mesh.computeBoundingBox();
-            mesh.computeBoundingSphere();
+            if (bounds) {
+                applyPackedPlantBounds(mesh, bounds);
+            } else {
+                mesh.computeBoundingBox();
+                mesh.computeBoundingSphere();
+            }
         };
 
         updateInstances(leafRef.current, colors, leafInstanceColor);
-    }, [colors, fallbackColor, leafInstanceColor, matrices]);
+    }, [
+        bounds,
+        colors,
+        fallbackColor,
+        leafInstanceColor,
+        matrices,
+        packed,
+        swayPhase,
+    ]);
 
     useLayoutEffect(() => {
         return () => {
-            geometry.dispose();
+            disposePlantGeometryShell(geometry, sourceGeometry);
         };
-    }, [geometry]);
+    }, [geometry, sourceGeometry]);
 
-    if (matrices.length === 0) {
+    if (instanceCount === 0) {
         return null;
     }
 
     return (
         <instancedMesh
             ref={leafRef}
-            name={debugName ?? `PlantLeaves:${type}:count:${matrices.length}`}
+            name={
+                debugName ??
+                `PlantLeaves:${type}:${geometryDetail}:count:${instanceCount}`
+            }
             args={[geometry, undefined, instanceCapacity]}
-            castShadow
+            castShadow={shouldCastShadow}
         >
             <CSM
                 baseMaterial={THREE.MeshStandardMaterial}

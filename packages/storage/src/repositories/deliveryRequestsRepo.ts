@@ -1542,6 +1542,10 @@ export async function createDeliveryRequest(data: {
         throw new Error('Time slot is not available for booking');
     }
 
+    if (slot.type !== data.mode) {
+        throw new Error('Delivery mode does not match the selected time slot');
+    }
+
     // Validate mode-specific requirements
     if (data.mode === 'delivery' && !data.addressId) {
         throw new Error('Address ID is required for delivery mode');
@@ -1573,6 +1577,15 @@ export async function createDeliveryRequest(data: {
         );
         if (!address) {
             throw new Error('Delivery address not found or access denied');
+        }
+    }
+
+    if (data.mode === 'pickup' && data.locationId) {
+        const location = await getPickupLocation(data.locationId);
+        if (!location?.isActive || location.id !== slot.locationId) {
+            throw new Error(
+                'Pickup location does not match the selected time slot',
+            );
         }
     }
 

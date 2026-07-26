@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { vegetableMaterialProps } from '../parts/vegetables';
 import type { PlantLodSummary } from './buildPlantRenderData';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from './plant-definitions';
 import { SeededRNG } from './rng';
+import { vegetableMaterialProps } from './vegetableRenderMetadata';
 
 const FLOWER_MATURITY_WINDOW = 2;
 
