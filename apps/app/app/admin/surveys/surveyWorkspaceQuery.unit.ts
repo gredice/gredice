@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 import { includesSelectedPath } from '../../../components/admin/navigation/adminNavigationPath';
 import { communicationMessagePageHrefs } from '../../../components/admin/navigation/adminPages';
@@ -34,6 +35,18 @@ const surveys = [
 ];
 
 describe('survey workspace query', () => {
+    it('imports the query helper used by the design workspace at runtime', async () => {
+        const source = await readFile(
+            new URL('./SurveyAdminWorkspace.tsx', import.meta.url),
+            'utf8',
+        );
+        const runtimeImport = source.match(
+            /import\s*\{([^}]*)\}\s*from '\.\/surveyWorkspaceQuery';/,
+        )?.[1];
+
+        assert.match(runtimeImport ?? '', /\bfirstSurveyQueryParam\b/);
+    });
+
     it('uses the first scalar query value and normalizes filters', () => {
         assert.equal(firstSurveyQueryParam([' first ', 'second']), ' first ');
         assert.deepEqual(

@@ -4,6 +4,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import {
     type SurveyResponseQuery,
     surveyResponseHref,
+    surveyResponsePaginationPages,
     surveyResponseQueryForPage,
 } from './surveyResponseQuery';
 
@@ -23,14 +24,24 @@ export function SurveyResponsePagination({
     if (pageCount === 0) return null;
 
     const listPath = KnownPages.SurveyResponses(surveyId);
-    const previousHref = surveyResponseHref(
-        listPath,
-        surveyResponseQueryForPage(query, page - 1),
+    const { nextPage, previousPage } = surveyResponsePaginationPages(
+        page,
+        pageCount,
     );
-    const nextHref = surveyResponseHref(
-        listPath,
-        surveyResponseQueryForPage(query, page + 1),
-    );
+    const previousHref =
+        previousPage === null
+            ? null
+            : surveyResponseHref(
+                  listPath,
+                  surveyResponseQueryForPage(query, previousPage),
+              );
+    const nextHref =
+        nextPage === null
+            ? null
+            : surveyResponseHref(
+                  listPath,
+                  surveyResponseQueryForPage(query, nextPage),
+              );
 
     return (
         <div className="flex flex-col gap-3 border-t px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
@@ -38,22 +49,24 @@ export function SurveyResponsePagination({
                 Stranica {page} od {pageCount} · ukupno {totalCount} odgovora
             </Typography>
             <div className="flex gap-2">
-                <Button
-                    disabled={page <= 1}
-                    href={previousHref}
-                    size="sm"
-                    variant="outlined"
-                >
-                    Prethodna
-                </Button>
-                <Button
-                    disabled={page >= pageCount}
-                    href={nextHref}
-                    size="sm"
-                    variant="outlined"
-                >
-                    Sljedeća
-                </Button>
+                {previousHref === null ? (
+                    <Button disabled size="sm" variant="outlined">
+                        Prethodna
+                    </Button>
+                ) : (
+                    <Button href={previousHref} size="sm" variant="outlined">
+                        Prethodna
+                    </Button>
+                )}
+                {nextHref === null ? (
+                    <Button disabled size="sm" variant="outlined">
+                        Sljedeća
+                    </Button>
+                ) : (
+                    <Button href={nextHref} size="sm" variant="outlined">
+                        Sljedeća
+                    </Button>
+                )}
             </div>
         </div>
     );
