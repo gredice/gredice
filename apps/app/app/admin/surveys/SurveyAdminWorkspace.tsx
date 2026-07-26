@@ -15,7 +15,10 @@ import {
     type SurveyAnalyticsSearchParams,
     SurveyStatisticsWorkspace,
 } from './SurveyStatisticsWorkspace';
-import type { SurveyWorkspaceSearchParams } from './surveyWorkspaceQuery';
+import {
+    firstSurveyQueryParam,
+    type SurveyWorkspaceSearchParams,
+} from './surveyWorkspaceQuery';
 import type { SurveyWorkspaceView } from './surveyWorkspaceTypes';
 
 export type { SurveyWorkspaceView } from './surveyWorkspaceTypes';

@@ -1,13 +1,30 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
     canonicalSurveyResponseQuery,
     parseSurveyResponseQuery,
     serializeSurveyResponseQuery,
     surveyResponseHref,
+    surveyResponsePaginationPages,
     surveyResponseQueryForPage,
     toSurveyResponseFilters,
 } from './surveyResponseQuery';
+
+test('response pagination never renders a disabled link button', async () => {
+    const source = await readFile(
+        new URL('./SurveyResponsePagination.tsx', import.meta.url),
+        'utf8',
+    );
+    const buttonTags = source.match(/<Button[\s\S]*?>/g) ?? [];
+
+    assert.equal(
+        buttonTags.some(
+            (tag) => /\bdisabled=/.test(tag) && /\bhref=/.test(tag),
+        ),
+        false,
+    );
+});
 
 test('response query parsing uses first values and rejects invalid inputs', () => {
     assert.deepEqual(
@@ -113,4 +130,27 @@ test('response navigation preserves filters, canonicalizes version, and resets p
         'context=delivery&page=2',
     );
     assert.equal(canonical.page, 3);
+});
+
+test('response pagination covers empty, first, middle, last, and single pages', () => {
+    assert.deepEqual(surveyResponsePaginationPages(1, 0), {
+        previousPage: null,
+        nextPage: null,
+    });
+    assert.deepEqual(surveyResponsePaginationPages(1, 3), {
+        previousPage: null,
+        nextPage: 2,
+    });
+    assert.deepEqual(surveyResponsePaginationPages(2, 3), {
+        previousPage: 1,
+        nextPage: 3,
+    });
+    assert.deepEqual(surveyResponsePaginationPages(3, 3), {
+        previousPage: 2,
+        nextPage: null,
+    });
+    assert.deepEqual(surveyResponsePaginationPages(1, 1), {
+        previousPage: null,
+        nextPage: null,
+    });
 });

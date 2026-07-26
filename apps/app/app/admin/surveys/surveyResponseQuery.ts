@@ -150,3 +150,10 @@ export function surveyResponseQueryForPage(
         page: Number.isSafeInteger(page) && page > 0 ? page : 1,
     };
 }
+
+export function surveyResponsePaginationPages(page: number, pageCount: number) {
+    return {
+        previousPage: pageCount > 0 && page > 1 ? page - 1 : null,
+        nextPage: pageCount > 0 && page < pageCount ? page + 1 : null,
+    };
+}
