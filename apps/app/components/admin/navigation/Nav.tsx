@@ -54,24 +54,13 @@ import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { getDashboardQuickActionBadge } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
-import { adminPages } from './adminPages';
+import { includesSelectedPath, isSelectedPath } from './adminNavigationPath';
+import { adminPages, communicationAdminPageHrefs } from './adminPages';
 import { NavContext } from './NavContext';
 import { NavGroup } from './NavGroup';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { ProfileNavItem } from './ProfileNavItem';
-
-function isSelectedPath(pathname: string, href: string, strictMatch = false) {
-    if (strictMatch) {
-        return pathname === href;
-    }
-
-    return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function includesSelectedPath(pathname: string, hrefs: string[]) {
-    return hrefs.some((href) => isSelectedPath(pathname, href));
-}
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     if (quickAction.icon) {
@@ -116,6 +105,7 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Fence className="size-5" />;
         case KnownPages.Inventory:
         case KnownPages.SowingStatistics:
+        case KnownPages.Surveys:
             return <Tally3 className="size-5" />;
         case KnownPages.Notifications:
         case KnownPages.SocialPublishing:
@@ -809,10 +799,7 @@ export function Nav({
                     label="Poruke"
                     icon={<Inbox className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.CommunicationInbox.href,
-                        adminPages.CommunicationEmails.href,
-                        adminPages.Notifications.href,
-                        adminPages.Feedback.href,
+                        ...communicationAdminPageHrefs,
                     ])}
                     compact={compact}
                 >
@@ -836,6 +823,14 @@ export function Nav({
                         href={adminPages.Notifications.href}
                         label={adminPages.Notifications.label}
                         icon={<Megaphone className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Surveys.href}
+                        label={adminPages.Surveys.label}
+                        icon={<Tally3 className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

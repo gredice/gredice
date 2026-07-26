@@ -109,6 +109,14 @@ export const adminPages = {
     },
 } as const;
 
+export const communicationAdminPageHrefs = [
+    adminPages.CommunicationInbox.href,
+    adminPages.CommunicationEmails.href,
+    adminPages.Notifications.href,
+    adminPages.Surveys.href,
+    adminPages.Feedback.href,
+] as const;
+
 export const adminBreadcrumbPages = [
     adminPages.Dashboard,
     adminPages.Directories,

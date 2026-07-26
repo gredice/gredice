@@ -203,6 +203,11 @@ const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
         href: KnownPages.Notifications,
     },
     {
+        key: 'surveys',
+        label: 'Ankete',
+        href: KnownPages.Surveys,
+    },
+    {
         key: 'feedback',
         label: 'Povratne informacije',
         href: KnownPages.Feedback,
