@@ -9,16 +9,8 @@ import {
     useState,
 } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
-import {
-    useAnimatedCasterShadowMapRefreshSubscription,
-    useSceneResume,
-    useSceneTimeInvalidation,
-} from './SceneTime';
-import {
-    animatedCasterShadowRefreshMs,
-    requestPrimaryShadowMapRefresh,
-    resolveAnimatedCasterShadowRefreshTick,
-} from './shadowMapScheduling';
+import { useSceneResume, useSceneTimeInvalidation } from './SceneTime';
+import { requestPrimaryShadowMapRefresh } from './shadowMapScheduling';
 
 const shadowSettleMs = 900;
 
@@ -33,9 +25,7 @@ export function ShadowMapController({
 }) {
     const gl = useThree((state) => state.gl);
     const invalidate = useThree((state) => state.invalidate);
-    const animatedRefreshCountRef = useRef(0);
     const invalidationCountRef = useRef(0);
-    const nextAnimatedRefreshAtRef = useRef(0);
     const refreshCountRef = useRef(0);
     const settleUntilRef = useRef(0);
     const [shadowSettleGeneration, setShadowSettleGeneration] = useState(0);
@@ -44,7 +34,7 @@ export function ShadowMapController({
 
     const reportShadowMapState = useCallback(() => {
         updateGameProfileMetadata({
-            animatedCasterShadowRefreshCount: animatedRefreshCountRef.current,
+            animatedCasterShadowRefreshCount: 0,
             primaryShadowRefreshCount: refreshCountRef.current,
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapDynamicRefreshMs: 0,
@@ -69,29 +59,6 @@ export function ShadowMapController({
             reportShadowMapState();
         },
         [enabled, gl, invalidate, reportShadowMapState],
-    );
-
-    const requestAnimatedCasterShadowRefresh = useCallback(
-        (now: number) => {
-            const tick = resolveAnimatedCasterShadowRefreshTick({
-                enabled,
-                nextRefreshAt: nextAnimatedRefreshAtRef.current,
-                now,
-                refreshMs: animatedCasterShadowRefreshMs,
-                settleUntil: settleUntilRef.current,
-            });
-            nextAnimatedRefreshAtRef.current = tick.nextRefreshAt;
-            if (!tick.shouldRefresh) {
-                return;
-            }
-
-            animatedRefreshCountRef.current += 1;
-            requestShadowRefresh(false);
-        },
-        [enabled, requestShadowRefresh],
-    );
-    useAnimatedCasterShadowMapRefreshSubscription(
-        requestAnimatedCasterShadowRefresh,
     );
 
     const settleShadows = useCallback(() => {
@@ -119,7 +86,6 @@ export function ShadowMapController({
             gl.shadowMap.needsUpdate = true;
         }
         if (!enabled) {
-            nextAnimatedRefreshAtRef.current = 0;
             settleUntilRef.current = 0;
             setShadowSettling(false);
         }

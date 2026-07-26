@@ -19,6 +19,7 @@ import {
     PCFShadowMap,
     type WebGLRendererParameters,
 } from 'three';
+import { ActorGroundingShadowProvider } from '../entities/animals/ActorGroundingShadows';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
@@ -271,18 +272,22 @@ export function Scene({
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
                 <WeatherSurfaceUniformProvider>
-                    <HoverOutlineProvider>
-                        <SceneDebugName />
-                        <GeneratedLSystemCacheStatsReporter />
-                        {debugStats && <RendererStatsReporter />}
-                        <SceneWireframeMode
-                            enabled={Boolean(
-                                debugStats && wireframeDebugVisible,
-                            )}
-                        />
-                        {children}
-                        <HoverOutlineEffect />
-                    </HoverOutlineProvider>
+                    <ActorGroundingShadowProvider
+                        enabled={qualityProfile.shadows}
+                    >
+                        <HoverOutlineProvider>
+                            <SceneDebugName />
+                            <GeneratedLSystemCacheStatsReporter />
+                            {debugStats && <RendererStatsReporter />}
+                            <SceneWireframeMode
+                                enabled={Boolean(
+                                    debugStats && wireframeDebugVisible,
+                                )}
+                            />
+                            {children}
+                            <HoverOutlineEffect />
+                        </HoverOutlineProvider>
+                    </ActorGroundingShadowProvider>
                 </WeatherSurfaceUniformProvider>
             </SceneTimeProvider>
         </Canvas>

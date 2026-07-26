@@ -2,8 +2,8 @@ import type { BlockData } from '@gredice/client';
 import { useAnimations } from '@react-three/drei';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AnimationAction, Group, Material, Object3D } from 'three';
-import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import type { AnimationAction, Group, Material } from 'three';
+import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
@@ -17,11 +17,13 @@ import {
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import {
     type AnimalDebugPathPoint,
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import {
     animalPresencePosition,
     animalPresenceUpdateIntervalSeconds,
@@ -1161,10 +1163,6 @@ function getCatAnimationName(runtime: CatRuntimeState): CatAnimationName {
     return 'Cat_Idle';
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
 function getCatDebugActivity(runtime: CatRuntimeState) {
     if (runtime.phase === 'moving') {
         return `walking to ${runtime.target.behavior}`;
@@ -1290,7 +1288,6 @@ function cloneCatMaterial(material: Material) {
 }
 
 function prepareCatMesh(object: Mesh) {
-    object.castShadow = true;
     object.frustumCulled = false;
     object.receiveShadow = true;
     object.material = Array.isArray(object.material)
@@ -1351,14 +1348,21 @@ function Cat({
 
     const catModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                prepareCatMesh(object);
-            }
-        });
-        return clone;
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            prepareCatMesh,
+        );
+        return {
+            primaryCasterCount,
+            scene: clone,
+        };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, catModel);
+    const { actions } = useAnimations(gltf.animations, catModel.scene);
+    const updateActorGroundingShadow = useActorGroundingShadow({
+        id: `cat:${habitat.id}`,
+        primaryCasterCount: catModel.primaryCasterCount,
+        species: 'cat',
+    });
 
     useEffect(() => {
         const action = actions[activeAnimation];
@@ -1686,6 +1690,20 @@ function Cat({
         const group = groupRef.current;
         const now = clock.elapsedTime;
 
+        if (group && updateActorGroundingShadow) {
+            updateActorGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getCatWalkYAt(
+                    group.position,
+                    habitat.groundSurfaces,
+                ),
+                visible: group.visible && catModel.scene.visible,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
+        }
+
         if (
             runtime &&
             group &&
@@ -1724,7 +1742,7 @@ function Cat({
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
             >
-                <primitive object={catModel} />
+                <primitive object={catModel.scene} />
             </group>
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#38bdf8" />
             <AnimalPathDebugIndicator

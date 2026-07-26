@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-    animatedCasterShadowRefreshMs,
     buildDirectionalShadowDepthSignature,
     requestPrimaryShadowMapRefresh,
-    resolveAnimatedCasterShadowRefreshTick,
 } from './shadowMapScheduling';
 
 const baseShadowDepth = {
@@ -79,76 +77,5 @@ describe('primary shadow refresh accounting', () => {
             enabled: false,
             needsUpdate: false,
         });
-    });
-});
-
-describe('animated caster shadow refresh scheduling', () => {
-    it('waits for settlement and refreshes animated casters at a bounded cadence', () => {
-        const settling = resolveAnimatedCasterShadowRefreshTick({
-            enabled: true,
-            nextRefreshAt: 0,
-            now: 900,
-            refreshMs: animatedCasterShadowRefreshMs,
-            settleUntil: 900,
-        });
-        assert.deepEqual(settling, {
-            nextRefreshAt: 0,
-            shouldRefresh: false,
-        });
-
-        const due = resolveAnimatedCasterShadowRefreshTick({
-            enabled: true,
-            nextRefreshAt: settling.nextRefreshAt,
-            now: 901,
-            refreshMs: animatedCasterShadowRefreshMs,
-            settleUntil: 900,
-        });
-        assert.deepEqual(due, {
-            nextRefreshAt: 1_061,
-            shouldRefresh: true,
-        });
-
-        assert.deepEqual(
-            resolveAnimatedCasterShadowRefreshTick({
-                enabled: true,
-                nextRefreshAt: due.nextRefreshAt,
-                now: 1_000,
-                refreshMs: animatedCasterShadowRefreshMs,
-                settleUntil: 900,
-            }),
-            {
-                nextRefreshAt: 1_061,
-                shouldRefresh: false,
-            },
-        );
-    });
-
-    it('does not catch up after stalls or refresh while shadows are disabled', () => {
-        assert.deepEqual(
-            resolveAnimatedCasterShadowRefreshTick({
-                enabled: true,
-                nextRefreshAt: 1_000,
-                now: 2_000,
-                refreshMs: animatedCasterShadowRefreshMs,
-                settleUntil: 0,
-            }),
-            {
-                nextRefreshAt: 2_160,
-                shouldRefresh: true,
-            },
-        );
-        assert.deepEqual(
-            resolveAnimatedCasterShadowRefreshTick({
-                enabled: false,
-                nextRefreshAt: 1_000,
-                now: 2_000,
-                refreshMs: animatedCasterShadowRefreshMs,
-                settleUntil: 0,
-            }),
-            {
-                nextRefreshAt: 1_000,
-                shouldRefresh: false,
-            },
-        );
     });
 });
