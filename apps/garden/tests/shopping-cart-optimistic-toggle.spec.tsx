@@ -44,10 +44,11 @@ const shoppingCartServerItem = {
 
 function createShoppingCartServerData(
     items: (typeof shoppingCartServerItem)[] = [shoppingCartServerItem],
+    hasDeliverableItems = false,
 ) {
     return {
         allowPurchase: true,
-        hasDeliverableItems: false,
+        hasDeliverableItems,
         id: 1,
         items,
         notes: [],
@@ -575,6 +576,167 @@ test.describe('shopping cart item presence', () => {
 
         await expect(cartDialog).toHaveCount(0);
         await expect(cartTrigger).toHaveCount(0);
+    });
+
+    test('returns to the cart after dismissing and reopening the harvest summary', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ height: 844, width: 390 });
+        const startAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const endAt = new Date(startAt.getTime() + 2 * 60 * 60 * 1000);
+        const effectiveClosesAt = new Date(
+            startAt.getTime() - 24 * 60 * 60 * 1000,
+        );
+        const deliveryDate = startAt.toISOString().slice(0, 10);
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(
+                    createShoppingCartServerData(
+                        [shoppingCartServerItem],
+                        true,
+                    ),
+                ),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+        await page.route(
+            '**/api/gredice/api/delivery/addresses**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify([
+                        {
+                            id: 7,
+                            accountId: 'test-account',
+                            label: 'Dom',
+                            contactName: 'Test User',
+                            phone: '+385991234567',
+                            street1: 'Ilica 1',
+                            street2: null,
+                            city: 'Zagreb',
+                            postalCode: '10000',
+                            countryCode: 'HR',
+                            isDefault: true,
+                            deletedAt: null,
+                            createdAt: startAt.toISOString(),
+                            updatedAt: startAt.toISOString(),
+                        },
+                    ]),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/api/delivery/pickup-locations**',
+            async (route) => {
+                await route.fulfill({
+                    body: '[]',
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/api/delivery/slots**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify([
+                        {
+                            id: 41,
+                            locationId: null,
+                            type: 'delivery',
+                            startAt: startAt.toISOString(),
+                            endAt: endAt.toISOString(),
+                            closesAt: null,
+                            effectiveClosesAt: effectiveClosesAt.toISOString(),
+                            status: 'scheduled',
+                            createdAt: startAt.toISOString(),
+                            updatedAt: startAt.toISOString(),
+                            location: null,
+                        },
+                    ]),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/**/shopping-cart/harvest-schedule**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify({
+                        deliverySlotId: 41,
+                        deliveryDate,
+                        allValid: true,
+                        requiresAdjustment: false,
+                        items: [
+                            {
+                                cartItemId: 1,
+                                operationId: 10,
+                                operationName: 'harvestPlant',
+                                operationLabel: 'Berba rajčice',
+                                raisedBedId: 1,
+                                raisedBedName: 'Gredica 1',
+                                raisedBedLabel: 'Gredica 1',
+                                positionIndex: 0,
+                                targetPositionIndexes: [0],
+                                plants: [
+                                    {
+                                        plantId: 101,
+                                        plantSortId: 201,
+                                        name: 'tomato',
+                                        label: 'Rajčica',
+                                        maxHarvestDaysBeforeDelivery: 0,
+                                    },
+                                ],
+                                maxHarvestDaysBeforeDelivery: 0,
+                                scheduledDate: deliveryDate,
+                                allowedFrom: deliveryDate,
+                                allowedTo: deliveryDate,
+                                valid: true,
+                                validationReason: null,
+                            },
+                        ],
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        const cartTrigger = page.getByTitle('Košara');
+        await cartTrigger.click();
+        await page.getByRole('button', { name: 'Dostava' }).click();
+        await expect(
+            page.getByRole('button', { name: 'Nastavi' }),
+        ).toBeEnabled();
+        await page.getByRole('button', { name: 'Nastavi' }).click();
+
+        const harvestSummary = page.getByRole('dialog', {
+            name: 'Sažetak dostave',
+        });
+        await expect(harvestSummary).toContainText(
+            'Svi datumi branja usklađeni su s odabranim terminom dostave.',
+        );
+
+        await page.keyboard.press('Escape');
+        await expect(harvestSummary).toHaveCount(0);
+
+        await cartTrigger.click();
+
+        const reopenedCart = page.getByRole('dialog', { name: 'Košara' });
+        await expect(reopenedCart).toBeVisible();
+        await expect(reopenedCart).toContainText('Ukupno');
     });
 
     test('refreshes the shopping cart when the production modal opens', async ({
