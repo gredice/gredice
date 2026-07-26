@@ -1,5 +1,5 @@
 import type {
-    getSurveyAdminDetails,
+    getSurveyWorkspaceAdminDetails,
     listSurveyTargetUsers,
 } from '@gredice/storage';
 import {
@@ -19,7 +19,7 @@ import { SurveyWorkspaceShell } from './SurveyWorkspaceShell';
 import { surveyStatusColor, surveyStatusLabel } from './surveyPresentation';
 
 type SurveyDetails = NonNullable<
-    Awaited<ReturnType<typeof getSurveyAdminDetails>>
+    Awaited<ReturnType<typeof getSurveyWorkspaceAdminDetails>>
 >;
 type SurveyTargetUsers = Awaited<ReturnType<typeof listSurveyTargetUsers>>;
 
