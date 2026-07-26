@@ -24,8 +24,12 @@ describe('plant stem geometry', () => {
             new Float32Array([0.1, 0.05]),
             2,
         );
+        let disposeEventCount = 0;
 
         first.setAttribute('stemRadius', radius);
+        first.addEventListener('dispose', () => {
+            disposeEventCount += 1;
+        });
 
         assert.equal(first.index, second.index);
         assert.equal(
@@ -40,6 +44,16 @@ describe('plant stem geometry', () => {
         assert.equal(second.getAttribute('stemRadius'), undefined);
 
         disposePlantStemGeometryShell(first);
+        disposePlantStemGeometryShell(first);
+
+        assert.equal(first.index, second.index);
+        assert.equal(
+            first.getAttribute('position'),
+            second.getAttribute('position'),
+        );
+        assert.equal(first.getAttribute('stemRadius'), radius);
+        assert.equal(disposeEventCount, 2);
+
         disposePlantStemGeometryShell(second);
     });
 });

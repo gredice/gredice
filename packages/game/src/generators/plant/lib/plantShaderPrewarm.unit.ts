@@ -71,6 +71,19 @@ describe('generated plant shader prewarm', () => {
         assert.equal(billboard.material.transparent, true);
         assert.equal(billboard.material.depthWrite, false);
 
+        const midBillboard = meshesByVariant.get('mid-billboard');
+        assert.ok(midBillboard);
+        assert.ok(midBillboard.geometry.hasAttribute('instanceTint'));
+        assert.ok(midBillboard.geometry.hasAttribute('instanceOpacity'));
+        assert.ok(midBillboard.geometry.hasAttribute('instanceSwayPhase'));
+        const midBillboardMaterial = midBillboard.material;
+        assert.ok(!Array.isArray(midBillboardMaterial));
+        assert.equal(midBillboardMaterial.type, 'MeshLambertMaterial');
+        assert.equal(midBillboard.geometry.index?.count, 6);
+        assert.equal(midBillboardMaterial.transparent, true);
+        assert.equal(midBillboardMaterial.depthWrite, false);
+        assert.equal(midBillboardMaterial.side, THREE.FrontSide);
+
         const shadowProxy = meshesByVariant.get('shadow-proxy');
         assert.ok(shadowProxy);
         assert.equal(shadowProxy.castShadow, true);

@@ -119,7 +119,9 @@ export function PlantGenerator({
                 </group>
             ) : (
                 <PlantBillboard
+                    animate={animate}
                     level={lodLevel}
+                    seed={seed}
                     summary={renderData.lodSummary}
                 />
             )}

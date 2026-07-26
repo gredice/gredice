@@ -9,14 +9,22 @@ import {
     useRef,
 } from 'react';
 import * as THREE from 'three';
+import CSM from 'three-custom-shader-material';
 import { useGameState } from '../../../useGameState';
 import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
+import { usePlantSway } from '../hooks/usePlantSway';
 import {
     createStaticInstancedBufferAttribute,
     finalizeStaticInstanceMatrixUpload,
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
 import type { PlantLodLevel } from '../lib/plantLod';
+import {
+    getMidBillboardSwayPhase,
+    midBillboardCardGeometry,
+    midBillboardFragmentShader,
+    midBillboardVertexShader,
+} from '../lib/plantMidBillboardMaterial';
 
 export interface PlantBillboardSummary {
     accentCenterY: number;
@@ -32,7 +40,9 @@ export interface PlantBillboardSummary {
 }
 
 interface PlantBillboardProps {
+    animate?: boolean;
     level: Exclude<PlantLodLevel, 'near'>;
+    seed: string;
     summary: PlantBillboardSummary;
 }
 
@@ -51,6 +61,8 @@ interface PlantBillboardBatchProps {
 interface BillboardInstanceItem {
     color: THREE.Color;
     matrix: THREE.Matrix4;
+    opacity: number;
+    swayPhase: number;
 }
 
 interface BillboardInstanceMeshProps {
@@ -60,9 +72,13 @@ interface BillboardInstanceMeshProps {
     opacity: number;
 }
 
+interface MidBillboardInstanceMeshProps
+    extends Omit<BillboardInstanceMeshProps, 'opacity'> {
+    swaySeed: string;
+}
+
 const BILLBOARD_IDENTITY_QUATERNION = new THREE.Quaternion();
 const billboardPlaneGeometry = new THREE.PlaneGeometry(1, 1);
-const billboardCircleGeometry = new THREE.CircleGeometry(1, 18);
 
 export const billboardVertexShader = /* glsl */ `
     attribute vec3 instanceTint;
@@ -119,14 +135,18 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
 function createBillboardItem({
     color,
     height,
+    opacity = 1,
     position,
     radius,
+    swayPosition,
     width,
 }: {
     color: string;
     height: number;
+    opacity?: number;
     position: readonly [number, number, number];
     radius?: number;
+    swayPosition?: readonly [number, number, number];
     width?: number;
 }) {
     const scaleX = radius ?? width ?? 1;
@@ -139,6 +159,11 @@ function createBillboardItem({
             BILLBOARD_IDENTITY_QUATERNION,
             new THREE.Vector3(scaleX, scaleY, 1),
         ),
+        opacity,
+        swayPhase:
+            swayPosition === undefined
+                ? 0
+                : getMidBillboardSwayPhase(swayPosition),
     } satisfies BillboardInstanceItem;
 }
 
@@ -214,6 +239,103 @@ function BillboardInstanceMesh({
     );
 }
 
+function MidBillboardInstanceMesh({
+    debugName,
+    geometry: sourceGeometry,
+    items,
+    swaySeed,
+}: MidBillboardInstanceMeshProps) {
+    const meshRef = useRef<THREE.InstancedMesh | null>(null);
+    const instanceCapacity = items.length;
+    const geometry = useMemo(() => sourceGeometry.clone(), [sourceGeometry]);
+    const tintAttribute = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
+        [instanceCapacity],
+    );
+    const swayPhaseAttribute = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
+        [instanceCapacity],
+    );
+    const opacityAttribute = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
+        [instanceCapacity],
+    );
+    const swayUniforms = usePlantSway(swaySeed, {
+        amplitude: 0.055,
+        speed: 1.1,
+    });
+    const uniforms = useMemo(
+        () => ({
+            ...swayUniforms,
+            uOpacity: { value: 1 },
+            uTint: { value: new THREE.Color('#ffffff') },
+        }),
+        [swayUniforms],
+    );
+    usePlantInstanceBufferMetrics({
+        extraAllocatedBytes:
+            tintAttribute.array.byteLength +
+            swayPhaseAttribute.array.byteLength +
+            opacityAttribute.array.byteLength,
+        kind: 'billboard',
+        liveCount: items.length,
+        meshRef,
+    });
+
+    useLayoutEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh) {
+            return;
+        }
+
+        mesh.geometry.setAttribute('instanceTint', tintAttribute);
+        mesh.geometry.setAttribute('instanceOpacity', opacityAttribute);
+        mesh.geometry.setAttribute('instanceSwayPhase', swayPhaseAttribute);
+        items.forEach((item, index) => {
+            mesh.setMatrixAt(index, item.matrix);
+            tintAttribute.setXYZ(
+                index,
+                item.color.r,
+                item.color.g,
+                item.color.b,
+            );
+            opacityAttribute.setX(index, item.opacity);
+            swayPhaseAttribute.setX(index, item.swayPhase);
+        });
+        finalizeStaticInstanceMatrixUpload(mesh, items.length);
+        markStaticInstancedAttributeForUpload(tintAttribute, items.length);
+        markStaticInstancedAttributeForUpload(opacityAttribute, items.length);
+        markStaticInstancedAttributeForUpload(swayPhaseAttribute, items.length);
+        mesh.computeBoundingBox();
+        mesh.computeBoundingSphere();
+    }, [items, opacityAttribute, swayPhaseAttribute, tintAttribute]);
+
+    useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    return (
+        <instancedMesh
+            ref={meshRef}
+            name={debugName}
+            args={[geometry, undefined, instanceCapacity]}
+            frustumCulled={false}
+        >
+            <CSM
+                baseMaterial={THREE.MeshLambertMaterial}
+                depthWrite={false}
+                fragmentShader={midBillboardFragmentShader}
+                side={THREE.FrontSide}
+                transparent
+                uniforms={uniforms}
+                vertexShader={midBillboardVertexShader}
+            />
+        </instancedMesh>
+    );
+}
+
 export function PlantBillboardBatch({
     debugName = 'PlantBillboardBatch',
     level,
@@ -271,7 +393,9 @@ export function PlantBillboardBatch({
                         position[1] + summary.canopyCenterY * scale,
                         position[2],
                     ],
+                    opacity: 0.88,
                     radius: Math.max(summary.canopyWidth * 0.28, 0.16) * scale,
+                    swayPosition: position,
                 }),
             );
     }, [billboards, level]);
@@ -293,7 +417,9 @@ export function PlantBillboardBatch({
                                 scale,
                         position[2] + 0.01 * scale,
                     ],
+                    opacity: 0.78,
                     radius: Math.max(summary.canopyWidth * 0.24, 0.14) * scale,
+                    swayPosition: position,
                 }),
             );
     }, [billboards, level]);
@@ -319,10 +445,20 @@ export function PlantBillboardBatch({
                         position[1] + summary.accentCenterY * scale,
                         position[2] + 0.02 * scale,
                     ],
+                    opacity: 0.95,
                     radius: Math.max(summary.canopyWidth * 0.1, 0.07) * scale,
+                    swayPosition: position,
                 }),
             );
     }, [billboards, level]);
+    const midFoliageItems = useMemo(
+        () => [
+            ...midCanopyPrimaryItems,
+            ...midCanopySecondaryItems,
+            ...midAccentItems,
+        ],
+        [midAccentItems, midCanopyPrimaryItems, midCanopySecondaryItems],
+    );
 
     if (billboards.length === 0) {
         return null;
@@ -347,35 +483,150 @@ export function PlantBillboardBatch({
                 items={midStemItems}
                 opacity={0.9}
             />
-            {midCanopyPrimaryItems.length > 0 ? (
-                <BillboardInstanceMesh
-                    debugName={`${debugName}:mid:canopyA:${midCanopyPrimaryItems.length}`}
-                    geometry={billboardCircleGeometry}
-                    items={midCanopyPrimaryItems}
-                    opacity={0.88}
-                />
-            ) : null}
-            {midCanopySecondaryItems.length > 0 ? (
-                <BillboardInstanceMesh
-                    debugName={`${debugName}:mid:canopyB:${midCanopySecondaryItems.length}`}
-                    geometry={billboardCircleGeometry}
-                    items={midCanopySecondaryItems}
-                    opacity={0.78}
-                />
-            ) : null}
-            {midAccentItems.length > 0 ? (
-                <BillboardInstanceMesh
-                    debugName={`${debugName}:mid:accents:${midAccentItems.length}`}
-                    geometry={billboardCircleGeometry}
-                    items={midAccentItems}
-                    opacity={0.95}
+            {midFoliageItems.length > 0 ? (
+                <MidBillboardInstanceMesh
+                    debugName={`${debugName}:mid:foliage:${midFoliageItems.length}`}
+                    geometry={midBillboardCardGeometry}
+                    items={midFoliageItems}
+                    swaySeed={`${debugName}:mid`}
                 />
             ) : null}
         </group>
     );
 }
 
-export function PlantBillboard({ level, summary }: PlantBillboardProps) {
+function MidPlantBillboard({
+    animate,
+    seed,
+    summary,
+}: {
+    animate: boolean;
+    seed: string;
+    summary: PlantBillboardSummary;
+}) {
+    const swayUniforms = usePlantSway(`${seed}:mid-billboard`, {
+        amplitude: 0.055,
+        enabled: animate,
+        speed: 1.1,
+    });
+    const uniforms = useMemo(
+        () => ({
+            accent: {
+                ...swayUniforms,
+                uOpacity: { value: 0.95 },
+                uTint: {
+                    value: new THREE.Color(summary.accentColor ?? '#ffffff'),
+                },
+            },
+            primary: {
+                ...swayUniforms,
+                uOpacity: { value: 0.88 },
+                uTint: { value: new THREE.Color(summary.foliageColor) },
+            },
+            secondary: {
+                ...swayUniforms,
+                uOpacity: { value: 0.78 },
+                uTint: { value: new THREE.Color(summary.foliageColor) },
+            },
+        }),
+        [summary.accentColor, summary.foliageColor, swayUniforms],
+    );
+
+    return (
+        <group>
+            <mesh position={[0, summary.height * 0.42, -0.02]}>
+                <planeGeometry
+                    args={[
+                        Math.max(summary.stemWidth, 0.06),
+                        Math.max(summary.height * 0.9, 0.2),
+                    ]}
+                />
+                <meshBasicMaterial
+                    color={summary.stemColor}
+                    transparent
+                    opacity={0.9}
+                    depthWrite={false}
+                />
+            </mesh>
+            {summary.hasFoliage ? (
+                <group>
+                    <mesh
+                        position={[
+                            -summary.canopyWidth * 0.08,
+                            summary.canopyCenterY,
+                            0,
+                        ]}
+                    >
+                        <planeGeometry
+                            args={[
+                                Math.max(summary.canopyWidth * 0.28, 0.16) * 2,
+                                Math.max(summary.canopyWidth * 0.28, 0.16) * 2,
+                            ]}
+                        />
+                        <CSM
+                            baseMaterial={THREE.MeshLambertMaterial}
+                            depthWrite={false}
+                            fragmentShader={midBillboardFragmentShader}
+                            side={THREE.FrontSide}
+                            transparent
+                            uniforms={uniforms.primary}
+                            vertexShader={midBillboardVertexShader}
+                        />
+                    </mesh>
+                    <mesh
+                        position={[
+                            summary.canopyWidth * 0.1,
+                            summary.canopyCenterY + summary.height * 0.06,
+                            0.01,
+                        ]}
+                    >
+                        <planeGeometry
+                            args={[
+                                Math.max(summary.canopyWidth * 0.24, 0.14) * 2,
+                                Math.max(summary.canopyWidth * 0.24, 0.14) * 2,
+                            ]}
+                        />
+                        <CSM
+                            baseMaterial={THREE.MeshLambertMaterial}
+                            depthWrite={false}
+                            fragmentShader={midBillboardFragmentShader}
+                            side={THREE.FrontSide}
+                            transparent
+                            uniforms={uniforms.secondary}
+                            vertexShader={midBillboardVertexShader}
+                        />
+                    </mesh>
+                </group>
+            ) : null}
+            {summary.accentColor ? (
+                <mesh position={[0, summary.accentCenterY, 0.02]}>
+                    <planeGeometry
+                        args={[
+                            Math.max(summary.canopyWidth * 0.1, 0.07) * 2,
+                            Math.max(summary.canopyWidth * 0.1, 0.07) * 2,
+                        ]}
+                    />
+                    <CSM
+                        baseMaterial={THREE.MeshLambertMaterial}
+                        depthWrite={false}
+                        fragmentShader={midBillboardFragmentShader}
+                        side={THREE.FrontSide}
+                        transparent
+                        uniforms={uniforms.accent}
+                        vertexShader={midBillboardVertexShader}
+                    />
+                </mesh>
+            ) : null}
+        </group>
+    );
+}
+
+export function PlantBillboard({
+    animate = true,
+    level,
+    seed,
+    summary,
+}: PlantBillboardProps) {
     const farColor = useMemo(
         () => new THREE.Color(summary.dominantColor),
         [summary.dominantColor],
@@ -384,89 +635,11 @@ export function PlantBillboard({ level, summary }: PlantBillboardProps) {
     return (
         <CameraFacingBillboard>
             {level === 'mid' ? (
-                <group>
-                    <mesh position={[0, summary.height * 0.42, -0.02]}>
-                        <planeGeometry
-                            args={[
-                                Math.max(summary.stemWidth, 0.06),
-                                Math.max(summary.height * 0.9, 0.2),
-                            ]}
-                        />
-                        <meshBasicMaterial
-                            color={summary.stemColor}
-                            transparent
-                            opacity={0.9}
-                            depthWrite={false}
-                        />
-                    </mesh>
-                    {summary.hasFoliage ? (
-                        <group>
-                            <mesh
-                                position={[
-                                    -summary.canopyWidth * 0.08,
-                                    summary.canopyCenterY,
-                                    0,
-                                ]}
-                            >
-                                <circleGeometry
-                                    args={[
-                                        Math.max(
-                                            summary.canopyWidth * 0.28,
-                                            0.16,
-                                        ),
-                                        18,
-                                    ]}
-                                />
-                                <meshBasicMaterial
-                                    color={summary.foliageColor}
-                                    transparent
-                                    opacity={0.88}
-                                    depthWrite={false}
-                                />
-                            </mesh>
-                            <mesh
-                                position={[
-                                    summary.canopyWidth * 0.1,
-                                    summary.canopyCenterY +
-                                        summary.height * 0.06,
-                                    0.01,
-                                ]}
-                            >
-                                <circleGeometry
-                                    args={[
-                                        Math.max(
-                                            summary.canopyWidth * 0.24,
-                                            0.14,
-                                        ),
-                                        18,
-                                    ]}
-                                />
-                                <meshBasicMaterial
-                                    color={summary.foliageColor}
-                                    transparent
-                                    opacity={0.78}
-                                    depthWrite={false}
-                                />
-                            </mesh>
-                        </group>
-                    ) : null}
-                    {summary.accentColor ? (
-                        <mesh position={[0, summary.accentCenterY, 0.02]}>
-                            <circleGeometry
-                                args={[
-                                    Math.max(summary.canopyWidth * 0.1, 0.07),
-                                    16,
-                                ]}
-                            />
-                            <meshBasicMaterial
-                                color={summary.accentColor}
-                                transparent
-                                opacity={0.95}
-                                depthWrite={false}
-                            />
-                        </mesh>
-                    ) : null}
-                </group>
+                <MidPlantBillboard
+                    animate={animate}
+                    seed={seed}
+                    summary={summary}
+                />
             ) : (
                 <mesh position={[0, summary.height * 0.5, 0]}>
                     <planeGeometry

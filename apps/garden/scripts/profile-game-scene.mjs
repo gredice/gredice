@@ -27,6 +27,8 @@ const highTargetOperationVisualExpectedMulchInstanceCount = 54;
 const highTargetOperationVisualHighlightObjectCount = 2;
 const highTargetOperationVisualLegacyObjectCount = 452;
 const highTargetOperationVisualRenderedObjectLimit = 64;
+const highTargetGeneratedPlantDetailInstanceBudget = 179;
+const highTargetExpectedGeneratedPlantClusterTriangleCount = 3_354;
 const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
 
 const coreScenarios = [
@@ -227,6 +229,35 @@ const highTargetOperationVisualScenarios = [
         dpr: 2,
         isMobile: false,
         budget: 'gameHighTarget',
+        repeat: 3,
+    },
+];
+
+const highTargetFoliageBudgetScenarios = [
+    {
+        name: 'game-high-target-foliage-unbudgeted-zoom-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&foliageBudget=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'foliage-detail-budget',
+        comparisonRole: 'legacy',
+        motion: 'foliage-detail-zoom',
+        motionWarmupMs: 7_000,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-foliage-budget-zoom-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&foliageBudget=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'foliage-detail-budget',
+        comparisonRole: 'budgeted',
+        motion: 'foliage-detail-zoom',
+        motionWarmupMs: 7_000,
         repeat: 3,
     },
 ];
@@ -609,6 +640,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     'high-target': highTargetScenarios,
+    'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
     outline: outlineScenarios,
     placement: placementScenarios,
@@ -905,7 +937,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -934,6 +966,7 @@ function allScenarios() {
         ...denseScenarios,
         ...denseMobileScenarios,
         ...highTargetScenarios,
+        ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
         ...outlineScenarios,
         ...placementScenarios,
@@ -997,6 +1030,7 @@ function getScenarioRequest(path) {
             ) || null,
         details: url.searchParams.get('details') ?? '1',
         debugHud: url.searchParams.get('debugHud') ?? '0',
+        foliageBudget: url.searchParams.get('foliageBudget') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
@@ -1665,6 +1699,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
+        scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
         await wait(sampleMs);
@@ -1680,6 +1715,13 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     const centerX = canvasBox.x + canvasBox.width * 0.52;
     const centerY = canvasBox.y + canvasBox.height * 0.52;
     const startedAt = Date.now();
+    if (scenario.motion === 'foliage-detail-zoom') {
+        await page.mouse.move(centerX, centerY);
+        await page.mouse.wheel(0, -920);
+        await wait(sampleMs);
+        return;
+    }
+
     if (scenario.interaction === 'hover-scan') {
         const points = [
             [-0.08, -0.04],
@@ -2260,6 +2302,45 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     if (options.soakMs > 0) {
         await wait(options.soakMs);
     }
+    const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
+    if (motionRunsBeforeSample) {
+        await runScenarioMotion(
+            page,
+            scenario,
+            scenario.motionWarmupMs ?? options.warmupMs,
+        );
+        if (request.foliageBudget === 'legacy') {
+            await page.waitForFunction(
+                (expected) => {
+                    const profile = globalThis.__grediceGameProfile;
+                    return (
+                        profile?.generatedPlantRenderNearInstanceCount ===
+                            expected &&
+                        profile.generatedPlantDetailedInstanceCount ===
+                            expected &&
+                        profile.generatedPlantPendingDetailInstanceCount === 0
+                    );
+                },
+                highTargetExpectedGeneratedPlantInstanceCount,
+                { timeout: 90_000 },
+            );
+        } else {
+            await page.waitForFunction(
+                (expected) => {
+                    const profile = globalThis.__grediceGameProfile;
+                    return (
+                        profile?.generatedPlantClusterInstanceCount ===
+                            expected &&
+                        profile.generatedPlantRenderNearInstanceCount === 0 &&
+                        profile.generatedPlantDetailedInstanceCount === 0 &&
+                        profile.generatedPlantPendingDetailInstanceCount === 0
+                    );
+                },
+                highTargetExpectedGeneratedPlantInstanceCount,
+                { timeout: 90_000 },
+            );
+        }
+    }
     const adaptiveHighProfileControlStarted = scenario.profileControl
         ? await startAdaptiveHighProfileControl(page)
         : false;
@@ -2371,6 +2452,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 details: profileMetadata?.details ?? request.details,
                 debugHud: profileMetadata?.debugHud ?? request.debugHud,
                 dpr: scenario.dpr,
+                foliageBudget: request.foliageBudget,
                 gardenProfile:
                     profileMetadata?.gardenProfile ?? request.gardenProfile,
                 hud: profileMetadata?.hud ?? request.hud,
@@ -2928,7 +3010,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }),
     );
     const motionPromise =
-        scenario.motion || scenario.interaction
+        (scenario.motion || scenario.interaction) && !motionRunsBeforeSample
             ? runScenarioMotion(page, scenario, sampleMs)
             : Promise.resolve();
     const [sampleCompletion] = await Promise.all([
@@ -3202,6 +3284,60 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantBatchCount === 'number'
                     ? metadata.generatedPlantBatchCount
                     : null,
+            generatedPlantClusterInstanceCount: numberOrNull(
+                metadata.generatedPlantClusterInstanceCount,
+            ),
+            generatedPlantClusterPrimitiveTriangleCount: numberOrNull(
+                metadata.generatedPlantClusterPrimitiveTriangleCount,
+            ),
+            generatedPlantDetailedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailedInstanceCount,
+            ),
+            generatedPlantDetailedLeafTriangleCount: numberOrNull(
+                metadata.generatedPlantDetailedLeafTriangleCount,
+            ),
+            generatedPlantDetailAdmittedBedCount: numberOrNull(
+                metadata.generatedPlantDetailAdmittedBedCount,
+            ),
+            generatedPlantDetailAdmittedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailAdmittedInstanceCount,
+            ),
+            generatedPlantDetailBudgetInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailBudgetInstanceCount,
+            ),
+            generatedPlantDetailDemotedBedCount: numberOrNull(
+                metadata.generatedPlantDetailDemotedBedCount,
+            ),
+            generatedPlantDetailEvictedBedCount: numberOrNull(
+                metadata.generatedPlantDetailEvictedBedCount,
+            ),
+            generatedPlantDetailOverflowInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailOverflowInstanceCount,
+            ),
+            generatedPlantDetailPromotedBedCount: numberOrNull(
+                metadata.generatedPlantDetailPromotedBedCount,
+            ),
+            generatedPlantDetailRequestedBedCount: numberOrNull(
+                metadata.generatedPlantDetailRequestedBedCount,
+            ),
+            generatedPlantDetailRequestedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailRequestedInstanceCount,
+            ),
+            generatedPlantDetailRetainedBedCount: numberOrNull(
+                metadata.generatedPlantDetailRetainedBedCount,
+            ),
+            generatedPlantDetailTransitionCount: numberOrNull(
+                metadata.generatedPlantDetailTransitionCount,
+            ),
+            generatedPlantDetailUsedBudgetInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailUsedBudgetInstanceCount,
+            ),
+            generatedPlantFarFieldCount: numberOrNull(
+                metadata.generatedPlantFarFieldCount,
+            ),
+            generatedPlantFarInstanceCount: numberOrNull(
+                metadata.generatedPlantFarInstanceCount,
+            ),
             generatedPlantFieldCount:
                 typeof metadata.generatedPlantFieldCount === 'number'
                     ? metadata.generatedPlantFieldCount
@@ -3214,6 +3350,27 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantInstanceCount === 'number'
                     ? metadata.generatedPlantInstanceCount
                     : null,
+            generatedPlantMidFieldCount: numberOrNull(
+                metadata.generatedPlantMidFieldCount,
+            ),
+            generatedPlantMidInstanceCount: numberOrNull(
+                metadata.generatedPlantMidInstanceCount,
+            ),
+            generatedPlantNearFieldCount: numberOrNull(
+                metadata.generatedPlantNearFieldCount,
+            ),
+            generatedPlantNearInstanceCount: numberOrNull(
+                metadata.generatedPlantNearInstanceCount,
+            ),
+            generatedPlantPendingDetailInstanceCount: numberOrNull(
+                metadata.generatedPlantPendingDetailInstanceCount,
+            ),
+            generatedPlantRenderBatchCount: numberOrNull(
+                metadata.generatedPlantRenderBatchCount,
+            ),
+            generatedPlantRenderNearInstanceCount: numberOrNull(
+                metadata.generatedPlantRenderNearInstanceCount,
+            ),
             generatedPlantVisibleFieldCount:
                 typeof metadata.generatedPlantVisibleFieldCount === 'number'
                     ? metadata.generatedPlantVisibleFieldCount
@@ -3449,6 +3606,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
+        foliageBudget: request.foliageBudget,
         gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
         graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
@@ -3714,6 +3872,7 @@ function evaluateHighTargetAcceptance({
         ? (sample.adaptiveHighDprCapAtEnd ?? runtime?.adaptiveHighDprCap)
         : null;
     const operationVisualsRequested = requested.operationVisuals === '1';
+    const foliageBudgetRequested = requested.foliageBudget === '1';
     const expectedGeneratedPlantFieldCount = operationVisualsRequested
         ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
         : highTargetExpectedGeneratedPlantFieldCount;
@@ -3818,6 +3977,98 @@ function evaluateHighTargetAcceptance({
             runtime?.generatedPlantVisibleInstanceCount,
             expectedGeneratedPlantInstanceCount,
         ),
+        ...(foliageBudgetRequested
+            ? [
+                  exact(
+                      'highTargetFoliageDetailBudget',
+                      runtime?.generatedPlantDetailBudgetInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageRequestedBeds',
+                      runtime?.generatedPlantDetailRequestedBedCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageRequestedInstances',
+                      runtime?.generatedPlantDetailRequestedInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageAdmittedBeds',
+                      runtime?.generatedPlantDetailAdmittedBedCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageAdmittedInstances',
+                      runtime?.generatedPlantDetailAdmittedInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageUsedBudget',
+                      runtime?.generatedPlantDetailUsedBudgetInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageDemotedBeds',
+                      runtime?.generatedPlantDetailDemotedBedCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageSelectedOverflow',
+                      runtime?.generatedPlantDetailOverflowInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageNearFields',
+                      runtime?.generatedPlantNearFieldCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageNearInstances',
+                      runtime?.generatedPlantNearInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterFields',
+                      (runtime?.generatedPlantMidFieldCount ?? 0) +
+                          (runtime?.generatedPlantFarFieldCount ?? 0),
+                      highTargetExpectedGeneratedPlantFieldCount,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterLodInstances',
+                      (runtime?.generatedPlantMidInstanceCount ?? 0) +
+                          (runtime?.generatedPlantFarInstanceCount ?? 0),
+                      highTargetExpectedGeneratedPlantInstanceCount,
+                  ),
+                  exact(
+                      'highTargetFoliageDetailedRenderInstances',
+                      runtime?.generatedPlantDetailedInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliagePendingDetailInstances',
+                      runtime?.generatedPlantPendingDetailInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterInstances',
+                      runtime?.generatedPlantClusterInstanceCount,
+                      highTargetExpectedGeneratedPlantInstanceCount,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterPrimitiveTriangles',
+                      runtime?.generatedPlantClusterPrimitiveTriangleCount,
+                      highTargetExpectedGeneratedPlantClusterTriangleCount,
+                  ),
+                  range(
+                      'highTargetFoliageRenderBatches',
+                      runtime?.generatedPlantRenderBatchCount,
+                      3,
+                      6,
+                  ),
+              ]
+            : []),
         exact(
             'highTargetActorGroundingShadowCount',
             runtime?.actorGroundingShadowCount,

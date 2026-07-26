@@ -188,6 +188,7 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
         controls: '1',
         debugHud: '0',
         details: '1',
+        foliageBudget: '0',
         gardenProfile: 'high-target',
         hud: '0',
         mode: 'details',
@@ -203,6 +204,30 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
         ),
         false,
     );
+});
+
+test('foliage-budget High scenario reserves exact detail for explicit close-up', () => {
+    const scenarios = resolveScenarios('high-target-foliage-budget');
+
+    assert.equal(scenarios.length, 2);
+    const [legacy, scenario] = scenarios;
+    assert.equal(
+        legacy.name,
+        'game-high-target-foliage-unbudgeted-zoom-desktop',
+    );
+    assert.equal(getScenarioRequest(legacy.path).foliageBudget, 'legacy');
+    assert.equal(legacy.comparisonPair, 'foliage-detail-budget');
+    assert.equal(legacy.comparisonRole, 'legacy');
+    assert.equal(scenario.name, 'game-high-target-foliage-budget-zoom-desktop');
+    assert.equal(scenario.motion, 'foliage-detail-zoom');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.comparisonPair, 'foliage-detail-budget');
+    assert.equal(scenario.comparisonRole, 'budgeted');
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(request.foliageBudget, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.quality, 'high');
 });
 
 test('outline scenario deterministically targets the connected raised bed after warmup', () => {
@@ -381,6 +406,7 @@ test('profile request parses the High target fixture contract', () => {
         controls: '1',
         debugHud: '0',
         details: '1',
+        foliageBudget: '0',
         gardenProfile: 'high-target',
         hud: '0',
         mode: 'snow',
@@ -1179,6 +1205,109 @@ test('operation-visual High acceptance gates batching, uploads, mulch, and highl
         tooManyObjects.checks.find(
             (check) =>
                 check.name === 'highTargetOperationVisualRenderedObjects',
+        )?.pass,
+        false,
+    );
+});
+
+test('foliage-budget High acceptance keeps normal-view foliage clustered', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            blockGeometryMerging: '1',
+            foliageBudget: '1',
+            gardenProfile: 'high-target',
+            mode: 'details',
+            motion: 'foliage-detail-zoom',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 5,
+            animatedCasterShadowRefreshCount: 0,
+            generatedPlantClusterInstanceCount: 537,
+            generatedPlantClusterPrimitiveTriangleCount: 3_354,
+            generatedPlantDetailedInstanceCount: 0,
+            generatedPlantDetailAdmittedBedCount: 0,
+            generatedPlantDetailAdmittedInstanceCount: 0,
+            generatedPlantDetailBudgetInstanceCount: 179,
+            generatedPlantDetailDemotedBedCount: 0,
+            generatedPlantDetailOverflowInstanceCount: 0,
+            generatedPlantDetailRequestedBedCount: 0,
+            generatedPlantDetailRequestedInstanceCount: 0,
+            generatedPlantDetailTransitionCount: 0,
+            generatedPlantDetailUsedBudgetInstanceCount: 0,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFarFieldCount: 9,
+            generatedPlantFarInstanceCount: 81,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantMidFieldCount: 45,
+            generatedPlantMidInstanceCount: 456,
+            generatedPlantNearFieldCount: 0,
+            generatedPlantNearInstanceCount: 0,
+            generatedPlantPendingDetailInstanceCount: 0,
+            generatedPlantRenderBatchCount: 6,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+
+    assert.equal(evaluateHighTargetAcceptance(input).pass, true);
+    const exactLeak = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            generatedPlantDetailedInstanceCount: 179,
+        },
+    });
+    assert.equal(exactLeak.pass, false);
+    assert.equal(
+        exactLeak.checks.find(
+            (check) =>
+                check.name === 'highTargetFoliageDetailedRenderInstances',
+        )?.pass,
+        false,
+    );
+
+    const expensiveClusters = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            generatedPlantClusterPrimitiveTriangleCount: 10_000,
+        },
+    });
+    assert.equal(expensiveClusters.pass, false);
+    assert.equal(
+        expensiveClusters.checks.find(
+            (check) =>
+                check.name === 'highTargetFoliageClusterPrimitiveTriangles',
         )?.pass,
         false,
     );
