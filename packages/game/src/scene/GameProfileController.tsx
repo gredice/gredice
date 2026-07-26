@@ -1,6 +1,8 @@
 'use client';
 
+import { invalidate } from '@react-three/fiber';
 import { useEffect } from 'react';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { meshChunkSize } from '../entities/chunkedMeshGeometry';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { resetPlacementAnimationProfileMetrics } from '../entities/placementAnimationProfileMetrics';
@@ -12,6 +14,7 @@ import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
+import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     failGeneratedPlantProfile,
     recordGeneratedPlantProfileCamera,
@@ -23,6 +26,8 @@ export const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 export const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+export const gameProfileOutlineCommandEventName =
+    'gredice:game-profile-outline-command';
 
 type ProfileGarden = {
     raisedBeds: Array<{
@@ -58,6 +63,15 @@ export type GameProfilePlacementCommand =
     | {
           action: 'run';
           staggerMs: number;
+      };
+
+export type GameProfileOutlineCommand =
+    | {
+          action: 'hide';
+      }
+    | {
+          action: 'show';
+          raisedBedId: number;
       };
 
 export function readGameProfileCloseupCommand(
@@ -113,6 +127,30 @@ export function readGameProfilePlacementCommand(
     }
 
     return { action, staggerMs };
+}
+
+export function readGameProfileOutlineCommand(
+    value: unknown,
+): GameProfileOutlineCommand | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const action = Reflect.get(value, 'action');
+    if (action === 'hide') {
+        return { action };
+    }
+    const raisedBedId = Reflect.get(value, 'raisedBedId');
+    if (
+        action === 'show' &&
+        typeof raisedBedId === 'number' &&
+        Number.isInteger(raisedBedId) &&
+        raisedBedId > 0
+    ) {
+        return { action, raisedBedId };
+    }
+
+    return null;
 }
 
 const instancedBlockNameSet: ReadonlySet<string> = new Set(instancedBlockNames);
@@ -361,6 +399,53 @@ export function GameProfileController() {
         garden,
         queueBlockPlacementDropAnimation,
     ]);
+
+    useEffect(() => {
+        const setHoveredBlock = useHoveredBlockStore.getState().setHoveredBlock;
+        const handleCommand = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readGameProfileOutlineCommand(event.detail)
+                    : null;
+            if (!command || command.action === 'hide') {
+                if (command) {
+                    setHoveredBlock(null);
+                    invalidate(undefined, 2);
+                    updateGameProfileMetadata({
+                        hoverOutlineProfileCommandAction: command.action,
+                        hoverOutlineProfileTargetBlockId: null,
+                        hoverOutlineProfileTargetRaisedBedId: null,
+                    });
+                }
+                return;
+            }
+
+            const target = resolveGameProfileRaisedBedTarget(
+                garden,
+                command.raisedBedId,
+            );
+            setHoveredBlock(target?.block ?? null);
+            invalidate(undefined, 2);
+            updateGameProfileMetadata({
+                hoverOutlineProfileCommandAction: command.action,
+                hoverOutlineProfileTargetBlockId: target?.blockId ?? null,
+                hoverOutlineProfileTargetRaisedBedId:
+                    target?.raisedBedId ?? null,
+            });
+        };
+
+        window.addEventListener(
+            gameProfileOutlineCommandEventName,
+            handleCommand,
+        );
+        return () => {
+            window.removeEventListener(
+                gameProfileOutlineCommandEventName,
+                handleCommand,
+            );
+            setHoveredBlock(null);
+        };
+    }, [garden]);
 
     return null;
 }

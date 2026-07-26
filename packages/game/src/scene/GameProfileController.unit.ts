@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { Block } from '../types/Block';
 import {
     readGameProfileCloseupCommand,
+    readGameProfileOutlineCommand,
     readGameProfilePlacementCommand,
     resolveGameProfilePlacementBlockIds,
     resolveGameProfileRaisedBedTarget,
@@ -88,6 +89,28 @@ test('profile target resolution uses the raised bed primary block', () => {
         ),
         null,
     );
+});
+
+test('profile outline command validates the deterministic raised bed id', () => {
+    assert.deepEqual(
+        readGameProfileOutlineCommand({ action: 'show', raisedBedId: 2 }),
+        {
+            action: 'show',
+            raisedBedId: 2,
+        },
+    );
+    assert.deepEqual(readGameProfileOutlineCommand({ action: 'hide' }), {
+        action: 'hide',
+    });
+    assert.equal(
+        readGameProfileOutlineCommand({ action: 'show', raisedBedId: 0 }),
+        null,
+    );
+    assert.equal(
+        readGameProfileOutlineCommand({ action: 'show', raisedBedId: '2' }),
+        null,
+    );
+    assert.equal(readGameProfileOutlineCommand({ action: 'reset' }), null);
 });
 
 test('profile placement command validates the repeatable stagger', () => {
