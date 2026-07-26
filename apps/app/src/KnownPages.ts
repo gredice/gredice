@@ -89,6 +89,8 @@ export const KnownPages = {
         `/admin/surveys/${surveyId}/sends` as Route,
     SurveyResponses: (surveyId: string) =>
         `/admin/surveys/${surveyId}/responses` as Route,
+    SurveyResponsesExport: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses/export` as Route,
     SurveyResponse: (surveyId: string, responseId: string) =>
         `/admin/surveys/${surveyId}/responses/${responseId}` as Route,
     SurveyResponsesForMonth: (surveyId: string, monthKey: string) =>
