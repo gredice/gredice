@@ -751,6 +751,8 @@ const budgets = {
 
 function parseArgs(argv) {
     const options = {
+        allowLegacyOperationVisuals:
+            process.env.GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS === '1',
         baseUrl: process.env.GAME_PROFILE_BASE_URL ?? defaultBaseUrl,
         build: process.env.GAME_PROFILE_BUILD === '1',
         closeupRepeat: process.env.GAME_PROFILE_CLOSEUP_REPEAT
@@ -781,6 +783,9 @@ function parseArgs(argv) {
         const next = argv[index + 1];
 
         switch (arg) {
+            case '--allow-legacy-operation-visuals':
+                options.allowLegacyOperationVisuals = true;
+                break;
             case '--':
                 break;
             case '--base-url':
@@ -887,6 +892,8 @@ function printHelp(options) {
             'Usage: pnpm run profile:game -- [options]',
             '',
             'Options:',
+            '  --allow-legacy-operation-visuals',
+            '                         Measure the pre-batching operation scene without waiting for batch telemetry.',
             `  --base-url <url>       Garden server URL. Current: ${options.baseUrl}`,
             '  --build                Run pnpm run build before profiling.',
             `  --closeup-repeat <n>   Override close-up scenario repeats. Current: ${options.closeupRepeat ?? 'scenario default'}`,
@@ -905,6 +912,7 @@ function printHelp(options) {
             '  --help                 Show this help.',
             '',
             'Environment aliases:',
+            '  GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=1,',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_GRAPHICS_BACKEND,',
@@ -2199,6 +2207,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 expectedFieldVisualInstanceCount,
                 expectedInstanceCount,
                 expectedMulchInstanceCount,
+                allowLegacyOperationVisuals,
                 operationVisuals,
             }) => {
                 const profile = globalThis.__grediceGameProfile;
@@ -2215,6 +2224,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         profile.generatedPlantVisibleInstanceCount ===
                             expectedInstanceCount &&
                         (!operationVisuals ||
+                            allowLegacyOperationVisuals ||
                             (profile.raisedBedFieldVisualInstanceCount ===
                                 expectedFieldVisualInstanceCount &&
                                 profile.raisedBedMulchInstanceCount ===
@@ -2234,6 +2244,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         : highTargetExpectedGeneratedPlantInstanceCount,
                 expectedMulchInstanceCount:
                     highTargetOperationVisualExpectedMulchInstanceCount,
+                allowLegacyOperationVisuals:
+                    options.allowLegacyOperationVisuals,
                 operationVisuals: request.operationVisuals === '1',
             },
             { timeout: 60000 },
@@ -5879,6 +5891,8 @@ async function main() {
                 process.env.GITHUB_SHA ??
                 null,
             options: {
+                allowLegacyOperationVisuals:
+                    options.allowLegacyOperationVisuals,
                 build: options.build,
                 closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,

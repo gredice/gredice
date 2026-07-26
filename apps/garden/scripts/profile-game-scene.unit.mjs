@@ -299,6 +299,15 @@ test('graphics backend CLI overrides the portable auto default explicitly', () =
     );
 });
 
+test('legacy operation visual profiling bypass is explicit', () => {
+    assert.equal(parseArgs([]).allowLegacyOperationVisuals, false);
+    assert.equal(
+        parseArgs(['--allow-legacy-operation-visuals'])
+            .allowLegacyOperationVisuals,
+        true,
+    );
+});
+
 test('adaptive High scenario set pairs fixed and adaptive motion and preserves runtime features', () => {
     const scenarios = resolveScenarios('adaptive-high');
 
