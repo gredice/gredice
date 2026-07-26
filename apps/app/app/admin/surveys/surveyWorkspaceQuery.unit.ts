@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { includesSelectedPath } from '../../../components/admin/navigation/adminNavigationPath';
-import { communicationAdminPageHrefs } from '../../../components/admin/navigation/adminPages';
+import { communicationMessagePageHrefs } from '../../../components/admin/navigation/adminPages';
 import { resolveAdminRouteTitle } from '../../../components/admin/navigation/adminRouteTitle';
 import { buildDashboardQuickActionOptions } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
@@ -143,19 +143,24 @@ describe('survey admin navigation', () => {
         });
     });
 
-    it('keeps communication navigation open on survey descendants', () => {
-        assert.ok(communicationAdminPageHrefs.includes(KnownPages.Surveys));
+    it('keeps surveys outside the collapsed message navigation group', () => {
+        assert.equal(
+            new Set<string>(communicationMessagePageHrefs).has(
+                KnownPages.Surveys,
+            ),
+            false,
+        );
         assert.equal(
             includesSelectedPath(KnownPages.SurveyResponses('survey-id'), [
-                ...communicationAdminPageHrefs,
+                ...communicationMessagePageHrefs,
             ]),
-            true,
+            false,
         );
         assert.equal(
             includesSelectedPath(KnownPages.SurveyStatistics('survey-id'), [
-                ...communicationAdminPageHrefs,
+                ...communicationMessagePageHrefs,
             ]),
-            true,
+            false,
         );
     });
 });
