@@ -1,4 +1,4 @@
-import type { getSurveyAdminDetails } from '@gredice/storage';
+import type { getSurveyWorkspaceAdminDetails } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import {
     Card,
@@ -18,7 +18,7 @@ import { SurveyWorkspaceShell } from './SurveyWorkspaceShell';
 import { surveyStatusColor, surveyStatusLabel } from './surveyPresentation';
 
 type SurveyDetails = NonNullable<
-    Awaited<ReturnType<typeof getSurveyAdminDetails>>
+    Awaited<ReturnType<typeof getSurveyWorkspaceAdminDetails>>
 >;
 
 export function SurveyDesignView({ details }: { details: SurveyDetails }) {

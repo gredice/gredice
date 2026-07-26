@@ -1,6 +1,5 @@
 import {
-    getSurveyAdminDetails,
-    getSurveyResultsAdmin,
+    getSurveyWorkspaceAdminDetails,
     listSurveysAdmin,
     listSurveyTargetUsers,
 } from '@gredice/storage';
@@ -10,12 +9,10 @@ import { SurveyCreateView } from './SurveyCreateView';
 import { SurveyDesignView } from './SurveyDesignView';
 import { SurveyIndexView } from './SurveyIndexView';
 import { SurveyOverviewView } from './SurveyOverviewView';
-import { SurveyResponsesView } from './SurveyResponsesView';
+import { SurveyResponsesWorkspace } from './SurveyResponsesWorkspace';
 import { SurveySendsView } from './SurveySendsView';
-import {
-    firstSurveyQueryParam,
-    type SurveyWorkspaceSearchParams,
-} from './surveyWorkspaceQuery';
+import type { SurveyResponseSearchParams } from './surveyResponseQuery';
+import type { SurveyWorkspaceSearchParams } from './surveyWorkspaceQuery';
 import type { SurveyWorkspaceView } from './surveyWorkspaceTypes';
 
 export type { SurveyWorkspaceView } from './surveyWorkspaceTypes';
@@ -26,7 +23,9 @@ export async function SurveyAdminWorkspace({
     view,
 }: {
     surveyId?: string | null;
-    searchParams?: Promise<SurveyWorkspaceSearchParams>;
+    searchParams?: Promise<
+        SurveyWorkspaceSearchParams & SurveyResponseSearchParams
+    >;
     view: SurveyWorkspaceView;
 }) {
     await auth(['admin']);
@@ -48,7 +47,7 @@ export async function SurveyAdminWorkspace({
 
     if (view === 'overview') {
         const [details, surveys] = await Promise.all([
-            getSurveyAdminDetails(surveyId),
+            getSurveyWorkspaceAdminDetails(surveyId),
             listSurveysAdmin(),
         ]);
         if (!details) {
@@ -67,7 +66,7 @@ export async function SurveyAdminWorkspace({
 
     if (view === 'sends') {
         const [details, targetUsers] = await Promise.all([
-            getSurveyAdminDetails(surveyId),
+            getSurveyWorkspaceAdminDetails(surveyId),
             listSurveyTargetUsers(),
         ]);
         if (!details) {
@@ -77,7 +76,7 @@ export async function SurveyAdminWorkspace({
         return <SurveySendsView details={details} targetUsers={targetUsers} />;
     }
 
-    const details = await getSurveyAdminDetails(surveyId);
+    const details = await getSurveyWorkspaceAdminDetails(surveyId);
     if (!details) {
         notFound();
     }
@@ -87,20 +86,7 @@ export async function SurveyAdminWorkspace({
     }
 
     if (view === 'responses') {
-        const monthKey =
-            firstSurveyQueryParam(params.monthKey)?.trim() || undefined;
-        const results = await getSurveyResultsAdmin({
-            surveyId,
-            monthKey,
-        });
-
-        return (
-            <SurveyResponsesView
-                details={details}
-                monthKey={monthKey}
-                results={results}
-            />
-        );
+        return <SurveyResponsesWorkspace details={details} params={params} />;
     }
 
     notFound();

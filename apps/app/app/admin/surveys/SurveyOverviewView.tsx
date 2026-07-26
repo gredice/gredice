@@ -1,4 +1,7 @@
-import type { getSurveyAdminDetails, listSurveysAdmin } from '@gredice/storage';
+import type {
+    getSurveyWorkspaceAdminDetails,
+    listSurveysAdmin,
+} from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
@@ -12,7 +15,7 @@ import { SurveyWorkspaceShell } from './SurveyWorkspaceShell';
 import { surveyStatusColor, surveyStatusLabel } from './surveyPresentation';
 
 type SurveyDetails = NonNullable<
-    Awaited<ReturnType<typeof getSurveyAdminDetails>>
+    Awaited<ReturnType<typeof getSurveyWorkspaceAdminDetails>>
 >;
 type SurveyListItem =
     | Awaited<ReturnType<typeof listSurveysAdmin>>[number]
