@@ -567,6 +567,43 @@ Placement still requested `7`, `7`, and `11` primary refreshes while its
 drop-settling window was active. That separate lifecycle is intentionally
 tracked by issue `#4331` rather than folded into actor shadow scheduling.
 
+### Placement shadow completion coalescing
+
+Issue `#4331` replaces the placement-specific 900 ms shadow-settling timer
+with an explicit static-dirty scheduler. It defers garden shadow changes while
+one or more placement springs are active and consumes them once, on the first
+render frame after the last completion or cancellation. The static signature
+contains only stack positions and render-affecting block properties, so an
+optimistic-to-persisted block ID replacement no longer invalidates the map.
+
+Transient component and instanced placement geometry is excluded from the
+primary caster set. While it moves, a conservative hitbox-derived ellipse uses
+the same instanced projected-shadow batch as actors, with separate placement
+accounting so the actor acceptance metrics remain exact. Stable geometry is
+restored before the coalesced final refresh.
+
+The focused three-repeat production High placement profile passed all
+structural and lifecycle acceptance checks:
+
+- the scenario's two staggered placements reached a projected-shadow peak of
+  exactly two, returned to zero, and recorded zero dropped proxies in every
+  run;
+- each run recorded one deferred placement cycle, one final placement flush,
+  one primary-map refresh, and zero active placements at the end;
+- the former primary-refresh train of `7`, `7`, and `11` requests became
+  exactly `1`, `1`, and `1`; and
+- the placement median moved from `170.9` to `156.7` draws per rendered frame
+  and from `25,959` to `22,627` triangles per rendered frame on the same
+  Chromium 149 / ANGLE SwiftShader runner, reductions of `8.3%` and `12.8%`.
+
+The production profiler now rejects a placement run with zero or multiple
+final shadow refreshes, a projected peak other than exactly two, any dropped
+or nonzero final proxy, a nonzero active count, or no deferred dirtiness.
+SwiftShader frame-time and long-task
+budgets remain red because of the documented `ReadPixels` stalls; all three
+placement acceptance runs passed independently of those aspirational
+physical-device budgets.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.
@@ -678,9 +715,10 @@ soaked for 15 seconds, and sampled for 10 seconds in the production build.
 
 - All four completed without page or WebGL/shader errors. The only console
   errors were expected profile-route provider requests returning 401/404.
-- Resuming a hidden or offscreen scene now explicitly re-arms the bounded
-  900 ms shadow-settlement window, preventing stale caster shadows without
-  restoring continuous offscreen rendering.
+- This historical soak used a bounded 900 ms shadow-settlement window after
+  resume. Issue `#4331` supersedes that timer with a one-frame coalesced static
+  refresh, preventing stale caster shadows without restoring continuous
+  offscreen rendering.
 - The repository's `33.3 ms` physical-device floor still fails in this
   headless environment, which reports synchronous `ReadPixels` GPU stalls.
   This is not treated as release clearance; the physical thermal gates below

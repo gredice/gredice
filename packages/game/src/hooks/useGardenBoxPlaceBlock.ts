@@ -100,8 +100,8 @@ export function useGardenBoxPlaceBlock() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
-    const rekeyBlockPlacementDropAnimation = useGameState(
-        (state) => state.rekeyBlockPlacementDropAnimation,
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
     );
     const cancelBlockPlacementDropAnimation = useGameState(
         (state) => state.cancelBlockPlacementDropAnimation,
@@ -190,7 +190,7 @@ export function useGardenBoxPlaceBlock() {
             }
 
             const optimisticBlockId = context.optimisticBlockId;
-            rekeyBlockPlacementDropAnimation(optimisticBlockId, data.id);
+            confirmBlockPlacementDropAnimation(optimisticBlockId, data.id);
             queryClient.setQueryData<CurrentGardenData | null>(
                 context.gardenQueryKey,
                 (garden) =>
@@ -205,9 +205,6 @@ export function useGardenBoxPlaceBlock() {
         },
         onError: (error, _variables, context) => {
             console.error('Error placing block from garden box', error);
-            if (context?.optimisticBlockId) {
-                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
-            }
             if (context?.previousInventory) {
                 queryClient.setQueryData(
                     inventoryQueryKey,
@@ -219,6 +216,9 @@ export function useGardenBoxPlaceBlock() {
                     context.gardenQueryKey,
                     context.previousGarden,
                 );
+            }
+            if (context?.optimisticBlockId) {
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
             }
         },
         onSettled: async (_data, _error, variables) => {

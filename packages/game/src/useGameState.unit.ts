@@ -196,7 +196,7 @@ test('clearPickupSelectionTargets resets every active pickup target', () => {
     }
 });
 
-test('placement animation keeps render and completion identity through optimistic rekey', () => {
+test('placement animation keeps render and completion identity through confirmed rekey', () => {
     const store = createGameState({
         appBaseUrl: '',
         freezeTime: new Date('2026-01-01T12:00:00.000Z'),
@@ -231,15 +231,23 @@ test('placement animation keeps render and completion identity through optimisti
 
         store
             .getState()
-            .rekeyBlockPlacementDropAnimation('optimistic', 'persisted');
+            .markBlockPlacementDropVisualStarted(animation.renderId);
+        store
+            .getState()
+            .confirmBlockPlacementDropAnimation('optimistic', 'persisted');
 
         assert.equal(
             store.getState().blockPlacementDropAnimations.optimistic,
             undefined,
         );
         assert.strictEqual(
-            store.getState().blockPlacementDropAnimations.persisted,
-            animation,
+            store.getState().blockPlacementDropAnimations.persisted?.renderId,
+            animation.renderId,
+        );
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.persisted
+                ?.mutationConfirmed,
+            true,
         );
         assert.equal(
             resolveBlockPlacementDropAnimationRenderIdentity(
@@ -276,7 +284,7 @@ test('placement animation keeps render and completion identity through optimisti
 
         store
             .getState()
-            .completeBlockPlacementDropAnimation(animation.renderId);
+            .markBlockPlacementDropVisualComplete(animation.renderId);
         assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
         assert.equal(
             resolveBlockPlacementDropAnimationRenderIdentity(
@@ -290,7 +298,7 @@ test('placement animation keeps render and completion identity through optimisti
     }
 });
 
-test('placement animation cancellation resolves the optimistic source after rekey', () => {
+test('placement animation waits for mutation confirmation after visual completion', () => {
     const store = createGameState({
         appBaseUrl: '',
         freezeTime: new Date('2026-01-01T12:00:00.000Z'),
@@ -299,13 +307,175 @@ test('placement animation cancellation resolves the optimistic source after reke
 
     try {
         store.getState().queueBlockPlacementDropAnimation('optimistic');
+        const animation =
+            store.getState().blockPlacementDropAnimations.optimistic;
+        assert.ok(animation);
+
         store
             .getState()
-            .rekeyBlockPlacementDropAnimation('optimistic', 'persisted');
+            .markBlockPlacementDropVisualStarted(animation.renderId);
+        store
+            .getState()
+            .markBlockPlacementDropVisualComplete(animation.renderId);
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.optimistic
+                ?.visualComplete,
+            true,
+        );
+
+        store
+            .getState()
+            .confirmBlockPlacementDropAnimation('optimistic', 'persisted');
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('pre-confirmed synthetic placement releases after its visual completion', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('profile-block', {
+            mutationConfirmed: true,
+        });
+        const animation =
+            store.getState().blockPlacementDropAnimations['profile-block'];
+        assert.ok(animation);
+        assert.equal(
+            store.getState().blockPlacementDropAnimations['profile-block']
+                ?.mutationConfirmed,
+            true,
+        );
+
+        store
+            .getState()
+            .markBlockPlacementDropVisualStarted(animation.renderId);
+        store
+            .getState()
+            .markBlockPlacementDropVisualComplete(animation.renderId);
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('confirmed placement without a committed visual renderer finalizes immediately', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('suspended');
+        store
+            .getState()
+            .confirmBlockPlacementDropAnimation('suspended', 'persisted');
+
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('placement animation cancellation resolves the optimistic source after confirmed rekey', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+        const animation =
+            store.getState().blockPlacementDropAnimations.optimistic;
+        assert.ok(animation);
+        store
+            .getState()
+            .markBlockPlacementDropVisualStarted(animation.renderId);
+        store
+            .getState()
+            .confirmBlockPlacementDropAnimation('optimistic', 'persisted');
         store.getState().cancelBlockPlacementDropAnimation('optimistic');
 
         assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
         store.getState().cancelBlockPlacementDropAnimation('missing');
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('placement animation remains cancellable after its visual completes before a late mutation error', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+        const animation =
+            store.getState().blockPlacementDropAnimations.optimistic;
+        assert.ok(animation);
+
+        store
+            .getState()
+            .markBlockPlacementDropVisualStarted(animation.renderId);
+        store
+            .getState()
+            .markBlockPlacementDropVisualComplete(animation.renderId);
+        assert.equal(
+            Object.keys(store.getState().blockPlacementDropAnimations).length,
+            1,
+        );
+
+        store.getState().cancelBlockPlacementDropAnimation('optimistic');
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('overlapping placement animations complete independently after confirmed rekey', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().queueBlockPlacementDropAnimation('first');
+        store.getState().queueBlockPlacementDropAnimation('second');
+        const first = store.getState().blockPlacementDropAnimations.first;
+        const second = store.getState().blockPlacementDropAnimations.second;
+        assert.ok(first);
+        assert.ok(second);
+        assert.equal(
+            Object.keys(store.getState().blockPlacementDropAnimations).length,
+            2,
+        );
+
+        store.getState().markBlockPlacementDropVisualStarted(first.renderId);
+        store
+            .getState()
+            .confirmBlockPlacementDropAnimation('first', 'first-persisted');
+        store.getState().markBlockPlacementDropVisualComplete(first.renderId);
+        assert.equal(
+            Object.keys(store.getState().blockPlacementDropAnimations).length,
+            1,
+        );
+        assert.strictEqual(
+            store.getState().blockPlacementDropAnimations.second,
+            second,
+        );
+
+        store.getState().cancelBlockPlacementDropAnimation('second');
         assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
     } finally {
         store.getState().audio.dispose();

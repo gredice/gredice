@@ -1,40 +1,48 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useRef,
-    useState,
-} from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
-import { useSceneResume, useSceneTimeInvalidation } from './SceneTime';
-import { requestPrimaryShadowMapRefresh } from './shadowMapScheduling';
-
-const shadowSettleMs = 900;
+import { useSceneResume } from './SceneTime';
+import {
+    consumeDeferredShadowRefresh,
+    createDeferredShadowRefreshState,
+    requestPrimaryShadowMapRefresh,
+    transitionDeferredShadowRefresh,
+} from './shadowMapScheduling';
 
 export function ShadowMapController({
+    activePlacementCount = 0,
     enabled,
+    geometryKey,
     invalidationKey,
-    settleKey,
 }: {
+    activePlacementCount?: number;
     enabled: boolean;
+    geometryKey?: string;
     invalidationKey: string;
-    settleKey?: string;
 }) {
     const gl = useThree((state) => state.gl);
     const invalidate = useThree((state) => state.invalidate);
+    const activePlacementCountRef = useRef(activePlacementCount);
+    activePlacementCountRef.current = activePlacementCount;
+    const deferredRefreshRef = useRef(
+        createDeferredShadowRefreshState(activePlacementCount),
+    );
+    const deferredChangeCountRef = useRef(0);
     const invalidationCountRef = useRef(0);
+    const placementFlushCountRef = useRef(0);
+    const previousGeometryKeyRef = useRef(geometryKey);
+    const previousInvalidationKeyRef = useRef(invalidationKey);
     const refreshCountRef = useRef(0);
-    const settleUntilRef = useRef(0);
-    const [shadowSettleGeneration, setShadowSettleGeneration] = useState(0);
-    const [shadowSettling, setShadowSettling] = useState(false);
-    useSceneTimeInvalidation(enabled && shadowSettling);
 
     const reportShadowMapState = useCallback(() => {
         updateGameProfileMetadata({
             animatedCasterShadowRefreshCount: 0,
+            placementShadowActiveCount:
+                deferredRefreshRef.current.activePlacementCount,
+            placementShadowDeferredChangeCount: deferredChangeCountRef.current,
+            placementShadowFlushCount: placementFlushCountRef.current,
             primaryShadowRefreshCount: refreshCountRef.current,
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapDynamicRefreshMs: 0,
@@ -61,18 +69,41 @@ export function ShadowMapController({
         [enabled, gl, invalidate, reportShadowMapState],
     );
 
-    const settleShadows = useCallback(() => {
-        if (!enabled) {
-            return;
+    const queueDeferredRefresh = useCallback(
+        ({
+            activeCount = activePlacementCountRef.current,
+            forceDirty = false,
+            geometryChanged = false,
+        }: {
+            activeCount?: number;
+            forceDirty?: boolean;
+            geometryChanged?: boolean;
+        }) => {
+            const transition = transitionDeferredShadowRefresh(
+                deferredRefreshRef.current,
+                {
+                    activePlacementCount: activeCount,
+                    forceDirty,
+                    geometryChanged,
+                },
+            );
+            deferredRefreshRef.current = transition.state;
+            deferredChangeCountRef.current +=
+                transition.deferredChangeCountDelta;
+            if (enabled && transition.shouldInvalidate) {
+                invalidate();
+            }
+            reportShadowMapState();
+        },
+        [enabled, invalidate, reportShadowMapState],
+    );
+
+    const queueResumeRefresh = useCallback(() => {
+        if (enabled) {
+            queueDeferredRefresh({ forceDirty: true });
         }
-
-        requestShadowRefresh(true);
-        settleUntilRef.current = performance.now() + shadowSettleMs;
-        setShadowSettling(true);
-        setShadowSettleGeneration((generation) => generation + 1);
-    }, [enabled, requestShadowRefresh]);
-
-    useSceneResume(settleShadows);
+    }, [enabled, queueDeferredRefresh]);
+    useSceneResume(queueResumeRefresh);
 
     useLayoutEffect(() => {
         const previousAutoUpdate = gl.shadowMap.autoUpdate;
@@ -85,10 +116,9 @@ export function ShadowMapController({
         } else {
             gl.shadowMap.needsUpdate = true;
         }
-        if (!enabled) {
-            settleUntilRef.current = 0;
-            setShadowSettling(false);
-        }
+        deferredRefreshRef.current = createDeferredShadowRefreshState(
+            activePlacementCountRef.current,
+        );
         reportShadowMapState();
 
         return () => {
@@ -99,47 +129,43 @@ export function ShadowMapController({
     }, [enabled, gl, reportShadowMapState, requestShadowRefresh]);
 
     useLayoutEffect(() => {
-        void invalidationKey;
-
-        if (!enabled) {
-            return;
+        const invalidationChanged =
+            previousInvalidationKeyRef.current !== invalidationKey;
+        const geometryChanged = previousGeometryKeyRef.current !== geometryKey;
+        previousInvalidationKeyRef.current = invalidationKey;
+        previousGeometryKeyRef.current = geometryKey;
+        if (enabled && invalidationChanged) {
+            invalidationCountRef.current += 1;
         }
-
-        invalidationCountRef.current += 1;
-        requestShadowRefresh(true);
-    }, [enabled, invalidationKey, requestShadowRefresh]);
-
-    useLayoutEffect(() => {
-        void settleKey;
-        settleShadows();
-    }, [settleKey, settleShadows]);
-
-    useEffect(() => {
-        void shadowSettleGeneration;
-
-        if (!enabled || !shadowSettling) {
-            return;
-        }
-
-        const timeout = window.setTimeout(
-            () => {
-                setShadowSettling(false);
-            },
-            Math.max(0, settleUntilRef.current - performance.now()),
-        );
-
-        return () => window.clearTimeout(timeout);
-    }, [enabled, shadowSettleGeneration, shadowSettling]);
+        queueDeferredRefresh({
+            activeCount: activePlacementCount,
+            forceDirty: invalidationChanged,
+            geometryChanged,
+        });
+    }, [
+        activePlacementCount,
+        enabled,
+        geometryKey,
+        invalidationKey,
+        queueDeferredRefresh,
+    ]);
 
     useFrame(() => {
         if (!enabled) {
             return;
         }
 
-        if (performance.now() > settleUntilRef.current) {
+        const consumption = consumeDeferredShadowRefresh(
+            deferredRefreshRef.current,
+        );
+        if (!consumption.shouldRefresh) {
             return;
         }
 
+        deferredRefreshRef.current = consumption.state;
+        if (consumption.placementFlush) {
+            placementFlushCountRef.current += 1;
+        }
         requestShadowRefresh(false);
     });
 

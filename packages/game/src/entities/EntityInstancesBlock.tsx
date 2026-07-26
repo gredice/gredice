@@ -537,7 +537,7 @@ export function EntityInstancesGeometry(
                         rotation={localTransform.rotation}
                         scale={stableScale}
                         receiveShadow={receiveShadow}
-                        castShadow={castShadow}
+                        castShadow={false}
                         renderOrder={renderOrder}
                     >
                         {cloneMaterialNode(materialNode)}

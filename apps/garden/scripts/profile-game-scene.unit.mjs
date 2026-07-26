@@ -710,6 +710,88 @@ test('high target acceptance distinguishes a cached map from refreshes and reset
     }
 });
 
+test('high target placement acceptance requires one deferred final shadow flush', () => {
+    const createInput = ({
+        activeCount = 0,
+        deferredDelta = 2,
+        flushDelta = 1,
+        primaryDelta = 1,
+        projectedDrops = 0,
+        projectedEnd = 0,
+        projectedPeak = 2,
+    } = {}) => ({
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            blockGeometryMerging: '1',
+            gardenProfile: 'high-target',
+            mode: 'details',
+            placementProfile: 'placement-drop',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 4,
+            animatedCasterShadowRefreshCount: 0,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            placementChunkPhysicalRebuildCount: 2,
+            placementProjectedShadowCount: projectedEnd,
+            placementProjectedShadowDroppedCount: projectedDrops,
+            placementProjectedShadowPeakCount: projectedPeak,
+            placementShadowActiveCount: activeCount,
+            qualityTier: 'high',
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            placementProfileDispatched: true,
+            placementShadowDeferredChangeCountDelta: deferredDelta,
+            placementShadowFlushCountDelta: flushDelta,
+            primaryShadowRefreshCountDelta: primaryDelta,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    });
+
+    assert.equal(evaluateHighTargetAcceptance(createInput()).pass, true);
+
+    for (const invalid of [
+        { flushDelta: 0 },
+        { flushDelta: 2 },
+        { primaryDelta: 0 },
+        { primaryDelta: 2 },
+        { deferredDelta: 0 },
+        { activeCount: 1 },
+        { projectedEnd: 1 },
+        { projectedDrops: 1 },
+        { projectedPeak: 0 },
+        { projectedPeak: 1 },
+        { projectedPeak: 3 },
+    ]) {
+        assert.equal(
+            evaluateHighTargetAcceptance(createInput(invalid)).pass,
+            false,
+        );
+    }
+});
+
 test('high target acceptance requires the full workload to remain visible', () => {
     const result = evaluateHighTargetAcceptance({
         apiErrors: [],
