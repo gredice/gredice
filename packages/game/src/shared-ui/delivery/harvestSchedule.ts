@@ -67,6 +67,33 @@ export function isHarvestDateWithinRange(
     );
 }
 
+export function getSuggestedHarvestDate(
+    scheduledDate: string | null | undefined,
+    item: Pick<HarvestScheduleItem, 'allowedFrom' | 'allowedTo'>,
+) {
+    const dateKey = harvestCalendarDateKey(scheduledDate);
+    const allowedFrom = harvestCalendarDateKey(item.allowedFrom);
+    const allowedTo = harvestCalendarDateKey(item.allowedTo);
+
+    if (!allowedFrom || !allowedTo || allowedFrom > allowedTo) {
+        return null;
+    }
+
+    if (!dateKey) {
+        return allowedTo;
+    }
+
+    if (dateKey < allowedFrom) {
+        return allowedFrom;
+    }
+
+    if (dateKey > allowedTo) {
+        return allowedTo;
+    }
+
+    return dateKey;
+}
+
 export function createHarvestScheduleDateSelections(
     items: readonly HarvestScheduleItem[],
 ): HarvestScheduleDateSelection[] {

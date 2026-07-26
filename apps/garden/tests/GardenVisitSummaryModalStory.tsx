@@ -10,6 +10,7 @@ import {
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { queryKey as currentUserQueryKey } from '../../../packages/game/src/hooks/useCurrentUser';
 import { dailyRewardKeys } from '../../../packages/game/src/hooks/useDailyReward';
+import { gardenAccountGroupsKeys } from '../../../packages/game/src/hooks/useGardenAccountGroups';
 import { useGardensKeys } from '../../../packages/game/src/hooks/useGardens';
 import { whatsNewEntriesQueryKey } from '../../../packages/game/src/hooks/useWhatsNewEntries';
 import {
@@ -202,6 +203,21 @@ function createOpeningFlowQueryClient({
 
     queryClient.setQueryData(useGardensKeys, [
         { id: TEST_GARDEN_ID, name: garden.name },
+    ]);
+    queryClient.setQueryData(gardenAccountGroupsKeys, [
+        {
+            accountId: 'test-account',
+            name: 'test@example.com račun',
+            isCurrent: true,
+            gardens: [
+                {
+                    id: TEST_GARDEN_ID,
+                    name: garden.name,
+                    isDefault: true,
+                    isSandbox: false,
+                },
+            ],
+        },
     ]);
     queryClient.setQueryData(
         currentGardenKeys('summer', TEST_GARDEN_ID),

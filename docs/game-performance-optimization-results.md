@@ -449,6 +449,219 @@ Reports: `steps/17-projected-size-culling/latest.json`,
   final change. The result favors measured benefit over shipping speculative
   hot-loop cost.
 
+## High-quality mid-complexity profiling target
+
+Added 2026-07-26 as the shared benchmark for the High-quality rendering
+optimization series tracked by issue `#4327`.
+
+The `high-target` mock garden represents the intended production workload
+instead of either profiler extreme:
+
+- exactly 300 placed blocks across 270 terrain stacks;
+- exactly three separate, internally connected `1x2` raised beds;
+- six raised-bed blocks and 54 occupied fields;
+- 24 deterministic props, shadow casters, and animal homes;
+- deterministic plant density and lifecycle inputs across all 54 fields,
+  producing exactly 537 generated plant instances without CMS data;
+- production terrain-geometry merging enabled by default; and
+- an actual device pixel ratio of `2` for High-quality desktop scenarios.
+
+Run the complete target matrix:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=high-target pnpm run profile:game
+```
+
+The matrix covers clear idle rendering with moving animals, camera motion,
+hover/selection, placement animation, rain, and snow, with three isolated
+browser runs per phase. Individual scenarios may be selected with
+`GAME_PROFILE_SCENARIOS`. Reports include the median and min/max spread, the
+schema version, browser and GPU identity, and the source commit when CI
+provides it.
+
+Every repeat must pass the structural and interaction acceptance checks. The
+performance budget is evaluated against the three-run median so a single noisy
+headless sample remains visible in the report without turning the gate into an
+outlier detector.
+
+Browser animation-frame responsiveness remains separate from actual rendered
+frames. Historical `drawCallsPerFrame` and `trianglesPerFrame` fields retain
+their request-animation-frame denominator; the High target gates explicit
+per-rendered-frame metrics. GPU elapsed time is captured around individual
+WebGL render passes through `EXT_disjoint_timer_query_webgl2` when the browser
+exposes it. Disjoint, incomplete, and unsupported query results are reported
+but never enforced as valid GPU measurements.
+
+Headless Chromium and software WebGL remain directional evidence. Each
+optimization must compare the same target scenario before and after the
+change, while final thermal clearance still requires the physical-device
+soaks documented under release gates.
+
+### Initial software-WebGL baseline
+
+The initial 18-run matrix passed structural acceptance in every repeat:
+all 54 fields and 537 generated plants remained visible, the interaction and
+placement probes executed, weather particles mounted, and no page or API
+errors occurred.
+
+These medians came from headless Chromium 149 using ANGLE SwiftShader. They
+are a regression baseline for comparisons on the same runner, not a claim
+about physical-device frame rate:
+
+| Phase | Rendered FPS | p95 frame | Long tasks | Draws/render | Triangles/render | Heap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 1.7 | 741.5 ms | 9 | 313.9 | 39,402 | 51.0 MB |
+| Camera motion | 1.7 | 734.3 ms | 9 | 306.7 | 38,874 | 54.2 MB |
+| Hover/selection | 1.8 | 732.8 ms | 9 | 305.0 | 38,824 | 54.2 MB |
+| Placement | 1.8 | 702.2 ms | 9 | 306.3 | 38,811 | 48.1 MB |
+| Rain | 1.7 | 662.6 ms | 9 | 272.0 | 39,668 | 54.2 MB |
+| Snow | 2.7 | 409.1 ms | 14 | 367.0 | 98,540 | 73.1 MB |
+
+The aspirational frame-time and long-task gates remain red in this environment
+because the software renderer reports repeated `ReadPixels` stalls. Draw-call,
+triangle, and heap gates pass. GPU elapsed-time gating is skipped because the
+runner does not expose a valid timer-query result.
+
+### Moving-actor shadow separation
+
+Issue `#4323` removes cats, dogs, birds, and bees from the cached 4096px
+directional shadow map. High and other shadow-enabled configurations now use
+one scene-level instanced analytic ellipse batch for actor grounding. It has no
+texture, render target, or secondary shadow pass. Shadow-disabled quality
+profiles skip registration, state construction, and the draw entirely.
+
+The complete 18-run High target matrix passed structural acceptance in every
+repeat:
+
+- clear, camera, hover, and placement runs registered all five target actors;
+- rain and snow registered four actors because bees correctly remained
+  inactive;
+- every run used one batch, retained at least four visible grounding shadows,
+  and reported zero dropped registrations and zero actor primary casters;
+- animated-caster refreshes fell from a clear-idle median of `17` per run to
+  zero; and
+- the clear-idle primary-map request count fell from a median of `21` during
+  startup and sampling to four startup/static requests, followed by exactly
+  zero refreshes in every measured five-second idle window.
+
+The same Chromium 149 and ANGLE SwiftShader runner produced these median
+render-submission comparisons:
+
+| Phase | Draws/render before | After | Reduction | Triangles/render before | After | Reduction |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 313.9 | 152.0 | 51.6% | 39,402 | 21,526 | 45.4% |
+| Camera motion | 306.7 | 153.7 | 49.9% | 38,874 | 21,576 | 44.5% |
+| Hover/selection | 305.0 | 152.0 | 50.2% | 38,824 | 21,526 | 44.6% |
+| Placement | 306.3 | 170.9 | 44.2% | 38,811 | 25,959 | 33.1% |
+| Rain | 272.0 | 142.0 | 47.8% | 39,668 | 23,954 | 39.6% |
+| Snow | 367.0 | 204.4 | 44.3% | 98,540 | 67,123 | 31.9% |
+
+The roughly 44–52% call reduction in ordinary phases is direct evidence that
+moving actors no longer trigger full-scene primary shadow submissions.
+SwiftShader p95 frame time remains dominated by the previously documented
+`ReadPixels` stalls and is not treated as physical-GPU evidence; snow was
+especially noisy across its three runs.
+
+Placement still requested `7`, `7`, and `11` primary refreshes while its
+drop-settling window was active. That separate lifecycle is intentionally
+tracked by issue `#4331` rather than folded into actor shadow scheduling.
+
+### Placement shadow completion coalescing
+
+Issue `#4331` replaces the placement-specific 900 ms shadow-settling timer
+with an explicit static-dirty scheduler. It defers garden shadow changes while
+one or more placement springs are active and consumes them once, on the first
+render frame after the last completion or cancellation. The static signature
+contains only stack positions and render-affecting block properties, so an
+optimistic-to-persisted block ID replacement no longer invalidates the map.
+
+Transient component and instanced placement geometry is excluded from the
+primary caster set. While it moves, a conservative hitbox-derived ellipse uses
+the same instanced projected-shadow batch as actors, with separate placement
+accounting so the actor acceptance metrics remain exact. Stable geometry is
+restored before the coalesced final refresh.
+
+The focused three-repeat production High placement profile passed all
+structural and lifecycle acceptance checks:
+
+- the scenario's two staggered placements reached a projected-shadow peak of
+  exactly two, returned to zero, and recorded zero dropped proxies in every
+  run;
+- each run recorded one deferred placement cycle, one final placement flush,
+  one primary-map refresh, and zero active placements at the end;
+- the former primary-refresh train of `7`, `7`, and `11` requests became
+  exactly `1`, `1`, and `1`; and
+- the placement median moved from `170.9` to `156.7` draws per rendered frame
+  and from `25,959` to `22,627` triangles per rendered frame on the same
+  Chromium 149 / ANGLE SwiftShader runner, reductions of `8.3%` and `12.8%`.
+
+The production profiler now rejects a placement run with zero or multiple
+final shadow refreshes, a projected peak other than exactly two, any dropped
+or nonzero final proxy, a nonzero active count, or no deferred dirtiness.
+SwiftShader frame-time and long-task
+budgets remain red because of the documented `ReadPixels` stalls; all three
+placement acceptance runs passed independently of those aspirational
+physical-device budgets.
+
+### Adaptive High runtime ceiling
+
+Issue `#4319` keeps the user-selected High profile as the visual ceiling while
+adapting its runtime cost to measured load. Automatic, Medium, Low, and custom
+quality remain unchanged. High continues to use the 4096px primary shadow map,
+full plant and decoration density, rain, snow, moving clouds, plant wind, and
+the existing High particle counts.
+
+The controller prefers asynchronous
+`EXT_disjoint_timer_query_webgl2` elapsed-time samples. It discards disjoint,
+timed-out, suspended, and context-lost samples without synchronously waiting
+for the GPU. Browsers without a usable timer query fall back to rendered-frame
+cadence. A one-second EWMA filters either source, while asymmetric evidence
+windows avoid quality chatter:
+
+- camera or placement interaction immediately moves from `L0` to `L1` and
+  owns a 60fps scene-time lease while active;
+- load above `1.10` must persist for 750ms and at least three samples before
+  another decline;
+- load below `0.80` must persist for five seconds before recovering one level;
+  and
+- three direction reversals inside 60 seconds lock recovery for 30 seconds,
+  but never prevent a needed decline.
+
+At a DPR-2 display ceiling, the runtime levels are:
+
+| Level | DPR cap | Ambient cadence | Cloud-mask minimum cadence |
+| --- | ---: | ---: | ---: |
+| `L0` | 2.00 | 30fps | 96ms |
+| `L1` | 1.75 | 30fps | 96ms |
+| `L2` | 1.50 | 30fps | 96ms |
+| `L3` | 1.50 | 20fps | 160ms |
+
+The same sequence is derived from the current display ceiling, so DPR-1
+displays are never upscaled and monitor or browser-zoom changes reset the
+ceiling safely. Duplicate stages are skipped on constrained displays. Scene
+resume and WebGL context restoration clear timing evidence without adding
+hidden wall time to level dwell or resetting transition telemetry.
+
+The `adaptive-high` production profile set pairs fixed and adaptive camera
+motion and adds stateful motion-to-idle recovery, placement, runtime GPU-source,
+rain, snow, cloudy, and windy-plant scenarios. Its acceptance checks use
+sample-local level, DPR, transition, decline, recovery, interaction, and
+atmosphere evidence; starting a fresh page at full quality cannot satisfy the
+recovery gate.
+
+The local Chromium 149 / ANGLE SwiftShader integration run passed the
+fixed-camera and adaptive-camera structural gates in all six repeats. Adaptive
+camera motion reduced median submitted work from `147.7` to `141.0` draws and
+from `21,083` to `20,210` triangles per rendered frame (`4.5%` and `4.1%`),
+while median p95 moved from `623.9` to `615.8 ms` and rendered FPS remained
+`1.8`. The relative regression gate passed. The separate motion-to-idle
+scenario also passed all three repeats, recording `L0 -> L1 -> L0`, DPR cap
+`2 -> 1.75 -> 2`, one decline, one recovery, and 22 controlled headroom
+samples each time. The software renderer's absolute p95 and long-task budgets
+remain red because of its documented `ReadPixels` stalls; draw, triangle,
+workload-preservation, and controller-lifecycle gates pass independently.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.
@@ -560,9 +773,10 @@ soaked for 15 seconds, and sampled for 10 seconds in the production build.
 
 - All four completed without page or WebGL/shader errors. The only console
   errors were expected profile-route provider requests returning 401/404.
-- Resuming a hidden or offscreen scene now explicitly re-arms the bounded
-  900 ms shadow-settlement window, preventing stale caster shadows without
-  restoring continuous offscreen rendering.
+- This historical soak used a bounded 900 ms shadow-settlement window after
+  resume. Issue `#4331` supersedes that timer with a one-frame coalesced static
+  refresh, preventing stale caster shadows without restoring continuous
+  offscreen rendering.
 - The repository's `33.3 ms` physical-device floor still fails in this
   headless environment, which reports synchronous `ReadPixels` GPU stalls.
   This is not treated as release clearance; the physical thermal gates below

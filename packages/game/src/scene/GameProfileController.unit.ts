@@ -3,6 +3,8 @@ import test from 'node:test';
 import type { Block } from '../types/Block';
 import {
     readGameProfileCloseupCommand,
+    readGameProfilePlacementCommand,
+    resolveGameProfilePlacementBlockIds,
     resolveGameProfileRaisedBedTarget,
 } from './GameProfileController';
 
@@ -85,5 +87,66 @@ test('profile target resolution uses the raised bed primary block', () => {
             3,
         ),
         null,
+    );
+});
+
+test('profile placement command validates the repeatable stagger', () => {
+    assert.deepEqual(readGameProfilePlacementCommand({ action: 'run' }), {
+        action: 'run',
+        staggerMs: 120,
+    });
+    assert.deepEqual(
+        readGameProfilePlacementCommand({ action: 'run', staggerMs: 80 }),
+        {
+            action: 'run',
+            staggerMs: 80,
+        },
+    );
+    assert.deepEqual(readGameProfilePlacementCommand({ action: 'reset' }), {
+        action: 'reset',
+    });
+    assert.equal(
+        readGameProfilePlacementCommand({ action: 'run', staggerMs: -1 }),
+        null,
+    );
+});
+
+test('profile placement targets use one entity batch across separate chunks', () => {
+    const blockA: Block = {
+        id: 'grass-a',
+        name: 'Block_Grass',
+        rotation: 0,
+    };
+    const blockB: Block = {
+        id: 'grass-b',
+        name: 'Block_Grass',
+        rotation: 0,
+    };
+
+    assert.deepEqual(
+        resolveGameProfilePlacementBlockIds({
+            raisedBeds: [],
+            stacks: [
+                {
+                    blocks: [blockA],
+                    position: { x: 0, z: 0 },
+                },
+                {
+                    blocks: [
+                        {
+                            id: 'non-instanced',
+                            name: 'Unknown',
+                            rotation: 0,
+                        },
+                    ],
+                    position: { x: 8, z: 0 },
+                },
+                {
+                    blocks: [blockB],
+                    position: { x: 9, z: 0 },
+                },
+            ],
+        }),
+        ['grass-a', 'grass-b'],
     );
 });

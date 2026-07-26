@@ -23,28 +23,54 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 
-const questionSettingsSchema = z.discriminatedUnion('type', [
-    z.object({
-        type: z.literal('opinion_scale'),
-        min: z.number().int().min(0).max(10),
-        max: z.number().int().min(0).max(10),
-        step: z.number().int().positive().optional(),
-        minLabel: z.string().trim().nullable().optional(),
-        maxLabel: z.string().trim().nullable().optional(),
-    }),
-    z.object({
-        type: z.literal('long_text'),
-        maxLength: z.number().int().positive().optional(),
-        placeholder: z.string().trim().nullable().optional(),
-    }),
-    z.object({
-        type: z.literal('contact_info'),
-        fields: z
-            .array(z.enum(['first_name', 'last_name', 'phone', 'email']))
-            .min(1),
-        phoneDefaultCountry: z.string().trim().nullable().optional(),
-    }),
-]);
+export const questionSettingsSchema = z
+    .discriminatedUnion('type', [
+        z.object({
+            type: z.literal('opinion_scale'),
+            min: z.number().int().min(0).max(10),
+            max: z.number().int().min(0).max(10),
+            step: z.number().int().positive().optional(),
+            minLabel: z.string().trim().nullable().optional(),
+            maxLabel: z.string().trim().nullable().optional(),
+        }),
+        z.object({
+            type: z.literal('long_text'),
+            maxLength: z.number().int().positive().optional(),
+            placeholder: z.string().trim().nullable().optional(),
+        }),
+        z.object({
+            type: z.literal('contact_info'),
+            fields: z
+                .array(z.enum(['first_name', 'last_name', 'phone', 'email']))
+                .min(1),
+            phoneDefaultCountry: z.string().trim().nullable().optional(),
+        }),
+    ])
+    .superRefine((settings, context) => {
+        if (settings.type !== 'opinion_scale') return;
+
+        const range = settings.max - settings.min;
+        if (range <= 0) {
+            context.addIssue({
+                code: 'custom',
+                message: 'Opinion scale maximum must be greater than minimum',
+                path: ['max'],
+            });
+            return;
+        }
+
+        if (
+            settings.step !== undefined &&
+            (settings.step > range || range % settings.step !== 0)
+        ) {
+            context.addIssue({
+                code: 'custom',
+                message:
+                    'Opinion scale step must evenly divide the configured bounds',
+                path: ['step'],
+            });
+        }
+    });
 
 const questionSchema = z.object({
     key: z.string().trim().min(1).max(120),
@@ -386,7 +412,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { surveyId } = context.req.valid('param');
             const payload = context.req.valid('json');
-            const versionId = await createSurveyDraftVersion(surveyId, payload);
+            const { versionId } = await createSurveyDraftVersion(
+                surveyId,
+                payload,
+            );
             return context.json({ versionId }, 201);
         },
     )

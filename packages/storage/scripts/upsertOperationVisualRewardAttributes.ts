@@ -14,8 +14,10 @@ import {
 type OperationVisualRewardKind =
     | 'agrotextile'
     | 'harvest'
+    | 'insectMesh'
     | 'mulch'
     | 'removeAgrotextile'
+    | 'removeInsectMesh'
     | 'removeMulch'
     | 'supports'
     | 'watering'
@@ -31,7 +33,7 @@ const visualRewardAttribute = {
     category: 'attributes',
     dataType: 'text',
     description:
-        'Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest.',
+        'Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, insectMesh, removeInsectMesh, supports, harvest.',
     display: false,
     entityTypeName,
     label: 'Vizualna nagrada',
@@ -50,6 +52,10 @@ const operationVisualRewardAssignments = [
     { operationName: 'malchStrawPlant', visualReward: 'mulch' },
     { operationName: 'malchStrawRaisedBed', visualReward: 'mulch' },
     { operationName: 'setAgrotextileWhite', visualReward: 'agrotextile' },
+    {
+        operationName: 'installInsectProtectionMesh',
+        visualReward: 'insectMesh',
+    },
     { operationName: 'plantingPlantSupport', visualReward: 'supports' },
     { operationName: 'growthPlantSupport', visualReward: 'supports' },
     { operationName: 'watterSurfaceRaisedBed', visualReward: 'watering' },
@@ -57,6 +63,10 @@ const operationVisualRewardAssignments = [
     {
         operationName: 'removeAgrotextileWhite',
         visualReward: 'removeAgrotextile',
+    },
+    {
+        operationName: 'removeInsectProtectionMesh',
+        visualReward: 'removeInsectMesh',
     },
     { operationName: 'pullingWeedsRaisedBed', visualReward: 'weeding' },
     { operationName: 'pullingWeedsPlant', visualReward: 'weeding' },

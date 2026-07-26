@@ -127,6 +127,12 @@ export function useBlockPlace() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (state) => state.cancelBlockPlacementDropAnimation,
+    );
     const gardenQueryKey = currentGardenKeys(
         winterMode,
         garden?.id,
@@ -273,6 +279,10 @@ export function useBlockPlace() {
                 return;
             }
 
+            confirmBlockPlacementDropAnimation(
+                context.optimisticBlockId,
+                data.id,
+            );
             queryClient.setQueryData<CurrentGardenData | null>(
                 gardenQueryKey,
                 (currentGarden) =>
@@ -298,6 +308,7 @@ export function useBlockPlace() {
                               )
                             : currentGarden,
                 );
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
             }
             if (context?.sunflowerAmount) {
                 queryClient.setQueryData<CurrentAccountData | null>(

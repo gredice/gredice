@@ -20,5 +20,6 @@ export function useSwitchGardenAccount() {
 
             return response.json();
         },
+        retry: 1,
     });
 }

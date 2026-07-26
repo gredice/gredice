@@ -300,13 +300,18 @@ export function useGardenOperations({
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
 
     return useInfiniteQuery({
         queryKey: gardenOperationsQueryKey({
             gardenId: currentGarden?.id,
             includeCompleted,
             pageSize,
-            profile: isOperationRewardDebug ? mockGardenProfile : null,
+            profile:
+                isOperationRewardDebug || isDeterministicEmptyMock
+                    ? mockGardenProfile
+                    : null,
             raisedBedId,
             raisedBedFieldId,
             positionIndex,
@@ -330,6 +335,13 @@ export function useGardenOperations({
                     positionIndex,
                     cursor: pageParam,
                 });
+            }
+            if (isDeterministicEmptyMock) {
+                return {
+                    items: [],
+                    nextCursor: null,
+                    total: 0,
+                } satisfies GardenOperationsPage;
             }
 
             return getGardenOperationsPage({

@@ -5,7 +5,7 @@ import type { Group, Material, Object3D } from 'three';
 import {
     DoubleSide,
     MathUtils,
-    Mesh,
+    type Mesh,
     MeshStandardMaterial,
     Vector3,
 } from 'three';
@@ -27,7 +27,9 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { getCactusVariantConfig } from '../Cactus';
 import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
 import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
@@ -1003,13 +1005,8 @@ function cloneBeeMaterial(material: Material, objectName: string) {
     return clone;
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
 function prepareBeeMesh(object: Mesh) {
     const isWing = object.name.includes('Bee_Wing');
-    object.castShadow = !isWing;
     object.receiveShadow = !isWing;
     object.material = Array.isArray(object.material)
         ? object.material.map((material) =>
@@ -1177,12 +1174,12 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
     const beeModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                prepareBeeMesh(object);
-            }
-        });
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            prepareBeeMesh,
+        );
         return {
+            primaryCasterCount,
             rig: {
                 bodyPivot: getBeeRigNode(clone, 'Bee_BodyPivot'),
                 headPivot: getBeeRigNode(clone, 'Bee_HeadPivot'),
@@ -1192,6 +1189,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `bee:${habitat.id}`,
+        primaryCasterCount: beeModel.primaryCasterCount,
+        species: 'bee',
+    });
 
     useEffect(() => {
         randomRef.current = createRandom(habitat.seed);
@@ -1424,6 +1426,18 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             runtime,
             seed: habitat.seed,
         });
+        if (runtime && updateGroundingShadow) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY: runtime.target.position.y,
+                visible:
+                    runtime.phase === 'foraging' &&
+                    runtime.target.kind !== 'wander',
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
+        }
 
         if (
             enableDebugHudFlag &&

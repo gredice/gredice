@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import { meshChunkSize } from '../entities/chunkedMeshGeometry';
+import { instancedBlockNames } from '../entities/EntityInstances';
+import { resetPlacementAnimationProfileMetrics } from '../entities/placementAnimationProfileMetrics';
 import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedLSystem';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
@@ -18,6 +21,8 @@ import {
 
 export const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
+export const gameProfilePlacementCommandEventName =
+    'gredice:game-profile-placement-command';
 
 type ProfileGarden = {
     raisedBeds: Array<{
@@ -27,6 +32,10 @@ type ProfileGarden = {
     }>;
     stacks: Array<{
         blocks: Block[];
+        position?: {
+            x: number;
+            z: number;
+        };
     }>;
 };
 
@@ -40,6 +49,15 @@ export type GameProfileCloseupCommand =
       }
     | {
           action: 'reset';
+      };
+
+export type GameProfilePlacementCommand =
+    | {
+          action: 'reset';
+      }
+    | {
+          action: 'run';
+          staggerMs: number;
       };
 
 export function readGameProfileCloseupCommand(
@@ -64,6 +82,82 @@ export function readGameProfileCloseupCommand(
     }
 
     return null;
+}
+
+export function readGameProfilePlacementCommand(
+    value: unknown,
+): GameProfilePlacementCommand | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const action = Reflect.get(value, 'action');
+    if (action === 'reset') {
+        return { action };
+    }
+    if (action !== 'run') {
+        return null;
+    }
+
+    const staggerMs = Reflect.get(value, 'staggerMs');
+    if (staggerMs === undefined) {
+        return { action, staggerMs: 120 };
+    }
+    if (
+        typeof staggerMs !== 'number' ||
+        !Number.isFinite(staggerMs) ||
+        staggerMs < 0 ||
+        staggerMs > 1_000
+    ) {
+        return null;
+    }
+
+    return { action, staggerMs };
+}
+
+const instancedBlockNameSet: ReadonlySet<string> = new Set(instancedBlockNames);
+
+function profilePlacementChunkKey(position: { x: number; z: number }) {
+    return `${Math.floor(position.x / meshChunkSize)}:${Math.floor(
+        position.z / meshChunkSize,
+    )}`;
+}
+
+export function resolveGameProfilePlacementBlockIds(
+    garden: ProfileGarden | null | undefined,
+) {
+    if (!garden) {
+        return [];
+    }
+
+    const firstTargetByBlockName = new Map<
+        string,
+        { blockId: string; chunkKey: string }
+    >();
+    for (const stack of garden.stacks) {
+        if (!stack.position) {
+            continue;
+        }
+        const chunkKey = profilePlacementChunkKey(stack.position);
+        for (const block of stack.blocks) {
+            if (!instancedBlockNameSet.has(block.name)) {
+                continue;
+            }
+            const firstTarget = firstTargetByBlockName.get(block.name);
+            if (!firstTarget) {
+                firstTargetByBlockName.set(block.name, {
+                    blockId: block.id,
+                    chunkKey,
+                });
+                continue;
+            }
+            if (firstTarget.chunkKey !== chunkKey) {
+                return [firstTarget.blockId, block.id];
+            }
+        }
+    }
+
+    return [];
 }
 
 export function resolveGameProfileRaisedBedTarget(
@@ -107,6 +201,12 @@ export function GameProfileController() {
         (current) => current.closeupCameraSettled,
     );
     const gameCamera = useGameState((current) => current.gameCamera);
+    const queueBlockPlacementDropAnimation = useGameState(
+        (current) => current.queueBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (current) => current.cancelBlockPlacementDropAnimation,
+    );
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
@@ -187,6 +287,80 @@ export function GameProfileController() {
             resetGeneratedPlantProfile();
         };
     }, [garden, removeRaisedBedCloseupParam, setRaisedBedCloseupParam]);
+
+    useEffect(() => {
+        const pendingTimeouts = new Set<number>();
+        const clearPendingTimeouts = () => {
+            for (const timeout of pendingTimeouts) {
+                window.clearTimeout(timeout);
+            }
+            pendingTimeouts.clear();
+        };
+        const handleCommand = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readGameProfilePlacementCommand(event.detail)
+                    : null;
+            if (!command) {
+                return;
+            }
+            clearPendingTimeouts();
+            const blockIds = resolveGameProfilePlacementBlockIds(garden);
+            for (const blockId of blockIds) {
+                cancelBlockPlacementDropAnimation(blockId);
+            }
+            if (command.action === 'reset') {
+                resetPlacementAnimationProfileMetrics();
+                return;
+            }
+
+            if (blockIds.length === 0) {
+                resetPlacementAnimationProfileMetrics();
+                return;
+            }
+
+            const startTimeout = window.setTimeout(() => {
+                pendingTimeouts.delete(startTimeout);
+                resetPlacementAnimationProfileMetrics();
+                const [firstBlockId, ...remainingBlockIds] = blockIds;
+                if (!firstBlockId) {
+                    return;
+                }
+                queueBlockPlacementDropAnimation(firstBlockId, {
+                    mutationConfirmed: true,
+                });
+                remainingBlockIds.forEach((blockId, index) => {
+                    const timeout = window.setTimeout(
+                        () => {
+                            pendingTimeouts.delete(timeout);
+                            queueBlockPlacementDropAnimation(blockId, {
+                                mutationConfirmed: true,
+                            });
+                        },
+                        command.staggerMs * (index + 1),
+                    );
+                    pendingTimeouts.add(timeout);
+                });
+            }, 0);
+            pendingTimeouts.add(startTimeout);
+        };
+
+        window.addEventListener(
+            gameProfilePlacementCommandEventName,
+            handleCommand,
+        );
+        return () => {
+            window.removeEventListener(
+                gameProfilePlacementCommandEventName,
+                handleCommand,
+            );
+            clearPendingTimeouts();
+        };
+    }, [
+        cancelBlockPlacementDropAnimation,
+        garden,
+        queueBlockPlacementDropAnimation,
+    ]);
 
     return null;
 }
