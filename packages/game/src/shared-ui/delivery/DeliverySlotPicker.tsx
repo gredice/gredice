@@ -431,7 +431,7 @@ export function DeliverySlotPicker({
 
                     {selectedWeek && selectedWeek.days.length > 0 ? (
                         <fieldset
-                            className="m-0 flex min-w-0 gap-2 overflow-x-auto border-0 p-0 pb-1"
+                            className="m-0 grid min-w-0 auto-cols-[minmax(3.2rem,1fr)] grid-flow-col gap-2 overflow-x-auto border-0 p-0 pb-1"
                             disabled={disabled}
                         >
                             <legend className="sr-only">Odaberi dan</legend>
@@ -448,7 +448,7 @@ export function DeliverySlotPicker({
                                         aria-label={`${formatters.fullDate.format(day.date)}, ${slotCountLabel(day.slots.length)}${isToday ? ', danas' : ''}`}
                                         aria-pressed={isSelected}
                                         className={cx(
-                                            'relative flex min-h-[5.5rem] min-w-[5rem] flex-1 flex-col items-center justify-center rounded-lg border px-2.5 py-2 text-center transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed',
+                                            'relative flex min-h-[5.5rem] min-w-0 flex-col items-center justify-center rounded-lg border px-2.5 py-2 text-center transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed',
                                             isSelected
                                                 ? 'border-primary bg-primary/10 text-primary ring-1 ring-inset ring-primary/40'
                                                 : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted/50',
@@ -472,21 +472,26 @@ export function DeliverySlotPicker({
                                         type="button"
                                     >
                                         {isToday && (
-                                            <span className="absolute left-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[0.5rem] font-bold uppercase tracking-wide text-primary-foreground">
+                                            <span className="absolute left-1 top-1 rounded-full bg-primary px-1 py-0.5 text-[0.45rem] font-bold uppercase leading-none tracking-wide text-primary-foreground">
                                                 Danas
                                             </span>
                                         )}
                                         <span
                                             aria-hidden
                                             className={cx(
-                                                'absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-muted text-[0.6rem] font-bold text-foreground/70',
+                                                'absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-muted text-[0.5rem] font-bold text-foreground/70',
                                                 isSelected &&
                                                     'bg-primary text-primary-foreground',
                                             )}
                                         >
                                             {day.slots.length}
                                         </span>
-                                        <span className="text-[0.65rem] font-bold uppercase tracking-wide">
+                                        <span
+                                            className={cx(
+                                                'text-[0.65rem] font-bold uppercase tracking-wide',
+                                                isToday && 'mt-3',
+                                            )}
+                                        >
                                             {formatters.weekday.format(
                                                 day.date,
                                             )}
