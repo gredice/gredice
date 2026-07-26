@@ -55,7 +55,7 @@ import { getDashboardQuickActionBadge } from '../../../src/dashboardQuickActions
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { includesSelectedPath, isSelectedPath } from './adminNavigationPath';
-import { adminPages, communicationAdminPageHrefs } from './adminPages';
+import { adminPages, communicationMessagePageHrefs } from './adminPages';
 import { NavContext } from './NavContext';
 import { NavGroup } from './NavGroup';
 import { NavItem } from './NavItem';
@@ -799,7 +799,7 @@ export function Nav({
                     label="Poruke"
                     icon={<Inbox className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        ...communicationAdminPageHrefs,
+                        ...communicationMessagePageHrefs,
                     ])}
                     compact={compact}
                 >
@@ -828,14 +828,6 @@ export function Nav({
                         nested
                     />
                     <NavItem
-                        href={adminPages.Surveys.href}
-                        label={adminPages.Surveys.label}
-                        icon={<Tally3 className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                    <NavItem
                         href={adminPages.Feedback.href}
                         label={adminPages.Feedback.label}
                         icon={<SmileHappy className="size-5" />}
@@ -844,6 +836,13 @@ export function Nav({
                         nested
                     />
                 </NavGroup>
+                <NavItem
+                    href={adminPages.Surveys.href}
+                    label={adminPages.Surveys.label}
+                    icon={<Tally3 className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
             </NavSection>
             <NavSection label="Sustavi" compact={compact}>
                 <NavItem

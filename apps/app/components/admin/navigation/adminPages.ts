@@ -109,11 +109,10 @@ export const adminPages = {
     },
 } as const;
 
-export const communicationAdminPageHrefs = [
+export const communicationMessagePageHrefs = [
     adminPages.CommunicationInbox.href,
     adminPages.CommunicationEmails.href,
     adminPages.Notifications.href,
-    adminPages.Surveys.href,
     adminPages.Feedback.href,
 ] as const;
 
