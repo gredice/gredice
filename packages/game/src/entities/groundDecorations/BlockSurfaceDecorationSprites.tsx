@@ -50,7 +50,10 @@ function ResolvedBlockSurfaceDecorationSprites({
 }: DirectBlockSurfaceDecorationSpritesProps) {
     const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(true, garden?.farmId);
+    const { data: weatherNow } = useWeatherNow(
+        gameWeather == null,
+        garden?.farmId,
+    );
     const placements = useMemo(
         () =>
             getBlockSurfaceDecorations({

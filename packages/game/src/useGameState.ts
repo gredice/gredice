@@ -54,6 +54,7 @@ export type WinterMode = 'summer' | 'winter' | 'holiday';
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'high-target'
     | 'operation-rewards'
     | 'plant-heavy';
 

@@ -6,10 +6,19 @@ export function useWeatherNow(enabled = true, farmId?: number | null) {
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
+    const isMock = useGameState((state) => state.isMock);
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
 
     return useQuery({
-        queryKey: ['weather', 'now', farmId ?? null],
+        queryKey: isDeterministicEmptyMock
+            ? ['weather', 'now', mockGardenProfile]
+            : ['weather', 'now', farmId ?? null],
         queryFn: async () => {
+            if (isDeterministicEmptyMock) {
+                return null;
+            }
             const query: Record<string, string> = {};
             if (farmId != null) query.farmId = farmId.toString();
             const response = await clientPublic().api.data.weather.now.$get({

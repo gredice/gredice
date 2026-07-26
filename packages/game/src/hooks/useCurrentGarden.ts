@@ -35,7 +35,13 @@ import {
 import { useCurrentGardenIdParam } from '../useUrlState';
 import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
 import { resolveCurrentAccountGardenId } from './gardenSelection';
-import { resolveMockGardenProfileReferenceDate } from './mockGardenProfileFixtures';
+import {
+    createHighTargetMockGardenStackPositions,
+    highTargetMockGardenDetailFixtures,
+    highTargetMockGardenRaisedBedFixtures,
+    mockRaisedBedFieldFixtures,
+    resolveMockGardenProfileReferenceDate,
+} from './mockGardenProfileFixtures';
 import { useGardenAccountGroups } from './useGardenAccountGroups';
 import { useGardens, useGardensKeys } from './useGardens';
 
@@ -86,174 +92,6 @@ export type CurrentGarden = useCurrentGardenResponse;
 type MockRaisedBed = useCurrentGardenResponse['raisedBeds'][number];
 type MockRaisedBedField = MockRaisedBed['fields'][number];
 
-const DEMO_PLANT_SORT_IDS = {
-    tomato: 337,
-    carrot: 230,
-    spinach: 284,
-    lettuce: 357,
-    cucumber: 226,
-    pepper: 219,
-    onion: 373,
-    broccoli: 353,
-} as const;
-
-type MockRaisedBedFieldConfig = {
-    positionIndex: number;
-    plantSortId: number;
-    plantStatus: 'sprouted' | 'ready';
-    sowDaysAgo: number;
-    growthDaysAgo: number;
-    readyDaysAgo?: number;
-};
-
-// Use live sort IDs that resolve to supported in-game plant presets.
-const DEMO_RAISED_BED_FIELD_LAYOUT: MockRaisedBedFieldConfig[] = [
-    {
-        positionIndex: 0,
-        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
-        plantStatus: 'ready',
-        sowDaysAgo: 78,
-        growthDaysAgo: 66,
-        readyDaysAgo: 0,
-    },
-    {
-        positionIndex: 1,
-        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
-        plantStatus: 'ready',
-        sowDaysAgo: 88,
-        growthDaysAgo: 76,
-        readyDaysAgo: 0,
-    },
-    {
-        positionIndex: 2,
-        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
-        plantStatus: 'ready',
-        sowDaysAgo: 98,
-        growthDaysAgo: 86,
-        readyDaysAgo: 0,
-    },
-    {
-        positionIndex: 3,
-        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
-        plantStatus: 'ready',
-        sowDaysAgo: 79,
-        growthDaysAgo: 68,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 4,
-        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
-        plantStatus: 'ready',
-        sowDaysAgo: 79,
-        growthDaysAgo: 68,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 5,
-        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
-        plantStatus: 'ready',
-        sowDaysAgo: 79,
-        growthDaysAgo: 68,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 8,
-        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
-        plantStatus: 'ready',
-        sowDaysAgo: 74,
-        growthDaysAgo: 66,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 11,
-        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
-        plantStatus: 'ready',
-        sowDaysAgo: 74,
-        growthDaysAgo: 66,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 14,
-        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
-        plantStatus: 'ready',
-        sowDaysAgo: 74,
-        growthDaysAgo: 66,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 17,
-        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
-        plantStatus: 'ready',
-        sowDaysAgo: 74,
-        growthDaysAgo: 66,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 7,
-        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
-        plantStatus: 'ready',
-        sowDaysAgo: 90,
-        growthDaysAgo: 78,
-        readyDaysAgo: 64,
-    },
-    {
-        positionIndex: 10,
-        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
-        plantStatus: 'ready',
-        sowDaysAgo: 90,
-        growthDaysAgo: 78,
-        readyDaysAgo: 64,
-    },
-    {
-        positionIndex: 13,
-        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
-        plantStatus: 'ready',
-        sowDaysAgo: 90,
-        growthDaysAgo: 78,
-        readyDaysAgo: 64,
-    },
-    {
-        positionIndex: 16,
-        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
-        plantStatus: 'ready',
-        sowDaysAgo: 190,
-        growthDaysAgo: 178,
-        readyDaysAgo: 64,
-    },
-    {
-        positionIndex: 6,
-        plantSortId: DEMO_PLANT_SORT_IDS.onion,
-        plantStatus: 'ready',
-        sowDaysAgo: 86,
-        growthDaysAgo: 73,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 9,
-        plantSortId: DEMO_PLANT_SORT_IDS.onion,
-        plantStatus: 'ready',
-        sowDaysAgo: 126,
-        growthDaysAgo: 133,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 12,
-        plantSortId: DEMO_PLANT_SORT_IDS.onion,
-        plantStatus: 'ready',
-        sowDaysAgo: 186,
-        growthDaysAgo: 173,
-        readyDaysAgo: 60,
-    },
-    {
-        positionIndex: 15,
-        plantSortId: DEMO_PLANT_SORT_IDS.onion,
-        plantStatus: 'ready',
-        sowDaysAgo: 186,
-        growthDaysAgo: 173,
-        readyDaysAgo: 60,
-    },
-];
-
 function mockDaysAgoIso(daysAgo: number, referenceDate: string) {
     const date = new Date(referenceDate);
     date.setDate(date.getDate() - daysAgo);
@@ -269,7 +107,7 @@ function normalizeGardenBackgroundPalette(value: unknown) {
 function mockRaisedBedField(
     raisedBedId: number,
     id: number,
-    field: MockRaisedBedFieldConfig,
+    field: (typeof mockRaisedBedFieldFixtures)[number],
     referenceDate: string,
 ): MockRaisedBedField {
     const plantSowDate = mockDaysAgoIso(field.sowDaysAgo, referenceDate);
@@ -344,7 +182,7 @@ function mockRaisedBedFields(
     idOffset: number,
     referenceDate: string,
 ): MockRaisedBed['fields'] {
-    return DEMO_RAISED_BED_FIELD_LAYOUT.map((field, index) =>
+    return mockRaisedBedFieldFixtures.map((field, index) =>
         mockRaisedBedField(
             raisedBedId,
             idOffset + index + 1,
@@ -453,6 +291,52 @@ function createDenseMockStacks(winterMode: WinterMode): {
             stackByPosition.set(mockGardenStackPositionKey(x, z), stack);
         }
     }
+
+    return { stackByPosition, stacks };
+}
+
+function createHighTargetMockStacks(winterMode: WinterMode): {
+    stackByPosition: Map<string, Stack>;
+    stacks: Stack[];
+} {
+    const stackByPosition = new Map<string, Stack>();
+    const detailByPosition = new Map(
+        highTargetMockGardenDetailFixtures.map((fixture) => [
+            mockGardenStackPositionKey(fixture.x, fixture.z),
+            fixture,
+        ]),
+    );
+    const stacks = createHighTargetMockGardenStackPositions().map(
+        ({ x, z }) => {
+            const detail = detailByPosition.get(
+                mockGardenStackPositionKey(x, z),
+            );
+            const stack: Stack = {
+                position: new Vector3(x, 0, z),
+                blocks: [
+                    {
+                        id: `high-target-ground:${x}:${z}`,
+                        name: detail
+                            ? winterMode === 'winter'
+                                ? 'Block_Snow'
+                                : 'Block_Grass'
+                            : getDenseMockGroundBlockName(x, z, winterMode),
+                        rotation: Math.abs(x + z) % 4,
+                    },
+                ],
+            };
+            if (detail) {
+                stack.blocks.push({
+                    id: `high-target-detail:${detail.blockName}:${x}:${z}`,
+                    name: detail.blockName,
+                    rotation: Math.abs(x * 3 + z) % 4,
+                });
+            }
+
+            stackByPosition.set(mockGardenStackPositionKey(x, z), stack);
+            return stack;
+        },
+    );
 
     return { stackByPosition, stacks };
 }
@@ -894,6 +778,43 @@ function denseMockGarden(
     };
 }
 
+function highTargetMockGarden(
+    winterMode: WinterMode,
+): useCurrentGardenResponse {
+    const now = resolveMockGardenProfileReferenceDate('high-target');
+    const { stackByPosition, stacks } = createHighTargetMockStacks(winterMode);
+    const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
+
+    for (const fixture of highTargetMockGardenRaisedBedFixtures) {
+        const raisedBed = addProfileRaisedBedPair({
+            fieldOffset: fixture.fieldOffset,
+            id: fixture.id,
+            now,
+            raisedBeds,
+            stackByPosition,
+            x: fixture.x,
+            z: fixture.z,
+        });
+        if (!raisedBed) {
+            throw new Error(
+                `High-target raised bed ${fixture.id.toString()} is outside the fixture grid.`,
+            );
+        }
+    }
+
+    return {
+        id: 99996,
+        name: 'Profile high-quality target garden',
+        isSandbox: false,
+        isPublic: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
+        stacks,
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds,
+    };
+}
+
 function operationRewardDebugMockGarden(
     winterMode: WinterMode,
 ): useCurrentGardenResponse {
@@ -954,6 +875,10 @@ function mockGarden(
 
     if (profile === 'dense' || profile === 'plant-heavy') {
         return denseMockGarden(winterMode, profile);
+    }
+
+    if (profile === 'high-target') {
+        return highTargetMockGarden(winterMode);
     }
 
     const treeName =

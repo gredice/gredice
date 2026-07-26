@@ -449,6 +449,80 @@ Reports: `steps/17-projected-size-culling/latest.json`,
   final change. The result favors measured benefit over shipping speculative
   hot-loop cost.
 
+## High-quality mid-complexity profiling target
+
+Added 2026-07-26 as the shared benchmark for the High-quality rendering
+optimization series tracked by issue `#4327`.
+
+The `high-target` mock garden represents the intended production workload
+instead of either profiler extreme:
+
+- exactly 300 placed blocks across 270 terrain stacks;
+- exactly three separate, internally connected `1x2` raised beds;
+- six raised-bed blocks and 54 occupied fields;
+- 24 deterministic props, shadow casters, and animal homes;
+- deterministic plant density and lifecycle inputs across all 54 fields,
+  producing exactly 537 generated plant instances without CMS data;
+- production terrain-geometry merging enabled by default; and
+- an actual device pixel ratio of `2` for High-quality desktop scenarios.
+
+Run the complete target matrix:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=high-target pnpm run profile:game
+```
+
+The matrix covers clear idle rendering with moving animals, camera motion,
+hover/selection, placement animation, rain, and snow, with three isolated
+browser runs per phase. Individual scenarios may be selected with
+`GAME_PROFILE_SCENARIOS`. Reports include the median and min/max spread, the
+schema version, browser and GPU identity, and the source commit when CI
+provides it.
+
+Every repeat must pass the structural and interaction acceptance checks. The
+performance budget is evaluated against the three-run median so a single noisy
+headless sample remains visible in the report without turning the gate into an
+outlier detector.
+
+Browser animation-frame responsiveness remains separate from actual rendered
+frames. Historical `drawCallsPerFrame` and `trianglesPerFrame` fields retain
+their request-animation-frame denominator; the High target gates explicit
+per-rendered-frame metrics. GPU elapsed time is captured around individual
+WebGL render passes through `EXT_disjoint_timer_query_webgl2` when the browser
+exposes it. Disjoint, incomplete, and unsupported query results are reported
+but never enforced as valid GPU measurements.
+
+Headless Chromium and software WebGL remain directional evidence. Each
+optimization must compare the same target scenario before and after the
+change, while final thermal clearance still requires the physical-device
+soaks documented under release gates.
+
+### Initial software-WebGL baseline
+
+The initial 18-run matrix passed structural acceptance in every repeat:
+all 54 fields and 537 generated plants remained visible, the interaction and
+placement probes executed, weather particles mounted, and no page or API
+errors occurred.
+
+These medians came from headless Chromium 149 using ANGLE SwiftShader. They
+are a regression baseline for comparisons on the same runner, not a claim
+about physical-device frame rate:
+
+| Phase | Rendered FPS | p95 frame | Long tasks | Draws/render | Triangles/render | Heap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 1.7 | 741.5 ms | 9 | 313.9 | 39,402 | 51.0 MB |
+| Camera motion | 1.7 | 734.3 ms | 9 | 306.7 | 38,874 | 54.2 MB |
+| Hover/selection | 1.8 | 732.8 ms | 9 | 305.0 | 38,824 | 54.2 MB |
+| Placement | 1.8 | 702.2 ms | 9 | 306.3 | 38,811 | 48.1 MB |
+| Rain | 1.7 | 662.6 ms | 9 | 272.0 | 39,668 | 54.2 MB |
+| Snow | 2.7 | 409.1 ms | 14 | 367.0 | 98,540 | 73.1 MB |
+
+The aspirational frame-time and long-task gates remain red in this environment
+because the software renderer reports repeated `ReadPixels` stalls. Draw-call,
+triangle, and heap gates pass. GPU elapsed-time gating is skipped because the
+runner does not expose a valid timer-query result.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.
