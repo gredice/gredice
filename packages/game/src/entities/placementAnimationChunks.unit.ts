@@ -29,10 +29,13 @@ function createAnimation(
 ): BlockPlacementDropAnimation {
     return {
         createdAt: sequence,
+        mutationConfirmed: false,
         particlesSpawned,
         renderId: sequence,
         sequence,
         sourceBlockId,
+        visualComplete: false,
+        visualStarted: true,
     };
 }
 

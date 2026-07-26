@@ -148,6 +148,9 @@ describe('ActorGroundingShadowRegistry', () => {
         assert.deepEqual(registry.getStats(), {
             capacity: 3,
             droppedCount: 0,
+            placementDroppedCount: 0,
+            placementRegisteredCount: 0,
+            placementUpdateCount: 0,
             primaryCasterCount: 13,
             registeredCount: 2,
             updateCount: 1,
@@ -190,6 +193,9 @@ describe('ActorGroundingShadowRegistry', () => {
         assert.deepEqual(registry.getStats(), {
             capacity: 1,
             droppedCount: 1,
+            placementDroppedCount: 0,
+            placementRegisteredCount: 0,
+            placementUpdateCount: 0,
             primaryCasterCount: 0,
             registeredCount: 1,
             updateCount: 0,
@@ -200,9 +206,76 @@ describe('ActorGroundingShadowRegistry', () => {
         assert.deepEqual(registry.getStats(), {
             capacity: 1,
             droppedCount: 0,
+            placementDroppedCount: 0,
+            placementRegisteredCount: 0,
+            placementUpdateCount: 0,
             primaryCasterCount: 0,
             registeredCount: 0,
             updateCount: 0,
         });
+    });
+
+    it('shares slots with placements while keeping actor stats isolated', () => {
+        const registry = new ActorGroundingShadowRegistry(3);
+        registry.register({
+            id: 'cat:a',
+            primaryCasterCount: 0,
+            species: 'cat',
+        });
+        const placement = registry.register({
+            id: 'placement:1',
+            kind: 'placement',
+            profile: {
+                baseHalfLength: 0.6,
+                baseHalfWidth: 0.4,
+                baseOpacity: 0.2,
+                cutoffHeight: 1,
+                maxFootprintScale: 1.1,
+            },
+        });
+        registry.update('placement:1', groundedState);
+
+        assert.equal(placement.slot, 1);
+        assert.deepEqual(registry.getStats(), {
+            capacity: 3,
+            droppedCount: 0,
+            placementDroppedCount: 0,
+            placementRegisteredCount: 1,
+            placementUpdateCount: 1,
+            primaryCasterCount: 0,
+            registeredCount: 1,
+            updateCount: 0,
+        });
+
+        placement.unregister();
+        assert.equal(registry.getStats().placementRegisteredCount, 0);
+        assert.equal(registry.getStats().registeredCount, 1);
+    });
+
+    it('retains cumulative placement overflow evidence after unregister', () => {
+        const registry = new ActorGroundingShadowRegistry(1);
+        registry.register({
+            id: 'cat:a',
+            primaryCasterCount: 0,
+            species: 'cat',
+        });
+        const placement = registry.register({
+            id: 'placement:overflow',
+            kind: 'placement',
+            profile: {
+                baseHalfLength: 0.6,
+                baseHalfWidth: 0.4,
+                baseOpacity: 0.2,
+                cutoffHeight: 1,
+                maxFootprintScale: 1.1,
+            },
+        });
+
+        assert.equal(placement.slot, null);
+        assert.equal(registry.getStats().placementDroppedCount, 1);
+
+        placement.unregister();
+        assert.equal(registry.getStats().placementDroppedCount, 1);
+        assert.equal(registry.getStats().placementRegisteredCount, 0);
     });
 });

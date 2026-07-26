@@ -2083,6 +2083,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ?.primaryShadowRefreshCount === 'number'
                     ? globalThis.__grediceGameProfile.primaryShadowRefreshCount
                     : null;
+            const placementShadowDeferredChangeCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.placementShadowDeferredChangeCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .placementShadowDeferredChangeCount
+                    : null;
+            const placementShadowFlushCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.placementShadowFlushCount === 'number'
+                    ? globalThis.__grediceGameProfile.placementShadowFlushCount
+                    : null;
             const rainParticleCountAtStart =
                 typeof globalThis.__grediceGameProfile?.rainParticleCount ===
                 'number'
@@ -2174,6 +2185,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ?.primaryShadowRefreshCount === 'number'
                     ? globalThis.__grediceGameProfile.primaryShadowRefreshCount
                     : null;
+            const placementShadowDeferredChangeCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.placementShadowDeferredChangeCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .placementShadowDeferredChangeCount
+                    : null;
+            const placementShadowFlushCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.placementShadowFlushCount === 'number'
+                    ? globalThis.__grediceGameProfile.placementShadowFlushCount
+                    : null;
             const nonGpuSample = {
                 actorGroundingShadowUpdateCountDelta:
                     actorGroundingShadowUpdateCountAtStart === null ||
@@ -2223,6 +2245,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
                 placementProfileDispatched,
+                placementShadowDeferredChangeCountDelta:
+                    placementShadowDeferredChangeCountAtStart === null ||
+                    placementShadowDeferredChangeCountAtEnd === null
+                        ? null
+                        : placementShadowDeferredChangeCountAtEnd -
+                          placementShadowDeferredChangeCountAtStart,
+                placementShadowFlushCountDelta:
+                    placementShadowFlushCountAtStart === null ||
+                    placementShadowFlushCountAtEnd === null
+                        ? null
+                        : placementShadowFlushCountAtEnd -
+                          placementShadowFlushCountAtStart,
                 primaryShadowRefreshCountAtStart,
                 primaryShadowRefreshCountDelta:
                     primaryShadowRefreshCountAtStart === null ||
@@ -2511,6 +2545,31 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.placementChunkPhysicalTransformedInstanceCount ===
                 'number'
                     ? metadata.placementChunkPhysicalTransformedInstanceCount
+                    : null,
+            placementProjectedShadowCount:
+                typeof metadata.placementProjectedShadowCount === 'number'
+                    ? metadata.placementProjectedShadowCount
+                    : null,
+            placementProjectedShadowDroppedCount:
+                typeof metadata.placementProjectedShadowDroppedCount ===
+                'number'
+                    ? metadata.placementProjectedShadowDroppedCount
+                    : null,
+            placementProjectedShadowPeakCount:
+                typeof metadata.placementProjectedShadowPeakCount === 'number'
+                    ? metadata.placementProjectedShadowPeakCount
+                    : null,
+            placementShadowActiveCount:
+                typeof metadata.placementShadowActiveCount === 'number'
+                    ? metadata.placementShadowActiveCount
+                    : null,
+            placementShadowDeferredChangeCount:
+                typeof metadata.placementShadowDeferredChangeCount === 'number'
+                    ? metadata.placementShadowDeferredChangeCount
+                    : null,
+            placementShadowFlushCount:
+                typeof metadata.placementShadowFlushCount === 'number'
+                    ? metadata.placementShadowFlushCount
                     : null,
             qualityTier:
                 typeof metadata.qualityTier === 'string'
@@ -2935,6 +2994,41 @@ function evaluateHighTargetAcceptance({
             minimum(
                 'highTargetPlacementRebuilds',
                 runtime?.placementChunkPhysicalRebuildCount,
+                1,
+            ),
+            exact(
+                'highTargetPlacementActiveAtEnd',
+                runtime?.placementShadowActiveCount,
+                0,
+            ),
+            exact(
+                'highTargetPlacementProjectedAtEnd',
+                runtime?.placementProjectedShadowCount,
+                0,
+            ),
+            exact(
+                'highTargetPlacementProjectedPeak',
+                runtime?.placementProjectedShadowPeakCount,
+                2,
+            ),
+            exact(
+                'highTargetPlacementProjectedDrops',
+                runtime?.placementProjectedShadowDroppedCount,
+                0,
+            ),
+            minimum(
+                'highTargetPlacementShadowDeferredChanges',
+                sample.placementShadowDeferredChangeCountDelta,
+                1,
+            ),
+            exact(
+                'highTargetPlacementShadowFlushes',
+                sample.placementShadowFlushCountDelta,
+                1,
+            ),
+            exact(
+                'highTargetPlacementPrimaryShadowRefreshes',
+                sample.primaryShadowRefreshCountDelta,
                 1,
             ),
         );
@@ -3871,8 +3965,8 @@ function buildMarkdown(report) {
     if (placementProfiles.length > 0) {
         lines.push('', '## Placement Animation Evidence', '');
         lines.push(
-            '| Scenario | Command | Logical updates/touched | Physical rebuilds/transformed | Rebuild p95/max | Frame p95/max | Draw/render | Triangles/render | Evidence |',
-            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+            '| Scenario | Command | Logical updates/touched | Physical rebuilds/transformed | Projected peak/end/dropped | Deferred/flush/primary | Rebuild p95/max | Frame p95/max | Draw/render | Triangles/render | Evidence |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
         );
         for (const scenario of placementProfiles) {
             const dispatched =
@@ -3893,7 +3987,7 @@ function buildMarkdown(report) {
                 typeof physicalRebuildCount === 'number' &&
                 physicalRebuildCount > 0;
             lines.push(
-                `| ${scenario.name} | ${dispatched ? 'dispatched' : 'missing'} | ${logicalUpdateCount ?? 'n/a'}/${logicalTouchedCount ?? 'n/a'} | ${physicalRebuildCount ?? 'n/a'}/${transformedInstanceCount ?? 'n/a'} | ${round(scenario.runtime?.placementChunkPhysicalRebuildDurationP95Ms) ?? 'n/a'}/${round(scenario.runtime?.placementChunkPhysicalRebuildDurationMaxMs) ?? 'n/a'} ms | ${scenario.sample.p95FrameMs}/${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${evidenceCaptured ? 'captured' : 'missing'} |`,
+                `| ${scenario.name} | ${dispatched ? 'dispatched' : 'missing'} | ${logicalUpdateCount ?? 'n/a'}/${logicalTouchedCount ?? 'n/a'} | ${physicalRebuildCount ?? 'n/a'}/${transformedInstanceCount ?? 'n/a'} | ${scenario.runtime?.placementProjectedShadowPeakCount ?? 'n/a'}/${scenario.runtime?.placementProjectedShadowCount ?? 'n/a'}/${scenario.runtime?.placementProjectedShadowDroppedCount ?? 'n/a'} | ${scenario.sample.placementShadowDeferredChangeCountDelta ?? 'n/a'}/${scenario.sample.placementShadowFlushCountDelta ?? 'n/a'}/${scenario.sample.primaryShadowRefreshCountDelta ?? 'n/a'} | ${round(scenario.runtime?.placementChunkPhysicalRebuildDurationP95Ms) ?? 'n/a'}/${round(scenario.runtime?.placementChunkPhysicalRebuildDurationMaxMs) ?? 'n/a'} ms | ${scenario.sample.p95FrameMs}/${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${evidenceCaptured ? 'captured' : 'missing'} |`,
             );
         }
     }

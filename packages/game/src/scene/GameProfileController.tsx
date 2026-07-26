@@ -326,12 +326,16 @@ export function GameProfileController() {
                 if (!firstBlockId) {
                     return;
                 }
-                queueBlockPlacementDropAnimation(firstBlockId);
+                queueBlockPlacementDropAnimation(firstBlockId, {
+                    mutationConfirmed: true,
+                });
                 remainingBlockIds.forEach((blockId, index) => {
                     const timeout = window.setTimeout(
                         () => {
                             pendingTimeouts.delete(timeout);
-                            queueBlockPlacementDropAnimation(blockId);
+                            queueBlockPlacementDropAnimation(blockId, {
+                                mutationConfirmed: true,
+                            });
                         },
                         command.staggerMs * (index + 1),
                     );

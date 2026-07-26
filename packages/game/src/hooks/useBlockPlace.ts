@@ -127,8 +127,8 @@ export function useBlockPlace() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
-    const rekeyBlockPlacementDropAnimation = useGameState(
-        (state) => state.rekeyBlockPlacementDropAnimation,
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
     );
     const cancelBlockPlacementDropAnimation = useGameState(
         (state) => state.cancelBlockPlacementDropAnimation,
@@ -279,7 +279,7 @@ export function useBlockPlace() {
                 return;
             }
 
-            rekeyBlockPlacementDropAnimation(
+            confirmBlockPlacementDropAnimation(
                 context.optimisticBlockId,
                 data.id,
             );
@@ -298,7 +298,6 @@ export function useBlockPlace() {
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
             if (context?.optimisticBlockId) {
-                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
                 queryClient.setQueryData<CurrentGardenData | null>(
                     gardenQueryKey,
                     (currentGarden) =>
@@ -309,6 +308,7 @@ export function useBlockPlace() {
                               )
                             : currentGarden,
                 );
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
             }
             if (context?.sunflowerAmount) {
                 queryClient.setQueryData<CurrentAccountData | null>(

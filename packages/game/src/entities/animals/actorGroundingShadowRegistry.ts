@@ -11,8 +11,23 @@ export type ActorGroundingShadowState = {
 
 export type ActorGroundingShadowRegistration = {
     id: string;
+    kind?: 'actor';
     primaryCasterCount: number;
     species: ActorGroundingShadowSpecies;
+};
+
+export type GroundingShadowProfile = {
+    baseHalfLength: number;
+    baseHalfWidth: number;
+    baseOpacity: number;
+    cutoffHeight: number;
+    maxFootprintScale: number;
+};
+
+export type PlacementGroundingShadowRegistration = {
+    id: string;
+    kind: 'placement';
+    profile: GroundingShadowProfile;
 };
 
 export type ResolvedActorGroundingShadow = {
@@ -26,26 +41,23 @@ export type ResolvedActorGroundingShadow = {
     z: number;
 };
 
-export type ActorGroundingShadowRegistryEntry =
-    ActorGroundingShadowRegistration & {
-        slot: number;
-        state: ActorGroundingShadowState;
-    };
+export type ActorGroundingShadowRegistryEntry = (
+    | ActorGroundingShadowRegistration
+    | PlacementGroundingShadowRegistration
+) & {
+    slot: number;
+    state: ActorGroundingShadowState;
+};
 
 export type ActorGroundingShadowRegistryStats = {
     capacity: number;
     droppedCount: number;
+    placementDroppedCount: number;
+    placementRegisteredCount: number;
+    placementUpdateCount: number;
     primaryCasterCount: number;
     registeredCount: number;
     updateCount: number;
-};
-
-type ActorGroundingShadowProfile = {
-    baseHalfLength: number;
-    baseHalfWidth: number;
-    baseOpacity: number;
-    cutoffHeight: number;
-    maxFootprintScale: number;
 };
 
 export const actorGroundingShadowCapacity = 128;
@@ -81,7 +93,7 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 1.6,
         maxFootprintScale: 1.7,
     },
-} satisfies Record<ActorGroundingShadowSpecies, ActorGroundingShadowProfile>;
+} satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;
 
 const hiddenActorGroundingShadowState: ActorGroundingShadowState = {
     actorY: 0,
@@ -129,7 +141,22 @@ export function resolveActorGroundingShadow({
     species: ActorGroundingShadowSpecies;
     state: ActorGroundingShadowState;
 }): ResolvedActorGroundingShadow {
-    const profile = actorGroundingShadowProfiles[species];
+    return resolveGroundingShadow({
+        profile: actorGroundingShadowProfiles[species],
+        snowCoverage,
+        state,
+    });
+}
+
+export function resolveGroundingShadow({
+    profile,
+    snowCoverage,
+    state,
+}: {
+    profile: GroundingShadowProfile;
+    snowCoverage: number;
+    state: ActorGroundingShadowState;
+}): ResolvedActorGroundingShadow {
     const finiteTransform = hasFiniteTransform(state);
     const actorY = finiteTransform ? state.actorY : 0;
     const receiverY = finiteTransform ? state.receiverY : 0;
@@ -168,9 +195,11 @@ export class ActorGroundingShadowRegistry {
         string,
         ActorGroundingShadowRegistryEntry
     >();
-    private readonly droppedIds = new Set<string>();
+    private readonly droppedIds = new Map<string, 'actor' | 'placement'>();
     private readonly freeSlots: number[] = [];
     private nextSlot = 0;
+    private placementDroppedCount = 0;
+    private placementUpdateCount = 0;
     private updateCount = 0;
     private version = 0;
 
@@ -189,16 +218,32 @@ export class ActorGroundingShadowRegistry {
     }
 
     getStats(): ActorGroundingShadowRegistryStats {
+        let placementRegisteredCount = 0;
         let primaryCasterCount = 0;
+        let registeredCount = 0;
         for (const entry of this.entries.values()) {
-            primaryCasterCount += entry.primaryCasterCount;
+            if (entry.kind === 'placement') {
+                placementRegisteredCount += 1;
+            } else {
+                registeredCount += 1;
+                primaryCasterCount += entry.primaryCasterCount;
+            }
+        }
+        let droppedCount = 0;
+        for (const kind of this.droppedIds.values()) {
+            if (kind === 'actor') {
+                droppedCount += 1;
+            }
         }
 
         return {
             capacity: this.capacity,
-            droppedCount: this.droppedIds.size,
+            droppedCount,
+            placementDroppedCount: this.placementDroppedCount,
+            placementRegisteredCount,
+            placementUpdateCount: this.placementUpdateCount,
             primaryCasterCount,
-            registeredCount: this.entries.size,
+            registeredCount,
             updateCount: this.updateCount,
         };
     }
@@ -207,11 +252,12 @@ export class ActorGroundingShadowRegistry {
         return this.version;
     }
 
-    register({
-        id,
-        primaryCasterCount,
-        species,
-    }: ActorGroundingShadowRegistration) {
+    register(
+        registration:
+            | ActorGroundingShadowRegistration
+            | PlacementGroundingShadowRegistration,
+    ) {
+        const { id } = registration;
         if (id.length === 0) {
             throw new Error('Actor grounding-shadow registration needs an id');
         }
@@ -220,7 +266,11 @@ export class ActorGroundingShadowRegistry {
                 `Actor grounding-shadow id "${id}" is already registered`,
             );
         }
-        if (!Number.isInteger(primaryCasterCount) || primaryCasterCount < 0) {
+        if (
+            registration.kind !== 'placement' &&
+            (!Number.isInteger(registration.primaryCasterCount) ||
+                registration.primaryCasterCount < 0)
+        ) {
             throw new Error(
                 'Actor grounding-shadow primary caster count must be a non-negative integer',
             );
@@ -233,7 +283,13 @@ export class ActorGroundingShadowRegistry {
                 this.freeSlots.unshift(reusedSlot);
             }
 
-            this.droppedIds.add(id);
+            this.droppedIds.set(
+                id,
+                registration.kind === 'placement' ? 'placement' : 'actor',
+            );
+            if (registration.kind === 'placement') {
+                this.placementDroppedCount += 1;
+            }
             this.publishChange();
 
             let registered = true;
@@ -254,13 +310,23 @@ export class ActorGroundingShadowRegistry {
             this.nextSlot += 1;
         }
 
-        const entry: ActorGroundingShadowRegistryEntry = {
-            id,
-            primaryCasterCount,
-            slot,
-            species,
-            state: hiddenActorGroundingShadowState,
-        };
+        const entry: ActorGroundingShadowRegistryEntry =
+            registration.kind === 'placement'
+                ? {
+                      id,
+                      kind: 'placement',
+                      profile: registration.profile,
+                      slot,
+                      state: hiddenActorGroundingShadowState,
+                  }
+                : {
+                      id,
+                      kind: 'actor',
+                      primaryCasterCount: registration.primaryCasterCount,
+                      slot,
+                      species: registration.species,
+                      state: hiddenActorGroundingShadowState,
+                  };
         this.entries.set(id, entry);
         this.publishChange();
 
@@ -288,7 +354,11 @@ export class ActorGroundingShadowRegistry {
         }
 
         entry.state = { ...state };
-        this.updateCount += 1;
+        if (entry.kind === 'placement') {
+            this.placementUpdateCount += 1;
+        } else {
+            this.updateCount += 1;
+        }
         this.publishChange();
         return true;
     }

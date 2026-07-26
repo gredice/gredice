@@ -27,7 +27,10 @@ import {
     ActorGroundingShadowRegistry,
     type ActorGroundingShadowState,
     actorGroundingShadowCapacity,
-    resolveActorGroundingShadow,
+    actorGroundingShadowProfiles,
+    type GroundingShadowProfile,
+    type PlacementGroundingShadowRegistration,
+    resolveGroundingShadow,
 } from './actorGroundingShadowRegistry';
 
 const actorGroundingShadowGeometry = new PlaneGeometry(2, 2);
@@ -98,6 +101,9 @@ type ActorGroundingShadowProfileSnapshot = {
     count: number;
     droppedCount: number;
     primaryCasterCount: number;
+    placementCount: number;
+    placementDroppedCount: number;
+    placementPeakCount: number;
     updateCount: number;
     visibleCount: number;
 };
@@ -122,6 +128,9 @@ function publishActorGroundingShadowProfile() {
         capacity: 0,
         count: 0,
         droppedCount: 0,
+        placementCount: 0,
+        placementDroppedCount: 0,
+        placementPeakCount: 0,
         primaryCasterCount: 0,
         updateCount: 0,
         visibleCount: 0,
@@ -131,6 +140,9 @@ function publishActorGroundingShadowProfile() {
         aggregate.capacity += snapshot.capacity;
         aggregate.count += snapshot.count;
         aggregate.droppedCount += snapshot.droppedCount;
+        aggregate.placementCount += snapshot.placementCount;
+        aggregate.placementDroppedCount += snapshot.placementDroppedCount;
+        aggregate.placementPeakCount += snapshot.placementPeakCount;
         aggregate.primaryCasterCount += snapshot.primaryCasterCount;
         aggregate.updateCount += snapshot.updateCount;
         aggregate.visibleCount += snapshot.visibleCount;
@@ -144,6 +156,9 @@ function publishActorGroundingShadowProfile() {
         actorGroundingShadowPrimaryCasterCount: aggregate.primaryCasterCount,
         actorGroundingShadowUpdateCount: aggregate.updateCount,
         actorGroundingShadowVisibleCount: aggregate.visibleCount,
+        placementProjectedShadowCount: aggregate.placementCount,
+        placementProjectedShadowDroppedCount: aggregate.placementDroppedCount,
+        placementProjectedShadowPeakCount: aggregate.placementPeakCount,
     });
 }
 
@@ -156,11 +171,13 @@ function clearActorGroundingShadowProfile(owner: symbol) {
 function reportActorGroundingShadowProfile({
     batchCount,
     owner,
+    placementPeakCount,
     registry,
     visibleCount,
 }: {
     batchCount: number;
     owner: symbol;
+    placementPeakCount: number;
     registry: ActorGroundingShadowRegistry;
     visibleCount: number;
 }) {
@@ -170,6 +187,9 @@ function reportActorGroundingShadowProfile({
         capacity: stats.capacity,
         count: stats.registeredCount,
         droppedCount: stats.droppedCount,
+        placementCount: stats.placementRegisteredCount,
+        placementDroppedCount: stats.placementDroppedCount,
+        placementPeakCount,
         primaryCasterCount: stats.primaryCasterCount,
         updateCount: stats.updateCount,
         visibleCount,
@@ -190,6 +210,7 @@ function ActorGroundingShadowBatch({
     const lastSnowCoverageRef = useRef(Number.NaN);
     const lastProfileReportAtRef = useRef(Number.NEGATIVE_INFINITY);
     const lastVersionRef = useRef(-1);
+    const placementPeakCountRef = useRef(0);
     const previousDrawCountRef = useRef(0);
     const profileReportPendingRef = useRef(false);
     const visibleCountRef = useRef(0);
@@ -214,6 +235,7 @@ function ActorGroundingShadowBatch({
         reportActorGroundingShadowProfile({
             batchCount: 0,
             owner,
+            placementPeakCount: 0,
             registry,
             visibleCount: 0,
         });
@@ -249,16 +271,21 @@ function ActorGroundingShadowBatch({
 
             let visibleCount = 0;
             for (const entry of entries) {
-                const resolved = resolveActorGroundingShadow({
+                const resolved = resolveGroundingShadow({
+                    profile:
+                        entry.kind === 'placement'
+                            ? entry.profile
+                            : actorGroundingShadowProfiles[entry.species],
                     snowCoverage,
-                    species: entry.species,
                     state: entry.state,
                 });
                 if (!resolved.visible) {
                     continue;
                 }
 
-                visibleCount += 1;
+                if (entry.kind !== 'placement') {
+                    visibleCount += 1;
+                }
                 scratch.position.set(resolved.x, resolved.y, resolved.z);
                 scratch.quaternion.setFromAxisAngle(upAxis, resolved.yaw);
                 scratch.scale.set(
@@ -281,7 +308,12 @@ function ActorGroundingShadowBatch({
                 mesh.instanceMatrix.needsUpdate = true;
             }
 
-            batchCountRef.current = entries.length > 0 ? 1 : 0;
+            const stats = registry.getStats();
+            batchCountRef.current = stats.registeredCount > 0 ? 1 : 0;
+            placementPeakCountRef.current = Math.max(
+                placementPeakCountRef.current,
+                stats.placementRegisteredCount,
+            );
             previousDrawCountRef.current = drawCount;
             visibleCountRef.current = visibleCount;
             lastSnowCoverageRef.current = snowCoverage;
@@ -299,6 +331,7 @@ function ActorGroundingShadowBatch({
             reportActorGroundingShadowProfile({
                 batchCount: batchCountRef.current,
                 owner,
+                placementPeakCount: placementPeakCountRef.current,
                 registry,
                 visibleCount: visibleCountRef.current,
             });
@@ -388,4 +421,69 @@ export function useActorGroundingShadow({
     );
 
     return enabled ? update : null;
+}
+
+export function usePlacementGroundingShadow({
+    id,
+    profile,
+    state,
+}: Omit<PlacementGroundingShadowRegistration, 'kind'> & {
+    state: ActorGroundingShadowState;
+}) {
+    const context = useContext(ActorGroundingShadowContext);
+    if (!context) {
+        throw new Error('Missing ActorGroundingShadowProvider in scene tree');
+    }
+    const { enabled, registry } = context;
+    const {
+        baseHalfLength,
+        baseHalfWidth,
+        baseOpacity,
+        cutoffHeight,
+        maxFootprintScale,
+    } = profile;
+    const { actorY, receiverY, visible, x, yaw, z } = state;
+
+    useLayoutEffect(() => {
+        if (!enabled) {
+            return;
+        }
+
+        const placementProfile: GroundingShadowProfile = {
+            baseHalfLength,
+            baseHalfWidth,
+            baseOpacity,
+            cutoffHeight,
+            maxFootprintScale,
+        };
+        const registration = registry.register({
+            id,
+            kind: 'placement',
+            profile: placementProfile,
+        });
+        registry.update(id, {
+            actorY,
+            receiverY,
+            visible,
+            x,
+            yaw,
+            z,
+        });
+        return registration.unregister;
+    }, [
+        actorY,
+        baseHalfLength,
+        baseHalfWidth,
+        baseOpacity,
+        cutoffHeight,
+        enabled,
+        id,
+        maxFootprintScale,
+        receiverY,
+        registry,
+        visible,
+        x,
+        yaw,
+        z,
+    ]);
 }

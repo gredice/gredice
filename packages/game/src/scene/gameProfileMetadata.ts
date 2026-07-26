@@ -220,6 +220,12 @@ export type GameProfileMetadata = {
     placementChunkPhysicalRebuildDurationMaxMs?: number;
     placementChunkPhysicalRebuildDurationP95Ms?: number;
     placementChunkPhysicalTransformedInstanceCount?: number;
+    placementProjectedShadowCount?: number;
+    placementProjectedShadowDroppedCount?: number;
+    placementProjectedShadowPeakCount?: number;
+    placementShadowActiveCount?: number;
+    placementShadowDeferredChangeCount?: number;
+    placementShadowFlushCount?: number;
     qualityTier?: GameQualityProfileTier;
     rainParticleCount?: number;
     rainWetOverlayDistinctUniformCount?: number;

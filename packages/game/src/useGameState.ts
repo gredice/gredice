@@ -165,10 +165,13 @@ export type PlacedBlockEffect = {
 
 export type BlockPlacementDropAnimation = {
     createdAt: number;
+    mutationConfirmed: boolean;
     particlesSpawned: boolean;
     renderId: number;
     sequence: number;
     sourceBlockId: string;
+    visualComplete: boolean;
+    visualStarted: boolean;
 };
 
 function findBlockPlacementDropAnimationByRenderId(
@@ -400,14 +403,18 @@ export type GameState = {
     ) => void;
     consumePlacedBlockEffect: (blockId: string) => PlacedBlockEffect | null;
     blockPlacementDropAnimations: Record<string, BlockPlacementDropAnimation>;
-    queueBlockPlacementDropAnimation: (blockId: string) => void;
-    rekeyBlockPlacementDropAnimation: (
+    queueBlockPlacementDropAnimation: (
+        blockId: string,
+        options?: { mutationConfirmed?: boolean },
+    ) => void;
+    confirmBlockPlacementDropAnimation: (
         sourceBlockId: string,
         targetBlockId: string,
     ) => void;
     cancelBlockPlacementDropAnimation: (blockId: string) => void;
     markBlockPlacementDropParticlesSpawned: (renderId: number) => boolean;
-    completeBlockPlacementDropAnimation: (renderId: number) => void;
+    markBlockPlacementDropVisualStarted: (renderId: number) => void;
+    markBlockPlacementDropVisualComplete: (renderId: number) => void;
     gardenVisitSummaryHighlight: GardenVisitSummaryHighlight | null;
     setGardenVisitSummaryHighlight: (
         highlight: Omit<GardenVisitSummaryHighlight, 'createdAt' | 'sequence'>,
@@ -778,7 +785,7 @@ export function createGameState({
             return effect;
         },
         blockPlacementDropAnimations: {},
-        queueBlockPlacementDropAnimation: (blockId) =>
+        queueBlockPlacementDropAnimation: (blockId, options) =>
             set((state) => {
                 nextBlockPlacementDropAnimationRenderId += 1;
                 return {
@@ -786,32 +793,47 @@ export function createGameState({
                         ...state.blockPlacementDropAnimations,
                         [blockId]: {
                             createdAt: Date.now(),
+                            mutationConfirmed:
+                                options?.mutationConfirmed === true,
                             particlesSpawned: false,
                             renderId: nextBlockPlacementDropAnimationRenderId,
                             sequence:
                                 (state.blockPlacementDropAnimations[blockId]
                                     ?.sequence ?? 0) + 1,
                             sourceBlockId: blockId,
+                            visualComplete: false,
+                            visualStarted: false,
                         },
                     },
                 };
             }),
-        rekeyBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
+        confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
             set((state) => {
-                if (sourceBlockId === targetBlockId) {
+                const animation = getBlockPlacementDropAnimationForBlockId(
+                    state.blockPlacementDropAnimations,
+                    sourceBlockId,
+                );
+                if (!animation) {
                     return state;
                 }
-                const animation =
-                    state.blockPlacementDropAnimations[sourceBlockId];
-                if (!animation) {
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    animation.renderId,
+                );
+                if (!entry) {
                     return state;
                 }
 
                 const blockPlacementDropAnimations = {
                     ...state.blockPlacementDropAnimations,
-                    [targetBlockId]: animation,
                 };
-                delete blockPlacementDropAnimations[sourceBlockId];
+                delete blockPlacementDropAnimations[entry.blockId];
+                if (animation.visualStarted && !animation.visualComplete) {
+                    blockPlacementDropAnimations[targetBlockId] = {
+                        ...animation,
+                        mutationConfirmed: true,
+                    };
+                }
 
                 return { blockPlacementDropAnimations };
             }),
@@ -869,15 +891,50 @@ export function createGameState({
             });
             return true;
         },
-        completeBlockPlacementDropAnimation: (renderId) => {
-            const entry = findBlockPlacementDropAnimationByRenderId(
-                get().blockPlacementDropAnimations,
-                renderId,
-            );
-            if (entry) {
-                get().cancelBlockPlacementDropAnimation(entry.blockId);
-            }
-        },
+        markBlockPlacementDropVisualStarted: (renderId) =>
+            set((state) => {
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    renderId,
+                );
+                if (!entry || entry.animation.visualStarted) {
+                    return state;
+                }
+
+                return {
+                    blockPlacementDropAnimations: {
+                        ...state.blockPlacementDropAnimations,
+                        [entry.blockId]: {
+                            ...entry.animation,
+                            visualStarted: true,
+                        },
+                    },
+                };
+            }),
+        markBlockPlacementDropVisualComplete: (renderId) =>
+            set((state) => {
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    renderId,
+                );
+                if (!entry) {
+                    return state;
+                }
+
+                const blockPlacementDropAnimations = {
+                    ...state.blockPlacementDropAnimations,
+                };
+                if (entry.animation.mutationConfirmed) {
+                    delete blockPlacementDropAnimations[entry.blockId];
+                } else {
+                    blockPlacementDropAnimations[entry.blockId] = {
+                        ...entry.animation,
+                        visualComplete: true,
+                    };
+                }
+
+                return { blockPlacementDropAnimations };
+            }),
         gardenVisitSummaryHighlight: null,
         setGardenVisitSummaryHighlight: (highlight) =>
             set((state) => ({

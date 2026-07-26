@@ -23,6 +23,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
+import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -349,6 +350,9 @@ export function GameScene({
                                 noSound={noSound}
                                 quality={qualityProfile}
                                 weather={weather}
+                            />
+                            <PlacementGroundingShadows
+                                stacks={garden?.stacks}
                             />
                             <group name="GameScene:Entities">
                                 {garden?.stacks.map((stack) =>
