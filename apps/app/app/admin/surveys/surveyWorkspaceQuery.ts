@@ -3,8 +3,11 @@ import { KnownPages } from '../../../src/KnownPages';
 
 export type SurveyWorkspaceSearchParams = {
     category?: string | string[];
+    editVersionId?: string | string[];
     monthKey?: string | string[];
+    previewVersionId?: string | string[];
     q?: string | string[];
+    sourceVersionId?: string | string[];
     status?: string | string[];
 };
 

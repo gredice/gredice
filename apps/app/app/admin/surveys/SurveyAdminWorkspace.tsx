@@ -82,7 +82,43 @@ export async function SurveyAdminWorkspace({
     }
 
     if (view === 'design') {
-        return <SurveyDesignView details={details} />;
+        const editVersionId =
+            firstSurveyQueryParam(params.editVersionId)?.trim() || null;
+        const previewVersionId =
+            firstSurveyQueryParam(params.previewVersionId)?.trim() || null;
+        const sourceVersionId =
+            firstSurveyQueryParam(params.sourceVersionId)?.trim() || null;
+        const findGroup = (versionId: string | null) =>
+            versionId
+                ? (details.questionGroups.find(
+                      (group) => group.version.id === versionId,
+                  ) ?? null)
+                : null;
+        const editGroup = findGroup(editVersionId);
+        const previewGroup = findGroup(previewVersionId);
+        const sourceGroup = findGroup(sourceVersionId);
+        const selectedModeCount = [
+            editVersionId,
+            previewVersionId,
+            sourceVersionId,
+        ].filter(Boolean).length;
+        if (
+            selectedModeCount > 1 ||
+            (editVersionId && !editGroup) ||
+            (previewVersionId && !previewGroup) ||
+            (sourceVersionId && !sourceGroup) ||
+            (editGroup && editGroup.version.status !== 'draft')
+        ) {
+            notFound();
+        }
+        return (
+            <SurveyDesignView
+                details={details}
+                editGroup={editGroup}
+                previewGroup={previewGroup}
+                sourceGroup={sourceGroup}
+            />
+        );
     }
 
     if (view === 'responses') {

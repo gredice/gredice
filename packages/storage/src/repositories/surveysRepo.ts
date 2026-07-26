@@ -76,6 +76,19 @@ export type SurveyDefinitionInput = {
     questions: SurveyQuestionInput[];
 };
 
+export type SurveyVersionDefinitionInput = Omit<
+    SurveyDefinitionInput,
+    'key' | 'category' | 'createdByUserId'
+>;
+
+export type DuplicateSurveyDefinitionInput = {
+    sourceSurveyId: string;
+    sourceVersionId: string;
+    key: string;
+    title: string;
+    createdByUserId?: string | null;
+};
+
 export type SurveyRecipient = {
     accountId: string;
     userId?: string | null;
@@ -308,6 +321,17 @@ function validateQuestionSettings(
                 'Opinion scale bounds must be integers from 0 to 10',
             );
         }
+        if (
+            settings.step !== undefined &&
+            (!Number.isInteger(settings.step) ||
+                settings.step < 1 ||
+                settings.step > settings.max - settings.min ||
+                (settings.max - settings.min) % settings.step !== 0)
+        ) {
+            throw new Error(
+                'Opinion scale step must evenly divide the configured bounds',
+            );
+        }
     }
 
     if (type === 'long_text') {
@@ -438,33 +462,34 @@ export async function getSurveyQuestions(versionId: string) {
     });
 }
 
-async function getLatestVersionNumber(surveyId: string) {
-    const row = await storage()
-        .select({
-            versionNumber: surveyVersions.versionNumber,
-        })
-        .from(surveyVersions)
-        .where(eq(surveyVersions.surveyId, surveyId))
-        .orderBy(desc(surveyVersions.versionNumber))
-        .limit(1);
-    return row[0]?.versionNumber ?? 0;
-}
-
 export async function createSurveyDraftVersion(
     surveyId: string,
-    input: Omit<SurveyDefinitionInput, 'key' | 'category' | 'createdByUserId'>,
+    input: SurveyVersionDefinitionInput,
 ) {
-    const survey = await getSurveyById(surveyId);
-    if (!survey) {
-        throw new Error('Survey not found');
-    }
-
     const normalizedQuestions = validateQuestions(input.questions);
     const versionId = randomUUID();
     const now = new Date();
-    const versionNumber = (await getLatestVersionNumber(surveyId)) + 1;
 
-    await storage().transaction(async (tx) => {
+    return await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [latestVersion] = await tx
+            .select({
+                versionNumber: surveyVersions.versionNumber,
+            })
+            .from(surveyVersions)
+            .where(eq(surveyVersions.surveyId, surveyId))
+            .orderBy(desc(surveyVersions.versionNumber))
+            .limit(1);
+        const versionNumber = (latestVersion?.versionNumber ?? 0) + 1;
+
         await tx.insert(surveyVersions).values({
             id: versionId,
             surveyId,
@@ -495,9 +520,235 @@ export async function createSurveyDraftVersion(
                 createdAt: now,
             })),
         );
-    });
 
-    return versionId;
+        return {
+            versionId,
+            versionNumber,
+        };
+    });
+}
+
+export async function updateSurveyDraftVersion({
+    definition,
+    surveyId,
+    versionId,
+}: {
+    definition: SurveyVersionDefinitionInput;
+    surveyId: string;
+    versionId: string;
+}) {
+    const normalizedQuestions = validateQuestions(definition.questions);
+    const now = new Date();
+
+    return await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [version] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!version) {
+            throw new Error('Survey version not found');
+        }
+        if (version.status !== 'draft') {
+            throw new Error('Only draft survey versions can be edited');
+        }
+
+        const send = await tx
+            .select({ id: surveySends.id })
+            .from(surveySends)
+            .where(eq(surveySends.versionId, versionId))
+            .limit(1);
+        const assignment = await tx
+            .select({ id: surveyAssignments.id })
+            .from(surveyAssignments)
+            .where(eq(surveyAssignments.versionId, versionId))
+            .limit(1);
+        const response = await tx
+            .select({ id: surveyResponses.id })
+            .from(surveyResponses)
+            .where(eq(surveyResponses.versionId, versionId))
+            .limit(1);
+        if (send.length > 0 || assignment.length > 0 || response.length > 0) {
+            throw new Error(
+                'Survey versions with operational history cannot be edited',
+            );
+        }
+
+        const normalizedTitle = normalizeText(definition.title, 'survey title');
+        const normalizedDescription = definition.description?.trim() || null;
+        await tx
+            .update(surveyVersions)
+            .set({
+                title: normalizedTitle,
+                description: normalizedDescription,
+                introTitle: definition.introTitle?.trim() || null,
+                introDescription: definition.introDescription?.trim() || null,
+                thankYouTitle: definition.thankYouTitle?.trim() || null,
+                thankYouDescription:
+                    definition.thankYouDescription?.trim() || null,
+                metadata: definition.metadata ?? version.metadata,
+                updatedAt: now,
+            })
+            .where(eq(surveyVersions.id, versionId));
+
+        await tx
+            .delete(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, versionId));
+        await tx.insert(surveyQuestions).values(
+            normalizedQuestions.map((question) => ({
+                id: randomUUID(),
+                versionId,
+                key: question.key,
+                type: question.type,
+                title: question.title,
+                description: question.description,
+                sortOrder: question.sortOrder,
+                required: question.required,
+                settings: question.settings,
+                scoreMetadata: question.scoreMetadata,
+                createdAt: now,
+            })),
+        );
+
+        if (version.versionNumber === 1) {
+            await tx
+                .update(surveys)
+                .set({
+                    title: normalizedTitle,
+                    description: normalizedDescription,
+                    updatedAt: now,
+                })
+                .where(
+                    and(
+                        eq(surveys.id, surveyId),
+                        eq(surveys.status, 'draft'),
+                        sql`${surveys.activeVersionId} is null`,
+                    ),
+                );
+        }
+
+        return {
+            surveyId,
+            versionId,
+            versionNumber: version.versionNumber,
+        };
+    });
+}
+
+export async function duplicateSurveyDefinition(
+    input: DuplicateSurveyDefinitionInput,
+) {
+    const surveyId = randomUUID();
+    const versionId = randomUUID();
+    const now = new Date();
+
+    return await storage().transaction(async (tx) => {
+        const [sourceVersion] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, input.sourceVersionId),
+                    eq(surveyVersions.surveyId, input.sourceSurveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!sourceVersion) {
+            throw new Error('Source survey version not found');
+        }
+
+        const sourceSurvey = await tx
+            .select()
+            .from(surveys)
+            .where(eq(surveys.id, input.sourceSurveyId))
+            .limit(1);
+        const sourceQuestions = await tx
+            .select()
+            .from(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, sourceVersion.id))
+            .orderBy(asc(surveyQuestions.sortOrder));
+        const source = sourceSurvey[0];
+        if (!source) {
+            throw new Error('Source survey not found');
+        }
+        if (sourceQuestions.length === 0) {
+            throw new Error('Source survey version has no questions');
+        }
+
+        const key = normalizeText(input.key, 'survey key');
+        const title = normalizeText(input.title, 'survey title');
+        await tx.insert(surveys).values({
+            id: surveyId,
+            key,
+            title,
+            description: sourceVersion.description,
+            category: source.category,
+            status: 'draft',
+            activeVersionId: null,
+            metadata: source.metadata,
+            createdByUserId: input.createdByUserId ?? null,
+            createdAt: now,
+            updatedAt: now,
+            archivedAt: null,
+        });
+        await tx.insert(surveyVersions).values({
+            id: versionId,
+            surveyId,
+            versionNumber: 1,
+            status: 'draft',
+            title,
+            description: sourceVersion.description,
+            introTitle: sourceVersion.introTitle,
+            introDescription: sourceVersion.introDescription,
+            thankYouTitle: sourceVersion.thankYouTitle,
+            thankYouDescription: sourceVersion.thankYouDescription,
+            metadata: sourceVersion.metadata,
+            createdAt: now,
+            updatedAt: now,
+            publishedAt: null,
+            archivedAt: null,
+        });
+        await tx.insert(surveyQuestions).values(
+            sourceQuestions.map((question) => ({
+                id: randomUUID(),
+                versionId,
+                key: question.key,
+                type: question.type,
+                title: question.title,
+                description: question.description,
+                sortOrder: question.sortOrder,
+                required: question.required,
+                settings: question.settings,
+                scoreMetadata: question.scoreMetadata,
+                createdAt: now,
+            })),
+        );
+
+        return {
+            surveyId,
+            versionId,
+            versionNumber: 1,
+            sourceSurveyId: source.id,
+            sourceVersionId: sourceVersion.id,
+            sourceVersionNumber: sourceVersion.versionNumber,
+        };
+    });
 }
 
 export async function publishSurveyVersion({
@@ -507,19 +758,45 @@ export async function publishSurveyVersion({
     surveyId: string;
     versionId: string;
 }) {
-    const [version, questions] = await Promise.all([
-        getSurveyVersion(versionId),
-        getSurveyQuestions(versionId),
-    ]);
-    if (!version || version.surveyId !== surveyId) {
-        throw new Error('Survey version not found');
-    }
-    if (questions.length === 0) {
-        throw new Error('Cannot publish a survey version without questions');
-    }
-
     const now = new Date();
     await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [version] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!version) {
+            throw new Error('Survey version not found');
+        }
+        if (version.status !== 'draft') {
+            throw new Error('Only draft survey versions can be published');
+        }
+        const questions = await tx
+            .select({ id: surveyQuestions.id })
+            .from(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, versionId))
+            .limit(1);
+        if (questions.length === 0) {
+            throw new Error(
+                'Cannot publish a survey version without questions',
+            );
+        }
+
         await tx
             .update(surveyVersions)
             .set({
@@ -1214,10 +1491,11 @@ function validateAnswerForQuestion(
         if (
             !Number.isInteger(numeric) ||
             numeric < settings.min ||
-            numeric > settings.max
+            numeric > settings.max ||
+            (numeric - settings.min) % (settings.step ?? 1) !== 0
         ) {
             return {
-                error: `Odaberi ocjenu od ${settings.min} do ${settings.max}.`,
+                error: `Odaberi jednu od ponuđenih ocjena od ${settings.min} do ${settings.max}.`,
             };
         }
         return { numericValue: numeric };
