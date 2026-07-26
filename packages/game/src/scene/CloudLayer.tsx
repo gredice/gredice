@@ -153,6 +153,7 @@ type CloudLayerProps = {
     cloudy: number;
     foggy: number;
     quality: GameQualityProfile;
+    shadowUpdateMs?: number;
     shadowStrength: number;
     stacks: Stack[] | undefined;
     sunPosition: Vector3;
@@ -285,6 +286,7 @@ export function CloudLayer({
     cloudy,
     foggy,
     quality,
+    shadowUpdateMs,
     shadowStrength,
     stacks,
     sunPosition,
@@ -314,10 +316,11 @@ export function CloudLayer({
     const attenuationConfig = useMemo(
         () =>
             resolveCloudShadowAttenuationConfig({
+                minimumUpdateMs: shadowUpdateMs,
                 prefersReducedMotion,
                 quality,
             }),
-        [prefersReducedMotion, quality],
+        [prefersReducedMotion, quality, shadowUpdateMs],
     );
     const shadowProjection = useMemo(
         () => resolveCloudShadowProjection(sunPosition),

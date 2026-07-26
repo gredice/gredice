@@ -253,6 +253,7 @@ export function environmentState(
 }
 
 export type EnvironmentProps = {
+    cloudShadowUpdateMs?: number;
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
@@ -568,6 +569,7 @@ export function StaticEnvironment({
 }
 
 export function Environment({
+    cloudShadowUpdateMs,
     noBackground,
     noSound,
     noWeather,
@@ -1079,6 +1081,7 @@ export function Environment({
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
                     quality={qualityProfile}
+                    shadowUpdateMs={cloudShadowUpdateMs}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }

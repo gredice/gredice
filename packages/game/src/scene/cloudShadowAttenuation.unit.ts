@@ -92,6 +92,33 @@ describe('cloud shadow attenuation quality', () => {
         );
     });
 
+    it('honors an adaptive minimum cadence without changing High fidelity', () => {
+        assert.deepEqual(
+            resolveCloudShadowAttenuationConfig({
+                minimumUpdateMs: 160,
+                prefersReducedMotion: false,
+                quality: gameQualityProfiles.high,
+            }),
+            {
+                enabled: true,
+                maskResolution: 192,
+                updateMs: 160,
+            },
+        );
+        assert.deepEqual(
+            resolveCloudShadowAttenuationConfig({
+                minimumUpdateMs: 96,
+                prefersReducedMotion: true,
+                quality: gameQualityProfiles.high,
+            }),
+            {
+                enabled: true,
+                maskResolution: 128,
+                updateMs: 320,
+            },
+        );
+    });
+
     it('disables attenuation with user shadows', () => {
         assert.deepEqual(
             resolveCloudShadowAttenuationConfig({

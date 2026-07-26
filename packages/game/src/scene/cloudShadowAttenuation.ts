@@ -176,9 +176,11 @@ function resolveBaseCloudShadowAttenuationConfig(quality: GameQualityProfile) {
 }
 
 export function resolveCloudShadowAttenuationConfig({
+    minimumUpdateMs,
     prefersReducedMotion,
     quality,
 }: {
+    minimumUpdateMs?: number;
     prefersReducedMotion: boolean;
     quality: GameQualityProfile;
 }): CloudShadowAttenuationConfig {
@@ -191,14 +193,20 @@ export function resolveCloudShadowAttenuationConfig({
     }
 
     const base = resolveBaseCloudShadowAttenuationConfig(quality);
+    const reducedMotionUpdateMs = prefersReducedMotion
+        ? Math.max(base.updateMs, 320)
+        : base.updateMs;
+    const updateMs =
+        typeof minimumUpdateMs === 'number' && Number.isFinite(minimumUpdateMs)
+            ? Math.max(reducedMotionUpdateMs, minimumUpdateMs)
+            : reducedMotionUpdateMs;
+
     return {
         enabled: true,
         maskResolution: prefersReducedMotion
             ? Math.min(base.maskResolution, 128)
             : base.maskResolution,
-        updateMs: prefersReducedMotion
-            ? Math.max(base.updateMs, 320)
-            : base.updateMs,
+        updateMs,
     };
 }
 

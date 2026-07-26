@@ -14,6 +14,8 @@ const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+const adaptiveHighQualityProfileControlEventName =
+    'gredice:adaptive-high-profile-control';
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 
@@ -199,6 +201,109 @@ const highTargetScenarios = [
     {
         name: 'game-high-target-snow-desktop',
         path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+];
+
+const adaptiveHighScenarios = [
+    {
+        name: 'game-high-target-adaptive-pair-fixed-camera-motion-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'adaptive-camera-motion',
+        comparisonRole: 'fixed',
+        motion: 'pan-zoom-rotate',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-camera-motion-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'adaptive-camera-motion',
+        comparisonRole: 'adaptive',
+        motion: 'pan-zoom-rotate',
+        profileControl: true,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-motion-recovery-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        motion: 'pan-zoom-rotate-then-idle',
+        motionMs: 650,
+        profileControl: true,
+        profileControlRecovery: true,
+        sampleMs: 7_500,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-runtime-gpu-source-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        externalGpuTimer: false,
+        runtimeGpuSource: true,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-placement-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        placementProfile: {
+            action: 'run',
+            staggerMs: 120,
+        },
+        profileControl: true,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-rain-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-snow-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-cloudy-desktop',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-adaptive-windy-plants-desktop',
+        path: '/debug/profile/game?mode=windy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -460,6 +565,7 @@ const weatherTransitionScenarios = [
 ];
 
 const scenarioSets = {
+    'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
     core: coreScenarios,
     dense: denseScenarios,
@@ -741,7 +847,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -763,6 +869,7 @@ function printHelp(options) {
 
 function allScenarios() {
     return [
+        ...adaptiveHighScenarios,
         ...coreScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
@@ -799,7 +906,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -817,6 +924,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
+        adaptiveHigh: url.searchParams.get('adaptiveHigh') ?? '0',
         blockGeometryMerging:
             url.searchParams.get('blockGeometryMerging') ?? 'default',
         controls: url.searchParams.get('controls') ?? '0',
@@ -848,7 +956,7 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
-function installBrowserMetrics() {
+function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     if (globalThis.__gameProfileMetrics) {
         return;
     }
@@ -957,6 +1065,16 @@ function installBrowserMetrics() {
         if (gpuTimer.disjoint) {
             return;
         }
+        if (
+            gl.getQuery(
+                gpuTimer.extension.TIME_ELAPSED_EXT,
+                gl.CURRENT_QUERY,
+            ) !== null
+        ) {
+            gpuTimer.reason =
+                'Another GPU elapsed-time query is currently active';
+            return;
+        }
         const query = gl.createQuery();
         if (!query) {
             gpuTimer.supported = false;
@@ -975,7 +1093,7 @@ function installBrowserMetrics() {
         gpuTimer.recording = false;
         endGpuQuery();
     };
-    globalThis.__gameProfileGpuTimer = {
+    const externalGpuTimerController = {
         async finish() {
             stopGpuTimer();
             const generation = gpuTimer.generation;
@@ -1058,6 +1176,9 @@ function installBrowserMetrics() {
         },
         stop: stopGpuTimer,
     };
+    if (externalGpuTimer) {
+        globalThis.__gameProfileGpuTimer = externalGpuTimerController;
+    }
     const trackRafTick = () => {
         rafTick += 1;
         pollGpuQueries();
@@ -1347,9 +1468,47 @@ async function wait(milliseconds) {
     await new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
 }
 
+async function startAdaptiveHighProfileControl(page) {
+    const dispatched = await page.evaluate(
+        (eventName) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail: { action: 'start' },
+                }),
+            ),
+        adaptiveHighQualityProfileControlEventName,
+    );
+    await page.waitForFunction(
+        () => {
+            const profile = globalThis.__grediceGameProfile;
+            const canvas = document.querySelector('canvas');
+            const effectiveDpr =
+                canvas instanceof HTMLCanvasElement &&
+                canvas.clientWidth > 0 &&
+                canvas.clientHeight > 0
+                    ? Math.min(
+                          canvas.width / canvas.clientWidth,
+                          canvas.height / canvas.clientHeight,
+                      )
+                    : null;
+            return (
+                profile?.adaptiveHighProfileControlActive === true &&
+                profile.adaptiveHighLevel === 0 &&
+                profile.adaptiveHighDprCap === 2 &&
+                effectiveDpr !== null &&
+                Math.abs(effectiveDpr - 2) <= 0.01
+            );
+        },
+        undefined,
+        { timeout: 10_000 },
+    );
+    return dispatched;
+}
+
 async function runScenarioMotion(page, scenario, sampleMs) {
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
+        scenario.motion !== 'pan-zoom-rotate-then-idle' &&
         scenario.interaction !== 'hover-scan'
     ) {
         await wait(sampleMs);
@@ -1395,8 +1554,12 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     }
 
     let direction = 1;
+    const motionMs =
+        scenario.motion === 'pan-zoom-rotate-then-idle'
+            ? Math.min(sampleMs, scenario.motionMs ?? 650)
+            : sampleMs;
 
-    while (Date.now() - startedAt < sampleMs - 120) {
+    while (Date.now() - startedAt < motionMs - 120) {
         const panKey = direction > 0 ? 'ArrowLeft' : 'ArrowRight';
         await page.keyboard.down(panKey);
         await wait(120);
@@ -1826,7 +1989,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             scenario.navigatorMetrics,
         );
     }
-    await page.addInitScript(installBrowserMetrics);
+    await page.addInitScript(installBrowserMetrics, {
+        externalGpuTimer: scenario.externalGpuTimer !== false,
+    });
 
     page.on('console', (message) => {
         if (message.type() === 'error' || message.type() === 'warning') {
@@ -1914,6 +2079,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     if (options.soakMs > 0) {
         await wait(options.soakMs);
     }
+    const adaptiveHighProfileControlStarted = scenario.profileControl
+        ? await startAdaptiveHighProfileControl(page)
+        : false;
     const profileMetadata = await page.evaluate(() => {
         const element = document.querySelector('[data-game-profile-mode]');
         if (!(element instanceof HTMLElement)) {
@@ -1922,6 +2090,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         const deviceMemory = Reflect.get(window.navigator, 'deviceMemory');
 
         return {
+            adaptiveHigh: element.dataset.gameProfileAdaptiveHigh ?? null,
             autoQualityMetrics: {
                 coarsePointer:
                     typeof window.matchMedia === 'function' &&
@@ -1996,6 +2165,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             pageErrors,
             path: scenario.path,
             requested: {
+                adaptiveHigh:
+                    profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
                 autoQualityDeviceClass:
                     scenario.autoQualityDeviceClass ?? 'unspecified',
                 autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
@@ -2034,11 +2205,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         beforeMetrics.metrics.map((metric) => [metric.name, metric.value]),
     );
 
+    const sampleMs = scenario.sampleMs ?? options.sampleMs;
     const weatherTransitionRequest = scenario.weatherTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
+                adaptiveHighProfileControlEventName,
+                adaptiveHighProfileControlRecovery,
+                adaptiveHighProfileControlStarted,
                 placementProfileEventName,
                 placementProfileRequest,
                 sampleMs,
@@ -2060,6 +2235,88 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const intervals = [];
             const start = performance.now();
             let last = start;
+            let adaptiveHighDprCapMin = null;
+            let adaptiveHighGpuSourceObserved = false;
+            let adaptiveHighInteractionObserved = false;
+            let adaptiveHighLevelMax = null;
+            let adaptiveHighProfileControlObserved = false;
+            let effectiveDprMin = null;
+            const readProfileNumber = (field) => {
+                const value = globalThis.__grediceGameProfile?.[field];
+                return typeof value === 'number' ? value : null;
+            };
+            const readEffectiveDpr = () => {
+                if (
+                    !canvas ||
+                    canvas.clientWidth <= 0 ||
+                    canvas.clientHeight <= 0
+                ) {
+                    return null;
+                }
+                return Math.min(
+                    canvas.width / canvas.clientWidth,
+                    canvas.height / canvas.clientHeight,
+                );
+            };
+            const recordEffectiveDpr = () => {
+                const effectiveDpr = readEffectiveDpr();
+                if (effectiveDpr === null) {
+                    return;
+                }
+                effectiveDprMin =
+                    effectiveDprMin === null
+                        ? effectiveDpr
+                        : Math.min(effectiveDprMin, effectiveDpr);
+            };
+            const recordAdaptiveHighState = () => {
+                const profile = globalThis.__grediceGameProfile;
+                const dprCap =
+                    typeof profile?.adaptiveHighDprCap === 'number'
+                        ? profile.adaptiveHighDprCap
+                        : null;
+                const level =
+                    typeof profile?.adaptiveHighLevel === 'number'
+                        ? profile.adaptiveHighLevel
+                        : null;
+                if (dprCap !== null) {
+                    adaptiveHighDprCapMin =
+                        adaptiveHighDprCapMin === null
+                            ? dprCap
+                            : Math.min(adaptiveHighDprCapMin, dprCap);
+                }
+                if (level !== null) {
+                    adaptiveHighLevelMax =
+                        adaptiveHighLevelMax === null
+                            ? level
+                            : Math.max(adaptiveHighLevelMax, level);
+                }
+                adaptiveHighInteractionObserved ||=
+                    profile?.adaptiveHighInteractionActive === true;
+                adaptiveHighGpuSourceObserved ||=
+                    profile?.adaptiveHighSampleSource === 'gpu';
+                adaptiveHighProfileControlObserved ||=
+                    profile?.adaptiveHighProfileControlActive === true;
+            };
+            recordEffectiveDpr();
+            recordAdaptiveHighState();
+            const adaptiveHighDeclineCountAtStart = readProfileNumber(
+                'adaptiveHighDeclineCount',
+            );
+            const adaptiveHighDprCapAtStart =
+                readProfileNumber('adaptiveHighDprCap');
+            const adaptiveHighLevelAtStart =
+                readProfileNumber('adaptiveHighLevel');
+            const adaptiveHighRecoveryCountAtStart = readProfileNumber(
+                'adaptiveHighRecoveryCount',
+            );
+            const adaptiveHighProfileControlSampleCountAtStart =
+                readProfileNumber('adaptiveHighProfileControlSampleCount');
+            const adaptiveHighTransitionCountAtStart = readProfileNumber(
+                'adaptiveHighTransitionCount',
+            );
+            const cloudAttenuationUpdateCountAtStart = readProfileNumber(
+                'cloudAttenuationUpdateCount',
+            );
             const interactionResolvedTargetCountAtStart =
                 typeof globalThis.__grediceGameProfile
                     ?.instancedInteractionResolvedTargetCount === 'number'
@@ -2116,10 +2373,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                   )
                 : false;
 
-            await new Promise((resolveSample) => {
+            let profileRecoveryFinished = !adaptiveHighProfileControlRecovery;
+            const sampleWindowPromise = new Promise((resolveSample) => {
                 const step = (now) => {
                     intervals.push(now - last);
                     last = now;
+                    recordAdaptiveHighState();
+                    recordEffectiveDpr();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -2129,7 +2389,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ) {
                         rainUnmountMs = now - start;
                     }
-                    if (now - start >= sampleMs) {
+                    if (now - start >= sampleMs && profileRecoveryFinished) {
                         resolveSample();
                         return;
                     }
@@ -2137,6 +2397,86 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 };
                 requestAnimationFrame(step);
             });
+            const profileRecoveryPromise = adaptiveHighProfileControlRecovery
+                ? (async () => {
+                      const waitForControl = (milliseconds) =>
+                          new Promise((resolveControlWait) =>
+                              setTimeout(resolveControlWait, milliseconds),
+                          );
+                      const interactionDeadline =
+                          performance.now() + Math.max(sampleMs * 2, 15_000);
+                      const interactionQuietMs = 750;
+                      let interactionIdleSinceMs = null;
+                      while (true) {
+                          const profile = globalThis.__grediceGameProfile;
+                          const declined =
+                              (profile?.adaptiveHighLevel ?? 0) >= 1 &&
+                              (profile?.adaptiveHighDeclineCount ?? 0) >= 1;
+                          if (
+                              declined &&
+                              profile?.adaptiveHighInteractionActive === false
+                          ) {
+                              interactionIdleSinceMs ??= performance.now();
+                              if (
+                                  performance.now() - interactionIdleSinceMs >=
+                                  interactionQuietMs
+                              ) {
+                                  break;
+                              }
+                          } else {
+                              interactionIdleSinceMs = null;
+                          }
+                          if (performance.now() >= interactionDeadline) {
+                              return;
+                          }
+                          await waitForControl(25);
+                      }
+
+                      const controlledSampleCount = 22;
+                      const controlledSampleIntervalMs = 250;
+                      const controlledStartedAt = performance.now();
+                      for (
+                          let sampleIndex = 0;
+                          sampleIndex < controlledSampleCount;
+                          sampleIndex += 1
+                      ) {
+                          globalThis.dispatchEvent(
+                              new CustomEvent(
+                                  adaptiveHighProfileControlEventName,
+                                  {
+                                      detail: {
+                                          action: 'sample',
+                                          normalizedLoad: 0.7,
+                                          source: 'frame',
+                                      },
+                                  },
+                              ),
+                          );
+                          const nextSampleAt =
+                              controlledStartedAt +
+                              (sampleIndex + 1) * controlledSampleIntervalMs;
+                          const remainingMs = nextSampleAt - performance.now();
+                          if (remainingMs > 0) {
+                              await waitForControl(remainingMs);
+                          }
+                      }
+                      if (typeof adaptiveHighDprCapAtStart === 'number') {
+                          const canvasDeadline = performance.now() + 5_000;
+                          while (
+                              Math.abs(
+                                  (readEffectiveDpr() ?? 0) -
+                                      adaptiveHighDprCapAtStart,
+                              ) > 0.01 &&
+                              performance.now() < canvasDeadline
+                          ) {
+                              await waitForControl(25);
+                          }
+                      }
+                  })().finally(() => {
+                      profileRecoveryFinished = true;
+                  })
+                : Promise.resolve();
+            await Promise.all([sampleWindowPromise, profileRecoveryPromise]);
 
             const sampleEndedAt = performance.now();
             const frameIntervals = intervals.slice(1);
@@ -2196,7 +2536,67 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ?.placementShadowFlushCount === 'number'
                     ? globalThis.__grediceGameProfile.placementShadowFlushCount
                     : null;
+            recordAdaptiveHighState();
+            const adaptiveHighDeclineCountAtEnd = readProfileNumber(
+                'adaptiveHighDeclineCount',
+            );
+            const adaptiveHighDprCapAtEnd =
+                readProfileNumber('adaptiveHighDprCap');
+            const adaptiveHighLevelAtEnd =
+                readProfileNumber('adaptiveHighLevel');
+            const adaptiveHighRecoveryCountAtEnd = readProfileNumber(
+                'adaptiveHighRecoveryCount',
+            );
+            const adaptiveHighProfileControlSampleCountAtEnd =
+                readProfileNumber('adaptiveHighProfileControlSampleCount');
+            const adaptiveHighTransitionCountAtEnd = readProfileNumber(
+                'adaptiveHighTransitionCount',
+            );
+            const cloudAttenuationUpdateCountAtEnd = readProfileNumber(
+                'cloudAttenuationUpdateCount',
+            );
             const nonGpuSample = {
+                adaptiveHighDeclineCountDelta:
+                    adaptiveHighDeclineCountAtStart === null ||
+                    adaptiveHighDeclineCountAtEnd === null
+                        ? null
+                        : adaptiveHighDeclineCountAtEnd -
+                          adaptiveHighDeclineCountAtStart,
+                adaptiveHighDeclineObserved:
+                    (adaptiveHighLevelAtStart !== null &&
+                        adaptiveHighLevelMax !== null &&
+                        adaptiveHighLevelMax > adaptiveHighLevelAtStart) ||
+                    (adaptiveHighDprCapAtStart !== null &&
+                        adaptiveHighDprCapMin !== null &&
+                        adaptiveHighDprCapMin < adaptiveHighDprCapAtStart),
+                adaptiveHighDprCapAtEnd,
+                adaptiveHighDprCapAtStart,
+                adaptiveHighDprCapMin,
+                adaptiveHighGpuSourceObserved,
+                adaptiveHighInteractionObserved,
+                adaptiveHighLevelAtEnd,
+                adaptiveHighLevelAtStart,
+                adaptiveHighLevelMax,
+                adaptiveHighRecoveryCountDelta:
+                    adaptiveHighRecoveryCountAtStart === null ||
+                    adaptiveHighRecoveryCountAtEnd === null
+                        ? null
+                        : adaptiveHighRecoveryCountAtEnd -
+                          adaptiveHighRecoveryCountAtStart,
+                adaptiveHighProfileControlObserved,
+                adaptiveHighProfileControlSampleCountDelta:
+                    adaptiveHighProfileControlSampleCountAtStart === null ||
+                    adaptiveHighProfileControlSampleCountAtEnd === null
+                        ? null
+                        : adaptiveHighProfileControlSampleCountAtEnd -
+                          adaptiveHighProfileControlSampleCountAtStart,
+                adaptiveHighProfileControlStarted,
+                adaptiveHighTransitionCountDelta:
+                    adaptiveHighTransitionCountAtStart === null ||
+                    adaptiveHighTransitionCountAtEnd === null
+                        ? null
+                        : adaptiveHighTransitionCountAtEnd -
+                          adaptiveHighTransitionCountAtStart,
                 actorGroundingShadowUpdateCountDelta:
                     actorGroundingShadowUpdateCountAtStart === null ||
                     actorGroundingShadowUpdateCountAtEnd === null
@@ -2224,6 +2624,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 drawCallsPerRenderedFrame:
                     renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
                 drawCallsPerSecond: drawCalls / safeElapsedSeconds,
+                cloudAttenuationUpdateCountDelta:
+                    cloudAttenuationUpdateCountAtStart === null ||
+                    cloudAttenuationUpdateCountAtEnd === null
+                        ? null
+                        : cloudAttenuationUpdateCountAtEnd -
+                          cloudAttenuationUpdateCountAtStart,
+                effectiveDprAtEnd: readEffectiveDpr(),
+                effectiveDprMin,
                 elapsedMs: elapsedSeconds * 1000,
                 fps: rafFrames / safeElapsedSeconds,
                 frames: rafFrames,
@@ -2297,9 +2705,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             };
         },
         {
+            adaptiveHighProfileControlEventName:
+                adaptiveHighQualityProfileControlEventName,
+            adaptiveHighProfileControlRecovery:
+                scenario.profileControlRecovery === true,
+            adaptiveHighProfileControlStarted,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
-            sampleMs: options.sampleMs,
+            sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
         },
@@ -2313,7 +2726,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     );
     const motionPromise =
         scenario.motion || scenario.interaction
-            ? runScenarioMotion(page, scenario, options.sampleMs)
+            ? runScenarioMotion(page, scenario, sampleMs)
             : Promise.resolve();
     const [sampleCompletion] = await Promise.all([
         sampleCompletionPromise,
@@ -2332,8 +2745,67 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         if (!metadata || typeof metadata !== 'object') {
             return null;
         }
+        const booleanOrNull = (value) =>
+            typeof value === 'boolean' ? value : null;
+        const numberOrNull = (value) =>
+            typeof value === 'number' ? value : null;
+        const stringOrNull = (value) =>
+            typeof value === 'string' ? value : null;
 
         return {
+            adaptiveHighAmbientFps: numberOrNull(
+                metadata.adaptiveHighAmbientFps,
+            ),
+            adaptiveHighCloudUpdateMs: numberOrNull(
+                metadata.adaptiveHighCloudUpdateMs,
+            ),
+            adaptiveHighDeclineCount: numberOrNull(
+                metadata.adaptiveHighDeclineCount,
+            ),
+            adaptiveHighDprCap: numberOrNull(metadata.adaptiveHighDprCap),
+            adaptiveHighEnabled: booleanOrNull(metadata.adaptiveHighEnabled),
+            adaptiveHighEwmaMs: numberOrNull(metadata.adaptiveHighEwmaMs),
+            adaptiveHighFactor: numberOrNull(metadata.adaptiveHighFactor),
+            adaptiveHighGpuTimerDisjointCount: numberOrNull(
+                metadata.adaptiveHighGpuTimerDisjointCount,
+            ),
+            adaptiveHighGpuTimerPendingCount: numberOrNull(
+                metadata.adaptiveHighGpuTimerPendingCount,
+            ),
+            adaptiveHighGpuTimerSupported: booleanOrNull(
+                metadata.adaptiveHighGpuTimerSupported,
+            ),
+            adaptiveHighInteractionActive: booleanOrNull(
+                metadata.adaptiveHighInteractionActive,
+            ),
+            adaptiveHighLevel: numberOrNull(metadata.adaptiveHighLevel),
+            adaptiveHighLevelDwellMs: numberOrNull(
+                metadata.adaptiveHighLevelDwellMs,
+            ),
+            adaptiveHighLoad: numberOrNull(metadata.adaptiveHighLoad),
+            adaptiveHighOscillationCount: numberOrNull(
+                metadata.adaptiveHighOscillationCount,
+            ),
+            adaptiveHighProfileControlActive: booleanOrNull(
+                metadata.adaptiveHighProfileControlActive,
+            ),
+            adaptiveHighProfileControlEnabled: booleanOrNull(
+                metadata.adaptiveHighProfileControlEnabled,
+            ),
+            adaptiveHighProfileControlSampleCount: numberOrNull(
+                metadata.adaptiveHighProfileControlSampleCount,
+            ),
+            adaptiveHighReason: stringOrNull(metadata.adaptiveHighReason),
+            adaptiveHighRecoveryCount: numberOrNull(
+                metadata.adaptiveHighRecoveryCount,
+            ),
+            adaptiveHighSampleMs: numberOrNull(metadata.adaptiveHighSampleMs),
+            adaptiveHighSampleSource: stringOrNull(
+                metadata.adaptiveHighSampleSource,
+            ),
+            adaptiveHighTransitionCount: numberOrNull(
+                metadata.adaptiveHighTransitionCount,
+            ),
             actorGroundingShadowBatchCount:
                 typeof metadata.actorGroundingShadowBatchCount === 'number'
                     ? metadata.actorGroundingShadowBatchCount
@@ -2658,12 +3130,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     const roundedSample = roundSample(sample);
     const requested = {
+        adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
         blockGeometryMerging:
             profileMetadata?.blockGeometryMerging ??
             request.blockGeometryMerging,
+        comparisonPair: scenario.comparisonPair ?? null,
+        comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -2676,7 +3151,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
+        profileControl: scenario.profileControl === true,
+        profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
+        runtimeGpuSource: scenario.runtimeGpuSource === true,
+        sampleMs,
         viewport: scenario.viewport,
         weatherTransition: weatherTransitionRequest ?? 'none',
     };
@@ -2759,11 +3238,16 @@ function normalizeRenderWork(sample) {
 function roundSample(sample) {
     return {
         ...sample,
+        adaptiveHighDprCapAtEnd: round(sample.adaptiveHighDprCapAtEnd, 3),
+        adaptiveHighDprCapAtStart: round(sample.adaptiveHighDprCapAtStart, 3),
+        adaptiveHighDprCapMin: round(sample.adaptiveHighDprCapMin, 3),
         averageFrameMs: round(sample.averageFrameMs),
         drawCallsPerFrame: round(sample.drawCallsPerFrame, 1),
         drawCallsPerRafFrame: round(sample.drawCallsPerRafFrame, 1),
         drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
         drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
+        effectiveDprAtEnd: round(sample.effectiveDprAtEnd, 3),
+        effectiveDprMin: round(sample.effectiveDprMin, 3),
         elapsedMs: round(sample.elapsedMs),
         fps: round(sample.fps, 1),
         gpu: sample.gpu
@@ -2861,21 +3345,115 @@ function evaluateHighTargetAcceptance({
         name,
         pass: typeof actual === 'number' && actual >= limit,
     });
+    const range = (name, actual, minimumValue, maximumValue) => ({
+        actual,
+        comparison: 'range',
+        limit: {
+            maximum: maximumValue,
+            minimum: minimumValue,
+        },
+        name,
+        pass:
+            typeof actual === 'number' &&
+            actual >= minimumValue &&
+            actual <= maximumValue,
+    });
+    const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
+        const expected =
+            typeof clientSize === 'number' && typeof dpr === 'number'
+                ? Math.round(clientSize * dpr)
+                : null;
+        return {
+            actual,
+            comparison: 'within-pixels',
+            limit: expected,
+            name,
+            pass:
+                typeof actual === 'number' &&
+                expected !== null &&
+                Math.abs(actual - expected) <= 2,
+        };
+    };
+    const adaptiveHighRequested = requested.adaptiveHigh === '1';
+    const adaptiveHighInteractionExpected =
+        adaptiveHighRequested &&
+        (requested.motion === 'pan-zoom-rotate' ||
+            requested.motion === 'pan-zoom-rotate-then-idle' ||
+            requested.placementProfile === 'placement-drop');
+    const adaptiveHighRecoveryExpected =
+        adaptiveHighRequested &&
+        requested.motion === 'pan-zoom-rotate-then-idle';
+    const adaptiveHighProfileControlExpected =
+        adaptiveHighRequested && requested.profileControl === true;
+    const adaptiveHighDprCap = adaptiveHighRequested
+        ? (sample.adaptiveHighDprCapAtEnd ?? runtime?.adaptiveHighDprCap)
+        : null;
+    const effectiveDpr = adaptiveHighRequested
+        ? (sample.effectiveDprAtEnd ?? adaptiveHighDprCap)
+        : sample.reportedDpr;
     const minimumRenderedFrames = Math.max(
         1,
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
     const expectedActorGroundingShadowCount =
-        requested.mode === 'rain' || requested.mode === 'snow' ? 4 : 5;
+        requested.mode === 'details' ? 5 : 4;
     const checks = [
         exact('highTargetQualityRequest', requested.quality, 'high'),
         exact('highTargetQualityTier', runtime?.qualityTier, 'high'),
+        exact('highTargetShadowsEnabled', runtime?.shadowsEnabled, true),
+        exact('highTargetShadowMapSize', runtime?.shadowMapSize, 4_096),
+        exact(
+            'highTargetGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            1,
+        ),
+        exact(
+            'highTargetGroundDecorationCount',
+            runtime?.groundDecorationCount,
+            requested.mode === 'snow' ? 0 : 596,
+        ),
+        requested.mode === 'snow'
+            ? exact(
+                  'highTargetGroundDecorationVisibleCount',
+                  runtime?.groundDecorationVisibleCount,
+                  null,
+              )
+            : minimum(
+                  'highTargetGroundDecorationVisibleCount',
+                  runtime?.groundDecorationVisibleCount,
+                  500,
+              ),
         exact('highTargetGeometryMerging', requested.blockGeometryMerging, '1'),
-        exact('highTargetReportedDpr', sample.reportedDpr, 2),
         exact('highTargetCanvasClientWidth', sample.canvas?.clientWidth, 1280),
         exact('highTargetCanvasClientHeight', sample.canvas?.clientHeight, 720),
-        exact('highTargetCanvasWidth', sample.canvas?.width, 2560),
-        exact('highTargetCanvasHeight', sample.canvas?.height, 1440),
+        ...(adaptiveHighRequested
+            ? [
+                  range('highTargetEffectiveDpr', effectiveDpr, 1.5, 2),
+                  range(
+                      'highTargetMinimumEffectiveDpr',
+                      sample.effectiveDprMin,
+                      1.5,
+                      2,
+                  ),
+                  range('highTargetAdaptiveDprCap', adaptiveHighDprCap, 1.5, 2),
+                  canvasMatchesDpr(
+                      'highTargetAdaptiveCanvasWidth',
+                      sample.canvas?.width,
+                      sample.canvas?.clientWidth,
+                      adaptiveHighDprCap,
+                  ),
+                  canvasMatchesDpr(
+                      'highTargetAdaptiveCanvasHeight',
+                      sample.canvas?.height,
+                      sample.canvas?.clientHeight,
+                      adaptiveHighDprCap,
+                  ),
+              ]
+            : [
+                  exact('highTargetReportedDpr', sample.reportedDpr, 2),
+                  exact('highTargetCanvasWidth', sample.canvas?.width, 2560),
+                  exact('highTargetCanvasHeight', sample.canvas?.height, 1440),
+              ]),
         exact(
             'highTargetGeneratedPlantFields',
             runtime?.generatedPlantFieldCount,
@@ -2952,6 +3530,156 @@ function evaluateHighTargetAcceptance({
         exact('highTargetApiErrors', apiErrors.length, 0),
         exact('highTargetPageErrors', pageErrors.length, 0),
     ];
+    if (adaptiveHighRequested) {
+        checks.push(
+            exact(
+                'highTargetAdaptiveHighEnabled',
+                runtime?.adaptiveHighEnabled,
+                true,
+            ),
+            exact(
+                'highTargetAdaptiveAtmosphereEnabled',
+                runtime?.weatherDisabled,
+                false,
+            ),
+        );
+        if (adaptiveHighProfileControlExpected) {
+            checks.push(
+                exact(
+                    'highTargetAdaptiveProfileControlEnabled',
+                    runtime?.adaptiveHighProfileControlEnabled,
+                    true,
+                ),
+                exact(
+                    'highTargetAdaptiveProfileControlActive',
+                    runtime?.adaptiveHighProfileControlActive,
+                    true,
+                ),
+                exact(
+                    'highTargetAdaptiveProfileControlStarted',
+                    sample.adaptiveHighProfileControlStarted,
+                    true,
+                ),
+                exact(
+                    'highTargetAdaptiveProfileControlObserved',
+                    sample.adaptiveHighProfileControlObserved,
+                    true,
+                ),
+            );
+        }
+        checks.push(
+            adaptiveHighRecoveryExpected
+                ? range(
+                      'highTargetAdaptiveRecoveryDirectionChanges',
+                      runtime?.adaptiveHighOscillationCount,
+                      1,
+                      1,
+                  )
+                : exact(
+                      'highTargetAdaptiveOscillations',
+                      runtime?.adaptiveHighOscillationCount,
+                      0,
+                  ),
+        );
+        if (adaptiveHighInteractionExpected) {
+            checks.push(
+                exact(
+                    'highTargetAdaptiveLocalDeclineObserved',
+                    sample.adaptiveHighDeclineObserved,
+                    true,
+                ),
+                minimum(
+                    'highTargetAdaptiveTransitionsDuringSample',
+                    sample.adaptiveHighTransitionCountDelta,
+                    1,
+                ),
+                minimum(
+                    'highTargetAdaptiveMaximumLevelDuringSample',
+                    sample.adaptiveHighLevelMax,
+                    1,
+                ),
+                range(
+                    'highTargetAdaptiveMinimumDprCapDuringSample',
+                    sample.adaptiveHighDprCapMin,
+                    1.5,
+                    1.75,
+                ),
+                exact(
+                    'highTargetAdaptiveInteractionObserved',
+                    sample.adaptiveHighInteractionObserved,
+                    true,
+                ),
+            );
+            if (typeof sample.adaptiveHighDeclineCountDelta === 'number') {
+                checks.push(
+                    minimum(
+                        'highTargetAdaptiveDeclinesDuringSample',
+                        sample.adaptiveHighDeclineCountDelta,
+                        1,
+                    ),
+                );
+            }
+        }
+        if (adaptiveHighRecoveryExpected) {
+            checks.push(
+                minimum(
+                    'highTargetAdaptiveRecoveryTransitionsDuringSample',
+                    sample.adaptiveHighTransitionCountDelta,
+                    2,
+                ),
+                exact(
+                    'highTargetAdaptiveRecoveredLevel',
+                    sample.adaptiveHighLevelAtEnd,
+                    0,
+                ),
+                exact(
+                    'highTargetAdaptiveRecoveredDprCap',
+                    adaptiveHighDprCap,
+                    2,
+                ),
+                exact(
+                    'highTargetAdaptiveRecoveredEffectiveDpr',
+                    sample.effectiveDprAtEnd,
+                    2,
+                ),
+            );
+            if (adaptiveHighProfileControlExpected) {
+                checks.push(
+                    minimum(
+                        'highTargetAdaptiveControlledHeadroomSamples',
+                        sample.adaptiveHighProfileControlSampleCountDelta,
+                        21,
+                    ),
+                );
+            }
+            if (typeof sample.adaptiveHighRecoveryCountDelta === 'number') {
+                checks.push(
+                    minimum(
+                        'highTargetAdaptiveRecoveriesDuringSample',
+                        sample.adaptiveHighRecoveryCountDelta,
+                        1,
+                    ),
+                );
+            }
+        }
+        if (
+            requested.runtimeGpuSource === true &&
+            runtime?.adaptiveHighGpuTimerSupported === true
+        ) {
+            checks.push(
+                exact(
+                    'highTargetAdaptiveRuntimeGpuSource',
+                    runtime?.adaptiveHighSampleSource,
+                    'gpu',
+                ),
+                exact(
+                    'highTargetAdaptiveRuntimeGpuSourceObserved',
+                    sample.adaptiveHighGpuSourceObserved,
+                    true,
+                ),
+            );
+        }
+    }
     if (
         requested.scenarioName?.startsWith(
             'game-high-target-clear-idle-desktop',
@@ -3035,12 +3763,51 @@ function evaluateHighTargetAcceptance({
     }
     if (requested.mode === 'rain') {
         checks.push(
-            minimum('highTargetRainParticles', runtime?.rainParticleCount, 1),
+            exact(
+                'highTargetFullQualityRainParticles',
+                runtime?.rainParticleCount,
+                2_000,
+            ),
         );
     }
     if (requested.mode === 'snow') {
         checks.push(
-            minimum('highTargetSnowParticles', runtime?.snowParticleCount, 1),
+            exact(
+                'highTargetFullQualitySnowParticles',
+                runtime?.snowParticleCount,
+                3_500,
+            ),
+            exact(
+                'highTargetFullQualitySnowCapacity',
+                runtime?.snowParticleCapacity,
+                5_000,
+            ),
+        );
+    }
+    if (
+        adaptiveHighRequested &&
+        (requested.mode === 'cloudy' || requested.mode === 'windy')
+    ) {
+        checks.push(
+            exact(
+                'highTargetAdaptiveFullCloudVisuals',
+                runtime?.cloudVisualCount,
+                requested.mode === 'windy' ? 7 : 8,
+            ),
+            minimum(
+                'highTargetAdaptiveCloudMovementUpdates',
+                sample.cloudAttenuationUpdateCountDelta,
+                1,
+            ),
+        );
+    }
+    if (adaptiveHighRequested && requested.mode === 'windy') {
+        checks.push(
+            minimum(
+                'highTargetAdaptivePlantMotionCadence',
+                runtime?.adaptiveHighAmbientFps,
+                20,
+            ),
         );
     }
 
@@ -3140,6 +3907,8 @@ function buildHighTargetMedians(scenarios) {
                     acceptancePass,
                     acceptedRunCount: runs.length - failedAcceptanceRuns.length,
                     budgetName,
+                    comparisonPair: runs[0]?.requested?.comparisonPair ?? null,
+                    comparisonRole: runs[0]?.requested?.comparisonRole ?? null,
                     drawCallsPerRenderedFrame,
                     failedAcceptanceRuns,
                     gpuElapsedP95Ms,
@@ -3164,18 +3933,170 @@ function buildHighTargetMedians(scenarios) {
     );
 }
 
+function buildAdaptiveHighComparisons(highTargetMedians) {
+    const pairedSummaries = Object.entries(highTargetMedians).filter(
+        ([, summary]) =>
+            typeof summary.comparisonPair === 'string' &&
+            (summary.comparisonRole === 'fixed' ||
+                summary.comparisonRole === 'adaptive'),
+    );
+    const grouped = Map.groupBy(
+        pairedSummaries,
+        ([, summary]) => summary.comparisonPair,
+    );
+    const metricComparison = (fixed, adaptive, metricName) => {
+        const fixedValue = fixed[metricName]?.median ?? null;
+        const adaptiveValue = adaptive[metricName]?.median ?? null;
+        return {
+            adaptive: adaptiveValue,
+            delta:
+                Number.isFinite(fixedValue) && Number.isFinite(adaptiveValue)
+                    ? round(adaptiveValue - fixedValue)
+                    : null,
+            fixed: fixedValue,
+            percentDelta:
+                Number.isFinite(fixedValue) &&
+                fixedValue !== 0 &&
+                Number.isFinite(adaptiveValue)
+                    ? round(
+                          ((adaptiveValue - fixedValue) / fixedValue) * 100,
+                          1,
+                      )
+                    : null,
+        };
+    };
+    const passRate = (summary, passedField) =>
+        summary.runCount > 0
+            ? round((summary[passedField] / summary.runCount) * 100, 1)
+            : null;
+
+    return Object.fromEntries(
+        Array.from(grouped, ([pairName, entries]) => {
+            const fixedEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'fixed',
+            );
+            const adaptiveEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'adaptive',
+            );
+            if (!fixedEntry || !adaptiveEntry) {
+                return null;
+            }
+            const [fixedName, fixed] = fixedEntry;
+            const [adaptiveName, adaptive] = adaptiveEntry;
+            const gpuElapsedP95Ms = metricComparison(
+                fixed,
+                adaptive,
+                'gpuElapsedP95Ms',
+            );
+            const p95FrameMs = metricComparison(fixed, adaptive, 'p95FrameMs');
+            const renderedFps = metricComparison(
+                fixed,
+                adaptive,
+                'renderedFps',
+            );
+            const maximumRelativeCheck = (name, comparison, multiplier) => ({
+                actual: comparison.adaptive,
+                limit: Number.isFinite(comparison.fixed)
+                    ? round(comparison.fixed * multiplier)
+                    : null,
+                name,
+                pass:
+                    Number.isFinite(comparison.adaptive) &&
+                    Number.isFinite(comparison.fixed) &&
+                    comparison.adaptive <= comparison.fixed * multiplier,
+                skipped: false,
+            });
+            const minimumRelativeCheck = (name, comparison, multiplier) => ({
+                actual: comparison.adaptive,
+                limit: Number.isFinite(comparison.fixed)
+                    ? round(comparison.fixed * multiplier)
+                    : null,
+                name,
+                pass:
+                    Number.isFinite(comparison.adaptive) &&
+                    Number.isFinite(comparison.fixed) &&
+                    comparison.adaptive >= comparison.fixed * multiplier,
+                skipped: false,
+            });
+            const gpuTimerAvailable =
+                Number.isFinite(gpuElapsedP95Ms.fixed) &&
+                Number.isFinite(gpuElapsedP95Ms.adaptive);
+            const relativePerformanceChecks = [
+                maximumRelativeCheck('adaptiveP95Regression', p95FrameMs, 1.15),
+                minimumRelativeCheck(
+                    'adaptiveRenderedFpsRegression',
+                    renderedFps,
+                    0.9,
+                ),
+                gpuTimerAvailable
+                    ? maximumRelativeCheck(
+                          'adaptiveGpuP95Regression',
+                          gpuElapsedP95Ms,
+                          1.1,
+                      )
+                    : {
+                          actual: gpuElapsedP95Ms.adaptive,
+                          limit: null,
+                          name: 'adaptiveGpuP95Regression',
+                          pass: true,
+                          skipped: true,
+                      },
+            ];
+            const relativePerformancePass = relativePerformanceChecks.every(
+                (check) => check.pass,
+            );
+
+            return [
+                pairName,
+                {
+                    acceptancePassRate: {
+                        adaptive: passRate(adaptive, 'acceptedRunCount'),
+                        fixed: passRate(fixed, 'acceptedRunCount'),
+                    },
+                    adaptiveName,
+                    aggregatePass: {
+                        adaptive: adaptive.pass && relativePerformancePass,
+                        fixed: fixed.pass,
+                    },
+                    fixedName,
+                    gpuElapsedP95Ms,
+                    p95FrameMs,
+                    performancePassRate: {
+                        adaptive: passRate(
+                            adaptive,
+                            'performancePassedRunCount',
+                        ),
+                        fixed: passRate(fixed, 'performancePassedRunCount'),
+                    },
+                    relativePerformanceChecks,
+                    relativePerformancePass,
+                    renderedFps,
+                },
+            ];
+        }).filter(Boolean),
+    );
+}
+
 function buildProfileSummary(scenarios, highTargetMedians) {
     const nonHighTargetScenarios = scenarios.filter(
         (scenario) => scenario.requested?.gardenProfile !== 'high-target',
     );
     const highTargetResults = Object.entries(highTargetMedians);
+    const comparativeFailureNames = Object.values(
+        buildAdaptiveHighComparisons(highTargetMedians),
+    )
+        .filter((comparison) => !comparison.relativePerformancePass)
+        .map((comparison) => comparison.adaptiveName);
     const failedScenarioNames = [
-        ...nonHighTargetScenarios
-            .filter((scenario) => !scenario.budget.pass)
-            .map((scenario) => scenario.name),
-        ...highTargetResults
-            .filter(([, result]) => !result.pass)
-            .map(([name]) => name),
+        ...new Set([
+            ...nonHighTargetScenarios
+                .filter((scenario) => !scenario.budget.pass)
+                .map((scenario) => scenario.name),
+            ...highTargetResults
+                .filter(([, result]) => !result.pass)
+                .map(([name]) => name),
+            ...comparativeFailureNames,
+        ]),
     ];
     const totalScenarios =
         nonHighTargetScenarios.length + highTargetResults.length;
@@ -3925,20 +4846,77 @@ function buildMarkdown(report) {
         }
     }
 
+    const adaptiveHighComparisons = Object.entries(
+        report.adaptiveHighComparisons ??
+            buildAdaptiveHighComparisons(report.highTargetMedians ?? {}),
+    );
+    if (adaptiveHighComparisons.length > 0) {
+        lines.push(
+            '',
+            '## Adaptive High paired comparison',
+            '',
+            '| Pair | Fixed / Adaptive | Acceptance pass rate | Performance pass rate | p95 fixed → adaptive | GPU p95 fixed → adaptive | Rendered FPS fixed → adaptive | Relative gate | Aggregate |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        );
+        const formatComparison = (comparison, suffix = '') =>
+            `${comparison.fixed ?? 'n/a'} → ${comparison.adaptive ?? 'n/a'}${suffix} (${comparison.percentDelta ?? 'n/a'}%)`;
+        for (const [pairName, comparison] of adaptiveHighComparisons) {
+            lines.push(
+                `| ${pairName} | ${comparison.fixedName} / ${comparison.adaptiveName} | ${comparison.acceptancePassRate.fixed ?? 'n/a'}% → ${comparison.acceptancePassRate.adaptive ?? 'n/a'}% | ${comparison.performancePassRate.fixed ?? 'n/a'}% → ${comparison.performancePassRate.adaptive ?? 'n/a'}% | ${formatComparison(comparison.p95FrameMs, ' ms')} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${formatComparison(comparison.renderedFps)} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.fixed ? 'pass' : 'fail'} → ${comparison.aggregatePass.adaptive ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const adaptiveHighProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested.adaptiveHigh === '1',
+    );
+    if (adaptiveHighProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Adaptive High governor evidence',
+            '',
+            '| Scenario | Window | Control | Level start/max/end | DPR cap start/min/end | Transitions/declines/recoveries | Interaction | Runtime source | Ambient/cloud cadence | Rain/Snow/Clouds |',
+            '| --- | ---: | --- | ---: | ---: | ---: | --- | --- | ---: | ---: |',
+        );
+        for (const scenario of adaptiveHighProfiles) {
+            const profileControl = scenario.requested.profileControl
+                ? `controlled (${scenario.sample.adaptiveHighProfileControlSampleCountDelta ?? 0} synthetic samples)`
+                : 'native';
+            const runtimeSourceDetail = scenario.requested.profileControl
+                ? 'profile control'
+                : scenario.runtime?.adaptiveHighGpuTimerSupported
+                  ? 'GPU timer'
+                  : 'frame fallback';
+            lines.push(
+                `| ${scenario.name} | ${scenario.requested.sampleMs ?? report.options.sampleMs} ms | ${profileControl} | ${scenario.sample.adaptiveHighLevelAtStart ?? 'n/a'}/${scenario.sample.adaptiveHighLevelMax ?? 'n/a'}/${scenario.sample.adaptiveHighLevelAtEnd ?? 'n/a'} | ${scenario.sample.adaptiveHighDprCapAtStart ?? 'n/a'}/${scenario.sample.adaptiveHighDprCapMin ?? 'n/a'}/${scenario.sample.adaptiveHighDprCapAtEnd ?? 'n/a'} | ${scenario.sample.adaptiveHighTransitionCountDelta ?? 'n/a'}/${scenario.sample.adaptiveHighDeclineCountDelta ?? 'derived'}/${scenario.sample.adaptiveHighRecoveryCountDelta ?? 'derived'} | ${scenario.sample.adaptiveHighInteractionObserved ? 'observed' : 'idle'} | ${scenario.runtime?.adaptiveHighSampleSource ?? 'n/a'} (${runtimeSourceDetail}) | ${scenario.runtime?.adaptiveHighAmbientFps ?? 'n/a'} fps/${scenario.runtime?.adaptiveHighCloudUpdateMs ?? 'n/a'} ms | ${scenario.runtime?.rainParticleCount ?? 0}/${scenario.runtime?.snowParticleCount ?? 0}/${scenario.runtime?.cloudVisualCount ?? 0} |`,
+            );
+        }
+    }
+
     lines.push('', '## High-target Aggregate Failures', '');
-    const highTargetFailures = highTargetMedians.flatMap(([name, summary]) => [
-        ...(summary.acceptancePass
-            ? []
-            : [
-                  `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
-              ]),
-        ...summary.performanceBudget.checks
-            .filter((check) => !check.pass)
-            .map(
-                (check) =>
-                    `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
-            ),
-    ]);
+    const highTargetFailures = [
+        ...highTargetMedians.flatMap(([name, summary]) => [
+            ...(summary.acceptancePass
+                ? []
+                : [
+                      `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
+                  ]),
+            ...summary.performanceBudget.checks
+                .filter((check) => !check.pass)
+                .map(
+                    (check) =>
+                        `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
+                ),
+        ]),
+        ...adaptiveHighComparisons.flatMap(([pairName, comparison]) =>
+            comparison.relativePerformanceChecks
+                .filter((check) => !check.pass && !check.skipped)
+                .map(
+                    (check) =>
+                        `- ${pairName} relative: ${check.name} ${check.actual} missed ${check.limit}`,
+                ),
+        ),
+    ];
     lines.push(
         ...(highTargetFailures.length ? highTargetFailures : ['- None']),
     );
@@ -3948,6 +4926,12 @@ function buildMarkdown(report) {
         scenario.budget.checks
             .filter((check) => !check.pass)
             .map((check) => {
+                if (check.comparison === 'range') {
+                    return `- ${scenario.name}: ${check.name} ${check.actual} outside [${check.limit.minimum}, ${check.limit.maximum}]`;
+                }
+                if (check.comparison === 'within-pixels') {
+                    return `- ${scenario.name}: ${check.name} ${check.actual} not within 2px of ${check.limit}`;
+                }
                 const operator =
                     check.comparison === 'minimum'
                         ? '<'
@@ -4262,6 +5246,8 @@ async function main() {
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
+        const adaptiveHighComparisons =
+            buildAdaptiveHighComparisons(highTargetMedians);
         const profileSummary = buildProfileSummary(
             scenarios,
             highTargetMedians,
@@ -4285,6 +5271,7 @@ async function main() {
                 soakMs: options.soakMs,
                 warmupMs: options.warmupMs,
             },
+            adaptiveHighComparisons,
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
@@ -4313,6 +5300,7 @@ async function main() {
 }
 
 export {
+    buildAdaptiveHighComparisons,
     buildHighTargetMedians,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -4324,6 +5312,7 @@ export {
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
+    installBrowserMetrics,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     resolveScenarios,

@@ -604,6 +604,64 @@ budgets remain red because of the documented `ReadPixels` stalls; all three
 placement acceptance runs passed independently of those aspirational
 physical-device budgets.
 
+### Adaptive High runtime ceiling
+
+Issue `#4319` keeps the user-selected High profile as the visual ceiling while
+adapting its runtime cost to measured load. Automatic, Medium, Low, and custom
+quality remain unchanged. High continues to use the 4096px primary shadow map,
+full plant and decoration density, rain, snow, moving clouds, plant wind, and
+the existing High particle counts.
+
+The controller prefers asynchronous
+`EXT_disjoint_timer_query_webgl2` elapsed-time samples. It discards disjoint,
+timed-out, suspended, and context-lost samples without synchronously waiting
+for the GPU. Browsers without a usable timer query fall back to rendered-frame
+cadence. A one-second EWMA filters either source, while asymmetric evidence
+windows avoid quality chatter:
+
+- camera or placement interaction immediately moves from `L0` to `L1` and
+  owns a 60fps scene-time lease while active;
+- load above `1.10` must persist for 750ms and at least three samples before
+  another decline;
+- load below `0.80` must persist for five seconds before recovering one level;
+  and
+- three direction reversals inside 60 seconds lock recovery for 30 seconds,
+  but never prevent a needed decline.
+
+At a DPR-2 display ceiling, the runtime levels are:
+
+| Level | DPR cap | Ambient cadence | Cloud-mask minimum cadence |
+| --- | ---: | ---: | ---: |
+| `L0` | 2.00 | 30fps | 96ms |
+| `L1` | 1.75 | 30fps | 96ms |
+| `L2` | 1.50 | 30fps | 96ms |
+| `L3` | 1.50 | 20fps | 160ms |
+
+The same sequence is derived from the current display ceiling, so DPR-1
+displays are never upscaled and monitor or browser-zoom changes reset the
+ceiling safely. Duplicate stages are skipped on constrained displays. Scene
+resume and WebGL context restoration clear timing evidence without adding
+hidden wall time to level dwell or resetting transition telemetry.
+
+The `adaptive-high` production profile set pairs fixed and adaptive camera
+motion and adds stateful motion-to-idle recovery, placement, runtime GPU-source,
+rain, snow, cloudy, and windy-plant scenarios. Its acceptance checks use
+sample-local level, DPR, transition, decline, recovery, interaction, and
+atmosphere evidence; starting a fresh page at full quality cannot satisfy the
+recovery gate.
+
+The local Chromium 149 / ANGLE SwiftShader integration run passed the
+fixed-camera and adaptive-camera structural gates in all six repeats. Adaptive
+camera motion reduced median submitted work from `147.7` to `141.0` draws and
+from `21,083` to `20,210` triangles per rendered frame (`4.5%` and `4.1%`),
+while median p95 moved from `623.9` to `615.8 ms` and rendered FPS remained
+`1.8`. The relative regression gate passed. The separate motion-to-idle
+scenario also passed all three repeats, recording `L0 -> L1 -> L0`, DPR cap
+`2 -> 1.75 -> 2`, one decline, one recovery, and 22 controlled headroom
+samples each time. The software renderer's absolute p95 and long-task budgets
+remain red because of its documented `ReadPixels` stalls; draw, triangle,
+workload-preservation, and controller-lifecycle gates pass independently.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.

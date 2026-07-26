@@ -168,6 +168,29 @@ export type GeneratedPlantProfileSnapshot = {
 };
 
 export type GameProfileMetadata = {
+    adaptiveHighAmbientFps?: number;
+    adaptiveHighCloudUpdateMs?: number;
+    adaptiveHighDeclineCount?: number;
+    adaptiveHighDprCap?: number;
+    adaptiveHighEnabled?: boolean;
+    adaptiveHighEwmaMs?: number;
+    adaptiveHighFactor?: number;
+    adaptiveHighGpuTimerDisjointCount?: number;
+    adaptiveHighGpuTimerPendingCount?: number;
+    adaptiveHighGpuTimerSupported?: boolean;
+    adaptiveHighInteractionActive?: boolean;
+    adaptiveHighLevel?: number;
+    adaptiveHighLevelDwellMs?: number;
+    adaptiveHighLoad?: number;
+    adaptiveHighOscillationCount?: number;
+    adaptiveHighProfileControlActive?: boolean;
+    adaptiveHighProfileControlEnabled?: boolean;
+    adaptiveHighProfileControlSampleCount?: number;
+    adaptiveHighReason?: string;
+    adaptiveHighRecoveryCount?: number;
+    adaptiveHighSampleMs?: number;
+    adaptiveHighSampleSource?: string;
+    adaptiveHighTransitionCount?: number;
     actorGroundingShadowBatchCount?: number;
     actorGroundingShadowCapacity?: number;
     actorGroundingShadowCount?: number;
