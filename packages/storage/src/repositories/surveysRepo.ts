@@ -212,6 +212,27 @@ export type SurveyResponsePage = {
     appliedVersionId: string | null;
 };
 
+export type SurveyResponseExportRequest = SurveyResponseFilters & {
+    surveyId: string;
+    maximumResponseCount?: number;
+};
+
+export type SurveyResponseExportPreparation =
+    | {
+          status: 'ready';
+          survey: SelectSurvey;
+          versions: SelectSurveyVersion[];
+          questions: SelectSurveyQuestion[];
+          responseIds: string[];
+          appliedVersionId: string | null;
+      }
+    | {
+          status: 'too_large';
+          reason: 'responses';
+      };
+
+export type SurveyResponseExportRow = SurveyResponseDetail;
+
 export type SurveyResults = {
     survey: SelectSurvey;
     versions: SelectSurveyVersion[];
@@ -1680,6 +1701,8 @@ export async function submitSurveyResponse({
 
 const defaultSurveyResponsePageSize = 25;
 const maximumSurveyResponsePageSize = 100;
+const maximumSurveyResponseExportCount = 50_000;
+const maximumSurveyResponseExportBatchSize = 500;
 
 function normalizePositiveInteger(value: number | undefined, fallback: number) {
     if (!Number.isFinite(value)) return fallback;
@@ -2098,6 +2121,207 @@ export async function getSurveyResponsePageAdmin({
         pageCount,
         appliedVersionId,
     };
+}
+
+export async function prepareSurveyResponseExportAdmin({
+    surveyId,
+    maximumResponseCount: requestedMaximumResponseCount,
+    ...filters
+}: SurveyResponseExportRequest): Promise<SurveyResponseExportPreparation | null> {
+    const survey = await getSurveyById(surveyId);
+    if (!survey) return null;
+
+    const versions = await storage().query.surveyVersions.findMany({
+        where: eq(surveyVersions.surveyId, surveyId),
+        orderBy: desc(surveyVersions.versionNumber),
+    });
+    const requestedVersionId = filters.versionId?.trim() || null;
+    const appliedVersionId =
+        requestedVersionId &&
+        versions.some((version) => version.id === requestedVersionId)
+            ? requestedVersionId
+            : null;
+    const selectedVersionIds = appliedVersionId
+        ? [appliedVersionId]
+        : versions.map((version) => version.id);
+    if (selectedVersionIds.length === 0) {
+        return {
+            status: 'ready',
+            survey,
+            versions,
+            questions: [],
+            responseIds: [],
+            appliedVersionId,
+        };
+    }
+
+    const maximumResponseCount = Math.min(
+        maximumSurveyResponseExportCount,
+        normalizePositiveInteger(
+            requestedMaximumResponseCount,
+            maximumSurveyResponseExportCount,
+        ),
+    );
+    const where = surveyResponseWhere({
+        surveyId,
+        versionIds: selectedVersionIds,
+        filters: {
+            ...filters,
+            versionId: appliedVersionId,
+        },
+    });
+    const [questionRows, responseIdRows] = await Promise.all([
+        storage().query.surveyQuestions.findMany({
+            where: inArray(surveyQuestions.versionId, selectedVersionIds),
+        }),
+        storage()
+            .select({ id: surveyResponses.id })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .where(where)
+            .orderBy(
+                desc(surveyResponses.submittedAt),
+                desc(surveyResponses.id),
+            )
+            .limit(maximumResponseCount + 1),
+    ]);
+    if (responseIdRows.length > maximumResponseCount) {
+        return {
+            status: 'too_large',
+            reason: 'responses',
+        };
+    }
+
+    return {
+        status: 'ready',
+        survey,
+        versions,
+        questions: sortSurveyQuestionsByVersion(questionRows, versions),
+        responseIds: responseIdRows.map((row) => row.id),
+        appliedVersionId,
+    };
+}
+
+export async function getSurveyResponseExportBatchAdmin({
+    responseIds,
+    surveyId,
+}: {
+    responseIds: string[];
+    surveyId: string;
+}): Promise<SurveyResponseExportRow[]> {
+    const orderedResponseIds = uniqueStrings(responseIds).slice(
+        0,
+        maximumSurveyResponseExportBatchSize,
+    );
+    if (orderedResponseIds.length === 0) return [];
+
+    const resolvedAccountId = resolvedSurveyResponseAccountId();
+    const resolvedUserId = resolvedSurveyResponseUserId();
+    const responseRows = await storage()
+        .select({
+            response: surveyResponses,
+            assignment: surveyAssignments,
+            version: surveyVersions,
+            accountId: resolvedAccountId,
+            userId: resolvedUserId,
+            userName: users.userName,
+            displayName: users.displayName,
+        })
+        .from(surveyResponses)
+        .leftJoin(
+            surveyAssignments,
+            and(
+                eq(surveyAssignments.id, surveyResponses.assignmentId),
+                eq(surveyAssignments.surveyId, surveyId),
+                eq(surveyAssignments.versionId, surveyResponses.versionId),
+            ),
+        )
+        .innerJoin(
+            surveyVersions,
+            and(
+                eq(surveyVersions.id, surveyResponses.versionId),
+                eq(surveyVersions.surveyId, surveyId),
+            ),
+        )
+        .leftJoin(users, eq(users.id, resolvedUserId))
+        .where(
+            and(
+                eq(surveyResponses.surveyId, surveyId),
+                inArray(surveyResponses.id, orderedResponseIds),
+            ),
+        );
+    const returnedResponseIds = responseRows.map((row) => row.response.id);
+    const answerRows =
+        returnedResponseIds.length > 0
+            ? await storage()
+                  .select({
+                      answer: surveyAnswers,
+                      question: surveyQuestions,
+                  })
+                  .from(surveyAnswers)
+                  .innerJoin(
+                      surveyResponses,
+                      and(
+                          eq(surveyResponses.id, surveyAnswers.responseId),
+                          eq(surveyResponses.surveyId, surveyId),
+                          inArray(surveyResponses.id, returnedResponseIds),
+                      ),
+                  )
+                  .innerJoin(
+                      surveyQuestions,
+                      and(
+                          eq(surveyQuestions.id, surveyAnswers.questionId),
+                          eq(
+                              surveyQuestions.versionId,
+                              surveyResponses.versionId,
+                          ),
+                      ),
+                  )
+                  .orderBy(
+                      asc(surveyQuestions.sortOrder),
+                      asc(surveyAnswers.createdAt),
+                      asc(surveyAnswers.id),
+                  )
+            : [];
+    const answersByResponseId = new Map<string, SurveyResponseAnswerDetail[]>();
+    for (const answer of answerRows) {
+        const existing =
+            answersByResponseId.get(answer.answer.responseId) ?? [];
+        existing.push(answer);
+        answersByResponseId.set(answer.answer.responseId, existing);
+    }
+    const rowByResponseId = new Map(
+        responseRows.map((row) => [
+            row.response.id,
+            {
+                response: row.response,
+                assignment: row.assignment,
+                version: row.version,
+                accountId: row.accountId,
+                user:
+                    row.userId && row.userName
+                        ? {
+                              id: row.userId,
+                              userName: row.userName,
+                              displayName: row.displayName,
+                          }
+                        : null,
+                answers: answersByResponseId.get(row.response.id) ?? [],
+            },
+        ]),
+    );
+
+    return orderedResponseIds.flatMap((responseId) => {
+        const row = rowByResponseId.get(responseId);
+        return row ? [row] : [];
+    });
 }
 
 export async function getSurveyResultsAdmin({

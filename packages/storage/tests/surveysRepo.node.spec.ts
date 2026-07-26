@@ -17,10 +17,12 @@ import {
     getSurveyById,
     getSurveyQuestions,
     getSurveyResponseAdmin,
+    getSurveyResponseExportBatchAdmin,
     getSurveyResponsePageAdmin,
     getSurveyResultsAdmin,
     getSurveyVersion,
     getSurveyWorkspaceAdminDetails,
+    prepareSurveyResponseExportAdmin,
     previewSurveyAudience,
     publishSurveyVersion,
     seedDeliverySatisfactionSurveyDefinition,
@@ -1270,6 +1272,170 @@ test('survey response explorer filters, paginates, and protects version ownershi
             responseId: secondResponseId,
         }),
         null,
+    );
+});
+
+test('survey response export is filtered, bounded, ordered, and survey-owned', async () => {
+    createTestDb();
+
+    const { surveyId, versionId } = await createPublishedSurvey();
+    const { accountId, userId } = await createTestUser();
+
+    async function submitResponse(contextKey: string, score: number) {
+        const assignmentResult = await createSurveyAssignments({
+            versionId,
+            contextKey,
+            context: {
+                monthKey: '2026-07',
+                sourceWorkflow: 'export-test',
+            },
+            recipients: [{ accountId, userId }],
+        });
+        const assignment = assignmentResult.assignments[0]?.assignment;
+        assert.ok(assignment);
+        const result = await submitSurveyResponse({
+            assignmentId: assignment.id,
+            accountId,
+            userId,
+            answers: [
+                { questionKey: 'score', value: score },
+                {
+                    questionKey: 'comment',
+                    value: `Žetva "${contextKey}"\n=SUM(A1:A2)`,
+                },
+                {
+                    questionKey: 'contact',
+                    value: {
+                        firstName: 'Ana',
+                        lastName: 'Župan',
+                        phone: '+385 91 000 0000',
+                        email: 'ana@example.com',
+                    },
+                },
+            ],
+        });
+        assert.equal(result.ok, true);
+        if (!result.ok) {
+            throw new Error('Expected survey response to be submitted');
+        }
+        return result.responseId;
+    }
+
+    const firstResponseId = await submitResponse('export-first', 6);
+    const secondResponseId = await submitResponse('export-second', 8);
+    await Promise.all([
+        storage()
+            .update(surveyResponses)
+            .set({
+                submittedAt: new Date('2026-07-26T10:00:00.000Z'),
+            })
+            .where(eq(surveyResponses.id, firstResponseId)),
+        storage()
+            .update(surveyResponses)
+            .set({
+                source: 'typeform',
+                submittedAt: new Date('2026-07-26T11:00:00.000Z'),
+            })
+            .where(eq(surveyResponses.id, secondResponseId)),
+    ]);
+
+    const foreignSurvey = await createPublishedSurvey();
+    const foreignAssignment = await createSurveyAssignments({
+        versionId: foreignSurvey.versionId,
+        contextKey: 'foreign-export',
+        recipients: [{ accountId, userId }],
+    });
+    const foreignAssignmentRow = foreignAssignment.assignments[0]?.assignment;
+    assert.ok(foreignAssignmentRow);
+    const foreignSubmitted = await submitSurveyResponse({
+        assignmentId: foreignAssignmentRow.id,
+        accountId,
+        userId,
+        answers: [{ questionKey: 'score', value: 4 }],
+    });
+    assert.equal(foreignSubmitted.ok, true);
+    if (!foreignSubmitted.ok) {
+        throw new Error('Expected foreign survey response to be submitted');
+    }
+
+    const overLimit = await prepareSurveyResponseExportAdmin({
+        surveyId,
+        maximumResponseCount: 1,
+    });
+    assert.deepEqual(overLimit, {
+        status: 'too_large',
+        reason: 'responses',
+    });
+
+    const filtered = await prepareSurveyResponseExportAdmin({
+        surveyId,
+        maximumResponseCount: 10,
+        source: 'typeform',
+        accountId,
+        userId,
+        monthKey: '2026-07',
+        contextQuery: 'export-second',
+        submittedFrom: new Date('2026-07-26T00:00:00.000Z'),
+        submittedTo: new Date('2026-07-26T23:59:59.999Z'),
+    });
+    assert.ok(filtered);
+    assert.equal(filtered.status, 'ready');
+    if (filtered.status !== 'ready') {
+        throw new Error('Expected ready survey export');
+    }
+    assert.deepEqual(filtered.responseIds, [secondResponseId]);
+    assert.ok(
+        filtered.questions.every(
+            (question) => question.versionId === versionId,
+        ),
+    );
+
+    const all = await prepareSurveyResponseExportAdmin({
+        surveyId,
+        maximumResponseCount: 10,
+        versionId: foreignSurvey.versionId,
+    });
+    assert.ok(all);
+    assert.equal(all.status, 'ready');
+    if (all.status !== 'ready') {
+        throw new Error('Expected ready survey export');
+    }
+    assert.equal(all.appliedVersionId, null);
+    assert.deepEqual(all.responseIds, [secondResponseId, firstResponseId]);
+
+    const rows = await getSurveyResponseExportBatchAdmin({
+        surveyId,
+        responseIds: [
+            secondResponseId,
+            firstResponseId,
+            foreignSubmitted.responseId,
+        ],
+    });
+    assert.deepEqual(
+        rows.map((row) => row.response.id),
+        [secondResponseId, firstResponseId],
+    );
+    assert.ok(
+        rows.every(
+            (row) =>
+                row.response.surveyId === surveyId &&
+                row.version.surveyId === surveyId &&
+                row.answers.every(
+                    ({ answer, question }) =>
+                        answer.responseId === row.response.id &&
+                        question.versionId === row.response.versionId,
+                ),
+        ),
+    );
+    assert.deepEqual(
+        rows[0]?.answers.find(({ question }) => question.key === 'contact')
+            ?.answer.contactValue,
+        {
+            firstName: 'Ana',
+            lastName: 'Župan',
+            phone: '+385 91 000 0000',
+            email: 'ana@example.com',
+        },
     );
 });
 

@@ -3,7 +3,11 @@ import { Button } from '@gredice/ui/Button';
 import Link from 'next/link';
 import { KnownPages } from '../../../src/KnownPages';
 import { SurveyResponseFilterField } from './SurveyResponseFilterField';
-import type { SurveyResponseQuery } from './surveyResponseQuery';
+import {
+    type SurveyResponseQuery,
+    surveyResponseHref,
+    surveyResponseQueryForPage,
+} from './surveyResponseQuery';
 
 const fieldClassName =
     'h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30';
@@ -27,6 +31,10 @@ export function SurveyResponseFilters({
         query.context,
         query.source,
     ].some(Boolean);
+    const exportHref = surveyResponseHref(
+        KnownPages.SurveyResponsesExport(surveyId),
+        surveyResponseQueryForPage(query, 1),
+    );
 
     return (
         <form
@@ -145,6 +153,13 @@ export function SurveyResponseFilters({
                 <Button type="submit" variant="outlined">
                     Primijeni filtre
                 </Button>
+                <a
+                    className="relative inline-flex h-10 min-w-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    download
+                    href={exportHref}
+                >
+                    Izvezi filtrirane odgovore (CSV)
+                </a>
                 {hasFilters ? (
                     <Link
                         className="text-sm font-medium text-primary hover:underline"
