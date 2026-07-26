@@ -75,6 +75,16 @@ export const KnownPages = {
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
     Surveys: '/admin/surveys',
+    SurveyCreate: '/admin/surveys/create',
+    Survey: (surveyId: string) => `/admin/surveys/${surveyId}` as Route,
+    SurveyDesign: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/design` as Route,
+    SurveySends: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/sends` as Route,
+    SurveyResponses: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses` as Route,
+    SurveyResponsesForMonth: (surveyId: string, monthKey: string) =>
+        `/admin/surveys/${surveyId}/responses?monthKey=${encodeURIComponent(monthKey)}` as Route,
     Logout: '/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>

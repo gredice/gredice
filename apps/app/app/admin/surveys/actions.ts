@@ -47,6 +47,15 @@ export type SurveyPreviewActionState = SurveyActionState & {
     preview?: SurveyAudiencePreview;
 };
 
+function revalidateSurveyWorkspace(surveyId?: string | null) {
+    revalidatePath(KnownPages.Surveys);
+    if (!surveyId) return;
+    revalidatePath(KnownPages.Survey(surveyId));
+    revalidatePath(KnownPages.SurveyDesign(surveyId));
+    revalidatePath(KnownPages.SurveySends(surveyId));
+    revalidatePath(KnownPages.SurveyResponses(surveyId));
+}
+
 function textField(formData: FormData, key: string) {
     const value = formData.get(key);
     return typeof value === 'string' ? value.trim() : '';
@@ -207,7 +216,7 @@ export async function createSurveyDefinitionAction(
             createdByUserId: userId,
             questions: questionsFromForm(formData),
         });
-        revalidatePath(KnownPages.Surveys);
+        revalidateSurveyWorkspace(created.surveyId);
         return {
             success: true,
             message: 'Anketa je spremljena kao nacrt.',
@@ -242,7 +251,7 @@ export async function createSurveyDraftVersionAction(
                 textField(formData, 'thankYouDescription') || null,
             questions: questionsFromForm(formData),
         });
-        revalidatePath(KnownPages.Surveys);
+        revalidateSurveyWorkspace(surveyId);
         return {
             success: true,
             message: 'Nova verzija ankete je spremljena kao nacrt.',
@@ -267,7 +276,7 @@ export async function seedDeliverySatisfactionSurveyAction(formData: FormData) {
         createdByUserId: userId,
         publish,
     });
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace();
 }
 
 export async function publishSurveyVersionAction(formData: FormData) {
@@ -275,13 +284,13 @@ export async function publishSurveyVersionAction(formData: FormData) {
     const surveyId = textField(formData, 'surveyId');
     const versionId = textField(formData, 'versionId');
     await publishSurveyVersion({ surveyId, versionId });
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace(surveyId);
 }
 
 export async function archiveSurveyAction(formData: FormData) {
     await auth(['admin']);
     await archiveSurvey(textField(formData, 'surveyId'));
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace(textField(formData, 'surveyId'));
 }
 
 function buildAudience(formData: FormData): SurveySendAudience {
@@ -530,7 +539,7 @@ export async function sendSurveyAction(
             failures += result.failures;
         }
 
-        revalidatePath(KnownPages.Surveys);
+        revalidateSurveyWorkspace(send.send.surveyId);
         return {
             success: true,
             message: `${send.createdCount} dodijeljeno, ${send.skippedDuplicateCount} preskočeno kao duplikat, ${notifications} obavijesti, ${emails} emailova, ${failures} grešaka.`,
