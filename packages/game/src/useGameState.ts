@@ -1147,6 +1147,14 @@ export function useGameState<T>(selector: (state: GameState) => T): T {
     return useStore(store, selector);
 }
 
+export function useGameStateStore() {
+    const store = useContext(GameStateContext);
+    if (!store) {
+        throw new Error('Missing GameStateContext.Provider in the tree');
+    }
+    return store;
+}
+
 export function useOptionalGameState<T>(
     selector: (state: GameState) => T,
     fallback: T,

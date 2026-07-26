@@ -91,7 +91,13 @@ export function GameSceneWrapper({
                 <GardenSelectionGate
                     disabled={Boolean(mockGarden || localSandboxStorageKey)}
                 >
-                    <GameScene flags={flags} {...rest} />
+                    <GameScene
+                        enableGameProfileController={
+                            enableGameProfileController
+                        }
+                        flags={flags}
+                        {...rest}
+                    />
                     {enableGameProfileController ? (
                         <GameProfileController />
                     ) : null}

@@ -787,6 +787,15 @@ export function DebugHud() {
                                     value={`${qualityTier} · DPR ${formatMetric(profileSnapshot?.dprCap)}/${formatMetric(profileSnapshot?.reportedDpr)}`}
                                 />
                                 <InfoRow
+                                    icon={Graph}
+                                    label="Adaptive High"
+                                    value={
+                                        profileSnapshot?.adaptiveHighEnabled
+                                            ? `L${profileSnapshot.adaptiveHighLevel ?? 0} · ${formatMetric(profileSnapshot.adaptiveHighFactor)}× · DPR ${formatMetric(profileSnapshot.adaptiveHighDprCap)} · ${profileSnapshot.adaptiveHighAmbientFps ?? 0}fps/${profileSnapshot.adaptiveHighCloudUpdateMs ?? 0}ms · ${profileSnapshot.adaptiveHighSampleSource ?? 'frame'} ${formatMetric(profileSnapshot.adaptiveHighSampleMs)}/${formatMetric(profileSnapshot.adaptiveHighEwmaMs)}ms · ${profileSnapshot.adaptiveHighReason ?? 'stable'} · ${profileSnapshot.adaptiveHighTransitionCount ?? 0} transitions/${profileSnapshot.adaptiveHighOscillationCount ?? 0} oscillations`
+                                            : 'off'
+                                    }
+                                />
+                                <InfoRow
                                     icon={FullWidth}
                                     label="Canvas"
                                     value={canvasSize}

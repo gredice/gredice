@@ -52,6 +52,10 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
+import {
+    type AdaptiveHighQualityLevelProfile,
+    adaptiveHighQualityLevels,
+} from './scene/adaptiveHighQuality';
 import { Environment } from './scene/Environment';
 import {
     type GameQualityAutoProfileMetrics,
@@ -69,6 +73,7 @@ import {
     getBlockPlacementDropAnimationRenderIdForBlockId,
     type MockGardenProfile,
     useGameState,
+    useGameStateStore,
     type WinterMode,
 } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
@@ -106,6 +111,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
+const adaptiveHighInteractionHoldMs = 350;
 
 function useAutoQualityProfileMetrics(enabled: boolean) {
     const [metrics, setMetrics] = useState<
@@ -155,6 +161,82 @@ function useAutoQualityProfileMetrics(enabled: boolean) {
     }, [enabled]);
 
     return metrics;
+}
+
+function useAdaptiveHighInteractionActivity(enabled: boolean) {
+    const gameStateStore = useGameStateStore();
+    const placementActive = useGameState(
+        (state) =>
+            enabled &&
+            (state.isDragging ||
+                state.pickupBlock !== null ||
+                state.activeDragPreview !== null ||
+                state.hudPlacementDrag !== null ||
+                Object.keys(state.blockPlacementDropAnimations).length > 0),
+    );
+    const [cameraActive, setCameraActive] = useState(false);
+    const cameraActiveRef = useRef(false);
+    const cameraActivityTimeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (!enabled) {
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+                cameraActivityTimeoutRef.current = null;
+            }
+            cameraActiveRef.current = false;
+            setCameraActive(false);
+            return;
+        }
+
+        let previousCameraVersion =
+            gameStateStore.getState().gameCameraSnapshot?.version ?? null;
+        const unsubscribe = gameStateStore.subscribe((state) => {
+            const cameraVersion = state.gameCameraSnapshot?.version ?? null;
+            if (
+                previousCameraVersion === null ||
+                cameraVersion === null ||
+                cameraVersion === previousCameraVersion
+            ) {
+                previousCameraVersion = cameraVersion;
+                return;
+            }
+            previousCameraVersion = cameraVersion;
+
+            if (!cameraActiveRef.current) {
+                cameraActiveRef.current = true;
+                setCameraActive(true);
+            }
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+            }
+            cameraActivityTimeoutRef.current = window.setTimeout(() => {
+                cameraActivityTimeoutRef.current = null;
+                cameraActiveRef.current = false;
+                setCameraActive(false);
+            }, adaptiveHighInteractionHoldMs);
+        });
+
+        return () => {
+            unsubscribe();
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+                cameraActivityTimeoutRef.current = null;
+            }
+            cameraActiveRef.current = false;
+        };
+    }, [enabled, gameStateStore]);
+
+    useEffect(
+        () => () => {
+            if (cameraActivityTimeoutRef.current !== null) {
+                window.clearTimeout(cameraActivityTimeoutRef.current);
+            }
+        },
+        [],
+    );
+
+    return enabled && (placementActive || cameraActive);
 }
 
 function GameSceneEntitySlot({
@@ -213,6 +295,7 @@ export function GameScene({
     weather,
     deferDetails,
     renderDetails: renderDetailsOverride,
+    enableGameProfileController,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -257,6 +340,16 @@ export function GameScene({
         gameQualitySetting,
         quality,
     ]);
+    const adaptiveHighEnabled = Boolean(
+        flags?.enableAdaptiveHighQualityFlag &&
+            qualityProfile.tier === 'high' &&
+            (quality === 'high' ||
+                (quality === undefined && gameQualitySetting === 'high')),
+    );
+    const adaptiveHighInteractionActive =
+        useAdaptiveHighInteractionActivity(adaptiveHighEnabled);
+    const [adaptiveHighProfile, setAdaptiveHighProfile] =
+        useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
@@ -334,6 +427,15 @@ export function GameScene({
                 value={{ includePendingCartPlants: true, renderDetails }}
             >
                 <Scene
+                    adaptiveHighEnabled={adaptiveHighEnabled}
+                    adaptiveHighInteractionActive={
+                        adaptiveHighInteractionActive
+                    }
+                    adaptiveHighProfileControlEnabled={Boolean(
+                        enableGameProfileController && adaptiveHighEnabled,
+                    )}
+                    adaptiveHighProfile={adaptiveHighProfile}
+                    onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
@@ -345,6 +447,11 @@ export function GameScene({
                             <PlacementGrid />
                             {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
+                                cloudShadowUpdateMs={
+                                    adaptiveHighEnabled
+                                        ? adaptiveHighProfile.cloudShadowUpdateMs
+                                        : undefined
+                                }
                                 noBackground={noBackground}
                                 noWeather={weatherDisabled}
                                 noSound={noSound}

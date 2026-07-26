@@ -259,7 +259,9 @@ export default async function GameProfilePage({
     const placementProfile = firstValue(params.placement) === '1';
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.blockGeometryMerging),
+        firstValue(params.adaptiveHigh),
     );
+    const adaptiveHigh = debugGameFlags.enableAdaptiveHighQualityFlag;
     const blockGeometryMerging = debugGameFlags.enableBlockGeometryMergingFlag;
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
@@ -277,6 +279,7 @@ export default async function GameProfilePage({
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
+            data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-block-geometry-merging={
                 blockGeometryMerging ? '1' : '0'
             }
@@ -295,7 +298,9 @@ export default async function GameProfilePage({
                 hideHud={!showHud}
                 initialQualitySetting={quality}
                 enableGameProfileController={
-                    closeupRaisedBedId !== null || placementProfile
+                    adaptiveHigh ||
+                    closeupRaisedBedId !== null ||
+                    placementProfile
                 }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
