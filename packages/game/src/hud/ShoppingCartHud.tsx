@@ -511,6 +511,9 @@ export function ShoppingCartHud() {
                                 item_count: cart?.items.length ?? 0,
                                 total: cart?.total ?? 0,
                             });
+                        } else {
+                            setCheckoutStep('cart');
+                            setDeliverySummary(null);
                         }
                         setIsOpen(open);
                     }}
