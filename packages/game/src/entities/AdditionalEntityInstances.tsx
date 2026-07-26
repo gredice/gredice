@@ -48,6 +48,7 @@ import {
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
+import { RaisedBedFieldVisualBatches } from './raisedBed/RaisedBedFieldVisualBatches';
 import { RaisedBedHarvestBaskets } from './raisedBed/RaisedBedHarvestBasket';
 import {
     getRaisedBedSoilWetPatches,
@@ -759,11 +760,28 @@ function RaisedBedInstances({
     const { data: currentGarden } = useCurrentGarden();
     const { data: operations } = useOperations();
     const currentTime = useSnapshotTime();
-    const instances = useEntityBlockInstances({
+    const raisedBedInstances = useEntityBlockInstances({
         name: 'Raised_Bed',
         stacks,
         yOffset: 1,
-    })?.map((instance) => resolveRaisedBedInstance(instance, stacks));
+    });
+    const instances = useMemo(
+        () =>
+            raisedBedInstances?.map((instance) =>
+                resolveRaisedBedInstance(instance, stacks),
+            ),
+        [raisedBedInstances, stacks],
+    );
+    const raisedBedFieldVisualBlocks = useMemo(
+        () =>
+            instances?.map((instance, index) => ({
+                blockId: instance.block.id,
+                chunkPosition:
+                    raisedBedInstances?.[index]?.position ?? instance.position,
+                position: instance.position,
+            })) ?? [],
+        [instances, raisedBedInstances],
+    );
     const raisedBedContextByBlockId = useMemo(() => {
         const context = new Map<
             string,
@@ -918,6 +936,7 @@ function RaisedBedInstances({
                     />
                 </group>
             ))}
+            <RaisedBedFieldVisualBatches blocks={raisedBedFieldVisualBlocks} />
             <RaisedBedHarvestBaskets />
             <RaisedBedHoverOutlines
                 instances={instances}
