@@ -1,13 +1,15 @@
 ---
 name: gredice-review-changelog-post
-description: "Review and prepare individual Gredice CMS changelog posts through the admin UI: simplify Croatian public copy, add relevant inline links, create and attach sharp privacy-safe component-grounded screenshots or visuals, validate metadata and cover rendering, and move drafts to review without publishing. Use when given a Gredice /admin/cms/pages/PAGE_ID/edit URL or asked to polish, illustrate, link, or mark a changelog post ready for review."
+description: "Review and prepare individual or batched Gredice CMS changelog posts through the admin UI or storage workflow: simplify Croatian public copy, add relevant inline links, create and attach sharp privacy-safe component-grounded covers, validate metadata and rendering, and move drafts to review without publishing. Use when given Gredice /admin/cms/pages/PAGE_ID/edit URLs or asked to polish, illustrate, link, batch-review, or mark changelog posts ready for review."
 ---
 
 # Gredice Changelog Post Review
 
 ## Overview
 
-Prepare one existing changelog post for editorial review. Work from the exact CMS page and the real user-facing feature, keep the copy public and non-technical, attach a meaningful sharp cover, and stop before publication.
+Prepare one or more existing changelog posts for editorial review. Work from
+the exact CMS pages and real user-facing features, keep the copy public and
+non-technical, attach meaningful sharp covers, and stop before publication.
 
 Use this together with `gredice-changelog-publishing` for general changelog conventions and an authenticated browser-control skill for CMS and live-page interactions.
 
@@ -51,6 +53,10 @@ Na stranici [Dostava](https://www.gredice.com/dostava) moÅ¾ete pregledati podruÄ
   - a left editorial column with a short green rule and uppercase eyebrow, a bold dark-forest Croatian headline, and one short muted-green benefit statement;
   - one dominant white rounded product panel on the right with a soft diffused shadow, containing the exact component, asset, or supported state that explains the change;
   - a consistent landscape split, typographic hierarchy, outer margins, internal spacing, corner radius, and shadow language across every cover in the batch.
+- This template is mandatory unless the documented feature-specific full-frame
+  screenshot exception is stronger or the user explicitly requests another
+  direction. Recency, repetition, or automation memory cannot redefine the
+  template. Text-free editorial images are not the established default series.
 - Use the accepted covers as visual references when generating a new cover. The subject may change, but the editorial grid and art direction must remain recognizably from the same series.
 - Do not default to photography, photorealistic scenes, free-floating objects, stock-style illustrations, collages, or decorative garden scenery. Do not use a device mockup unless the post specifically concerns device or edge-to-edge behavior. A conceptually relevant image still fails review when it does not match the established cover system.
 - Inspect the implemented feature before designing its cover. Check the live page and, when useful, the responsible app components, stories, fixtures, and checked-in assets to identify the real controls, states, labels, and visual language.
@@ -72,7 +78,7 @@ Na stranici [Dostava](https://www.gredice.com/dostava) moÅ¾ete pregledati podruÄ
 - Prefer PNG for crisp UI. If transfer size is unreliable, use JPEG quality 90-92 while retaining the high pixel dimensions.
 - Reuse an existing accurate component or asset when it is stronger than a screenshot. Do not invent a generic scene or substitute a loosely related product page.
 - Search the app components, Storybook stories, and checked-in product assets first, including `apps/www/public/assets/blocks`. Compose only verified components and exact mentioned renders on a temporary, privacy-safe artboard with a fixed 16:9 frame, balanced internal spacing, and the visual group centered within the frame.
-- Keep generated Croatian text short enough to render reliably. Verify every diacritic, amount, date, label, and line break at natural size. Regenerate or compose exact text deterministically when any word is misspelled, malformed, clipped, or visually ambiguous.
+- Keep generated Croatian text short enough to render reliably. Verify every diacritic, amount, date, label, and line break at natural size. Regenerate or compose the eyebrow, headline, benefit sentence, and product labels deterministically when any word is misspelled, malformed, clipped, or visually ambiguous. Never omit required copy merely to avoid correcting generated text.
 - Make the outer artboard a full-bleed, opaque rectangle. Do not give the artboard itself rounded corners or include page/body padding around it. Inner cards may be rounded, but every output corner must be painted by the artboard background; JPEG output must not contain differently colored corner wedges, and PNG output must not rely on transparent outer corners.
 - Capture the artboard element's exact bounds rather than the surrounding page. Confirm all four edges and corners belong to the intended background before upload.
 - For a release centered on one entity, use its exact render as the dominant hero. Capture the artboard element at high density so the uploaded cover is at least 1920 x 1080 when the source assets support it.
