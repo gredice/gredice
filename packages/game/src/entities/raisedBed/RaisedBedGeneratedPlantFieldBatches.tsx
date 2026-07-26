@@ -20,7 +20,12 @@ import {
     type ResolvedInGamePlantPreset,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { resolvePlantLeafGeometryDetail } from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
+import {
+    getHighTargetMockGardenPlantInstanceCount,
+    highTargetMockPlantRenderAttributesBySortId,
+} from '../../hooks/mockGardenProfileFixtures';
 import {
     useCurrentGarden,
     useIsSandboxGarden,
@@ -28,6 +33,8 @@ import {
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import type { GameQualityProfile } from '../../scene/gameQuality';
 import {
     getGeneratedPlantProfileSessionId,
     recordGeneratedPlantProfileFields,
@@ -384,13 +391,16 @@ function useGeneratedPlantFieldLods({
 
 export function RaisedBedGeneratedPlantFieldBatches({
     blocks,
+    quality,
 }: {
     blocks: RaisedBedGeneratedPlantFieldBatchBlock[];
+    quality: GameQualityProfile;
 }) {
     const { includePendingCartPlants, renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: sortData } = useAllSorts();
     const isMock = useGameState((state) => state.isMock);
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
+    const { data: sortData } = useAllSorts(!isMock);
     const isSandbox = useIsSandboxGarden();
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
@@ -402,7 +412,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
     );
     const currentTime = useSnapshotTime();
     const { data: cart } = useShoppingCart(
-        includePendingCartPlants && renderDetails && !isLocalSandbox,
+        includePendingCartPlants && renderDetails && !isLocalSandbox && !isMock,
     );
     const generatedFields = useMemo(() => {
         const fields: GeneratedPlantField[] = [];
@@ -467,6 +477,12 @@ export function RaisedBedGeneratedPlantFieldBatches({
             for (const field of displayedFields) {
                 const plantSortId = field.plantSortId;
                 const sort = sortData?.find((item) => item.id === plantSortId);
+                const highTargetAttributes =
+                    mockGardenProfile === 'high-target' && plantSortId
+                        ? highTargetMockPlantRenderAttributesBySortId[
+                              plantSortId
+                          ]
+                        : undefined;
                 const resolvedPlantPreset = resolveInGamePlantPreset([
                     sort?.information.name,
                     sort?.information.plant.information?.name,
@@ -485,7 +501,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 }
 
                 const { plantsPerRow, totalPlants } = calculatePlantsPerField(
-                    sort?.information.plant.attributes?.seedingDistance,
+                    highTargetAttributes?.seedingDistance ??
+                        sort?.information.plant.attributes?.seedingDistance,
                 );
                 const safePlantsPerRow = Math.max(plantsPerRow, 1);
                 const seedLayout =
@@ -498,11 +515,14 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     sowDate: field.plantSowDate ?? '',
                     lifecycleWindowDays: getPlantLifecycleWindowDays({
                         germinationWindowMax:
+                            highTargetAttributes?.germinationWindowMax ??
                             sort?.information.plant.attributes
                                 ?.germinationWindowMax,
                         growthWindowMax:
+                            highTargetAttributes?.growthWindowMax ??
                             sort?.information.plant.attributes?.growthWindowMax,
                         harvestWindowMax:
+                            highTargetAttributes?.harvestWindowMax ??
                             sort?.information.plant.attributes
                                 ?.harvestWindowMax,
                     }),
@@ -571,6 +591,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
         currentTime,
         isMock,
         isSandbox,
+        mockGardenProfile,
         renderDetails,
         sortData,
     ]);
@@ -586,6 +607,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
     const focusActive =
         selectedRaisedBedId !== null &&
         (view === 'closeup' || closeupCameraActive);
+    const leafGeometryDetail = resolvePlantLeafGeometryDetail(quality.tier);
     const lods = useGeneratedPlantFieldLods({
         focusActive,
         generatedFields,
@@ -651,6 +673,30 @@ export function RaisedBedGeneratedPlantFieldBatches({
 
         return Array.from(batchMap.values());
     }, [focusActive, generatedFields, lods, selectedRaisedBedId]);
+    useEffect(() => {
+        updateGameProfileMetadata({
+            generatedPlantBatchCount: batches.length,
+            generatedPlantFieldCount: generatedFields.length,
+            generatedPlantInstanceCount: generatedFields.reduce(
+                (total, field) => total + field.instances.length,
+                0,
+            ),
+            generatedPlantExpectedInstanceCount:
+                mockGardenProfile === 'high-target'
+                    ? getHighTargetMockGardenPlantInstanceCount()
+                    : undefined,
+            generatedPlantVisibleFieldCount: generatedFields.filter(
+                (field) => lods.get(field.fieldKey)?.visible === true,
+            ).length,
+            generatedPlantVisibleInstanceCount: generatedFields.reduce(
+                (total, field) =>
+                    lods.get(field.fieldKey)?.visible === true
+                        ? total + field.instances.length
+                        : total,
+                0,
+            ),
+        });
+    }, [batches.length, generatedFields, lods, mockGardenProfile]);
 
     if (!renderDetails || batches.length === 0) {
         return null;
@@ -665,6 +711,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     key={batch.batchKey}
                     definition={batch.definition}
                     instances={batch.instances}
+                    leafGeometryDetail={leafGeometryDetail}
                     lodLevel={batch.lodLevel}
                     taskPriority={batch.taskPriority}
                 />

@@ -26,6 +26,7 @@ import {
     getSunflowersHistory,
     getTutorialChecklistState,
     getUser,
+    getUserDefaultGarden,
     grediceCached,
     grediceCacheKeys,
     knownEventTypes,
@@ -41,8 +42,11 @@ import {
     redeemReferralCodeForAccount,
     SUNFLOWER_DROP_BLOCK_NAME,
     setReferralCodeForAccount,
+    setUserDefaultGarden,
     TutorialChecklistTaskNotClaimableError,
     TutorialChecklistTaskNotFoundError,
+    UserDefaultGardenNotAccessibleError,
+    UserDefaultGardenSandboxError,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
@@ -1066,7 +1070,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 user,
                 userId,
             } = context.get('authContext');
-            const currentUser = await getUser(userId);
+            const [currentUser, defaultGarden] = await Promise.all([
+                getUser(userId),
+                getUserDefaultGarden(userId),
+            ]);
             const fallbackEmail = currentUser?.userName ?? 'Gredice';
             const orderedAccountIds = [
                 currentAccountId,
@@ -1091,6 +1098,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         gardens: gardens.map((garden) => ({
                             id: garden.id,
                             name: garden.name,
+                            isDefault: garden.id === defaultGarden?.id,
                             isSandbox: garden.isSandbox,
                             createdAt: garden.createdAt,
                         })),
@@ -1099,6 +1107,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
 
             return context.json(accountGardenGroups);
+        },
+    )
+    .put(
+        '/gardens/default',
+        describeRoute({
+            description:
+                'Set the real garden that opens by default for the current user.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'json',
+            z.object({
+                gardenId: z.number().int().positive(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { gardenId } = context.req.valid('json');
+
+            try {
+                const garden = await setUserDefaultGarden({
+                    gardenId,
+                    userId,
+                });
+                return context.json({
+                    accountId: garden.accountId,
+                    gardenId: garden.id,
+                });
+            } catch (error) {
+                if (error instanceof UserDefaultGardenSandboxError) {
+                    return context.json(
+                        { error: 'Sandbox gardens cannot be the default' },
+                        400,
+                    );
+                }
+                if (error instanceof UserDefaultGardenNotAccessibleError) {
+                    return context.json({ error: 'Garden not found' }, 404);
+                }
+                throw error;
+            }
         },
     )
     .post(

@@ -1,10 +1,22 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    gte,
+    inArray,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     accounts,
     accountUsers,
     type SelectSurvey,
+    type SelectSurveyAnswer,
     type SelectSurveyAssignment,
     type SelectSurveyQuestion,
     type SelectSurveyResponse,
@@ -62,6 +74,19 @@ export type SurveyDefinitionInput = {
     metadata?: Record<string, unknown>;
     createdByUserId?: string | null;
     questions: SurveyQuestionInput[];
+};
+
+export type SurveyVersionDefinitionInput = Omit<
+    SurveyDefinitionInput,
+    'key' | 'category' | 'createdByUserId'
+>;
+
+export type DuplicateSurveyDefinitionInput = {
+    sourceSurveyId: string;
+    sourceVersionId: string;
+    key: string;
+    title: string;
+    createdByUserId?: string | null;
 };
 
 export type SurveyRecipient = {
@@ -129,6 +154,7 @@ export type SurveySubmitResult =
       };
 
 export type SurveyNumericAggregate = {
+    versionId: string;
     questionId: string;
     questionKey: string;
     title: string;
@@ -140,17 +166,83 @@ export type SurveyNumericAggregate = {
     scoreMetadata: SurveyQuestionScoreMetadata;
 };
 
+export type SurveyResponseSource = SelectSurveyResponse['source'];
+
+export type SurveyResponseFilters = {
+    versionId?: string | null;
+    submittedFrom?: Date | null;
+    submittedTo?: Date | null;
+    accountId?: string | null;
+    userId?: string | null;
+    monthKey?: string | null;
+    contextQuery?: string | null;
+    source?: SurveyResponseSource | null;
+};
+
+export type SurveyResponsePageRequest = SurveyResponseFilters & {
+    surveyId: string;
+    page?: number;
+    pageSize?: number;
+    includeNumericAggregates?: boolean;
+};
+
+export type SurveyResponseAnswerDetail = {
+    answer: SelectSurveyAnswer;
+    question: SelectSurveyQuestion;
+};
+
 export type SurveyResponseDetail = {
     response: SelectSurveyResponse;
     assignment: SelectSurveyAssignment | null;
-    answers: Array<typeof surveyAnswers.$inferSelect>;
+    version: SelectSurveyVersion;
+    accountId: string | null;
+    user: SurveyUserRecord | null;
+    answers: SurveyResponseAnswerDetail[];
 };
+
+export type SurveyResponsePage = {
+    survey: SelectSurvey;
+    versions: SelectSurveyVersion[];
+    questions: SelectSurveyQuestion[];
+    responses: SurveyResponseDetail[];
+    numericAggregates: SurveyNumericAggregate[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    pageCount: number;
+    appliedVersionId: string | null;
+};
+
+export type SurveyResponseExportRequest = SurveyResponseFilters & {
+    surveyId: string;
+    maximumResponseCount?: number;
+};
+
+export type SurveyResponseExportPreparation =
+    | {
+          status: 'ready';
+          survey: SelectSurvey;
+          versions: SelectSurveyVersion[];
+          questions: SelectSurveyQuestion[];
+          responseIds: string[];
+          appliedVersionId: string | null;
+      }
+    | {
+          status: 'too_large';
+          reason: 'responses';
+      };
+
+export type SurveyResponseExportRow = SurveyResponseDetail;
 
 export type SurveyResults = {
     survey: SelectSurvey;
     versions: SelectSurveyVersion[];
     questions: SelectSurveyQuestion[];
-    responses: SurveyResponseDetail[];
+    responses: Array<{
+        response: SelectSurveyResponse;
+        assignment: SelectSurveyAssignment | null;
+        answers: SelectSurveyAnswer[];
+    }>;
     numericAggregates: SurveyNumericAggregate[];
 };
 
@@ -249,6 +341,17 @@ function validateQuestionSettings(
         ) {
             throw new Error(
                 'Opinion scale bounds must be integers from 0 to 10',
+            );
+        }
+        if (
+            settings.step !== undefined &&
+            (!Number.isInteger(settings.step) ||
+                settings.step < 1 ||
+                settings.step > settings.max - settings.min ||
+                (settings.max - settings.min) % settings.step !== 0)
+        ) {
+            throw new Error(
+                'Opinion scale step must evenly divide the configured bounds',
             );
         }
     }
@@ -381,33 +484,34 @@ export async function getSurveyQuestions(versionId: string) {
     });
 }
 
-async function getLatestVersionNumber(surveyId: string) {
-    const row = await storage()
-        .select({
-            versionNumber: surveyVersions.versionNumber,
-        })
-        .from(surveyVersions)
-        .where(eq(surveyVersions.surveyId, surveyId))
-        .orderBy(desc(surveyVersions.versionNumber))
-        .limit(1);
-    return row[0]?.versionNumber ?? 0;
-}
-
 export async function createSurveyDraftVersion(
     surveyId: string,
-    input: Omit<SurveyDefinitionInput, 'key' | 'category' | 'createdByUserId'>,
+    input: SurveyVersionDefinitionInput,
 ) {
-    const survey = await getSurveyById(surveyId);
-    if (!survey) {
-        throw new Error('Survey not found');
-    }
-
     const normalizedQuestions = validateQuestions(input.questions);
     const versionId = randomUUID();
     const now = new Date();
-    const versionNumber = (await getLatestVersionNumber(surveyId)) + 1;
 
-    await storage().transaction(async (tx) => {
+    return await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [latestVersion] = await tx
+            .select({
+                versionNumber: surveyVersions.versionNumber,
+            })
+            .from(surveyVersions)
+            .where(eq(surveyVersions.surveyId, surveyId))
+            .orderBy(desc(surveyVersions.versionNumber))
+            .limit(1);
+        const versionNumber = (latestVersion?.versionNumber ?? 0) + 1;
+
         await tx.insert(surveyVersions).values({
             id: versionId,
             surveyId,
@@ -438,9 +542,235 @@ export async function createSurveyDraftVersion(
                 createdAt: now,
             })),
         );
-    });
 
-    return versionId;
+        return {
+            versionId,
+            versionNumber,
+        };
+    });
+}
+
+export async function updateSurveyDraftVersion({
+    definition,
+    surveyId,
+    versionId,
+}: {
+    definition: SurveyVersionDefinitionInput;
+    surveyId: string;
+    versionId: string;
+}) {
+    const normalizedQuestions = validateQuestions(definition.questions);
+    const now = new Date();
+
+    return await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [version] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!version) {
+            throw new Error('Survey version not found');
+        }
+        if (version.status !== 'draft') {
+            throw new Error('Only draft survey versions can be edited');
+        }
+
+        const send = await tx
+            .select({ id: surveySends.id })
+            .from(surveySends)
+            .where(eq(surveySends.versionId, versionId))
+            .limit(1);
+        const assignment = await tx
+            .select({ id: surveyAssignments.id })
+            .from(surveyAssignments)
+            .where(eq(surveyAssignments.versionId, versionId))
+            .limit(1);
+        const response = await tx
+            .select({ id: surveyResponses.id })
+            .from(surveyResponses)
+            .where(eq(surveyResponses.versionId, versionId))
+            .limit(1);
+        if (send.length > 0 || assignment.length > 0 || response.length > 0) {
+            throw new Error(
+                'Survey versions with operational history cannot be edited',
+            );
+        }
+
+        const normalizedTitle = normalizeText(definition.title, 'survey title');
+        const normalizedDescription = definition.description?.trim() || null;
+        await tx
+            .update(surveyVersions)
+            .set({
+                title: normalizedTitle,
+                description: normalizedDescription,
+                introTitle: definition.introTitle?.trim() || null,
+                introDescription: definition.introDescription?.trim() || null,
+                thankYouTitle: definition.thankYouTitle?.trim() || null,
+                thankYouDescription:
+                    definition.thankYouDescription?.trim() || null,
+                metadata: definition.metadata ?? version.metadata,
+                updatedAt: now,
+            })
+            .where(eq(surveyVersions.id, versionId));
+
+        await tx
+            .delete(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, versionId));
+        await tx.insert(surveyQuestions).values(
+            normalizedQuestions.map((question) => ({
+                id: randomUUID(),
+                versionId,
+                key: question.key,
+                type: question.type,
+                title: question.title,
+                description: question.description,
+                sortOrder: question.sortOrder,
+                required: question.required,
+                settings: question.settings,
+                scoreMetadata: question.scoreMetadata,
+                createdAt: now,
+            })),
+        );
+
+        if (version.versionNumber === 1) {
+            await tx
+                .update(surveys)
+                .set({
+                    title: normalizedTitle,
+                    description: normalizedDescription,
+                    updatedAt: now,
+                })
+                .where(
+                    and(
+                        eq(surveys.id, surveyId),
+                        eq(surveys.status, 'draft'),
+                        sql`${surveys.activeVersionId} is null`,
+                    ),
+                );
+        }
+
+        return {
+            surveyId,
+            versionId,
+            versionNumber: version.versionNumber,
+        };
+    });
+}
+
+export async function duplicateSurveyDefinition(
+    input: DuplicateSurveyDefinitionInput,
+) {
+    const surveyId = randomUUID();
+    const versionId = randomUUID();
+    const now = new Date();
+
+    return await storage().transaction(async (tx) => {
+        const [sourceVersion] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, input.sourceVersionId),
+                    eq(surveyVersions.surveyId, input.sourceSurveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!sourceVersion) {
+            throw new Error('Source survey version not found');
+        }
+
+        const sourceSurvey = await tx
+            .select()
+            .from(surveys)
+            .where(eq(surveys.id, input.sourceSurveyId))
+            .limit(1);
+        const sourceQuestions = await tx
+            .select()
+            .from(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, sourceVersion.id))
+            .orderBy(asc(surveyQuestions.sortOrder));
+        const source = sourceSurvey[0];
+        if (!source) {
+            throw new Error('Source survey not found');
+        }
+        if (sourceQuestions.length === 0) {
+            throw new Error('Source survey version has no questions');
+        }
+
+        const key = normalizeText(input.key, 'survey key');
+        const title = normalizeText(input.title, 'survey title');
+        await tx.insert(surveys).values({
+            id: surveyId,
+            key,
+            title,
+            description: sourceVersion.description,
+            category: source.category,
+            status: 'draft',
+            activeVersionId: null,
+            metadata: source.metadata,
+            createdByUserId: input.createdByUserId ?? null,
+            createdAt: now,
+            updatedAt: now,
+            archivedAt: null,
+        });
+        await tx.insert(surveyVersions).values({
+            id: versionId,
+            surveyId,
+            versionNumber: 1,
+            status: 'draft',
+            title,
+            description: sourceVersion.description,
+            introTitle: sourceVersion.introTitle,
+            introDescription: sourceVersion.introDescription,
+            thankYouTitle: sourceVersion.thankYouTitle,
+            thankYouDescription: sourceVersion.thankYouDescription,
+            metadata: sourceVersion.metadata,
+            createdAt: now,
+            updatedAt: now,
+            publishedAt: null,
+            archivedAt: null,
+        });
+        await tx.insert(surveyQuestions).values(
+            sourceQuestions.map((question) => ({
+                id: randomUUID(),
+                versionId,
+                key: question.key,
+                type: question.type,
+                title: question.title,
+                description: question.description,
+                sortOrder: question.sortOrder,
+                required: question.required,
+                settings: question.settings,
+                scoreMetadata: question.scoreMetadata,
+                createdAt: now,
+            })),
+        );
+
+        return {
+            surveyId,
+            versionId,
+            versionNumber: 1,
+            sourceSurveyId: source.id,
+            sourceVersionId: sourceVersion.id,
+            sourceVersionNumber: sourceVersion.versionNumber,
+        };
+    });
 }
 
 export async function publishSurveyVersion({
@@ -450,19 +780,45 @@ export async function publishSurveyVersion({
     surveyId: string;
     versionId: string;
 }) {
-    const [version, questions] = await Promise.all([
-        getSurveyVersion(versionId),
-        getSurveyQuestions(versionId),
-    ]);
-    if (!version || version.surveyId !== surveyId) {
-        throw new Error('Survey version not found');
-    }
-    if (questions.length === 0) {
-        throw new Error('Cannot publish a survey version without questions');
-    }
-
     const now = new Date();
     await storage().transaction(async (tx) => {
+        const [survey] = await tx
+            .select({ id: surveys.id })
+            .from(surveys)
+            .where(eq(surveys.id, surveyId))
+            .limit(1)
+            .for('update');
+        if (!survey) {
+            throw new Error('Survey not found');
+        }
+        const [version] = await tx
+            .select()
+            .from(surveyVersions)
+            .where(
+                and(
+                    eq(surveyVersions.id, versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .limit(1)
+            .for('update');
+        if (!version) {
+            throw new Error('Survey version not found');
+        }
+        if (version.status !== 'draft') {
+            throw new Error('Only draft survey versions can be published');
+        }
+        const questions = await tx
+            .select({ id: surveyQuestions.id })
+            .from(surveyQuestions)
+            .where(eq(surveyQuestions.versionId, versionId))
+            .limit(1);
+        if (questions.length === 0) {
+            throw new Error(
+                'Cannot publish a survey version without questions',
+            );
+        }
+
         await tx
             .update(surveyVersions)
             .set({
@@ -1157,10 +1513,11 @@ function validateAnswerForQuestion(
         if (
             !Number.isInteger(numeric) ||
             numeric < settings.min ||
-            numeric > settings.max
+            numeric > settings.max ||
+            (numeric - settings.min) % (settings.step ?? 1) !== 0
         ) {
             return {
-                error: `Odaberi ocjenu od ${settings.min} do ${settings.max}.`,
+                error: `Odaberi jednu od ponuđenih ocjena od ${settings.min} do ${settings.max}.`,
             };
         }
         return { numericValue: numeric };
@@ -1343,6 +1700,633 @@ export async function submitSurveyResponse({
     };
 }
 
+const defaultSurveyResponsePageSize = 25;
+const maximumSurveyResponsePageSize = 100;
+const maximumSurveyResponseExportCount = 50_000;
+const maximumSurveyResponseExportBatchSize = 500;
+
+function normalizePositiveInteger(value: number | undefined, fallback: number) {
+    if (!Number.isFinite(value)) return fallback;
+    return Math.max(1, Math.trunc(value ?? fallback));
+}
+
+function resolvedSurveyResponseAccountId() {
+    return sql<
+        string | null
+    >`coalesce(${surveyResponses.accountId}, ${surveyAssignments.accountId})`;
+}
+
+function resolvedSurveyResponseUserId() {
+    return sql<
+        string | null
+    >`coalesce(${surveyResponses.userId}, ${surveyAssignments.userId})`;
+}
+
+function escapeSurveyContextSearch(value: string) {
+    return value
+        .replaceAll('\\', '\\\\')
+        .replaceAll('%', '\\%')
+        .replaceAll('_', '\\_');
+}
+
+function surveyResponseWhere({
+    filters,
+    surveyId,
+    versionIds,
+}: {
+    filters: SurveyResponseFilters;
+    surveyId: string;
+    versionIds: string[];
+}) {
+    const accountId = filters.accountId?.trim() || null;
+    const userId = filters.userId?.trim() || null;
+    const monthKey = filters.monthKey?.trim() || null;
+    const contextQuery = filters.contextQuery?.trim() || null;
+    const contextPattern = contextQuery
+        ? `%${escapeSurveyContextSearch(contextQuery)}%`
+        : null;
+    const contextEscapeCharacter = '\\';
+
+    return and(
+        eq(surveyResponses.surveyId, surveyId),
+        inArray(surveyResponses.versionId, versionIds),
+        filters.submittedFrom
+            ? gte(surveyResponses.submittedAt, filters.submittedFrom)
+            : undefined,
+        filters.submittedTo
+            ? lte(surveyResponses.submittedAt, filters.submittedTo)
+            : undefined,
+        accountId
+            ? eq(resolvedSurveyResponseAccountId(), accountId)
+            : undefined,
+        userId ? eq(resolvedSurveyResponseUserId(), userId) : undefined,
+        filters.source ? eq(surveyResponses.source, filters.source) : undefined,
+        monthKey
+            ? sql`${surveyAssignments.context}->>'monthKey' = ${monthKey}`
+            : undefined,
+        contextPattern
+            ? or(
+                  sql`${surveyAssignments.contextKey} ilike ${contextPattern} escape ${contextEscapeCharacter}`,
+                  sql`${surveyAssignments.context}::text ilike ${contextPattern} escape ${contextEscapeCharacter}`,
+                  sql`${surveyResponses.metadata}::text ilike ${contextPattern} escape ${contextEscapeCharacter}`,
+              )
+            : undefined,
+    );
+}
+
+function sortSurveyQuestionsByVersion(
+    questions: SelectSurveyQuestion[],
+    versions: SelectSurveyVersion[],
+) {
+    const versionNumberById = new Map(
+        versions.map((version) => [version.id, version.versionNumber]),
+    );
+    return [...questions].sort((left, right) => {
+        const versionDifference =
+            (versionNumberById.get(left.versionId) ?? 0) -
+            (versionNumberById.get(right.versionId) ?? 0);
+        if (versionDifference !== 0) return versionDifference;
+        const orderDifference = left.sortOrder - right.sortOrder;
+        return orderDifference !== 0
+            ? orderDifference
+            : left.id.localeCompare(right.id);
+    });
+}
+
+type SurveyNumericAnswerRow = {
+    questionId: string;
+    numericValue: number | null;
+    skipped: boolean;
+    count: number;
+};
+
+function weightedMedian(
+    rows: Array<{ count: number; value: number }>,
+    totalCount: number,
+) {
+    if (totalCount === 0) return null;
+    const sorted = [...rows].sort((left, right) => left.value - right.value);
+    const valueAtRank = (rank: number) => {
+        let seen = 0;
+        for (const row of sorted) {
+            seen += row.count;
+            if (seen >= rank) return row.value;
+        }
+        return null;
+    };
+    const leftRank = Math.ceil(totalCount / 2);
+    const rightRank = Math.floor(totalCount / 2) + 1;
+    const left = valueAtRank(leftRank);
+    const right = valueAtRank(rightRank);
+    return left === null || right === null ? null : (left + right) / 2;
+}
+
+function buildNumericAggregatesFromRows(
+    questions: SelectSurveyQuestion[],
+    responseCountByVersion: ReadonlyMap<string, number>,
+    answerRows: SurveyNumericAnswerRow[],
+): SurveyNumericAggregate[] {
+    const answersByQuestionId = new Map<string, SurveyNumericAnswerRow[]>();
+    for (const answer of answerRows) {
+        const existing = answersByQuestionId.get(answer.questionId) ?? [];
+        existing.push(answer);
+        answersByQuestionId.set(answer.questionId, existing);
+    }
+
+    return questions
+        .filter((question) => question.type === 'opinion_scale')
+        .map((question) => {
+            const valueRows = (
+                answersByQuestionId.get(question.id) ?? []
+            ).flatMap((answer) =>
+                !answer.skipped && answer.numericValue !== null
+                    ? [
+                          {
+                              count: answer.count,
+                              value: answer.numericValue,
+                          },
+                      ]
+                    : [],
+            );
+            const distribution: Record<string, number> = {};
+            let answeredCount = 0;
+            let sum = 0;
+            for (const row of valueRows) {
+                answeredCount += row.count;
+                sum += row.value * row.count;
+                const key = row.value.toString();
+                distribution[key] = (distribution[key] ?? 0) + row.count;
+            }
+            const versionResponseCount =
+                responseCountByVersion.get(question.versionId) ?? 0;
+
+            return {
+                versionId: question.versionId,
+                questionId: question.id,
+                questionKey: question.key,
+                title: question.title,
+                count: answeredCount,
+                unansweredCount: Math.max(
+                    0,
+                    versionResponseCount - answeredCount,
+                ),
+                average: answeredCount > 0 ? sum / answeredCount : null,
+                median: weightedMedian(valueRows, answeredCount),
+                distribution,
+                scoreMetadata: question.scoreMetadata,
+            };
+        });
+}
+
+export async function getSurveyResponsePageAdmin({
+    surveyId,
+    page: requestedPage,
+    pageSize: requestedPageSize,
+    includeNumericAggregates = true,
+    ...filters
+}: SurveyResponsePageRequest): Promise<SurveyResponsePage | null> {
+    const survey = await getSurveyById(surveyId);
+    if (!survey) return null;
+
+    const versions = await storage().query.surveyVersions.findMany({
+        where: eq(surveyVersions.surveyId, surveyId),
+        orderBy: desc(surveyVersions.versionNumber),
+    });
+    const requestedVersionId = filters.versionId?.trim() || null;
+    const appliedVersionId =
+        requestedVersionId &&
+        versions.some((version) => version.id === requestedVersionId)
+            ? requestedVersionId
+            : null;
+    const selectedVersionIds = appliedVersionId
+        ? [appliedVersionId]
+        : versions.map((version) => version.id);
+    const pageSize = Math.min(
+        maximumSurveyResponsePageSize,
+        normalizePositiveInteger(
+            requestedPageSize,
+            defaultSurveyResponsePageSize,
+        ),
+    );
+    if (selectedVersionIds.length === 0) {
+        return {
+            survey,
+            versions,
+            questions: [],
+            responses: [],
+            numericAggregates: [],
+            totalCount: 0,
+            page: 1,
+            pageSize,
+            pageCount: 0,
+            appliedVersionId,
+        };
+    }
+
+    const filtersWithAppliedVersion: SurveyResponseFilters = {
+        ...filters,
+        versionId: appliedVersionId,
+    };
+    const where = surveyResponseWhere({
+        filters: filtersWithAppliedVersion,
+        surveyId,
+        versionIds: selectedVersionIds,
+    });
+    const [questionRows, countRows] = await Promise.all([
+        storage().query.surveyQuestions.findMany({
+            where: inArray(surveyQuestions.versionId, selectedVersionIds),
+        }),
+        storage()
+            .select({
+                versionId: surveyResponses.versionId,
+                count: count(),
+            })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .where(where)
+            .groupBy(surveyResponses.versionId),
+    ]);
+    const questions = sortSurveyQuestionsByVersion(questionRows, versions);
+    const totalCount = countRows.reduce((total, row) => total + row.count, 0);
+    const pageCount = Math.ceil(totalCount / pageSize);
+    const normalizedPage = normalizePositiveInteger(requestedPage, 1);
+    const page = pageCount > 0 ? Math.min(normalizedPage, pageCount) : 1;
+    const resolvedAccountId = resolvedSurveyResponseAccountId();
+    const resolvedUserId = resolvedSurveyResponseUserId();
+    const numericQuestionIds = includeNumericAggregates
+        ? questions
+              .filter((question) => question.type === 'opinion_scale')
+              .map((question) => question.id)
+        : [];
+    const [responseRows, numericAnswerRows] = await Promise.all([
+        storage()
+            .select({
+                response: surveyResponses,
+                assignment: surveyAssignments,
+                version: surveyVersions,
+                accountId: resolvedAccountId,
+                userId: resolvedUserId,
+                userName: users.userName,
+                displayName: users.displayName,
+            })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .innerJoin(
+                surveyVersions,
+                and(
+                    eq(surveyVersions.id, surveyResponses.versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .leftJoin(users, eq(users.id, resolvedUserId))
+            .where(where)
+            .orderBy(
+                desc(surveyResponses.submittedAt),
+                desc(surveyResponses.id),
+            )
+            .offset((page - 1) * pageSize)
+            .limit(pageSize),
+        numericQuestionIds.length > 0
+            ? storage()
+                  .select({
+                      questionId: surveyAnswers.questionId,
+                      numericValue: surveyAnswers.numericValue,
+                      skipped: surveyAnswers.skipped,
+                      count: count(),
+                  })
+                  .from(surveyResponses)
+                  .leftJoin(
+                      surveyAssignments,
+                      and(
+                          eq(
+                              surveyAssignments.id,
+                              surveyResponses.assignmentId,
+                          ),
+                          eq(surveyAssignments.surveyId, surveyId),
+                          eq(
+                              surveyAssignments.versionId,
+                              surveyResponses.versionId,
+                          ),
+                      ),
+                  )
+                  .innerJoin(
+                      surveyAnswers,
+                      eq(surveyAnswers.responseId, surveyResponses.id),
+                  )
+                  .innerJoin(
+                      surveyQuestions,
+                      and(
+                          eq(surveyQuestions.id, surveyAnswers.questionId),
+                          eq(
+                              surveyQuestions.versionId,
+                              surveyResponses.versionId,
+                          ),
+                      ),
+                  )
+                  .where(
+                      and(
+                          where,
+                          inArray(surveyAnswers.questionId, numericQuestionIds),
+                      ),
+                  )
+                  .groupBy(
+                      surveyAnswers.questionId,
+                      surveyAnswers.numericValue,
+                      surveyAnswers.skipped,
+                  )
+            : [],
+    ]);
+    const responseIds = responseRows.map((row) => row.response.id);
+    const pageAnswerRows =
+        responseIds.length > 0
+            ? await storage()
+                  .select({
+                      answer: surveyAnswers,
+                      question: surveyQuestions,
+                  })
+                  .from(surveyAnswers)
+                  .innerJoin(
+                      surveyResponses,
+                      and(
+                          eq(surveyResponses.id, surveyAnswers.responseId),
+                          eq(surveyResponses.surveyId, surveyId),
+                          inArray(surveyResponses.id, responseIds),
+                      ),
+                  )
+                  .innerJoin(
+                      surveyQuestions,
+                      and(
+                          eq(surveyQuestions.id, surveyAnswers.questionId),
+                          eq(
+                              surveyQuestions.versionId,
+                              surveyResponses.versionId,
+                          ),
+                      ),
+                  )
+                  .orderBy(
+                      asc(surveyQuestions.sortOrder),
+                      asc(surveyAnswers.createdAt),
+                      asc(surveyAnswers.id),
+                  )
+            : [];
+    const answersByResponseId = new Map<string, SurveyResponseAnswerDetail[]>();
+    for (const answer of pageAnswerRows) {
+        const existing =
+            answersByResponseId.get(answer.answer.responseId) ?? [];
+        existing.push(answer);
+        answersByResponseId.set(answer.answer.responseId, existing);
+    }
+    const responses = responseRows.map((row) => ({
+        response: row.response,
+        assignment: row.assignment,
+        version: row.version,
+        accountId: row.accountId,
+        user:
+            row.userId && row.userName
+                ? {
+                      id: row.userId,
+                      userName: row.userName,
+                      displayName: row.displayName,
+                  }
+                : null,
+        answers: answersByResponseId.get(row.response.id) ?? [],
+    }));
+
+    return {
+        survey,
+        versions,
+        questions,
+        responses,
+        numericAggregates: includeNumericAggregates
+            ? buildNumericAggregatesFromRows(
+                  questions,
+                  new Map(countRows.map((row) => [row.versionId, row.count])),
+                  numericAnswerRows,
+              )
+            : [],
+        totalCount,
+        page,
+        pageSize,
+        pageCount,
+        appliedVersionId,
+    };
+}
+
+export async function prepareSurveyResponseExportAdmin({
+    surveyId,
+    maximumResponseCount: requestedMaximumResponseCount,
+    ...filters
+}: SurveyResponseExportRequest): Promise<SurveyResponseExportPreparation | null> {
+    const survey = await getSurveyById(surveyId);
+    if (!survey) return null;
+
+    const versions = await storage().query.surveyVersions.findMany({
+        where: eq(surveyVersions.surveyId, surveyId),
+        orderBy: desc(surveyVersions.versionNumber),
+    });
+    const requestedVersionId = filters.versionId?.trim() || null;
+    const appliedVersionId =
+        requestedVersionId &&
+        versions.some((version) => version.id === requestedVersionId)
+            ? requestedVersionId
+            : null;
+    const selectedVersionIds = appliedVersionId
+        ? [appliedVersionId]
+        : versions.map((version) => version.id);
+    if (selectedVersionIds.length === 0) {
+        return {
+            status: 'ready',
+            survey,
+            versions,
+            questions: [],
+            responseIds: [],
+            appliedVersionId,
+        };
+    }
+
+    const maximumResponseCount = Math.min(
+        maximumSurveyResponseExportCount,
+        normalizePositiveInteger(
+            requestedMaximumResponseCount,
+            maximumSurveyResponseExportCount,
+        ),
+    );
+    const where = surveyResponseWhere({
+        surveyId,
+        versionIds: selectedVersionIds,
+        filters: {
+            ...filters,
+            versionId: appliedVersionId,
+        },
+    });
+    const [questionRows, responseIdRows] = await Promise.all([
+        storage().query.surveyQuestions.findMany({
+            where: inArray(surveyQuestions.versionId, selectedVersionIds),
+        }),
+        storage()
+            .select({ id: surveyResponses.id })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .where(where)
+            .orderBy(
+                desc(surveyResponses.submittedAt),
+                desc(surveyResponses.id),
+            )
+            .limit(maximumResponseCount + 1),
+    ]);
+    if (responseIdRows.length > maximumResponseCount) {
+        return {
+            status: 'too_large',
+            reason: 'responses',
+        };
+    }
+
+    return {
+        status: 'ready',
+        survey,
+        versions,
+        questions: sortSurveyQuestionsByVersion(questionRows, versions),
+        responseIds: responseIdRows.map((row) => row.id),
+        appliedVersionId,
+    };
+}
+
+export async function getSurveyResponseExportBatchAdmin({
+    responseIds,
+    surveyId,
+}: {
+    responseIds: string[];
+    surveyId: string;
+}): Promise<SurveyResponseExportRow[]> {
+    const orderedResponseIds = uniqueStrings(responseIds).slice(
+        0,
+        maximumSurveyResponseExportBatchSize,
+    );
+    if (orderedResponseIds.length === 0) return [];
+
+    const resolvedAccountId = resolvedSurveyResponseAccountId();
+    const resolvedUserId = resolvedSurveyResponseUserId();
+    const responseRows = await storage()
+        .select({
+            response: surveyResponses,
+            assignment: surveyAssignments,
+            version: surveyVersions,
+            accountId: resolvedAccountId,
+            userId: resolvedUserId,
+            userName: users.userName,
+            displayName: users.displayName,
+        })
+        .from(surveyResponses)
+        .leftJoin(
+            surveyAssignments,
+            and(
+                eq(surveyAssignments.id, surveyResponses.assignmentId),
+                eq(surveyAssignments.surveyId, surveyId),
+                eq(surveyAssignments.versionId, surveyResponses.versionId),
+            ),
+        )
+        .innerJoin(
+            surveyVersions,
+            and(
+                eq(surveyVersions.id, surveyResponses.versionId),
+                eq(surveyVersions.surveyId, surveyId),
+            ),
+        )
+        .leftJoin(users, eq(users.id, resolvedUserId))
+        .where(
+            and(
+                eq(surveyResponses.surveyId, surveyId),
+                inArray(surveyResponses.id, orderedResponseIds),
+            ),
+        );
+    const returnedResponseIds = responseRows.map((row) => row.response.id);
+    const answerRows =
+        returnedResponseIds.length > 0
+            ? await storage()
+                  .select({
+                      answer: surveyAnswers,
+                      question: surveyQuestions,
+                  })
+                  .from(surveyAnswers)
+                  .innerJoin(
+                      surveyResponses,
+                      and(
+                          eq(surveyResponses.id, surveyAnswers.responseId),
+                          eq(surveyResponses.surveyId, surveyId),
+                          inArray(surveyResponses.id, returnedResponseIds),
+                      ),
+                  )
+                  .innerJoin(
+                      surveyQuestions,
+                      and(
+                          eq(surveyQuestions.id, surveyAnswers.questionId),
+                          eq(
+                              surveyQuestions.versionId,
+                              surveyResponses.versionId,
+                          ),
+                      ),
+                  )
+                  .orderBy(
+                      asc(surveyQuestions.sortOrder),
+                      asc(surveyAnswers.createdAt),
+                      asc(surveyAnswers.id),
+                  )
+            : [];
+    const answersByResponseId = new Map<string, SurveyResponseAnswerDetail[]>();
+    for (const answer of answerRows) {
+        const existing =
+            answersByResponseId.get(answer.answer.responseId) ?? [];
+        existing.push(answer);
+        answersByResponseId.set(answer.answer.responseId, existing);
+    }
+    const rowByResponseId = new Map(
+        responseRows.map((row) => [
+            row.response.id,
+            {
+                response: row.response,
+                assignment: row.assignment,
+                version: row.version,
+                accountId: row.accountId,
+                user:
+                    row.userId && row.userName
+                        ? {
+                              id: row.userId,
+                              userName: row.userName,
+                              displayName: row.displayName,
+                          }
+                        : null,
+                answers: answersByResponseId.get(row.response.id) ?? [],
+            },
+        ]),
+    );
+
+    return orderedResponseIds.flatMap((responseId) => {
+        const row = rowByResponseId.get(responseId);
+        return row ? [row] : [];
+    });
+}
+
 export async function getSurveyResultsAdmin({
     from,
     monthKey,
@@ -1363,9 +2347,12 @@ export async function getSurveyResultsAdmin({
         where: eq(surveyVersions.surveyId, surveyId),
         orderBy: desc(surveyVersions.versionNumber),
     });
-    const selectedVersionIds = versionId
-        ? [versionId]
-        : versions.map((version) => version.id);
+    const requestedVersionId = versionId?.trim() || null;
+    const selectedVersionIds =
+        requestedVersionId &&
+        versions.some((version) => version.id === requestedVersionId)
+            ? [requestedVersionId]
+            : versions.map((version) => version.id);
     if (selectedVersionIds.length === 0) {
         return {
             survey,
@@ -1376,62 +2363,61 @@ export async function getSurveyResultsAdmin({
         };
     }
 
-    const questions = await storage().query.surveyQuestions.findMany({
-        where: inArray(surveyQuestions.versionId, selectedVersionIds),
-        orderBy: [asc(surveyQuestions.sortOrder)],
+    const where = surveyResponseWhere({
+        surveyId,
+        versionIds: selectedVersionIds,
+        filters: {
+            submittedFrom: from,
+            submittedTo: to,
+            monthKey,
+        },
     });
-    const responseRows = await storage().query.surveyResponses.findMany({
-        where: inArray(surveyResponses.versionId, selectedVersionIds),
-        orderBy: desc(surveyResponses.submittedAt),
-    });
-    const responseIds = responseRows.map((response) => response.id);
-    const assignmentIds = responseRows.flatMap((response) =>
-        response.assignmentId ? [response.assignmentId] : [],
-    );
-    const [answerRows, assignmentRows] = await Promise.all([
-        responseIds.length > 0
-            ? storage().query.surveyAnswers.findMany({
-                  where: inArray(surveyAnswers.responseId, responseIds),
-                  orderBy: asc(surveyAnswers.createdAt),
-              })
-            : [],
-        assignmentIds.length > 0
-            ? storage().query.surveyAssignments.findMany({
-                  where: inArray(surveyAssignments.id, assignmentIds),
-              })
-            : [],
+    const [questionRows, responseRows] = await Promise.all([
+        storage().query.surveyQuestions.findMany({
+            where: inArray(surveyQuestions.versionId, selectedVersionIds),
+        }),
+        storage()
+            .select({
+                response: surveyResponses,
+                assignment: surveyAssignments,
+            })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .where(where)
+            .orderBy(
+                desc(surveyResponses.submittedAt),
+                desc(surveyResponses.id),
+            ),
     ]);
-    const assignmentById = new Map(
-        assignmentRows.map((assignment) => [assignment.id, assignment]),
-    );
-    const answersByResponseId = new Map<
-        string,
-        Array<typeof surveyAnswers.$inferSelect>
-    >();
+    const questions = sortSurveyQuestionsByVersion(questionRows, versions);
+    const responseIds = responseRows.map((row) => row.response.id);
+    const answerRows =
+        responseIds.length > 0
+            ? await storage().query.surveyAnswers.findMany({
+                  where: inArray(surveyAnswers.responseId, responseIds),
+                  orderBy: [
+                      asc(surveyAnswers.createdAt),
+                      asc(surveyAnswers.id),
+                  ],
+              })
+            : [];
+    const answersByResponseId = new Map<string, SelectSurveyAnswer[]>();
     for (const answer of answerRows) {
         const existing = answersByResponseId.get(answer.responseId) ?? [];
         existing.push(answer);
         answersByResponseId.set(answer.responseId, existing);
     }
-
-    const filteredResponses = responseRows.filter((response) => {
-        if (from && response.submittedAt < from) return false;
-        if (to && response.submittedAt > to) return false;
-        if (monthKey) {
-            const assignment = response.assignmentId
-                ? assignmentById.get(response.assignmentId)
-                : undefined;
-            if (assignment?.context.monthKey !== monthKey) return false;
-        }
-        return true;
-    });
-
-    const responses = filteredResponses.map((response) => ({
-        response,
-        assignment: response.assignmentId
-            ? (assignmentById.get(response.assignmentId) ?? null)
-            : null,
-        answers: answersByResponseId.get(response.id) ?? [],
+    const responses = responseRows.map((row) => ({
+        response: row.response,
+        assignment: row.assignment,
+        answers: answersByResponseId.get(row.response.id) ?? [],
     }));
 
     return {
@@ -1443,62 +2429,125 @@ export async function getSurveyResultsAdmin({
     };
 }
 
-function median(values: number[]) {
-    if (values.length === 0) return null;
-    const sorted = [...values].sort((left, right) => left - right);
-    const middle = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 1) {
-        return sorted[middle] ?? null;
+export async function getSurveyResponseAdmin({
+    responseId,
+    surveyId,
+}: {
+    responseId: string;
+    surveyId: string;
+}): Promise<SurveyResponseDetail | null> {
+    const resolvedAccountId = resolvedSurveyResponseAccountId();
+    const resolvedUserId = resolvedSurveyResponseUserId();
+    const row = (
+        await storage()
+            .select({
+                response: surveyResponses,
+                assignment: surveyAssignments,
+                version: surveyVersions,
+                accountId: resolvedAccountId,
+                userId: resolvedUserId,
+                userName: users.userName,
+                displayName: users.displayName,
+            })
+            .from(surveyResponses)
+            .leftJoin(
+                surveyAssignments,
+                and(
+                    eq(surveyAssignments.id, surveyResponses.assignmentId),
+                    eq(surveyAssignments.surveyId, surveyId),
+                    eq(surveyAssignments.versionId, surveyResponses.versionId),
+                ),
+            )
+            .innerJoin(
+                surveyVersions,
+                and(
+                    eq(surveyVersions.id, surveyResponses.versionId),
+                    eq(surveyVersions.surveyId, surveyId),
+                ),
+            )
+            .leftJoin(users, eq(users.id, resolvedUserId))
+            .where(
+                and(
+                    eq(surveyResponses.id, responseId),
+                    eq(surveyResponses.surveyId, surveyId),
+                ),
+            )
+            .limit(1)
+    )[0];
+    if (!row) return null;
+
+    const answers = await storage()
+        .select({
+            answer: surveyAnswers,
+            question: surveyQuestions,
+        })
+        .from(surveyAnswers)
+        .innerJoin(
+            surveyQuestions,
+            and(
+                eq(surveyQuestions.id, surveyAnswers.questionId),
+                eq(surveyQuestions.versionId, row.response.versionId),
+            ),
+        )
+        .where(eq(surveyAnswers.responseId, row.response.id))
+        .orderBy(
+            asc(surveyQuestions.sortOrder),
+            asc(surveyAnswers.createdAt),
+            asc(surveyAnswers.id),
+        );
+
+    return {
+        response: row.response,
+        assignment: row.assignment,
+        version: row.version,
+        accountId: row.accountId,
+        user:
+            row.userId && row.userName
+                ? {
+                      id: row.userId,
+                      userName: row.userName,
+                      displayName: row.displayName,
+                  }
+                : null,
+        answers,
+    };
+}
+
+export function buildNumericAggregates<
+    T extends {
+        response: SelectSurveyResponse;
+        answers: Array<SurveyResponseAnswerDetail | SelectSurveyAnswer>;
+    },
+>(questions: SelectSurveyQuestion[], responses: T[]): SurveyNumericAggregate[] {
+    const responseCountByVersion = new Map<string, number>();
+    for (const response of responses) {
+        responseCountByVersion.set(
+            response.response.versionId,
+            (responseCountByVersion.get(response.response.versionId) ?? 0) + 1,
+        );
     }
-    const left = sorted[middle - 1];
-    const right = sorted[middle];
-    if (left === undefined || right === undefined) return null;
-    return (left + right) / 2;
+
+    return buildNumericAggregatesFromRows(
+        questions,
+        responseCountByVersion,
+        responses.flatMap((response) =>
+            response.answers.map((item) => {
+                const answer = 'answer' in item ? item.answer : item;
+                return {
+                    questionId: answer.questionId,
+                    numericValue: answer.numericValue,
+                    skipped: answer.skipped,
+                    count: 1,
+                };
+            }),
+        ),
+    );
 }
 
-export function buildNumericAggregates(
-    questions: SelectSurveyQuestion[],
-    responses: SurveyResponseDetail[],
-): SurveyNumericAggregate[] {
-    return questions
-        .filter((question) => question.type === 'opinion_scale')
-        .map((question) => {
-            const values: number[] = [];
-            let unansweredCount = 0;
-            const distribution: Record<string, number> = {};
-
-            for (const response of responses) {
-                const answer = response.answers.find(
-                    (item) => item.questionId === question.id,
-                );
-                if (!answer || answer.skipped || answer.numericValue === null) {
-                    unansweredCount += 1;
-                    continue;
-                }
-                values.push(answer.numericValue);
-                const key = answer.numericValue.toString();
-                distribution[key] = (distribution[key] ?? 0) + 1;
-            }
-
-            const sum = values.reduce((total, value) => total + value, 0);
-            return {
-                questionId: question.id,
-                questionKey: question.key,
-                title: question.title,
-                count: values.length,
-                unansweredCount,
-                average: values.length > 0 ? sum / values.length : null,
-                median: median(values),
-                distribution,
-                scoreMetadata: question.scoreMetadata,
-            };
-        });
-}
-
-export async function getSurveyAdminDetails(surveyId: string) {
+export async function getSurveyWorkspaceAdminDetails(surveyId: string) {
     const survey = await getSurveyById(surveyId);
     if (!survey) return null;
-    const [versions, sends, assignments, results] = await Promise.all([
+    const [versions, sends, assignments] = await Promise.all([
         storage().query.surveyVersions.findMany({
             where: eq(surveyVersions.surveyId, surveyId),
             orderBy: desc(surveyVersions.versionNumber),
@@ -1513,7 +2562,6 @@ export async function getSurveyAdminDetails(surveyId: string) {
             orderBy: desc(surveyAssignments.createdAt),
             limit: 50,
         }),
-        getSurveyResultsAdmin({ surveyId }),
     ]);
     const questionGroups = await Promise.all(
         versions.map(async (version) => ({
@@ -1527,6 +2575,18 @@ export async function getSurveyAdminDetails(surveyId: string) {
         questionGroups,
         sends,
         assignments,
+    };
+}
+
+export async function getSurveyAdminDetails(surveyId: string) {
+    const [details, results] = await Promise.all([
+        getSurveyWorkspaceAdminDetails(surveyId),
+        getSurveyResultsAdmin({ surveyId }),
+    ]);
+    if (!details) return null;
+
+    return {
+        ...details,
         results,
     };
 }

@@ -9,6 +9,54 @@ import {
     ShoppingCartPlantSortStory,
 } from './ShoppingCartOptimisticToggleStory';
 
+const shoppingCartServerItem = {
+    id: 1,
+    cartId: 1,
+    entityId: 'operation-1',
+    entityTypeName: 'operation',
+    gardenId: null,
+    raisedBedId: null,
+    positionIndex: null,
+    additionalData: null,
+    amount: 1,
+    currency: 'eur',
+    status: 'new',
+    isDeleted: false,
+    createdAt: '2026-05-21T00:00:00.000Z',
+    updatedAt: '2026-05-21T00:00:00.000Z',
+    shopData: {
+        name: 'Zalijevanje',
+        description: 'Mock operation.',
+        image: '',
+        price: 2.5,
+    },
+    entityData: {
+        id: 1,
+        entityType: { id: 10, name: 'operation', label: 'Radnje' },
+        slug: 'mock-watering',
+        information: {
+            name: 'watering',
+            label: 'Zalijevanje',
+            shortDescription: 'Mock operation.',
+        },
+    },
+};
+
+function createShoppingCartServerData(
+    items: (typeof shoppingCartServerItem)[] = [shoppingCartServerItem],
+    hasDeliverableItems = false,
+) {
+    return {
+        allowPurchase: true,
+        hasDeliverableItems,
+        id: 1,
+        items,
+        notes: [],
+        total: items.reduce((total, item) => total + item.shopData.price, 0),
+        totalSunflowers: 0,
+    };
+}
+
 async function getPresenceAnimation(locator: Locator) {
     return locator.evaluate((node) => {
         const style = window.getComputedStyle(node);
@@ -468,6 +516,19 @@ test.describe('shopping cart item presence', () => {
         mount,
         page,
     }) => {
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(createShoppingCartServerData()),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
         await mount(<ShoppingCartHudItemsPresenceStory />);
 
         const cartTrigger = page.getByTitle('Košara');
@@ -515,6 +576,243 @@ test.describe('shopping cart item presence', () => {
 
         await expect(cartDialog).toHaveCount(0);
         await expect(cartTrigger).toHaveCount(0);
+    });
+
+    test('returns to the cart after dismissing and reopening the harvest summary', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ height: 844, width: 390 });
+        const startAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const endAt = new Date(startAt.getTime() + 2 * 60 * 60 * 1000);
+        const effectiveClosesAt = new Date(
+            startAt.getTime() - 24 * 60 * 60 * 1000,
+        );
+        const deliveryDate = startAt.toISOString().slice(0, 10);
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(
+                    createShoppingCartServerData(
+                        [shoppingCartServerItem],
+                        true,
+                    ),
+                ),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+        await page.route(
+            '**/api/gredice/api/delivery/addresses**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify([
+                        {
+                            id: 7,
+                            accountId: 'test-account',
+                            label: 'Dom',
+                            contactName: 'Test User',
+                            phone: '+385991234567',
+                            street1: 'Ilica 1',
+                            street2: null,
+                            city: 'Zagreb',
+                            postalCode: '10000',
+                            countryCode: 'HR',
+                            isDefault: true,
+                            deletedAt: null,
+                            createdAt: startAt.toISOString(),
+                            updatedAt: startAt.toISOString(),
+                        },
+                    ]),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/api/delivery/pickup-locations**',
+            async (route) => {
+                await route.fulfill({
+                    body: '[]',
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/api/delivery/slots**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify([
+                        {
+                            id: 41,
+                            locationId: null,
+                            type: 'delivery',
+                            startAt: startAt.toISOString(),
+                            endAt: endAt.toISOString(),
+                            closesAt: null,
+                            effectiveClosesAt: effectiveClosesAt.toISOString(),
+                            status: 'scheduled',
+                            createdAt: startAt.toISOString(),
+                            updatedAt: startAt.toISOString(),
+                            location: null,
+                        },
+                    ]),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route(
+            '**/api/gredice/**/shopping-cart/harvest-schedule**',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify({
+                        deliverySlotId: 41,
+                        deliveryDate,
+                        allValid: true,
+                        requiresAdjustment: false,
+                        items: [
+                            {
+                                cartItemId: 1,
+                                operationId: 10,
+                                operationName: 'harvestPlant',
+                                operationLabel: 'Berba rajčice',
+                                raisedBedId: 1,
+                                raisedBedName: 'Gredica 1',
+                                raisedBedLabel: 'Gredica 1',
+                                positionIndex: 0,
+                                targetPositionIndexes: [0],
+                                plants: [
+                                    {
+                                        plantId: 101,
+                                        plantSortId: 201,
+                                        name: 'tomato',
+                                        label: 'Rajčica',
+                                        maxHarvestDaysBeforeDelivery: 0,
+                                    },
+                                ],
+                                maxHarvestDaysBeforeDelivery: 0,
+                                scheduledDate: deliveryDate,
+                                allowedFrom: deliveryDate,
+                                allowedTo: deliveryDate,
+                                valid: true,
+                                validationReason: null,
+                            },
+                        ],
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        const cartTrigger = page.getByTitle('Košara');
+        await cartTrigger.click();
+        await page.getByRole('button', { name: 'Dostava' }).click();
+        await expect(
+            page.getByRole('button', { name: 'Nastavi' }),
+        ).toBeEnabled();
+        await page.getByRole('button', { name: 'Nastavi' }).click();
+
+        const harvestSummary = page.getByRole('dialog', {
+            name: 'Sažetak dostave',
+        });
+        await expect(harvestSummary).toContainText(
+            'Svi datumi branja usklađeni su s odabranim terminom dostave.',
+        );
+
+        await page.keyboard.press('Escape');
+        await expect(harvestSummary).toHaveCount(0);
+
+        await cartTrigger.click();
+
+        const reopenedCart = page.getByRole('dialog', { name: 'Košara' });
+        await expect(reopenedCart).toBeVisible();
+        await expect(reopenedCart).toContainText('Ukupno');
+    });
+
+    test('refreshes the shopping cart when the production modal opens', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify(createShoppingCartServerData([])),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText('1');
+        expect(shoppingCartGetCount).toBe(0);
+
+        await page.getByTitle('Košara').click();
+
+        await expect.poll(() => shoppingCartGetCount).toBe(1);
+        await expect(page.getByTestId('cart-source-item-ids')).toHaveText(
+            'empty',
+        );
+        await expect(
+            page.getByRole('dialog', { name: 'Košara' }),
+        ).toContainText('Košara je prazna');
+    });
+
+    test('keeps cached cart items visible when the modal refresh fails', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify({ error: 'Temporary failure' }),
+                contentType: 'application/json',
+                status: 500,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await page.getByTitle('Košara').click();
+
+        await expect.poll(() => shoppingCartGetCount).toBe(1);
+        await expect(
+            page.getByText('Greška prilikom učitavanja košare'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-item-id="1"]'),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-summary]'),
+        ).toContainText('2.50 €');
+        await expect(
+            page.getByRole('button', { name: 'Očisti košaru' }),
+        ).toBeEnabled();
+        await expect(page.getByRole('button', { name: 'Plati' })).toBeEnabled();
     });
 
     test('reuses an exiting row when an optimistic removal rolls back', async ({

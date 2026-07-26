@@ -100,6 +100,12 @@ export function useGardenBoxPlaceBlock() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (state) => state.cancelBlockPlacementDropAnimation,
+    );
 
     return useMutation({
         mutationKey,
@@ -184,6 +190,7 @@ export function useGardenBoxPlaceBlock() {
             }
 
             const optimisticBlockId = context.optimisticBlockId;
+            confirmBlockPlacementDropAnimation(optimisticBlockId, data.id);
             queryClient.setQueryData<CurrentGardenData | null>(
                 context.gardenQueryKey,
                 (garden) =>
@@ -209,6 +216,9 @@ export function useGardenBoxPlaceBlock() {
                     context.gardenQueryKey,
                     context.previousGarden,
                 );
+            }
+            if (context?.optimisticBlockId) {
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
             }
         },
         onSettled: async (_data, _error, variables) => {

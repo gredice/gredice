@@ -12,7 +12,7 @@ export function normalizeSceneFramesPerSecond(framesPerSecond: number) {
 
 export function resolveSceneFramesPerSecond(
     baseFramesPerSecond: number,
-    leaseFrameRates: Iterable<number>,
+    leaseFrameRates: Iterable<number | undefined>,
 ) {
     let resolvedFramesPerSecond =
         normalizeSceneFramesPerSecond(baseFramesPerSecond);
@@ -20,7 +20,9 @@ export function resolveSceneFramesPerSecond(
     for (const leaseFrameRate of leaseFrameRates) {
         resolvedFramesPerSecond = Math.max(
             resolvedFramesPerSecond,
-            normalizeSceneFramesPerSecond(leaseFrameRate),
+            normalizeSceneFramesPerSecond(
+                leaseFrameRate ?? baseFramesPerSecond,
+            ),
         );
     }
 

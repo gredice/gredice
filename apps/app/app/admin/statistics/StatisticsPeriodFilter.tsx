@@ -10,6 +10,7 @@ import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import type { StatisticsPeriodKey } from './statisticsPeriod';
+import { preservedStatisticsPeriodEntries } from './statisticsPeriodQuery';
 
 const periodOptions: {
     value: StatisticsPeriodKey;
@@ -48,6 +49,9 @@ export function StatisticsPeriodFilter({
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const preservedCustomFields = preservedStatisticsPeriodEntries(
+        searchParams?.toString() ?? '',
+    );
     const visiblePeriodOptions = includeAllTime
         ? periodOptions
         : periodOptions.filter((option) => option.value !== 'all-time');
@@ -128,6 +132,14 @@ export function StatisticsPeriodFilter({
                         method="get"
                     >
                         <input name="period" type="hidden" value="custom" />
+                        {preservedCustomFields.map(([name, value]) => (
+                            <input
+                                key={`${name}-${value}`}
+                                name={name}
+                                type="hidden"
+                                value={value}
+                            />
+                        ))}
                         <Input
                             type="date"
                             name="from"

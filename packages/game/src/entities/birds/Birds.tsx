@@ -3,7 +3,7 @@ import { useAnimations } from '@react-three/drei';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
-import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
@@ -14,7 +14,9 @@ import {
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { waterBlockName } from '../waterBlockFoam';
 import {
     type BirdBehavior,
@@ -30,6 +32,7 @@ type BirdTarget = {
     blockId?: string;
     circle?: BirdCircleMotion;
     facingYaw?: number;
+    groundY: number;
     position: Vector3;
 };
 
@@ -42,6 +45,7 @@ type BirdCircleMotion = {
 };
 
 type BirdCircleAnchor = {
+    groundY: number;
     id: string;
     position: Vector3;
 };
@@ -302,12 +306,12 @@ function targetForBlock({
     blockData: BlockData[] | null | undefined;
     stack: Stack;
 }) {
-    const y =
-        getStackHeight(blockData, stack, block) +
-        getVisualPerchYOffset(blockData, block.name);
+    const groundY = getStackHeight(blockData, stack, block);
+    const y = groundY + getVisualPerchYOffset(blockData, block.name);
     return {
         behavior,
         blockId: block.id,
+        groundY,
         id: `${behavior}-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdTarget;
@@ -322,10 +326,10 @@ function circleAnchorForBlock({
     blockData: BlockData[] | null | undefined;
     stack: Stack;
 }) {
-    const y =
-        getStackHeight(blockData, stack, block) +
-        getVisualPerchYOffset(blockData, block.name);
+    const groundY = getStackHeight(blockData, stack, block);
+    const y = groundY + getVisualPerchYOffset(blockData, block.name);
     return {
+        groundY,
         id: `circle-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdCircleAnchor;
@@ -338,6 +342,7 @@ function targetForGroundStack(
     const topY = getStackHeight(blockData, stack) + birdGroundLift;
     return {
         behavior: 'ground',
+        groundY: topY - birdGroundLift,
         id: `ground-${stack.position.x}-${stack.position.z}`,
         position: new Vector3(stack.position.x, topY, stack.position.z),
     } satisfies BirdTarget;
@@ -427,6 +432,7 @@ function createAirTarget({
     const jitterAngle = random() * fullTurn;
     return {
         behavior: 'air',
+        groundY: home.groundY,
         id: `air-${home.id}-${index}`,
         position: new Vector3(
             anchor.x + Math.cos(jitterAngle) * jitterRadius,
@@ -463,6 +469,7 @@ function createCircleTarget({
             radius,
             startAngle,
         },
+        groundY: anchor.groundY,
         id: `circle-${home.id}-${anchor.id}`,
         position: new Vector3(
             center.x + Math.cos(startAngle) * radius,
@@ -1334,10 +1341,6 @@ function tintBirdPartMaterial(object: Mesh) {
         : cloneBirdPartMaterial(object.material, tintColor);
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
 function getBirdRigNode(scene: Object3D, name: string): BirdRigNode {
     const object = scene.getObjectByName(name) ?? null;
     return {
@@ -1512,6 +1515,14 @@ function createBirdDebugEntry({
     };
 }
 
+function getBirdShadowReceiverY(runtime: BirdRuntimeState) {
+    if (runtime.phase === 'settled' && runtime.target.behavior !== 'ground') {
+        return runtime.target.position.y;
+    }
+
+    return runtime.target.groundY;
+}
+
 function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
     const clock = useThree((state) => state.clock);
@@ -1541,14 +1552,15 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
     const birdModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                object.castShadow = true;
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            (object) => {
                 object.receiveShadow = true;
                 tintBirdPartMaterial(object);
-            }
-        });
+            },
+        );
         return {
+            primaryCasterCount,
             rig: {
                 flightLegPoseAmount: 0,
                 footLeft: getBirdRigNode(clone, 'BirdSmall_Foot_L'),
@@ -1565,6 +1577,11 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         };
     }, [gltf.scene]);
     const { actions } = useAnimations(gltf.animations, birdModel.scene);
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `bird:${habitat.id}`,
+        primaryCasterCount: birdModel.primaryCasterCount,
+        species: 'bird',
+    });
 
     useEffect(() => {
         const idleAction = actions.BirdSmall_Idle;
@@ -2024,6 +2041,17 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
         });
         updateGroundPeckPose({ delta, rig: birdModel.rig });
+
+        if (runtime && group && updateGroundingShadow) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getBirdShadowReceiverY(runtime),
+                visible: true,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
+        }
 
         if (runtime && group && now - lastAnimalDebugUpdateRef.current >= 0.5) {
             lastAnimalDebugUpdateRef.current = now;

@@ -31,6 +31,14 @@ export const blockGeometryMergingFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
+export const adaptiveHighQualityFlag = flag<boolean>({
+    key: 'adaptiveHighQuality',
+    description:
+        'Adapt the runtime ceiling of manually selected High game quality.',
+    decide: () => true,
+    options: booleanFlagOptions,
+});
+
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,

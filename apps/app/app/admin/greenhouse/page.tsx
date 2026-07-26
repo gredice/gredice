@@ -3,6 +3,7 @@ import {
     getAllRaisedBeds,
     getEntitiesFormatted,
     getOperations,
+    getPreviousPlantStatusChangedAtForUpdate,
 } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
@@ -93,6 +94,23 @@ function getPlantName(
         plantSort?.information?.name?.trim() ??
         `Nepoznata sorta #${plantSortId}`
     );
+}
+
+function getSproutedDateMinimum(
+    field: GreenhouseRaisedBedField,
+    activePlantCycle: GreenhouseRaisedBedField['plantCycles'][number],
+) {
+    const previousStatusChangedAt = getPreviousPlantStatusChangedAtForUpdate({
+        currentStatus: field.plantStatus,
+        latestStatusChangedAt: field.plantStatusChangedAt,
+        nextStatus: 'sprouted',
+        statusChanges: activePlantCycle.statusChanges,
+    });
+
+    return previousStatusChangedAt &&
+        previousStatusChangedAt > activePlantCycle.startedAt
+        ? previousStatusChangedAt
+        : activePlantCycle.startedAt;
 }
 
 function localCalendarDayIndex(date: Date) {
@@ -366,6 +384,10 @@ export default async function GreenhousePage() {
                                                             expectedPlantSortId={
                                                                 field.plantSortId
                                                             }
+                                                            minimumDate={getSproutedDateMinimum(
+                                                                field,
+                                                                activePlantCycle,
+                                                            )}
                                                             sproutedDate={
                                                                 field.plantGrowthDate ??
                                                                 null

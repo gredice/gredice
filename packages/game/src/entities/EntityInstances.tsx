@@ -28,6 +28,7 @@ import {
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
@@ -156,8 +157,10 @@ function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
 }
 
 function RaisedBedGeneratedPlantInstances({
+    quality,
     stacks,
 }: {
+    quality: GameQualityProfile;
     stacks: Stack[] | undefined;
 }) {
     const instances = useEntityBlockInstances({
@@ -176,6 +179,7 @@ function RaisedBedGeneratedPlantInstances({
                 blockId: instance.block.id,
                 position: instance.position,
             }))}
+            quality={quality}
         />
     );
 }
@@ -231,6 +235,7 @@ export function EntityInstances({
     renderGroundDecorations,
     stacks,
     renderDetails = true,
+    weather,
 }: {
     enableBlockGeometryMerging?: boolean;
     farmId?: number | null;
@@ -238,6 +243,7 @@ export function EntityInstances({
     renderGroundDecorations?: boolean;
     stacks: Stack[] | undefined;
     renderDetails?: boolean;
+    weather?: GroundDecorationWeather;
 }) {
     const entityBlockInstanceIndex = useMemo(
         () => createEntityBlockInstanceIndex(stacks),
@@ -518,6 +524,7 @@ export function EntityInstances({
                     density={qualityProfile.groundDecorationDensity}
                     farmId={farmId}
                     stacks={stacks}
+                    weather={weather}
                 />
             )}
             <EntityInstancesAssetBlock
@@ -760,7 +767,10 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Seed.material}
             />
             <Suspense fallback={null}>
-                <RaisedBedGeneratedPlantInstances stacks={stacks} />
+                <RaisedBedGeneratedPlantInstances
+                    quality={qualityProfile}
+                    stacks={stacks}
+                />
             </Suspense>
             <Suspense fallback={null}>
                 <AdditionalEntityInstances

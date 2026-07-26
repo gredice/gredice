@@ -162,6 +162,11 @@ import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import {
+    type SurveyAnswerState,
+    type SurveyAnswerValue,
+    SurveyQuestionnaire,
+} from '@gredice/ui/SurveyQuestionnaire';
 import { Switch } from '@gredice/ui/Switch';
 import { Table } from '@gredice/ui/Table';
 import {
@@ -1881,6 +1886,76 @@ function ShowcaseSurface() {
     return <OperationsDashboardShowcase />;
 }
 
+function SurveyQuestionnaireShowcase() {
+    const [answers, setAnswers] = useState<SurveyAnswerState>({});
+
+    function setAnswer(questionId: string, value: SurveyAnswerValue) {
+        setAnswers((current) => ({ ...current, [questionId]: value }));
+    }
+
+    return (
+        <Container maxWidth="md" className="py-8">
+            <SurveyQuestionnaire
+                answers={answers}
+                introDescription="Odgovori na nekoliko kratkih pitanja."
+                introTitle="Anketa zadovoljstva"
+                questions={[
+                    {
+                        id: 'recommendation',
+                        key: 'recommendation',
+                        title: 'Koliko bi preporučio Gredice?',
+                        description: null,
+                        required: true,
+                        sortOrder: 1,
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                            step: 1,
+                            minLabel: 'Nikako',
+                            maxLabel: 'Svakako',
+                        },
+                    },
+                    {
+                        id: 'comment',
+                        key: 'comment',
+                        title: 'Što možemo poboljšati?',
+                        description: null,
+                        required: false,
+                        sortOrder: 2,
+                        type: 'long_text',
+                        settings: {
+                            type: 'long_text',
+                            maxLength: 500,
+                            placeholder: 'Napiši komentar',
+                        },
+                    },
+                    {
+                        id: 'contact',
+                        key: 'contact',
+                        title: 'Kontakt',
+                        description: 'Ostavi podatke ako želiš odgovor.',
+                        required: false,
+                        sortOrder: 3,
+                        type: 'contact_info',
+                        settings: {
+                            type: 'contact_info',
+                            fields: ['first_name', 'email'],
+                            phoneDefaultCountry: 'HR',
+                        },
+                    },
+                ]}
+                submitDisabled
+                submitLabel="Pregled — slanje isključeno"
+                surveyKey="storybook"
+                title="Anketa zadovoljstva"
+                onAnswerChange={setAnswer}
+            />
+        </Container>
+    );
+}
+
 const meta = {
     title: 'packages/ui/Showcases/ComponentShowcases',
     component: ShowcaseSurface,
@@ -1914,4 +1989,8 @@ export const GardenWorkspace: Story = {
 
 export const AccountAndStates: Story = {
     render: () => <AccountAndStatesShowcase />,
+};
+
+export const SurveyForm: Story = {
+    render: () => <SurveyQuestionnaireShowcase />,
 };

@@ -5,6 +5,7 @@ import {
     buildCheckoutInvoiceBillingSnapshot,
     buildCheckoutInvoiceLineItem,
 } from '../billing/checkoutInvoiceDraft';
+import { encodeHarvestDatesMetadata } from '../checkout/harvestCheckout';
 import {
     __testUtils,
     type ProcessCheckoutSessionDependencies,
@@ -2134,6 +2135,125 @@ describe('processCheckoutSession', () => {
             [1],
         );
         assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+    });
+
+    it('uses the canonical harvest date for a mixed checkout and ignores a later non-Stripe cart item', async () => {
+        const calls: RecordedCall[] = [];
+        const canonicalHarvestDate = '2026-07-24T00:00:00.000Z';
+        const harvestEntityData = {
+            attributes: {
+                deliverable: true,
+                stage: {
+                    information: {
+                        name: 'harvest',
+                    },
+                },
+            },
+        };
+        const expectedSunflowerItem = {
+            ...makeSunflowerCartItem(),
+            additionalData: JSON.stringify({
+                scheduledDate: '2026-07-25T00:00:00.000Z',
+            }),
+            entityData: harvestEntityData,
+        };
+        const laterSunflowerItem = {
+            ...makeSunflowerCartItem(),
+            id: 3,
+            entityId: '100',
+            positionIndex: 4,
+            entityData: harvestEntityData,
+        };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [
+                            {
+                                cartItemId: expectedSunflowerItem.id,
+                                scheduledDate: canonicalHarvestDate,
+                            },
+                        ],
+                        [expectedSunflowerItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    { id: 88, positionIndex: 2, active: true },
+                    { id: 89, positionIndex: 3, active: true },
+                    { id: 90, positionIndex: 4, active: true },
+                ];
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return {
+                    id: 100,
+                    items: [expectedSunflowerItem, laterSunflowerItem],
+                };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    allowPurchase: true,
+                    notes: [],
+                    items: [expectedSunflowerItem, laterSunflowerItem],
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(callsNamed(calls, 'spendSunflowers')[0]?.args, [
+            'account-1',
+            5000,
+            'shoppingCart:100',
+        ]);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [1, 2],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'createOperation').map((call) =>
+                isRecord(call.args[0]) ? call.args[0].entityId : undefined,
+            ),
+            [42, 99],
+        );
+
+        const scheduledEvents = callsNamed(calls, 'createEvent')
+            .map((call) => call.args[0])
+            .filter(isRecordedEvent)
+            .filter((event) => event.type === 'operations.scheduled');
+        assert.equal(scheduledEvents.length, 2);
+        assert.ok(
+            scheduledEvents.some(
+                (event) =>
+                    isRecord(event.data) &&
+                    event.data.scheduledDate === canonicalHarvestDate,
+            ),
+        );
+        assert.equal(
+            callsNamed(calls, 'setCartItemPaid').some(
+                (call) => call.args[0] === laterSunflowerItem.id,
+            ),
+            false,
+        );
+        assert.equal(
+            callsNamed(calls, 'createOperation').some(
+                (call) =>
+                    isRecord(call.args[0]) &&
+                    call.args[0].entityId ===
+                        Number(laterSunflowerItem.entityId),
+            ),
+            false,
+        );
     });
 });
 

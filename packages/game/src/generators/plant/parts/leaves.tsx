@@ -21,6 +21,10 @@ import {
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
 import {
+    getPlantLeafGeometry,
+    type PlantLeafGeometryDetail,
+} from '../lib/plantLeafGeometry';
+import {
     leafColorFragmentShader,
     leafColorVertexShader,
 } from '../lib/plantLeafMaterial';
@@ -36,70 +40,9 @@ interface LeavesProps {
     animate?: boolean;
     castShadow?: boolean;
     debugName?: string;
+    geometryDetail?: PlantLeafGeometryDetail;
 }
 
-const leafGeometries = {
-    round: new THREE.CircleGeometry(1, 6),
-    oval: (() => {
-        const shape = new THREE.Shape();
-        shape.ellipse(0, 0, 0.7, 1, 0, Math.PI * 2, false, 0);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    heart: (() => {
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 0.5);
-        shape.bezierCurveTo(0, 0.5, -0.5, 1, -0.5, 0.5);
-        shape.bezierCurveTo(-0.5, 0, 0, -0.5, 0, -0.5);
-        shape.bezierCurveTo(0, -0.5, 0.5, 0, 0.5, 0.5);
-        shape.bezierCurveTo(0.5, 1, 0, 0.5, 0, 0.5);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    serrated: (() => {
-        const shape = new THREE.Shape();
-        const points = [];
-        for (let i = 0; i <= 12; i++) {
-            const angle = (i / 12) * Math.PI * 2;
-            const radius = i % 2 === 0 ? 1 : 0.6;
-            points.push(
-                new THREE.Vector2(
-                    Math.cos(angle) * radius,
-                    Math.sin(angle) * radius,
-                ),
-            );
-        }
-        shape.setFromPoints(points);
-        return new THREE.ShapeGeometry(shape);
-    })(),
-    compound: (() => {
-        const group = new THREE.BufferGeometry();
-        const positions = [];
-        const indices = [];
-        for (let i = 0; i < 5; i++) {
-            const angle = (i / 4) * Math.PI - Math.PI / 2;
-            const x = Math.sin(angle) * i * 0.15;
-            const y = Math.cos(angle) * i * 0.15;
-            const baseIndex = i * 7;
-            for (let j = 0; j <= 6; j++) {
-                const leafletAngle = (j / 6) * Math.PI * 2;
-                positions.push(
-                    x + Math.cos(leafletAngle) * 0.2,
-                    y + Math.sin(leafletAngle) * 0.2,
-                    0,
-                );
-            }
-            for (let j = 1; j < 6; j++) {
-                indices.push(baseIndex, baseIndex + j, baseIndex + j + 1);
-            }
-        }
-        group.setIndex(indices);
-        group.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(positions, 3),
-        );
-        group.computeVertexNormals();
-        return group;
-    })(),
-};
 const EMPTY_LEAF_COLORS: THREE.Color[] = [];
 const EMPTY_LEAF_MATRICES: THREE.Matrix4[] = [];
 
@@ -113,6 +56,7 @@ export function Leaves({
     animate = true,
     castShadow,
     debugName,
+    geometryDetail = 'full',
 }: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
     const instanceCount = packed?.count ?? matrices.length;
@@ -124,7 +68,7 @@ export function Leaves({
         speed: 1.45,
     });
     const fallbackColor = useMemo(() => new THREE.Color('#ffffff'), []);
-    const sourceGeometry = leafGeometries[type] || leafGeometries.round;
+    const sourceGeometry = getPlantLeafGeometry(type, geometryDetail);
     const geometry = useMemo(
         () => createPlantGeometryShell(sourceGeometry),
         [sourceGeometry],
@@ -221,7 +165,10 @@ export function Leaves({
     return (
         <instancedMesh
             ref={leafRef}
-            name={debugName ?? `PlantLeaves:${type}:count:${instanceCount}`}
+            name={
+                debugName ??
+                `PlantLeaves:${type}:${geometryDetail}:count:${instanceCount}`
+            }
             args={[geometry, undefined, instanceCapacity]}
             castShadow={shouldCastShadow}
         >

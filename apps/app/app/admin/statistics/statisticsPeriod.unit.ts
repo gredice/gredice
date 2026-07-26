@@ -4,6 +4,7 @@ import {
     resolveCurrentWeekStatisticsPeriod,
     resolveStatisticsPeriod,
 } from './statisticsPeriod';
+import { preservedStatisticsPeriodEntries } from './statisticsPeriodQuery';
 
 const julySeventeenth = new Date('2026-07-17T12:00:00.000Z');
 
@@ -106,4 +107,17 @@ test('keeps Monday as the week start when today is Sunday', () => {
 
     assert.equal(period.pickerFrom, '2026-07-13');
     assert.equal(period.pickerTo, '2026-07-19');
+});
+
+test('custom period forms preserve unrelated filters', () => {
+    assert.deepEqual(
+        preservedStatisticsPeriodEntries(
+            'period=custom&from=2026-07-01&to=2026-07-26&versionId=v2&source=typeform&context=delivery',
+        ),
+        [
+            ['versionId', 'v2'],
+            ['source', 'typeform'],
+            ['context', 'delivery'],
+        ],
+    );
 });

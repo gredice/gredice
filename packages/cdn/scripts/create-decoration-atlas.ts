@@ -725,30 +725,43 @@ function createStableAssignments(options: {
     return assignments;
 }
 
+function canReuseStableAssignments(
+    previousManifest: AtlasManifest | null,
+    gridLayout: GridLayout,
+) {
+    return (
+        previousManifest?.layout.columns === gridLayout.columns &&
+        previousManifest.layout.rows === gridLayout.rows &&
+        previousManifest.layout.pageCapacity === gridLayout.pageCapacity
+    );
+}
+
 function resolvePageAtlas(
     pageIndex: number,
     baseAtlas: AtlasGrid,
     sprites: Record<string, SpriteFrame>,
 ) {
-    const usedBottom = Object.values(sprites).reduce((bottom, sprite) => {
+    const highestOccupiedRow = Object.values(sprites).reduce((row, sprite) => {
         if (sprite.page !== pageIndex) {
-            return bottom;
+            return row;
         }
 
-        return Math.max(bottom, sprite.cell.y + sprite.cell.height);
-    }, 0);
-    const height = Math.max(
-        baseAtlas.cellSize,
-        Math.min(baseAtlas.height, usedBottom),
-    );
+        return Math.max(row, sprite.cell.row);
+    }, -1);
+    const usedRows = Math.max(1, highestOccupiedRow + 1);
+    const usedBottom = baseAtlas.offsetY + usedRows * baseAtlas.cellSize;
+    const height =
+        usedRows >= baseAtlas.rows
+            ? baseAtlas.height
+            : Math.max(
+                  baseAtlas.cellSize,
+                  Math.min(baseAtlas.height, usedBottom),
+              );
 
     return {
         ...baseAtlas,
         height,
-        rows: Math.max(
-            1,
-            Math.ceil((height - baseAtlas.offsetY) / baseAtlas.cellSize),
-        ),
+        rows: usedRows,
     } satisfies AtlasGrid;
 }
 
@@ -852,9 +865,13 @@ async function main() {
     const spriteNames = spriteEntries
         .map((entry) => entry.spriteName)
         .sort((left, right) => left.localeCompare(right));
+    const canReuseAssignments = canReuseStableAssignments(
+        previousManifest,
+        gridLayout,
+    );
     const assignments = createStableAssignments({
         pageCapacity: gridLayout.pageCapacity,
-        previousManifest,
+        previousManifest: canReuseAssignments ? previousManifest : null,
         spriteNames,
     });
     const highestPageIndex = Math.max(
@@ -1002,7 +1019,9 @@ async function main() {
     await writeFile(outputJsonPath, `${JSON.stringify(manifest, null, 4)}\n`);
 
     console.info(
-        `Created ${pageCount} atlas page(s) with ${inputFiles.length} sprites using stable slot assignment:`,
+        `Created ${pageCount} atlas page(s) with ${inputFiles.length} sprites using ${
+            canReuseAssignments ? 'stable' : 'fresh'
+        } slot assignment:`,
     );
     for (const page of manifest.pages) {
         console.info(

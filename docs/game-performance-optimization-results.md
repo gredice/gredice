@@ -68,6 +68,8 @@ baseline and the preceding row.
 | 12 | Make sky astronomy and projection event-driven | Complete | Clear + dense cloudy mobile | Clear p95 `-23%`, task time `-5.6%`; dense cloudy neutral with all eight clouds/casters retained |
 | 13 | Crop unused decoration-atlas page rows | Complete | Dense mobile + renderer memory + screenshots | Estimated mipmapped RGBA8 residency `42.7 -> 32.0 MiB` (`-25%`); all 914 decorations and render work retained |
 | 14 | Fade rain intensity and stop invisible transition-tail particles | Complete | Clear + rain-to-clear mobile | Rain unmounted `49%` sooner; transition calls/s `-3.2%` and triangles/s `-5.5%`; steady clear render work unchanged |
+| 15 | Repack small decoration sprites into one 1024px atlas | Complete | Atlas manifest + decoded residency + generated file sizes | One page replaces two; estimated mipmapped RGBA8 residency `32.0 -> 5.3 MiB` (`-83.3%`) with all 22 sprite IDs retained |
+| 16 | Use compact procedural leaf silhouettes on constrained tiers | Complete | Deterministic leaf-heavy raised-bed close-up | All `7,741` selected leaves retained; leaf triangles `177,883 -> 68,970` (`-61.2%`) and steady renderer triangles `210,461 -> 101,548` (`-51.7%`) |
 
 ### Step 01: generated-plant batch effect
 
@@ -356,6 +358,310 @@ Reports: `steps/14-rain-lifecycle-before/latest.json` and
   small shader path could delay the first visible rain and would not address
   the sustained GPU workload behind the thermal report.
 
+### Step 15: single-page 1024px decoration atlas
+
+Generated 2026-07-23 with:
+
+```bash
+pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
+```
+
+Reports: `steps/15-foliage-baseline/latest.json` and
+`steps/16-atlas-repack/latest.json`.
+
+- All 22 grass, desert-grass, and flower sprite IDs now fit on one
+  `1024x1024` page using a `5x5` grid. Each cell is `204px` with `16px`
+  padding, leaving up to `172px` for the visible sprite.
+- Estimated decoded RGBA8 residency including mip levels falls from
+  `33,554,432 -> 5,592,404 bytes` (`32.0 -> 5.3 MiB`, `-83.3%`). The
+  `27,962,028-byte` reduction is the guaranteed runtime benefit; frame-time
+  impact depends on device GPU memory pressure and transparent overdraw.
+- Active PNG payload falls from `894,792 -> 354,528 bytes` across pages
+  (`-60.4%`), and WebP payload falls from `237,984 -> 136,632 bytes`
+  (`-42.6%`). The new one-page atlas uses a versioned URL; the old two-page
+  files remain dormant so browsers with a cached manifest keep rendering
+  correctly during the cache-transition window.
+- Garden and WWW copies have identical hashes. The generator retains existing
+  slot assignments whenever the manifest layout remains compatible.
+- This atlas is used by ground decorations, not procedural L-system leaves.
+  It reduces decoration texture residency and page partitioning without
+  changing plant-generation work, plant geometry, or L-system detail policy.
+- The corrected leaf-heavy production profile confirms the runtime result:
+  atlas pages `2 -> 1` and estimated residency
+  `33,554,432 -> 5,592,404 bytes`. Removing the second page also removes one
+  instanced atlas draw per rendered close-up frame: desktop calls/instances
+  `28/27 -> 27/26`, and constrained mobile `25/24 -> 24/23`; triangles are
+  unchanged.
+- Three-repeat headless steady timing was neutral: desktop p95
+  `228.1 -> 231.8 ms` and mobile `187.0 -> 188.1 ms`, both at effectively
+  unchanged rendered FPS. The atlas is therefore classified as a guaranteed
+  memory and one-draw-call improvement, not a standalone FPS claim.
+- The generated sheet and in-game desktop/mobile screenshots were inspected
+  without clipped sprites, edge bleed, or visible close-up degradation.
+
+### Step 16: constrained procedural leaf geometry
+
+Reports: `steps/15-foliage-baseline/latest.json`,
+`steps/18-compact-leaves/latest.json`, and
+`steps/22-final-foliage-atlas/latest.json`.
+
+- The plant-heavy fixture previously stamped lifecycle dates from the wall
+  clock while the profile scene stayed frozen in 2024. That future-dated every
+  plant, reduced generation to zero, and made the old profile report zero
+  leaves. The fixture now has a deterministic reference date and the
+  acceptance gate requires non-zero selected foliage in every phase.
+- The corrected selected bed renders all `18/18` fields at exact detailed LOD
+  and contains `7,741` leaves in every cold and warm phase.
+- Medium, high, custom, and unspecified/editor quality keep the original leaf
+  geometry. The final desktop profile reports `177,883` leaf triangles.
+- Low and automatically constrained quality keep the same exact L-system leaf
+  count, transforms, colors, and sway, but use compact silhouettes. The
+  constrained profile reports `68,970` leaf triangles, a reduction of
+  `108,913` (`-61.2%`).
+- Constrained steady renderer work falls from
+  `210,461 -> 101,548 triangles/render` (`-51.7%`) in the cold comparison.
+  Calls and instanced draws stay at `24/23`. Headless p95 and rendered FPS are
+  neutral within variance (`187.0 -> 187.4 ms`, `6.0 -> 5.8`), so the claim is
+  the directly counted GPU geometry reduction rather than an unsupported FPS
+  improvement.
+- The final five-repeat production run passes all close-up optimization gates
+  in all `10/10` desktop and `10/10` constrained-mobile cold/warm phases:
+  selected detailed LOD, non-zero foliage, bounded archetypes, warm cache hits,
+  exact buffers, clean resources, shader readiness, and zero worker fallback.
+- The generic frame/long-task budget remains red in local headless
+  software-WebGL runs, and GPU timer queries are unavailable there. A sustained
+  physical iPhone/Android thermal run remains the release evidence for device
+  temperature and real GPU frame time.
+
+#### Rejected projected-size culling experiment
+
+Reports: `steps/17-projected-size-culling/latest.json`,
+`steps/19-culling-calibration-trial/latest.json`,
+`steps/20-culling-calibration-trial-4css/latest.json`, and
+`steps/21-culling-calibration-trial-6css/latest.json`.
+
+- A physical-pixel culling path was implemented and profiled after chunk and
+  frustum rejection. It culled `0/215` desktop and `0/187`
+  constrained-mobile candidates in the target close-up.
+- Progressively more aggressive constrained-only calibration trials also
+  culled `0/187`. Because the path added one camera-space projection per
+  candidate without removing target-scene render work, it was removed from the
+  final change. The result favors measured benefit over shipping speculative
+  hot-loop cost.
+
+## High-quality mid-complexity profiling target
+
+Added 2026-07-26 as the shared benchmark for the High-quality rendering
+optimization series tracked by issue `#4327`.
+
+The `high-target` mock garden represents the intended production workload
+instead of either profiler extreme:
+
+- exactly 300 placed blocks across 270 terrain stacks;
+- exactly three separate, internally connected `1x2` raised beds;
+- six raised-bed blocks and 54 occupied fields;
+- 24 deterministic props, shadow casters, and animal homes;
+- deterministic plant density and lifecycle inputs across all 54 fields,
+  producing exactly 537 generated plant instances without CMS data;
+- production terrain-geometry merging enabled by default; and
+- an actual device pixel ratio of `2` for High-quality desktop scenarios.
+
+Run the complete target matrix:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=high-target pnpm run profile:game
+```
+
+The matrix covers clear idle rendering with moving animals, camera motion,
+hover/selection, placement animation, rain, and snow, with three isolated
+browser runs per phase. Individual scenarios may be selected with
+`GAME_PROFILE_SCENARIOS`. Reports include the median and min/max spread, the
+schema version, browser and GPU identity, and the source commit when CI
+provides it.
+
+Every repeat must pass the structural and interaction acceptance checks. The
+performance budget is evaluated against the three-run median so a single noisy
+headless sample remains visible in the report without turning the gate into an
+outlier detector.
+
+Browser animation-frame responsiveness remains separate from actual rendered
+frames. Historical `drawCallsPerFrame` and `trianglesPerFrame` fields retain
+their request-animation-frame denominator; the High target gates explicit
+per-rendered-frame metrics. GPU elapsed time is captured around individual
+WebGL render passes through `EXT_disjoint_timer_query_webgl2` when the browser
+exposes it. Disjoint, incomplete, and unsupported query results are reported
+but never enforced as valid GPU measurements.
+
+Headless Chromium and software WebGL remain directional evidence. Each
+optimization must compare the same target scenario before and after the
+change, while final thermal clearance still requires the physical-device
+soaks documented under release gates.
+
+### Initial software-WebGL baseline
+
+The initial 18-run matrix passed structural acceptance in every repeat:
+all 54 fields and 537 generated plants remained visible, the interaction and
+placement probes executed, weather particles mounted, and no page or API
+errors occurred.
+
+These medians came from headless Chromium 149 using ANGLE SwiftShader. They
+are a regression baseline for comparisons on the same runner, not a claim
+about physical-device frame rate:
+
+| Phase | Rendered FPS | p95 frame | Long tasks | Draws/render | Triangles/render | Heap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 1.7 | 741.5 ms | 9 | 313.9 | 39,402 | 51.0 MB |
+| Camera motion | 1.7 | 734.3 ms | 9 | 306.7 | 38,874 | 54.2 MB |
+| Hover/selection | 1.8 | 732.8 ms | 9 | 305.0 | 38,824 | 54.2 MB |
+| Placement | 1.8 | 702.2 ms | 9 | 306.3 | 38,811 | 48.1 MB |
+| Rain | 1.7 | 662.6 ms | 9 | 272.0 | 39,668 | 54.2 MB |
+| Snow | 2.7 | 409.1 ms | 14 | 367.0 | 98,540 | 73.1 MB |
+
+The aspirational frame-time and long-task gates remain red in this environment
+because the software renderer reports repeated `ReadPixels` stalls. Draw-call,
+triangle, and heap gates pass. GPU elapsed-time gating is skipped because the
+runner does not expose a valid timer-query result.
+
+### Moving-actor shadow separation
+
+Issue `#4323` removes cats, dogs, birds, and bees from the cached 4096px
+directional shadow map. High and other shadow-enabled configurations now use
+one scene-level instanced analytic ellipse batch for actor grounding. It has no
+texture, render target, or secondary shadow pass. Shadow-disabled quality
+profiles skip registration, state construction, and the draw entirely.
+
+The complete 18-run High target matrix passed structural acceptance in every
+repeat:
+
+- clear, camera, hover, and placement runs registered all five target actors;
+- rain and snow registered four actors because bees correctly remained
+  inactive;
+- every run used one batch, retained at least four visible grounding shadows,
+  and reported zero dropped registrations and zero actor primary casters;
+- animated-caster refreshes fell from a clear-idle median of `17` per run to
+  zero; and
+- the clear-idle primary-map request count fell from a median of `21` during
+  startup and sampling to four startup/static requests, followed by exactly
+  zero refreshes in every measured five-second idle window.
+
+The same Chromium 149 and ANGLE SwiftShader runner produced these median
+render-submission comparisons:
+
+| Phase | Draws/render before | After | Reduction | Triangles/render before | After | Reduction |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 313.9 | 152.0 | 51.6% | 39,402 | 21,526 | 45.4% |
+| Camera motion | 306.7 | 153.7 | 49.9% | 38,874 | 21,576 | 44.5% |
+| Hover/selection | 305.0 | 152.0 | 50.2% | 38,824 | 21,526 | 44.6% |
+| Placement | 306.3 | 170.9 | 44.2% | 38,811 | 25,959 | 33.1% |
+| Rain | 272.0 | 142.0 | 47.8% | 39,668 | 23,954 | 39.6% |
+| Snow | 367.0 | 204.4 | 44.3% | 98,540 | 67,123 | 31.9% |
+
+The roughly 44–52% call reduction in ordinary phases is direct evidence that
+moving actors no longer trigger full-scene primary shadow submissions.
+SwiftShader p95 frame time remains dominated by the previously documented
+`ReadPixels` stalls and is not treated as physical-GPU evidence; snow was
+especially noisy across its three runs.
+
+Placement still requested `7`, `7`, and `11` primary refreshes while its
+drop-settling window was active. That separate lifecycle is intentionally
+tracked by issue `#4331` rather than folded into actor shadow scheduling.
+
+### Placement shadow completion coalescing
+
+Issue `#4331` replaces the placement-specific 900 ms shadow-settling timer
+with an explicit static-dirty scheduler. It defers garden shadow changes while
+one or more placement springs are active and consumes them once, on the first
+render frame after the last completion or cancellation. The static signature
+contains only stack positions and render-affecting block properties, so an
+optimistic-to-persisted block ID replacement no longer invalidates the map.
+
+Transient component and instanced placement geometry is excluded from the
+primary caster set. While it moves, a conservative hitbox-derived ellipse uses
+the same instanced projected-shadow batch as actors, with separate placement
+accounting so the actor acceptance metrics remain exact. Stable geometry is
+restored before the coalesced final refresh.
+
+The focused three-repeat production High placement profile passed all
+structural and lifecycle acceptance checks:
+
+- the scenario's two staggered placements reached a projected-shadow peak of
+  exactly two, returned to zero, and recorded zero dropped proxies in every
+  run;
+- each run recorded one deferred placement cycle, one final placement flush,
+  one primary-map refresh, and zero active placements at the end;
+- the former primary-refresh train of `7`, `7`, and `11` requests became
+  exactly `1`, `1`, and `1`; and
+- the placement median moved from `170.9` to `156.7` draws per rendered frame
+  and from `25,959` to `22,627` triangles per rendered frame on the same
+  Chromium 149 / ANGLE SwiftShader runner, reductions of `8.3%` and `12.8%`.
+
+The production profiler now rejects a placement run with zero or multiple
+final shadow refreshes, a projected peak other than exactly two, any dropped
+or nonzero final proxy, a nonzero active count, or no deferred dirtiness.
+SwiftShader frame-time and long-task
+budgets remain red because of the documented `ReadPixels` stalls; all three
+placement acceptance runs passed independently of those aspirational
+physical-device budgets.
+
+### Adaptive High runtime ceiling
+
+Issue `#4319` keeps the user-selected High profile as the visual ceiling while
+adapting its runtime cost to measured load. Automatic, Medium, Low, and custom
+quality remain unchanged. High continues to use the 4096px primary shadow map,
+full plant and decoration density, rain, snow, moving clouds, plant wind, and
+the existing High particle counts.
+
+The controller prefers asynchronous
+`EXT_disjoint_timer_query_webgl2` elapsed-time samples. It discards disjoint,
+timed-out, suspended, and context-lost samples without synchronously waiting
+for the GPU. Browsers without a usable timer query fall back to rendered-frame
+cadence. A one-second EWMA filters either source, while asymmetric evidence
+windows avoid quality chatter:
+
+- camera or placement interaction immediately moves from `L0` to `L1` and
+  owns a 60fps scene-time lease while active;
+- load above `1.10` must persist for 750ms and at least three samples before
+  another decline;
+- load below `0.80` must persist for five seconds before recovering one level;
+  and
+- three direction reversals inside 60 seconds lock recovery for 30 seconds,
+  but never prevent a needed decline.
+
+At a DPR-2 display ceiling, the runtime levels are:
+
+| Level | DPR cap | Ambient cadence | Cloud-mask minimum cadence |
+| --- | ---: | ---: | ---: |
+| `L0` | 2.00 | 30fps | 96ms |
+| `L1` | 1.75 | 30fps | 96ms |
+| `L2` | 1.50 | 30fps | 96ms |
+| `L3` | 1.50 | 20fps | 160ms |
+
+The same sequence is derived from the current display ceiling, so DPR-1
+displays are never upscaled and monitor or browser-zoom changes reset the
+ceiling safely. Duplicate stages are skipped on constrained displays. Scene
+resume and WebGL context restoration clear timing evidence without adding
+hidden wall time to level dwell or resetting transition telemetry.
+
+The `adaptive-high` production profile set pairs fixed and adaptive camera
+motion and adds stateful motion-to-idle recovery, placement, runtime GPU-source,
+rain, snow, cloudy, and windy-plant scenarios. Its acceptance checks use
+sample-local level, DPR, transition, decline, recovery, interaction, and
+atmosphere evidence; starting a fresh page at full quality cannot satisfy the
+recovery gate.
+
+The local Chromium 149 / ANGLE SwiftShader integration run passed the
+fixed-camera and adaptive-camera structural gates in all six repeats. Adaptive
+camera motion reduced median submitted work from `147.7` to `141.0` draws and
+from `21,083` to `20,210` triangles per rendered frame (`4.5%` and `4.1%`),
+while median p95 moved from `623.9` to `615.8 ms` and rendered FPS remained
+`1.8`. The relative regression gate passed. The separate motion-to-idle
+scenario also passed all three repeats, recording `L0 -> L1 -> L0`, DPR cap
+`2 -> 1.75 -> 2`, one decline, one recovery, and 22 controlled headroom
+samples each time. The software renderer's absolute p95 and long-task budgets
+remain red because of its documented `ReadPixels` stalls; draw, triangle,
+workload-preservation, and controller-lifecycle gates pass independently.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.
@@ -377,7 +683,7 @@ cd apps/garden
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 ```
 
-The completed implementation was profiled in a production build with five
+The original implementation was profiled in a production build with five
 independent desktop and five independent constrained-mobile runs. Each run
 captured a cold and warm transition. The ignored raw report and screenshots are
 under `steps/final-integrated/`.
@@ -391,6 +697,12 @@ implementation stages:
 | `bd3d8cb8d`, selected-bed LOD/culling | `1,711.4/664.4 ms` | `738.5/309.4 ms` | `295.8/173.4 ms` |
 | `7ef664ef0`, progressive/cancellable generation | `13,493.6/664.6 ms` | `1,635.0/171.0 ms` | `204.8/212.8 ms` |
 | completed branch, five repeats | `3,611.4/2,878.1 ms` | `1,528.8/2,054.5 ms` | `256.2/213.7 ms` |
+
+The historical fixture was later found to stamp plant lifecycle dates from the
+wall clock while the scene stayed frozen in 2024, producing zero leaves. These
+stage comparisons remain useful for their shared structural pipeline workload,
+but they are not foliage-workload evidence. Step 16 above records the corrected
+grown-fixture profile.
 
 The historical builds carry the same harness-only backports for production URL
 state, stable close-up callbacks, an independent plant Suspense boundary, and
@@ -413,32 +725,34 @@ bit-for-bit commit artifacts.
   `54.2 MB`. Desktop cold transition calls/render fell from `83.4` to `59.6`
   and triangles/render from `19,609` to `16,696`.
 
-The final pipeline uses a stricter exact-chunk milestone and four bounded
-archetypes per batch, so its detail-ready time is not a like-for-like
-continuation of the older single-completion milestone. The buffer optimization
-also predates the profiler, while packed workers, template reuse, shadow proxy,
-and shader prewarming land together in the final integration. Their individual
-proof therefore comes from the dedicated counters below rather than synthetic
-cherry-picked timing claims.
+The corrected fixture covers three growth generations with four deterministic
+variants each. Batches therefore remain bounded to four archetypes per
+generation and 12 across the fixture, with 36 templates/builds in total. The
+old four-per-batch and 20-template totals were artifacts of the generation-zero
+fixture. The final pipeline also uses a stricter exact-chunk milestone, so its
+detail-ready time is not a like-for-like continuation of the older
+single-completion milestone. The buffer optimization predates the profiler,
+while packed workers, template reuse, shadow proxy, and shader prewarming land
+together in the final integration. Their individual proof therefore comes from
+the dedicated counters below rather than synthetic cherry-picked timing claims.
 
 Both viewport suites passed every L-system-specific acceptance gate:
 
 | Optimization | Production profile evidence |
 | --- | --- |
 | #4277 deterministic profiler | All 20 cold/warm phases reached camera-settled, first-exact-chunk, and fully-detailed milestones, with normal, pending-near, and detailed screenshots. |
-| #4278 selected-bed LOD and hierarchical culling | The selected bed remained `18/18/18` total/near/detailed in every phase and background-near stayed zero. Median group rejection was `73.9%` desktop and `87.6%` mobile; avoided field projections were `76.1%` and `89.4%`. LOD update maximum was `0.2 ms`. |
-| #4279 progressive and cancellable detail | Desktop first-exact/full-detail medians were `2,067.5/3,611.4 ms` cold and `1,751.3/2,878.1 ms` warm. Mobile medians were `1,086.1/1,528.8 ms` cold and `1,152.7/2,054.5 ms` warm. Pending work retained billboards until the exact chunks arrived. |
-| #4280 packed worker output | Each phase completed 20 packed builds and transferable deliveries with zero worker failures, synchronous fallbacks, or stale results. `108,832 bytes` crossed the worker boundary; cold worker totals were `6.8 ms` desktop and `5.9 ms` mobile, falling to `0.8 ms` warm. |
-| #4281 bounded template and archetype reuse | Cold phases populated 20 templates; warm phases had `20/20` hits with zero misses or evictions. Render batches stayed at four archetypes maximum, 20 total, for 131 detailed plants and zero failed archetypes. |
-| #4282 exact instance-buffer ownership | Five active meshes held exactly `1,432/1,432` live/capacity instances and `108,832 bytes`, with zero empty meshes and zero orphaned resources. |
-| #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms` desktop and `0.1 ms` mobile. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
+| #4278 selected-bed LOD and hierarchical culling | The selected bed remained `18/18/18` total/near/detailed in every phase and background-near stayed zero. Median group rejection was `72.0%` desktop and `88.5%` mobile; avoided field projections were `74.3%` and `90.2%`. LOD update maximum was `0.2 ms`. |
+| #4279 progressive and cancellable detail | Desktop first-exact/full-detail medians were `2,295.1/6,473.9 ms` cold and `1,959.7/5,011.2 ms` warm. Mobile medians were `1,270.8/4,782.9 ms` cold and `1,105.4/4,257.5 ms` warm. Pending work retained billboards until the exact chunks arrived. |
+| #4280 packed worker output | Each phase completed 36 packed builds and transferable deliveries with zero worker failures, synchronous fallbacks, or stale results. `804,012 bytes` crossed the worker boundary; cold worker totals were `17.8 ms` desktop and `16.7 ms` mobile, falling to `1.2/1.4 ms` warm. |
+| #4281 bounded template and archetype reuse | Cold phases populated 36 templates; warm phases had `36/36` hits with zero misses or evictions. Render batches stayed at 12 archetypes maximum, 36 total, for 131 detailed plants and zero failed archetypes. |
+| #4282 exact instance-buffer ownership | Thirteen active meshes held exactly `10,176/10,176` live/capacity instances and `803,708 bytes`, with zero empty meshes and zero orphaned resources. |
+| #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms`. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
 
-The legacy top-level headless budget remains red: software WebGL reported
-steady median p95 values of `113.4-116.3 ms` desktop and `81.9-86.2 ms` mobile,
-plus
-repeated `ReadPixels` stalls. Draw-call, triangle, and heap budgets passed. This
-does not invalidate the L-system-specific gates, but it also is not thermal
-clearance.
+The top-level headless budget remains red: the corrected software-WebGL profile
+reported steady median p95 values of `221.1-224.2 ms` desktop and
+`187.4-187.5 ms` mobile, plus repeated `ReadPixels` stalls. Draw-call, triangle,
+and heap budgets passed. This does not invalidate the L-system-specific gates,
+but it also is not thermal clearance.
 
 Headless Chromium measurements remain directional. Release validation still
 requires separate 10-minute raised-bed close-up soaks on at least one mid-range
@@ -459,9 +773,10 @@ soaked for 15 seconds, and sampled for 10 seconds in the production build.
 
 - All four completed without page or WebGL/shader errors. The only console
   errors were expected profile-route provider requests returning 401/404.
-- Resuming a hidden or offscreen scene now explicitly re-arms the bounded
-  900 ms shadow-settlement window, preventing stale caster shadows without
-  restoring continuous offscreen rendering.
+- This historical soak used a bounded 900 ms shadow-settlement window after
+  resume. Issue `#4331` supersedes that timer with a one-frame coalesced static
+  refresh, preventing stale caster shadows without restoring continuous
+  offscreen rendering.
 - The repository's `33.3 ms` physical-device floor still fails in this
   headless environment, which reports synchronous `ReadPixels` GPU stalls.
   This is not treated as release clearance; the physical thermal gates below

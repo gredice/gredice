@@ -2,6 +2,7 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import {
+    Calendar,
     Delete,
     Info,
     Navigate,
@@ -13,17 +14,24 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
+import { useHarvestSchedule } from '../hooks/useHarvestSchedule';
 import { useShoppingCart } from '../hooks/useShoppingCart';
 import { useShoppingCartDelete } from '../hooks/useShoppingCartDelete';
 import { useShoppingCartTransientHub } from '../hooks/useShoppingCartTransientHub';
 import {
     type DeliverySelectionData,
     DeliveryStep,
+    type DeliveryStepSummary,
 } from '../shared-ui/delivery/DeliveryStep';
+import {
+    type HarvestScheduleDateSelection,
+    HarvestScheduleStep,
+} from '../shared-ui/delivery/HarvestScheduleStep';
+import { isHarvestDateWithinRange } from '../shared-ui/delivery/harvestSchedule';
 import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
 import {
@@ -62,24 +70,41 @@ function useSunflowerSuggestionLayout(showSuggestion: boolean) {
     return reserveLayout;
 }
 
+export type ShoppingCartCheckoutStep = 'cart' | 'delivery' | 'harvest';
+
 interface ShoppingCartProps {
-    showDeliveryStep: boolean;
-    onShowDeliveryStepChange: (showDeliveryStep: boolean) => void;
+    checkoutStep: ShoppingCartCheckoutStep;
+    deliverySummary: DeliveryStepSummary | null;
+    onCheckoutStepChange: (step: ShoppingCartCheckoutStep) => void;
+    onDeliverySummaryChange: (summary: DeliveryStepSummary) => void;
 }
 
 export function ShoppingCart({
-    showDeliveryStep,
-    onShowDeliveryStepChange,
+    checkoutStep,
+    deliverySummary,
+    onCheckoutStepChange,
+    onDeliverySummaryChange,
 }: ShoppingCartProps) {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
     const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+    const shouldRenderCartItems = !isLoading && (!isError || Boolean(cart));
 
     // State for delivery flow
     const [deliverySelection, setDeliverySelection] =
         useState<DeliverySelectionData | null>(null);
+    const [harvestDates, setHarvestDates] = useState<
+        readonly HarvestScheduleDateSelection[]
+    >([]);
+    const [transitionDirection, setTransitionDirection] = useState<
+        'forward' | 'backward'
+    >('forward');
+    const harvestSchedule = useHarvestSchedule(
+        deliverySelection?.slotId,
+        checkoutStep === 'harvest',
+    );
 
     const showSunflowersSuggestion = Boolean(
         !cart?.items.some((item) => item.currency === 'sunflower') &&
@@ -96,33 +121,36 @@ export function ShoppingCart({
         showSunflowersSuggestion,
     );
 
-    function handleCheckout() {
+    function submitCheckout(
+        selectedHarvestDates?: readonly HarvestScheduleDateSelection[],
+    ) {
         if (!cart?.id) {
             console.error('No cart available for checkout');
             return;
         }
 
-        // If cart contains deliverable items and user hasn't gone through delivery step yet
-        if (cart.hasDeliverableItems && !deliverySelection) {
-            track('game_cart_delivery_opened', {
-                item_count: cart.items.length,
-                total: cart.total,
-            });
-            onShowDeliveryStepChange(true);
+        if (
+            cart.hasDeliverableItems &&
+            !isCompleteDeliverySelection(deliverySelection)
+        ) {
+            handleDelivery();
             return;
         }
 
-        // Prepare checkout data with delivery information if available
         const checkoutData = {
             cartId: cart.id,
             ...(isCompleteDeliverySelection(deliverySelection) && {
                 deliveryInfo: deliverySelection,
+            }),
+            ...(selectedHarvestDates && {
+                harvestDates: [...selectedHarvestDates],
             }),
         };
 
         track('game_cart_checkout_clicked', {
             has_delivery_selection:
                 isCompleteDeliverySelection(deliverySelection),
+            harvest_date_count: selectedHarvestDates?.length ?? 0,
             item_count: cart.items.length,
             total: cart.total,
             total_sunflowers: cart.totalSunflowers,
@@ -139,7 +167,8 @@ export function ShoppingCart({
     }
 
     function handleBackToCart() {
-        onShowDeliveryStepChange(false);
+        setTransitionDirection('backward');
+        onCheckoutStepChange('cart');
     }
 
     function handleDelivery() {
@@ -147,27 +176,152 @@ export function ShoppingCart({
             item_count: cart?.items.length,
             total: cart?.total,
         });
-        onShowDeliveryStepChange(true);
+        setTransitionDirection('forward');
+        onCheckoutStepChange('delivery');
     }
 
-    function handleDeliveryProceed() {
+    function handleDeliveryProceed(summary: DeliveryStepSummary) {
         if (isCompleteDeliverySelection(deliverySelection)) {
-            // Proceed with checkout including delivery information
-            handleCheckout();
+            onDeliverySummaryChange(summary);
+            setHarvestDates([]);
+            setTransitionDirection('forward');
+            onCheckoutStepChange('harvest');
+            track('game_cart_harvest_schedule_opened', {
+                item_count: cart?.items.length,
+                slot_id: deliverySelection.slotId,
+            });
         }
     }
 
-    // Show delivery step if user clicked on checkout with deliverable items
-    if (showDeliveryStep) {
+    function handleBackToDelivery() {
+        setTransitionDirection('backward');
+        onCheckoutStepChange('delivery');
+    }
+
+    if (checkoutStep === 'delivery') {
         return (
-            <ShoppingCartStepTransition step="delivery">
+            <ShoppingCartStepTransition
+                direction={transitionDirection}
+                step="delivery"
+            >
                 <DeliveryStep
+                    initialSelection={deliverySelection}
                     onSelectionChange={setDeliverySelection}
                     onBack={handleBackToCart}
                     onProceed={handleDeliveryProceed}
-                    checkout={checkout}
                     isValid={isCompleteDeliverySelection(deliverySelection)}
                 />
+            </ShoppingCartStepTransition>
+        );
+    }
+
+    if (checkoutStep === 'harvest') {
+        const scheduleItems =
+            harvestSchedule.data?.items.map((item) => ({
+                ...item,
+                plants: item.plants.map((plant) => ({
+                    id: plant.plantId,
+                    label: plant.label,
+                    maxHarvestDaysBeforeDelivery:
+                        plant.maxHarvestDaysBeforeDelivery,
+                })),
+                reason: item.validationReason,
+                scheduledDate: item.scheduledDate ?? '',
+            })) ?? [];
+        const selectedDateByItemId = new Map(
+            harvestDates.map((selection) => [
+                selection.cartItemId,
+                selection.scheduledDate,
+            ]),
+        );
+        const canSubmitHarvestSchedule =
+            Boolean(harvestSchedule.data && deliverySummary) &&
+            harvestDates.length === scheduleItems.length &&
+            scheduleItems.every((item) =>
+                isHarvestDateWithinRange(
+                    selectedDateByItemId.get(item.cartItemId) ?? '',
+                    item,
+                ),
+            );
+
+        return (
+            <ShoppingCartStepTransition
+                direction={transitionDirection}
+                step="harvest"
+            >
+                {harvestSchedule.isLoading ? (
+                    <Stack spacing={4}>
+                        <Typography
+                            aria-live="polite"
+                            component="h3"
+                            level="body1"
+                            role="status"
+                        >
+                            Provjeravam datume branja...
+                        </Typography>
+                        <Row justifyContent="end">
+                            <Button
+                                disabled={checkout.isPending}
+                                variant="outlined"
+                                onClick={handleBackToDelivery}
+                            >
+                                Natrag
+                            </Button>
+                        </Row>
+                    </Stack>
+                ) : null}
+                {harvestSchedule.isError ? (
+                    <Stack spacing={4}>
+                        <Alert color="danger">
+                            Nije moguće provjeriti datume branja. Pokušaj
+                            ponovno ili odaberi drugi termin.
+                        </Alert>
+                        <Row justifyContent="end" spacing={4}>
+                            <Button
+                                variant="outlined"
+                                onClick={handleBackToDelivery}
+                            >
+                                Natrag
+                            </Button>
+                            <Button
+                                loading={harvestSchedule.isFetching}
+                                onClick={() => harvestSchedule.refetch()}
+                            >
+                                Pokušaj ponovno
+                            </Button>
+                        </Row>
+                    </Stack>
+                ) : null}
+                {harvestSchedule.data && deliverySummary ? (
+                    <HarvestScheduleStep
+                        confirmAction={
+                            <ButtonConfirmPayment
+                                cart={cart}
+                                checkout={checkout}
+                                disabled={!canSubmitHarvestSchedule}
+                                onConfirm={() => submitCheckout(harvestDates)}
+                            />
+                        }
+                        delivery={{
+                            deliveryDate: harvestSchedule.data.deliveryDate,
+                            mode: deliverySummary.mode,
+                            slotStartAt: deliverySummary.startAt,
+                            slotEndAt: deliverySummary.endAt,
+                            destinationLabel: deliverySummary.destinationLabel,
+                        }}
+                        items={scheduleItems}
+                        isConfirming={checkout.isPending}
+                        onBack={handleBackToDelivery}
+                        onConfirm={submitCheckout}
+                        onSelectedDatesChange={setHarvestDates}
+                    />
+                ) : null}
+                {checkout.isError ? (
+                    <Alert color="danger">
+                        Plaćanje nije pokrenuto. Provjeri termin i datume branja
+                        pa pokušaj ponovno.
+                    </Alert>
+                ) : null}
             </ShoppingCartStepTransition>
         );
     }
@@ -206,7 +360,7 @@ export function ShoppingCart({
                                 Greška prilikom učitavanja košare
                             </Typography>
                         )}
-                        {!isLoading && !isError ? (
+                        {shouldRenderCartItems ? (
                             <ShoppingCartItemsPresence
                                 items={cart?.items ?? []}
                             />
@@ -308,7 +462,7 @@ export function ShoppingCart({
                                     <ButtonConfirmPayment
                                         cart={cart}
                                         checkout={checkout}
-                                        onConfirm={handleCheckout}
+                                        onConfirm={() => submitCheckout()}
                                     />
                                 )}
                             </div>
@@ -320,18 +474,27 @@ export function ShoppingCart({
     );
 
     return (
-        <ShoppingCartStepTransition step="cart">
+        <ShoppingCartStepTransition direction={transitionDirection} step="cart">
             {cartStep}
         </ShoppingCartStepTransition>
     );
 }
 
 export function ShoppingCartHud() {
-    const { data: cart } = useShoppingCart();
+    const { data: cart, refetch: refetchCart } = useShoppingCart();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
-    const [showDeliveryStep, setShowDeliveryStep] = useState(false);
+    const [checkoutStep, setCheckoutStep] =
+        useState<ShoppingCartCheckoutStep>('cart');
+    const [deliverySummary, setDeliverySummary] =
+        useState<DeliveryStepSummary | null>(null);
     const showTransientHub = useShoppingCartTransientHub(isOpen);
+
+    useEffect(() => {
+        if (isOpen) {
+            void refetchCart();
+        }
+    }, [isOpen, refetchCart]);
 
     if (!cart?.items.length && !showTransientHub && !isOpen) {
         return null;
@@ -348,14 +511,27 @@ export function ShoppingCartHud() {
                                 item_count: cart?.items.length ?? 0,
                                 total: cart?.total ?? 0,
                             });
+                        } else {
+                            setCheckoutStep('cart');
+                            setDeliverySummary(null);
                         }
                         setIsOpen(open);
                     }}
-                    title={showDeliveryStep ? 'Dostava' : 'Košara'}
+                    title={
+                        checkoutStep === 'cart'
+                            ? 'Košara'
+                            : checkoutStep === 'delivery'
+                              ? 'Dostava'
+                              : deliverySummary?.mode === 'pickup'
+                                ? 'Sažetak preuzimanja'
+                                : 'Sažetak dostave'
+                    }
                     className="md:max-w-2xl"
                     headerIcon={
-                        showDeliveryStep ? (
+                        checkoutStep === 'delivery' ? (
                             <Truck className="size-7 shrink-0" />
+                        ) : checkoutStep === 'harvest' ? (
+                            <Calendar className="size-7 shrink-0" />
                         ) : (
                             <ShoppingCartIcon className="size-7 shrink-0" />
                         )
@@ -393,8 +569,10 @@ export function ShoppingCartHud() {
                     }
                 >
                     <ShoppingCart
-                        showDeliveryStep={showDeliveryStep}
-                        onShowDeliveryStepChange={setShowDeliveryStep}
+                        checkoutStep={checkoutStep}
+                        deliverySummary={deliverySummary}
+                        onCheckoutStepChange={setCheckoutStep}
+                        onDeliverySummaryChange={setDeliverySummary}
                     />
                 </GameModal>
             </Row>

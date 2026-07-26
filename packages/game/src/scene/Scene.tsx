@@ -19,12 +19,18 @@ import {
     PCFShadowMap,
     type WebGLRendererParameters,
 } from 'three';
+import { ActorGroundingShadowProvider } from '../entities/animals/ActorGroundingShadows';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
 import { getGeneratedLSystemCacheSnapshot } from '../generators/plant/hooks/generatedLSystemCache';
 import { useOptionalGameState } from '../useGameState';
+import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
+import {
+    type AdaptiveHighQualityLevelProfile,
+    adaptiveHighQualityLevels,
+} from './adaptiveHighQuality';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -35,8 +41,15 @@ import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
+        adaptiveHighEnabled?: boolean;
+        adaptiveHighInteractionActive?: boolean;
+        adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
+        adaptiveHighProfileControlEnabled?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
+        onAdaptiveHighProfileChange?: (
+            profile: AdaptiveHighQualityLevelProfile,
+        ) => void;
         pixelRatio?: number;
         position: FiberVector3;
         quality?: GameQualityProfile;
@@ -215,9 +228,14 @@ function SceneDebugName() {
 }
 
 export function Scene({
+    adaptiveHighEnabled = false,
+    adaptiveHighInteractionActive = false,
+    adaptiveHighProfile = adaptiveHighQualityLevels.L0,
+    adaptiveHighProfileControlEnabled = false,
     children,
     debugStats,
     fixedTimeSeconds,
+    onAdaptiveHighProfileChange,
     pixelRatio,
     position,
     quality,
@@ -227,6 +245,14 @@ export function Scene({
     ...rest
 }: SceneProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const adaptiveHighActive =
+        adaptiveHighEnabled && qualityProfile.tier === 'high';
+    const effectiveDprCap = adaptiveHighActive
+        ? adaptiveHighProfile.dpr
+        : qualityProfile.dpr;
+    const ambientFramesPerSecond = adaptiveHighActive
+        ? adaptiveHighProfile.ambientFramesPerSecond
+        : sceneFrameRates.ambient;
     const wireframeDebugVisible = useOptionalGameState(
         (state) => state.wireframeDebugVisible,
         false,
@@ -234,19 +260,19 @@ export function Scene({
 
     useEffect(() => {
         updateGameProfileMetadata({
-            dprCap: qualityProfile.dpr,
+            dprCap: effectiveDprCap,
             groundDecorationDensity: qualityProfile.groundDecorationDensity,
             qualityTier: qualityProfile.tier,
             shadowMapSize: qualityProfile.shadowMapSize,
             shadowsEnabled: qualityProfile.shadows,
             snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
         });
-    }, [qualityProfile]);
+    }, [effectiveDprCap, qualityProfile]);
 
     return (
         <Canvas
             orthographic
-            dpr={pixelRatio ?? [1, qualityProfile.dpr]}
+            dpr={pixelRatio ?? [1, effectiveDprCap]}
             gl={rendererOptions}
             shadows={
                 qualityProfile.shadows
@@ -266,23 +292,38 @@ export function Scene({
             frameloop="demand"
         >
             <SceneTimeProvider
-                baseFramesPerSecond={sceneFrameRates.ambient}
+                baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
+                <AdaptiveHighQualityController
+                    effectiveDprCeiling={qualityProfile.dpr}
+                    enabled={adaptiveHighActive}
+                    interactionActive={adaptiveHighInteractionActive}
+                    onProfileChange={
+                        onAdaptiveHighProfileChange ?? (() => undefined)
+                    }
+                    profileControlEnabled={
+                        adaptiveHighActive && adaptiveHighProfileControlEnabled
+                    }
+                />
                 <WeatherSurfaceUniformProvider>
-                    <HoverOutlineProvider>
-                        <SceneDebugName />
-                        <GeneratedLSystemCacheStatsReporter />
-                        {debugStats && <RendererStatsReporter />}
-                        <SceneWireframeMode
-                            enabled={Boolean(
-                                debugStats && wireframeDebugVisible,
-                            )}
-                        />
-                        {children}
-                        <HoverOutlineEffect />
-                    </HoverOutlineProvider>
+                    <ActorGroundingShadowProvider
+                        enabled={qualityProfile.shadows}
+                    >
+                        <HoverOutlineProvider>
+                            <SceneDebugName />
+                            <GeneratedLSystemCacheStatsReporter />
+                            {debugStats && <RendererStatsReporter />}
+                            <SceneWireframeMode
+                                enabled={Boolean(
+                                    debugStats && wireframeDebugVisible,
+                                )}
+                            />
+                            {children}
+                            <HoverOutlineEffect />
+                        </HoverOutlineProvider>
+                    </ActorGroundingShadowProvider>
                 </WeatherSurfaceUniformProvider>
             </SceneTimeProvider>
         </Canvas>

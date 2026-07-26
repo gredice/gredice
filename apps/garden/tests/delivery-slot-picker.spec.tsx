@@ -125,3 +125,42 @@ test('keeps time slots within a mobile-width container', async ({
         )
         .toBe(true);
 });
+
+test('shows five delivery days within a mobile-width container', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <DeliverySlotPickerStory
+            autoSelectFirstDeliverySlot={false}
+            containerClassName="w-[21rem]"
+            referenceDate="2026-07-13T10:00:00.000Z"
+            slots={Array.from({ length: 7 }, (_, index) => ({
+                endAt: `2026-07-${(13 + index).toString()}T12:00:00.000Z`,
+                fulfillment: 'delivery',
+                id: index + 1,
+                startAt: `2026-07-${(13 + index).toString()}T10:00:00.000Z`,
+            }))}
+        />,
+    );
+
+    const deliveryDays = page.getByRole('group', { name: 'Odaberi dan' });
+    const dayButtons = deliveryDays.getByRole('button');
+    await expect(dayButtons).toHaveCount(7);
+
+    const [deliveryDaysBox, fifthDayBox] = await Promise.all([
+        deliveryDays.boundingBox(),
+        dayButtons.nth(4).boundingBox(),
+    ]);
+
+    expect(deliveryDaysBox).not.toBeNull();
+    expect(fifthDayBox).not.toBeNull();
+
+    if (!deliveryDaysBox || !fifthDayBox) {
+        throw new Error('Delivery day layout is not visible');
+    }
+
+    expect(fifthDayBox.x + fifthDayBox.width).toBeLessThanOrEqual(
+        deliveryDaysBox.x + deliveryDaysBox.width + 1,
+    );
+});

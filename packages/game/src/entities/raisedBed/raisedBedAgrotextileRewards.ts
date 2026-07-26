@@ -1,52 +1,52 @@
 import type { OperationVisualReward } from '../../operationVisualRewards';
 
-type RaisedBedAgrotextileFieldInput = {
+type RaisedBedProtectiveCoverFieldInput = {
     active?: boolean | null;
     id: number | string;
     positionIndex: number;
 };
 
-type ResolveRaisedBedAgrotextileCoverPositionsInput = {
+type ResolveRaisedBedProtectiveCoverPositionsInput = {
     blockOffset: number;
-    fields: RaisedBedAgrotextileFieldInput[];
+    fields: RaisedBedProtectiveCoverFieldInput[];
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
 
-type HasActiveRaisedBedAgrotextileCoverInput = {
+type HasActiveRaisedBedProtectiveCoverInput = {
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
 
-function isActiveAgrotextileReward(
+function isActiveProtectiveCoverReward(
     reward: OperationVisualReward,
     raisedBedId: number,
 ) {
     return (
         reward.active &&
-        reward.family === 'agrotextile' &&
+        (reward.family === 'agrotextile' || reward.family === 'insectMesh') &&
         reward.raisedBedId === raisedBedId
     );
 }
 
-export function hasActiveRaisedBedAgrotextileCover({
+export function hasActiveRaisedBedProtectiveCover({
     raisedBedId,
     visualRewards,
-}: HasActiveRaisedBedAgrotextileCoverInput) {
+}: HasActiveRaisedBedProtectiveCoverInput) {
     return visualRewards.some(
         (reward) =>
-            isActiveAgrotextileReward(reward, raisedBedId) &&
+            isActiveProtectiveCoverReward(reward, raisedBedId) &&
             reward.scope === 'raisedBed',
     );
 }
 
-export function resolveRaisedBedAgrotextileCoverPositions({
+export function resolveRaisedBedProtectiveCoverPositions({
     blockOffset,
     fields,
     raisedBedId,
     visualRewards,
-}: ResolveRaisedBedAgrotextileCoverPositionsInput) {
-    if (hasActiveRaisedBedAgrotextileCover({ raisedBedId, visualRewards })) {
+}: ResolveRaisedBedProtectiveCoverPositionsInput) {
+    if (hasActiveRaisedBedProtectiveCover({ raisedBedId, visualRewards })) {
         return Array.from({ length: 9 }, (_, positionIndex) => positionIndex);
     }
 
@@ -54,7 +54,7 @@ export function resolveRaisedBedAgrotextileCoverPositions({
         visualRewards
             .filter(
                 (reward) =>
-                    isActiveAgrotextileReward(reward, raisedBedId) &&
+                    isActiveProtectiveCoverReward(reward, raisedBedId) &&
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null,
             )
@@ -76,3 +76,10 @@ export function resolveRaisedBedAgrotextileCoverPositions({
         ),
     ).sort((a, b) => a - b);
 }
+
+// Both operation families intentionally share this renderer. Preserve the
+// original internal names for any existing consumers.
+export const hasActiveRaisedBedAgrotextileCover =
+    hasActiveRaisedBedProtectiveCover;
+export const resolveRaisedBedAgrotextileCoverPositions =
+    resolveRaisedBedProtectiveCoverPositions;

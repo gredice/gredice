@@ -9,7 +9,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { raisedBedFieldUpdatePlant } from '../../(actions)/raisedBedFieldsActions';
+import { updateGreenhouseSproutedDateAction } from './actions';
+import {
+    dateInputToTimestamp,
+    getSproutedDateInputError,
+} from './sproutedDateInput';
 
 function formatDateInputValue(value: Date | string | null | undefined) {
     const date = value
@@ -28,21 +32,11 @@ function formatDateInputValue(value: Date | string | null | undefined) {
     return `${year}-${month}-${day}`;
 }
 
-function dateInputToTimestamp(value: string) {
-    const [year, month, day] = value.split('-').map(Number);
-    const date = new Date(year, month - 1, day, 12, 0, 0);
-
-    if (Number.isNaN(date.getTime())) {
-        return undefined;
-    }
-
-    return date.toISOString();
-}
-
 export function SproutedDateQuickAction({
     raisedBedId,
     positionIndex,
     sproutedDate,
+    minimumDate,
     expectedPlantCycleEventId,
     expectedPlantCycleVersionEventId,
     expectedPlantSortId,
@@ -50,6 +44,7 @@ export function SproutedDateQuickAction({
     raisedBedId: number;
     positionIndex: number;
     sproutedDate: Date | null;
+    minimumDate: Date;
     expectedPlantCycleEventId: number;
     expectedPlantCycleVersionEventId: number;
     expectedPlantSortId: number;
@@ -60,6 +55,8 @@ export function SproutedDateQuickAction({
         formatDateInputValue(sproutedDate),
     );
     const [isPending, startTransition] = useTransition();
+    const minimumDateInputValue = formatDateInputValue(minimumDate);
+    const maximumDateInputValue = formatDateInputValue(null);
 
     useEffect(() => {
         setSelectedDate(formatDateInputValue(sproutedDate));
@@ -73,6 +70,16 @@ export function SproutedDateQuickAction({
     }
 
     function handleSave() {
+        const validationError = getSproutedDateInputError({
+            maximumDate: maximumDateInputValue,
+            minimumDate: minimumDateInputValue,
+            value: selectedDate,
+        });
+        if (validationError) {
+            alert(validationError);
+            return;
+        }
+
         const timestamp = dateInputToTimestamp(selectedDate);
         if (!timestamp) {
             alert('Odaberi ispravan datum klijanja.');
@@ -81,24 +88,23 @@ export function SproutedDateQuickAction({
 
         startTransition(async () => {
             try {
-                await raisedBedFieldUpdatePlant({
+                const result = await updateGreenhouseSproutedDateAction({
                     raisedBedId,
                     positionIndex,
-                    status: 'sprouted',
                     expectedPlantCycleEventId,
                     expectedPlantCycleVersionEventId,
                     expectedPlantSortId,
                     timestamp,
                 });
+                if (!result.success) {
+                    alert(result.message);
+                    return;
+                }
                 setOpen(false);
                 router.refresh();
             } catch (error) {
                 console.error('Error updating sprouted date:', error);
-                alert(
-                    error instanceof Error
-                        ? error.message
-                        : 'Spremanje datuma klijanja nije uspjelo.',
-                );
+                alert('Spremanje datuma klijanja nije uspjelo.');
             }
         });
     }
@@ -136,7 +142,10 @@ export function SproutedDateQuickAction({
                     fullWidth
                     aria-label="Datum klijanja"
                     disabled={isPending}
+                    helperText="Datum mora biti na datum prethodnog stanja biljke ili kasnije, a najkasnije danas."
                     label="Proklijalo"
+                    max={maximumDateInputValue}
+                    min={minimumDateInputValue}
                     name={`sproutedDate-${raisedBedId}-${positionIndex}`}
                     onChange={(event) => setSelectedDate(event.target.value)}
                     type="date"

@@ -741,11 +741,14 @@ export function DebugHud() {
             ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
             : 'n/a';
     const shadowMapMode =
-        profileSnapshot?.shadowMapAutoUpdate === false
-            ? profileSnapshot.shadowMapDynamicRefreshMs
-                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
-                : 'cached'
-            : 'auto';
+        profileSnapshot?.shadowMapAutoUpdate === false ? 'cached' : 'auto';
+    const interactionResolutionCount =
+        profileSnapshot?.instancedInteractionResolutionCount ?? 0;
+    const interactionResolutionAverageMs =
+        interactionResolutionCount > 0
+            ? (profileSnapshot?.instancedInteractionResolutionTotalMs ?? 0) /
+              interactionResolutionCount
+            : undefined;
 
     return (
         <div
@@ -782,6 +785,15 @@ export function DebugHud() {
                                     icon={Desktop}
                                     label="Quality"
                                     value={`${qualityTier} · DPR ${formatMetric(profileSnapshot?.dprCap)}/${formatMetric(profileSnapshot?.reportedDpr)}`}
+                                />
+                                <InfoRow
+                                    icon={Graph}
+                                    label="Adaptive High"
+                                    value={
+                                        profileSnapshot?.adaptiveHighEnabled
+                                            ? `L${profileSnapshot.adaptiveHighLevel ?? 0} · ${formatMetric(profileSnapshot.adaptiveHighFactor)}× · DPR ${formatMetric(profileSnapshot.adaptiveHighDprCap)} · ${profileSnapshot.adaptiveHighAmbientFps ?? 0}fps/${profileSnapshot.adaptiveHighCloudUpdateMs ?? 0}ms · ${profileSnapshot.adaptiveHighSampleSource ?? 'frame'} ${formatMetric(profileSnapshot.adaptiveHighSampleMs)}/${formatMetric(profileSnapshot.adaptiveHighEwmaMs)}ms · ${profileSnapshot.adaptiveHighReason ?? 'stable'} · ${profileSnapshot.adaptiveHighTransitionCount ?? 0} transitions/${profileSnapshot.adaptiveHighOscillationCount ?? 0} oscillations`
+                                            : 'off'
+                                    }
                                 />
                                 <InfoRow
                                     icon={FullWidth}
@@ -849,14 +861,14 @@ export function DebugHud() {
                                     label="Shadows"
                                     value={
                                         profileSnapshot?.shadowsEnabled
-                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.primaryShadowRefreshCount ?? 0} refreshes (${profileSnapshot.animatedCasterShadowRefreshCount ?? 0} animated) · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
                                             : 'off'
                                     }
                                 />
                                 <InfoRow
                                     icon={Cloud}
                                     label="Cloud shadows"
-                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real`}
+                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real · ${profileSnapshot?.cloudAttenuationMaskResolution ?? 0}px/${profileSnapshot?.cloudAttenuationUpdateMs ?? 0}ms · ${profileSnapshot?.cloudAttenuationUpdateCount ?? 0} updates · ${profileSnapshot?.cloudAttenuationMaterialCount ?? 0} materials`}
                                 />
                                 <InfoRow
                                     icon={Droplets}
@@ -867,6 +879,11 @@ export function DebugHud() {
                                     icon={Layers}
                                     label="Overlays"
                                     value={`snow ${profileSnapshot?.instancedSnowOverlayCount ?? 0} · mulch ${profileSnapshot?.raisedBedMulchOverlayCount ?? 0} · decor ${profileSnapshot?.groundDecorationCount ?? 0}`}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Block interactions"
+                                    value={`${profileSnapshot?.instancedInteractionControllerCount ?? 0} controller · ${profileSnapshot?.instancedInteractionTargetCount ?? 0} targets · ${interactionResolutionCount} resolves · avg ${formatMetric(interactionResolutionAverageMs)} ms · max ${formatMetric(profileSnapshot?.instancedInteractionResolutionMaxMs)} ms`}
                                 />
                                 <InfoRow
                                     icon={Settings}

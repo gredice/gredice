@@ -32,15 +32,20 @@ export function useOperations() {
     );
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
 
     return useQuery({
-        queryKey: isOperationRewardDebug
-            ? ['operations', mockGardenProfile]
-            : ['operations'],
+        queryKey:
+            isOperationRewardDebug || isDeterministicEmptyMock
+                ? ['operations', mockGardenProfile]
+                : ['operations'],
         queryFn: async () =>
             isOperationRewardDebug
                 ? operationVisualRewardDebugOperationDefinitions
-                : getOperations(),
+                : isDeterministicEmptyMock
+                  ? []
+                  : getOperations(),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
@@ -53,15 +58,21 @@ export function useOperationDefinitions() {
     );
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
 
     return useQuery({
         queryKey: operationDefinitionsQueryKey.byProfile(
-            isOperationRewardDebug ? mockGardenProfile : null,
+            isOperationRewardDebug || isDeterministicEmptyMock
+                ? mockGardenProfile
+                : null,
         ),
         queryFn: async () =>
             isOperationRewardDebug
                 ? operationVisualRewardDebugOperationDefinitions
-                : getOperations({ includeInternal: true }),
+                : isDeterministicEmptyMock
+                  ? []
+                  : getOperations({ includeInternal: true }),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
