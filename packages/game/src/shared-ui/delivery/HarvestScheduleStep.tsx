@@ -4,13 +4,14 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
-import { Calendar, Check, Edit, Info, Navigate } from '@gredice/ui/icons';
+import { Check, Edit, Info, Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
     createHarvestScheduleDateSelections,
+    getSuggestedHarvestDate,
     type HarvestScheduleDateSelection,
     type HarvestScheduleItem,
     harvestCalendarDateKey,
@@ -197,46 +198,26 @@ export function HarvestScheduleStep({
 
     return (
         <Stack spacing={6}>
-            <section aria-labelledby="harvest-delivery-summary-title">
-                <Stack spacing={3}>
-                    <Row spacing={2}>
-                        <Calendar
-                            aria-hidden="true"
-                            className="size-5 shrink-0"
-                        />
-                        <Typography
-                            component="h3"
-                            id="harvest-delivery-summary-title"
-                            level="h6"
-                            semiBold
-                        >
-                            Sažetak{' '}
-                            {delivery.mode === 'pickup'
-                                ? 'preuzimanja'
-                                : 'dostave'}
-                        </Typography>
-                    </Row>
-                    <div className="grid gap-3 rounded-lg border bg-card/60 p-3 sm:grid-cols-2">
+            <section
+                aria-label={
+                    delivery.mode === 'pickup'
+                        ? 'Detalji preuzimanja'
+                        : 'Detalji dostave'
+                }
+            >
+                <div className="rounded-lg border bg-card/60 px-3 py-2.5">
+                    <Stack spacing={2}>
                         <div>
                             <Typography level="body3" tertiary>
-                                Datum
+                                {deliveryWindow ? 'Datum i vrijeme' : 'Datum'}
                             </Typography>
                             <Typography level="body2" semiBold>
                                 {formatCalendarDate(delivery.deliveryDate)}
+                                {deliveryWindow ? ` · ${deliveryWindow}` : null}
                             </Typography>
                         </div>
-                        {deliveryWindow ? (
-                            <div>
-                                <Typography level="body3" tertiary>
-                                    Vrijeme
-                                </Typography>
-                                <Typography level="body2" semiBold>
-                                    {deliveryWindow}
-                                </Typography>
-                            </div>
-                        ) : null}
                         {delivery.destinationLabel ? (
-                            <div className="sm:col-span-2">
+                            <div>
                                 <Typography level="body3" tertiary>
                                     {delivery.mode === 'pickup'
                                         ? 'Mjesto preuzimanja'
@@ -247,8 +228,8 @@ export function HarvestScheduleStep({
                                 </Typography>
                             </div>
                         ) : null}
-                    </div>
-                </Stack>
+                    </Stack>
+                </div>
             </section>
 
             <section aria-labelledby="harvest-schedule-title">
@@ -271,10 +252,14 @@ export function HarvestScheduleStep({
                                 Branje se planira prema svježini svake biljke.
                             </Typography>
                         </div>
-                        {hasDatesToAdjust && hasFlexibleDates ? (
+                        {hasFlexibleDates &&
+                        (allDatesValid || editFlexibleDates) ? (
                             <Button
                                 aria-pressed={editFlexibleDates}
-                                disabled={isConfirming}
+                                disabled={
+                                    isConfirming ||
+                                    (editFlexibleDates && !allDatesValid)
+                                }
                                 size="sm"
                                 startDecorator={
                                     <Edit
@@ -303,7 +288,11 @@ export function HarvestScheduleStep({
                         >
                             Provjeri označene datume prije plaćanja. Za biljke
                             koje se moraju brati isti dan datum je već
-                            postavljen na dan dostave.
+                            postavljen na dan{' '}
+                            {delivery.mode === 'pickup'
+                                ? 'preuzimanja'
+                                : 'dostave'}
+                            .
                         </Alert>
                     ) : (
                         <Alert
@@ -334,6 +323,10 @@ export function HarvestScheduleStep({
                                 allowedFrom !== null &&
                                 allowedFrom === allowedTo;
                             const selectedDateValid = isHarvestDateWithinRange(
+                                selectedDate,
+                                item,
+                            );
+                            const suggestedDate = getSuggestedHarvestDate(
                                 selectedDate,
                                 item,
                             );
@@ -407,6 +400,42 @@ export function HarvestScheduleStep({
 
                                         {showDateControl ? (
                                             <div>
+                                                {!selectedDateValid &&
+                                                suggestedDate ? (
+                                                    <Row
+                                                        className="mb-2 min-w-0 flex-wrap"
+                                                        justifyContent="space-between"
+                                                        spacing={2}
+                                                    >
+                                                        <Typography
+                                                            level="body3"
+                                                            semiBold
+                                                        >
+                                                            Predloženi datum
+                                                            branja:{' '}
+                                                            {formatCalendarDate(
+                                                                suggestedDate,
+                                                            )}
+                                                        </Typography>
+                                                        <Button
+                                                            aria-label={`Primijeni predloženi datum za ${item.operationLabel}`}
+                                                            color="warning"
+                                                            disabled={
+                                                                isConfirming
+                                                            }
+                                                            size="sm"
+                                                            variant="soft"
+                                                            onClick={() =>
+                                                                handleDateChange(
+                                                                    item,
+                                                                    suggestedDate,
+                                                                )
+                                                            }
+                                                        >
+                                                            Primijeni prijedlog
+                                                        </Button>
+                                                    </Row>
+                                                ) : null}
                                                 <Input
                                                     aria-describedby={helpId}
                                                     aria-invalid={
@@ -479,17 +508,6 @@ export function HarvestScheduleStep({
                 </Stack>
             </section>
 
-            {!allDatesValid ? (
-                <Typography
-                    aria-live="polite"
-                    color="danger"
-                    level="body3"
-                    role="status"
-                >
-                    Ispravi datume branja kako bi mogao nastaviti.
-                </Typography>
-            ) : null}
-
             <Row className="flex-wrap" justifyContent="end" spacing={4}>
                 <Button
                     disabled={isConfirming}
@@ -509,7 +527,9 @@ export function HarvestScheduleStep({
                     </fieldset>
                 ) : (
                     <Button
-                        disabled={confirmDisabled || !allDatesValid}
+                        disabled={
+                            confirmDisabled || !allDatesValid || isConfirming
+                        }
                         endDecorator={
                             <Navigate
                                 aria-hidden="true"

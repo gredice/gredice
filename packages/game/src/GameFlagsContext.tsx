@@ -3,6 +3,7 @@
 import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
+    enableAdaptiveHighQualityFlag?: boolean;
     enableDebugHudFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;

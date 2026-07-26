@@ -9,11 +9,38 @@ import { createOperation, getOperations, getRaisedBed } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
+import { raisedBedFieldUpdatePlant } from '../../(actions)/raisedBedFieldsActions';
 import { SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID } from './constants';
 import {
     getSeedlingTransplantingOperationTimestamp,
     isOperationInActivePlantCycle,
 } from './operationMatching';
+
+const sproutedDateActionErrorMessages = new Map([
+    ['Invalid plant status timestamp.', 'Odaberi ispravan datum klijanja.'],
+    [
+        'Biljka se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
+        'Biljka se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
+    ],
+    [
+        'Stanje biljke ne može se vratiti na zadatak koji je već dovršen ili blokiran.',
+        'Stanje biljke ne može se vratiti na zadatak koji je već dovršen ili blokiran.',
+    ],
+    [
+        'Aktivni životni ciklus biljke nije pronađen.',
+        'Aktivni životni ciklus biljke nije pronađen.',
+    ],
+    [
+        'Datum stanja mora biti između zadnjeg datuma životnog ciklusa biljke i današnjeg datuma.',
+        'Datum stanja mora biti između zadnjeg datuma životnog ciklusa biljke i današnjeg datuma.',
+    ],
+]);
+
+function sproutedDateActionErrorMessage(error: unknown) {
+    return error instanceof Error
+        ? sproutedDateActionErrorMessages.get(error.message)
+        : undefined;
+}
 
 function revalidateGreenhouseOperationPaths(raisedBed: {
     id: number;
@@ -34,6 +61,43 @@ function revalidateGreenhouseOperationPaths(raisedBed: {
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     }
     revalidatePath(KnownPages.RaisedBed(raisedBed.id));
+}
+
+export async function updateGreenhouseSproutedDateAction(input: {
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
+    positionIndex: number;
+    raisedBedId: number;
+    timestamp: string;
+}) {
+    try {
+        await raisedBedFieldUpdatePlant({
+            ...input,
+            status: 'sprouted',
+        });
+        return { success: true as const };
+    } catch (error) {
+        const message = sproutedDateActionErrorMessage(error);
+        if (message) {
+            return { success: false as const, message };
+        }
+
+        console.error(
+            JSON.stringify({
+                level: 'error',
+                message: 'Failed to update greenhouse sprouted date',
+                error: error instanceof Error ? error.message : String(error),
+                positionIndex: input.positionIndex,
+                raisedBedId: input.raisedBedId,
+            }),
+        );
+
+        return {
+            success: false as const,
+            message: 'Spremanje datuma klijanja nije uspjelo.',
+        };
+    }
 }
 
 export async function createSeedlingTransplantingOperationAction({

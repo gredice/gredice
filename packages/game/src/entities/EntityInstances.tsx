@@ -28,6 +28,7 @@ import {
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
@@ -234,6 +235,7 @@ export function EntityInstances({
     renderGroundDecorations,
     stacks,
     renderDetails = true,
+    weather,
 }: {
     enableBlockGeometryMerging?: boolean;
     farmId?: number | null;
@@ -241,6 +243,7 @@ export function EntityInstances({
     renderGroundDecorations?: boolean;
     stacks: Stack[] | undefined;
     renderDetails?: boolean;
+    weather?: GroundDecorationWeather;
 }) {
     const entityBlockInstanceIndex = useMemo(
         () => createEntityBlockInstanceIndex(stacks),
@@ -521,6 +524,7 @@ export function EntityInstances({
                     density={qualityProfile.groundDecorationDensity}
                     farmId={farmId}
                     stacks={stacks}
+                    weather={weather}
                 />
             )}
             <EntityInstancesAssetBlock

@@ -1,6 +1,7 @@
 import {
     cloneElement,
     isValidElement,
+    memo,
     type ReactNode,
     useEffect,
     useLayoutEffect,
@@ -33,7 +34,6 @@ import type { Stack } from '../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 import {
-    chunkMeshInstances,
     createMergedChunkGeometry,
     createMeshInstanceMatrix,
     type MeshInstanceChunk,
@@ -45,7 +45,19 @@ import {
 } from './entityBlockInstanceIndex';
 import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
 import { HoverOutline } from './helpers/HoverOutline';
-import { PlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import {
+    addressPlacementAnimationChunks,
+    createPlacementAnimationChunkCache,
+    createPlacementDropAnimationRenderIdsSelector,
+    localizePlacementDropAnimationChunks,
+} from './placementAnimationChunks';
+import {
+    placementAnimationProfileNow,
+    recordPlacementAnimationChunkRebuild,
+    recordPlacementAnimationChunkUpdate,
+    shouldRecordPlacementAnimationChunkRebuild,
+} from './placementAnimationProfileMetrics';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
@@ -397,7 +409,7 @@ export function EntityInstancesGeometry(
 ) {
     const {
         instanceKey,
-        instances,
+        instances: incomingInstances,
         renderSnow = true,
         localPosition,
         localRotation,
@@ -412,10 +424,7 @@ export function EntityInstancesGeometry(
         receiveShadow = true,
         renderOrder,
     } = props;
-    const placementDropAnimations = useGameState(
-        (state) => state.blockPlacementDropAnimations,
-    );
-
+    const instances = useStableEntityBlockInstances(incomingInstances);
     const stableLocalPosition = useStableTuple(
         localPosition ?? defaultLocalPosition,
     );
@@ -430,28 +439,75 @@ export function EntityInstancesGeometry(
         }),
         [stableLocalPosition, stableLocalRotation],
     );
-    const animatedBlockIds = useMemo(
-        () => new Set(Object.keys(placementDropAnimations)),
-        [placementDropAnimations],
+    const addressedChunks = useMemo(
+        () => addressPlacementAnimationChunks(instances ?? []),
+        [instances],
     );
-    const stableInstances = useMemo(
+    const selectAnimatedRenderIds = useMemo(
         () =>
-            (instances ?? []).filter(
-                (data) => !animatedBlockIds.has(data.block.id),
-            ),
-        [animatedBlockIds, instances],
+            createPlacementDropAnimationRenderIdsSelector([
+                ...addressedChunks.addressByBlockId.keys(),
+            ]),
+        [addressedChunks.addressByBlockId],
     );
-    const animatedInstances = useMemo(
+    const animatedRenderIds = useGameState(selectAnimatedRenderIds);
+    const placementAnimationChunkCache = useMemo(
+        () => createPlacementAnimationChunkCache<EntityBlockInstance>(),
+        [],
+    );
+    const localizedChunks = useMemo(
         () =>
-            (instances ?? []).filter((data) =>
-                animatedBlockIds.has(data.block.id),
+            localizePlacementDropAnimationChunks(
+                addressedChunks,
+                animatedRenderIds,
+                placementAnimationChunkCache,
             ),
-        [animatedBlockIds, instances],
+        [addressedChunks, animatedRenderIds, placementAnimationChunkCache],
     );
-    const stableChunks = useMemo(
-        () => chunkMeshInstances(stableInstances),
-        [stableInstances],
-    );
+    const {
+        animatedInstances,
+        chunks: stableChunks,
+        placementSignatureByChunkKey,
+    } = localizedChunks;
+    const previousPlacementProjection = useRef<
+        | {
+              addressedChunks: typeof addressedChunks;
+              placementSignatureByChunkKey: ReadonlyMap<string, string>;
+          }
+        | undefined
+    >(undefined);
+
+    useEffect(() => {
+        const previousProjection = previousPlacementProjection.current;
+        previousPlacementProjection.current = {
+            addressedChunks,
+            placementSignatureByChunkKey,
+        };
+        if (
+            !previousProjection ||
+            previousProjection.addressedChunks !== addressedChunks
+        ) {
+            return;
+        }
+
+        const candidateChunkKeys = new Set([
+            ...previousProjection.placementSignatureByChunkKey.keys(),
+            ...placementSignatureByChunkKey.keys(),
+        ]);
+        let touchedChunkCount = 0;
+        for (const chunkKey of candidateChunkKeys) {
+            if (
+                previousProjection.placementSignatureByChunkKey.get(
+                    chunkKey,
+                ) !== placementSignatureByChunkKey.get(chunkKey)
+            ) {
+                touchedChunkCount += 1;
+            }
+        }
+        if (touchedChunkCount > 0) {
+            recordPlacementAnimationChunkUpdate({ touchedChunkCount });
+        }
+    }, [addressedChunks, placementSignatureByChunkKey]);
 
     const material = 'material' in props ? props.material : undefined;
     const materialNode = 'materialNode' in props ? props.materialNode : null;
@@ -461,10 +517,10 @@ export function EntityInstancesGeometry(
     }
 
     const renderAnimatedInstances = (suffix: string) =>
-        animatedInstances.map((data) => (
-            <PlacementDropAnimation
-                key={`block-${instanceKey}-${suffix}-${data.id}`}
-                animation={placementDropAnimations[data.block.id]}
+        animatedInstances.map(({ instance: data, renderId }) => (
+            <QueuedPlacementDropAnimation
+                key={`block-${instanceKey}-${suffix}-placement:${renderId}`}
+                animationRenderId={renderId}
                 block={data.block}
                 particlePosition={[
                     data.position[0],
@@ -481,22 +537,22 @@ export function EntityInstancesGeometry(
                         rotation={localTransform.rotation}
                         scale={stableScale}
                         receiveShadow={receiveShadow}
-                        castShadow={castShadow}
+                        castShadow={false}
                         renderOrder={renderOrder}
                     >
                         {cloneMaterialNode(materialNode)}
                     </mesh>
                 </group>
-            </PlacementDropAnimation>
+            </QueuedPlacementDropAnimation>
         ));
 
     const renderAnimatedSnowOverlays = () =>
         !snow || !renderSnow
             ? null
-            : animatedInstances.map((data) => (
-                  <PlacementDropAnimation
-                      key={`block-${instanceKey}-snow-${data.id}`}
-                      animation={placementDropAnimations[data.block.id]}
+            : animatedInstances.map(({ instance: data, renderId }) => (
+                  <QueuedPlacementDropAnimation
+                      key={`block-${instanceKey}-snow-placement:${renderId}`}
+                      animationRenderId={renderId}
                       block={data.block}
                       particlePosition={[
                           data.position[0],
@@ -522,16 +578,16 @@ export function EntityInstancesGeometry(
                               />
                           </group>
                       </group>
-                  </PlacementDropAnimation>
+                  </QueuedPlacementDropAnimation>
               ));
 
     const renderAnimatedRainOverlays = () =>
         !renderRainWetOverlay
             ? null
-            : animatedInstances.map((data) => (
-                  <PlacementDropAnimation
-                      key={`block-${instanceKey}-rain-${data.id}`}
-                      animation={placementDropAnimations[data.block.id]}
+            : animatedInstances.map(({ instance: data, renderId }) => (
+                  <QueuedPlacementDropAnimation
+                      key={`block-${instanceKey}-rain-placement:${renderId}`}
+                      animationRenderId={renderId}
                       block={data.block}
                       particlePosition={[
                           data.position[0],
@@ -549,13 +605,16 @@ export function EntityInstancesGeometry(
                               <RainWetOverlay geometry={geometry} />
                           </group>
                       </group>
-                  </PlacementDropAnimation>
+                  </QueuedPlacementDropAnimation>
               ));
 
     return (
         <>
-            {stableChunks.map((chunk) =>
-                renderStableChunksAsMergedGeometry ? (
+            {stableChunks.map((chunk) => {
+                const placementSignature =
+                    placementSignatureByChunkKey.get(chunk.key) ?? '';
+
+                return renderStableChunksAsMergedGeometry ? (
                     <ChunkedMergedMesh
                         key={`${instanceKey}:${chunk.key}`}
                         castShadow={castShadow}
@@ -565,6 +624,7 @@ export function EntityInstancesGeometry(
                         localTransform={localTransform}
                         material={material}
                         materialNode={materialNode}
+                        placementSignature={placementSignature}
                         receiveShadow={receiveShadow}
                         renderOrder={renderOrder}
                         scale={stableScale}
@@ -579,12 +639,13 @@ export function EntityInstancesGeometry(
                         localTransform={localTransform}
                         material={material}
                         materialNode={materialNode}
+                        placementSignature={placementSignature}
                         receiveShadow={receiveShadow}
                         renderOrder={renderOrder}
                         scale={stableScale}
                     />
-                ),
-            )}
+                );
+            })}
             {renderAnimatedInstances('base')}
             {(instances ?? []).map((data) =>
                 data.pickupOutlineVisible ? (
@@ -615,6 +676,7 @@ export function EntityInstancesGeometry(
                     chunks={stableChunks}
                     geometry={geometry}
                     localTransform={localTransform}
+                    placementSignatureByChunkKey={placementSignatureByChunkKey}
                     scale={stableScale}
                 />
             )}
@@ -623,6 +685,7 @@ export function EntityInstancesGeometry(
                     chunks={stableChunks}
                     geometry={geometry}
                     localTransform={localTransform}
+                    placementSignatureByChunkKey={placementSignatureByChunkKey}
                     scale={stableScale}
                     snow={snow}
                     snowLift={snowLift}
@@ -635,7 +698,7 @@ export function EntityInstancesGeometry(
     );
 }
 
-function ChunkedInstancedMesh({
+const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
     castShadow,
     chunk,
     debugName,
@@ -643,6 +706,7 @@ function ChunkedInstancedMesh({
     localTransform,
     material,
     materialNode,
+    placementSignature,
     receiveShadow,
     renderOrder,
     scale,
@@ -654,29 +718,55 @@ function ChunkedInstancedMesh({
     localTransform: MeshInstanceLocalTransform;
     material: Material | Material[] | undefined;
     materialNode: ReactNode;
+    placementSignature: string;
     receiveShadow: boolean;
     renderOrder?: number;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
+    const previousChunkInstances = useRef<EntityBlockInstance[] | undefined>(
+        undefined,
+    );
+    const previousPlacementSignature = useRef<string | undefined>(undefined);
 
     useLayoutEffect(() => {
+        const startedAt = placementAnimationProfileNow();
         const mesh = meshRef.current;
-        if (!mesh) {
-            return;
+        if (mesh) {
+            chunk.instances.forEach((instance, index) => {
+                mesh.setMatrixAt(
+                    index,
+                    createMeshInstanceMatrix(instance, localTransform, scale),
+                );
+            });
+            mesh.count = chunk.instances.length;
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
         }
 
-        chunk.instances.forEach((instance, index) => {
-            mesh.setMatrixAt(
-                index,
-                createMeshInstanceMatrix(instance, localTransform, scale),
-            );
-        });
-        mesh.count = chunk.instances.length;
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.computeBoundingBox();
-        mesh.computeBoundingSphere();
-    }, [chunk.instances, localTransform, scale]);
+        const previousInstances = previousChunkInstances.current;
+        const previousSignature = previousPlacementSignature.current;
+        previousChunkInstances.current = chunk.instances;
+        previousPlacementSignature.current = placementSignature;
+        if (
+            shouldRecordPlacementAnimationChunkRebuild({
+                currentInstances: chunk.instances,
+                currentPlacementSignature: placementSignature,
+                previousInstances,
+                previousPlacementSignature: previousSignature,
+            })
+        ) {
+            recordPlacementAnimationChunkRebuild({
+                durationMs: placementAnimationProfileNow() - startedAt,
+                transformedInstanceCount: chunk.instances.length,
+            });
+        }
+    }, [chunk.instances, localTransform, placementSignature, scale]);
+
+    if (chunk.instances.length === 0) {
+        return null;
+    }
 
     return (
         <instancedMesh
@@ -690,9 +780,9 @@ function ChunkedInstancedMesh({
             {cloneMaterialNode(materialNode)}
         </instancedMesh>
     );
-}
+});
 
-function ChunkedMergedMesh({
+const ChunkedMergedMesh = memo(function ChunkedMergedMesh({
     castShadow,
     chunk,
     debugName,
@@ -700,6 +790,7 @@ function ChunkedMergedMesh({
     localTransform,
     material,
     materialNode,
+    placementSignature,
     receiveShadow,
     renderOrder,
     scale,
@@ -711,22 +802,58 @@ function ChunkedMergedMesh({
     localTransform: MeshInstanceLocalTransform;
     material: Material | Material[] | undefined;
     materialNode: ReactNode;
+    placementSignature: string;
     receiveShadow: boolean;
     renderOrder?: number;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
-    const mergedGeometry = useMemo(
-        () =>
-            createMergedChunkGeometry({
-                geometry,
-                instances: chunk.instances,
-                localTransform,
-                scale,
-            }),
-        [chunk.instances, geometry, localTransform, scale],
+    const previousChunkInstances = useRef<EntityBlockInstance[] | undefined>(
+        undefined,
     );
+    const previousPlacementSignature = useRef<string | undefined>(undefined);
+    const mergedGeometryBuild = useMemo(() => {
+        const startedAt = placementAnimationProfileNow();
+        const mergedGeometry = createMergedChunkGeometry({
+            geometry,
+            instances: chunk.instances,
+            localTransform,
+            scale,
+        });
+
+        return {
+            durationMs: placementAnimationProfileNow() - startedAt,
+            geometry: mergedGeometry,
+        };
+    }, [chunk.instances, geometry, localTransform, scale]);
+    const mergedGeometry = mergedGeometryBuild.geometry;
 
     useEffect(() => () => mergedGeometry.dispose(), [mergedGeometry]);
+    useEffect(() => {
+        const previousInstances = previousChunkInstances.current;
+        const previousSignature = previousPlacementSignature.current;
+        previousChunkInstances.current = chunk.instances;
+        previousPlacementSignature.current = placementSignature;
+        if (
+            !shouldRecordPlacementAnimationChunkRebuild({
+                currentInstances: chunk.instances,
+                currentPlacementSignature: placementSignature,
+                previousInstances,
+                previousPlacementSignature: previousSignature,
+            })
+        ) {
+            return;
+        }
+
+        recordPlacementAnimationChunkRebuild({
+            durationMs: mergedGeometryBuild.durationMs,
+            transformedInstanceCount: chunk.instances.length,
+        });
+    }, [
+        chunk.instances,
+        chunk.instances.length,
+        mergedGeometryBuild.durationMs,
+        placementSignature,
+    ]);
 
     if (!mergedGeometry.getAttribute('position')) {
         return null;
@@ -744,12 +871,13 @@ function ChunkedMergedMesh({
             {cloneMaterialNode(materialNode)}
         </mesh>
     );
-}
+});
 
 function InstancedSnowOverlays({
     chunks,
     geometry,
     localTransform,
+    placementSignatureByChunkKey,
     scale,
     snow,
     snowLift,
@@ -758,6 +886,7 @@ function InstancedSnowOverlays({
     chunks: MeshInstanceChunk<EntityBlockInstance>[];
     geometry: BufferGeometry;
     localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
     scale: EntityInstancesBlockBaseProps['scale'];
     snow: SnowMaterialOptions;
     snowLift: number;
@@ -815,6 +944,9 @@ function InstancedSnowOverlays({
             localTransform={liftedTransform}
             material={material}
             materialNode={null}
+            placementSignature={
+                placementSignatureByChunkKey.get(chunk.key) ?? ''
+            }
             receiveShadow={false}
             scale={scale}
         />
@@ -825,11 +957,13 @@ function InstancedRainWetOverlays({
     chunks,
     geometry,
     localTransform,
+    placementSignatureByChunkKey,
     scale,
 }: {
     chunks: MeshInstanceChunk<EntityBlockInstance>[];
     geometry: BufferGeometry;
     localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
     const visible = useRainWetOverlayVisible();
@@ -843,6 +977,7 @@ function InstancedRainWetOverlays({
             chunks={chunks}
             geometry={geometry}
             localTransform={localTransform}
+            placementSignatureByChunkKey={placementSignatureByChunkKey}
             scale={scale}
         />
     );
@@ -852,11 +987,13 @@ function VisibleInstancedRainWetOverlays({
     chunks,
     geometry,
     localTransform,
+    placementSignatureByChunkKey,
     scale,
 }: {
     chunks: MeshInstanceChunk<EntityBlockInstance>[];
     geometry: BufferGeometry;
     localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
     const material = useRainWetOverlayMaterial({ geometry });
@@ -871,6 +1008,9 @@ function VisibleInstancedRainWetOverlays({
             localTransform={localTransform}
             material={material}
             materialNode={null}
+            placementSignature={
+                placementSignatureByChunkKey.get(chunk.key) ?? ''
+            }
             receiveShadow={false}
             scale={scale}
         />

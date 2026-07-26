@@ -17,7 +17,6 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import type { Stack } from '../types/Stack';
 import { type GameState, useGameState } from '../useGameState';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
@@ -39,7 +38,7 @@ import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
 import {
     buildDirectionalShadowDepthSignature,
-    cloudShadowRefreshMsByMode,
+    buildGardenShadowGeometrySignature,
 } from './shadowMapScheduling';
 import {
     resolveEnvironmentSkyBackgroundColors,
@@ -254,6 +253,7 @@ export function environmentState(
 }
 
 export type EnvironmentProps = {
+    cloudShadowUpdateMs?: number;
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
@@ -466,25 +466,6 @@ function useEnvironmentElements({
 const baseCameraShadowSize = 20;
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
-function roundShadowSignatureValue(value: number) {
-    return Number.isFinite(value) ? value.toFixed(4) : '0';
-}
-
-function buildStackShadowSignature(stacks: Stack[] | undefined) {
-    return (stacks ?? [])
-        .map((stack) => {
-            const blocks = stack.blocks
-                .map(
-                    (block) =>
-                        `${block.id}:${block.name}:${block.rotation}:${block.variant ?? ''}`,
-                )
-                .join(',');
-
-            return `${roundShadowSignatureValue(stack.position.x)},${roundShadowSignatureValue(stack.position.y)},${roundShadowSignatureValue(stack.position.z)}:${blocks}`;
-        })
-        .join('|');
-}
-
 export function StaticEnvironment({
     noBackground,
     quality,
@@ -588,6 +569,7 @@ export function StaticEnvironment({
 }
 
 export function Environment({
+    cloudShadowUpdateMs,
     noBackground,
     noSound,
     noWeather,
@@ -614,14 +596,8 @@ export function Environment({
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
     const winterMode = useGameState((state) => state.winterMode);
-    const dropAnimationSignature = useGameState((state) =>
-        Object.entries(state.blockPlacementDropAnimations)
-            .map(
-                ([blockId, animation]) =>
-                    `${blockId}:${animation.sequence}:${animation.particlesSpawned ? 'particles' : 'pending'}`,
-            )
-            .sort()
-            .join('|'),
+    const activePlacementCount = useGameState(
+        (state) => Object.keys(state.blockPlacementDropAnimations).length,
     );
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
@@ -898,12 +874,8 @@ export function Environment({
         : daylightVisibility *
           smoothstep(0.08, 0.22, cloudCover) *
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
-    const cloudShadowDynamicRefreshMs =
-        qualityProfile.shadows && cloudShadowStrength > 0
-            ? cloudShadowRefreshMsByMode[qualityProfile.cloudShadowMode]
-            : undefined;
     const gardenShadowSignature = useMemo(
-        () => buildStackShadowSignature(garden?.stacks),
+        () => buildGardenShadowGeometrySignature(garden?.stacks),
         [garden?.stacks],
     );
     const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
@@ -912,11 +884,10 @@ export function Environment({
         shadowMapSize: qualityProfile.shadowMapSize,
         shadows: qualityProfile.shadows,
     });
-    const shadowSettleKey = [
+    const shadowGeometryKey = [
         `garden:${gardenShadowSignature}`,
         `view:${view}:${closeupBlockId ?? ''}`,
         `pickup:${pickupBlockId ?? ''}`,
-        `drop:${dropAnimationSignature}`,
         `winter:${winterMode}`,
     ].join('||');
     const shadowMapSize = qualityProfile.shadows
@@ -1030,10 +1001,10 @@ export function Environment({
                 }
             />
             <ShadowMapController
-                dynamicRefreshMs={cloudShadowDynamicRefreshMs}
+                activePlacementCount={activePlacementCount}
                 enabled={qualityProfile.shadows}
+                geometryKey={shadowGeometryKey}
                 invalidationKey={shadowInvalidationKey}
-                settleKey={shadowSettleKey}
             />
             {!noBackground && (
                 <>
@@ -1109,11 +1080,13 @@ export function Environment({
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
-                    shadowMode={qualityProfile.cloudShadowMode}
+                    quality={qualityProfile}
+                    shadowUpdateMs={cloudShadowUpdateMs}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }
                     stacks={garden?.stacks}
+                    sunPosition={directionalLight.position}
                     timeOfDay={timeOfDay}
                     windDirection={windDirection}
                     windSpeed={windSpeed}

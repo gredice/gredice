@@ -1,8 +1,10 @@
 export type OperationVisualRewardKind =
     | 'agrotextile'
     | 'harvest'
+    | 'insectMesh'
     | 'mulch'
     | 'removeAgrotextile'
+    | 'removeInsectMesh'
     | 'removeMulch'
     | 'supports'
     | 'watering'
@@ -11,6 +13,7 @@ export type OperationVisualRewardKind =
 export type OperationVisualRewardFamily =
     | 'agrotextile'
     | 'harvest'
+    | 'insectMesh'
     | 'mulch'
     | 'supports'
     | 'watering'
@@ -108,8 +111,10 @@ export function parseOperationVisualRewardKind(
     switch (value) {
         case 'agrotextile':
         case 'harvest':
+        case 'insectMesh':
         case 'mulch':
         case 'removeAgrotextile':
+        case 'removeInsectMesh':
         case 'removeMulch':
         case 'supports':
         case 'watering':
@@ -139,6 +144,9 @@ export function getOperationVisualRewardFamily(
             return 'agrotextile';
         case 'harvest':
             return 'harvest';
+        case 'insectMesh':
+        case 'removeInsectMesh':
+            return 'insectMesh';
         case 'mulch':
         case 'removeMulch':
             return 'mulch';
@@ -156,6 +164,7 @@ export function getOperationVisualRewardPolarity(
 ): OperationVisualRewardPolarity {
     switch (kind) {
         case 'removeAgrotextile':
+        case 'removeInsectMesh':
         case 'removeMulch':
         case 'weeding':
             return 'remove';

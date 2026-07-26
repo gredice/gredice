@@ -1,61 +1,109 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useRef,
-    useState,
-} from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
-import { useSceneResume, useSceneTimeInvalidation } from './SceneTime';
+import { useSceneResume } from './SceneTime';
 import {
-    hasShadowDynamicCadenceChanged,
-    resolveShadowMapRefreshTick,
+    consumeDeferredShadowRefresh,
+    createDeferredShadowRefreshState,
+    requestPrimaryShadowMapRefresh,
+    transitionDeferredShadowRefresh,
 } from './shadowMapScheduling';
 
-const shadowSettleMs = 900;
-
 export function ShadowMapController({
-    dynamicRefreshMs,
+    activePlacementCount = 0,
     enabled,
+    geometryKey,
     invalidationKey,
-    settleKey,
 }: {
-    dynamicRefreshMs?: number;
+    activePlacementCount?: number;
     enabled: boolean;
+    geometryKey?: string;
     invalidationKey: string;
-    settleKey?: string;
 }) {
     const gl = useThree((state) => state.gl);
     const invalidate = useThree((state) => state.invalidate);
+    const activePlacementCountRef = useRef(activePlacementCount);
+    activePlacementCountRef.current = activePlacementCount;
+    const deferredRefreshRef = useRef(
+        createDeferredShadowRefreshState(activePlacementCount),
+    );
+    const deferredChangeCountRef = useRef(0);
     const invalidationCountRef = useRef(0);
-    const nextDynamicRefreshRef = useRef(0);
-    const previousDynamicRefreshMsRef = useRef<number | undefined>(undefined);
-    const settleUntilRef = useRef(0);
-    const [shadowSettleGeneration, setShadowSettleGeneration] = useState(0);
-    const [shadowSettling, setShadowSettling] = useState(false);
-    const normalizedDynamicRefreshMs =
-        enabled && typeof dynamicRefreshMs === 'number' && dynamicRefreshMs > 0
-            ? dynamicRefreshMs
-            : undefined;
-    useSceneTimeInvalidation(enabled && shadowSettling);
+    const placementFlushCountRef = useRef(0);
+    const previousGeometryKeyRef = useRef(geometryKey);
+    const previousInvalidationKeyRef = useRef(invalidationKey);
+    const refreshCountRef = useRef(0);
 
-    const settleShadows = useCallback(() => {
-        if (!enabled) {
-            return;
+    const reportShadowMapState = useCallback(() => {
+        updateGameProfileMetadata({
+            animatedCasterShadowRefreshCount: 0,
+            placementShadowActiveCount:
+                deferredRefreshRef.current.activePlacementCount,
+            placementShadowDeferredChangeCount: deferredChangeCountRef.current,
+            placementShadowFlushCount: placementFlushCountRef.current,
+            primaryShadowRefreshCount: refreshCountRef.current,
+            shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
+            shadowMapDynamicRefreshMs: 0,
+            shadowMapInvalidationCount: invalidationCountRef.current,
+        });
+    }, [gl]);
+
+    const requestShadowRefresh = useCallback(
+        (invalidateFrame: boolean) => {
+            if (!enabled) {
+                return;
+            }
+
+            refreshCountRef.current = requestPrimaryShadowMapRefresh(
+                gl.shadowMap,
+                enabled,
+                refreshCountRef.current,
+            );
+            if (invalidateFrame) {
+                invalidate();
+            }
+            reportShadowMapState();
+        },
+        [enabled, gl, invalidate, reportShadowMapState],
+    );
+
+    const queueDeferredRefresh = useCallback(
+        ({
+            activeCount = activePlacementCountRef.current,
+            forceDirty = false,
+            geometryChanged = false,
+        }: {
+            activeCount?: number;
+            forceDirty?: boolean;
+            geometryChanged?: boolean;
+        }) => {
+            const transition = transitionDeferredShadowRefresh(
+                deferredRefreshRef.current,
+                {
+                    activePlacementCount: activeCount,
+                    forceDirty,
+                    geometryChanged,
+                },
+            );
+            deferredRefreshRef.current = transition.state;
+            deferredChangeCountRef.current +=
+                transition.deferredChangeCountDelta;
+            if (enabled && transition.shouldInvalidate) {
+                invalidate();
+            }
+            reportShadowMapState();
+        },
+        [enabled, invalidate, reportShadowMapState],
+    );
+
+    const queueResumeRefresh = useCallback(() => {
+        if (enabled) {
+            queueDeferredRefresh({ forceDirty: true });
         }
-
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.needsUpdate = true;
-        settleUntilRef.current = performance.now() + shadowSettleMs;
-        setShadowSettling(true);
-        setShadowSettleGeneration((generation) => generation + 1);
-        invalidate();
-    }, [enabled, gl, invalidate]);
-
-    useSceneResume(settleShadows);
+    }, [enabled, queueDeferredRefresh]);
+    useSceneResume(queueResumeRefresh);
 
     useLayoutEffect(() => {
         const previousAutoUpdate = gl.shadowMap.autoUpdate;
@@ -63,111 +111,62 @@ export function ShadowMapController({
 
         gl.shadowMap.enabled = enabled;
         gl.shadowMap.autoUpdate = !enabled;
-        gl.shadowMap.needsUpdate = true;
-        if (!enabled) {
-            nextDynamicRefreshRef.current = 0;
-            settleUntilRef.current = 0;
-            setShadowSettling(false);
+        if (enabled) {
+            requestShadowRefresh(true);
+        } else {
+            gl.shadowMap.needsUpdate = true;
         }
-        invalidate();
-        updateGameProfileMetadata({
-            shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
-            shadowMapInvalidationCount: invalidationCountRef.current,
-        });
+        deferredRefreshRef.current = createDeferredShadowRefreshState(
+            activePlacementCountRef.current,
+        );
+        reportShadowMapState();
 
         return () => {
             gl.shadowMap.autoUpdate = previousAutoUpdate;
             gl.shadowMap.enabled = previousEnabled;
             gl.shadowMap.needsUpdate = true;
         };
-    }, [enabled, gl, invalidate]);
+    }, [enabled, gl, reportShadowMapState, requestShadowRefresh]);
 
     useLayoutEffect(() => {
-        void invalidationKey;
-
-        if (!enabled) {
-            return;
+        const invalidationChanged =
+            previousInvalidationKeyRef.current !== invalidationKey;
+        const geometryChanged = previousGeometryKeyRef.current !== geometryKey;
+        previousInvalidationKeyRef.current = invalidationKey;
+        previousGeometryKeyRef.current = geometryKey;
+        if (enabled && invalidationChanged) {
+            invalidationCountRef.current += 1;
         }
-
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.needsUpdate = true;
-        invalidationCountRef.current += 1;
-        invalidate();
-        updateGameProfileMetadata({
-            shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
-            shadowMapInvalidationCount: invalidationCountRef.current,
+        queueDeferredRefresh({
+            activeCount: activePlacementCount,
+            forceDirty: invalidationChanged,
+            geometryChanged,
         });
-    }, [enabled, gl, invalidate, invalidationKey]);
-
-    useLayoutEffect(() => {
-        void settleKey;
-        settleShadows();
-    }, [settleKey, settleShadows]);
-
-    useLayoutEffect(() => {
-        const previousDynamicRefreshMs = previousDynamicRefreshMsRef.current;
-        previousDynamicRefreshMsRef.current = normalizedDynamicRefreshMs;
-        updateGameProfileMetadata({
-            shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
-            shadowMapDynamicRefreshMs: normalizedDynamicRefreshMs,
-            shadowMapInvalidationCount: invalidationCountRef.current,
-        });
-
-        if (
-            !hasShadowDynamicCadenceChanged(
-                previousDynamicRefreshMs,
-                normalizedDynamicRefreshMs,
-            )
-        ) {
-            return;
-        }
-
-        nextDynamicRefreshRef.current = 0;
-        if (!enabled) {
-            return;
-        }
-
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.needsUpdate = true;
-        invalidate();
-    }, [enabled, gl, invalidate, normalizedDynamicRefreshMs]);
-
-    useEffect(() => {
-        void shadowSettleGeneration;
-
-        if (!enabled || !shadowSettling) {
-            return;
-        }
-
-        const timeout = window.setTimeout(
-            () => {
-                setShadowSettling(false);
-            },
-            Math.max(0, settleUntilRef.current - performance.now()),
-        );
-
-        return () => window.clearTimeout(timeout);
-    }, [enabled, shadowSettleGeneration, shadowSettling]);
+    }, [
+        activePlacementCount,
+        enabled,
+        geometryKey,
+        invalidationKey,
+        queueDeferredRefresh,
+    ]);
 
     useFrame(() => {
         if (!enabled) {
             return;
         }
 
-        const now = performance.now();
-        const refreshTick = resolveShadowMapRefreshTick({
-            dynamicRefreshMs: normalizedDynamicRefreshMs,
-            nextDynamicRefreshAt: nextDynamicRefreshRef.current,
-            now,
-            settleUntil: settleUntilRef.current,
-        });
-        nextDynamicRefreshRef.current = refreshTick.nextDynamicRefreshAt;
-        if (!refreshTick.shouldRefresh) {
+        const consumption = consumeDeferredShadowRefresh(
+            deferredRefreshRef.current,
+        );
+        if (!consumption.shouldRefresh) {
             return;
         }
 
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.needsUpdate = true;
+        deferredRefreshRef.current = consumption.state;
+        if (consumption.placementFlush) {
+            placementFlushCountRef.current += 1;
+        }
+        requestShadowRefresh(false);
     });
 
     return null;

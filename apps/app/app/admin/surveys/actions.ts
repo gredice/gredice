@@ -7,8 +7,10 @@ import {
     createSurveyDefinition,
     createSurveyDraftVersion,
     createSurveySend,
+    duplicateSurveyDefinition,
     getAccountUsers,
     getSurveyById,
+    getSurveyVersion,
     getUser,
     previewSurveyAudience,
     publishSurveyVersion,
@@ -18,6 +20,7 @@ import {
     type SurveyQuestionSettings,
     type SurveySendAudience,
     seedDeliverySatisfactionSurveyDefinition,
+    updateSurveyDraftVersion,
 } from '@gredice/storage';
 import MarkdownEmailTemplate from '@gredice/transactional/emails/markdown';
 import { revalidatePath } from 'next/cache';
@@ -46,6 +49,16 @@ export type SurveyActionState = {
 export type SurveyPreviewActionState = SurveyActionState & {
     preview?: SurveyAudiencePreview;
 };
+
+function revalidateSurveyWorkspace(surveyId?: string | null) {
+    revalidatePath(KnownPages.Surveys);
+    if (!surveyId) return;
+    revalidatePath(KnownPages.Survey(surveyId));
+    revalidatePath(KnownPages.SurveyDesign(surveyId));
+    revalidatePath(KnownPages.SurveySends(surveyId));
+    revalidatePath(KnownPages.SurveyResponses(surveyId));
+    revalidatePath(KnownPages.SurveyStatistics(surveyId));
+}
 
 function textField(formData: FormData, key: string) {
     const value = formData.get(key);
@@ -80,6 +93,10 @@ function booleanValue(value: unknown) {
     return value === true || value === 'true';
 }
 
+function hasOwn(value: Record<string, unknown>, key: string) {
+    return Object.hasOwn(value, key);
+}
+
 function numberValue(value: unknown, fallback: number) {
     if (typeof value === 'number' && Number.isFinite(value)) {
         return value;
@@ -103,9 +120,15 @@ function parseQuestionSettings(
             type: 'opinion_scale',
             min: numberValue(settings.min, 0),
             max: numberValue(settings.max, 10),
-            step: numberValue(settings.step, 1),
-            minLabel: optionalStringValue(settings.minLabel),
-            maxLabel: optionalStringValue(settings.maxLabel),
+            ...(hasOwn(settings, 'step')
+                ? { step: numberValue(settings.step, 1) }
+                : {}),
+            ...(hasOwn(settings, 'minLabel')
+                ? { minLabel: optionalStringValue(settings.minLabel) }
+                : {}),
+            ...(hasOwn(settings, 'maxLabel')
+                ? { maxLabel: optionalStringValue(settings.maxLabel) }
+                : {}),
         };
     }
     if (type === 'contact_info') {
@@ -131,15 +154,23 @@ function parseQuestionSettings(
         return {
             type: 'contact_info',
             fields: fields.length > 0 ? fields : ['email'],
-            phoneDefaultCountry: optionalStringValue(
-                settings.phoneDefaultCountry,
-            ),
+            ...(hasOwn(settings, 'phoneDefaultCountry')
+                ? {
+                      phoneDefaultCountry: optionalStringValue(
+                          settings.phoneDefaultCountry,
+                      ),
+                  }
+                : {}),
         };
     }
     return {
         type: 'long_text',
-        maxLength: numberValue(settings.maxLength, 2000),
-        placeholder: optionalStringValue(settings.placeholder),
+        ...(hasOwn(settings, 'maxLength')
+            ? { maxLength: numberValue(settings.maxLength, 2000) }
+            : {}),
+        ...(hasOwn(settings, 'placeholder')
+            ? { placeholder: optionalStringValue(settings.placeholder) }
+            : {}),
     };
 }
 
@@ -162,9 +193,25 @@ function parseQuestions(value: unknown): SurveyQuestionInput[] {
         }
         const scoreMetadata = isRecord(item.scoreMetadata)
             ? {
-                  internalScore: booleanValue(item.scoreMetadata.internalScore),
-                  publicScore: booleanValue(item.scoreMetadata.publicScore),
-                  npsLike: booleanValue(item.scoreMetadata.npsLike),
+                  ...(hasOwn(item.scoreMetadata, 'internalScore')
+                      ? {
+                            internalScore: booleanValue(
+                                item.scoreMetadata.internalScore,
+                            ),
+                        }
+                      : {}),
+                  ...(hasOwn(item.scoreMetadata, 'publicScore')
+                      ? {
+                            publicScore: booleanValue(
+                                item.scoreMetadata.publicScore,
+                            ),
+                        }
+                      : {}),
+                  ...(hasOwn(item.scoreMetadata, 'npsLike')
+                      ? {
+                            npsLike: booleanValue(item.scoreMetadata.npsLike),
+                        }
+                      : {}),
               }
             : undefined;
 
@@ -188,6 +235,22 @@ function questionsFromForm(formData: FormData) {
     return parseQuestions(JSON.parse(raw));
 }
 
+function versionDefinitionFromForm(
+    formData: FormData,
+    metadata?: Record<string, unknown>,
+) {
+    return {
+        title: textField(formData, 'title'),
+        description: textField(formData, 'description') || null,
+        introTitle: textField(formData, 'introTitle') || null,
+        introDescription: textField(formData, 'introDescription') || null,
+        thankYouTitle: textField(formData, 'thankYouTitle') || null,
+        thankYouDescription: textField(formData, 'thankYouDescription') || null,
+        metadata,
+        questions: questionsFromForm(formData),
+    };
+}
+
 export async function createSurveyDefinitionAction(
     _prevState: SurveyActionState,
     formData: FormData,
@@ -207,7 +270,7 @@ export async function createSurveyDefinitionAction(
             createdByUserId: userId,
             questions: questionsFromForm(formData),
         });
-        revalidatePath(KnownPages.Surveys);
+        revalidateSurveyWorkspace(created.surveyId);
         return {
             success: true,
             message: 'Anketa je spremljena kao nacrt.',
@@ -232,20 +295,23 @@ export async function createSurveyDraftVersionAction(
     try {
         await auth(['admin']);
         const surveyId = textField(formData, 'surveyId');
-        const versionId = await createSurveyDraftVersion(surveyId, {
-            title: textField(formData, 'title'),
-            description: textField(formData, 'description') || null,
-            introTitle: textField(formData, 'introTitle') || null,
-            introDescription: textField(formData, 'introDescription') || null,
-            thankYouTitle: textField(formData, 'thankYouTitle') || null,
-            thankYouDescription:
-                textField(formData, 'thankYouDescription') || null,
-            questions: questionsFromForm(formData),
-        });
-        revalidatePath(KnownPages.Surveys);
+        const sourceVersionId = textField(formData, 'sourceVersionId');
+        const sourceVersion = sourceVersionId
+            ? await getSurveyVersion(sourceVersionId)
+            : null;
+        if (sourceVersionId && sourceVersion?.surveyId !== surveyId) {
+            throw new Error('Izvorna verzija ankete nije pronađena.');
+        }
+        const { versionId, versionNumber } = await createSurveyDraftVersion(
+            surveyId,
+            versionDefinitionFromForm(formData, sourceVersion?.metadata),
+        );
+        revalidateSurveyWorkspace(surveyId);
         return {
             success: true,
-            message: 'Nova verzija ankete je spremljena kao nacrt.',
+            message: sourceVersion
+                ? `Nacrt v${versionNumber} stvoren je iz v${sourceVersion.versionNumber}.`
+                : `Nova verzija v${versionNumber} spremljena je kao nacrt.`,
             surveyId,
             versionId,
         };
@@ -260,6 +326,72 @@ export async function createSurveyDraftVersionAction(
     }
 }
 
+export async function updateSurveyDraftVersionAction(
+    _prevState: SurveyActionState,
+    formData: FormData,
+): Promise<SurveyActionState> {
+    try {
+        await auth(['admin']);
+        const surveyId = textField(formData, 'surveyId');
+        const versionId = textField(formData, 'versionId');
+        const target = await getSurveyVersion(versionId);
+        if (!target || target.surveyId !== surveyId) {
+            throw new Error('Nacrt verzije ankete nije pronađen.');
+        }
+        const updated = await updateSurveyDraftVersion({
+            surveyId,
+            versionId,
+            definition: versionDefinitionFromForm(formData, target.metadata),
+        });
+        revalidateSurveyWorkspace(surveyId);
+        return {
+            success: true,
+            message: `Promjene nacrta v${updated.versionNumber} su spremljene.`,
+            surveyId,
+            versionId,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Promjene nacrta nije moguće spremiti.',
+        };
+    }
+}
+
+export async function duplicateSurveyDefinitionAction(input: {
+    sourceSurveyId: string;
+    sourceVersionId: string;
+    key: string;
+    title: string;
+}): Promise<SurveyActionState> {
+    try {
+        const { userId } = await auth(['admin']);
+        const created = await duplicateSurveyDefinition({
+            ...input,
+            createdByUserId: userId,
+        });
+        revalidateSurveyWorkspace(input.sourceSurveyId);
+        revalidateSurveyWorkspace(created.surveyId);
+        return {
+            success: true,
+            message: `Anketa „${input.title.trim()}” v${created.versionNumber} stvorena je iz v${created.sourceVersionNumber}.`,
+            surveyId: created.surveyId,
+            versionId: created.versionId,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Anketu nije moguće duplicirati.',
+        };
+    }
+}
+
 export async function seedDeliverySatisfactionSurveyAction(formData: FormData) {
     const { userId } = await auth(['admin']);
     const publish = boolField(formData, 'publish');
@@ -267,7 +399,7 @@ export async function seedDeliverySatisfactionSurveyAction(formData: FormData) {
         createdByUserId: userId,
         publish,
     });
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace();
 }
 
 export async function publishSurveyVersionAction(formData: FormData) {
@@ -275,13 +407,36 @@ export async function publishSurveyVersionAction(formData: FormData) {
     const surveyId = textField(formData, 'surveyId');
     const versionId = textField(formData, 'versionId');
     await publishSurveyVersion({ surveyId, versionId });
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace(surveyId);
 }
 
 export async function archiveSurveyAction(formData: FormData) {
     await auth(['admin']);
     await archiveSurvey(textField(formData, 'surveyId'));
-    revalidatePath(KnownPages.Surveys);
+    revalidateSurveyWorkspace(textField(formData, 'surveyId'));
+}
+
+export async function archiveSurveyByIdAction(
+    surveyId: string,
+): Promise<SurveyActionState> {
+    try {
+        await auth(['admin']);
+        await archiveSurvey(surveyId);
+        revalidateSurveyWorkspace(surveyId);
+        return {
+            success: true,
+            message: 'Anketa i njezine verzije su arhivirane.',
+            surveyId,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Anketu nije moguće arhivirati.',
+        };
+    }
 }
 
 function buildAudience(formData: FormData): SurveySendAudience {
@@ -530,7 +685,7 @@ export async function sendSurveyAction(
             failures += result.failures;
         }
 
-        revalidatePath(KnownPages.Surveys);
+        revalidateSurveyWorkspace(send.send.surveyId);
         return {
             success: true,
             message: `${send.createdCount} dodijeljeno, ${send.skippedDuplicateCount} preskočeno kao duplikat, ${notifications} obavijesti, ${emails} emailova, ${failures} grešaka.`,
