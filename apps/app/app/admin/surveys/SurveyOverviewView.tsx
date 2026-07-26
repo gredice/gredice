@@ -10,7 +10,8 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { KnownPages } from '../../../src/KnownPages';
-import { archiveSurveyAction } from './actions';
+import { SurveyArchiveButton } from './SurveyArchiveButton';
+import { SurveyDuplicatePanel } from './SurveyDuplicatePanel';
 import { SurveyWorkspaceShell } from './SurveyWorkspaceShell';
 import { surveyStatusColor, surveyStatusLabel } from './surveyPresentation';
 
@@ -145,21 +146,18 @@ export function SurveyOverviewView({
                             </Stack>
                         </CardContent>
                     </Card>
-                    <form action={archiveSurveyAction}>
-                        <input
-                            name="surveyId"
-                            type="hidden"
-                            value={survey.id}
-                        />
-                        <Button
-                            type="submit"
-                            color="danger"
-                            variant="outlined"
-                            fullWidth
-                        >
-                            Arhiviraj anketu
-                        </Button>
-                    </form>
+                    <SurveyDuplicatePanel
+                        surveyId={survey.id}
+                        surveyKey={survey.key}
+                        surveyTitle={survey.title}
+                        versions={details.versions}
+                    />
+                    <SurveyArchiveButton
+                        archived={survey.status === 'archived'}
+                        surveyId={survey.id}
+                        surveyKey={survey.key}
+                        surveyTitle={survey.title}
+                    />
                 </Stack>
             </div>
         </SurveyWorkspaceShell>

@@ -4,25 +4,33 @@ import test from 'node:test';
 import {
     accounts,
     accountUsers,
+    archiveSurvey,
     buildNumericAggregates,
     createSurveyAssignments,
     createSurveyDefinition,
     createSurveyDraftVersion,
     createSurveySend,
     DELIVERY_SATISFACTION_SURVEY_KEY,
+    duplicateSurveyDefinition,
     getPublishedSurveyVersionByKey,
     getSurveyAssignmentRuntime,
+    getSurveyById,
     getSurveyQuestions,
     getSurveyResponseAdmin,
     getSurveyResponsePageAdmin,
     getSurveyResultsAdmin,
+    getSurveyVersion,
     getSurveyWorkspaceAdminDetails,
     previewSurveyAudience,
     publishSurveyVersion,
     seedDeliverySatisfactionSurveyDefinition,
     storage,
     submitSurveyResponse,
+    surveyAssignments,
     surveyResponses,
+    surveySends,
+    surveyVersions,
+    updateSurveyDraftVersion,
     users,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
@@ -59,7 +67,12 @@ async function createPublishedSurvey() {
                 title: 'Score',
                 type: 'opinion_scale',
                 required: true,
-                settings: { type: 'opinion_scale', min: 0, max: 10 },
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                    step: 2,
+                },
                 scoreMetadata: { internalScore: true },
             },
             {
@@ -252,6 +265,573 @@ test('survey assignments are duplicate-safe by version target and context key', 
     assert.equal(send.preview.targetCount, 1);
 });
 
+test('draft survey versions update in place without losing supported question settings', async () => {
+    createTestDb();
+
+    const created = await createSurveyDefinition({
+        key: `editable_${randomUUID()}`,
+        title: 'Editable survey',
+        metadata: { owner: 'surveys' },
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                required: true,
+                settings: {
+                    type: 'opinion_scale',
+                    min: 1,
+                    max: 9,
+                    step: 2,
+                    minLabel: 'Low',
+                    maxLabel: 'High',
+                },
+                scoreMetadata: {
+                    internalScore: true,
+                    publicScore: true,
+                    npsLike: true,
+                },
+            },
+            {
+                key: 'comment',
+                title: 'Comment',
+                type: 'long_text',
+                settings: {
+                    type: 'long_text',
+                    maxLength: 640,
+                    placeholder: 'Tell us more',
+                },
+            },
+            {
+                key: 'contact',
+                title: 'Contact',
+                type: 'contact_info',
+                settings: {
+                    type: 'contact_info',
+                    fields: ['first_name', 'phone'],
+                    phoneDefaultCountry: 'SI',
+                },
+            },
+        ],
+    });
+
+    const updated = await updateSurveyDraftVersion({
+        surveyId: created.surveyId,
+        versionId: created.versionId,
+        definition: {
+            title: 'Edited survey',
+            description: 'Edited description',
+            introTitle: 'Welcome',
+            introDescription: 'Please answer.',
+            thankYouTitle: 'Thank you',
+            thankYouDescription: 'Finished.',
+            metadata: { owner: 'surveys' },
+            questions: [
+                {
+                    key: 'contact',
+                    title: 'Contact',
+                    type: 'contact_info',
+                    settings: {
+                        type: 'contact_info',
+                        fields: ['first_name', 'phone'],
+                        phoneDefaultCountry: 'SI',
+                    },
+                },
+                {
+                    key: 'score',
+                    title: 'Score',
+                    type: 'opinion_scale',
+                    required: true,
+                    settings: {
+                        type: 'opinion_scale',
+                        min: 1,
+                        max: 9,
+                        step: 2,
+                        minLabel: 'Low',
+                        maxLabel: 'High',
+                    },
+                    scoreMetadata: {
+                        internalScore: true,
+                        publicScore: true,
+                        npsLike: true,
+                    },
+                },
+                {
+                    key: 'comment',
+                    title: 'Comment',
+                    type: 'long_text',
+                    settings: {
+                        type: 'long_text',
+                        maxLength: 640,
+                        placeholder: 'Tell us more',
+                    },
+                },
+            ],
+        },
+    });
+
+    assert.deepEqual(updated, {
+        surveyId: created.surveyId,
+        versionId: created.versionId,
+        versionNumber: 1,
+    });
+    assert.equal(
+        (await getSurveyById(created.surveyId))?.title,
+        'Edited survey',
+    );
+    assert.deepEqual(
+        (await getSurveyQuestions(created.versionId)).map((question) => ({
+            key: question.key,
+            required: question.required,
+            scoreMetadata: question.scoreMetadata,
+            settings: question.settings,
+            sortOrder: question.sortOrder,
+        })),
+        [
+            {
+                key: 'contact',
+                required: false,
+                scoreMetadata: {},
+                settings: {
+                    type: 'contact_info',
+                    fields: ['first_name', 'phone'],
+                    phoneDefaultCountry: 'SI',
+                },
+                sortOrder: 1,
+            },
+            {
+                key: 'score',
+                required: true,
+                scoreMetadata: {
+                    internalScore: true,
+                    publicScore: true,
+                    npsLike: true,
+                },
+                settings: {
+                    type: 'opinion_scale',
+                    min: 1,
+                    max: 9,
+                    step: 2,
+                    minLabel: 'Low',
+                    maxLabel: 'High',
+                },
+                sortOrder: 2,
+            },
+            {
+                key: 'comment',
+                required: false,
+                scoreMetadata: {},
+                settings: {
+                    type: 'long_text',
+                    maxLength: 640,
+                    placeholder: 'Tell us more',
+                },
+                sortOrder: 3,
+            },
+        ],
+    );
+
+    await publishSurveyVersion(created);
+    await assert.rejects(
+        publishSurveyVersion(created),
+        /Only draft survey versions can be published/u,
+    );
+    await assert.rejects(
+        updateSurveyDraftVersion({
+            surveyId: created.surveyId,
+            versionId: created.versionId,
+            definition: {
+                title: 'Forbidden edit',
+                questions: [
+                    {
+                        key: 'score',
+                        title: 'Score',
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                        },
+                    },
+                ],
+            },
+        }),
+        /Only draft survey versions can be edited/u,
+    );
+    assert.equal(
+        (await getSurveyVersion(created.versionId))?.title,
+        'Edited survey',
+    );
+
+    await archiveSurvey(created.surveyId);
+    await assert.rejects(
+        updateSurveyDraftVersion({
+            surveyId: created.surveyId,
+            versionId: created.versionId,
+            definition: {
+                title: 'Forbidden archived edit',
+                questions: [
+                    {
+                        key: 'score',
+                        title: 'Score',
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                        },
+                    },
+                ],
+            },
+        }),
+        /Only draft survey versions can be edited/u,
+    );
+});
+
+test('concurrent survey publishes leave exactly one published version', async () => {
+    createTestDb();
+
+    const first = await createSurveyDefinition({
+        key: `concurrent_publish_${randomUUID()}`,
+        title: 'Concurrent publish',
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                },
+            },
+        ],
+    });
+    const second = await createSurveyDraftVersion(first.surveyId, {
+        title: 'Concurrent publish v2',
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                },
+            },
+        ],
+    });
+
+    await Promise.all([
+        publishSurveyVersion(first),
+        publishSurveyVersion({
+            surveyId: first.surveyId,
+            versionId: second.versionId,
+        }),
+    ]);
+
+    const [survey, versions] = await Promise.all([
+        getSurveyById(first.surveyId),
+        storage()
+            .select()
+            .from(surveyVersions)
+            .where(eq(surveyVersions.surveyId, first.surveyId)),
+    ]);
+    const published = versions.filter(
+        (version) => version.status === 'published',
+    );
+
+    assert.equal(published.length, 1);
+    assert.equal(
+        versions.filter((version) => version.status === 'archived').length,
+        1,
+    );
+    assert.equal(survey?.activeVersionId, published[0]?.id);
+});
+
+test('concurrent survey draft creation assigns unique version numbers', async () => {
+    createTestDb();
+
+    const first = await createSurveyDefinition({
+        key: `concurrent_version_${randomUUID()}`,
+        title: 'Concurrent version',
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                },
+            },
+        ],
+    });
+    const definition = {
+        title: 'Concurrent draft',
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale' as const,
+                settings: {
+                    type: 'opinion_scale' as const,
+                    min: 0,
+                    max: 10,
+                },
+            },
+        ],
+    };
+
+    const versions = await Promise.all([
+        createSurveyDraftVersion(first.surveyId, definition),
+        createSurveyDraftVersion(first.surveyId, definition),
+    ]);
+
+    assert.deepEqual(
+        versions
+            .map((version) => version.versionNumber)
+            .sort((left, right) => left - right),
+        [2, 3],
+    );
+});
+
+test('draft editing refuses versions with operational history', async () => {
+    createTestDb();
+
+    const created = await createSurveyDefinition({
+        key: `operational_${randomUUID()}`,
+        title: 'Draft with operational history',
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                },
+            },
+        ],
+    });
+    await storage()
+        .insert(surveySends)
+        .values({
+            id: randomUUID(),
+            surveyId: created.surveyId,
+            versionId: created.versionId,
+            name: 'Unexpected draft send',
+            audience: { type: 'accounts', accountIds: [] },
+            channelPolicy: { inApp: true, email: false },
+            contextKey: `unexpected-${randomUUID()}`,
+        });
+
+    await assert.rejects(
+        updateSurveyDraftVersion({
+            surveyId: created.surveyId,
+            versionId: created.versionId,
+            definition: {
+                title: 'Blocked update',
+                questions: [
+                    {
+                        key: 'score',
+                        title: 'Score',
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                        },
+                    },
+                ],
+            },
+        }),
+        /Survey versions with operational history cannot be edited/u,
+    );
+});
+
+test('survey duplication copies only definition content into fresh draft identities', async () => {
+    createTestDb();
+
+    const sourceCreator = await createTestUser();
+    const destinationCreator = await createTestUser();
+    const source = await createSurveyDefinition({
+        key: `source_${randomUUID()}`,
+        title: 'Source survey',
+        description: 'Source description',
+        category: 'delivery',
+        introTitle: 'Source intro',
+        introDescription: 'Source intro description',
+        thankYouTitle: 'Source thanks',
+        thankYouDescription: 'Source done',
+        metadata: { copied: 'definition-only' },
+        createdByUserId: sourceCreator.userId,
+        questions: [
+            {
+                key: 'score',
+                title: 'Score',
+                type: 'opinion_scale',
+                settings: {
+                    type: 'opinion_scale',
+                    min: 0,
+                    max: 10,
+                    step: 1,
+                },
+            },
+        ],
+    });
+    await publishSurveyVersion(source);
+    const sourceSend = await createSurveySend({
+        versionId: source.versionId,
+        name: 'Source send',
+        audience: {
+            type: 'explicit',
+            recipients: [
+                {
+                    accountId: sourceCreator.accountId,
+                    userId: sourceCreator.userId,
+                },
+            ],
+        },
+        channelPolicy: { inApp: true, email: false },
+        contextKey: `duplicate-source-${randomUUID()}`,
+    });
+    assert.equal(sourceSend.createdCount, 1);
+    const submitted = await submitSurveyResponse({
+        assignmentId: sourceSend.assignments[0]?.assignment.id ?? '',
+        accountId: sourceCreator.accountId,
+        userId: sourceCreator.userId,
+        answers: [{ questionKey: 'score', value: 9 }],
+    });
+    assert.equal(submitted.ok, true);
+
+    const destinationKey = `copy_${randomUUID()}`;
+    const duplicate = await duplicateSurveyDefinition({
+        sourceSurveyId: source.surveyId,
+        sourceVersionId: source.versionId,
+        key: destinationKey,
+        title: 'Copied survey',
+        createdByUserId: destinationCreator.userId,
+    });
+    assert.equal(duplicate.sourceVersionNumber, 1);
+    assert.equal(duplicate.versionNumber, 1);
+    const [destinationSurvey, destinationVersion, sourceQuestions, copied] =
+        await Promise.all([
+            getSurveyById(duplicate.surveyId),
+            getSurveyVersion(duplicate.versionId),
+            getSurveyQuestions(source.versionId),
+            getSurveyQuestions(duplicate.versionId),
+        ]);
+
+    assert.equal(destinationSurvey?.key, destinationKey);
+    assert.equal(destinationSurvey?.title, 'Copied survey');
+    assert.equal(destinationSurvey?.status, 'draft');
+    assert.equal(destinationSurvey?.activeVersionId, null);
+    assert.equal(destinationSurvey?.createdByUserId, destinationCreator.userId);
+    assert.equal(destinationSurvey?.category, 'delivery');
+    assert.deepEqual(destinationSurvey?.metadata, {
+        copied: 'definition-only',
+    });
+    assert.equal(destinationVersion?.versionNumber, 1);
+    assert.equal(destinationVersion?.status, 'draft');
+    assert.equal(destinationVersion?.publishedAt, null);
+    assert.equal(destinationVersion?.archivedAt, null);
+    assert.notEqual(copied[0]?.id, sourceQuestions[0]?.id);
+    assert.deepEqual(
+        copied.map(
+            ({
+                id: _id,
+                versionId: _versionId,
+                createdAt: _createdAt,
+                ...question
+            }) => question,
+        ),
+        sourceQuestions.map(
+            ({
+                id: _id,
+                versionId: _versionId,
+                createdAt: _createdAt,
+                ...question
+            }) => question,
+        ),
+    );
+
+    const [sends, assignments, responses] = await Promise.all([
+        storage()
+            .select()
+            .from(surveySends)
+            .where(eq(surveySends.surveyId, duplicate.surveyId)),
+        storage()
+            .select()
+            .from(surveyAssignments)
+            .where(eq(surveyAssignments.surveyId, duplicate.surveyId)),
+        storage()
+            .select()
+            .from(surveyResponses)
+            .where(eq(surveyResponses.surveyId, duplicate.surveyId)),
+    ]);
+    assert.deepEqual(
+        [sends.length, assignments.length, responses.length],
+        [0, 0, 0],
+    );
+    await assert.rejects(
+        duplicateSurveyDefinition({
+            sourceSurveyId: source.surveyId,
+            sourceVersionId: source.versionId,
+            key: destinationKey,
+            title: 'Key collision',
+        }),
+    );
+});
+
+test('survey definition rejects an invalid opinion scale step', async () => {
+    createTestDb();
+
+    await assert.rejects(
+        createSurveyDefinition({
+            key: `invalid_scale_${randomUUID()}`,
+            title: 'Invalid scale',
+            questions: [
+                {
+                    key: 'score',
+                    title: 'Score',
+                    type: 'opinion_scale',
+                    settings: {
+                        type: 'opinion_scale',
+                        min: 0,
+                        max: 10,
+                        step: 0,
+                    },
+                },
+            ],
+        }),
+        /Opinion scale step must evenly divide/u,
+    );
+    await assert.rejects(
+        createSurveyDefinition({
+            key: `uneven_scale_${randomUUID()}`,
+            title: 'Uneven scale',
+            questions: [
+                {
+                    key: 'score',
+                    title: 'Score',
+                    type: 'opinion_scale',
+                    settings: {
+                        type: 'opinion_scale',
+                        min: 0,
+                        max: 10,
+                        step: 3,
+                    },
+                },
+            ],
+        }),
+        /Opinion scale step must evenly divide/u,
+    );
+});
+
 test('survey submission validates answers, prevents duplicates, and builds aggregates', async () => {
     createTestDb();
 
@@ -273,6 +853,15 @@ test('survey submission validates answers, prevents duplicates, and builds aggre
     });
     assert.equal(invalid.ok, false);
     assert.equal(invalid.status, 'invalid');
+
+    const invalidStep = await submitSurveyResponse({
+        assignmentId: assignment.id,
+        accountId,
+        userId,
+        answers: [{ questionKey: 'score', value: 7 }],
+    });
+    assert.equal(invalidStep.ok, false);
+    assert.equal(invalidStep.status, 'invalid');
 
     const submitted = await submitSurveyResponse({
         assignmentId: assignment.id,
@@ -396,27 +985,30 @@ test('survey response explorer filters, paginates, and protects version ownershi
         score: 6,
     });
 
-    const secondVersionId = await createSurveyDraftVersion(surveyId, {
-        title: 'Test survey v2',
-        description: 'Second version',
-        questions: [
-            {
-                key: 'score',
-                title: 'Score v2',
-                type: 'opinion_scale',
-                required: true,
-                settings: { type: 'opinion_scale', min: 1, max: 10 },
-                scoreMetadata: { internalScore: true },
-            },
-            {
-                key: 'comment',
-                title: 'Comment v2',
-                type: 'long_text',
-                required: false,
-                settings: { type: 'long_text', maxLength: 200 },
-            },
-        ],
-    });
+    const { versionId: secondVersionId } = await createSurveyDraftVersion(
+        surveyId,
+        {
+            title: 'Test survey v2',
+            description: 'Second version',
+            questions: [
+                {
+                    key: 'score',
+                    title: 'Score v2',
+                    type: 'opinion_scale',
+                    required: true,
+                    settings: { type: 'opinion_scale', min: 1, max: 10 },
+                    scoreMetadata: { internalScore: true },
+                },
+                {
+                    key: 'comment',
+                    title: 'Comment v2',
+                    type: 'long_text',
+                    required: false,
+                    settings: { type: 'long_text', maxLength: 200 },
+                },
+            ],
+        },
+    );
     await publishSurveyVersion({ surveyId, versionId: secondVersionId });
     const thirdAssignmentResult = await createSurveyAssignments({
         versionId: secondVersionId,

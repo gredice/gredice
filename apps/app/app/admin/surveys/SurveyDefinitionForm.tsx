@@ -10,133 +10,32 @@ import {
     createSurveyDefinitionAction,
     createSurveyDraftVersionAction,
     type SurveyActionState,
+    updateSurveyDraftVersionAction,
 } from './actions';
+import { SurveyTextAreaField } from './SurveyTextAreaField';
+import {
+    createSurveyQuestionFormState,
+    emptySurveyDefinitionFormValues,
+    type SurveyDefinitionFormValues,
+    type SurveyQuestionFormState,
+    setSurveyContactField,
+    surveyQuestionFromFormState,
+} from './surveyDefinitionFormModel';
 
-type QuestionType = 'opinion_scale' | 'long_text' | 'contact_info';
+type SurveyDefinitionFormMode =
+    | 'create-survey'
+    | 'create-version'
+    | 'edit-draft';
 
-type QuestionState = {
-    id: string;
-    key: string;
-    title: string;
-    description: string;
-    type: QuestionType;
-    required: boolean;
-    min: number;
-    max: number;
-    maxLength: number;
-    internalScore: boolean;
-    publicScore: boolean;
-    contactFirstName: boolean;
-    contactLastName: boolean;
-    contactPhone: boolean;
-    contactEmail: boolean;
-};
-
-const initialQuestion: QuestionState = {
-    id: 'score-question',
-    key: 'score',
-    title: 'Ocjena',
-    description: '',
-    type: 'opinion_scale',
-    required: false,
-    min: 0,
-    max: 10,
-    maxLength: 2000,
-    internalScore: true,
-    publicScore: false,
-    contactFirstName: true,
-    contactLastName: true,
-    contactPhone: true,
-    contactEmail: true,
-};
-
-function newQuestionId(type: QuestionType) {
+function newQuestionId(type: SurveyQuestionFormState['type']) {
     return `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toQuestionPayload(question: QuestionState) {
-    const base = {
-        key: question.key,
-        title: question.title,
-        description: question.description || null,
-        type: question.type,
-        required: question.required,
-        scoreMetadata:
-            question.type === 'opinion_scale'
-                ? {
-                      internalScore: question.internalScore,
-                      publicScore: question.publicScore,
-                  }
-                : undefined,
-    };
-
-    if (question.type === 'opinion_scale') {
-        return {
-            ...base,
-            settings: {
-                type: 'opinion_scale',
-                min: question.min,
-                max: question.max,
-                step: 1,
-            },
-        };
+function questionTypeFromValue(value: string): SurveyQuestionFormState['type'] {
+    if (value === 'long_text' || value === 'contact_info') {
+        return value;
     }
-
-    if (question.type === 'contact_info') {
-        const fields = [
-            question.contactFirstName ? 'first_name' : null,
-            question.contactLastName ? 'last_name' : null,
-            question.contactPhone ? 'phone' : null,
-            question.contactEmail ? 'email' : null,
-        ].filter((field): field is string => Boolean(field));
-
-        return {
-            ...base,
-            settings: {
-                type: 'contact_info',
-                fields,
-                phoneDefaultCountry: 'HR',
-            },
-        };
-    }
-
-    return {
-        ...base,
-        settings: {
-            type: 'long_text',
-            maxLength: question.maxLength,
-        },
-    };
-}
-
-function nextQuestion(type: QuestionType): QuestionState {
-    if (type === 'long_text') {
-        return {
-            ...initialQuestion,
-            id: newQuestionId(type),
-            key: `text_${Date.now()}`,
-            title: 'Tekstualni odgovor',
-            type,
-            internalScore: false,
-        };
-    }
-    if (type === 'contact_info') {
-        return {
-            ...initialQuestion,
-            id: newQuestionId(type),
-            key: `contact_${Date.now()}`,
-            title: 'Kontakt podaci',
-            type,
-            internalScore: false,
-        };
-    }
-    return {
-        ...initialQuestion,
-        id: newQuestionId(type),
-        key: `score_${Date.now()}`,
-        title: 'Ocjena',
-        type,
-    };
+    return 'opinion_scale';
 }
 
 function moveItem<T>(items: T[], index: number, direction: -1 | 1) {
@@ -151,62 +50,110 @@ function moveItem<T>(items: T[], index: number, direction: -1 | 1) {
     return next;
 }
 
-function TextAreaField({
-    defaultValue = '',
-    label,
-    name,
-}: {
-    defaultValue?: string;
-    label: string;
-    name: string;
-}) {
-    return (
-        <label className="space-y-1">
-            <span className="block text-sm font-medium text-foreground">
-                {label}
-            </span>
-            <textarea
-                className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
-                defaultValue={defaultValue}
-                name={name}
-            />
-        </label>
-    );
+function numericInputValue(value: number | undefined) {
+    return value ?? '';
 }
 
-function questionTypeFromValue(value: string): QuestionType {
-    if (value === 'long_text' || value === 'contact_info') {
-        return value;
+function optionalInteger(value: string) {
+    return value.trim() ? Number.parseInt(value, 10) : undefined;
+}
+
+function actionForMode(mode: SurveyDefinitionFormMode) {
+    if (mode === 'create-survey') {
+        return createSurveyDefinitionAction;
     }
-    return 'opinion_scale';
+    if (mode === 'edit-draft') {
+        return updateSurveyDraftVersionAction;
+    }
+    return createSurveyDraftVersionAction;
 }
 
 export function SurveyDefinitionForm({
-    mode = 'create',
+    initialValues,
+    mode = 'create-survey',
+    sourceVersionId,
     surveyId,
+    versionId,
 }: {
-    mode?: 'create' | 'version';
+    initialValues?: SurveyDefinitionFormValues;
+    mode?: SurveyDefinitionFormMode;
+    sourceVersionId?: string;
     surveyId?: string;
+    versionId?: string;
 }) {
-    const [questions, setQuestions] = useState<QuestionState[]>([
-        initialQuestion,
-    ]);
+    const values = initialValues ?? emptySurveyDefinitionFormValues();
+    const [questions, setQuestions] = useState<SurveyQuestionFormState[]>(() =>
+        values.questions.map((question) => ({ ...question })),
+    );
     const [state, formAction, pending] = useActionState(
-        mode === 'create'
-            ? createSurveyDefinitionAction
-            : createSurveyDraftVersionAction,
+        actionForMode(mode),
         {} satisfies SurveyActionState,
     );
     const questionsJson = useMemo(
-        () => JSON.stringify(questions.map(toQuestionPayload)),
+        () =>
+            JSON.stringify(
+                questions.map((question) =>
+                    surveyQuestionFromFormState(question),
+                ),
+            ),
         [questions],
     );
 
-    function updateQuestion(index: number, update: Partial<QuestionState>) {
+    function updateQuestion(
+        index: number,
+        update: Partial<SurveyQuestionFormState>,
+    ) {
         setQuestions((items) =>
             items.map((item, itemIndex) =>
                 itemIndex === index ? { ...item, ...update } : item,
             ),
+        );
+    }
+
+    function addQuestion(type: SurveyQuestionFormState['type']) {
+        const id = newQuestionId(type);
+        setQuestions((items) => [
+            ...items,
+            createSurveyQuestionFormState(type, id, id),
+        ]);
+    }
+
+    function changeQuestionType(
+        index: number,
+        type: SurveyQuestionFormState['type'],
+    ) {
+        setQuestions((items) =>
+            items.map((question, itemIndex) => {
+                if (itemIndex !== index || question.type === type) {
+                    return question;
+                }
+                const defaults = createSurveyQuestionFormState(
+                    type,
+                    question.id,
+                    question.key,
+                );
+                return {
+                    ...question,
+                    type,
+                    opinionMin: question.opinionMin ?? defaults.opinionMin,
+                    opinionMax: question.opinionMax ?? defaults.opinionMax,
+                    opinionStep: question.opinionStep ?? defaults.opinionStep,
+                    longTextMaxLength:
+                        question.longTextMaxLength ??
+                        defaults.longTextMaxLength,
+                    contactFields:
+                        question.contactFields.length > 0
+                            ? question.contactFields
+                            : defaults.contactFields,
+                    contactPhoneDefaultCountry:
+                        question.contactPhoneDefaultCountry ??
+                        defaults.contactPhoneDefaultCountry,
+                    scoreMetadata:
+                        type === 'opinion_scale'
+                            ? (question.scoreMetadata ?? defaults.scoreMetadata)
+                            : question.scoreMetadata,
+                };
+            }),
         );
     }
 
@@ -215,11 +162,22 @@ export function SurveyDefinitionForm({
             {surveyId ? (
                 <input name="surveyId" type="hidden" value={surveyId} />
             ) : null}
+            {versionId ? (
+                <input name="versionId" type="hidden" value={versionId} />
+            ) : null}
+            {sourceVersionId ? (
+                <input
+                    name="sourceVersionId"
+                    type="hidden"
+                    value={sourceVersionId}
+                />
+            ) : null}
             <input name="questionsJson" type="hidden" value={questionsJson} />
 
             <div className="grid gap-3 md:grid-cols-2">
-                {mode === 'create' ? (
+                {mode === 'create-survey' ? (
                     <Input
+                        defaultValue={values.key}
                         fullWidth
                         label="Ključ ankete"
                         name="key"
@@ -227,22 +185,30 @@ export function SurveyDefinitionForm({
                         required
                     />
                 ) : null}
-                <Input fullWidth label="Naziv" name="title" required />
-                {mode === 'create' ? (
+                <Input
+                    defaultValue={values.title}
+                    fullWidth
+                    label="Naziv"
+                    name="title"
+                    required
+                />
+                {mode === 'create-survey' ? (
                     <Input
+                        defaultValue={values.category}
                         fullWidth
                         label="Kategorija"
                         name="category"
-                        defaultValue="general"
                     />
                 ) : null}
                 <Input
+                    defaultValue={values.introTitle}
                     fullWidth
                     label="Naslov uvoda"
                     name="introTitle"
                     placeholder="Anketa zadovoljstva"
                 />
                 <Input
+                    defaultValue={values.thankYouTitle}
                     fullWidth
                     label="Naslov zahvale"
                     name="thankYouTitle"
@@ -250,9 +216,21 @@ export function SurveyDefinitionForm({
                 />
             </div>
 
-            <TextAreaField label="Opis" name="description" />
-            <TextAreaField label="Uvodni tekst" name="introDescription" />
-            <TextAreaField label="Tekst zahvale" name="thankYouDescription" />
+            <SurveyTextAreaField
+                defaultValue={values.description}
+                label="Opis"
+                name="description"
+            />
+            <SurveyTextAreaField
+                defaultValue={values.introDescription}
+                label="Uvodni tekst"
+                name="introDescription"
+            />
+            <SurveyTextAreaField
+                defaultValue={values.thankYouDescription}
+                label="Tekst zahvale"
+                name="thankYouDescription"
+            />
 
             <Stack spacing={3}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -262,12 +240,7 @@ export function SurveyDefinitionForm({
                             type="button"
                             variant="outlined"
                             size="sm"
-                            onClick={() =>
-                                setQuestions((items) => [
-                                    ...items,
-                                    nextQuestion('opinion_scale'),
-                                ])
-                            }
+                            onClick={() => addQuestion('opinion_scale')}
                         >
                             Skala
                         </Button>
@@ -275,12 +248,7 @@ export function SurveyDefinitionForm({
                             type="button"
                             variant="outlined"
                             size="sm"
-                            onClick={() =>
-                                setQuestions((items) => [
-                                    ...items,
-                                    nextQuestion('long_text'),
-                                ])
-                            }
+                            onClick={() => addQuestion('long_text')}
                         >
                             Tekst
                         </Button>
@@ -288,12 +256,7 @@ export function SurveyDefinitionForm({
                             type="button"
                             variant="outlined"
                             size="sm"
-                            onClick={() =>
-                                setQuestions((items) => [
-                                    ...items,
-                                    nextQuestion('contact_info'),
-                                ])
-                            }
+                            onClick={() => addQuestion('contact_info')}
                         >
                             Kontakt
                         </Button>
@@ -375,15 +338,16 @@ export function SurveyDefinitionForm({
                                     className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                                     value={question.type}
                                     onChange={(event) =>
-                                        updateQuestion(index, {
-                                            type: questionTypeFromValue(
+                                        changeQuestionType(
+                                            index,
+                                            questionTypeFromValue(
                                                 event.target.value,
                                             ),
-                                        })
+                                        )
                                     }
                                 >
                                     <option value="opinion_scale">
-                                        Skala 0-10
+                                        Brojčana skala
                                     </option>
                                     <option value="long_text">
                                         Dugi tekst
@@ -406,7 +370,7 @@ export function SurveyDefinitionForm({
                             <Input
                                 fullWidth
                                 label="Opis pitanja"
-                                value={question.description}
+                                value={question.description ?? ''}
                                 onChange={(event) =>
                                     updateQuestion(index, {
                                         description: event.target.value,
@@ -428,20 +392,49 @@ export function SurveyDefinitionForm({
                             {question.type === 'opinion_scale' ? (
                                 <>
                                     <Checkbox
-                                        checked={question.internalScore}
+                                        checked={
+                                            question.scoreMetadata
+                                                ?.internalScore ?? false
+                                        }
                                         label="Interni skor"
                                         onCheckedChange={(checked) =>
                                             updateQuestion(index, {
-                                                internalScore: checked === true,
+                                                scoreMetadata: {
+                                                    ...question.scoreMetadata,
+                                                    internalScore:
+                                                        checked === true,
+                                                },
                                             })
                                         }
                                     />
                                     <Checkbox
-                                        checked={question.publicScore}
-                                        label="Javni skor kasnije"
+                                        checked={
+                                            question.scoreMetadata
+                                                ?.publicScore ?? false
+                                        }
+                                        label="Javni skor"
                                         onCheckedChange={(checked) =>
                                             updateQuestion(index, {
-                                                publicScore: checked === true,
+                                                scoreMetadata: {
+                                                    ...question.scoreMetadata,
+                                                    publicScore:
+                                                        checked === true,
+                                                },
+                                            })
+                                        }
+                                    />
+                                    <Checkbox
+                                        checked={
+                                            question.scoreMetadata?.npsLike ??
+                                            false
+                                        }
+                                        label="NPS način"
+                                        onCheckedChange={(checked) =>
+                                            updateQuestion(index, {
+                                                scoreMetadata: {
+                                                    ...question.scoreMetadata,
+                                                    npsLike: checked === true,
+                                                },
                                             })
                                         }
                                     />
@@ -455,10 +448,10 @@ export function SurveyDefinitionForm({
                                     fullWidth
                                     label="Minimum"
                                     type="number"
-                                    value={question.min}
+                                    value={question.opinionMin}
                                     onChange={(event) =>
                                         updateQuestion(index, {
-                                            min: Number.parseInt(
+                                            opinionMin: Number.parseInt(
                                                 event.target.value,
                                                 10,
                                             ),
@@ -469,13 +462,48 @@ export function SurveyDefinitionForm({
                                     fullWidth
                                     label="Maximum"
                                     type="number"
-                                    value={question.max}
+                                    value={question.opinionMax}
                                     onChange={(event) =>
                                         updateQuestion(index, {
-                                            max: Number.parseInt(
+                                            opinionMax: Number.parseInt(
                                                 event.target.value,
                                                 10,
                                             ),
+                                        })
+                                    }
+                                />
+                                <Input
+                                    fullWidth
+                                    label="Korak"
+                                    type="number"
+                                    value={numericInputValue(
+                                        question.opinionStep,
+                                    )}
+                                    onChange={(event) =>
+                                        updateQuestion(index, {
+                                            opinionStep: optionalInteger(
+                                                event.target.value,
+                                            ),
+                                        })
+                                    }
+                                />
+                                <Input
+                                    fullWidth
+                                    label="Oznaka minimuma"
+                                    value={question.opinionMinLabel ?? ''}
+                                    onChange={(event) =>
+                                        updateQuestion(index, {
+                                            opinionMinLabel: event.target.value,
+                                        })
+                                    }
+                                />
+                                <Input
+                                    fullWidth
+                                    label="Oznaka maksimuma"
+                                    value={question.opinionMaxLabel ?? ''}
+                                    onChange={(event) =>
+                                        updateQuestion(index, {
+                                            opinionMaxLabel: event.target.value,
                                         })
                                     }
                                 />
@@ -483,18 +511,30 @@ export function SurveyDefinitionForm({
                         ) : null}
 
                         {question.type === 'long_text' ? (
-                            <div className="mt-3">
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                 <Input
                                     fullWidth
                                     label="Najveći broj znakova"
                                     type="number"
-                                    value={question.maxLength}
+                                    value={numericInputValue(
+                                        question.longTextMaxLength,
+                                    )}
                                     onChange={(event) =>
                                         updateQuestion(index, {
-                                            maxLength: Number.parseInt(
+                                            longTextMaxLength: optionalInteger(
                                                 event.target.value,
-                                                10,
                                             ),
+                                        })
+                                    }
+                                />
+                                <Input
+                                    fullWidth
+                                    label="Tekst u praznom polju"
+                                    value={question.longTextPlaceholder ?? ''}
+                                    onChange={(event) =>
+                                        updateQuestion(index, {
+                                            longTextPlaceholder:
+                                                event.target.value,
                                         })
                                     }
                                 />
@@ -502,40 +542,51 @@ export function SurveyDefinitionForm({
                         ) : null}
 
                         {question.type === 'contact_info' ? (
-                            <div className="mt-3 flex flex-wrap gap-4">
-                                <Checkbox
-                                    checked={question.contactFirstName}
-                                    label="Ime"
-                                    onCheckedChange={(checked) =>
-                                        updateQuestion(index, {
-                                            contactFirstName: checked === true,
-                                        })
+                            <div className="mt-3 space-y-3">
+                                <div className="flex flex-wrap gap-4">
+                                    {(
+                                        [
+                                            ['first_name', 'Ime'],
+                                            ['last_name', 'Prezime'],
+                                            ['phone', 'Telefon'],
+                                            ['email', 'Email'],
+                                        ] as const
+                                    ).map(([field, label]) => (
+                                        <Checkbox
+                                            key={field}
+                                            checked={question.contactFields.includes(
+                                                field,
+                                            )}
+                                            label={label}
+                                            onCheckedChange={(checked) =>
+                                                setQuestions((items) =>
+                                                    items.map(
+                                                        (item, itemIndex) =>
+                                                            itemIndex === index
+                                                                ? setSurveyContactField(
+                                                                      item,
+                                                                      field,
+                                                                      checked ===
+                                                                          true,
+                                                                  )
+                                                                : item,
+                                                    ),
+                                                )
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                                <Input
+                                    fullWidth
+                                    label="Zadana država telefona"
+                                    value={
+                                        question.contactPhoneDefaultCountry ??
+                                        ''
                                     }
-                                />
-                                <Checkbox
-                                    checked={question.contactLastName}
-                                    label="Prezime"
-                                    onCheckedChange={(checked) =>
+                                    onChange={(event) =>
                                         updateQuestion(index, {
-                                            contactLastName: checked === true,
-                                        })
-                                    }
-                                />
-                                <Checkbox
-                                    checked={question.contactPhone}
-                                    label="Telefon"
-                                    onCheckedChange={(checked) =>
-                                        updateQuestion(index, {
-                                            contactPhone: checked === true,
-                                        })
-                                    }
-                                />
-                                <Checkbox
-                                    checked={question.contactEmail}
-                                    label="Email"
-                                    onCheckedChange={(checked) =>
-                                        updateQuestion(index, {
-                                            contactEmail: checked === true,
+                                            contactPhoneDefaultCountry:
+                                                event.target.value,
                                         })
                                     }
                                 />
@@ -558,9 +609,11 @@ export function SurveyDefinitionForm({
             <Button type="submit" disabled={pending}>
                 {pending
                     ? 'Spremanje...'
-                    : mode === 'create'
+                    : mode === 'create-survey'
                       ? 'Spremi nacrt'
-                      : 'Spremi novu verziju'}
+                      : mode === 'edit-draft'
+                        ? 'Spremi promjene nacrta'
+                        : 'Spremi novu verziju'}
             </Button>
         </form>
     );

@@ -79,6 +79,12 @@ export const KnownPages = {
     Survey: (surveyId: string) => `/admin/surveys/${surveyId}` as Route,
     SurveyDesign: (surveyId: string) =>
         `/admin/surveys/${surveyId}/design` as Route,
+    SurveyDesignCopy: (surveyId: string, sourceVersionId: string) =>
+        `/admin/surveys/${surveyId}/design?sourceVersionId=${encodeURIComponent(sourceVersionId)}` as Route,
+    SurveyDesignEdit: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?editVersionId=${encodeURIComponent(versionId)}` as Route,
+    SurveyDesignPreview: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?previewVersionId=${encodeURIComponent(versionId)}` as Route,
     SurveySends: (surveyId: string) =>
         `/admin/surveys/${surveyId}/sends` as Route,
     SurveyResponses: (surveyId: string) =>
