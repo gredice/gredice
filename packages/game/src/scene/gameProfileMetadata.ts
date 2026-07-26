@@ -168,6 +168,13 @@ export type GeneratedPlantProfileSnapshot = {
 };
 
 export type GameProfileMetadata = {
+    actorGroundingShadowBatchCount?: number;
+    actorGroundingShadowCapacity?: number;
+    actorGroundingShadowCount?: number;
+    actorGroundingShadowDroppedCount?: number;
+    actorGroundingShadowPrimaryCasterCount?: number;
+    actorGroundingShadowUpdateCount?: number;
+    actorGroundingShadowVisibleCount?: number;
     animatedCasterShadowRefreshCount?: number;
     cloudAttenuationMaskResolution?: number;
     cloudAttenuationMaterialCount?: number;

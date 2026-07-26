@@ -564,7 +564,7 @@ test('render budgets skip incomplete or disjoint GPU timer results', () => {
 });
 
 test('high target acceptance proves the intended workload rendered', () => {
-    const result = evaluateHighTargetAcceptance({
+    const input = {
         apiErrors: [],
         pageErrors: [],
         requested: {
@@ -575,7 +575,12 @@ test('high target acceptance proves the intended workload rendered', () => {
             quality: 'high',
         },
         runtime: {
-            animatedCasterShadowRefreshCount: 1,
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 4,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 4,
+            animatedCasterShadowRefreshCount: 0,
             generatedPlantFieldCount: 54,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantInstanceCount: 537,
@@ -587,6 +592,8 @@ test('high target acceptance proves the intended workload rendered', () => {
             rainParticleCount: 1_000,
         },
         sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
             canvas: {
                 clientHeight: 720,
                 clientWidth: 1280,
@@ -601,7 +608,8 @@ test('high target acceptance proves the intended workload rendered', () => {
             reportedDpr: 2,
             submittedTriangles: 1_000_000,
         },
-    });
+    };
+    const result = evaluateHighTargetAcceptance(input);
 
     assert.equal(result.pass, true);
     assert.equal(
@@ -616,6 +624,90 @@ test('high target acceptance proves the intended workload rendered', () => {
         )?.pass,
         true,
     );
+
+    const casterResult = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            actorGroundingShadowPrimaryCasterCount: 1,
+        },
+    });
+    assert.equal(casterResult.pass, false);
+    assert.equal(
+        casterResult.checks.find(
+            (check) =>
+                check.name === 'highTargetActorGroundingShadowPrimaryCasters',
+        )?.pass,
+        false,
+    );
+});
+
+test('high target acceptance distinguishes a cached map from refreshes and resets', () => {
+    for (const [primaryShadowRefreshCountDelta, expectedPass] of [
+        [0, true],
+        [1, false],
+        [-1, false],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            apiErrors: [],
+            pageErrors: [],
+            requested: {
+                blockGeometryMerging: '1',
+                gardenProfile: 'high-target',
+                mode: 'details',
+                quality: 'high',
+                scenarioName: 'game-high-target-clear-idle-desktop-run-1',
+            },
+            runtime: {
+                actorGroundingShadowBatchCount: 1,
+                actorGroundingShadowCount: 5,
+                actorGroundingShadowDroppedCount: 0,
+                actorGroundingShadowPrimaryCasterCount: 0,
+                actorGroundingShadowVisibleCount: 4,
+                animatedCasterShadowRefreshCount: 0,
+                generatedPlantExpectedInstanceCount: 537,
+                generatedPlantFieldCount: 54,
+                generatedPlantInstanceCount: 537,
+                generatedPlantVisibleFieldCount: 54,
+                generatedPlantVisibleInstanceCount: 537,
+                qualityTier: 'high',
+            },
+            sample: {
+                actorGroundingShadowUpdateCountDelta: 60,
+                animatedCasterShadowRefreshCountDelta: 0,
+                canvas: {
+                    clientHeight: 720,
+                    clientWidth: 1280,
+                    height: 1440,
+                    width: 2560,
+                },
+                drawCalls: 100,
+                elapsedMs: 5_000,
+                primaryShadowRefreshCountAtStart: 2,
+                primaryShadowRefreshCountDelta,
+                renderedFps: 12,
+                renderedFrames: 60,
+                reportedDpr: 2,
+                submittedTriangles: 1_000_000,
+            },
+        });
+
+        assert.equal(result.pass, expectedPass);
+        assert.deepEqual(
+            result.checks.find(
+                (check) =>
+                    check.name ===
+                    'highTargetPrimaryShadowRefreshesDuringClearIdle',
+            ),
+            {
+                actual: primaryShadowRefreshCountDelta,
+                comparison: 'equal',
+                limit: 0,
+                name: 'highTargetPrimaryShadowRefreshesDuringClearIdle',
+                pass: expectedPass,
+            },
+        );
+    }
 });
 
 test('high target acceptance requires the full workload to remain visible', () => {

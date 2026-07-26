@@ -2066,6 +2066,23 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ? globalThis.__grediceGameProfile
                           .instancedInteractionResolvedTargetCount
                     : null;
+            const actorGroundingShadowUpdateCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.actorGroundingShadowUpdateCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .actorGroundingShadowUpdateCount
+                    : null;
+            const animatedCasterShadowRefreshCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.animatedCasterShadowRefreshCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .animatedCasterShadowRefreshCount
+                    : null;
+            const primaryShadowRefreshCountAtStart =
+                typeof globalThis.__grediceGameProfile
+                    ?.primaryShadowRefreshCount === 'number'
+                    ? globalThis.__grediceGameProfile.primaryShadowRefreshCount
+                    : null;
             const rainParticleCountAtStart =
                 typeof globalThis.__grediceGameProfile?.rainParticleCount ===
                 'number'
@@ -2140,7 +2157,36 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ? globalThis.__grediceGameProfile
                           .instancedInteractionResolvedTargetCount
                     : null;
+            const actorGroundingShadowUpdateCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.actorGroundingShadowUpdateCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .actorGroundingShadowUpdateCount
+                    : null;
+            const animatedCasterShadowRefreshCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.animatedCasterShadowRefreshCount === 'number'
+                    ? globalThis.__grediceGameProfile
+                          .animatedCasterShadowRefreshCount
+                    : null;
+            const primaryShadowRefreshCountAtEnd =
+                typeof globalThis.__grediceGameProfile
+                    ?.primaryShadowRefreshCount === 'number'
+                    ? globalThis.__grediceGameProfile.primaryShadowRefreshCount
+                    : null;
             const nonGpuSample = {
+                actorGroundingShadowUpdateCountDelta:
+                    actorGroundingShadowUpdateCountAtStart === null ||
+                    actorGroundingShadowUpdateCountAtEnd === null
+                        ? null
+                        : actorGroundingShadowUpdateCountAtEnd -
+                          actorGroundingShadowUpdateCountAtStart,
+                animatedCasterShadowRefreshCountDelta:
+                    animatedCasterShadowRefreshCountAtStart === null ||
+                    animatedCasterShadowRefreshCountAtEnd === null
+                        ? null
+                        : animatedCasterShadowRefreshCountAtEnd -
+                          animatedCasterShadowRefreshCountAtStart,
                 averageFrameMs,
                 canvas: canvas
                     ? {
@@ -2177,6 +2223,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
                 placementProfileDispatched,
+                primaryShadowRefreshCountAtStart,
+                primaryShadowRefreshCountDelta:
+                    primaryShadowRefreshCountAtStart === null ||
+                    primaryShadowRefreshCountAtEnd === null
+                        ? null
+                        : primaryShadowRefreshCountAtEnd -
+                          primaryShadowRefreshCountAtStart,
                 rainMountedAtStart,
                 rainParticleCountAtEnd:
                     typeof globalThis.__grediceGameProfile
@@ -2247,6 +2300,35 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
 
         return {
+            actorGroundingShadowBatchCount:
+                typeof metadata.actorGroundingShadowBatchCount === 'number'
+                    ? metadata.actorGroundingShadowBatchCount
+                    : null,
+            actorGroundingShadowCapacity:
+                typeof metadata.actorGroundingShadowCapacity === 'number'
+                    ? metadata.actorGroundingShadowCapacity
+                    : null,
+            actorGroundingShadowCount:
+                typeof metadata.actorGroundingShadowCount === 'number'
+                    ? metadata.actorGroundingShadowCount
+                    : null,
+            actorGroundingShadowDroppedCount:
+                typeof metadata.actorGroundingShadowDroppedCount === 'number'
+                    ? metadata.actorGroundingShadowDroppedCount
+                    : null,
+            actorGroundingShadowPrimaryCasterCount:
+                typeof metadata.actorGroundingShadowPrimaryCasterCount ===
+                'number'
+                    ? metadata.actorGroundingShadowPrimaryCasterCount
+                    : null,
+            actorGroundingShadowUpdateCount:
+                typeof metadata.actorGroundingShadowUpdateCount === 'number'
+                    ? metadata.actorGroundingShadowUpdateCount
+                    : null,
+            actorGroundingShadowVisibleCount:
+                typeof metadata.actorGroundingShadowVisibleCount === 'number'
+                    ? metadata.actorGroundingShadowVisibleCount
+                    : null,
             animatedCasterShadowRefreshCount:
                 typeof metadata.animatedCasterShadowRefreshCount === 'number'
                     ? metadata.animatedCasterShadowRefreshCount
@@ -2532,6 +2614,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
         motion: scenario.motion ?? scenario.interaction ?? 'none',
+        scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
         quality: profileMetadata?.quality ?? request.quality,
@@ -2723,6 +2806,8 @@ function evaluateHighTargetAcceptance({
         1,
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
+    const expectedActorGroundingShadowCount =
+        requested.mode === 'rain' || requested.mode === 'snow' ? 4 : 5;
     const checks = [
         exact('highTargetQualityRequest', requested.quality, 'high'),
         exact('highTargetQualityTier', runtime?.qualityTier, 'high'),
@@ -2757,10 +2842,45 @@ function evaluateHighTargetAcceptance({
             runtime?.generatedPlantVisibleInstanceCount,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        exact(
+            'highTargetActorGroundingShadowCount',
+            runtime?.actorGroundingShadowCount,
+            expectedActorGroundingShadowCount,
+        ),
+        exact(
+            'highTargetActorGroundingShadowBatchCount',
+            runtime?.actorGroundingShadowBatchCount,
+            1,
+        ),
+        exact(
+            'highTargetActorGroundingShadowDroppedCount',
+            runtime?.actorGroundingShadowDroppedCount,
+            0,
+        ),
+        exact(
+            'highTargetActorGroundingShadowPrimaryCasters',
+            runtime?.actorGroundingShadowPrimaryCasterCount,
+            0,
+        ),
         minimum(
+            'highTargetActorGroundingShadowVisibleCount',
+            runtime?.actorGroundingShadowVisibleCount,
+            4,
+        ),
+        minimum(
+            'highTargetActorGroundingShadowUpdates',
+            sample.actorGroundingShadowUpdateCountDelta,
+            1,
+        ),
+        exact(
             'highTargetAnimatedCasterShadowRefreshes',
             runtime?.animatedCasterShadowRefreshCount,
-            1,
+            0,
+        ),
+        exact(
+            'highTargetAnimatedCasterShadowRefreshesDuringSample',
+            sample.animatedCasterShadowRefreshCountDelta,
+            0,
         ),
         minimum('highTargetRenderedFps', sample.renderedFps, 1),
         minimum(
@@ -2773,6 +2893,24 @@ function evaluateHighTargetAcceptance({
         exact('highTargetApiErrors', apiErrors.length, 0),
         exact('highTargetPageErrors', pageErrors.length, 0),
     ];
+    if (
+        requested.scenarioName?.startsWith(
+            'game-high-target-clear-idle-desktop',
+        )
+    ) {
+        checks.push(
+            minimum(
+                'highTargetPrimaryShadowRefreshesBeforeSample',
+                sample.primaryShadowRefreshCountAtStart,
+                1,
+            ),
+            exact(
+                'highTargetPrimaryShadowRefreshesDuringClearIdle',
+                sample.primaryShadowRefreshCountDelta,
+                0,
+            ),
+        );
+    }
     if (requested.motion === 'hover-scan') {
         checks.push(
             minimum(

@@ -523,6 +523,50 @@ because the software renderer reports repeated `ReadPixels` stalls. Draw-call,
 triangle, and heap gates pass. GPU elapsed-time gating is skipped because the
 runner does not expose a valid timer-query result.
 
+### Moving-actor shadow separation
+
+Issue `#4323` removes cats, dogs, birds, and bees from the cached 4096px
+directional shadow map. High and other shadow-enabled configurations now use
+one scene-level instanced analytic ellipse batch for actor grounding. It has no
+texture, render target, or secondary shadow pass. Shadow-disabled quality
+profiles skip registration, state construction, and the draw entirely.
+
+The complete 18-run High target matrix passed structural acceptance in every
+repeat:
+
+- clear, camera, hover, and placement runs registered all five target actors;
+- rain and snow registered four actors because bees correctly remained
+  inactive;
+- every run used one batch, retained at least four visible grounding shadows,
+  and reported zero dropped registrations and zero actor primary casters;
+- animated-caster refreshes fell from a clear-idle median of `17` per run to
+  zero; and
+- the clear-idle primary-map request count fell from a median of `21` during
+  startup and sampling to four startup/static requests, followed by exactly
+  zero refreshes in every measured five-second idle window.
+
+The same Chromium 149 and ANGLE SwiftShader runner produced these median
+render-submission comparisons:
+
+| Phase | Draws/render before | After | Reduction | Triangles/render before | After | Reduction |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear idle | 313.9 | 152.0 | 51.6% | 39,402 | 21,526 | 45.4% |
+| Camera motion | 306.7 | 153.7 | 49.9% | 38,874 | 21,576 | 44.5% |
+| Hover/selection | 305.0 | 152.0 | 50.2% | 38,824 | 21,526 | 44.6% |
+| Placement | 306.3 | 170.9 | 44.2% | 38,811 | 25,959 | 33.1% |
+| Rain | 272.0 | 142.0 | 47.8% | 39,668 | 23,954 | 39.6% |
+| Snow | 367.0 | 204.4 | 44.3% | 98,540 | 67,123 | 31.9% |
+
+The roughly 44–52% call reduction in ordinary phases is direct evidence that
+moving actors no longer trigger full-scene primary shadow submissions.
+SwiftShader p95 frame time remains dominated by the previously documented
+`ReadPixels` stalls and is not treated as physical-GPU evidence; snow was
+especially noisy across its three runs.
+
+Placement still requested `7`, `7`, and `11` primary refreshes while its
+drop-settling window was active. That separate lifecycle is intentionally
+tracked by issue `#4331` rather than folded into actor shadow scheduling.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.

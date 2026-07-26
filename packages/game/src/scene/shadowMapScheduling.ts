@@ -9,8 +9,6 @@ type ShadowMapRefreshTarget = {
     needsUpdate: boolean;
 };
 
-export const animatedCasterShadowRefreshMs = 160;
-
 export function requestPrimaryShadowMapRefresh(
     shadowMap: ShadowMapRefreshTarget,
     enabled: boolean,
@@ -23,32 +21,6 @@ export function requestPrimaryShadowMapRefresh(
     shadowMap.enabled = true;
     shadowMap.needsUpdate = true;
     return refreshCount + 1;
-}
-
-export function resolveAnimatedCasterShadowRefreshTick({
-    enabled,
-    nextRefreshAt,
-    now,
-    refreshMs,
-    settleUntil,
-}: {
-    enabled: boolean;
-    nextRefreshAt: number;
-    now: number;
-    refreshMs: number;
-    settleUntil: number;
-}) {
-    const shouldRefresh =
-        enabled &&
-        Number.isFinite(refreshMs) &&
-        refreshMs > 0 &&
-        now > settleUntil &&
-        now >= nextRefreshAt;
-
-    return {
-        nextRefreshAt: shouldRefresh ? now + refreshMs : nextRefreshAt,
-        shouldRefresh,
-    };
 }
 
 function formatShadowSignatureValue(value: number) {

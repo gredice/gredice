@@ -65,6 +65,19 @@ test('manual quality profiles ignore constrained device metrics', () => {
     }
 });
 
+test('low quality disables both primary and analytic actor shadows', () => {
+    assert.deepEqual(
+        {
+            shadowMapSize: gameQualityProfiles.low.shadowMapSize,
+            shadows: gameQualityProfiles.low.shadows,
+        },
+        {
+            shadowMapSize: 0,
+            shadows: false,
+        },
+    );
+});
+
 test('auto quality profile resolves medium for a standard device', () => {
     assert.equal(
         resolveGameQualityProfile('auto', undefined, standardDeviceMetrics),
