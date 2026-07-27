@@ -12,6 +12,7 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
     enableBlockGeometryMergingFlag?: boolean;
+    enableIntegratedWeatherSurfacesFlag?: boolean;
     enableRainWetOverlayFlag?: boolean;
     enableSuncokretChatFlag?: boolean;
     enableSuncokretDebugFlag?: boolean;

@@ -9,10 +9,12 @@ import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileWeatherSurface,
 } from './profileFlags';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
+    gameProfileSnowSparseWeather,
 } from './profileWeather';
 
 type GameProfileSearchParams = Promise<
@@ -25,6 +27,7 @@ type GameProfileMode =
     | 'details'
     | 'rain'
     | 'snow'
+    | 'snow-onset'
     | 'night'
     | 'storm'
     | 'autumn'
@@ -58,6 +61,7 @@ function resolveMode(value: string | undefined): GameProfileMode {
         value === 'details' ||
         value === 'rain' ||
         value === 'snow' ||
+        value === 'snow-onset' ||
         value === 'night' ||
         value === 'storm' ||
         value === 'autumn' ||
@@ -128,6 +132,15 @@ function resolveWeather(
             windDirection: 45,
             snowAccumulation: 24,
         };
+    }
+
+    if (mode === 'snow-onset') {
+        // High quality starts rendering snow at 0.02 coverage (0.6 cm).
+        // Keep this fixture just above that edge so sparse coverage and
+        // skirt continuity remain easy to compare without snow particles.
+        // A particle-free breeze keeps bees out of the deterministic
+        // high-target actor count.
+        return gameProfileSnowSparseWeather;
     }
 
     if (mode === 'night') {
@@ -268,6 +281,10 @@ export default async function GameProfilePage({
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.blockGeometryMerging),
         firstValue(params.adaptiveHigh),
+        firstValue(params.weatherSurface),
+    );
+    const weatherSurfaceMode = resolveGameProfileWeatherSurface(
+        firstValue(params.weatherSurface),
     );
     const adaptiveHigh = debugGameFlags.enableAdaptiveHighQualityFlag;
     const blockGeometryMerging = debugGameFlags.enableBlockGeometryMergingFlag;
@@ -297,6 +314,7 @@ export default async function GameProfilePage({
             data-game-profile-outline={outlineProfile ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
+            data-game-profile-weather-surface={weatherSurfaceMode}
             data-game-profile-operation-visual-highlight-raised-bed-id={
                 operationVisuals
                     ? highTargetOperationVisualHighlightTarget.raisedBedId

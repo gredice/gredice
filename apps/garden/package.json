@@ -23,7 +23,7 @@
         "test": "pnpm run test:sw && pnpm run test:profile && pnpm run test:run",
         "test:prepare": "turbo build --filter=garden",
         "test:run": "playwright test",
-        "test:profile": "node --experimental-strip-types --test scripts/profile-game-scene.unit.mjs app/debug/profile/game/profileFlags.unit.ts",
+        "test:profile": "node --experimental-strip-types --test scripts/profile-game-scene.unit.mjs app/debug/profile/game/profileFlags.unit.ts app/debug/profile/game/profileWeather.unit.ts",
         "test:sw": "node --test tests/push-notifications-sw.node.spec.mjs",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "generate-playwright:tutorial-task-list-icon": "playwright test --config playwright-generate.config.ts generate/tutorial-task-list-icon.specgen.tsx",

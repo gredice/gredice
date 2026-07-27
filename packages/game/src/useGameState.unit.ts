@@ -543,3 +543,19 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
         store.getState().audio.dispose();
     }
 });
+
+test('environment can publish blended rain intensity for surface effects', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        assert.equal(store.getState().rainSurfaceIntensity, 0);
+        store.getState().setRainSurfaceIntensity(0.72);
+        assert.equal(store.getState().rainSurfaceIntensity, 0.72);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});

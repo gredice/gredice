@@ -7,6 +7,8 @@ import {
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildScenarioRunQueue,
+    buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
     evaluateHighTargetAcceptance,
@@ -196,6 +198,7 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
         outline: '0',
         placement: '0',
         quality: 'high',
+        weatherSurface: 'integrated',
     });
     assert.equal(
         resolveScenarios('high-target').some(
@@ -228,6 +231,151 @@ test('foliage-budget High scenario reserves exact detail for explicit close-up',
     assert.equal(request.foliageBudget, '1');
     assert.equal(request.gardenProfile, 'high-target');
     assert.equal(request.quality, 'high');
+});
+
+test('weather-material High scenarios pair legacy and integrated rain and snow', () => {
+    const scenarios = resolveScenarios('high-target-weather-materials');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-rain-legacy-weather-surfaces-desktop',
+            'game-high-target-rain-integrated-weather-surfaces-desktop',
+            'game-high-target-snow-legacy-weather-surfaces-desktop',
+            'game-high-target-snow-integrated-weather-surfaces-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonPair),
+        [
+            'rain-weather-surfaces',
+            'rain-weather-surfaces',
+            'snow-weather-surfaces',
+            'snow-weather-surfaces',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        ['legacy', 'integrated', 'legacy', 'integrated'],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['rain', 'rain', 'snow', 'snow'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).weatherSurface,
+        ),
+        ['legacy', 'integrated', 'legacy', 'integrated'],
+    );
+    for (const scenario of scenarios) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 5);
+    }
+});
+
+test('weather-material runs interleave five legacy and integrated samples per pair', () => {
+    const queue = buildScenarioRunQueue(
+        resolveScenarios('high-target-weather-materials'),
+    );
+    const expectedPairOrder = [
+        'legacy:1',
+        'integrated:1',
+        'integrated:2',
+        'legacy:2',
+        'legacy:3',
+        'integrated:3',
+        'integrated:4',
+        'legacy:4',
+        'legacy:5',
+        'integrated:5',
+    ];
+
+    assert.equal(queue.length, 20);
+    for (const [pairIndex, pairName] of [
+        [0, 'rain-weather-surfaces'],
+        [1, 'snow-weather-surfaces'],
+    ]) {
+        assert.deepEqual(
+            queue
+                .slice(pairIndex * 10, pairIndex * 10 + 10)
+                .map(
+                    ({ baseScenario, runIndex }) =>
+                        `${baseScenario.comparisonRole}:${runIndex}`,
+                ),
+            expectedPairOrder,
+            `${pairName} should use an ABBA-balanced order`,
+        );
+    }
+
+    const unpairedQueue = buildScenarioRunQueue(
+        resolveScenarios('high-target-operation-visuals'),
+    );
+    assert.deepEqual(
+        unpairedQueue.map(({ runIndex }) => runIndex),
+        [1, 2, 3],
+    );
+});
+
+test('snow-onset High scenarios provide deterministic visual legacy and integrated cases', () => {
+    const scenarios = resolveScenarios('high-target-weather-onset');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-snow-onset-legacy-weather-surfaces-desktop',
+            'game-high-target-snow-onset-integrated-weather-surfaces-desktop',
+            'game-high-target-snow-threshold-transition-integrated-weather-surfaces-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonPair),
+        [undefined, undefined, undefined],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        [undefined, undefined, undefined],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['snow-onset', 'snow-onset', 'snow-onset'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).weatherSurface,
+        ),
+        ['legacy', 'integrated', 'integrated'],
+    );
+    for (const scenario of scenarios) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 1);
+    }
+    assert.equal(
+        scenarios[2].weatherSurfaceTransition,
+        'snow-integration-cycle',
+    );
+});
+
+test('profile request defaults invalid weather-surface values to integrated', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game').weatherSurface,
+        'integrated',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?weatherSurface=unexpected')
+            .weatherSurface,
+        'integrated',
+    );
 });
 
 test('outline scenario deterministically targets the connected raised bed after warmup', () => {
@@ -414,6 +562,7 @@ test('profile request parses the High target fixture contract', () => {
         outline: '0',
         placement: '0',
         quality: 'high',
+        weatherSurface: 'integrated',
     });
 });
 
@@ -433,6 +582,9 @@ test('runtime GPU-source scenario disables only the external profiler timer', ()
         /if \(externalGpuTimer\) \{[\s\S]*__gameProfileGpuTimer/,
     );
     assert.match(source, /__gameProfileMetrics =/);
+    assert.match(source, /patchedCreateProgram/);
+    assert.match(source, /patchedDeleteProgram/);
+    assert.match(source, /rendererShaders: 0/);
 });
 
 test('render budgets gate calls and triangles per rendered frame', () => {
@@ -1001,6 +1153,23 @@ test('high target acceptance proves the intended workload rendered', () => {
         )?.pass,
         false,
     );
+
+    const shaderErrorResult = evaluateHighTargetAcceptance({
+        ...input,
+        consoleMessages: [
+            {
+                type: 'error',
+                text: 'THREE.WebGLProgram: Shader Error',
+            },
+        ],
+    });
+    assert.equal(shaderErrorResult.pass, false);
+    assert.equal(
+        shaderErrorResult.checks.find(
+            (check) => check.name === 'highTargetConsoleErrors',
+        )?.pass,
+        false,
+    );
 });
 
 test('operation-visual High acceptance gates batching, uploads, mulch, and highlight identity', () => {
@@ -1308,6 +1477,396 @@ test('foliage-budget High acceptance keeps normal-view foliage clustered', () =>
         expensiveClusters.checks.find(
             (check) =>
                 check.name === 'highTargetFoliageClusterPrimitiveTriangles',
+        )?.pass,
+        false,
+    );
+});
+
+test('weather-surface High acceptance proves integrated work without hiding fallbacks', () => {
+    const input = ({ mode, weatherSurface }) => {
+        const integrated = weatherSurface === 'integrated';
+        const rain = mode === 'rain';
+        return {
+            apiErrors: [],
+            pageErrors: [],
+            requested: {
+                blockGeometryMerging: '1',
+                gardenProfile: 'high-target',
+                mode,
+                motion: 'none',
+                quality: 'high',
+                weatherSurface,
+            },
+            runtime: {
+                actorGroundingShadowBatchCount: 1,
+                actorGroundingShadowCount: 4,
+                actorGroundingShadowDroppedCount: 0,
+                actorGroundingShadowPrimaryCasterCount: 0,
+                actorGroundingShadowVisibleCount: 4,
+                animatedCasterShadowRefreshCount: 0,
+                generatedPlantExpectedInstanceCount: 537,
+                generatedPlantFieldCount: 54,
+                generatedPlantInstanceCount: 537,
+                generatedPlantVisibleFieldCount: 54,
+                generatedPlantVisibleInstanceCount: 537,
+                groundDecorationCount: rain ? 596 : 0,
+                groundDecorationDensity: 1,
+                groundDecorationVisibleCount: rain ? 571 : null,
+                qualityTier: 'high',
+                rainParticleCount: rain ? 2_000 : 0,
+                rendererShaders: rain
+                    ? integrated
+                        ? 38
+                        : 39
+                    : integrated
+                      ? 42
+                      : 43,
+                shadowMapSize: 4_096,
+                shadowsEnabled: true,
+                snowParticleCapacity: rain ? 0 : 5_000,
+                snowParticleCount: rain ? 0 : 3_500,
+                weatherSurfaceAvoidedOverlaySubmissionCount: integrated
+                    ? rain
+                        ? 16
+                        : 8
+                    : 0,
+                weatherSurfaceAvoidedOverlayTriangleCount: integrated
+                    ? rain
+                        ? 2_556
+                        : 11_880
+                    : 0,
+                weatherSurfaceFallbackOverlaySubmissionCount: integrated
+                    ? rain
+                        ? 29
+                        : 48
+                    : rain
+                      ? 45
+                      : 56,
+                weatherSurfaceFallbackOverlayTriangleCount: integrated
+                    ? rain
+                        ? 13_562
+                        : 72_608
+                    : rain
+                      ? 16_118
+                      : 84_488,
+                weatherSurfaceIntegratedInstanceCount: integrated
+                    ? rain
+                        ? 213
+                        : 270
+                    : 0,
+                weatherSurfaceIntegratedMaterialCount: integrated
+                    ? rain
+                        ? 2
+                        : 1
+                    : 0,
+                weatherSurfaceMode: weatherSurface,
+                weatherSurfacePluginVariantCount: integrated ? 1 : 0,
+            },
+            sample: {
+                actorGroundingShadowUpdateCountDelta: 60,
+                animatedCasterShadowRefreshCountDelta: 0,
+                canvas: {
+                    clientHeight: 720,
+                    clientWidth: 1280,
+                    height: 1440,
+                    width: 2560,
+                },
+                drawCalls: 100,
+                elapsedMs: 5_000,
+                renderedFps: 12,
+                renderedFrames: 60,
+                reportedDpr: 2,
+                submittedTriangles: 1_000_000,
+            },
+        };
+    };
+
+    for (const mode of ['rain', 'snow']) {
+        assert.equal(
+            evaluateHighTargetAcceptance(
+                input({ mode, weatherSurface: 'legacy' }),
+            ).pass,
+            true,
+        );
+        assert.equal(
+            evaluateHighTargetAcceptance(
+                input({ mode, weatherSurface: 'integrated' }),
+            ).pass,
+            true,
+        );
+    }
+
+    const snowIntegrated = input({
+        mode: 'snow',
+        weatherSurface: 'integrated',
+    });
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            213,
+            'highTargetWeatherSurfaceIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            2,
+            'highTargetWeatherSurfaceIntegratedMaterials',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            16,
+            'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            9_372,
+            'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            56,
+            'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            74_500,
+            'highTargetWeatherSurfaceFallbackOverlayTriangles',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...snowIntegrated,
+            runtime: {
+                ...snowIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should keep steady snow separate from the threshold transition fixture`,
+        );
+    }
+
+    const rainIntegrated = input({
+        mode: 'rain',
+        weatherSurface: 'integrated',
+    });
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            212,
+            'highTargetWeatherSurfaceIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            0,
+            'highTargetWeatherSurfaceIntegratedMaterials',
+        ],
+        [
+            'weatherSurfacePluginVariantCount',
+            2,
+            'highTargetWeatherSurfacePluginVariants',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            15,
+            'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            2_555,
+            'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            28,
+            'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            13_561,
+            'highTargetWeatherSurfaceFallbackOverlayTriangles',
+        ],
+        ['rendererShaders', 0, 'highTargetWeatherSurfaceRendererPrograms'],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...rainIntegrated,
+            runtime: {
+                ...rainIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...rainIntegrated,
+            runtime: {
+                ...rainIntegrated.runtime,
+                rainParticleCount: 1_999,
+            },
+        }).pass,
+        false,
+    );
+
+    const onsetIntegrated = {
+        ...input({ mode: 'rain', weatherSurface: 'integrated' }),
+        requested: {
+            ...rainIntegrated.requested,
+            mode: 'snow-onset',
+        },
+        runtime: {
+            ...rainIntegrated.runtime,
+            rainParticleCount: 0,
+            snowParticleCount: 0,
+            weatherSurfaceAvoidedOverlaySubmissionCount: 0,
+            weatherSurfaceAvoidedOverlayTriangleCount: 0,
+            weatherSurfaceFallbackOverlaySubmissionCount: 51,
+            weatherSurfaceFallbackOverlayTriangleCount: 31_900,
+            weatherSurfaceIntegratedInstanceCount: 0,
+            weatherSurfaceIntegratedMaterialCount: 0,
+            weatherSurfacePluginVariantCount: 0,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(onsetIntegrated).pass, true);
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceMode',
+            'legacy',
+            'highTargetWeatherSurfaceOnsetRuntimeMode',
+        ],
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            1,
+            'highTargetWeatherSurfaceOnsetIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            1,
+            'highTargetWeatherSurfaceOnsetIntegratedMaterials',
+        ],
+        [
+            'weatherSurfacePluginVariantCount',
+            1,
+            'highTargetWeatherSurfaceOnsetPluginVariants',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            1,
+            'highTargetWeatherSurfaceOnsetAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            1,
+            'highTargetWeatherSurfaceOnsetAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            50,
+            'highTargetWeatherSurfaceOnsetFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            31_899,
+            'highTargetWeatherSurfaceOnsetFallbackOverlayTriangles',
+        ],
+        ['snowParticleCount', 1, 'highTargetWeatherSurfaceOnsetSnowParticles'],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...onsetIntegrated,
+            runtime: {
+                ...onsetIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    const sparseSnapshot = {
+        avoidedOverlaySubmissionCount: 0,
+        avoidedOverlayTriangleCount: 0,
+        fallbackOverlaySubmissionCount: 51,
+        fallbackOverlayTriangleCount: 31_900,
+        integratedInstanceCount: 0,
+        integratedMaterialCount: 0,
+        pluginVariantCount: 0,
+        readyCount: 0,
+        snowParticleCount: 0,
+        trackedCount: 2,
+        transitionCount: 0,
+    };
+    const integratedSnapshot = {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 9_372,
+        fallbackOverlaySubmissionCount: 56,
+        fallbackOverlayTriangleCount: 74_500,
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+        pluginVariantCount: 1,
+        readyCount: 2,
+        snowParticleCount: 0,
+        trackedCount: 2,
+        transitionCount: 2,
+    };
+    const transitionRun = {
+        ...onsetIntegrated,
+        requested: {
+            ...onsetIntegrated.requested,
+            weatherSurfaceTransition: 'snow-integration-cycle',
+        },
+        runtime: {
+            ...onsetIntegrated.runtime,
+            weatherSurfaceSnowIntegrationReadyCount: 0,
+            weatherSurfaceSnowIntegrationTrackedCount: 2,
+            weatherSurfaceSnowIntegrationTransitionCount: 4,
+        },
+        sample: {
+            ...onsetIntegrated.sample,
+            weatherSurfaceTransitionProfile: {
+                dwell: integratedSnapshot,
+                enterDispatched: true,
+                entered: integratedSnapshot,
+                error: null,
+                exitDispatched: true,
+                exited: {
+                    ...sparseSnapshot,
+                    transitionCount: 4,
+                },
+                initial: sparseSnapshot,
+                request: 'snow-integration-cycle',
+            },
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(transitionRun).pass, true);
+
+    const thrashedTransition = {
+        ...transitionRun,
+        sample: {
+            ...transitionRun.sample,
+            weatherSurfaceTransitionProfile: {
+                ...transitionRun.sample.weatherSurfaceTransitionProfile,
+                dwell: {
+                    ...integratedSnapshot,
+                    transitionCount: 4,
+                },
+            },
+        },
+    };
+    const thrashedResult = evaluateHighTargetAcceptance(thrashedTransition);
+    assert.equal(thrashedResult.pass, false);
+    assert.equal(
+        thrashedResult.checks.find(
+            (check) =>
+                check.name ===
+                'highTargetWeatherSurfaceTransitionDwellNoThrash',
         )?.pass,
         false,
     );
@@ -2280,6 +2839,9 @@ test('high target acceptance rejects zero work and an incomplete fixture', () =>
         apiErrors: [
             { status: 401, url: 'http://localhost/api/gardens/1/stacks' },
         ],
+        consoleMessages: [
+            { type: 'error', text: 'THREE.WebGLProgram: Shader Error' },
+        ],
         pageErrors: ['render failed'],
         requested: {
             blockGeometryMerging: '0',
@@ -2323,6 +2885,7 @@ function highTargetRun(value, index, acceptancePass = true) {
         budgetName: 'gameHighTarget',
         name: `game-high-target-clear-idle-desktop-run-${index + 1}`,
         performanceBudget: { pass: performancePass },
+        profileRun: index + 1,
         requested: { gardenProfile: 'high-target' },
         sample: {
             drawCallsPerFrame: 100,
@@ -2544,6 +3107,366 @@ test('adaptive High comparison reports paired pass rates and frame/GPU deltas', 
             .failedScenarioNames,
         ['game-high-target-adaptive-camera-motion-desktop'],
     );
+});
+
+test('weather-surface comparison gates render work, GPU time, and renderer programs', () => {
+    const pairedRun = ({ comparisonRole, index }) => {
+        const integrated = comparisonRole === 'integrated';
+        const baseName = `game-high-target-rain-${comparisonRole}-weather-surfaces-desktop`;
+        const run = highTargetRun(20, index);
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'rain-weather-surfaces',
+                comparisonRole,
+            },
+            runtime: {
+                rendererShaders: integrated ? 41 : 40,
+                weatherSurfaceAvoidedOverlaySubmissionCount: integrated
+                    ? 16
+                    : 0,
+                weatherSurfaceAvoidedOverlayTriangleCount: integrated
+                    ? 2_556
+                    : 0,
+                weatherSurfaceFallbackOverlaySubmissionCount: integrated
+                    ? 29
+                    : 45,
+                weatherSurfaceFallbackOverlayTriangleCount: integrated
+                    ? 13_562
+                    : 16_118,
+                weatherSurfaceIntegratedInstanceCount: integrated ? 213 : 0,
+                weatherSurfaceIntegratedMaterialCount: integrated ? 16 : 0,
+                weatherSurfaceMode: comparisonRole,
+                weatherSurfacePluginVariantCount: integrated ? 1 : 0,
+            },
+            sample: {
+                ...run.sample,
+                drawCallsPerRenderedFrame: integrated ? 104 : 120,
+                gpu: {
+                    elapsedP95Ms: integrated ? 9.7 : 10,
+                    valid: true,
+                },
+                trianglesPerRenderedFrame: integrated ? 900_000 : 1_100_000,
+            },
+        };
+    };
+    const runs = [
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'legacy', index }),
+        ),
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'integrated', index }),
+        ),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const comparisons = buildWeatherSurfaceComparisons(medians);
+    const comparison = comparisons['rain-weather-surfaces'];
+
+    assert.deepEqual(comparison.acceptancePassRate, {
+        integrated: 100,
+        legacy: 100,
+    });
+    assert.deepEqual(comparison.fallbackOverlaySubmissions, {
+        delta: -16,
+        integrated: 29,
+        legacy: 45,
+        percentDelta: -35.6,
+    });
+    assert.deepEqual(comparison.fallbackOverlayTriangles, {
+        delta: -2_556,
+        integrated: 13_562,
+        legacy: 16_118,
+        percentDelta: -15.9,
+    });
+    assert.deepEqual(comparison.gpuElapsedP95Ms, {
+        delta: -0.3,
+        integrated: 9.7,
+        legacy: 10,
+        percentDelta: -3,
+    });
+    assert.equal(comparison.gpuTimingStatus, 'valid');
+    assert.equal(comparison.gpuMedianRatio, 0.97);
+    assert.equal(comparison.gpuMaximumRunRatio, 0.97);
+    assert.equal(comparison.pairedGpuRuns.length, 5);
+    assert.deepEqual(comparison.rendererShaders, {
+        delta: 1,
+        integrated: 41,
+        legacy: 40,
+        percentDelta: 2.5,
+    });
+    assert.equal(comparison.rendererProgramMaximumIncrease, 1);
+    assert.deepEqual(
+        comparison.pairedRendererProgramRuns.map(
+            ({ increase, integrated, legacy, profileRun, valid }) => ({
+                increase,
+                integrated,
+                legacy,
+                profileRun,
+                valid,
+            }),
+        ),
+        [1, 2, 3, 4, 5].map((profileRun) => ({
+            increase: 1,
+            integrated: 41,
+            legacy: 40,
+            profileRun,
+            valid: true,
+        })),
+    );
+    assert.equal(comparison.structuralPass, true);
+    assert.equal(comparison.relativePerformancePass, true);
+    assert.equal(comparison.pairedPass, true);
+    assert.equal(comparison.aggregatePass.integrated, true);
+    assert.equal(
+        comparison.relativePerformanceChecks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(buildProfileSummary(runs, medians).failedScenarios, 0);
+    assert.match(
+        buildMarkdown({
+            adaptiveHighComparisons: {},
+            baseUrl: 'http://profile.local',
+            generatedAt: '2026-07-27T00:00:00.000Z',
+            highTargetMedians: medians,
+            options: {
+                build: false,
+                managedServer: false,
+                sampleMs: 5_000,
+                scenarios: [],
+                scenarioSet: 'high-target-weather-materials',
+                soakMs: 0,
+                warmupMs: 0,
+            },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 2,
+            sourceCommit: null,
+            summary: { failedScenarios: 0 },
+            weatherSurfaceComparisons: comparisons,
+        }),
+        /Integrated weather-surface paired comparison[\s\S]*overlay-triangle proxy[\s\S]*0\.97\/0\.97[\s\S]*40 → 41 \(2\.5%\)[\s\S]*45 → 29 \(-35\.6%\)[\s\S]*16118 → 13562 \(-15\.9%\)[\s\S]*213\/16\/1[\s\S]*16\/2556/,
+    );
+
+    const snowRuns = runs.map((run) => {
+        const comparisonRole = run.requested.comparisonRole;
+        const baseName = `game-high-target-snow-${comparisonRole}-weather-surfaces-desktop`;
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${run.profileRun}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'snow-weather-surfaces',
+            },
+            runtime: {
+                ...run.runtime,
+                rendererShaders: comparisonRole === 'integrated' ? 24 : 23,
+            },
+        };
+    });
+    const snowComparison = buildWeatherSurfaceComparisons(
+        buildHighTargetMedians(snowRuns),
+    )['snow-weather-surfaces'];
+    assert.equal(snowComparison.rendererProgramMaximumIncrease, 1);
+    assert.equal(snowComparison.relativePerformancePass, true);
+    assert.equal(snowComparison.pairedPass, true);
+
+    for (const [outlierCount, outlierValue, expectedMaximumIncrease] of [
+        [1, 42, 2],
+        [2, 100, 60],
+    ]) {
+        const programOutlierRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' &&
+            run.profileRun <= outlierCount
+                ? {
+                      ...run,
+                      runtime: {
+                          ...run.runtime,
+                          rendererShaders: outlierValue,
+                      },
+                  }
+                : run,
+        );
+        const programOutlierMedians =
+            buildHighTargetMedians(programOutlierRuns);
+        const programOutlierComparison = buildWeatherSurfaceComparisons(
+            programOutlierMedians,
+        )['rain-weather-surfaces'];
+        const programBoundCheck =
+            programOutlierComparison.relativePerformanceChecks.find(
+                (check) => check.name === 'weatherSurfaceRendererProgramBound',
+            );
+
+        assert.equal(
+            programOutlierComparison.rendererShaders.integrated,
+            41,
+            'the median-only gate would not see these outliers',
+        );
+        assert.equal(
+            programOutlierComparison.rendererProgramMaximumIncrease,
+            expectedMaximumIncrease,
+        );
+        assert.deepEqual(programBoundCheck, {
+            actual: expectedMaximumIncrease,
+            comparison: 'maximum-increase',
+            limit: 1,
+            name: 'weatherSurfaceRendererProgramBound',
+            pass: false,
+        });
+        assert.equal(programOutlierComparison.relativePerformancePass, false);
+        assert.deepEqual(
+            buildProfileSummary(programOutlierRuns, programOutlierMedians)
+                .failedScenarioNames,
+            ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+        );
+    }
+
+    const noFallbackReductionRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'integrated'
+            ? {
+                  ...run,
+                  runtime: {
+                      ...run.runtime,
+                      weatherSurfaceFallbackOverlaySubmissionCount: 45,
+                  },
+              }
+            : run,
+    );
+    const noFallbackReductionMedians = buildHighTargetMedians(
+        noFallbackReductionRuns,
+    );
+    const failedComparison = buildWeatherSurfaceComparisons(
+        noFallbackReductionMedians,
+    )['rain-weather-surfaces'];
+    assert.equal(failedComparison.structuralPass, false);
+    assert.deepEqual(
+        buildProfileSummary(noFallbackReductionRuns, noFallbackReductionMedians)
+            .failedScenarioNames,
+        ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+    );
+
+    for (const [name, mutate] of [
+        [
+            'draw calls',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    drawCallsPerRenderedFrame: 120,
+                },
+            }),
+        ],
+        [
+            'triangles',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    trianglesPerRenderedFrame: 1_100_000,
+                },
+            }),
+        ],
+        [
+            'GPU time',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    gpu: {
+                        elapsedP95Ms: 10,
+                        valid: true,
+                    },
+                },
+            }),
+        ],
+        [
+            'renderer programs',
+            (run) => ({
+                ...run,
+                runtime: {
+                    ...run.runtime,
+                    rendererShaders: 42,
+                },
+            }),
+        ],
+    ]) {
+        const regressedRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' ? mutate(run) : run,
+        );
+        const regressedMedians = buildHighTargetMedians(regressedRuns);
+        const regressedComparison =
+            buildWeatherSurfaceComparisons(regressedMedians)[
+                'rain-weather-surfaces'
+            ];
+
+        assert.equal(
+            regressedComparison.relativePerformancePass,
+            false,
+            `${name} must fail the paired relative gate`,
+        );
+        assert.deepEqual(
+            buildProfileSummary(regressedRuns, regressedMedians)
+                .failedScenarioNames,
+            ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+        );
+    }
+
+    const individualGpuOutlierRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'integrated' && run.profileRun === 1
+            ? {
+                  ...run,
+                  sample: {
+                      ...run.sample,
+                      gpu: {
+                          elapsedP95Ms: 10.6,
+                          valid: true,
+                      },
+                  },
+              }
+            : run,
+    );
+    const individualGpuOutlierComparison = buildWeatherSurfaceComparisons(
+        buildHighTargetMedians(individualGpuOutlierRuns),
+    )['rain-weather-surfaces'];
+    assert.equal(individualGpuOutlierComparison.gpuMedianRatio, 0.97);
+    assert.equal(individualGpuOutlierComparison.gpuMaximumRunRatio, 1.06);
+    assert.equal(individualGpuOutlierComparison.relativePerformancePass, false);
+
+    for (const invalidGpu of [
+        {
+            disjoint: true,
+            elapsedP95Ms: null,
+            reason: 'GPU timer query results became disjoint',
+            valid: false,
+        },
+        {
+            elapsedP95Ms: null,
+            reason: 'EXT_disjoint_timer_query_webgl2 is unavailable',
+            valid: false,
+        },
+    ]) {
+        const incompleteGpuRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' &&
+            run.profileRun === 1
+                ? {
+                      ...run,
+                      sample: {
+                          ...run.sample,
+                          gpu: invalidGpu,
+                      },
+                  }
+                : run,
+        );
+        const incompleteComparison = buildWeatherSurfaceComparisons(
+            buildHighTargetMedians(incompleteGpuRuns),
+        )['rain-weather-surfaces'];
+        assert.equal(incompleteComparison.gpuTimingStatus, 'inconclusive');
+        assert.equal(incompleteComparison.relativePerformancePass, false);
+        assert.equal(incompleteComparison.aggregatePass.integrated, false);
+    }
 });
 
 test('placement scenario resolves a deterministic staggered two-chunk run', () => {

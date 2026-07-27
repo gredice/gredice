@@ -4,24 +4,47 @@ import {
     memo,
     type ReactNode,
     useEffect,
+    useId,
     useLayoutEffect,
     useMemo,
     useRef,
 } from 'react';
-import type { InstancedMesh, Material } from 'three';
-import type { BufferGeometry } from 'three/src/Three.Core.js';
+import type { BufferGeometry, InstancedMesh, Material } from 'three';
 import {
     type ActiveDragPreviewTarget,
     activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
     getActiveDragPreviewTargetPositionOffset,
 } from '../dragPreviewIdentity';
+import { useGameFlags } from '../GameFlagsContext';
 import { useBlockData } from '../hooks/useBlockData';
 import {
     RainWetOverlay,
     useRainWetOverlayMaterial,
     useRainWetOverlayVisible,
 } from '../rain/RainWetOverlay';
+import { registerCloudShadowAttenuationMaterialCandidate } from '../scene/cloudShadowAttenuation';
+import {
+    useRainSurfacePuddleStrengthUniform,
+    useRainSurfaceWetnessActive,
+    useRainSurfaceWetnessUniform,
+    useSnowSurfaceIntegrationState,
+} from '../scene/WeatherSurfaceUniformProvider';
+import {
+    countGeometryTriangles,
+    createWeatherSurfaceGeometry,
+    getWeatherSurfaceGeometryMetadata,
+} from '../scene/weatherSurfaceGeometry';
+import {
+    createIntegratedWeatherSurfaceMaterial,
+    getWeatherSurfacePluginVariantKey,
+    resolveWeatherSurfacePluginMode,
+    supportsIntegratedWeatherSurfaceMaterial,
+} from '../scene/weatherSurfaceMaterial';
+import {
+    registerWeatherSurfaceRenderEntry,
+    type WeatherSurfaceMode,
+} from '../scene/weatherSurfaceRenderRegistry';
 import { createSnowOverlayGeometry } from '../snow/createSnowOverlayGeometry';
 import {
     type SnowMaterialOptions,
@@ -61,6 +84,10 @@ import {
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
+const fallbackWeatherSurfaceBounds = {
+    max: [0.5, 0.5, 0.5] as const,
+    min: [-0.5, -0.5, -0.5] as const,
+};
 
 export type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
@@ -76,6 +103,7 @@ export type EntityInstancesBlockBaseProps = {
     snow?: SnowMaterialOptions;
     renderRainWetOverlay?: boolean;
     renderStableChunksAsMergedGeometry?: boolean;
+    weatherSurface?: 'base-ground';
     castShadow?: boolean;
     receiveShadow?: boolean;
     renderOrder?: number;
@@ -355,6 +383,7 @@ export function EntityInstancesBlock(
         snow,
         renderRainWetOverlay = false,
         renderStableChunksAsMergedGeometry,
+        weatherSurface,
         castShadow = true,
         receiveShadow = true,
         renderOrder,
@@ -381,9 +410,10 @@ export function EntityInstancesBlock(
         snow,
         snowLift,
         snowOverlayMinCoverage,
+        weatherSurface,
     };
 
-    if (props.material) {
+    if ('material' in props && props.material !== undefined) {
         return (
             <EntityInstancesGeometry
                 {...commonProps}
@@ -400,13 +430,220 @@ export function EntityInstancesBlock(
     );
 }
 
-export function EntityInstancesGeometry(
-    props: Omit<EntityInstancesBlockBaseProps, 'name' | 'stacks' | 'yOffset'> &
-        EntityInstancesBlockMaterialProps & {
-            instanceKey: string;
-            instances: EntityBlockInstance[] | undefined;
-        },
+type EntityInstancesGeometryProps = Omit<
+    EntityInstancesBlockBaseProps,
+    'name' | 'stacks' | 'yOffset'
+> &
+    EntityInstancesBlockMaterialProps & {
+        instanceKey: string;
+        instances: EntityBlockInstance[] | undefined;
+    };
+
+type IntegratedStableWeather = {
+    geometry: BufferGeometry;
+    integratesRain: boolean;
+    integratesSnow: boolean;
+    material: Material;
+    pluginVariantKey: string;
+};
+
+export function EntityInstancesGeometry(props: EntityInstancesGeometryProps) {
+    const flags = useGameFlags();
+    const weatherSurfaceMode: WeatherSurfaceMode =
+        flags.enableIntegratedWeatherSurfacesFlag === false
+            ? 'legacy'
+            : 'integrated';
+    const material = 'material' in props ? props.material : undefined;
+    const integrationEligible =
+        weatherSurfaceMode === 'integrated' &&
+        props.weatherSurface === 'base-ground' &&
+        props.snow !== undefined &&
+        !Array.isArray(material) &&
+        material !== undefined &&
+        supportsIntegratedWeatherSurfaceMaterial(material);
+
+    if (integrationEligible) {
+        return (
+            <IntegratedWeatherEntityInstancesGeometry
+                {...props}
+                sourceMaterial={material}
+                weatherSurfaceMode={weatherSurfaceMode}
+            />
+        );
+    }
+
+    return (
+        <EntityInstancesGeometryRenderer
+            {...props}
+            weatherSurfaceMode={weatherSurfaceMode}
+        />
+    );
+}
+
+function IntegratedWeatherEntityInstancesGeometry({
+    sourceMaterial,
+    ...props
+}: {
+    sourceMaterial: Parameters<
+        typeof createIntegratedWeatherSurfaceMaterial
+    >[0];
+    weatherSurfaceMode: WeatherSurfaceMode;
+} & EntityInstancesGeometryProps) {
+    const flags = useGameFlags();
+    const {
+        geometry,
+        renderRainWetOverlay = false,
+        renderSnow = true,
+        snow,
+        snowLift = 0,
+        snowOverlayMinCoverage,
+    } = props;
+    const wetnessUniform = useRainSurfaceWetnessUniform({
+        drySpeed: 1.8,
+        intensityMultiplier: 1,
+        wetSpeed: 5,
+    });
+    const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
+    const rainOverlayVisible = useRainWetOverlayVisible();
+    const rainSurfaceActive =
+        renderRainWetOverlay &&
+        Boolean(flags.enableRainWetOverlayFlag) &&
+        Boolean(rainOverlayVisible);
+    const snowOverlayVisible = useSnowOverlayVisible({
+        coverageMultiplier: snow?.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+        overrideSnow: snow?.overrideSnow,
+    });
+    const snowSurfaceActive = Boolean(snow && renderSnow && snowOverlayVisible);
+    const snowNoiseInfluence = snow?.noiseInfluence ?? 0.15;
+    const { amountUniform: snowAmountUniform, ready: snowIntegrationReady } =
+        useSnowSurfaceIntegrationState({
+            coverageMultiplier: snow?.coverageMultiplier ?? 1,
+            noiseInfluence: snowNoiseInfluence,
+            overrideSnow: snow?.overrideSnow,
+        });
+    const integratesSnow = snowSurfaceActive && snowIntegrationReady;
+    const integratesRain = rainSurfaceActive;
+    const hasIntegratedWeather = integratesRain || integratesSnow;
+    const pluginVariantKey = hasIntegratedWeather
+        ? getWeatherSurfacePluginVariantKey(
+              resolveWeatherSurfacePluginMode({
+                  rainEnabled: integratesRain,
+                  snowEnabled: integratesSnow,
+              }),
+          )
+        : undefined;
+    const rainBounds = useMemo(() => {
+        if (!geometry.boundingBox) {
+            geometry.computeBoundingBox();
+        }
+        const bounds = geometry.boundingBox;
+        if (!bounds) {
+            return fallbackWeatherSurfaceBounds;
+        }
+        return {
+            max: [bounds.max.x, bounds.max.y, bounds.max.z] as const,
+            min: [bounds.min.x, bounds.min.y, bounds.min.z] as const,
+        };
+    }, [geometry]);
+    const preparedGeometry = useMemo(
+        () =>
+            integratesSnow
+                ? createWeatherSurfaceGeometry(geometry, {
+                      includeSnowSkirts: true,
+                  })
+                : geometry,
+        [geometry, integratesSnow],
+    );
+    const integratedMaterial = useMemo(() => {
+        if (!hasIntegratedWeather) {
+            return undefined;
+        }
+        return createIntegratedWeatherSurfaceMaterial(sourceMaterial, {
+            rain: {
+                bounds: rainBounds,
+                darkness: 1,
+                enabled: rainSurfaceActive,
+                glossiness: 0.7,
+                puddleStrengthUniform,
+                topSurfaceBias: 1.8,
+                wetnessUniform,
+            },
+            snow: {
+                amountUniform: snowAmountUniform,
+                color: snow?.color ?? '#f7f7ff',
+                enabled: integratesSnow,
+                lift: snowLift || 0.003,
+                maxThickness: snow?.maxThickness ?? 0.18,
+                noiseAmplitude: snow?.noiseAmplitude ?? 0.35,
+                noiseInfluence: snowNoiseInfluence,
+                noiseScale: snow?.noiseScale ?? 2.5,
+                slopeExponent: snow?.slopeExponent ?? 2.4,
+            },
+        });
+    }, [
+        hasIntegratedWeather,
+        puddleStrengthUniform,
+        rainBounds,
+        rainSurfaceActive,
+        integratesSnow,
+        snow,
+        snowAmountUniform,
+        snowLift,
+        snowNoiseInfluence,
+        sourceMaterial,
+        wetnessUniform,
+    ]);
+    const integratedStableWeather = useMemo(
+        () =>
+            integratedMaterial && pluginVariantKey
+                ? {
+                      geometry: preparedGeometry,
+                      integratesRain,
+                      integratesSnow,
+                      material: integratedMaterial,
+                      pluginVariantKey,
+                  }
+                : undefined,
+        [
+            integratedMaterial,
+            integratesRain,
+            integratesSnow,
+            pluginVariantKey,
+            preparedGeometry,
+        ],
+    );
+
+    useLayoutEffect(() => {
+        if (!integratedMaterial) {
+            return;
+        }
+        return registerCloudShadowAttenuationMaterialCandidate(
+            integratedMaterial,
+        );
+    }, [integratedMaterial]);
+    useEffect(() => {
+        if (!integratedMaterial) {
+            return;
+        }
+        return () => integratedMaterial.dispose();
+    }, [integratedMaterial]);
+
+    return (
+        <EntityInstancesGeometryRenderer
+            {...props}
+            integratedStableWeather={integratedStableWeather}
+        />
+    );
+}
+
+function EntityInstancesGeometryRenderer(
+    props: EntityInstancesGeometryProps & {
+        integratedStableWeather?: IntegratedStableWeather;
+        weatherSurfaceMode: WeatherSurfaceMode;
+    },
 ) {
+    const flags = useGameFlags();
     const {
         instanceKey,
         instances: incomingInstances,
@@ -420,6 +657,8 @@ export function EntityInstancesGeometry(
         snowOverlayMinCoverage,
         renderRainWetOverlay = false,
         renderStableChunksAsMergedGeometry = false,
+        integratedStableWeather,
+        weatherSurfaceMode,
         castShadow = true,
         receiveShadow = true,
         renderOrder,
@@ -510,7 +749,149 @@ export function EntityInstancesGeometry(
     }, [addressedChunks, placementSignatureByChunkKey]);
 
     const material = 'material' in props ? props.material : undefined;
-    const materialNode = 'materialNode' in props ? props.materialNode : null;
+    const materialNode =
+        'materialNode' in props ? props.materialNode : undefined;
+    const stableGeometry = integratedStableWeather?.geometry ?? geometry;
+    const stableMaterial = integratedStableWeather?.material ?? material;
+    const integratesStableRain =
+        integratedStableWeather?.integratesRain === true;
+    const integratesStableSnow =
+        integratedStableWeather?.integratesSnow === true;
+    const stableMaterialNode = integratedStableWeather
+        ? undefined
+        : materialNode;
+    const weatherRegistryId = useId();
+    const rainOverlayVisible = useRainWetOverlayVisible();
+    const rainOverlayEnabled =
+        renderRainWetOverlay && Boolean(flags.enableRainWetOverlayFlag);
+    const rainWetnessActive = useRainSurfaceWetnessActive({
+        drySpeed: 1.8,
+        enabled: rainOverlayEnabled,
+        intensityMultiplier: 1,
+        minimumWetness: 0.01,
+        wetSpeed: 5,
+    });
+    const snowOverlayVisible = useSnowOverlayVisible({
+        coverageMultiplier: snow?.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+        overrideSnow: snow?.overrideSnow,
+    });
+    const sourceTriangleCount = useMemo(
+        () => countGeometryTriangles(geometry),
+        [geometry],
+    );
+    const activeRainOverlay = rainOverlayEnabled && rainOverlayVisible;
+    const activeAnimatedRainOverlay =
+        rainOverlayEnabled && (rainOverlayVisible || rainWetnessActive);
+    const activeSnowOverlay = Boolean(snow) && renderSnow && snowOverlayVisible;
+    const snowOverlayTriangleCount = useMemo(() => {
+        if (!activeSnowOverlay) {
+            return 0;
+        }
+        if (integratesStableSnow && integratedStableWeather) {
+            const metadata = getWeatherSurfaceGeometryMetadata(
+                integratedStableWeather.geometry,
+            );
+            if (!metadata?.includesSnowSkirts) {
+                throw new Error(
+                    'Integrated snow surface is missing its prepared boundary skirts.',
+                );
+            }
+            return metadata.preparedTriangleCount;
+        }
+        return countGeometryTriangles(createSnowOverlayGeometry(geometry));
+    }, [
+        activeSnowOverlay,
+        geometry,
+        integratedStableWeather,
+        integratesStableSnow,
+    ]);
+    const stableInstanceCount = useMemo(
+        () =>
+            stableChunks.reduce(
+                (total, chunk) => total + chunk.instances.length,
+                0,
+            ),
+        [stableChunks],
+    );
+    const stableRainOverlaySubmissionCount = activeRainOverlay
+        ? stableChunks.length
+        : 0;
+    const stableSnowOverlaySubmissionCount = activeSnowOverlay
+        ? stableChunks.length
+        : 0;
+    const stableRainOverlayTriangleCount = activeRainOverlay
+        ? stableInstanceCount * sourceTriangleCount
+        : 0;
+    const stableSnowOverlayTriangleCount = activeSnowOverlay
+        ? stableInstanceCount * snowOverlayTriangleCount
+        : 0;
+    const animatedOverlaySubmissionCount =
+        (activeAnimatedRainOverlay ? animatedInstances.length : 0) +
+        (activeSnowOverlay ? animatedInstances.length : 0);
+    const animatedOverlayTriangleCount =
+        (activeAnimatedRainOverlay
+            ? animatedInstances.length * sourceTriangleCount
+            : 0) +
+        (activeSnowOverlay
+            ? animatedInstances.length * snowOverlayTriangleCount
+            : 0);
+    const hasWeatherSurface =
+        renderRainWetOverlay || Boolean(snow && renderSnow);
+
+    useEffect(() => {
+        if (!hasWeatherSurface) {
+            return;
+        }
+
+        const integrated = integratedStableWeather !== undefined;
+        const avoidedOverlaySubmissionCount =
+            (integratesStableRain ? stableRainOverlaySubmissionCount : 0) +
+            (integratesStableSnow ? stableSnowOverlaySubmissionCount : 0);
+        const avoidedOverlayTriangleCount =
+            (integratesStableRain ? stableRainOverlayTriangleCount : 0) +
+            (integratesStableSnow ? stableSnowOverlayTriangleCount : 0);
+        const fallbackStableOverlaySubmissionCount =
+            (integratesStableRain ? 0 : stableRainOverlaySubmissionCount) +
+            (integratesStableSnow ? 0 : stableSnowOverlaySubmissionCount);
+        const fallbackStableOverlayTriangleCount =
+            (integratesStableRain ? 0 : stableRainOverlayTriangleCount) +
+            (integratesStableSnow ? 0 : stableSnowOverlayTriangleCount);
+        return registerWeatherSurfaceRenderEntry(
+            `${weatherRegistryId}:${instanceKey}`,
+            {
+                avoidedOverlaySubmissionCount,
+                avoidedOverlayTriangleCount,
+                fallbackOverlaySubmissionCount:
+                    animatedOverlaySubmissionCount +
+                    fallbackStableOverlaySubmissionCount,
+                fallbackOverlayTriangleCount:
+                    animatedOverlayTriangleCount +
+                    fallbackStableOverlayTriangleCount,
+                integratedInstanceCount: integrated ? stableInstanceCount : 0,
+                integratedMaterialCount: integrated ? 1 : 0,
+                mode: weatherSurfaceMode,
+                pluginVariantKeys: integrated
+                    ? [integratedStableWeather.pluginVariantKey]
+                    : [],
+            },
+        );
+    }, [
+        animatedOverlaySubmissionCount,
+        animatedOverlayTriangleCount,
+        hasWeatherSurface,
+        instanceKey,
+        integratedStableWeather,
+        integratesStableRain,
+        integratesStableSnow,
+        stableInstanceCount,
+        stableRainOverlaySubmissionCount,
+        stableRainOverlayTriangleCount,
+        stableSnowOverlaySubmissionCount,
+        stableSnowOverlayTriangleCount,
+        weatherRegistryId,
+        weatherSurfaceMode,
+    ]);
 
     if (!instances?.length) {
         return null;
@@ -620,10 +1001,10 @@ export function EntityInstancesGeometry(
                         castShadow={castShadow}
                         chunk={chunk}
                         debugName={`MergedBlockChunk:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
-                        geometry={geometry}
+                        geometry={stableGeometry}
                         localTransform={localTransform}
-                        material={material}
-                        materialNode={materialNode}
+                        material={stableMaterial}
+                        materialNode={stableMaterialNode}
                         placementSignature={placementSignature}
                         receiveShadow={receiveShadow}
                         renderOrder={renderOrder}
@@ -635,10 +1016,10 @@ export function EntityInstancesGeometry(
                         castShadow={castShadow}
                         chunk={chunk}
                         debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
-                        geometry={geometry}
+                        geometry={stableGeometry}
                         localTransform={localTransform}
-                        material={material}
-                        materialNode={materialNode}
+                        material={stableMaterial}
+                        materialNode={stableMaterialNode}
                         placementSignature={placementSignature}
                         receiveShadow={receiveShadow}
                         renderOrder={renderOrder}
@@ -671,7 +1052,7 @@ export function EntityInstancesGeometry(
                     </HoverOutline>
                 ) : null,
             )}
-            {renderRainWetOverlay && (
+            {!integratesStableRain && renderRainWetOverlay && (
                 <InstancedRainWetOverlays
                     chunks={stableChunks}
                     geometry={geometry}
@@ -680,7 +1061,7 @@ export function EntityInstancesGeometry(
                     scale={stableScale}
                 />
             )}
-            {snow && renderSnow && (
+            {!integratesStableSnow && snow && renderSnow && (
                 <InstancedSnowOverlays
                     chunks={stableChunks}
                     geometry={geometry}

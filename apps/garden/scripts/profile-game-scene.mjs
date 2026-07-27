@@ -29,6 +29,63 @@ const highTargetOperationVisualLegacyObjectCount = 452;
 const highTargetOperationVisualRenderedObjectLimit = 64;
 const highTargetGeneratedPlantDetailInstanceBudget = 179;
 const highTargetExpectedGeneratedPlantClusterTriangleCount = 3_354;
+const highTargetWeatherSurfaceExpectations = {
+    rain: {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 2_556,
+        fallbackOverlaySubmissionCount: {
+            integrated: 29,
+            legacy: 45,
+        },
+        fallbackOverlayTriangleCount: {
+            integrated: 13_562,
+            legacy: 16_118,
+        },
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+    },
+    snow: {
+        avoidedOverlaySubmissionCount: 8,
+        avoidedOverlayTriangleCount: 11_880,
+        fallbackOverlaySubmissionCount: {
+            integrated: 48,
+            legacy: 56,
+        },
+        fallbackOverlayTriangleCount: {
+            integrated: 72_608,
+            legacy: 84_488,
+        },
+        integratedInstanceCount: 270,
+        integratedMaterialCount: 1,
+    },
+};
+const highTargetWeatherSurfaceMaximumGpuMedianRatio = 0.98;
+const highTargetWeatherSurfaceMaximumGpuRunRatio = 1.05;
+const highTargetWeatherSurfaceMaximumProgramIncrease = 1;
+const highTargetWeatherSurfacePairedRunCount = 5;
+const highTargetWeatherSurfaceOnsetExpectation = {
+    avoidedOverlaySubmissionCount: 0,
+    avoidedOverlayTriangleCount: 0,
+    fallbackOverlaySubmissionCount: 51,
+    fallbackOverlayTriangleCount: 31_900,
+    integratedInstanceCount: 0,
+    integratedMaterialCount: 0,
+    pluginVariantCount: 0,
+    snowParticleCount: 0,
+};
+const highTargetWeatherSurfaceThresholdTransitionExpectation = {
+    exit: highTargetWeatherSurfaceOnsetExpectation,
+    peak: {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 9_372,
+        fallbackOverlaySubmissionCount: 56,
+        fallbackOverlayTriangleCount: 74_500,
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+        pluginVariantCount: 1,
+    },
+    trackedCount: 2,
+};
 const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
 
 const coreScenarios = [
@@ -259,6 +316,84 @@ const highTargetFoliageBudgetScenarios = [
         motion: 'foliage-detail-zoom',
         motionWarmupMs: 7_000,
         repeat: 3,
+    },
+];
+
+const highTargetWeatherMaterialScenarios = [
+    {
+        name: 'game-high-target-rain-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'rain-weather-surfaces',
+        comparisonRole: 'legacy',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-rain-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'rain-weather-surfaces',
+        comparisonRole: 'integrated',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-snow-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'snow-weather-surfaces',
+        comparisonRole: 'legacy',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-snow-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'snow-weather-surfaces',
+        comparisonRole: 'integrated',
+        repeat: 5,
+    },
+];
+
+const highTargetWeatherOnsetScenarios = [
+    {
+        name: 'game-high-target-snow-onset-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+    },
+    {
+        name: 'game-high-target-snow-onset-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+    },
+    {
+        name: 'game-high-target-snow-threshold-transition-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+        weatherSurfaceTransition: 'snow-integration-cycle',
     },
 ];
 
@@ -642,6 +777,8 @@ const scenarioSets = {
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
+    'high-target-weather-materials': highTargetWeatherMaterialScenarios,
+    'high-target-weather-onset': highTargetWeatherOnsetScenarios,
     outline: outlineScenarios,
     placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
@@ -937,7 +1074,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -968,6 +1105,8 @@ function allScenarios() {
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
+        ...highTargetWeatherMaterialScenarios,
+        ...highTargetWeatherOnsetScenarios,
         ...outlineScenarios,
         ...placementScenarios,
         ...plantCloseupScenarios,
@@ -1001,7 +1140,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-operation-visuals, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1014,6 +1153,82 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
     }
 
     return scenarios;
+}
+
+function buildScenarioRunQueue(scenarios, { closeupRepeat = null } = {}) {
+    const queue = [];
+    const scheduled = new Set();
+    const repeatFor = (scenario) =>
+        scenario.plantCloseup
+            ? (closeupRepeat ?? scenario.plantCloseup.repeat)
+            : (scenario.repeat ?? 1);
+    const enqueue = (scenario, runIndex, repeat) => {
+        queue.push({
+            baseScenario: scenario,
+            repeat,
+            runIndex,
+            runScenario:
+                repeat === 1
+                    ? scenario
+                    : {
+                          ...scenario,
+                          name: `${scenario.name}-run-${runIndex}`,
+                      },
+        });
+    };
+
+    for (const scenario of scenarios) {
+        if (scheduled.has(scenario.name)) {
+            continue;
+        }
+
+        const paired =
+            typeof scenario.comparisonPair === 'string'
+                ? scenarios.filter(
+                      (candidate) =>
+                          candidate.comparisonPair ===
+                              scenario.comparisonPair &&
+                          (candidate.comparisonRole === 'legacy' ||
+                              candidate.comparisonRole === 'integrated'),
+                  )
+                : [];
+        const legacy = paired.find(
+            (candidate) => candidate.comparisonRole === 'legacy',
+        );
+        const integrated = paired.find(
+            (candidate) => candidate.comparisonRole === 'integrated',
+        );
+        if (legacy && integrated) {
+            const legacyRepeat = repeatFor(legacy);
+            const integratedRepeat = repeatFor(integrated);
+            if (legacyRepeat === integratedRepeat) {
+                for (
+                    let runIndex = 1;
+                    runIndex <= legacyRepeat;
+                    runIndex += 1
+                ) {
+                    const ordered =
+                        runIndex % 2 === 1
+                            ? [legacy, integrated]
+                            : [integrated, legacy];
+                    for (const candidate of ordered) {
+                        enqueue(candidate, runIndex, legacyRepeat);
+                    }
+                }
+                scheduled.add(legacy.name);
+                scheduled.add(integrated.name);
+                continue;
+            }
+        }
+
+        const repeat = repeatFor(scenario);
+        for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
+            enqueue(scenario, runIndex, repeat);
+        }
+        scheduled.add(scenario.name);
+    }
+
+    return queue;
 }
 
 function getScenarioRequest(path) {
@@ -1038,6 +1253,10 @@ function getScenarioRequest(path) {
         outline: url.searchParams.get('outline') ?? '0',
         placement: url.searchParams.get('placement') ?? '0',
         quality: url.searchParams.get('quality') ?? 'auto',
+        weatherSurface:
+            url.searchParams.get('weatherSurface') === 'legacy'
+                ? 'legacy'
+                : 'integrated',
     };
 }
 
@@ -1064,6 +1283,7 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         instancedDrawCalls: 0,
         lastRenderedRafTick: -1,
         renderedFrames: 0,
+        rendererShaders: 0,
         submittedTriangles: 0,
     };
     globalThis.__gameProfileLongTasks = [];
@@ -1357,6 +1577,41 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         };
         prototype[name].__gameProfilePatched = true;
     };
+    const livePrograms = new Set();
+    const updateRendererShaderCount = () => {
+        globalThis.__gameProfileMetrics.rendererShaders = livePrograms.size;
+    };
+    const patchProgramLifecycle = (Context) => {
+        const prototype = Context?.prototype;
+        if (
+            !prototype?.createProgram ||
+            prototype.createProgram.__gameProfilePatched
+        ) {
+            return;
+        }
+
+        const originalCreateProgram = prototype.createProgram;
+        prototype.createProgram = function patchedCreateProgram(...args) {
+            const program = originalCreateProgram.apply(this, args);
+            if (program) {
+                livePrograms.add(program);
+                updateRendererShaderCount();
+            }
+            return program;
+        };
+        prototype.createProgram.__gameProfilePatched = true;
+
+        const originalDeleteProgram = prototype.deleteProgram;
+        prototype.deleteProgram = function patchedDeleteProgram(...args) {
+            const result = originalDeleteProgram.apply(this, args);
+            if (args[0]) {
+                livePrograms.delete(args[0]);
+                updateRendererShaderCount();
+            }
+            return result;
+        };
+        prototype.deleteProgram.__gameProfilePatched = true;
+    };
 
     const patchContext = (Context) => {
         if (!Context) {
@@ -1392,6 +1647,8 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         });
     };
 
+    patchProgramLifecycle(globalThis.WebGLRenderingContext);
+    patchProgramLifecycle(globalThis.WebGL2RenderingContext);
     patchContext(globalThis.WebGLRenderingContext);
     patchContext(globalThis.WebGL2RenderingContext);
 }
@@ -1487,6 +1744,7 @@ async function finishInteractiveProfileSample() {
         p99FrameMs: percentile(0.99),
         renderedFps: renderedFrames / safeElapsedSeconds,
         renderedFrames,
+        rendererShaders: metrics?.rendererShaders ?? null,
         submittedTriangles,
         trianglesPerFrame: submittedTriangles / safeRafFrames,
         trianglesPerRafFrame: submittedTriangles / safeRafFrames,
@@ -2387,6 +2645,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 element.dataset.gameProfileOperationVisuals ?? null,
             outline: element.dataset.gameProfileOutline ?? null,
             quality: element.dataset.gameProfileQuality ?? null,
+            weatherSurface: element.dataset.gameProfileWeatherSurface ?? null,
         };
     });
     const environment = await page.evaluate(() => {
@@ -2485,6 +2744,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     const sampleMs = scenario.sampleMs ?? options.sampleMs;
     const weatherTransitionRequest = scenario.weatherTransition ?? null;
+    const weatherSurfaceTransitionRequest =
+        scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
@@ -2499,6 +2760,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 sampleMs,
                 weatherTransitionEventName,
                 weatherTransitionRequest,
+                weatherSurfaceTransitionRequest,
             } = sampleOptions;
             const canvas = document.querySelector('canvas');
             const metrics = globalThis.__gameProfileMetrics;
@@ -2654,6 +2916,168 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 : false;
 
             let profileRecoveryFinished = !adaptiveHighProfileControlRecovery;
+            let weatherSurfaceTransitionFinished =
+                weatherSurfaceTransitionRequest !== 'snow-integration-cycle';
+            let weatherSurfaceTransitionProfile = null;
+            const weatherSurfaceTransitionPromise =
+                weatherSurfaceTransitionRequest === 'snow-integration-cycle'
+                    ? (async () => {
+                          const profile = {
+                              dwell: null,
+                              enterDispatched: false,
+                              entered: null,
+                              error: null,
+                              exitDispatched: false,
+                              exited: null,
+                              initial: null,
+                              request: weatherSurfaceTransitionRequest,
+                          };
+                          const readSnapshot = () => {
+                              const metadata =
+                                  globalThis.__grediceGameProfile ?? {};
+                              const numberOrNull = (value) =>
+                                  typeof value === 'number' ? value : null;
+                              return {
+                                  avoidedOverlaySubmissionCount: numberOrNull(
+                                      metadata.weatherSurfaceAvoidedOverlaySubmissionCount,
+                                  ),
+                                  avoidedOverlayTriangleCount: numberOrNull(
+                                      metadata.weatherSurfaceAvoidedOverlayTriangleCount,
+                                  ),
+                                  fallbackOverlaySubmissionCount: numberOrNull(
+                                      metadata.weatherSurfaceFallbackOverlaySubmissionCount,
+                                  ),
+                                  fallbackOverlayTriangleCount: numberOrNull(
+                                      metadata.weatherSurfaceFallbackOverlayTriangleCount,
+                                  ),
+                                  integratedInstanceCount: numberOrNull(
+                                      metadata.weatherSurfaceIntegratedInstanceCount,
+                                  ),
+                                  integratedMaterialCount: numberOrNull(
+                                      metadata.weatherSurfaceIntegratedMaterialCount,
+                                  ),
+                                  pluginVariantCount: numberOrNull(
+                                      metadata.weatherSurfacePluginVariantCount,
+                                  ),
+                                  readyCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationReadyCount,
+                                  ),
+                                  trackedCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationTrackedCount,
+                                  ),
+                                  transitionCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationTransitionCount,
+                                  ),
+                                  snowParticleCount: numberOrNull(
+                                      metadata.snowParticleCount,
+                                  ),
+                              };
+                          };
+                          const hasSparseFallbackState = (snapshot) =>
+                              (snapshot.trackedCount ?? 0) > 0 &&
+                              snapshot.readyCount === 0 &&
+                              snapshot.integratedInstanceCount === 0 &&
+                              snapshot.integratedMaterialCount === 0 &&
+                              snapshot.pluginVariantCount === 0 &&
+                              snapshot.avoidedOverlaySubmissionCount === 0 &&
+                              snapshot.avoidedOverlayTriangleCount === 0 &&
+                              (snapshot.fallbackOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.fallbackOverlayTriangleCount ?? 0) >
+                                  0 &&
+                              snapshot.snowParticleCount === 0;
+                          const hasIntegratedState = (snapshot, initial) =>
+                              snapshot.trackedCount === initial.trackedCount &&
+                              snapshot.readyCount === initial.trackedCount &&
+                              snapshot.transitionCount ===
+                                  initial.transitionCount +
+                                      initial.trackedCount &&
+                              (snapshot.integratedInstanceCount ?? 0) > 0 &&
+                              (snapshot.integratedMaterialCount ?? 0) > 0 &&
+                              snapshot.pluginVariantCount === 1 &&
+                              (snapshot.avoidedOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.avoidedOverlayTriangleCount ?? 0) > 0 &&
+                              (snapshot.fallbackOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.fallbackOverlayTriangleCount ?? 0) >
+                                  0 &&
+                              snapshot.snowParticleCount === 0;
+                          const hasReturnedToSparseState = (
+                              snapshot,
+                              initial,
+                          ) =>
+                              hasSparseFallbackState(snapshot) &&
+                              snapshot.trackedCount === initial.trackedCount &&
+                              snapshot.transitionCount ===
+                                  initial.transitionCount +
+                                      initial.trackedCount * 2 &&
+                              snapshot.fallbackOverlaySubmissionCount ===
+                                  initial.fallbackOverlaySubmissionCount &&
+                              snapshot.fallbackOverlayTriangleCount ===
+                                  initial.fallbackOverlayTriangleCount;
+                          const waitForState = async (label, predicate) => {
+                              const deadline = performance.now() + 15_000;
+                              while (performance.now() < deadline) {
+                                  const snapshot = readSnapshot();
+                                  if (predicate(snapshot)) {
+                                      return snapshot;
+                                  }
+                                  await new Promise((resolveWait) =>
+                                      setTimeout(resolveWait, 25),
+                                  );
+                              }
+                              throw new Error(
+                                  `Timed out waiting for snow surface ${label}.`,
+                              );
+                          };
+                          const dispatchWeather = (request) =>
+                              globalThis.dispatchEvent(
+                                  new CustomEvent(weatherTransitionEventName, {
+                                      detail: { request },
+                                  }),
+                              );
+
+                          try {
+                              profile.initial = await waitForState(
+                                  'sparse initial state',
+                                  hasSparseFallbackState,
+                              );
+                              profile.enterDispatched = dispatchWeather(
+                                  'snow-sparse-to-integrated',
+                              );
+                              profile.entered = await waitForState(
+                                  'integrated state',
+                                  (snapshot) =>
+                                      hasIntegratedState(
+                                          snapshot,
+                                          profile.initial,
+                                      ),
+                              );
+                              await new Promise((resolveWait) =>
+                                  setTimeout(resolveWait, 750),
+                              );
+                              profile.dwell = readSnapshot();
+                              profile.exitDispatched = dispatchWeather(
+                                  'snow-integrated-to-sparse',
+                              );
+                              profile.exited = await waitForState(
+                                  'sparse fallback state',
+                                  (snapshot) =>
+                                      hasReturnedToSparseState(
+                                          snapshot,
+                                          profile.initial,
+                                      ),
+                              );
+                          } catch (error) {
+                              profile.error = String(error);
+                          }
+
+                          weatherSurfaceTransitionProfile = profile;
+                      })().finally(() => {
+                          weatherSurfaceTransitionFinished = true;
+                      })
+                    : Promise.resolve();
             const sampleWindowPromise = new Promise((resolveSample) => {
                 const step = (now) => {
                     intervals.push(now - last);
@@ -2669,7 +3093,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ) {
                         rainUnmountMs = now - start;
                     }
-                    if (now - start >= sampleMs && profileRecoveryFinished) {
+                    if (
+                        now - start >= sampleMs &&
+                        profileRecoveryFinished &&
+                        weatherSurfaceTransitionFinished
+                    ) {
                         resolveSample();
                         return;
                     }
@@ -2756,7 +3184,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                       profileRecoveryFinished = true;
                   })
                 : Promise.resolve();
-            await Promise.all([sampleWindowPromise, profileRecoveryPromise]);
+            await Promise.all([
+                sampleWindowPromise,
+                profileRecoveryPromise,
+                weatherSurfaceTransitionPromise,
+            ]);
 
             const sampleEndedAt = performance.now();
             const frameIntervals = intervals.slice(1);
@@ -2965,6 +3397,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 reportedDpr: globalThis.devicePixelRatio,
                 renderedFps: renderedFrames / safeElapsedSeconds,
                 renderedFrames,
+                rendererShaders: metrics?.rendererShaders ?? null,
                 submittedTriangles,
                 trianglesPerFrame: submittedTriangles / safeRafFrames,
                 trianglesPerRafFrame: submittedTriangles / safeRafFrames,
@@ -2975,6 +3408,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
                 weatherTransitionDispatched,
                 weatherTransitionRequest,
+                weatherSurfaceTransitionProfile,
             };
             globalThis.__gameProfileGpuTimer?.stop();
 
@@ -3000,6 +3434,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
+            weatherSurfaceTransitionRequest,
         },
     );
     const sampleCompletionPromise = samplePromise.then((sampleAtEndpoint) =>
@@ -3025,7 +3460,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         ]),
     );
 
-    const runtime = await page.evaluate(() => {
+    const runtime = await page.evaluate((instrumentedRendererShaders) => {
         const metadata = globalThis.__grediceGameProfile;
         if (!metadata || typeof metadata !== 'object') {
             return null;
@@ -3530,6 +3965,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.primaryShadowRefreshCount === 'number'
                     ? metadata.primaryShadowRefreshCount
                     : null,
+            rendererShaders:
+                numberOrNull(metadata.rendererShaders) ??
+                numberOrNull(instrumentedRendererShaders),
             shadowMapAutoUpdate:
                 typeof metadata.shadowMapAutoUpdate === 'boolean'
                     ? metadata.shadowMapAutoUpdate
@@ -3570,12 +4008,43 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.snowParticleGeometryBuildCount === 'number'
                     ? metadata.snowParticleGeometryBuildCount
                     : null,
+            weatherSurfaceAvoidedOverlaySubmissionCount: numberOrNull(
+                metadata.weatherSurfaceAvoidedOverlaySubmissionCount,
+            ),
+            weatherSurfaceAvoidedOverlayTriangleCount: numberOrNull(
+                metadata.weatherSurfaceAvoidedOverlayTriangleCount,
+            ),
+            weatherSurfaceFallbackOverlaySubmissionCount: numberOrNull(
+                metadata.weatherSurfaceFallbackOverlaySubmissionCount,
+            ),
+            weatherSurfaceFallbackOverlayTriangleCount: numberOrNull(
+                metadata.weatherSurfaceFallbackOverlayTriangleCount,
+            ),
+            weatherSurfaceIntegratedInstanceCount: numberOrNull(
+                metadata.weatherSurfaceIntegratedInstanceCount,
+            ),
+            weatherSurfaceIntegratedMaterialCount: numberOrNull(
+                metadata.weatherSurfaceIntegratedMaterialCount,
+            ),
+            weatherSurfaceMode: stringOrNull(metadata.weatherSurfaceMode),
+            weatherSurfacePluginVariantCount: numberOrNull(
+                metadata.weatherSurfacePluginVariantCount,
+            ),
+            weatherSurfaceSnowIntegrationReadyCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationReadyCount,
+            ),
+            weatherSurfaceSnowIntegrationTrackedCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationTrackedCount,
+            ),
+            weatherSurfaceSnowIntegrationTransitionCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationTransitionCount,
+            ),
             weatherDisabled:
                 typeof metadata.weatherDisabled === 'boolean'
                     ? metadata.weatherDisabled
                     : null,
         };
-    });
+    }, sample.rendererShaders);
 
     const screenshotPath = options.screenshots
         ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
@@ -3628,11 +4097,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         runtimeGpuSource: scenario.runtimeGpuSource === true,
         sampleMs,
         viewport: scenario.viewport,
+        weatherSurface:
+            profileMetadata?.weatherSurface ?? request.weatherSurface,
+        weatherSurfaceTransition: weatherSurfaceTransitionRequest ?? 'none',
         weatherTransition: weatherTransitionRequest ?? 'none',
     };
     const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
+        consoleMessages,
         environment,
         pageErrors,
         requested,
@@ -3794,6 +4267,7 @@ function evaluateBudget(sample, budget) {
 
 function evaluateHighTargetAcceptance({
     apiErrors = [],
+    consoleMessages = [],
     environment,
     pageErrors,
     requested,
@@ -3873,6 +4347,20 @@ function evaluateHighTargetAcceptance({
         : null;
     const operationVisualsRequested = requested.operationVisuals === '1';
     const foliageBudgetRequested = requested.foliageBudget === '1';
+    const weatherSurfaceRequested =
+        requested.weatherSurface === 'integrated' ||
+        requested.weatherSurface === 'legacy'
+            ? requested.weatherSurface
+            : null;
+    const weatherSurfaceExpectation =
+        requested.mode === 'rain' || requested.mode === 'snow'
+            ? highTargetWeatherSurfaceExpectations[requested.mode]
+            : null;
+    const weatherSurfaceOnsetSelfVerification =
+        requested.mode === 'snow-onset' &&
+        requested.weatherSurface === 'integrated';
+    const weatherSurfaceTransitionRequested =
+        requested.weatherSurfaceTransition === 'snow-integration-cycle';
     const expectedGeneratedPlantFieldCount = operationVisualsRequested
         ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
         : highTargetExpectedGeneratedPlantFieldCount;
@@ -4118,6 +4606,12 @@ function evaluateHighTargetAcceptance({
         minimum('highTargetDrawCalls', sample.drawCalls, 1),
         minimum('highTargetSubmittedTriangles', sample.submittedTriangles, 1),
         exact('highTargetApiErrors', apiErrors.length, 0),
+        exact(
+            'highTargetConsoleErrors',
+            consoleMessages.filter((message) => message.type === 'error')
+                .length,
+            0,
+        ),
         exact('highTargetPageErrors', pageErrors.length, 0),
     ];
     if (operationVisualsRequested) {
@@ -4621,6 +5115,415 @@ function evaluateHighTargetAcceptance({
             ),
         );
     }
+    if (weatherSurfaceRequested && weatherSurfaceExpectation) {
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceMode',
+                runtime?.weatherSurfaceMode,
+                weatherSurfaceRequested,
+            ),
+            exact(
+                'highTargetWeatherSurfaceIntegratedInstances',
+                runtime?.weatherSurfaceIntegratedInstanceCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.integratedInstanceCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceIntegratedMaterials',
+                runtime?.weatherSurfaceIntegratedMaterialCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.integratedMaterialCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfacePluginVariants',
+                runtime?.weatherSurfacePluginVariantCount,
+                weatherSurfaceRequested === 'integrated' ? 1 : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+                runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.avoidedOverlaySubmissionCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+                runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.avoidedOverlayTriangleCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+                runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+                weatherSurfaceExpectation.fallbackOverlaySubmissionCount[
+                    weatherSurfaceRequested
+                ],
+            ),
+            exact(
+                'highTargetWeatherSurfaceFallbackOverlayTriangles',
+                runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+                weatherSurfaceExpectation.fallbackOverlayTriangleCount[
+                    weatherSurfaceRequested
+                ],
+            ),
+            minimum(
+                'highTargetWeatherSurfaceRendererPrograms',
+                runtime?.rendererShaders,
+                1,
+            ),
+        );
+    }
+    if (weatherSurfaceOnsetSelfVerification) {
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceOnsetRequestedMode',
+                requested.weatherSurface,
+                'integrated',
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetRuntimeMode',
+                runtime?.weatherSurfaceMode,
+                'integrated',
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetIntegratedInstances',
+                runtime?.weatherSurfaceIntegratedInstanceCount,
+                highTargetWeatherSurfaceOnsetExpectation.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetIntegratedMaterials',
+                runtime?.weatherSurfaceIntegratedMaterialCount,
+                highTargetWeatherSurfaceOnsetExpectation.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetPluginVariants',
+                runtime?.weatherSurfacePluginVariantCount,
+                highTargetWeatherSurfaceOnsetExpectation.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetAvoidedOverlaySubmissions',
+                runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceOnsetExpectation.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetAvoidedOverlayTriangles',
+                runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceOnsetExpectation.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetFallbackOverlaySubmissions',
+                runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceOnsetExpectation.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetFallbackOverlayTriangles',
+                runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceOnsetExpectation.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetRainParticles',
+                runtime?.rainParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetSnowParticles',
+                runtime?.snowParticleCount,
+                highTargetWeatherSurfaceOnsetExpectation.snowParticleCount,
+            ),
+        );
+    }
+    if (weatherSurfaceTransitionRequested) {
+        const transition = sample.weatherSurfaceTransitionProfile;
+        const trackedCount = transition?.initial?.trackedCount ?? null;
+        const transitionDelta = (after, before) =>
+            typeof after === 'number' && typeof before === 'number'
+                ? after - before
+                : null;
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceTransitionRequest',
+                transition?.request,
+                'snow-integration-cycle',
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionError',
+                transition?.error,
+                null,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnterDispatched',
+                transition?.enterDispatched,
+                true,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitDispatched',
+                transition?.exitDispatched,
+                true,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionTrackedUniforms',
+                trackedCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialReady',
+                transition?.initial?.readyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialHandoffs',
+                transition?.initial?.transitionCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialInstances',
+                transition?.initial?.integratedInstanceCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialMaterials',
+                transition?.initial?.integratedMaterialCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialPluginVariants',
+                transition?.initial?.pluginVariantCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialAvoidedSubmissions',
+                transition?.initial?.avoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialAvoidedTriangleProxy',
+                transition?.initial?.avoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialFallbackSubmissions',
+                transition?.initial?.fallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialFallbackTriangleProxy',
+                transition?.initial?.fallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialParticles',
+                transition?.initial?.snowParticleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .snowParticleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredTracked',
+                transition?.entered?.trackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredReady',
+                transition?.entered?.readyCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredInstances',
+                transition?.entered?.integratedInstanceCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredMaterials',
+                transition?.entered?.integratedMaterialCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredPluginVariants',
+                transition?.entered?.pluginVariantCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredAvoidedSubmissions',
+                transition?.entered?.avoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredAvoidedTriangleProxy',
+                transition?.entered?.avoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredFallbackSubmissions',
+                transition?.entered?.fallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredFallbackTriangleProxy',
+                transition?.entered?.fallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnterHandoffs',
+                transitionDelta(
+                    transition?.entered?.transitionCount,
+                    transition?.initial?.transitionCount,
+                ),
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellReady',
+                transition?.dwell?.readyCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellNoThrash',
+                transition?.dwell?.transitionCount,
+                transition?.entered?.transitionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellInstances',
+                transition?.dwell?.integratedInstanceCount,
+                transition?.entered?.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellMaterials',
+                transition?.dwell?.integratedMaterialCount,
+                transition?.entered?.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellPluginVariants',
+                transition?.dwell?.pluginVariantCount,
+                transition?.entered?.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellAvoidedSubmissions',
+                transition?.dwell?.avoidedOverlaySubmissionCount,
+                transition?.entered?.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellAvoidedTriangleProxy',
+                transition?.dwell?.avoidedOverlayTriangleCount,
+                transition?.entered?.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellFallbackSubmissions',
+                transition?.dwell?.fallbackOverlaySubmissionCount,
+                transition?.entered?.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellFallbackTriangleProxy',
+                transition?.dwell?.fallbackOverlayTriangleCount,
+                transition?.entered?.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellParticles',
+                transition?.dwell?.snowParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedTracked',
+                transition?.exited?.trackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedReady',
+                transition?.exited?.readyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedInstances',
+                transition?.exited?.integratedInstanceCount,
+                transition?.initial?.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedMaterials',
+                transition?.exited?.integratedMaterialCount,
+                transition?.initial?.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedPluginVariants',
+                transition?.exited?.pluginVariantCount,
+                transition?.initial?.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedAvoidedSubmissions',
+                transition?.exited?.avoidedOverlaySubmissionCount,
+                transition?.initial?.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedAvoidedTriangleProxy',
+                transition?.exited?.avoidedOverlayTriangleCount,
+                transition?.initial?.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedFallbackSubmissions',
+                transition?.exited?.fallbackOverlaySubmissionCount,
+                transition?.initial?.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedFallbackTriangleProxy',
+                transition?.exited?.fallbackOverlayTriangleCount,
+                transition?.initial?.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitHandoffs',
+                transitionDelta(
+                    transition?.exited?.transitionCount,
+                    transition?.entered?.transitionCount,
+                ),
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionTotalHandoffs',
+                transitionDelta(
+                    transition?.exited?.transitionCount,
+                    transition?.initial?.transitionCount,
+                ),
+                typeof trackedCount === 'number' ? trackedCount * 2 : null,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeReady',
+                runtime?.weatherSurfaceSnowIntegrationReadyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeTracked',
+                runtime?.weatherSurfaceSnowIntegrationTrackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeTransitions',
+                runtime?.weatherSurfaceSnowIntegrationTransitionCount,
+                transition?.exited?.transitionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionParticles',
+                transition?.entered?.snowParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedParticles',
+                transition?.exited?.snowParticleCount,
+                0,
+            ),
+        );
+    }
     if (requested.mode === 'rain') {
         checks.push(
             exact(
@@ -4721,6 +5624,20 @@ function buildHighTargetMedians(scenarios) {
             const gpuElapsedP95Ms = metric(runs, (run) =>
                 run.sample.gpu?.valid ? run.sample.gpu.elapsedP95Ms : null,
             );
+            const gpuElapsedP95MsRuns = runs.map((run, index) => {
+                const value = run.sample.gpu?.elapsedP95Ms ?? null;
+                const valid =
+                    run.sample.gpu?.valid === true &&
+                    Number.isFinite(value) &&
+                    value >= 0;
+                return {
+                    disjoint: run.sample.gpu?.disjoint === true,
+                    profileRun: run.profileRun ?? index + 1,
+                    reason: run.sample.gpu?.reason ?? null,
+                    valid,
+                    value: valid ? value : null,
+                };
+            });
             const jsHeapMb = metric(runs, (run) => run.sample.jsHeapMb);
             const longTaskCount = metric(
                 runs,
@@ -4729,6 +5646,19 @@ function buildHighTargetMedians(scenarios) {
             const maxFrameMs = metric(runs, (run) => run.sample.maxFrameMs);
             const p95FrameMs = metric(runs, (run) => run.sample.p95FrameMs);
             const renderedFps = metric(runs, (run) => run.sample.renderedFps);
+            const rendererShaders = metric(
+                runs,
+                (run) => run.runtime?.rendererShaders,
+            );
+            const rendererShadersRuns = runs.map((run, index) => {
+                const value = run.runtime?.rendererShaders ?? null;
+                const valid = Number.isFinite(value) && value >= 0;
+                return {
+                    profileRun: run.profileRun ?? index + 1,
+                    valid,
+                    value: valid ? value : null,
+                };
+            });
             const trianglesPerFrame = metric(
                 runs,
                 (run) => run.sample.trianglesPerFrame,
@@ -4736,6 +5666,37 @@ function buildHighTargetMedians(scenarios) {
             const trianglesPerRenderedFrame = metric(
                 runs,
                 (run) => run.sample.trianglesPerRenderedFrame,
+            );
+            const weatherSurfaceAvoidedOverlaySubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+            );
+            const weatherSurfaceAvoidedOverlayTriangleCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+            );
+            const weatherSurfaceFallbackOverlaySubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+            );
+            const weatherSurfaceFallbackOverlayTriangleCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+            );
+            const weatherSurfaceIntegratedInstanceCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceIntegratedInstanceCount,
+            );
+            const weatherSurfaceIntegratedMaterialCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceIntegratedMaterialCount,
+            );
+            const weatherSurfacePluginVariantCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfacePluginVariantCount,
             );
             const medianSample = {
                 drawCallsPerFrame: drawCallsPerFrame.median,
@@ -4772,6 +5733,7 @@ function buildHighTargetMedians(scenarios) {
                     drawCallsPerRenderedFrame,
                     failedAcceptanceRuns,
                     gpuElapsedP95Ms,
+                    gpuElapsedP95MsRuns,
                     jsHeapMb,
                     longTaskCount,
                     maxFrameMs,
@@ -4785,8 +5747,19 @@ function buildHighTargetMedians(scenarios) {
                         (run) => run.performanceBudget?.pass === true,
                     ).length,
                     renderedFps,
+                    rendererShaders,
+                    rendererShadersRuns,
                     runCount: runs.length,
                     trianglesPerRenderedFrame,
+                    weatherSurfaceAvoidedOverlaySubmissionCount,
+                    weatherSurfaceAvoidedOverlayTriangleCount,
+                    weatherSurfaceFallbackOverlaySubmissionCount,
+                    weatherSurfaceFallbackOverlayTriangleCount,
+                    weatherSurfaceIntegratedInstanceCount,
+                    weatherSurfaceIntegratedMaterialCount,
+                    weatherSurfaceMode:
+                        runs[0]?.runtime?.weatherSurfaceMode ?? null,
+                    weatherSurfacePluginVariantCount,
                 },
             ];
         }),
@@ -4937,6 +5910,340 @@ function buildAdaptiveHighComparisons(highTargetMedians) {
     );
 }
 
+function buildWeatherSurfaceComparisons(highTargetMedians) {
+    const pairedSummaries = Object.entries(highTargetMedians).filter(
+        ([, summary]) =>
+            typeof summary.comparisonPair === 'string' &&
+            (summary.comparisonRole === 'legacy' ||
+                summary.comparisonRole === 'integrated'),
+    );
+    const grouped = Map.groupBy(
+        pairedSummaries,
+        ([, summary]) => summary.comparisonPair,
+    );
+    const metricComparison = (legacy, integrated, metricName) => {
+        const legacyValue = legacy[metricName]?.median ?? null;
+        const integratedValue = integrated[metricName]?.median ?? null;
+        return {
+            delta:
+                Number.isFinite(legacyValue) && Number.isFinite(integratedValue)
+                    ? round(integratedValue - legacyValue)
+                    : null,
+            integrated: integratedValue,
+            legacy: legacyValue,
+            percentDelta:
+                Number.isFinite(legacyValue) &&
+                legacyValue !== 0 &&
+                Number.isFinite(integratedValue)
+                    ? round(
+                          ((integratedValue - legacyValue) / legacyValue) * 100,
+                          1,
+                      )
+                    : null,
+        };
+    };
+    const passRate = (summary, passedField) =>
+        summary.runCount > 0
+            ? round((summary[passedField] / summary.runCount) * 100, 1)
+            : null;
+
+    return Object.fromEntries(
+        Array.from(grouped, ([pairName, entries]) => {
+            const legacyEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'legacy',
+            );
+            const integratedEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'integrated',
+            );
+            if (!legacyEntry || !integratedEntry) {
+                return null;
+            }
+            const [legacyName, legacy] = legacyEntry;
+            const [integratedName, integrated] = integratedEntry;
+            const fallbackOverlaySubmissions = metricComparison(
+                legacy,
+                integrated,
+                'weatherSurfaceFallbackOverlaySubmissionCount',
+            );
+            const fallbackOverlayTriangles = metricComparison(
+                legacy,
+                integrated,
+                'weatherSurfaceFallbackOverlayTriangleCount',
+            );
+            const drawCallsPerRenderedFrame = metricComparison(
+                legacy,
+                integrated,
+                'drawCallsPerRenderedFrame',
+            );
+            const gpuElapsedP95Ms = metricComparison(
+                legacy,
+                integrated,
+                'gpuElapsedP95Ms',
+            );
+            const rendererShaders = metricComparison(
+                legacy,
+                integrated,
+                'rendererShaders',
+            );
+            const trianglesPerRenderedFrame = metricComparison(
+                legacy,
+                integrated,
+                'trianglesPerRenderedFrame',
+            );
+            const lessThanLegacy = (name, comparison) => ({
+                actual: comparison.integrated,
+                comparison: 'less-than',
+                limit: comparison.legacy,
+                name,
+                pass:
+                    Number.isFinite(comparison.integrated) &&
+                    Number.isFinite(comparison.legacy) &&
+                    comparison.integrated < comparison.legacy,
+            });
+            const structuralChecks = [
+                lessThanLegacy(
+                    'weatherSurfaceFallbackSubmissionReduction',
+                    fallbackOverlaySubmissions,
+                ),
+                lessThanLegacy(
+                    'weatherSurfaceFallbackTriangleReduction',
+                    fallbackOverlayTriangles,
+                ),
+            ];
+            const structuralPass = structuralChecks.every(
+                (check) => check.pass,
+            );
+            const legacyGpuRuns = new Map(
+                (legacy.gpuElapsedP95MsRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const integratedGpuRuns = new Map(
+                (integrated.gpuElapsedP95MsRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const pairedGpuRuns = Array.from(
+                { length: highTargetWeatherSurfacePairedRunCount },
+                (_, index) => {
+                    const profileRun = index + 1;
+                    const legacyRun = legacyGpuRuns.get(profileRun);
+                    const integratedRun = integratedGpuRuns.get(profileRun);
+                    const valid =
+                        legacyRun?.valid === true &&
+                        integratedRun?.valid === true &&
+                        Number.isFinite(legacyRun.value) &&
+                        legacyRun.value > 0 &&
+                        Number.isFinite(integratedRun.value);
+                    return {
+                        integratedMs: integratedRun?.value ?? null,
+                        integratedReason: integratedRun?.reason ?? null,
+                        legacyMs: legacyRun?.value ?? null,
+                        legacyReason: legacyRun?.reason ?? null,
+                        profileRun,
+                        ratio: valid
+                            ? round(integratedRun.value / legacyRun.value, 4)
+                            : null,
+                        valid,
+                    };
+                },
+            );
+            const validGpuRatios = pairedGpuRuns
+                .filter((run) => run.valid)
+                .map((run) => run.integratedMs / run.legacyMs);
+            const gpuTimingStatus =
+                legacy.runCount === highTargetWeatherSurfacePairedRunCount &&
+                integrated.runCount ===
+                    highTargetWeatherSurfacePairedRunCount &&
+                validGpuRatios.length === highTargetWeatherSurfacePairedRunCount
+                    ? 'valid'
+                    : 'inconclusive';
+            const rawGpuMedianRatio =
+                gpuTimingStatus === 'valid' ? median(validGpuRatios) : null;
+            const rawGpuMaximumRunRatio =
+                gpuTimingStatus === 'valid'
+                    ? Math.max(...validGpuRatios)
+                    : null;
+            const gpuMedianRatio = round(rawGpuMedianRatio, 4);
+            const gpuMaximumRunRatio = round(rawGpuMaximumRunRatio, 4);
+            const legacyRendererProgramRuns = new Map(
+                (legacy.rendererShadersRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const integratedRendererProgramRuns = new Map(
+                (integrated.rendererShadersRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const pairedRendererProgramRuns = Array.from(
+                { length: highTargetWeatherSurfacePairedRunCount },
+                (_, index) => {
+                    const profileRun = index + 1;
+                    const legacyRun = legacyRendererProgramRuns.get(profileRun);
+                    const integratedRun =
+                        integratedRendererProgramRuns.get(profileRun);
+                    const valid =
+                        legacyRun?.valid === true &&
+                        integratedRun?.valid === true &&
+                        Number.isFinite(legacyRun.value) &&
+                        Number.isFinite(integratedRun.value);
+                    return {
+                        increase: valid
+                            ? integratedRun.value - legacyRun.value
+                            : null,
+                        integrated: integratedRun?.value ?? null,
+                        legacy: legacyRun?.value ?? null,
+                        profileRun,
+                        valid,
+                    };
+                },
+            );
+            const validRendererProgramIncreases = pairedRendererProgramRuns
+                .filter((run) => run.valid)
+                .map((run) => run.increase);
+            const rendererProgramPairsComplete =
+                legacy.runCount === highTargetWeatherSurfacePairedRunCount &&
+                integrated.runCount ===
+                    highTargetWeatherSurfacePairedRunCount &&
+                validRendererProgramIncreases.length ===
+                    highTargetWeatherSurfacePairedRunCount;
+            const rendererProgramMaximumIncrease = rendererProgramPairsComplete
+                ? Math.max(...validRendererProgramIncreases)
+                : null;
+            const relativePerformanceChecks = [
+                {
+                    actual: {
+                        integrated: integrated.runCount,
+                        legacy: legacy.runCount,
+                    },
+                    comparison: 'paired-run-count',
+                    limit: highTargetWeatherSurfacePairedRunCount,
+                    name: 'weatherSurfacePairedRunCount',
+                    pass:
+                        legacy.runCount ===
+                            highTargetWeatherSurfacePairedRunCount &&
+                        integrated.runCount ===
+                            highTargetWeatherSurfacePairedRunCount,
+                },
+                lessThanLegacy(
+                    'weatherSurfaceDrawCallReduction',
+                    drawCallsPerRenderedFrame,
+                ),
+                lessThanLegacy(
+                    'weatherSurfaceTriangleReduction',
+                    trianglesPerRenderedFrame,
+                ),
+                {
+                    actual: validGpuRatios.length,
+                    comparison: 'equal',
+                    limit: highTargetWeatherSurfacePairedRunCount,
+                    name: 'weatherSurfaceGpuPairCompleteness',
+                    pass: gpuTimingStatus === 'valid',
+                },
+                {
+                    actual: gpuMedianRatio,
+                    comparison: 'maximum',
+                    limit: highTargetWeatherSurfaceMaximumGpuMedianRatio,
+                    name: 'weatherSurfaceGpuMedianRatio',
+                    pass:
+                        gpuTimingStatus === 'valid' &&
+                        rawGpuMedianRatio <=
+                            highTargetWeatherSurfaceMaximumGpuMedianRatio,
+                },
+                {
+                    actual: gpuMaximumRunRatio,
+                    comparison: 'maximum',
+                    limit: highTargetWeatherSurfaceMaximumGpuRunRatio,
+                    name: 'weatherSurfaceGpuMaximumRunRatio',
+                    pass:
+                        gpuTimingStatus === 'valid' &&
+                        rawGpuMaximumRunRatio <=
+                            highTargetWeatherSurfaceMaximumGpuRunRatio,
+                },
+                {
+                    actual: rendererProgramMaximumIncrease,
+                    comparison: 'maximum-increase',
+                    limit: highTargetWeatherSurfaceMaximumProgramIncrease,
+                    name: 'weatherSurfaceRendererProgramBound',
+                    pass:
+                        rendererProgramPairsComplete &&
+                        rendererProgramMaximumIncrease <=
+                            highTargetWeatherSurfaceMaximumProgramIncrease,
+                },
+            ];
+            const relativePerformancePass = relativePerformanceChecks.every(
+                (check) => check.pass,
+            );
+            const pairedPass = structuralPass && relativePerformancePass;
+
+            return [
+                pairName,
+                {
+                    acceptancePassRate: {
+                        integrated: passRate(integrated, 'acceptedRunCount'),
+                        legacy: passRate(legacy, 'acceptedRunCount'),
+                    },
+                    aggregatePass: {
+                        integrated: integrated.pass && pairedPass,
+                        legacy: legacy.pass,
+                    },
+                    avoidedOverlaySubmissions:
+                        integrated.weatherSurfaceAvoidedOverlaySubmissionCount,
+                    avoidedOverlayTriangles:
+                        integrated.weatherSurfaceAvoidedOverlayTriangleCount,
+                    drawCallsPerRenderedFrame,
+                    fallbackOverlaySubmissions,
+                    fallbackOverlayTriangles,
+                    gpuElapsedP95Ms,
+                    gpuMaximumRunRatio,
+                    gpuMedianRatio,
+                    gpuTimingStatus,
+                    integratedInstanceCount:
+                        integrated.weatherSurfaceIntegratedInstanceCount,
+                    integratedMaterialCount:
+                        integrated.weatherSurfaceIntegratedMaterialCount,
+                    integratedName,
+                    integratedPluginVariantCount:
+                        integrated.weatherSurfacePluginVariantCount,
+                    legacyName,
+                    p95FrameMs: metricComparison(
+                        legacy,
+                        integrated,
+                        'p95FrameMs',
+                    ),
+                    pairedPass,
+                    performancePassRate: {
+                        integrated: passRate(
+                            integrated,
+                            'performancePassedRunCount',
+                        ),
+                        legacy: passRate(legacy, 'performancePassedRunCount'),
+                    },
+                    pairedGpuRuns,
+                    pairedRendererProgramRuns,
+                    renderedFps: metricComparison(
+                        legacy,
+                        integrated,
+                        'renderedFps',
+                    ),
+                    rendererShaders,
+                    rendererProgramMaximumIncrease,
+                    relativePerformanceChecks,
+                    relativePerformancePass,
+                    structuralChecks,
+                    structuralPass,
+                    trianglesPerRenderedFrame,
+                },
+            ];
+        }).filter(Boolean),
+    );
+}
+
 function buildProfileSummary(scenarios, highTargetMedians) {
     const nonHighTargetScenarios = scenarios.filter(
         (scenario) => scenario.requested?.gardenProfile !== 'high-target',
@@ -4947,6 +6254,11 @@ function buildProfileSummary(scenarios, highTargetMedians) {
     )
         .filter((comparison) => !comparison.relativePerformancePass)
         .map((comparison) => comparison.adaptiveName);
+    const weatherSurfaceFailureNames = Object.values(
+        buildWeatherSurfaceComparisons(highTargetMedians),
+    )
+        .filter((comparison) => !comparison.pairedPass)
+        .map((comparison) => comparison.integratedName);
     const failedScenarioNames = [
         ...new Set([
             ...nonHighTargetScenarios
@@ -4956,6 +6268,7 @@ function buildProfileSummary(scenarios, highTargetMedians) {
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
             ...comparativeFailureNames,
+            ...weatherSurfaceFailureNames,
         ]),
     ];
     const totalScenarios =
@@ -5693,7 +7006,7 @@ function buildMarkdown(report) {
                 ? ''
                 : `; operation objects ${operationVisualObjectCount}/${highTargetOperationVisualLegacyObjectCount} legacy`;
         const detailCounts = scenario.runtime
-            ? `field visuals ${scenario.runtime.raisedBedFieldVisualInstanceCount ?? 0} instances/${scenario.runtime.raisedBedFieldVisualObjectCount ?? 0} objects/${scenario.runtime.raisedBedFieldVisualBatchCount ?? 0} batches/${scenario.runtime.raisedBedFieldVisualChunkCount ?? 0} chunks, uploads ${scenario.runtime.raisedBedFieldVisualMatrixUploadCount ?? 0}/${scenario.runtime.raisedBedFieldVisualUploadedInstanceCount ?? 0}; mulch ${scenario.runtime.raisedBedMulchInstanceCount ?? scenario.runtime.raisedBedMulchOverlayCount ?? 0} instances/${scenario.runtime.raisedBedMulchObjectCount ?? 0} objects/${scenario.runtime.raisedBedMulchBatchCount ?? 0} batches/${scenario.runtime.raisedBedMulchGroupCount ?? 0} groups${operationVisualObjectDetail}; snow/decor ${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0}, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
+            ? `field visuals ${scenario.runtime.raisedBedFieldVisualInstanceCount ?? 0} instances/${scenario.runtime.raisedBedFieldVisualObjectCount ?? 0} objects/${scenario.runtime.raisedBedFieldVisualBatchCount ?? 0} batches/${scenario.runtime.raisedBedFieldVisualChunkCount ?? 0} chunks, uploads ${scenario.runtime.raisedBedFieldVisualMatrixUploadCount ?? 0}/${scenario.runtime.raisedBedFieldVisualUploadedInstanceCount ?? 0}; mulch ${scenario.runtime.raisedBedMulchInstanceCount ?? scenario.runtime.raisedBedMulchOverlayCount ?? 0} instances/${scenario.runtime.raisedBedMulchObjectCount ?? 0} objects/${scenario.runtime.raisedBedMulchBatchCount ?? 0} batches/${scenario.runtime.raisedBedMulchGroupCount ?? 0} groups${operationVisualObjectDetail}; snow/decor ${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0}, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}; weather surface ${scenario.runtime.weatherSurfaceMode ?? 'n/a'}, integrated ${scenario.runtime.weatherSurfaceIntegratedInstanceCount ?? 'n/a'} instances/${scenario.runtime.weatherSurfaceIntegratedMaterialCount ?? 'n/a'} materials/${scenario.runtime.weatherSurfacePluginVariantCount ?? 'n/a'} plugin variants, avoided ${scenario.runtime.weatherSurfaceAvoidedOverlaySubmissionCount ?? 'n/a'} submissions/${scenario.runtime.weatherSurfaceAvoidedOverlayTriangleCount ?? 'n/a'} overlay-triangle proxy, fallback ${scenario.runtime.weatherSurfaceFallbackOverlaySubmissionCount ?? 'n/a'} submissions/${scenario.runtime.weatherSurfaceFallbackOverlayTriangleCount ?? 'n/a'} overlay-triangle proxy`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
@@ -5736,6 +7049,55 @@ function buildMarkdown(report) {
         for (const [pairName, comparison] of adaptiveHighComparisons) {
             lines.push(
                 `| ${pairName} | ${comparison.fixedName} / ${comparison.adaptiveName} | ${comparison.acceptancePassRate.fixed ?? 'n/a'}% → ${comparison.acceptancePassRate.adaptive ?? 'n/a'}% | ${comparison.performancePassRate.fixed ?? 'n/a'}% → ${comparison.performancePassRate.adaptive ?? 'n/a'}% | ${formatComparison(comparison.p95FrameMs, ' ms')} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${formatComparison(comparison.renderedFps)} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.fixed ? 'pass' : 'fail'} → ${comparison.aggregatePass.adaptive ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const weatherSurfaceComparisons = Object.entries(
+        report.weatherSurfaceComparisons ??
+            buildWeatherSurfaceComparisons(report.highTargetMedians ?? {}),
+    );
+    if (weatherSurfaceComparisons.length > 0) {
+        lines.push(
+            '',
+            '## Integrated weather-surface paired comparison',
+            '',
+            '| Pair | Legacy / Integrated | Acceptance pass rate | Performance pass rate | Draw/render legacy → integrated | Triangles/render legacy → integrated | GPU p95 legacy → integrated | Paired GPU ratio median/max | Renderer programs legacy → integrated | Fallback submissions legacy → integrated | Fallback overlay-triangle proxy legacy → integrated | Integrated instances/materials/plugin variants | Avoided submissions/overlay-triangle proxy | Structural gate | Relative performance gate | Aggregate |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |',
+        );
+        const formatComparison = (comparison, suffix = '') =>
+            `${comparison.legacy ?? 'n/a'} → ${comparison.integrated ?? 'n/a'}${suffix} (${comparison.percentDelta ?? 'n/a'}%)`;
+        for (const [pairName, comparison] of weatherSurfaceComparisons) {
+            lines.push(
+                `| ${pairName} | ${comparison.legacyName} / ${comparison.integratedName} | ${comparison.acceptancePassRate.legacy ?? 'n/a'}% → ${comparison.acceptancePassRate.integrated ?? 'n/a'}% | ${comparison.performancePassRate.legacy ?? 'n/a'}% → ${comparison.performancePassRate.integrated ?? 'n/a'}% | ${formatComparison(comparison.drawCallsPerRenderedFrame)} | ${formatComparison(comparison.trianglesPerRenderedFrame)} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${comparison.gpuTimingStatus === 'valid' ? `${comparison.gpuMedianRatio}/${comparison.gpuMaximumRunRatio}` : 'inconclusive'} | ${formatComparison(comparison.rendererShaders)} | ${formatComparison(comparison.fallbackOverlaySubmissions)} | ${formatComparison(comparison.fallbackOverlayTriangles)} | ${comparison.integratedInstanceCount.median ?? 'n/a'}/${comparison.integratedMaterialCount.median ?? 'n/a'}/${comparison.integratedPluginVariantCount.median ?? 'n/a'} | ${comparison.avoidedOverlaySubmissions.median ?? 'n/a'}/${comparison.avoidedOverlayTriangles.median ?? 'n/a'} | ${comparison.structuralPass ? 'pass' : 'fail'} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.legacy ? 'pass' : 'fail'} → ${comparison.aggregatePass.integrated ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const weatherSurfaceTransitions = report.scenarios.filter(
+        (scenario) => scenario.sample.weatherSurfaceTransitionProfile,
+    );
+    if (weatherSurfaceTransitions.length > 0) {
+        lines.push(
+            '',
+            '## Weather-surface threshold transition',
+            '',
+            '| Scenario | Tracked | Ready initial → entered → dwell → exited | Transition count initial → entered → dwell → exited | Integrated instances entered → exited | Avoided submissions/overlay-triangle proxy entered | Fallback submissions/overlay-triangle proxy entered → exited | Result |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of weatherSurfaceTransitions) {
+            const transition = scenario.sample.weatherSurfaceTransitionProfile;
+            const formatPhaseValues = (field) =>
+                [
+                    transition.initial?.[field],
+                    transition.entered?.[field],
+                    transition.dwell?.[field],
+                    transition.exited?.[field],
+                ]
+                    .map((value) => value ?? 'n/a')
+                    .join(' → ');
+            lines.push(
+                `| ${scenario.name} | ${transition.initial?.trackedCount ?? 'n/a'} | ${formatPhaseValues('readyCount')} | ${formatPhaseValues('transitionCount')} | ${transition.entered?.integratedInstanceCount ?? 'n/a'} → ${transition.exited?.integratedInstanceCount ?? 'n/a'} | ${transition.entered?.avoidedOverlaySubmissionCount ?? 'n/a'}/${transition.entered?.avoidedOverlayTriangleCount ?? 'n/a'} | ${transition.entered?.fallbackOverlaySubmissionCount ?? 'n/a'}/${transition.entered?.fallbackOverlayTriangleCount ?? 'n/a'} → ${transition.exited?.fallbackOverlaySubmissionCount ?? 'n/a'}/${transition.exited?.fallbackOverlayTriangleCount ?? 'n/a'} | ${transition.error === null ? 'pass' : `fail: ${transition.error}`} |`,
             );
         }
     }
@@ -5787,6 +7149,23 @@ function buildMarkdown(report) {
                 .map(
                     (check) =>
                         `- ${pairName} relative: ${check.name} ${check.actual} missed ${check.limit}`,
+                ),
+        ),
+        ...weatherSurfaceComparisons.flatMap(([pairName, comparison]) =>
+            [
+                ...comparison.structuralChecks.map((check) => ({
+                    ...check,
+                    group: 'structural',
+                })),
+                ...comparison.relativePerformanceChecks.map((check) => ({
+                    ...check,
+                    group: 'relative',
+                })),
+            ]
+                .filter((check) => !check.pass)
+                .map(
+                    (check) =>
+                        `- ${pairName} ${check.group}: ${check.name} ${check.actual} missed ${check.limit}`,
                 ),
         ),
     ];
@@ -6099,36 +7478,34 @@ async function main() {
 
     try {
         const scenarios = [];
-        for (const scenario of profileScenarios) {
-            const repeat = scenario.plantCloseup
-                ? (options.closeupRepeat ?? scenario.plantCloseup.repeat)
-                : (scenario.repeat ?? 1);
-            for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
-                const runScenario =
-                    repeat === 1
-                        ? scenario
-                        : {
-                              ...scenario,
-                              name: `${scenario.name}-run-${runIndex}`,
-                          };
-                console.log(
-                    `Profiling ${scenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
-                );
-                const result = await measureScenario(
-                    browser,
-                    options.baseUrl,
-                    runScenario,
-                    options,
-                );
-                result.baseName = scenario.name;
-                result.profileRun = runIndex;
-                scenarios.push(result);
-            }
+        const runQueue = buildScenarioRunQueue(profileScenarios, {
+            closeupRepeat: options.closeupRepeat,
+        });
+        for (const {
+            baseScenario,
+            repeat,
+            runIndex,
+            runScenario,
+        } of runQueue) {
+            console.log(
+                `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
+            );
+            const result = await measureScenario(
+                browser,
+                options.baseUrl,
+                runScenario,
+                options,
+            );
+            result.baseName = baseScenario.name;
+            result.profileRun = runIndex;
+            scenarios.push(result);
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
         const adaptiveHighComparisons =
             buildAdaptiveHighComparisons(highTargetMedians);
+        const weatherSurfaceComparisons =
+            buildWeatherSurfaceComparisons(highTargetMedians);
         const profileSummary = buildProfileSummary(
             scenarios,
             highTargetMedians,
@@ -6163,6 +7540,7 @@ async function main() {
                 durationMs: Date.now() - startedAt,
                 ...profileSummary,
             },
+            weatherSurfaceComparisons,
         };
 
         await writeReports(report, options.outDir);
@@ -6190,6 +7568,8 @@ export {
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildScenarioRunQueue,
+    buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
     evaluateHighTargetAcceptance,
