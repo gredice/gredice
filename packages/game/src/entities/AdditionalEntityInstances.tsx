@@ -394,6 +394,7 @@ function BlockGroundInstances({
             <EntityInstancesGeometry
                 instanceKey="Block_Ground_1"
                 instances={oddVariantInstances}
+                staticOpaqueCacheGroup="base-terrain"
                 geometry={nodes.Block_Ground_1.geometry}
                 material={groundMaterial11}
                 snow={{
@@ -407,6 +408,7 @@ function BlockGroundInstances({
             <EntityInstancesGeometry
                 instanceKey="Block_Ground_2"
                 instances={evenVariantInstances}
+                staticOpaqueCacheGroup="base-terrain"
                 geometry={nodes.Block_Ground_2.geometry}
                 material={groundMaterial21}
                 snow={{
@@ -899,6 +901,11 @@ function RaisedBedInstances({
                             instances={shapeInstances}
                             geometry={nodes[shape1].geometry}
                             material={shape1Material}
+                            staticOpaqueCacheGroup={
+                                shape1 === 'Raised_Bed_O_1'
+                                    ? 'static-props'
+                                    : undefined
+                            }
                             renderRainWetOverlay
                             snow={{
                                 maxThickness: 0.16,
@@ -913,6 +920,11 @@ function RaisedBedInstances({
                             instances={shapeInstances}
                             geometry={nodes[shape2].geometry}
                             material={shape2Material}
+                            staticOpaqueCacheGroup={
+                                shape2 === 'Raised_Bed_O_2'
+                                    ? undefined
+                                    : 'static-props'
+                            }
                             renderRainWetOverlay
                             snow={{
                                 maxThickness: 0.16,
@@ -1280,6 +1292,7 @@ function FenceInstances({
                         .map(({ instance }) => instance)}
                     geometry={nodes[key].geometry}
                     material={materials[planksMaterialName]}
+                    staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={{
                         maxThickness: 0.09,
@@ -1340,6 +1353,7 @@ function GardenBoxInstances({
                 instances={bodyInstances}
                 geometry={nodes.GardenBox_Body_Planks.geometry}
                 material={materials[planksMaterialName]}
+                staticOpaqueCacheGroup="static-props"
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
                 {...commonSnowProps}
@@ -2021,6 +2035,28 @@ function CatPillowInstances({
     const seam = transformNode(nodes.CatPillow_Seam, 0.62);
     const names = ['CatPillow', 'Cat_Pillow'];
     const instances = useEntityBlockInstances({ names, stacks });
+    const cushionMaterial = useMemo(
+        () => (
+            <meshStandardMaterial
+                color="#b80718"
+                metalness={0}
+                roughness={0.94}
+                side={DoubleSide}
+            />
+        ),
+        [],
+    );
+    const seamMaterial = useMemo(
+        () => (
+            <meshStandardMaterial
+                color="#6b0610"
+                metalness={0}
+                roughness={0.92}
+                side={DoubleSide}
+            />
+        ),
+        [],
+    );
 
     return (
         <>
@@ -2028,14 +2064,8 @@ function CatPillowInstances({
                 instanceKey="CatPillow_Cushion"
                 instances={instances}
                 geometry={nodes.CatPillow_Cushion.geometry}
-                materialNode={
-                    <meshStandardMaterial
-                        color="#b80718"
-                        metalness={0}
-                        roughness={0.94}
-                        side={DoubleSide}
-                    />
-                }
+                materialNode={cushionMaterial}
+                staticOpaqueCacheGroup="static-props"
                 renderRainWetOverlay
                 snow={{
                     maxThickness: 0.045,
@@ -2050,14 +2080,8 @@ function CatPillowInstances({
                 instanceKey="CatPillow_Seam"
                 instances={instances}
                 geometry={nodes.CatPillow_Seam.geometry}
-                materialNode={
-                    <meshStandardMaterial
-                        color="#6b0610"
-                        metalness={0}
-                        roughness={0.92}
-                        side={DoubleSide}
-                    />
-                }
+                materialNode={seamMaterial}
+                staticOpaqueCacheGroup="static-props"
                 renderRainWetOverlay
                 snow={{
                     maxThickness: 0.025,
@@ -2236,6 +2260,7 @@ function WaterWellInstances({
                     name="WaterWell"
                     geometry={nodes[nodeName].geometry}
                     material={nodes[nodeName].material}
+                    staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={snowPresets.stone}
                     {...transformNode(nodes[nodeName], groupScale)}
@@ -2249,6 +2274,7 @@ function WaterWellInstances({
                     name="WaterWell"
                     geometry={nodes[nodeName].geometry}
                     material={nodes[nodeName].material}
+                    staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={{
                         maxThickness: 0.08,
@@ -2265,6 +2291,7 @@ function WaterWellInstances({
                 name="WaterWell"
                 geometry={nodes.WaterWell_Rope.geometry}
                 material={nodes.WaterWell_Rope.material}
+                staticOpaqueCacheGroup="static-props"
                 renderRainWetOverlay
                 {...transformNode(nodes.WaterWell_Rope, groupScale)}
                 {...commonSnowProps}
@@ -2301,21 +2328,27 @@ function BirdHouseInstances({
         name: 'BirdHouse',
         stacks,
     })?.map((instance) => mapInstanceRotation(instance, instance.rotation + 2));
-    const woodMaterial = (
-        <meshStandardMaterial
-            color="#956247"
-            metalness={0}
-            roughness={0.9}
-            side={DoubleSide}
-        />
+    const woodMaterial = useMemo(
+        () => (
+            <meshStandardMaterial
+                color="#956247"
+                metalness={0}
+                roughness={0.9}
+                side={DoubleSide}
+            />
+        ),
+        [],
     );
-    const roofMaterial = (
-        <meshStandardMaterial
-            color="#2f3437"
-            metalness={0}
-            roughness={0.62}
-            side={DoubleSide}
-        />
+    const roofMaterial = useMemo(
+        () => (
+            <meshStandardMaterial
+                color="#2f3437"
+                metalness={0}
+                roughness={0.62}
+                side={DoubleSide}
+            />
+        ),
+        [],
     );
 
     return (
@@ -2327,6 +2360,7 @@ function BirdHouseInstances({
                     instances={instances}
                     geometry={nodes[nodeName].geometry}
                     materialNode={woodMaterial}
+                    staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={{
                         maxThickness:
@@ -2354,6 +2388,7 @@ function BirdHouseInstances({
                     instances={instances}
                     geometry={nodes[nodeName].geometry}
                     materialNode={roofMaterial}
+                    staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={{
                         maxThickness:
@@ -2404,6 +2439,7 @@ function SimpleAdditionalInstances({
                 assetName="BlockGroundAngle"
                 stacks={stacks}
                 name="Block_Ground_Angle"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dirt"
                 yOffset={1}
                 geometry={(gltf) => gltf.nodes.Block_Ground_Angle_1.geometry}
@@ -2420,6 +2456,7 @@ function SimpleAdditionalInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Ground_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dirt"
                 yOffset={1}
                 geometry={(gltf) => gltf.nodes.Block_Ground_Corner_1.geometry}
@@ -2436,6 +2473,7 @@ function SimpleAdditionalInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Ground_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dirt"
                 yOffset={1}
                 geometry={(gltf) =>
@@ -2456,6 +2494,7 @@ function SimpleAdditionalInstances({
                 assetName="Composter"
                 stacks={stacks}
                 name="Composter"
+                staticOpaqueCacheGroup="static-props"
                 geometry={(gltf) => gltf.nodes.Composter_1.geometry}
                 material={(gltf) => gltf.materials[dirtMaterialName]}
                 snow={{
@@ -2469,6 +2508,7 @@ function SimpleAdditionalInstances({
                 assetName="Composter"
                 stacks={stacks}
                 name="Composter"
+                staticOpaqueCacheGroup="static-props"
                 geometry={(gltf) => gltf.nodes.Composter_2.geometry}
                 material={(gltf) => gltf.materials[planksMaterialName]}
                 snow={{

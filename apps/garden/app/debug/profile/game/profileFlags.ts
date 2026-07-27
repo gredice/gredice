@@ -1,5 +1,6 @@
 import type { GameSceneProps } from '@gredice/game';
 
+export type GameProfileStaticSceneCacheMode = 'cache' | 'legacy';
 export type GameProfileWeatherSurfaceMode = 'integrated' | 'legacy';
 
 export const highTargetOperationVisualHighlightTarget = {
@@ -22,6 +23,18 @@ export function resolveGameProfileOperationVisuals(value: string | undefined) {
     return value === '1';
 }
 
+export function resolveGameProfileStaticSceneCache(
+    value: string | undefined,
+): GameProfileStaticSceneCacheMode {
+    return value === 'legacy' ? 'legacy' : 'cache';
+}
+
+export function resolveGameProfileStaticSceneCacheOcclusionFixture(
+    value: string | undefined,
+) {
+    return value === '1';
+}
+
 export function resolveGameProfileWeatherSurface(
     value: string | undefined,
 ): GameProfileWeatherSurfaceMode {
@@ -32,8 +45,11 @@ export function resolveGameProfileFlags(
     blockGeometryMerging: string | undefined,
     adaptiveHigh: string | undefined,
     weatherSurface: string | undefined,
+    staticSceneCache: string | undefined,
 ) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
+    const staticSceneCacheMode =
+        resolveGameProfileStaticSceneCache(staticSceneCache);
 
     return {
         enableAdaptiveHighQualityFlag:
@@ -44,5 +60,6 @@ export function resolveGameProfileFlags(
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
         enableRainWetOverlayFlag: true,
+        enableStaticOpaqueSceneCacheFlag: staticSceneCacheMode === 'cache',
     } satisfies NonNullable<GameSceneProps['flags']>;
 }

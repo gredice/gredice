@@ -17,6 +17,7 @@
         "profile:game:dense-mobile": "GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game",
         "profile:game:high-target": "GAME_PROFILE_SCENARIO_SET=high-target pnpm run profile:game",
         "profile:game:high-target-operation-visuals": "GAME_PROFILE_SCENARIO_SET=high-target-operation-visuals pnpm run profile:game",
+        "profile:game:high-target-static-scene-cache": "GAME_PROFILE_SCENARIO_SET=high-target-static-scene-cache GAME_PROFILE_FAIL_ON_BUDGET=1 GAME_PROFILE_SCREENSHOTS=1 pnpm run profile:game",
         "profile:game:existing": "node scripts/profile-game-scene.mjs",
         "profile:game:start": "GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
         "profile:game:ci": "GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game",

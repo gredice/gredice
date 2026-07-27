@@ -9,6 +9,8 @@ import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticSceneCache,
+    resolveGameProfileStaticSceneCacheOcclusionFixture,
     resolveGameProfileWeatherSurface,
 } from './profileFlags';
 import {
@@ -48,6 +50,15 @@ function resolvePositiveInteger(value: string | undefined) {
 
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolveNonNegativeNumber(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function resolveMode(value: string | undefined): GameProfileMode {
@@ -273,6 +284,9 @@ export default async function GameProfilePage({
     const closeupRaisedBedId = resolvePositiveInteger(
         firstValue(params.closeupRaisedBedId),
     );
+    const fixedTimeSeconds = resolveNonNegativeNumber(
+        firstValue(params.fixedTimeSeconds),
+    );
     const outlineProfile = firstValue(params.outline) === '1';
     const placementProfile = firstValue(params.placement) === '1';
     const operationVisuals =
@@ -282,7 +296,16 @@ export default async function GameProfilePage({
         firstValue(params.blockGeometryMerging),
         firstValue(params.adaptiveHigh),
         firstValue(params.weatherSurface),
+        firstValue(params.staticSceneCache),
     );
+    const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
+        firstValue(params.staticSceneCache),
+    );
+    const staticSceneCacheOcclusionFixture =
+        staticSceneCacheMode === 'cache' &&
+        resolveGameProfileStaticSceneCacheOcclusionFixture(
+            firstValue(params.staticSceneCacheOcclusionFixture),
+        );
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(
         firstValue(params.weatherSurface),
     );
@@ -300,6 +323,7 @@ export default async function GameProfilePage({
             data-game-profile-mode={mode}
             data-game-profile-controls={enableControls ? '1' : '0'}
             data-game-profile-details={renderDetails ? '1' : '0'}
+            data-game-profile-fixed-time-seconds={fixedTimeSeconds ?? undefined}
             data-game-profile-debug-hud={showDebugHud ? '1' : '0'}
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
@@ -314,6 +338,10 @@ export default async function GameProfilePage({
             data-game-profile-outline={outlineProfile ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
+            data-game-profile-static-scene-cache={staticSceneCacheMode}
+            data-game-profile-static-scene-cache-occlusion-fixture={
+                staticSceneCacheOcclusionFixture ? '1' : '0'
+            }
             data-game-profile-weather-surface={weatherSurfaceMode}
             data-game-profile-operation-visual-highlight-raised-bed-id={
                 operationVisuals
@@ -336,6 +364,7 @@ export default async function GameProfilePage({
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}
+                fixedTimeSeconds={fixedTimeSeconds ?? undefined}
                 freezeTime={freezeTime}
                 debugHud={showDebugHud}
                 hideHud={!showHud}
@@ -346,6 +375,9 @@ export default async function GameProfilePage({
                     outlineProfile ||
                     placementProfile ||
                     operationVisuals
+                }
+                enableStaticOpaqueSceneCacheOcclusionFixture={
+                    staticSceneCacheOcclusionFixture
                 }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}

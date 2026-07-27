@@ -21,6 +21,15 @@ export type WeatherSurfaceUniformStats = {
     snowIntegrationTransitionCount: number;
 };
 
+export type WeatherSurfaceUniformActivitySnapshot = {
+    rainActive: boolean;
+    rainDrying: boolean;
+    rainSettling: boolean;
+    snowActive: boolean;
+    snowMelting: boolean;
+    snowSettling: boolean;
+};
+
 export type SnowSurfaceUniformEntry = SnowSurfaceUniformOptions & {
     consumerCount: number;
     key: string;
@@ -62,6 +71,16 @@ type RainActivityTracker = BooleanTransitionTracker<RainSurfaceUniformEntry> & {
 const snowDampingSpeed = 6;
 const integratedSnowMinimumFragmentCoverage = 0.1;
 const integratedSnowActivationSafetyMargin = 0.02;
+const weatherSurfaceUniformVisualThreshold = 0.001;
+const inactiveWeatherSurfaceUniformActivitySnapshot: WeatherSurfaceUniformActivitySnapshot =
+    {
+        rainActive: false,
+        rainDrying: false,
+        rainSettling: false,
+        snowActive: false,
+        snowMelting: false,
+        snowSettling: false,
+    };
 
 function clampUnit(value: number) {
     return Math.min(1, Math.max(0, value));
@@ -143,6 +162,9 @@ export function resolveRainPuddleStrength(rainAmount: number) {
 export class WeatherSurfaceUniformRegistry {
     readonly rainPuddleStrengthUniform: IUniform<number> = { value: 0 };
 
+    private readonly activityListeners = new Set<() => void>();
+    private activitySnapshot = inactiveWeatherSurfaceUniformActivitySnapshot;
+    private rainAmount = 0;
     private readonly rainActivityTrackers = new Map<
         string,
         RainActivityTracker
@@ -153,6 +175,7 @@ export class WeatherSurfaceUniformRegistry {
         SnowIntegrationTracker
     >();
     private readonly snowEntries = new Map<string, SnowSurfaceUniformEntry>();
+    private snowCoverage = 0;
     private snowIntegrationTransitionCount = 0;
 
     constructor(
@@ -203,6 +226,7 @@ export class WeatherSurfaceUniformRegistry {
             this.refreshTransitionTrackers(entry);
         }
         entry.consumerCount += 1;
+        this.refreshActivitySnapshot();
         this.publishStats();
 
         let retained = true;
@@ -213,11 +237,14 @@ export class WeatherSurfaceUniformRegistry {
 
             retained = false;
             entry.consumerCount = Math.max(0, entry.consumerCount - 1);
+            this.refreshActivitySnapshot();
             this.publishStats();
         };
     }
 
     advance(values: WeatherSurfaceValues, delta: number) {
+        this.rainAmount = values.rainAmount;
+        this.snowCoverage = values.snowCoverage;
         this.rainPuddleStrengthUniform.value = resolveRainPuddleStrength(
             values.rainAmount,
         );
@@ -252,7 +279,18 @@ export class WeatherSurfaceUniformRegistry {
             );
             this.refreshRainActivityTrackers(entry);
         }
+
+        this.refreshActivitySnapshot();
     }
+
+    getActivitySnapshot = () => this.activitySnapshot;
+
+    subscribeActivity = (listener: () => void) => {
+        this.activityListeners.add(listener);
+        return () => {
+            this.activityListeners.delete(listener);
+        };
+    };
 
     getSnowIntegrationReady(
         entry: SnowSurfaceUniformEntry,
@@ -476,6 +514,71 @@ export class WeatherSurfaceUniformRegistry {
             for (const listener of tracker.listeners) {
                 listener();
             }
+        }
+    }
+
+    private refreshActivitySnapshot() {
+        let rainActive = false;
+        let rainDrying = false;
+        let rainSettling = false;
+        let snowActive = false;
+        let snowMelting = false;
+        let snowSettling = false;
+
+        for (const entry of this.rainEntries.values()) {
+            if (entry.consumerCount === 0) {
+                continue;
+            }
+
+            const target = resolveRainSurfaceTarget(this.rainAmount, entry);
+            const active =
+                entry.uniform.value > weatherSurfaceUniformVisualThreshold;
+            rainActive ||= active;
+            rainDrying ||=
+                active && target <= weatherSurfaceUniformVisualThreshold;
+            rainSettling ||=
+                Math.abs(entry.uniform.value - target) >
+                weatherSurfaceUniformVisualThreshold;
+        }
+
+        for (const entry of this.snowEntries.values()) {
+            if (entry.consumerCount === 0) {
+                continue;
+            }
+
+            const target = resolveSnowSurfaceTarget(this.snowCoverage, entry);
+            const active =
+                entry.uniform.value > weatherSurfaceUniformVisualThreshold;
+            snowActive ||= active;
+            snowMelting ||=
+                active && target <= weatherSurfaceUniformVisualThreshold;
+            snowSettling ||=
+                Math.abs(entry.uniform.value - target) >
+                weatherSurfaceUniformVisualThreshold;
+        }
+
+        const previous = this.activitySnapshot;
+        if (
+            previous.rainActive === rainActive &&
+            previous.rainDrying === rainDrying &&
+            previous.rainSettling === rainSettling &&
+            previous.snowActive === snowActive &&
+            previous.snowMelting === snowMelting &&
+            previous.snowSettling === snowSettling
+        ) {
+            return;
+        }
+
+        this.activitySnapshot = {
+            rainActive,
+            rainDrying,
+            rainSettling,
+            snowActive,
+            snowMelting,
+            snowSettling,
+        };
+        for (const listener of this.activityListeners) {
+            listener();
         }
     }
 }

@@ -11,6 +11,7 @@ import {
     enableSuncokretChatFlag,
     enableSuncokretDebugFlag,
     rainWetOverlayFlag,
+    staticOpaqueSceneCacheFlag,
 } from './flags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
@@ -35,6 +36,7 @@ export default async function Home() {
         enableBlockGeometryMergingFlag: await blockGeometryMergingFlag(),
         enableDebugHudFlag: await enableDebugHudFlag(),
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
+        enableStaticOpaqueSceneCacheFlag: await staticOpaqueSceneCacheFlag(),
         enableSuncokretChatFlag: await enableSuncokretChatFlag(),
         enableSuncokretDebugFlag: await enableSuncokretDebugFlag(),
     };
