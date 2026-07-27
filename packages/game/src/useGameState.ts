@@ -464,6 +464,8 @@ export type GameState = {
     clearEnvironmentOverrides: () => void;
 
     // Environment derived state
+    rainSurfaceIntensity: number;
+    setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
     setSnowCoverage: (snowCoverage: number) => void;
     waterColors: WaterColors;
@@ -1092,6 +1094,9 @@ export function createGameState({
                 sunsetTime: sunset,
             });
         },
+        rainSurfaceIntensity: 0,
+        setRainSurfaceIntensity: (rainSurfaceIntensity) =>
+            set({ rainSurfaceIntensity }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,

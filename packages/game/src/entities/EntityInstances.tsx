@@ -325,6 +325,7 @@ export function EntityInstances({
                 name="Block_Grass"
                 groundPatch="grass"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_1_2.geometry}
                 material={(gltf) => gltf.nodes.Block_Grass_1_2.material}
@@ -411,6 +412,7 @@ export function EntityInstances({
                 name="Block_Sand"
                 groundPatch="sand"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
                 material={(gltf) => gltf.nodes.Block_Sand_1.material}
@@ -470,6 +472,7 @@ export function EntityInstances({
                 stacks={stacks}
                 name="Block_Snow"
                 groundPatch="snow"
+                weatherSurface="base-ground"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
                 material={() => snowMaterial}

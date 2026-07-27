@@ -600,6 +600,9 @@ export function Environment({
         (state) => Object.keys(state.blockPlacementDropAnimations).length,
     );
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
+    const setRainSurfaceIntensity = useGameState(
+        (state) => state.setRainSurfaceIntensity,
+    );
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
     const setWaterColors = useGameState((state) => state.setWaterColors);
     const weatherVisualizationDisabled = useGameState(
@@ -808,6 +811,10 @@ export function Environment({
     const rain = blendedWeather?.rainy ?? 0;
     const { activeCount: rainParticleCount, intensity: rainParticleIntensity } =
         resolveRainParticleState(rain, qualityProfile.rainParticleMultiplier);
+
+    useEffect(() => {
+        setRainSurfaceIntensity(weatherDisabled ? 0 : rain);
+    }, [rain, setRainSurfaceIntensity, weatherDisabled]);
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = blendedWeather?.snowy ?? 0;

@@ -337,6 +337,17 @@ export type GameProfileMetadata = {
     snowParticleCount?: number;
     snowParticleGeometryBuildCount?: number;
     weatherDisabled?: boolean;
+    weatherSurfaceAvoidedOverlaySubmissionCount?: number;
+    weatherSurfaceAvoidedOverlayTriangleCount?: number;
+    weatherSurfaceFallbackOverlaySubmissionCount?: number;
+    weatherSurfaceFallbackOverlayTriangleCount?: number;
+    weatherSurfaceIntegratedInstanceCount?: number;
+    weatherSurfaceIntegratedMaterialCount?: number;
+    weatherSurfaceMode?: 'integrated' | 'legacy';
+    weatherSurfacePluginVariantCount?: number;
+    weatherSurfaceSnowIntegrationReadyCount?: number;
+    weatherSurfaceSnowIntegrationTrackedCount?: number;
+    weatherSurfaceSnowIntegrationTransitionCount?: number;
 };
 
 declare global {

@@ -6,6 +6,7 @@ import {
     resolveGameProfileBlockGeometryMerging,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileWeatherSurface,
 } from './profileFlags.ts';
 
 describe('resolveGameProfileAdaptiveHigh', () => {
@@ -50,18 +51,48 @@ describe('resolveGameProfileOperationVisuals', () => {
 });
 
 describe('resolveGameProfileFlags', () => {
-    it('preserves debug and rain flags while controlling profiler opt-ins', () => {
-        assert.deepEqual(resolveGameProfileFlags(undefined, undefined), {
-            enableAdaptiveHighQualityFlag: false,
-            enableBlockGeometryMergingFlag: false,
-            enableDebugHudFlag: true,
-            enableRainWetOverlayFlag: true,
-        });
-        assert.deepEqual(resolveGameProfileFlags('0', '1'), {
+    it('defaults production-profile weather surfaces to the integrated path', () => {
+        assert.deepEqual(
+            resolveGameProfileFlags(undefined, undefined, undefined),
+            {
+                enableAdaptiveHighQualityFlag: false,
+                enableBlockGeometryMergingFlag: false,
+                enableDebugHudFlag: true,
+                enableIntegratedWeatherSurfacesFlag: true,
+                enableRainWetOverlayFlag: true,
+            },
+        );
+        assert.deepEqual(resolveGameProfileFlags('0', '1', 'integrated'), {
             enableAdaptiveHighQualityFlag: true,
             enableBlockGeometryMergingFlag: false,
             enableDebugHudFlag: true,
+            enableIntegratedWeatherSurfacesFlag: true,
             enableRainWetOverlayFlag: true,
         });
+    });
+
+    it('allows an explicit legacy weather-surface comparison', () => {
+        assert.deepEqual(resolveGameProfileFlags('1', '0', 'legacy'), {
+            enableAdaptiveHighQualityFlag: false,
+            enableBlockGeometryMergingFlag: true,
+            enableDebugHudFlag: true,
+            enableIntegratedWeatherSurfacesFlag: false,
+            enableRainWetOverlayFlag: true,
+        });
+    });
+});
+
+describe('resolveGameProfileWeatherSurface', () => {
+    it('accepts only the exact legacy override', () => {
+        assert.equal(resolveGameProfileWeatherSurface('legacy'), 'legacy');
+        assert.equal(
+            resolveGameProfileWeatherSurface('integrated'),
+            'integrated',
+        );
+        assert.equal(resolveGameProfileWeatherSurface(undefined), 'integrated');
+        assert.equal(
+            resolveGameProfileWeatherSurface('unexpected'),
+            'integrated',
+        );
     });
 });
