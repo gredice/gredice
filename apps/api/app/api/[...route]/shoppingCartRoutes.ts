@@ -25,6 +25,7 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import { getDefaultCartItemCurrency } from '../../../lib/checkout/sunflowerCalculations';
 import {
     type AuthVariables,
     authValidator,
@@ -163,7 +164,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/',
         describeRoute({
-            description: 'Add or update an item in the shopping cart',
+            description:
+                'Add or update an item in the shopping cart. New items without an explicit currency use sunflowers when the current balance covers all sunflower commitments in the cart.',
         }),
         authValidator(['user', 'admin']),
         zValidator(
@@ -267,25 +269,28 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
             }
+            let appliedCurrency = currency ?? undefined;
             try {
+                let cartItemId: number | null = null;
                 if (outletOfferId && amount > 0) {
-                    await upsertOrRemoveCartItemWithOutletReservation({
-                        id,
-                        cartId,
-                        entityId,
-                        entityTypeName,
-                        amount,
-                        gardenId,
-                        raisedBedId,
-                        positionIndex,
-                        additionalData,
-                        currency,
-                        forceCreate,
-                        outletOfferId,
-                        accountId,
-                    });
+                    cartItemId =
+                        await upsertOrRemoveCartItemWithOutletReservation({
+                            id,
+                            cartId,
+                            entityId,
+                            entityTypeName,
+                            amount,
+                            gardenId,
+                            raisedBedId,
+                            positionIndex,
+                            additionalData,
+                            currency,
+                            forceCreate,
+                            outletOfferId,
+                            accountId,
+                        });
                 } else {
-                    const cartItemId = await upsertOrRemoveCartItem(
+                    cartItemId = await upsertOrRemoveCartItem(
                         id,
                         cartId,
                         entityId,
@@ -300,6 +305,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                     if (amount > 0 && cartItemId) {
                         await releaseOutletReservationForCartItem(cartItemId);
+                    }
+                }
+
+                const isNewCartItem =
+                    cartItemId !== null &&
+                    !cart.items.some((item) => item.id === cartItemId);
+                if (
+                    amount > 0 &&
+                    cartItemId !== null &&
+                    currency == null &&
+                    isNewCartItem
+                ) {
+                    const updatedCart = await getShoppingCart(cartId);
+                    if (updatedCart) {
+                        const cartInfo = await getCartInfo(
+                            updatedCart.items,
+                            accountId,
+                        );
+                        appliedCurrency = getDefaultCartItemCurrency({
+                            availableSunflowers: await getSunflowers(accountId),
+                            items: cartInfo.items,
+                            newCartItemId: cartItemId,
+                        });
+
+                        if (appliedCurrency === 'sunflower') {
+                            await upsertOrRemoveCartItem(
+                                cartItemId,
+                                cartId,
+                                entityId,
+                                entityTypeName,
+                                amount,
+                                gardenId,
+                                raisedBedId,
+                                positionIndex,
+                                additionalData,
+                                appliedCurrency,
+                            );
+                        }
                     }
                 }
             } catch (error) {
@@ -333,7 +376,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     entity_id: entityId,
                     entity_type: entityTypeName,
                     amount,
-                    currency: currency ?? undefined,
+                    currency: appliedCurrency,
                     outlet_offer_id: outletOfferId,
                 },
             });

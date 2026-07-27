@@ -652,13 +652,20 @@ test('raised-bed onboarding applies twelve suggested cart plants', async ({
         expect.arrayContaining([
             expect.objectContaining({
                 amount: 1,
-                currency: 'eur',
                 entityTypeName: 'plantSort',
                 gardenId,
                 raisedBedId,
             }),
         ]),
     );
+    expect(
+        posts.every(
+            (post) =>
+                typeof post === 'object' &&
+                post !== null &&
+                Reflect.get(post, 'currency') === undefined,
+        ),
+    ).toBe(true);
     expect(
         new Set(
             posts
