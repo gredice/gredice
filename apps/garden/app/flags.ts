@@ -39,6 +39,14 @@ export const adaptiveHighQualityFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
+export const staticOpaqueSceneCacheFlag = flag<boolean>({
+    key: 'staticOpaqueSceneCache',
+    description:
+        'Cache stable opaque terrain while rendering the game at High quality.',
+    decide: () => true,
+    options: booleanFlagOptions,
+});
+
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,

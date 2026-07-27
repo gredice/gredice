@@ -365,4 +365,118 @@ describe('WeatherSurfaceUniformRegistry', () => {
 
         unsubscribe();
     });
+
+    it('reports retained rain as drying until its rendered wetness is inactive', () => {
+        const registry = new WeatherSurfaceUniformRegistry();
+        const entry = registry.getRainEntry({
+            drySpeed: 1.8,
+            intensityMultiplier: 1,
+            wetSpeed: 5,
+        });
+        registry.retain(entry);
+        let notificationCount = 0;
+        registry.subscribeActivity(() => {
+            notificationCount += 1;
+        });
+
+        registry.advance({ rainAmount: 1, snowCoverage: 0 }, 10);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: true,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: false,
+            snowMelting: false,
+            snowSettling: false,
+        });
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 0.1);
+        const dryingSnapshot = registry.getActivitySnapshot();
+        assert.deepEqual(dryingSnapshot, {
+            rainActive: true,
+            rainDrying: true,
+            rainSettling: true,
+            snowActive: false,
+            snowMelting: false,
+            snowSettling: false,
+        });
+        assert.equal(notificationCount, 2);
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 0.1);
+        assert.equal(
+            registry.getActivitySnapshot(),
+            dryingSnapshot,
+            'unchanged aggregate activity keeps a stable snapshot',
+        );
+        assert.equal(notificationCount, 2);
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 10);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: false,
+            snowMelting: false,
+            snowSettling: false,
+        });
+        assert.equal(notificationCount, 3);
+    });
+
+    it('reports retained snow as melting until its rendered coverage is inactive', () => {
+        const registry = new WeatherSurfaceUniformRegistry();
+        const entry = registry.getSnowEntry({
+            coverageMultiplier: 1,
+            overrideSnow: undefined,
+        });
+        registry.retain(entry);
+
+        registry.advance({ rainAmount: 0, snowCoverage: 1 }, 10);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: true,
+            snowMelting: false,
+            snowSettling: false,
+        });
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 0.1);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: true,
+            snowMelting: true,
+            snowSettling: true,
+        });
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 10);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: false,
+            snowMelting: false,
+            snowSettling: false,
+        });
+    });
+
+    it('does not classify a retained snow override as game-weather melting', () => {
+        const registry = new WeatherSurfaceUniformRegistry();
+        const entry = registry.getSnowEntry({
+            coverageMultiplier: 1,
+            overrideSnow: 0.4,
+        });
+        registry.retain(entry);
+
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 10);
+
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: false,
+            snowActive: true,
+            snowMelting: false,
+            snowSettling: false,
+        });
+    });
 });

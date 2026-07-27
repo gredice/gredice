@@ -323,6 +323,7 @@ export function EntityInstances({
                 assetName="BlockGrass"
                 stacks={stacks}
                 name="Block_Grass"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 renderRainWetOverlay
                 weatherSurface="base-ground"
@@ -338,6 +339,7 @@ export function EntityInstances({
                 assetName="BlockGrassAngle"
                 stacks={stacks}
                 name="Block_Grass_Angle"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -352,6 +354,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Grass_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
@@ -363,6 +366,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Grass_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -377,6 +381,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Grass_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 yOffset={0.2}
                 geometry={(gltf) =>
@@ -392,6 +397,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Grass_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -410,6 +416,7 @@ export function EntityInstances({
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Sand"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="sand"
                 renderRainWetOverlay
                 weatherSurface="base-ground"
@@ -425,6 +432,7 @@ export function EntityInstances({
                 assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Sand_Angle"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -439,6 +447,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Sand_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -453,6 +462,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Sand_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
@@ -471,6 +481,7 @@ export function EntityInstances({
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Snow"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="snow"
                 weatherSurface="base-ground"
                 yOffset={0.2}
@@ -485,6 +496,7 @@ export function EntityInstances({
                 assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Snow_Angle"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
@@ -498,6 +510,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Snow_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
@@ -511,6 +524,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Snow_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
                 groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) =>
@@ -534,6 +548,7 @@ export function EntityInstances({
                 assetName="Tree"
                 stacks={stacks}
                 name="Tree"
+                staticOpaqueCacheGroup="static-props"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
                 geometry={(gltf) => gltf.nodes.Tree_1_1.geometry}
@@ -544,6 +559,7 @@ export function EntityInstances({
                 assetName="Tree"
                 stacks={stacks}
                 name="Tree"
+                staticOpaqueCacheGroup="static-props"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
                 geometry={(gltf) => gltf.nodes.Tree_1_2.geometry}
@@ -556,6 +572,7 @@ export function EntityInstances({
                 assetName="Tree"
                 stacks={stacks}
                 name="Tree"
+                staticOpaqueCacheGroup="static-props"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
                 geometry={(gltf) => gltf.nodes.Tree_1_3.geometry}
@@ -592,6 +609,7 @@ export function EntityInstances({
                     assetName="Tulip"
                     stacks={stacks}
                     name="Tulip"
+                    staticOpaqueCacheGroup="static-props"
                     localPosition={stem.position}
                     localRotation={stem.rotation}
                     scale={stem.scale}
@@ -608,6 +626,7 @@ export function EntityInstances({
                     assetName="Tulip"
                     stacks={stacks}
                     name="Tulip"
+                    staticOpaqueCacheGroup="static-props"
                     localPosition={stem.position}
                     localRotation={stem.rotation}
                     scale={stem.scale}
@@ -622,6 +641,7 @@ export function EntityInstances({
                 assetName="Bush"
                 stacks={stacks}
                 name="Bush"
+                staticOpaqueCacheGroup="static-props"
                 geometry={(gltf) => gltf.nodes.Bush_1_1.geometry}
                 material={(gltf) => gltf.nodes.Bush_1_1.material}
                 scale={[0.5, 0.5, 0.5]}
@@ -633,6 +653,7 @@ export function EntityInstances({
                 assetName="Bush"
                 stacks={stacks}
                 name="Bush"
+                staticOpaqueCacheGroup="static-props"
                 geometry={(gltf) => gltf.nodes.Bush_1_2.geometry}
                 material={(gltf) => gltf.nodes.Bush_1_2.material}
                 scale={[0.5, 0.5, 0.5]}
@@ -665,6 +686,7 @@ export function EntityInstances({
                 assetName="StoneMedium"
                 stacks={stacks}
                 name="StoneMedium"
+                staticOpaqueCacheGroup="static-props"
                 geometry={(gltf) => gltf.nodes.Stone_Medium.geometry}
                 material={(gltf) => gltf.nodes.Stone_Medium.material}
                 scale={[0.236, 0.269, 0.205]}

@@ -8,6 +8,8 @@ import {
     buildPlantCloseupMedians,
     buildProfileSummary,
     buildScenarioRunQueue,
+    buildStaticSceneCacheComparisons,
+    buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
@@ -16,7 +18,9 @@ import {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
+    measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
@@ -198,6 +202,8 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
         outline: '0',
         placement: '0',
         quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '0',
         weatherSurface: 'integrated',
     });
     assert.equal(
@@ -322,6 +328,111 @@ test('weather-material runs interleave five legacy and integrated samples per pa
     );
 });
 
+test('static scene-cache High scenarios use deterministic five-run ABBA pairs', () => {
+    const scenarios = resolveScenarios('high-target-static-scene-cache');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-static-scene-cache-legacy-desktop',
+            'game-high-target-static-scene-cache-cached-desktop',
+            'game-high-target-static-scene-cache-cloudy-legacy-desktop',
+            'game-high-target-static-scene-cache-cloudy-cached-desktop',
+            'game-high-target-static-scene-cache-occlusion-fixture-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        ['legacy', 'cache', 'legacy', 'cache', undefined],
+    );
+    for (const scenario of scenarios.slice(0, 4)) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(
+            scenario.comparisonPair,
+            request.mode === 'cloudy'
+                ? 'static-opaque-scene-cache-cloudy'
+                : 'static-opaque-scene-cache',
+        );
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 5);
+        assert.equal(scenario.staticSceneCacheBenchmark, true);
+        assert.equal(request.blockGeometryMerging, '1');
+        assert.equal(request.controls, '0');
+        assert.equal(request.details, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(scenario.staticSceneCacheVisualDeterministic, true);
+        assert.equal(
+            new URL(scenario.path, 'http://profile.local').searchParams.get(
+                'fixedTimeSeconds',
+            ),
+            request.mode === 'cloudy' ? '12' : null,
+        );
+        assert.equal(
+            scenario.fixedTimeSeconds,
+            request.mode === 'cloudy' ? 12 : undefined,
+        );
+        assert.equal(request.quality, 'high');
+    }
+    assert.deepEqual(
+        scenarios.slice(0, 4).map((scenario) => {
+            return getScenarioRequest(scenario.path).mode;
+        }),
+        ['details', 'details', 'cloudy', 'cloudy'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).staticSceneCache,
+        ),
+        ['legacy', 'cache', 'legacy', 'cache', 'cache'],
+    );
+    const fixture = scenarios[4];
+    assert.equal(fixture.repeat, 1);
+    assert.equal(fixture.staticSceneCacheBenchmark, true);
+    assert.equal(fixture.staticSceneCacheOcclusionFixture, true);
+    assert.equal(fixture.comparisonPair, undefined);
+    assert.equal(
+        getScenarioRequest(fixture.path).staticSceneCacheOcclusionFixture,
+        '1',
+    );
+
+    const queue = buildScenarioRunQueue(scenarios);
+    assert.deepEqual(
+        queue.map(
+            ({ baseScenario, runIndex }) =>
+                `${
+                    baseScenario.staticSceneCacheOcclusionFixture
+                        ? 'fixture'
+                        : `${baseScenario.comparisonPair}:${baseScenario.comparisonRole}`
+                }:${runIndex}`,
+        ),
+        [
+            'static-opaque-scene-cache:legacy:1',
+            'static-opaque-scene-cache:cache:1',
+            'static-opaque-scene-cache:cache:2',
+            'static-opaque-scene-cache:legacy:2',
+            'static-opaque-scene-cache:legacy:3',
+            'static-opaque-scene-cache:cache:3',
+            'static-opaque-scene-cache:cache:4',
+            'static-opaque-scene-cache:legacy:4',
+            'static-opaque-scene-cache:legacy:5',
+            'static-opaque-scene-cache:cache:5',
+            'static-opaque-scene-cache-cloudy:legacy:1',
+            'static-opaque-scene-cache-cloudy:cache:1',
+            'static-opaque-scene-cache-cloudy:cache:2',
+            'static-opaque-scene-cache-cloudy:legacy:2',
+            'static-opaque-scene-cache-cloudy:legacy:3',
+            'static-opaque-scene-cache-cloudy:cache:3',
+            'static-opaque-scene-cache-cloudy:cache:4',
+            'static-opaque-scene-cache-cloudy:legacy:4',
+            'static-opaque-scene-cache-cloudy:legacy:5',
+            'static-opaque-scene-cache-cloudy:cache:5',
+            'fixture:1',
+        ],
+    );
+});
+
 test('snow-onset High scenarios provide deterministic visual legacy and integrated cases', () => {
     const scenarios = resolveScenarios('high-target-weather-onset');
 
@@ -375,6 +486,43 @@ test('profile request defaults invalid weather-surface values to integrated', ()
         getScenarioRequest('/debug/profile/game?weatherSurface=unexpected')
             .weatherSurface,
         'integrated',
+    );
+});
+
+test('profile request defaults invalid static scene-cache values to cache', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game').staticSceneCache,
+        'cache',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?staticSceneCache=unexpected')
+            .staticSceneCache,
+        'cache',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?staticSceneCache=legacy')
+            .staticSceneCache,
+        'legacy',
+    );
+});
+
+test('profile request enables the static scene-cache occlusion fixture only for an exact opt-in', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game')
+            .staticSceneCacheOcclusionFixture,
+        '0',
+    );
+    assert.equal(
+        getScenarioRequest(
+            '/debug/profile/game?staticSceneCacheOcclusionFixture=unexpected',
+        ).staticSceneCacheOcclusionFixture,
+        '0',
+    );
+    assert.equal(
+        getScenarioRequest(
+            '/debug/profile/game?staticSceneCacheOcclusionFixture=1',
+        ).staticSceneCacheOcclusionFixture,
+        '1',
     );
 });
 
@@ -562,6 +710,8 @@ test('profile request parses the High target fixture contract', () => {
         outline: '0',
         placement: '0',
         quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '0',
         weatherSurface: 'integrated',
     });
 });
@@ -584,7 +734,10 @@ test('runtime GPU-source scenario disables only the external profiler timer', ()
     assert.match(source, /__gameProfileMetrics =/);
     assert.match(source, /patchedCreateProgram/);
     assert.match(source, /patchedDeleteProgram/);
+    assert.match(source, /patchedCreateTexture/);
+    assert.match(source, /patchedDeleteTexture/);
     assert.match(source, /rendererShaders: 0/);
+    assert.match(source, /rendererTextures: 0/);
 });
 
 test('render budgets gate calls and triangles per rendered frame', () => {
@@ -833,6 +986,8 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
         drawCalls: 120,
         instancedDrawCalls: 30,
         renderedFrames: 12,
+        rendererShaders: 18,
+        rendererTextures: 27,
         submittedTriangles: 900_000,
     };
     const startedAt = performance.now() - 1_000;
@@ -890,6 +1045,8 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
         assert.equal(sampleAtEndpoint.frames, 2);
         assert.equal(sampleAtEndpoint.instancedDrawCalls, 30);
         assert.equal(sampleAtEndpoint.renderedFrames, 12);
+        assert.equal(sampleAtEndpoint.rendererShaders, 18);
+        assert.equal(sampleAtEndpoint.rendererTextures, 27);
         assert.equal(sampleAtEndpoint.submittedTriangles, 900_000);
 
         const drainedSample = await drainProfileSample(
@@ -904,6 +1061,8 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
         assert.equal(result.longTaskCount, 1);
         assert.equal(result.longTaskMaxMs, 55);
         assert.equal(result.renderedFrames, 12);
+        assert.equal(result.rendererShaders, 18);
+        assert.equal(result.rendererTextures, 27);
         assert.equal(result.submittedTriangles, 900_000);
         assert.deepEqual(result.gpu, {
             elapsedP95Ms: 7,
@@ -1170,6 +1329,50 @@ test('high target acceptance proves the intended workload rendered', () => {
         )?.pass,
         false,
     );
+
+    const localInsightsAssetResult = evaluateHighTargetAcceptance({
+        ...input,
+        consoleMessages: [
+            {
+                type: 'error',
+                text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+                url: 'http://localhost:3101/_vercel/insights/script.js',
+            },
+        ],
+    });
+    assert.equal(localInsightsAssetResult.pass, true);
+    assert.equal(
+        localInsightsAssetResult.checks.find(
+            (check) => check.name === 'highTargetConsoleErrors',
+        )?.actual,
+        0,
+    );
+});
+
+test('local profiler console filtering only ignores the known missing analytics asset', () => {
+    const knownLocalAnalyticsError = {
+        type: 'error',
+        text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+        url: 'http://127.0.0.1:3101/_vercel/insights/script.js',
+    };
+
+    assert.equal(
+        isIgnoredLocalProfilerConsoleError(knownLocalAnalyticsError),
+        true,
+    );
+    for (const message of [
+        { ...knownLocalAnalyticsError, text: 'application crashed' },
+        {
+            ...knownLocalAnalyticsError,
+            url: 'http://localhost:3101/_vercel/speed-insights/script.js',
+        },
+        {
+            ...knownLocalAnalyticsError,
+            url: 'https://garden.example.com/_vercel/insights/script.js',
+        },
+    ]) {
+        assert.equal(isIgnoredLocalProfilerConsoleError(message), false);
+    }
 });
 
 test('operation-visual High acceptance gates batching, uploads, mulch, and highlight identity', () => {
@@ -2779,6 +2982,420 @@ test('high target acceptance rejects failed API requests', () => {
     );
 });
 
+test('static scene-cache acceptance requires a warm, stable timed window', () => {
+    const requested = {
+        blockGeometryMerging: '1',
+        comparisonPair: 'static-opaque-scene-cache',
+        comparisonRole: 'cache',
+        gardenProfile: 'high-target',
+        mode: 'details',
+        quality: 'high',
+        staticSceneCache: 'cache',
+    };
+    const runtime = {
+        staticOpaqueSceneCacheBoundaryCount: 19,
+        staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+        staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+        staticOpaqueSceneCacheMeshCount: 19,
+        staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+        staticOpaqueSceneCacheReplayStatus: 'ready',
+        staticOpaqueSceneCacheReplaySubmissionCount: 1,
+        staticOpaqueSceneCacheReplayTriangleCount: 1,
+        staticOpaqueSceneCacheState: 'ready',
+        staticOpaqueSceneCacheSupported: true,
+        staticOpaqueSceneCacheTargetHeight: 1440,
+        staticOpaqueSceneCacheTargetSampleCount: 4,
+        staticOpaqueSceneCacheTargetWidth: 2560,
+        staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+        staticOpaqueSceneCacheTriangleCount: 12_000,
+    };
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1280,
+            height: 1440,
+            width: 2560,
+        },
+        drawCalls: 100,
+        elapsedMs: 5_000,
+        renderedFps: 60,
+        renderedFrames: 300,
+        reportedDpr: 2,
+        staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+        staticOpaqueSceneCacheCaptureCountAtStart: 1,
+        staticOpaqueSceneCacheCaptureCountDelta: 0,
+        staticOpaqueSceneCacheCompositePassCountDelta: 300,
+        staticOpaqueSceneCacheHitFrameCountAtStart: 3,
+        staticOpaqueSceneCacheHitFrameCountDelta: 300,
+        staticOpaqueSceneCacheHitRatio: 1,
+        staticOpaqueSceneCacheInvalidationCountDelta: 0,
+        staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+        staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+        staticOpaqueSceneCacheSavedSubmissionCountDelta: 5_700,
+        staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_000,
+        staticOpaqueSceneCacheStateAtStart: 'ready',
+        staticOpaqueSceneCacheSupportedAtStart: true,
+        staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+        submittedTriangles: 1_000_000,
+    };
+    const evaluate = ({ runtimeOverride = {}, sampleOverride = {} } = {}) =>
+        evaluateHighTargetAcceptance({
+            apiErrors: [],
+            consoleMessages: [],
+            pageErrors: [],
+            requested,
+            runtime: { ...runtime, ...runtimeOverride },
+            sample: { ...sample, ...sampleOverride },
+        });
+    const checks = evaluate().checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCache'),
+    );
+
+    assert.equal(checks.length, 32);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.deepEqual(
+        evaluate({
+            sampleOverride: {
+                staticOpaqueSceneCacheCaptureCountDelta: 1,
+            },
+        }).checks.find(
+            (check) => check.name === 'highTargetStaticSceneCacheTimedCaptures',
+        ),
+        {
+            actual: 1,
+            comparison: 'equal',
+            limit: 0,
+            name: 'highTargetStaticSceneCacheTimedCaptures',
+            pass: false,
+        },
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheReplayStatus: 'pending',
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheFinalReplayStatus',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheReplaySubmissionCount: 2,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheReplaySubmissions',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheTargetSampleCount: 2,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheTargetSampleCount',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheTotalEstimatedBytes:
+                    160 * 1024 * 1024 + 1,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheTotalEstimatedBytes',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            sampleOverride: {
+                staticOpaqueSceneCacheHitRatio: 0.99,
+            },
+        }).checks.find(
+            (check) => check.name === 'highTargetStaticSceneCacheTimedHitRatio',
+        )?.pass,
+        false,
+    );
+});
+
+test('cloudy static scene-cache acceptance proves live cloud attenuation without shadow recaptures', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            blockGeometryMerging: '1',
+            comparisonPair: 'static-opaque-scene-cache-cloudy',
+            comparisonRole: 'cache',
+            fixedTimeSeconds: 12,
+            gardenProfile: 'high-target',
+            mode: 'cloudy',
+            quality: 'high',
+            staticSceneCache: 'cache',
+        },
+        runtime: {
+            cloudAttenuationMaskResolution: 192,
+            cloudAttenuationMaterialCount: 19,
+            cloudAttenuationUpdateMs: 96,
+            cloudProjectedShadowCount: 8,
+            cloudRealShadowCasterCount: 0,
+            cloudVisualCount: 8,
+            staticOpaqueSceneCacheBoundaryCount: 19,
+            staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+            staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+            staticOpaqueSceneCacheEnabled: true,
+            staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+            staticOpaqueSceneCacheMeshCount: 19,
+            staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+            staticOpaqueSceneCacheReplayStatus: 'ready',
+            staticOpaqueSceneCacheReplaySubmissionCount: 1,
+            staticOpaqueSceneCacheReplayTriangleCount: 1,
+            staticOpaqueSceneCacheState: 'ready',
+            staticOpaqueSceneCacheSupported: true,
+            staticOpaqueSceneCacheTargetHeight: 1440,
+            staticOpaqueSceneCacheTargetSampleCount: 4,
+            staticOpaqueSceneCacheTargetWidth: 2560,
+            staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+            staticOpaqueSceneCacheTriangleCount: 12_000,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            cloudAttenuationUpdateCountDelta: 52,
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            primaryShadowRefreshCountDelta: 0,
+            renderedFps: 60,
+            renderedFrames: 300,
+            reportedDpr: 2,
+            staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+            staticOpaqueSceneCacheCaptureCountAtStart: 1,
+            staticOpaqueSceneCacheCaptureCountDelta: 0,
+            staticOpaqueSceneCacheCompositePassCountDelta: 300,
+            staticOpaqueSceneCacheHitFrameCountAtStart: 3,
+            staticOpaqueSceneCacheHitFrameCountDelta: 300,
+            staticOpaqueSceneCacheHitRatio: 1,
+            staticOpaqueSceneCacheInvalidationCountDelta: 0,
+            staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+            staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+            staticOpaqueSceneCacheSavedSubmissionCountDelta: 5_700,
+            staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_000,
+            staticOpaqueSceneCacheStateAtStart: 'ready',
+            staticOpaqueSceneCacheSupportedAtStart: true,
+            staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateHighTargetAcceptance(input);
+    const checks = result.checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCacheCloud'),
+    );
+
+    assert.equal(checks.length, 9);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                cloudAttenuationUpdateCountDelta: 1,
+            },
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'highTargetStaticSceneCacheCloudAttenuationUpdates',
+        )?.pass,
+        false,
+    );
+});
+
+test('static scene-cache occlusion acceptance requires cached depth and live layers on verified hits', () => {
+    const requested = {
+        blockGeometryMerging: '1',
+        gardenProfile: 'high-target',
+        mode: 'details',
+        quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '1',
+    };
+    const runtime = {
+        staticOpaqueSceneCacheBoundaryCount: 20,
+        staticOpaqueSceneCacheCaptureCount: 1,
+        staticOpaqueSceneCacheCaptureSubmissionCount: 20,
+        staticOpaqueSceneCacheCaptureTriangleCount: 12_002,
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheHitFrameCount: 7,
+        staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+        staticOpaqueSceneCacheMeshCount: 20,
+        staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionCaptureCountAtTransition: 1,
+        staticOpaqueSceneCacheOcclusionFixtureEnabled: true,
+        staticOpaqueSceneCacheOcclusionFixturePass: true,
+        staticOpaqueSceneCacheOcclusionFixtureState: 'passed',
+        staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition: 3,
+        staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio: 0,
+        staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionTransitionCount: 1,
+        staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount: 3,
+        staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+        staticOpaqueSceneCacheReplayStatus: 'ready',
+        staticOpaqueSceneCacheReplaySubmissionCount: 1,
+        staticOpaqueSceneCacheReplayTriangleCount: 1,
+        staticOpaqueSceneCacheState: 'ready',
+        staticOpaqueSceneCacheSupported: true,
+        staticOpaqueSceneCacheTargetHeight: 1440,
+        staticOpaqueSceneCacheTargetSampleCount: 4,
+        staticOpaqueSceneCacheTargetWidth: 2560,
+        staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+        staticOpaqueSceneCacheTriangleCount: 12_002,
+    };
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1280,
+            height: 1440,
+            width: 2560,
+        },
+        drawCalls: 100,
+        elapsedMs: 5_000,
+        renderedFps: 60,
+        renderedFrames: 300,
+        reportedDpr: 2,
+        staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+        staticOpaqueSceneCacheCaptureCountAtStart: 1,
+        staticOpaqueSceneCacheCaptureCountDelta: 0,
+        staticOpaqueSceneCacheCompositePassCountDelta: 300,
+        staticOpaqueSceneCacheHitFrameCountAtStart: 7,
+        staticOpaqueSceneCacheHitFrameCountDelta: 300,
+        staticOpaqueSceneCacheHitRatio: 1,
+        staticOpaqueSceneCacheInvalidationCountDelta: 0,
+        staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+        staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+        staticOpaqueSceneCacheSavedSubmissionCountDelta: 6_000,
+        staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_600,
+        staticOpaqueSceneCacheStateAtStart: 'ready',
+        staticOpaqueSceneCacheSupportedAtStart: true,
+        staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+        submittedTriangles: 1_000_000,
+    };
+    const evaluate = (runtimeOverride = {}) =>
+        evaluateHighTargetAcceptance({
+            apiErrors: [],
+            consoleMessages: [],
+            pageErrors: [],
+            requested,
+            runtime: { ...runtime, ...runtimeOverride },
+            sample,
+        });
+    const checks = evaluate().checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCacheOcclusion'),
+    );
+
+    assert.equal(checks.length, 11);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluate({
+            staticOpaqueSceneCacheCaptureCount: 2,
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheOcclusionRecaptures',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio: 0.08,
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'highTargetStaticSceneCacheOcclusionBackgroundLeak',
+        )?.pass,
+        false,
+    );
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-27T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'high-target-static-scene-cache',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-high-target-static-scene-cache-occlusion-fixture-desktop',
+                pageErrors: [],
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '1',
+                    hud: '0',
+                    motion: 'none',
+                    ...requested,
+                },
+                runtime,
+                sample: {
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 20,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 15_000,
+                    trianglesPerRenderedFrame: 300_000,
+                    ...sample,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(
+        markdown,
+        /Static opaque scene-cache occlusion fixture[\s\S]*passed \| 1 \| 1\/1 \| 4\/3 \| 1 \| 1 \| 1 \| 0 \| pass/,
+    );
+});
+
 test('high target acceptance rejects a demand-render scene with one frame', () => {
     const result = evaluateHighTargetAcceptance({
         apiErrors: [],
@@ -3107,6 +3724,289 @@ test('adaptive High comparison reports paired pass rates and frame/GPU deltas', 
             .failedScenarioNames,
         ['game-high-target-adaptive-camera-motion-desktop'],
     );
+});
+
+test('static scene-cache comparison gates paired render work, GPU, and resources', () => {
+    const visualComparisons = {
+        'static-opaque-scene-cache': {
+            maximumMismatchRatio: 0.001,
+            maximumP99ByteError: 1,
+            pairedRuns: Array.from({ length: 5 }, (_, index) => ({
+                mismatchRatio: 0.001,
+                p99ByteError: 1,
+                profileRun: index + 1,
+                valid: true,
+            })),
+            pass: true,
+            validRunCount: 5,
+        },
+    };
+    const pairedRun = ({ comparisonRole, index }) => {
+        const cached = comparisonRole === 'cache';
+        const baseName = `game-high-target-static-scene-cache-${cached ? 'cached' : 'legacy'}-desktop`;
+        const run = highTargetRun(cached ? 21 : 20, index);
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'static-opaque-scene-cache',
+                comparisonRole,
+            },
+            runtime: {
+                rendererShaders: cached ? 31 : 30,
+                rendererTextures: cached ? 24 : 20,
+                ...(cached
+                    ? {
+                          staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+                          staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+                          staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+                          staticOpaqueSceneCacheReplayStatus: 'ready',
+                          staticOpaqueSceneCacheReplaySubmissionCount: 1,
+                          staticOpaqueSceneCacheReplayTriangleCount: 1,
+                          staticOpaqueSceneCacheTargetSampleCount: 4,
+                          staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+                      }
+                    : {}),
+            },
+            sample: {
+                ...run.sample,
+                drawCallsPerRenderedFrame: cached ? 180 : 200,
+                gpu: {
+                    elapsedP95Ms: cached ? 9.5 : 10,
+                    valid: true,
+                },
+                staticOpaqueSceneCacheHitRatio: cached ? 1 : null,
+                staticOpaqueSceneCacheSavedSubmissionCountDelta: cached
+                    ? 5_700
+                    : null,
+                staticOpaqueSceneCacheSavedTriangleCountDelta: cached
+                    ? 3_600_000
+                    : null,
+                trianglesPerRenderedFrame: cached ? 900_000 : 1_000_000,
+            },
+        };
+    };
+    const runs = [
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'legacy', index }),
+        ),
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'cache', index }),
+        ),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const comparisons = buildStaticSceneCacheComparisons(
+        medians,
+        visualComparisons,
+    );
+    const comparison = comparisons['static-opaque-scene-cache'];
+
+    assert.deepEqual(comparison.acceptancePassRate, {
+        cached: 100,
+        legacy: 100,
+    });
+    assert.equal(comparison.drawCallRatio, 0.9);
+    assert.equal(comparison.triangleRatio, 0.9);
+    assert.equal(comparison.cpuMedianRatio, 1.05);
+    assert.equal(comparison.gpuTimingStatus, 'valid');
+    assert.equal(comparison.gpuMedianRatio, 0.95);
+    assert.equal(comparison.gpuMaximumRunRatio, 0.95);
+    assert.equal(comparison.rendererProgramMaximumIncrease, 1);
+    assert.equal(comparison.rendererTextureMaximumIncrease, 4);
+    assert.equal(comparison.visualComparison.pass, true);
+    assert.equal(comparison.staticOpaqueSceneCacheHitRatio.median, 1);
+    assert.equal(comparison.staticOpaqueSceneCacheReplayReadyRunCount, 5);
+    assert.equal(
+        comparison.staticOpaqueSceneCacheReplaySubmissionCount.median,
+        1,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheReplayTriangleCount.median,
+        1,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheTotalEstimatedBytes.max,
+        162_201_636,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheSavedSubmissionCountDelta.median,
+        5_700,
+    );
+    assert.equal(comparison.relativePerformancePass, true);
+    assert.equal(comparison.aggregatePass.cached, true);
+    assert.equal(
+        buildProfileSummary(runs, medians, comparisons).failedScenarios,
+        0,
+    );
+    assert.match(
+        buildMarkdown({
+            adaptiveHighComparisons: {},
+            baseUrl: 'http://profile.local',
+            generatedAt: '2026-07-27T00:00:00.000Z',
+            highTargetMedians: medians,
+            options: {
+                build: false,
+                managedServer: false,
+                sampleMs: 5_000,
+                scenarios: [],
+                scenarioSet: 'high-target-static-scene-cache',
+                soakMs: 0,
+                warmupMs: 0,
+            },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 2,
+            sourceCommit: null,
+            staticSceneCacheComparisons: comparisons,
+            summary: { failedScenarios: 0 },
+            weatherSurfaceComparisons: {},
+        }),
+        /Static opaque scene-cache paired comparison[\s\S]*0\.9\/0\.9\/1\.05[\s\S]*0\.95\/0\.95[\s\S]*30 → 31 \(3\.3%\) \(1\)[\s\S]*20 → 24 \(20%\) \(4\)[\s\S]*5\/5 \/ 19→1 \/ 12000→1[\s\S]*154\.69\/154\.69 MiB @ 4x[\s\S]*5700\/3600000/,
+    );
+
+    const gpuOutlierRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'cache' && run.profileRun === 1
+            ? {
+                  ...run,
+                  sample: {
+                      ...run.sample,
+                      gpu: {
+                          elapsedP95Ms: 10.6,
+                          valid: true,
+                      },
+                  },
+              }
+            : run,
+    );
+    const gpuOutlierMedians = buildHighTargetMedians(gpuOutlierRuns);
+    const gpuOutlierComparison = buildStaticSceneCacheComparisons(
+        gpuOutlierMedians,
+        visualComparisons,
+    )['static-opaque-scene-cache'];
+    assert.equal(gpuOutlierComparison.gpuMedianRatio, 0.95);
+    assert.equal(gpuOutlierComparison.gpuMaximumRunRatio, 1.06);
+    assert.equal(gpuOutlierComparison.relativePerformancePass, false);
+    assert.deepEqual(
+        buildProfileSummary(
+            gpuOutlierRuns,
+            gpuOutlierMedians,
+            buildStaticSceneCacheComparisons(
+                gpuOutlierMedians,
+                visualComparisons,
+            ),
+        ).failedScenarioNames,
+        ['game-high-target-static-scene-cache-cached-desktop'],
+    );
+
+    const incompleteTextureRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'cache' && run.profileRun === 1
+            ? {
+                  ...run,
+                  runtime: {
+                      ...run.runtime,
+                      rendererTextures: null,
+                  },
+              }
+            : run,
+    );
+    const incompleteTextureMedians = buildHighTargetMedians(
+        incompleteTextureRuns,
+    );
+    const incompleteTextureComparison = buildStaticSceneCacheComparisons(
+        incompleteTextureMedians,
+        visualComparisons,
+    )['static-opaque-scene-cache'];
+    assert.equal(
+        incompleteTextureComparison.rendererTextureMaximumIncrease,
+        null,
+    );
+    assert.equal(incompleteTextureComparison.relativePerformancePass, false);
+    assert.deepEqual(
+        buildProfileSummary(
+            incompleteTextureRuns,
+            incompleteTextureMedians,
+            buildStaticSceneCacheComparisons(
+                incompleteTextureMedians,
+                visualComparisons,
+            ),
+        ).failedScenarioNames,
+        ['game-high-target-static-scene-cache-cached-desktop'],
+    );
+
+    const visualRegression = {
+        'static-opaque-scene-cache': {
+            ...visualComparisons['static-opaque-scene-cache'],
+            maximumMismatchRatio: 0.02,
+            pass: false,
+        },
+    };
+    const visualRegressionComparison = buildStaticSceneCacheComparisons(
+        medians,
+        visualRegression,
+    )['static-opaque-scene-cache'];
+    assert.equal(visualRegressionComparison.relativePerformancePass, false);
+});
+
+test('static scene-cache image parity measures RGB errors per pixel', () => {
+    const legacy = new Uint8Array(100 * 4);
+    const cached = new Uint8Array(100 * 4);
+    cached[0] = 10;
+    const withinBudget = measureStaticSceneCacheImageParity(
+        {
+            data: legacy,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+        {
+            data: cached,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+    );
+    assert.equal(withinBudget.valid, true);
+    assert.equal(withinBudget.mismatchRatio, 0.01);
+    assert.equal(withinBudget.p99ByteError, 0);
+
+    cached[4] = 10;
+    const regressed = measureStaticSceneCacheImageParity(
+        {
+            data: legacy,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+        {
+            data: cached,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+    );
+    assert.equal(regressed.mismatchRatio, 0.02);
+    assert.equal(regressed.p99ByteError, 10);
+});
+
+test('static scene-cache visual comparison fails closed without a deterministic clock contract', async () => {
+    const visualComparisons = await buildStaticSceneCacheVisualComparisons([
+        {
+            profileRun: 1,
+            requested: {
+                comparisonPair: 'static-opaque-scene-cache-cloudy',
+                comparisonRole: 'legacy',
+                staticSceneCacheVisualDeterministic: false,
+            },
+        },
+        {
+            profileRun: 1,
+            requested: {
+                comparisonPair: 'static-opaque-scene-cache-cloudy',
+                comparisonRole: 'cache',
+                staticSceneCacheVisualDeterministic: false,
+            },
+        },
+    ]);
+    const comparison = visualComparisons['static-opaque-scene-cache-cloudy'];
+
+    assert.equal(comparison.status, 'unavailable');
+    assert.equal(comparison.pass, false);
+    assert.equal(comparison.validRunCount, 0);
+    assert.match(comparison.reason, /no deterministic scene-time/);
 });
 
 test('weather-surface comparison gates render work, GPU time, and renderer programs', () => {

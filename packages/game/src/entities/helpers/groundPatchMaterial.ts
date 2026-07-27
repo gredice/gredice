@@ -68,6 +68,20 @@ const groundPatchPresets = {
 
 const maxWetPatchCount = 48;
 const emptyWetPatches: readonly GroundPatchWetPatch[] = [];
+const staticGroundPatchShaderHookPairs = new WeakMap<
+    Material['onBeforeCompile'],
+    Material['customProgramCacheKey']
+>();
+
+export function hasStaticGroundPatchMaterialShaderHooks({
+    customProgramCacheKey,
+    onBeforeCompile,
+}: Pick<Material, 'customProgramCacheKey' | 'onBeforeCompile'>) {
+    return (
+        staticGroundPatchShaderHookPairs.get(onBeforeCompile) ===
+        customProgramCacheKey
+    );
+}
 
 const groundPatchVertexParameters = `
 varying vec3 vGroundPatchWorldPosition;
@@ -339,7 +353,7 @@ export function applyGroundPatchMaterial(
     const originalCustomProgramCacheKey =
         material.customProgramCacheKey.bind(material);
 
-    material.onBeforeCompile = (shader, renderer) => {
+    const onBeforeCompile: Material['onBeforeCompile'] = (shader, renderer) => {
         originalOnBeforeCompile(shader, renderer);
         const weatherWorldPositionAvailable =
             shader.vertexShader.includes(
@@ -410,8 +424,14 @@ export function applyGroundPatchMaterial(
             `#include <color_fragment>\n${colorFragment}`,
         );
     };
-    material.customProgramCacheKey = () =>
+    const customProgramCacheKey: Material['customProgramCacheKey'] = () =>
         `${originalCustomProgramCacheKey()}:ground-patch:${surface}`;
+    material.onBeforeCompile = onBeforeCompile;
+    material.customProgramCacheKey = customProgramCacheKey;
+    staticGroundPatchShaderHookPairs.set(
+        onBeforeCompile,
+        customProgramCacheKey,
+    );
     material.needsUpdate = true;
 
     return material;

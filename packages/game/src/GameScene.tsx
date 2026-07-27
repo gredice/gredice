@@ -65,6 +65,7 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
@@ -86,6 +87,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Demo purposes only
     freezeTime?: Date;
+    fixedTimeSeconds?: number;
     dayNightCycleDisabled?: boolean;
     noBackground?: boolean;
     noControls?: boolean;
@@ -107,6 +109,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Development purposes
     enableGameProfileController?: boolean;
+    enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     flags?: GameFeatureFlags;
 };
 
@@ -296,6 +299,8 @@ export function GameScene({
     deferDetails,
     renderDetails: renderDetailsOverride,
     enableGameProfileController,
+    enableStaticOpaqueSceneCacheOcclusionFixture,
+    fixedTimeSeconds,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -346,8 +351,13 @@ export function GameScene({
             (quality === 'high' ||
                 (quality === undefined && gameQualitySetting === 'high')),
     );
-    const adaptiveHighInteractionActive =
-        useAdaptiveHighInteractionActivity(adaptiveHighEnabled);
+    const staticOpaqueCacheEnabled = Boolean(
+        flags?.enableStaticOpaqueSceneCacheFlag &&
+            qualityProfile.tier === 'high',
+    );
+    const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
+        adaptiveHighEnabled || staticOpaqueCacheEnabled,
+    );
     const [adaptiveHighProfile, setAdaptiveHighProfile] =
         useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
@@ -437,8 +447,10 @@ export function GameScene({
                     adaptiveHighProfile={adaptiveHighProfile}
                     onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
+                    fixedTimeSeconds={fixedTimeSeconds}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
+                    staticOpaqueCacheEnabled={staticOpaqueCacheEnabled}
                     zoom={sceneCameraZoom}
                     className="!absolute"
                 >
@@ -458,6 +470,10 @@ export function GameScene({
                                 quality={qualityProfile}
                                 weather={weather}
                             />
+                            {enableStaticOpaqueSceneCacheOcclusionFixture &&
+                            staticOpaqueCacheEnabled ? (
+                                <StaticOpaqueSceneCacheOcclusionFixture />
+                            ) : null}
                             <PlacementGroundingShadows
                                 stacks={garden?.stacks}
                             />

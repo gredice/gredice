@@ -25,6 +25,7 @@ export const sceneFrameRates = {
 
 type SceneTimeContextValue = {
     acquireContinuousRender: (framesPerSecond?: number) => () => void;
+    fixedTimeSeconds: number | undefined;
     subscribeSceneResume: (listener: () => void) => () => void;
     timeUniform: IUniform<number>;
 };
@@ -297,10 +298,11 @@ export function SceneTimeProvider({
     const contextValue = useMemo(
         () => ({
             acquireContinuousRender,
+            fixedTimeSeconds: fixedTime,
             subscribeSceneResume,
             timeUniform,
         }),
-        [acquireContinuousRender, subscribeSceneResume, timeUniform],
+        [acquireContinuousRender, fixedTime, subscribeSceneResume, timeUniform],
     );
 
     return (
@@ -317,6 +319,15 @@ export function useSceneTimeUniform() {
     }
 
     return sceneTime.timeUniform;
+}
+
+export function useSceneFixedTimeSeconds() {
+    const sceneTime = useContext(SceneTimeContext);
+    if (!sceneTime) {
+        throw new Error('Missing SceneTimeProvider in the scene tree');
+    }
+
+    return sceneTime.fixedTimeSeconds;
 }
 
 export function useSceneTimeInvalidation(

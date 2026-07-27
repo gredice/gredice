@@ -17,6 +17,7 @@ import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type RainSurfaceUniformOptions,
     type SnowSurfaceUniformOptions,
+    type WeatherSurfaceUniformActivitySnapshot,
     WeatherSurfaceUniformRegistry,
     type WeatherSurfaceUniformStats,
 } from './weatherSurfaceUniforms';
@@ -264,4 +265,13 @@ export function useRainSurfaceWetnessActive({
 
 export function useRainSurfacePuddleStrengthUniform(): IUniform<number> {
     return useWeatherSurfaceUniformRegistry().rainPuddleStrengthUniform;
+}
+
+export function useWeatherSurfaceUniformActivitySnapshot(): WeatherSurfaceUniformActivitySnapshot {
+    const registry = useWeatherSurfaceUniformRegistry();
+    return useSyncExternalStore(
+        registry.subscribeActivity,
+        registry.getActivitySnapshot,
+        registry.getActivitySnapshot,
+    );
 }

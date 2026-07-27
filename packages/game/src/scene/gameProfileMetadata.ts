@@ -167,6 +167,20 @@ export type GeneratedPlantProfileSnapshot = {
     sessionId: number;
 };
 
+export type StaticOpaqueSceneCacheState =
+    | 'bypass'
+    | 'capturing'
+    | 'cold'
+    | 'disabled'
+    | 'ready'
+    | 'unsupported';
+
+export type StaticOpaqueSceneCacheOcclusionFixtureState =
+    | 'arming'
+    | 'failed'
+    | 'passed'
+    | 'verifying';
+
 export type GameProfileMetadata = {
     adaptiveHighAmbientFps?: number;
     adaptiveHighCloudUpdateMs?: number;
@@ -336,6 +350,45 @@ export type GameProfileMetadata = {
     snowParticleCapacity?: number;
     snowParticleCount?: number;
     snowParticleGeometryBuildCount?: number;
+    staticOpaqueSceneCacheBoundaryCount?: number;
+    staticOpaqueSceneCacheBypassFrameCount?: number;
+    staticOpaqueSceneCacheCaptureCount?: number;
+    staticOpaqueSceneCacheCaptureSubmissionCount?: number;
+    staticOpaqueSceneCacheCaptureTriangleCount?: number;
+    staticOpaqueSceneCacheCompositePassCount?: number;
+    staticOpaqueSceneCacheReplayEstimatedBytes?: number;
+    staticOpaqueSceneCacheReplayStatus?: string;
+    staticOpaqueSceneCacheReplaySubmissionCount?: number;
+    staticOpaqueSceneCacheReplayTriangleCount?: number;
+    staticOpaqueSceneCacheEnabled?: boolean;
+    staticOpaqueSceneCacheHitFrameCount?: number;
+    staticOpaqueSceneCacheIneligibleBoundaryCount?: number;
+    staticOpaqueSceneCacheInvalidationCount?: number;
+    staticOpaqueSceneCacheLastInvalidationReason?: string;
+    staticOpaqueSceneCacheLiveFrameCount?: number;
+    staticOpaqueSceneCacheMeshCount?: number;
+    staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionCaptureCountAtTransition?: number | null;
+    staticOpaqueSceneCacheOcclusionFixtureEnabled?: boolean;
+    staticOpaqueSceneCacheOcclusionFixturePass?: boolean;
+    staticOpaqueSceneCacheOcclusionFixtureState?: StaticOpaqueSceneCacheOcclusionFixtureState;
+    staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition?: number | null;
+    staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio?: number;
+    staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionTransitionCount?: number;
+    staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount?: number;
+    staticOpaqueSceneCacheReason?: string;
+    staticOpaqueSceneCacheSavedSubmissionCount?: number;
+    staticOpaqueSceneCacheSavedTriangleCount?: number;
+    staticOpaqueSceneCacheState?: StaticOpaqueSceneCacheState;
+    staticOpaqueSceneCacheSupported?: boolean;
+    staticOpaqueSceneCacheTargetEstimatedBytes?: number;
+    staticOpaqueSceneCacheTargetHeight?: number;
+    staticOpaqueSceneCacheTargetSampleCount?: number;
+    staticOpaqueSceneCacheTargetWidth?: number;
+    staticOpaqueSceneCacheTriangleCount?: number;
+    staticOpaqueSceneCacheUnexpectedStaticSubmissionCount?: number;
     weatherDisabled?: boolean;
     weatherSurfaceAvoidedOverlaySubmissionCount?: number;
     weatherSurfaceAvoidedOverlayTriangleCount?: number;

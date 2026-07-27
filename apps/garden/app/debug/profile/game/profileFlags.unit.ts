@@ -6,6 +6,8 @@ import {
     resolveGameProfileBlockGeometryMerging,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticSceneCache,
+    resolveGameProfileStaticSceneCacheOcclusionFixture,
     resolveGameProfileWeatherSurface,
 } from './profileFlags.ts';
 
@@ -53,32 +55,71 @@ describe('resolveGameProfileOperationVisuals', () => {
 describe('resolveGameProfileFlags', () => {
     it('defaults production-profile weather surfaces to the integrated path', () => {
         assert.deepEqual(
-            resolveGameProfileFlags(undefined, undefined, undefined),
+            resolveGameProfileFlags(undefined, undefined, undefined, undefined),
             {
                 enableAdaptiveHighQualityFlag: false,
                 enableBlockGeometryMergingFlag: false,
                 enableDebugHudFlag: true,
                 enableIntegratedWeatherSurfacesFlag: true,
                 enableRainWetOverlayFlag: true,
+                enableStaticOpaqueSceneCacheFlag: true,
             },
         );
-        assert.deepEqual(resolveGameProfileFlags('0', '1', 'integrated'), {
-            enableAdaptiveHighQualityFlag: true,
-            enableBlockGeometryMergingFlag: false,
-            enableDebugHudFlag: true,
-            enableIntegratedWeatherSurfacesFlag: true,
-            enableRainWetOverlayFlag: true,
-        });
+        assert.deepEqual(
+            resolveGameProfileFlags('0', '1', 'integrated', 'cache'),
+            {
+                enableAdaptiveHighQualityFlag: true,
+                enableBlockGeometryMergingFlag: false,
+                enableDebugHudFlag: true,
+                enableIntegratedWeatherSurfacesFlag: true,
+                enableRainWetOverlayFlag: true,
+                enableStaticOpaqueSceneCacheFlag: true,
+            },
+        );
     });
 
-    it('allows an explicit legacy weather-surface comparison', () => {
-        assert.deepEqual(resolveGameProfileFlags('1', '0', 'legacy'), {
-            enableAdaptiveHighQualityFlag: false,
-            enableBlockGeometryMergingFlag: true,
-            enableDebugHudFlag: true,
-            enableIntegratedWeatherSurfacesFlag: false,
-            enableRainWetOverlayFlag: true,
-        });
+    it('allows explicit legacy weather-surface and scene-cache comparisons', () => {
+        assert.deepEqual(
+            resolveGameProfileFlags('1', '0', 'legacy', 'legacy'),
+            {
+                enableAdaptiveHighQualityFlag: false,
+                enableBlockGeometryMergingFlag: true,
+                enableDebugHudFlag: true,
+                enableIntegratedWeatherSurfacesFlag: false,
+                enableRainWetOverlayFlag: true,
+                enableStaticOpaqueSceneCacheFlag: false,
+            },
+        );
+    });
+});
+
+describe('resolveGameProfileStaticSceneCache', () => {
+    it('accepts only the exact legacy override', () => {
+        assert.equal(resolveGameProfileStaticSceneCache('legacy'), 'legacy');
+        assert.equal(resolveGameProfileStaticSceneCache('cache'), 'cache');
+        assert.equal(resolveGameProfileStaticSceneCache(undefined), 'cache');
+        assert.equal(resolveGameProfileStaticSceneCache('unexpected'), 'cache');
+    });
+});
+
+describe('resolveGameProfileStaticSceneCacheOcclusionFixture', () => {
+    it('keeps the depth fixture behind an exact profiler opt-in', () => {
+        assert.equal(
+            resolveGameProfileStaticSceneCacheOcclusionFixture(undefined),
+            false,
+        );
+        assert.equal(
+            resolveGameProfileStaticSceneCacheOcclusionFixture('0'),
+            false,
+        );
+        assert.equal(
+            resolveGameProfileStaticSceneCacheOcclusionFixture('unexpected'),
+            false,
+        );
+        assert.equal(
+            resolveGameProfileStaticSceneCacheOcclusionFixture('1'),
+            true,
+        );
     });
 });
 

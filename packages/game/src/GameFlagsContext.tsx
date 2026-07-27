@@ -14,6 +14,7 @@ export interface GameFeatureFlags {
     enableBlockGeometryMergingFlag?: boolean;
     enableIntegratedWeatherSurfacesFlag?: boolean;
     enableRainWetOverlayFlag?: boolean;
+    enableStaticOpaqueSceneCacheFlag?: boolean;
     enableSuncokretChatFlag?: boolean;
     enableSuncokretDebugFlag?: boolean;
 }
