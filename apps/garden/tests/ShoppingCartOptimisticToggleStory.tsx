@@ -17,6 +17,7 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { allSorts, testSorts } from './raisedBedFieldHudScenarios';
 
 const now = '2026-05-21T00:00:00.000Z';
 
@@ -137,6 +138,15 @@ function createPaidCartItem() {
     } as unknown as ShoppingCartItemData;
 }
 
+function createTargetedOperationCartItem() {
+    return {
+        ...cartItem,
+        gardenId: 1,
+        raisedBedId: 1,
+        positionIndex: 0,
+    } as ShoppingCartItemData;
+}
+
 function createPlantSortCartItem() {
     return {
         ...cartItem,
@@ -218,9 +228,17 @@ function createOptimisticToggleQueryClient(items = onePresenceItem) {
                 id: 1,
                 name: 'Mock gredica',
                 physicalId: '1',
+                fields: [
+                    {
+                        id: 1,
+                        positionIndex: 0,
+                        plantSortId: testSorts.tomato.id,
+                    },
+                ],
             },
         ],
     });
+    queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(['shopping-cart'], {
         allowPurchase: true,
@@ -409,6 +427,16 @@ export function ShoppingCartOutletCountdownStory() {
 
 export function ShoppingCartPaidItemStory() {
     const item = useMemo(() => createPaidCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartTargetedOperationStory() {
+    const item = useMemo(() => createTargetedOperationCartItem(), []);
 
     return (
         <ShoppingCartOptimisticToggleProviders item={item}>

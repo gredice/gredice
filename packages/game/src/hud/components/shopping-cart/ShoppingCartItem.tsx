@@ -2,15 +2,9 @@ import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import {
-    Close,
-    Delete,
-    Hammer,
-    Navigate,
-    Sprout,
-    Timer,
-} from '@gredice/ui/icons';
+import { Close, Delete, Navigate, Sprout, Timer } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { OperationImage } from '@gredice/ui/OperationImage';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
@@ -18,12 +12,13 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { getCartItemOutletOfferId } from '../../../hooks/shoppingCartPositionPayload';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
+import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import {
     type ShoppingCartItemData,
@@ -166,6 +161,13 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
+    const targetPlantSortId =
+        item.entityTypeName === 'operation' && hasPosition
+            ? raisedBed?.fields.find(
+                  (field) => field.positionIndex === item.positionIndex,
+              )?.plantSortId
+            : null;
+    const { data: targetPlantSort } = usePlantSort(targetPlantSortId);
     const additionalData = parseAdditionalData(item.additionalData);
     const scheduledDateInfo = getCartItemScheduledDateInfo(item);
     const scheduledDate = scheduledDateInfo.date;
@@ -406,9 +408,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
     const plantSort =
         item.entityTypeName === 'plantSort' ? item.entityData : null;
-    const hasShopImage = Boolean(item.shopData.image);
-    const shouldShowOperationFallback =
-        item.entityTypeName === 'operation' && !hasShopImage;
     function renderGreenhouseSowingControl() {
         if (canChangeGreenhouseSowing) {
             return (
@@ -544,18 +543,31 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     alt={item.shopData.name ?? 'Nepoznato'}
                     plantSort={plantSort}
                 />
-            ) : shouldShowOperationFallback ? (
-                <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
-                    <Hammer
-                        role="img"
-                        aria-label={item.shopData.name ?? 'Nepoznato'}
-                        style={
-                            {
-                                '--imageSize': '32px',
-                            } as CSSProperties
-                        }
-                        className="size-[--imageSize] shrink-0"
+            ) : item.entityTypeName === 'operation' && targetPlantSort ? (
+                <div
+                    className="relative size-14 shrink-0"
+                    data-shopping-cart-item-media="plant"
+                >
+                    <PlantOrSortImage
+                        className="rounded-lg border overflow-hidden size-14 aspect-square"
+                        width={56}
+                        height={56}
+                        alt={targetPlantSort.information.name}
+                        plantSort={targetPlantSort}
                     />
+                    <span
+                        className="-right-1 -top-1 absolute flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-xs"
+                        data-shopping-cart-item-operation-badge
+                    >
+                        <OperationImage operation={item.entityData} size={18} />
+                    </span>
+                </div>
+            ) : item.entityTypeName === 'operation' ? (
+                <div
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center"
+                    data-shopping-cart-item-media="operation"
+                >
+                    <OperationImage operation={item.entityData} size={56} />
                 </div>
             ) : (
                 <PlantOrSortImage
