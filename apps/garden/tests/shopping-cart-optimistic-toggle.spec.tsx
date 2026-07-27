@@ -7,6 +7,7 @@ import {
     ShoppingCartOutletCountdownStory,
     ShoppingCartPaidItemStory,
     ShoppingCartPlantSortStory,
+    ShoppingCartTargetedOperationStory,
 } from './ShoppingCartOptimisticToggleStory';
 
 const shoppingCartServerItem = {
@@ -274,6 +275,24 @@ test('shopping cart greenhouse toggle updates sowing location metadata', async (
 
     expect(additionalData?.scheduledDate).toBe('2040-01-05T00:00:00.000Z');
     expect(additionalData?.sowingLocation).toBe('greenhouse');
+});
+
+test('shopping cart operation shows its target plant with an operation badge', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ShoppingCartTargetedOperationStory />);
+
+    const media = page.locator('[data-shopping-cart-item-media="plant"]');
+    await expect(
+        media.getByRole('img', { name: 'Cherry rajčica' }),
+    ).toBeVisible();
+
+    const operationBadge = media.locator(
+        '[data-shopping-cart-item-operation-badge]',
+    );
+    await expect(operationBadge).toBeVisible();
+    await expect(operationBadge.locator('svg')).toBeVisible();
 });
 
 test('paid shopping cart item date is not editable', async ({
