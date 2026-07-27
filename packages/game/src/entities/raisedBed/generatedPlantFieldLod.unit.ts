@@ -11,6 +11,7 @@ import {
 test('selected raised beds keep exact near detail throughout close-up', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
+            allowNormalViewNear: false,
             cameraZoom: 20,
             currentLevel: 'far',
             focusActive: true,
@@ -24,6 +25,7 @@ test('selected raised beds keep exact near detail throughout close-up', () => {
 test('close-up zoom cannot promote a background raised bed to near', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
+            allowNormalViewNear: false,
             cameraZoom: 300,
             currentLevel: 'near',
             focusActive: true,
@@ -34,19 +36,21 @@ test('close-up zoom cannot promote a background raised bed to near', () => {
     );
 });
 
-test('normal-view LOD policy remains unchanged', () => {
+test('normal view reserves exact detail for an explicit close-up selection', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
+            allowNormalViewNear: false,
             cameraZoom: 180,
             currentLevel: 'far',
             focusActive: false,
             isSelectedRaisedBed: false,
             screenOccupancy: 0.001,
         }),
-        'near',
+        'mid',
     );
     assert.equal(
         resolveGeneratedPlantFieldLod({
+            allowNormalViewNear: false,
             cameraZoom: 0,
             currentLevel: 'far',
             focusActive: false,
@@ -54,6 +58,20 @@ test('normal-view LOD policy remains unchanged', () => {
             screenOccupancy: 0.06,
         }),
         'mid',
+    );
+});
+
+test('the profiler can opt into the legacy normal-view exact policy', () => {
+    assert.equal(
+        resolveGeneratedPlantFieldLod({
+            allowNormalViewNear: true,
+            cameraZoom: 180,
+            currentLevel: 'far',
+            focusActive: false,
+            isSelectedRaisedBed: false,
+            screenOccupancy: 0.001,
+        }),
+        'near',
     );
 });
 
@@ -107,10 +125,24 @@ test('offscreen groups are rejected while the selected group bypasses culling', 
     );
 });
 
-test('focused and background fields cannot share a generated-plant batch', () => {
+test('selected exact batches are bed-local while background batches stay shared', () => {
     assert.notEqual(
         getGeneratedPlantBatchKey({
             focused: true,
+            lodLevel: 'near',
+            plantType: 'tomato',
+            raisedBedId: 29,
+        }),
+        getGeneratedPlantBatchKey({
+            focused: true,
+            lodLevel: 'near',
+            plantType: 'tomato',
+            raisedBedId: 1,
+        }),
+    );
+    assert.equal(
+        getGeneratedPlantBatchKey({
+            focused: false,
             lodLevel: 'near',
             plantType: 'tomato',
             raisedBedId: 29,

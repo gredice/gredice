@@ -27,6 +27,7 @@ import {
 } from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { buildApproximatePlantLodSummary } from '../../generators/plant/lib/plantLodSummary';
+import { getPlantBillboardPrimitiveTriangleCount } from '../../generators/plant/lib/plantMidBillboardMaterial';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
 import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
@@ -43,6 +44,7 @@ import {
     recordGeneratedPlantProfilePostSwapCompilation,
     removeGeneratedPlantProfileBatch,
 } from '../../scene/generatedPlantProfileMetrics';
+import { registerGeneratedPlantRenderBatch } from '../../scene/generatedPlantRenderRegistry';
 import { RaisedBedPlantShadowProxy } from './RaisedBedPlantShadowProxy';
 
 export interface RaisedBedGeneratedPlantBatchInstance {
@@ -578,6 +580,51 @@ export function RaisedBedGeneratedPlantBatch({
         };
     }, [failedTaskKeys, renderChunkSignature, retryFailed, taskPriority]);
     const profileBatchId = `${batchSeed}:${lodLevel}`;
+    const detailedLeafTriangleCount = useMemo(
+        () =>
+            Array.from(batchBuild.partsByField.values()).reduce(
+                (total, parts) => total + parts.leafTriangles,
+                0,
+            ),
+        [batchBuild.partsByField],
+    );
+    const clusterPrimitiveTriangleCount = useMemo(
+        () =>
+            getPlantBillboardPrimitiveTriangleCount(
+                lodLevel === 'far' ? 'far' : 'mid',
+                pendingBillboards.map((billboard) => billboard.summary),
+            ),
+        [lodLevel, pendingBillboards],
+    );
+    useEffect(
+        () =>
+            registerGeneratedPlantRenderBatch(profileBatchId, {
+                clusterInstanceCount: pendingBillboards.length,
+                clusterPrimitiveTriangleCount,
+                detailedInstanceCount: renderDetailedGeometry
+                    ? batchBuild.resolvedInstanceCount
+                    : 0,
+                detailedLeafTriangleCount,
+                nearInstanceCount: renderDetailedGeometry
+                    ? instances.length
+                    : 0,
+                pendingDetailInstanceCount: renderDetailedGeometry
+                    ? Math.max(
+                          0,
+                          instances.length - batchBuild.resolvedInstanceCount,
+                      )
+                    : 0,
+            }),
+        [
+            batchBuild.resolvedInstanceCount,
+            clusterPrimitiveTriangleCount,
+            detailedLeafTriangleCount,
+            instances.length,
+            pendingBillboards.length,
+            profileBatchId,
+            renderDetailedGeometry,
+        ],
+    );
     useEffect(() => {
         const sessionId = getGeneratedPlantProfileSessionId();
         if (sessionId === null || profileFields.length === 0) {

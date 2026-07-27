@@ -24,17 +24,19 @@ export function getGeneratedPlantBatchKey({
     raisedBedId: number;
 }) {
     return focused
-        ? `${plantType}:${lodLevel}:focus:${raisedBedId}`
+        ? `${plantType}:${lodLevel}:focus:${raisedBedId.toString()}`
         : `${plantType}:${lodLevel}:background`;
 }
 
 export function resolveGeneratedPlantFieldLod({
+    allowNormalViewNear,
     cameraZoom,
     currentLevel,
     focusActive,
     isSelectedRaisedBed,
     screenOccupancy,
 }: {
+    allowNormalViewNear: boolean;
     cameraZoom: number;
     currentLevel: PlantLodLevel;
     focusActive: boolean;
@@ -51,7 +53,7 @@ export function resolveGeneratedPlantFieldLod({
         screenOccupancy,
     });
 
-    if (focusActive && resolvedLevel === 'near') {
+    if (resolvedLevel === 'near' && (focusActive || !allowNormalViewNear)) {
         return 'mid';
     }
 

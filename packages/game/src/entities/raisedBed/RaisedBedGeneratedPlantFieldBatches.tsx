@@ -3,6 +3,7 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
+    memo,
     useCallback,
     useEffect,
     useLayoutEffect,
@@ -11,6 +12,7 @@ import {
     useState,
 } from 'react';
 import * as THREE from 'three';
+import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
@@ -54,6 +56,14 @@ import {
     getGridPositionFromIndex,
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
+import { reconcileGeneratedPlantBatches } from './generatedPlantBatchReconciliation';
+import {
+    allocateGeneratedPlantDetailBudget,
+    type GeneratedPlantDetailBudgetStats,
+    HIGH_GENERATED_PLANT_DETAIL_INSTANCE_BUDGET,
+    isGeneratedPlantDetailBudgetActive,
+    resolveLegacyGeneratedPlantDetailBudget,
+} from './generatedPlantDetailBudget';
 import {
     buildGeneratedPlantRaisedBedBounds,
     getGeneratedPlantBatchKey,
@@ -64,6 +74,10 @@ import {
     RaisedBedGeneratedPlantBatch,
     type RaisedBedGeneratedPlantBatchInstance,
 } from './RaisedBedGeneratedPlantBatch';
+import {
+    RaisedBedGeneratedPlantClusterBatch,
+    type RaisedBedGeneratedPlantClusterField,
+} from './RaisedBedGeneratedPlantClusterBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
 
@@ -95,9 +109,17 @@ type GeneratedPlantBatch = {
     batchKey: string;
     definition: ResolvedInGamePlantPreset['definition'];
     instances: RaisedBedGeneratedPlantBatchInstance[];
-    lodLevel: PlantLodLevel;
+    lodLevel: 'near';
     plantType: ResolvedInGamePlantPreset['plantType'];
+    signature: string;
     taskPriority: GeneratedLSystemTaskPriority;
+};
+
+type GeneratedPlantClusterBatch = {
+    batchKey: string;
+    fields: RaisedBedGeneratedPlantClusterField[];
+    lodLevel: Exclude<PlantLodLevel, 'near'>;
+    signature: string;
 };
 
 type GeneratedPlantRaisedBedGroup = {
@@ -105,6 +127,22 @@ type GeneratedPlantRaisedBedGroup = {
     fields: GeneratedPlantField[];
     raisedBedId: number;
 };
+
+type GeneratedPlantFieldLodState = {
+    level: PlantLodLevel;
+    requestedLevel: PlantLodLevel;
+    visible: boolean;
+};
+
+type GeneratedPlantFieldLodSnapshot = {
+    detailBudget: GeneratedPlantDetailBudgetStats;
+    lodByFieldKey: Map<string, GeneratedPlantFieldLodState>;
+};
+
+const MemoRaisedBedGeneratedPlantBatch = memo(RaisedBedGeneratedPlantBatch);
+const MemoRaisedBedGeneratedPlantClusterBatch = memo(
+    RaisedBedGeneratedPlantClusterBatch,
+);
 
 const seedLayoutByPlantsPerRow = [
     { multiplier: 0, offset: 0 },
@@ -115,9 +153,51 @@ const seedLayoutByPlantsPerRow = [
 ];
 
 const FIELD_VISIBILITY_MARGIN = 0.24;
+const PLANT_LOD_DETAIL_RANK = {
+    far: 0,
+    mid: 1,
+    near: 2,
+} satisfies Record<PlantLodLevel, number>;
+
+function getMostDetailedPlantLod(first: PlantLodLevel, second: PlantLodLevel) {
+    return PLANT_LOD_DETAIL_RANK[first] >= PLANT_LOD_DETAIL_RANK[second]
+        ? first
+        : second;
+}
+
+function areDetailBudgetStatsEqual(
+    first: GeneratedPlantDetailBudgetStats,
+    second: GeneratedPlantDetailBudgetStats,
+) {
+    return (
+        first.admittedBedCount === second.admittedBedCount &&
+        first.admittedInstanceCount === second.admittedInstanceCount &&
+        first.demotedBedCount === second.demotedBedCount &&
+        first.evictedBedCount === second.evictedBedCount &&
+        first.instanceBudget === second.instanceBudget &&
+        first.overflowInstanceCount === second.overflowInstanceCount &&
+        first.promotedBedCount === second.promotedBedCount &&
+        first.releasedBedCount === second.releasedBedCount &&
+        first.requestedBedCount === second.requestedBedCount &&
+        first.requestedInstanceCount === second.requestedInstanceCount &&
+        first.retainedBedCount === second.retainedBedCount &&
+        first.usedBudgetInstanceCount === second.usedBudgetInstanceCount
+    );
+}
 
 function getFieldRenderKey(blockId: string, field: DisplayedRaisedBedField) {
     return `${blockId}:${field.id ?? 'field'}:${field.positionIndex}:${field.plantSortId ?? 'sort'}`;
+}
+
+function getGeneratedPlantInstanceSignature(
+    instance: RaisedBedGeneratedPlantBatchInstance,
+) {
+    return [
+        instance.seed,
+        instance.generation,
+        instance.scale,
+        ...instance.position,
+    ].join(':');
 }
 
 function shouldRenderGeneratedPlantField(field: DisplayedRaisedBedField) {
@@ -191,12 +271,18 @@ function resolveGeneratedFieldVisibility({
 }
 
 function useGeneratedPlantFieldLods({
+    allowNormalViewNear,
+    detailInstanceBudget,
     focusActive,
     generatedFields,
+    interactingRaisedBedId,
     selectedRaisedBedId,
 }: {
+    allowNormalViewNear: boolean;
+    detailInstanceBudget: number;
     focusActive: boolean;
     generatedFields: GeneratedPlantField[];
+    interactingRaisedBedId: number | null;
     selectedRaisedBedId: number | null;
 }) {
     const camera = useThree((state) => state.camera);
@@ -227,19 +313,34 @@ function useGeneratedPlantFieldLods({
             }),
         );
     }, [generatedFields]);
-    const [lodByFieldKey, setLodByFieldKey] = useState(
-        () => new Map<string, { level: PlantLodLevel; visible: boolean }>(),
-    );
-    const lodByFieldKeyRef = useRef(lodByFieldKey);
+    const [lodSnapshot, setLodSnapshot] =
+        useState<GeneratedPlantFieldLodSnapshot>(() => ({
+            detailBudget: allocateGeneratedPlantDetailBudget([], {
+                instanceBudget: detailInstanceBudget,
+            }).stats,
+            lodByFieldKey: new Map(),
+        }));
+    const lodByFieldKeyRef = useRef(lodSnapshot.lodByFieldKey);
+    const admittedRaisedBedIdsRef = useRef(new Set<number>());
 
     useLayoutEffect(() => {
-        lodByFieldKeyRef.current = lodByFieldKey;
-    }, [lodByFieldKey]);
+        lodByFieldKeyRef.current = lodSnapshot.lodByFieldKey;
+    }, [lodSnapshot.lodByFieldKey]);
 
     const updateLods = useCallback(() => {
         if (generatedFields.length === 0) {
-            setLodByFieldKey((current) =>
-                current.size === 0 ? current : new Map(),
+            const detailBudget = allocateGeneratedPlantDetailBudget([], {
+                instanceBudget: detailInstanceBudget,
+            }).stats;
+            admittedRaisedBedIdsRef.current = new Set();
+            setLodSnapshot((current) =>
+                current.lodByFieldKey.size === 0 &&
+                areDetailBudgetStatsEqual(current.detailBudget, detailBudget)
+                    ? current
+                    : {
+                          detailBudget,
+                          lodByFieldKey: new Map(),
+                      },
             );
             return;
         }
@@ -247,9 +348,23 @@ function useGeneratedPlantFieldLods({
         const profileSessionId = getGeneratedPlantProfileSessionId();
         const profileActive = profileSessionId !== null;
         const profileStartedAt = profileActive ? performance.now() : 0;
-        const next = new Map<
+        const provisionalGroups: Array<{
+            fieldStates: Array<{
+                fieldKey: string;
+                requestedLevel: PlantLodLevel;
+                visible: boolean;
+            }>;
+            instanceCount: number;
+            isInteracting: boolean;
+            isSelected: boolean;
+            projectedBenefit: number;
+            raisedBedId: number;
+            requestedLod: PlantLodLevel;
+            wasAdmitted: boolean;
+        }> = [];
+        const nextLodByFieldKey = new Map<
             string,
-            { level: PlantLodLevel; visible: boolean }
+            GeneratedPlantFieldLodState
         >();
         const viewportHeight = Math.max(
             viewport.getCurrentViewport(camera).height,
@@ -282,14 +397,41 @@ function useGeneratedPlantFieldLods({
                 if (profileActive) {
                     groupRejectionCount += 1;
                 }
+                const fieldStates = group.fields.map((field) => ({
+                    fieldKey: field.fieldKey,
+                    requestedLevel: 'far' as const,
+                    visible: false,
+                }));
                 for (const field of group.fields) {
-                    next.set(field.fieldKey, {
+                    nextLodByFieldKey.set(field.fieldKey, {
                         level: 'far',
+                        requestedLevel: 'far',
                         visible: false,
                     });
                 }
+                provisionalGroups.push({
+                    fieldStates,
+                    instanceCount: 0,
+                    isInteracting: group.raisedBedId === interactingRaisedBedId,
+                    isSelected: focusActive && isSelectedRaisedBed,
+                    projectedBenefit: 0,
+                    raisedBedId: group.raisedBedId,
+                    requestedLod: 'far',
+                    wasAdmitted: admittedRaisedBedIdsRef.current.has(
+                        group.raisedBedId,
+                    ),
+                });
                 continue;
             }
+
+            const fieldStates: Array<{
+                fieldKey: string;
+                requestedLevel: PlantLodLevel;
+                visible: boolean;
+            }> = [];
+            let instanceCount = 0;
+            let projectedBenefit = 0;
+            let requestedLod: PlantLodLevel = 'far';
 
             for (const field of group.fields) {
                 if (profileActive) {
@@ -313,9 +455,10 @@ function useGeneratedPlantFieldLods({
                     });
                 }
                 const previousLevel =
-                    lodByFieldKeyRef.current.get(field.fieldKey)?.level ??
-                    'far';
-                const level = resolveGeneratedPlantFieldLod({
+                    lodByFieldKeyRef.current.get(field.fieldKey)
+                        ?.requestedLevel ?? 'far';
+                const requestedLevel = resolveGeneratedPlantFieldLod({
+                    allowNormalViewNear,
                     cameraZoom: getOrthographicCameraZoom(camera),
                     currentLevel: previousLevel,
                     focusActive,
@@ -323,12 +466,80 @@ function useGeneratedPlantFieldLods({
                     screenOccupancy,
                 });
 
-                next.set(field.fieldKey, {
-                    level: visible ? level : 'far',
+                fieldStates.push({
+                    fieldKey: field.fieldKey,
+                    requestedLevel: visible ? requestedLevel : 'far',
                     visible,
                 });
+                if (!visible) {
+                    nextLodByFieldKey.set(field.fieldKey, {
+                        level: 'far',
+                        requestedLevel: 'far',
+                        visible: false,
+                    });
+                    continue;
+                }
+
+                requestedLod = getMostDetailedPlantLod(
+                    requestedLod,
+                    requestedLevel,
+                );
+                instanceCount += field.instances.length;
+                projectedBenefit +=
+                    screenOccupancy * screenOccupancy * field.instances.length;
             }
+
+            provisionalGroups.push({
+                fieldStates,
+                instanceCount,
+                isInteracting: group.raisedBedId === interactingRaisedBedId,
+                isSelected: focusActive && isSelectedRaisedBed,
+                projectedBenefit,
+                raisedBedId: group.raisedBedId,
+                requestedLod,
+                wasAdmitted: admittedRaisedBedIdsRef.current.has(
+                    group.raisedBedId,
+                ),
+            });
         }
+        const allocation = allocateGeneratedPlantDetailBudget(
+            provisionalGroups.map((group) => ({
+                instanceCount: group.instanceCount,
+                isInteracting: group.isInteracting,
+                isSelected: group.isSelected,
+                projectedBenefit: group.projectedBenefit,
+                raisedBedId: group.raisedBedId,
+                requestedLod: group.requestedLod,
+                wasAdmitted: group.wasAdmitted,
+            })),
+            { instanceBudget: detailInstanceBudget },
+        );
+        const nextAdmittedRaisedBedIds = new Set<number>();
+        allocation.decisions.forEach((decision, groupIndex) => {
+            const group = provisionalGroups[groupIndex];
+            if (!group) {
+                return;
+            }
+            if (decision.detailAdmitted) {
+                nextAdmittedRaisedBedIds.add(decision.raisedBedId);
+            }
+
+            for (const fieldState of group.fieldStates) {
+                if (!fieldState.visible) {
+                    continue;
+                }
+
+                nextLodByFieldKey.set(fieldState.fieldKey, {
+                    level:
+                        group.requestedLod === 'near'
+                            ? decision.resolvedLod
+                            : fieldState.requestedLevel,
+                    requestedLevel: fieldState.requestedLevel,
+                    visible: true,
+                });
+            }
+        });
+        admittedRaisedBedIdsRef.current = nextAdmittedRaisedBedIds;
         if (profileActive) {
             recordGeneratedPlantProfileLodEvaluation(
                 {
@@ -342,29 +553,45 @@ function useGeneratedPlantFieldLods({
             );
         }
 
-        setLodByFieldKey((current) => {
-            if (current.size !== next.size) {
-                return next;
+        setLodSnapshot((current) => {
+            if (
+                current.lodByFieldKey.size !== nextLodByFieldKey.size ||
+                !areDetailBudgetStatsEqual(
+                    current.detailBudget,
+                    allocation.stats,
+                )
+            ) {
+                return {
+                    detailBudget: allocation.stats,
+                    lodByFieldKey: nextLodByFieldKey,
+                };
             }
 
-            for (const [key, nextState] of next) {
-                const currentState = current.get(key);
+            for (const [key, nextState] of nextLodByFieldKey) {
+                const currentState = current.lodByFieldKey.get(key);
                 if (
                     !currentState ||
                     currentState.level !== nextState.level ||
+                    currentState.requestedLevel !== nextState.requestedLevel ||
                     currentState.visible !== nextState.visible
                 ) {
-                    return next;
+                    return {
+                        detailBudget: allocation.stats,
+                        lodByFieldKey: nextLodByFieldKey,
+                    };
                 }
             }
 
             return current;
         });
     }, [
+        allowNormalViewNear,
         camera,
+        detailInstanceBudget,
         focusActive,
         frustum,
         generatedFields.length,
+        interactingRaisedBedId,
         projectedPosition,
         projectionViewMatrix,
         raisedBedGroups,
@@ -391,7 +618,7 @@ function useGeneratedPlantFieldLods({
         updateLods();
     });
 
-    return lodByFieldKey;
+    return lodSnapshot;
 }
 
 export function RaisedBedGeneratedPlantFieldBatches({
@@ -415,6 +642,9 @@ export function RaisedBedGeneratedPlantFieldBatches({
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const closeupCameraActive = useGameState(
         (state) => state.closeupCameraActive,
+    );
+    const hoveredBlockId = useHoveredBlockStore(
+        (state) => state.hoveredBlock?.id ?? null,
     );
     const currentTime = useSnapshotTime();
     const { data: cart } = useShoppingCart(
@@ -643,15 +873,76 @@ export function RaisedBedGeneratedPlantFieldBatches({
             findRaisedBedByBlockId(currentGarden, closeupBlockId)?.id ?? null
         );
     }, [closeupBlockId, currentGarden]);
+    const interactingRaisedBedId = useMemo(() => {
+        if (!currentGarden || !hoveredBlockId) {
+            return null;
+        }
+
+        return (
+            findRaisedBedByBlockId(currentGarden, hoveredBlockId)?.id ?? null
+        );
+    }, [currentGarden, hoveredBlockId]);
     const focusActive =
         selectedRaisedBedId !== null &&
         (view === 'closeup' || closeupCameraActive);
     const leafGeometryDetail = resolvePlantLeafGeometryDetail(quality.tier);
-    const lods = useGeneratedPlantFieldLods({
+    const generatedPlantInstanceCount = useMemo(
+        () =>
+            generatedFields.reduce(
+                (total, field) => total + field.instances.length,
+                0,
+            ),
+        [generatedFields],
+    );
+    const legacyDetailBudget =
+        mockGardenProfile === 'high-target' &&
+        resolveLegacyGeneratedPlantDetailBudget(
+            typeof window === 'undefined' ? undefined : window.location.search,
+        );
+    const globalDetailBudgetActive = isGeneratedPlantDetailBudgetActive(
+        quality.tier,
+        legacyDetailBudget,
+    );
+    const detailInstanceBudget = globalDetailBudgetActive
+        ? HIGH_GENERATED_PLANT_DETAIL_INSTANCE_BUDGET
+        : generatedPlantInstanceCount;
+    const { detailBudget, lodByFieldKey: lods } = useGeneratedPlantFieldLods({
+        allowNormalViewNear: !globalDetailBudgetActive,
+        detailInstanceBudget,
         focusActive,
         generatedFields,
+        interactingRaisedBedId,
         selectedRaisedBedId,
     });
+    const detailTransitionTotalsRef = useRef({
+        evicted: 0,
+        promoted: 0,
+        released: 0,
+    });
+    const lastAccumulatedDetailBudgetRef =
+        useRef<GeneratedPlantDetailBudgetStats | null>(null);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: transition totals are scoped to the active garden fixture.
+    useEffect(() => {
+        detailTransitionTotalsRef.current = {
+            evicted: 0,
+            promoted: 0,
+            released: 0,
+        };
+        lastAccumulatedDetailBudgetRef.current = null;
+    }, [currentGarden?.id, mockGardenProfile]);
+    useEffect(() => {
+        if (lastAccumulatedDetailBudgetRef.current === detailBudget) {
+            return;
+        }
+
+        detailTransitionTotalsRef.current.evicted +=
+            detailBudget.evictedBedCount;
+        detailTransitionTotalsRef.current.promoted +=
+            detailBudget.promotedBedCount;
+        detailTransitionTotalsRef.current.released +=
+            detailBudget.releasedBedCount;
+        lastAccumulatedDetailBudgetRef.current = detailBudget;
+    }, [detailBudget]);
     useEffect(() => {
         const sessionId = getGeneratedPlantProfileSessionId();
         if (sessionId === null) {
@@ -672,8 +963,15 @@ export function RaisedBedGeneratedPlantFieldBatches({
             sessionId,
         );
     }, [generatedFields, lods]);
-    const batches = useMemo(() => {
-        const batchMap = new Map<string, GeneratedPlantBatch>();
+    const previousDetailedBatchesRef = useRef<
+        readonly GeneratedPlantBatch[] | undefined
+    >(undefined);
+    const previousClusterBatchesRef = useRef<
+        readonly GeneratedPlantClusterBatch[] | undefined
+    >(undefined);
+    const compiledBatches = useMemo(() => {
+        const detailedBatchMap = new Map<string, GeneratedPlantBatch>();
+        const clusterBatchMap = new Map<string, GeneratedPlantClusterBatch>();
 
         for (const field of generatedFields) {
             const lod = lods.get(field.fieldKey);
@@ -683,35 +981,136 @@ export function RaisedBedGeneratedPlantFieldBatches({
 
             const focused =
                 focusActive && field.raisedBedId === selectedRaisedBedId;
+            if (lod.level !== 'near') {
+                const batchKey = globalDetailBudgetActive
+                    ? `${lod.level}:bed:${field.raisedBedId.toString()}`
+                    : getGeneratedPlantBatchKey({
+                          focused: false,
+                          lodLevel: lod.level,
+                          plantType: field.plantType,
+                          raisedBedId: field.raisedBedId,
+                      });
+                const clusterBatch = clusterBatchMap.get(batchKey);
+                const clusterField = {
+                    definition: field.definition,
+                    fieldKey: field.fieldKey,
+                    instances: field.instances,
+                } satisfies RaisedBedGeneratedPlantClusterField;
+
+                if (clusterBatch) {
+                    clusterBatch.fields.push(clusterField);
+                } else {
+                    clusterBatchMap.set(batchKey, {
+                        batchKey,
+                        fields: [clusterField],
+                        lodLevel: lod.level,
+                        signature: '',
+                    });
+                }
+                continue;
+            }
+
             const batchKey = getGeneratedPlantBatchKey({
                 focused,
-                lodLevel: lod.level,
+                lodLevel: 'near',
                 plantType: field.plantType,
                 raisedBedId: field.raisedBedId,
             });
-            let batch = batchMap.get(batchKey);
+            let batch = detailedBatchMap.get(batchKey);
 
             if (!batch) {
                 batch = {
                     batchKey,
                     definition: field.definition,
                     instances: [],
-                    lodLevel: lod.level,
+                    lodLevel: 'near',
                     plantType: field.plantType,
+                    signature: '',
                     taskPriority: focused
                         ? 'focused'
                         : focusActive
                           ? 'background'
                           : 'normal',
                 };
-                batchMap.set(batchKey, batch);
+                detailedBatchMap.set(batchKey, batch);
             }
 
             batch.instances.push(...field.instances);
         }
 
-        return Array.from(batchMap.values());
-    }, [focusActive, generatedFields, lods, selectedRaisedBedId]);
+        return {
+            clusterBatches: Array.from(clusterBatchMap.values(), (batch) => ({
+                ...batch,
+                signature: [
+                    batch.lodLevel,
+                    ...batch.fields.flatMap((field) => [
+                        field.fieldKey,
+                        field.definition.name,
+                        ...field.instances.map(
+                            getGeneratedPlantInstanceSignature,
+                        ),
+                    ]),
+                ].join('|'),
+            })),
+            detailedBatches: Array.from(detailedBatchMap.values(), (batch) => ({
+                ...batch,
+                signature: [
+                    batch.lodLevel,
+                    batch.definition.name,
+                    batch.taskPriority,
+                    ...batch.instances.map(getGeneratedPlantInstanceSignature),
+                ].join('|'),
+            })),
+        };
+    }, [
+        focusActive,
+        generatedFields,
+        globalDetailBudgetActive,
+        lods,
+        selectedRaisedBedId,
+    ]);
+    const detailedBatches = useMemo(() => {
+        const reconciled = reconcileGeneratedPlantBatches(
+            previousDetailedBatchesRef.current,
+            compiledBatches.detailedBatches,
+        );
+        previousDetailedBatchesRef.current = reconciled;
+        return reconciled;
+    }, [compiledBatches.detailedBatches]);
+    const clusterBatches = useMemo(() => {
+        const reconciled = reconcileGeneratedPlantBatches(
+            previousClusterBatchesRef.current,
+            compiledBatches.clusterBatches,
+        );
+        previousClusterBatchesRef.current = reconciled;
+        return reconciled;
+    }, [compiledBatches.clusterBatches]);
+    const generatedPlantBatchCount =
+        detailedBatches.length + clusterBatches.length;
+    const representationCounts = useMemo(() => {
+        const counts = {
+            farFields: 0,
+            farInstances: 0,
+            midFields: 0,
+            midInstances: 0,
+            nearFields: 0,
+            nearInstances: 0,
+        };
+
+        for (const field of generatedFields) {
+            const lod = lods.get(field.fieldKey);
+            if (!lod?.visible) {
+                continue;
+            }
+
+            const fieldKey = `${lod.level}Fields` as const;
+            const instanceKey = `${lod.level}Instances` as const;
+            counts[fieldKey] += 1;
+            counts[instanceKey] += field.instances.length;
+        }
+
+        return counts;
+    }, [generatedFields, lods]);
     const highTargetOperationVisuals =
         mockGardenProfile === 'high-target' &&
         resolveHighTargetOperationVisualsEnabled(
@@ -719,12 +1118,36 @@ export function RaisedBedGeneratedPlantFieldBatches({
         );
     useEffect(() => {
         updateGameProfileMetadata({
-            generatedPlantBatchCount: batches.length,
+            generatedPlantBatchCount,
+            generatedPlantDetailAdmittedBedCount: detailBudget.admittedBedCount,
+            generatedPlantDetailAdmittedInstanceCount:
+                detailBudget.admittedInstanceCount,
+            generatedPlantDetailBudgetInstanceCount:
+                detailBudget.instanceBudget,
+            generatedPlantDetailDemotedBedCount: detailBudget.demotedBedCount,
+            generatedPlantDetailEvictedBedCount: detailBudget.evictedBedCount,
+            generatedPlantDetailOverflowInstanceCount:
+                detailBudget.overflowInstanceCount,
+            generatedPlantDetailPromotedBedCount: detailBudget.promotedBedCount,
+            generatedPlantDetailRequestedBedCount:
+                detailBudget.requestedBedCount,
+            generatedPlantDetailRequestedInstanceCount:
+                detailBudget.requestedInstanceCount,
+            generatedPlantDetailRetainedBedCount: detailBudget.retainedBedCount,
+            generatedPlantDetailTransitionCount:
+                detailTransitionTotalsRef.current.evicted +
+                detailTransitionTotalsRef.current.promoted +
+                detailTransitionTotalsRef.current.released,
+            generatedPlantDetailUsedBudgetInstanceCount:
+                detailBudget.usedBudgetInstanceCount,
+            generatedPlantFarFieldCount: representationCounts.farFields,
+            generatedPlantFarInstanceCount: representationCounts.farInstances,
             generatedPlantFieldCount: generatedFields.length,
-            generatedPlantInstanceCount: generatedFields.reduce(
-                (total, field) => total + field.instances.length,
-                0,
-            ),
+            generatedPlantInstanceCount,
+            generatedPlantMidFieldCount: representationCounts.midFields,
+            generatedPlantMidInstanceCount: representationCounts.midInstances,
+            generatedPlantNearFieldCount: representationCounts.nearFields,
+            generatedPlantNearInstanceCount: representationCounts.nearInstances,
             generatedPlantExpectedInstanceCount:
                 mockGardenProfile === 'high-target'
                     ? highTargetOperationVisuals
@@ -744,29 +1167,40 @@ export function RaisedBedGeneratedPlantFieldBatches({
             ),
         });
     }, [
-        batches.length,
+        detailBudget,
+        generatedPlantBatchCount,
         generatedFields,
+        generatedPlantInstanceCount,
         highTargetOperationVisuals,
         lods,
         mockGardenProfile,
+        representationCounts,
     ]);
 
-    if (!renderDetails || batches.length === 0) {
+    if (!renderDetails || generatedPlantBatchCount === 0) {
         return null;
     }
 
     return (
         <group
-            name={`RaisedBedGeneratedPlantFieldBatches:batches:${batches.length}`}
+            name={`RaisedBedGeneratedPlantFieldBatches:batches:${generatedPlantBatchCount.toString()}`}
         >
-            {batches.map((batch) => (
-                <RaisedBedGeneratedPlantBatch
+            {detailedBatches.map((batch) => (
+                <MemoRaisedBedGeneratedPlantBatch
                     key={batch.batchKey}
                     definition={batch.definition}
                     instances={batch.instances}
                     leafGeometryDetail={leafGeometryDetail}
                     lodLevel={batch.lodLevel}
                     taskPriority={batch.taskPriority}
+                />
+            ))}
+            {clusterBatches.map((batch) => (
+                <MemoRaisedBedGeneratedPlantClusterBatch
+                    key={batch.batchKey}
+                    batchKey={batch.batchKey}
+                    fields={batch.fields}
+                    lodLevel={batch.lodLevel}
                 />
             ))}
         </group>
