@@ -102,12 +102,12 @@ function expectBaseSchedulingPayload(
     expect(payload).toMatchObject({
         amount: 1,
         cartId: 1,
-        currency: 'eur',
         entityId,
         entityTypeName: 'operation',
         gardenId: TEST_GARDEN_ID,
         raisedBedId: TEST_RAISED_BED_ID,
     });
+    expect(payload.currency).toBeUndefined();
     expect(parseScheduledDate(payload)).toBe(
         new Date(selectedDate).toISOString(),
     );

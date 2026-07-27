@@ -183,7 +183,6 @@ function RaisedBedAiOperationChip({
                     additionalData: JSON.stringify({
                         scheduledDate: scheduledDate.toISOString(),
                     }),
-                    currency: 'eur',
                 });
             }}
             positionIndex={targetPositionIndex}
