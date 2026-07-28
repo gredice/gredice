@@ -9,6 +9,7 @@ import {
     useShoppingCartQueryKey,
 } from '../../../packages/game/src/hooks/useShoppingCart';
 import { ShoppingCartItem } from '../../../packages/game/src/hud/components/shopping-cart/ShoppingCartItem';
+import { PaymentSuccessfulMessage } from '../../../packages/game/src/hud/PaymentSuccessfulMessage';
 import {
     ShoppingCart,
     ShoppingCartHud,
@@ -99,6 +100,10 @@ const onePresenceItem = [cartItem];
 const twoPresenceItems = [cartItem, basilCartItem];
 const basilAndMintPresenceItems = [basilCartItem, mintCartItem];
 const noPresenceItems: ShoppingCartItemData[] = [];
+const sunflowerCartItem: ShoppingCartItemData = {
+    ...cartItem,
+    currency: 'sunflower',
+};
 
 function createOutletCartItem() {
     const plantSortItem = createPlantSortCartItem();
@@ -201,7 +206,10 @@ function cartTotal(items: ShoppingCartItemData[]) {
     );
 }
 
-function createOptimisticToggleQueryClient(items = onePresenceItem) {
+function createOptimisticToggleQueryClient(
+    items = onePresenceItem,
+    totalSunflowers = 0,
+) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -246,8 +254,10 @@ function createOptimisticToggleQueryClient(items = onePresenceItem) {
         id: 1,
         items,
         notes: [],
-        total: cartTotal(items),
-        totalSunflowers: 0,
+        total: items.some((item) => item.currency === 'eur')
+            ? cartTotal(items)
+            : 0,
+        totalSunflowers,
     });
 
     return queryClient;
@@ -258,18 +268,20 @@ function ShoppingCartOptimisticToggleProviders({
     hasMemory = false,
     item,
     items,
+    totalSunflowers,
 }: PropsWithChildren<{
     hasMemory?: boolean;
     item?: ShoppingCartItemData;
     items?: ShoppingCartItemData[];
+    totalSunflowers?: number;
 }>) {
     const initialItems = useMemo(
         () => items ?? (item ? [item] : onePresenceItem),
         [item, items],
     );
     const queryClient = useMemo(
-        () => createOptimisticToggleQueryClient(initialItems),
-        [initialItems],
+        () => createOptimisticToggleQueryClient(initialItems, totalSunflowers),
+        [initialItems, totalSunflowers],
     );
     const gameStore = useMemo(
         () =>
@@ -481,6 +493,19 @@ export function ShoppingCartHudItemsPresenceStory() {
             items={onePresenceItem}
         >
             <ShoppingCartItemsPresencePanel useProductionHud />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartSunflowerCheckoutStory() {
+    return (
+        <ShoppingCartOptimisticToggleProviders
+            hasMemory
+            items={[sunflowerCartItem]}
+            totalSunflowers={2500}
+        >
+            <ShoppingCartItemsPresencePanel useProductionHud />
+            <PaymentSuccessfulMessage />
         </ShoppingCartOptimisticToggleProviders>
     );
 }
