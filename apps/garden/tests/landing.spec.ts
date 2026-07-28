@@ -553,6 +553,11 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
         overview.locator('img[src*="Raised_Bed_2"]').first(),
     ).toBeVisible();
 
+    await page
+        .getByRole('button', {
+            name: 'Privremeno sakrij banner impersonacije',
+        })
+        .click();
     await page.getByTitle('Profil').click();
     await expect(
         page.getByRole('menuitem', { name: '3D prikaz vrta' }),
