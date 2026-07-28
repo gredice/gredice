@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 
 const waterBlockName = 'Block_Water';
 
@@ -23,7 +23,7 @@ export function getBlockDataByName(
 }
 
 function isWaterBlockCollapsedIntoSupport(
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
     blockIndex: number,
 ) {
@@ -39,7 +39,7 @@ function isWaterBlockCollapsedIntoSupport(
 
 export function getStackBlockHeight(
     blockData: BlockData[] | null | undefined,
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
     blockIndex = stack.blocks.indexOf(block),
 ) {
@@ -52,7 +52,7 @@ export function getStackBlockHeight(
 
 export function getStackHeight(
     blockData: BlockData[] | null | undefined,
-    stack: Stack | undefined,
+    stack: GardenStack | undefined,
     stopBlock?: Block,
 ) {
     if (!blockData || !stack || stack.blocks.length <= 0) {

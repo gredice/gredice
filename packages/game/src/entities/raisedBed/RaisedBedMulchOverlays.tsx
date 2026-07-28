@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { BufferGeometry } from 'three';
+import { type BufferGeometry, Vector3 } from 'three';
 import {
     type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
@@ -16,7 +16,7 @@ import {
 } from '../../scene/gameQuality';
 import { snowPresets } from '../../snow/snowPresets';
 import type { Block } from '../../types/Block';
-import type { Stack } from '../../types/Stack';
+import type { GardenStack } from '../../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
@@ -80,7 +80,7 @@ type RaisedBedPlacement = {
     dirtGeometryName: RaisedBedDirtGeometryName;
     origin: [number, number, number];
     rotationQuarterTurns: number;
-    stack: Stack;
+    stack: GardenStack;
     stackBlockIndex: number;
 };
 
@@ -190,7 +190,7 @@ function activeDragPreviewTouchesRaisedBed(
 
 function getRaisedBedNeighbors(
     garden: CurrentGardenData,
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
 ) {
     function getStackAt(x: number, z: number) {
@@ -225,7 +225,7 @@ function getRaisedBedNeighbors(
 
 function getRaisedBedOrigin(
     blockData: ReturnType<typeof useBlockData>['data'],
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
     neighbors: ReturnType<typeof getRaisedBedNeighbors>,
 ): [number, number, number] {
@@ -504,7 +504,14 @@ function createMulchRenderInstance({
         rotation: 0,
         // The synthetic block ID intentionally opts mulch overlays out of block
         // placement animations; retain a stable stack identity for comparisons.
-        stack: cached?.stack ?? placement.stack,
+        stack: cached?.stack ?? {
+            ...placement.stack,
+            position: new Vector3(
+                placement.stack.position.x,
+                placement.stack.position.y,
+                placement.stack.position.z,
+            ),
+        },
         stackHeight: position[1],
     } satisfies EntityBlockInstance;
     cache.set(key, instance);

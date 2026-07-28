@@ -1,5 +1,5 @@
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import type { CurrentGarden } from './useCurrentGarden';
 
 function blockVariantsEqual(left: Block, right: Block) {
@@ -16,7 +16,7 @@ function blocksEqual(left: Block, right: Block) {
     );
 }
 
-function stackPositionsEqual(left: Stack, right: Stack) {
+function stackPositionsEqual(left: GardenStack, right: GardenStack) {
     return (
         left.position === right.position ||
         (left.position.x === right.position.x &&
@@ -25,7 +25,7 @@ function stackPositionsEqual(left: Stack, right: Stack) {
     );
 }
 
-function stackKey(stack: Stack) {
+function stackKey(stack: GardenStack) {
     return `${stack.position.x}|${stack.position.y}|${stack.position.z}`;
 }
 
@@ -48,7 +48,10 @@ function shareBlocks(previousBlocks: Block[], nextBlocks: Block[]) {
     return changed ? blocks : previousBlocks;
 }
 
-function shareStack(previousStack: Stack | undefined, nextStack: Stack) {
+function shareStack(
+    previousStack: GardenStack | undefined,
+    nextStack: GardenStack,
+) {
     if (!previousStack || !stackPositionsEqual(previousStack, nextStack)) {
         return nextStack;
     }
@@ -65,7 +68,7 @@ function shareStack(previousStack: Stack | undefined, nextStack: Stack) {
     };
 }
 
-function shareStacks(previousStacks: Stack[], nextStacks: Stack[]) {
+function shareStacks(previousStacks: GardenStack[], nextStacks: GardenStack[]) {
     if (previousStacks === nextStacks) {
         return previousStacks;
     }

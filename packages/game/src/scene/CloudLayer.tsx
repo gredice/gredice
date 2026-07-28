@@ -20,7 +20,7 @@ import {
     type OrthographicCamera,
     type Vector3,
 } from 'three';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { CloudShadowAttenuation } from './CloudShadowAttenuationLayer';
 import {
@@ -118,7 +118,7 @@ function createCloudAlphaAsset(): CloudAlphaAsset | null {
     return { canvas, texture };
 }
 
-function getCloudBounds(stacks: Stack[] | undefined) {
+function getCloudBounds(stacks: GardenStack[] | undefined) {
     if (!stacks?.length) {
         return {
             centerX: 0,
@@ -157,7 +157,7 @@ type CloudLayerProps = {
     quality: GameQualityProfile;
     shadowUpdateMs?: number;
     shadowStrength: number;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
     sunPosition: Vector3;
     timeOfDay: number;
     windDirection: number;

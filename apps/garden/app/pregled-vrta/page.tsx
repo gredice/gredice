@@ -1,14 +1,18 @@
 import { SignedIn, SignedOut } from '@gredice/ui/auth';
-import type { Viewport } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import LoginModal from '../components/auth/LoginModal';
-import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
-import { getGardenGameFlags } from './getGardenGameFlags';
+import LoginModal from '../../components/auth/LoginModal';
+import { GardenOverview2DWithAnalytics } from '../../components/game/GardenOverview2DWithAnalytics';
+import { getGardenGameFlags } from '../getGardenGameFlags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
-// Garden experience routes paint edge to edge. Other Garden routes keep the
-// root viewport behavior so their document UI remains safely contained.
+export const metadata: Metadata = {
+    title: '2D pregled vrta | Gredice',
+    description:
+        'Brzi top-down pregled vrta bez 3D iscrtavanja, uz sve alate za upravljanje vrtom.',
+};
+
 export const viewport: Viewport = {
     initialScale: 1,
     maximumScale: 1,
@@ -18,27 +22,25 @@ export const viewport: Viewport = {
     width: 'device-width',
 };
 
-export default async function Home() {
+export default async function GardenOverviewPage() {
     const cookieStore = await cookies();
     const suppressOpeningHud =
         cookieStore.get(impersonationFlagCookieName)?.value === '1';
     const flags = await getGardenGameFlags();
 
     return (
-        <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
+        <div className="relative grid h-[100dvh] grid-cols-1 overflow-hidden">
             <SignedIn>
-                <GameSceneWithAnalytics
+                <GardenOverview2DWithAnalytics
                     flags={flags}
-                    deferDetails
                     suppressOpeningHud={suppressOpeningHud}
                 />
             </SignedIn>
             <SignedOut>
-                <GameSceneWithAnalytics
+                <GardenOverview2DWithAnalytics
                     flags={flags}
                     mockGarden
                     hideHud
-                    deferDetails
                 />
             </SignedOut>
             <SignedOut>

@@ -3,13 +3,12 @@ import {
     canStackBlockOnBlock,
     getGardenBlockFootprintOffsets,
 } from '@gredice/js/gardenBlocks';
-import type { Vector3 } from 'three';
 import {
     type ActiveDragPreviewTargetOffset,
     createActiveDragPreviewTarget,
 } from '../dragPreviewIdentity';
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import {
     getBlockDataByName,
     getStackBlockHeight,
@@ -18,11 +17,17 @@ import {
 import { isRecyclerPlacementTarget } from './recyclerPlacement';
 
 export type MovingSegment = {
-    sourceStack: Stack;
+    sourceStack: GardenStack;
     sourceStartIndex: number;
-    blocks: Stack['blocks'];
+    blocks: GardenStack['blocks'];
     baseHeight: number;
     canRecycle: boolean;
+};
+
+export type PickupPlacementRelative = {
+    x: number;
+    y: number;
+    z: number;
 };
 
 type PlacementPreview = {
@@ -40,7 +45,7 @@ type PlacementPreview = {
 };
 
 export type ResolvedPlacementPreview = {
-    relative: Vector3;
+    relative: PickupPlacementRelative;
     previewHoverHeight: number;
     hoveredGardenBoxBlockId: string | null;
     canStoreInGardenBox: boolean;
@@ -50,11 +55,13 @@ export type ResolvedPlacementPreview = {
 };
 
 export type PickupPlacementPreviewResolver = {
-    resolveForRelative: (relative: Vector3) => ResolvedPlacementPreview | null;
+    resolveForRelative: (
+        relative: PickupPlacementRelative,
+    ) => ResolvedPlacementPreview | null;
 };
 
 function getStack(
-    stacks: Stack[] | undefined,
+    stacks: GardenStack[] | undefined,
     destination: { x: number; z: number },
 ) {
     return stacks?.find(
@@ -67,7 +74,7 @@ function getStack(
 type OccupiedCell = {
     block: Block;
     blockIndex: number;
-    stack: Stack;
+    stack: GardenStack;
     stackable: boolean;
     topHeight: number;
 };
@@ -83,7 +90,7 @@ function createOccupiedCells({
 }: {
     blockData: BlockData[] | null | undefined;
     movingBlockIds: Set<string>;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }) {
     const occupiedCells = new Map<string, OccupiedCell[]>();
 
@@ -193,7 +200,7 @@ function getExternalRaisedBedBlockAtPosition({
     z,
 }: {
     movingBlockIds: Set<string>;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
     x: number;
     z: number;
 }): Block | null {
@@ -226,7 +233,7 @@ function hasExternalRaisedBedNeighbor({
 }: {
     excludedPositions: Set<string>;
     movingBlockIds: Set<string>;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
     x: number;
     z: number;
 }) {
@@ -260,7 +267,7 @@ function isRaisedBedPlacementBlocked({
 }: {
     movingBlockIds: Set<string>;
     movedRaisedBedPreviews: PlacementPreview[];
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }) {
     const movedRaisedBedPreviewByPosition = new Map(
         movedRaisedBedPreviews.map((preview) => [
@@ -347,8 +354,8 @@ export function resolvePickupPlacementPreviewForRelative({
     gardenIsSandbox: boolean;
     localSandboxStorageKey: string | null;
     movingSegments: MovingSegment[];
-    relative: Vector3;
-    stacks: Stack[] | undefined;
+    relative: PickupPlacementRelative;
+    stacks: GardenStack[] | undefined;
 }): ResolvedPlacementPreview | null {
     return (
         createPickupPlacementPreviewResolver({
@@ -372,7 +379,7 @@ export function createPickupPlacementPreviewResolver({
     gardenIsSandbox: boolean;
     localSandboxStorageKey: string | null;
     movingSegments: MovingSegment[];
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }): PickupPlacementPreviewResolver | null {
     if (!blockData || movingSegments.length === 0) {
         return null;
@@ -426,8 +433,8 @@ function resolvePickupPlacementPreviewFromPreparedState({
     movingBlockIds: Set<string>;
     occupiedCells: Map<string, OccupiedCell[]>;
     preparedMovingSegments: PreparedMovingSegment[];
-    relative: Vector3;
-    stacks: Stack[] | undefined;
+    relative: PickupPlacementRelative;
+    stacks: GardenStack[] | undefined;
 }): ResolvedPlacementPreview | null {
     const placementPreviews: PlacementPreview[] =
         preparedMovingSegments.flatMap(({ footprintOffsets, segment }) => {
@@ -575,7 +582,11 @@ function resolvePickupPlacementPreviewFromPreparedState({
             raisedBedPlacementBlocked;
 
     return {
-        relative: relative.clone(),
+        relative: {
+            x: relative.x,
+            y: relative.y,
+            z: relative.z,
+        },
         previewHoverHeight,
         hoveredGardenBoxBlockId,
         canStoreInGardenBox,

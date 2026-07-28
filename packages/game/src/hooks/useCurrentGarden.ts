@@ -10,7 +10,6 @@ import {
     useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { Vector3 } from 'three';
 import type { GardenPreviewImage } from '../gardenPreview';
 import {
     loadLocalSandboxGarden,
@@ -27,7 +26,7 @@ import {
     operationVisualRewardDebugScenarios,
     operationVisualRewardDebugTimestamp,
 } from '../operationVisualRewardDebugProfile';
-import type { Stack } from '../types/Stack';
+import { createGardenPosition, type GardenStack } from '../types/Stack';
 import {
     type MockGardenProfile,
     useGameState,
@@ -85,7 +84,7 @@ type useCurrentGardenResponse = Omit<
     farmId?: number | null;
     previewImage?: GardenPreviewImage | null;
     previewSourceRevision?: string | null;
-    stacks: Stack[];
+    stacks: GardenStack[];
     location: {
         lat: number;
         lon: number;
@@ -256,11 +255,11 @@ function getDenseMockDetailBlockName(x: number, z: number) {
 }
 
 function createDenseMockStacks(winterMode: WinterMode): {
-    stackByPosition: Map<string, Stack>;
-    stacks: Stack[];
+    stackByPosition: Map<string, GardenStack>;
+    stacks: GardenStack[];
 } {
-    const stackByPosition = new Map<string, Stack>();
-    const stacks: Stack[] = [];
+    const stackByPosition = new Map<string, GardenStack>();
+    const stacks: GardenStack[] = [];
 
     for (
         let x = denseMockGardenBounds.min;
@@ -273,8 +272,8 @@ function createDenseMockStacks(winterMode: WinterMode): {
             z += 1
         ) {
             const groundName = getDenseMockGroundBlockName(x, z, winterMode);
-            const stack: Stack = {
-                position: new Vector3(x, 0, z),
+            const stack: GardenStack = {
+                position: createGardenPosition(x, 0, z),
                 blocks: [
                     {
                         id: `profile-ground:${x}:${z}`,
@@ -301,10 +300,10 @@ function createDenseMockStacks(winterMode: WinterMode): {
 }
 
 function createHighTargetMockStacks(winterMode: WinterMode): {
-    stackByPosition: Map<string, Stack>;
-    stacks: Stack[];
+    stackByPosition: Map<string, GardenStack>;
+    stacks: GardenStack[];
 } {
-    const stackByPosition = new Map<string, Stack>();
+    const stackByPosition = new Map<string, GardenStack>();
     const detailByPosition = new Map(
         highTargetMockGardenDetailFixtures.map((fixture) => [
             mockGardenStackPositionKey(fixture.x, fixture.z),
@@ -316,8 +315,8 @@ function createHighTargetMockStacks(winterMode: WinterMode): {
             const detail = detailByPosition.get(
                 mockGardenStackPositionKey(x, z),
             );
-            const stack: Stack = {
-                position: new Vector3(x, 0, z),
+            const stack: GardenStack = {
+                position: createGardenPosition(x, 0, z),
                 blocks: [
                     {
                         id: `high-target-ground:${x}:${z}`,
@@ -347,11 +346,11 @@ function createHighTargetMockStacks(winterMode: WinterMode): {
 }
 
 function createOperationRewardDebugStacks(winterMode: WinterMode): {
-    stackByPosition: Map<string, Stack>;
-    stacks: Stack[];
+    stackByPosition: Map<string, GardenStack>;
+    stacks: GardenStack[];
 } {
-    const stackByPosition = new Map<string, Stack>();
-    const stacks: Stack[] = [];
+    const stackByPosition = new Map<string, GardenStack>();
+    const stacks: GardenStack[] = [];
 
     for (
         let x = operationRewardDebugGardenBounds.minX;
@@ -369,8 +368,8 @@ function createOperationRewardDebugStacks(winterMode: WinterMode): {
                     : Math.abs(x * 5 + z * 3) % 6 === 0
                       ? 'Block_Ground'
                       : 'Block_Grass';
-            const stack: Stack = {
-                position: new Vector3(x, 0, z),
+            const stack: GardenStack = {
+                position: createGardenPosition(x, 0, z),
                 blocks: [
                     {
                         id: `operation-reward-ground:${x}:${z}`,
@@ -424,7 +423,7 @@ function addProfileRaisedBedPair({
     id: number;
     now: string;
     raisedBeds: useCurrentGardenResponse['raisedBeds'];
-    stackByPosition: Map<string, Stack>;
+    stackByPosition: Map<string, GardenStack>;
     x: number;
     z: number;
 }): MockRaisedBed | null {
@@ -715,7 +714,7 @@ function addOperationRewardDebugRaisedBed({
     fieldOffset: number;
     now: string;
     raisedBeds: useCurrentGardenResponse['raisedBeds'];
-    stackByPosition: Map<string, Stack>;
+    stackByPosition: Map<string, GardenStack>;
     state: OperationVisualRewardDebugBedState;
     scenario: OperationVisualRewardDebugScenario;
     x: number;
@@ -1040,7 +1039,7 @@ function mockGarden(
         homeCamera: null,
         stacks: [
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     0 + GARDEN_POSITION_X_OFFSET,
                     0,
                     0 + GARDEN_POSITION_Z_OFFSET,
@@ -1059,7 +1058,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     -1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     2 + GARDEN_POSITION_Z_OFFSET,
@@ -1079,7 +1078,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     2 + GARDEN_POSITION_Z_OFFSET,
@@ -1098,7 +1097,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     0 + GARDEN_POSITION_X_OFFSET,
                     0,
                     2 + GARDEN_POSITION_Z_OFFSET,
@@ -1121,7 +1120,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     0 + GARDEN_POSITION_Z_OFFSET,
@@ -1135,7 +1134,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     0 + GARDEN_POSITION_X_OFFSET,
                     0,
                     1 + GARDEN_POSITION_Z_OFFSET,
@@ -1154,7 +1153,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     1 + GARDEN_POSITION_Z_OFFSET,
@@ -1168,7 +1167,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     -1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     1 + GARDEN_POSITION_Z_OFFSET,
@@ -1182,7 +1181,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     -1 + GARDEN_POSITION_Z_OFFSET,
@@ -1196,7 +1195,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     -1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     0 + GARDEN_POSITION_Z_OFFSET,
@@ -1210,7 +1209,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     0 + GARDEN_POSITION_X_OFFSET,
                     0,
                     -1 + GARDEN_POSITION_Z_OFFSET,
@@ -1224,7 +1223,7 @@ function mockGarden(
                 ],
             },
             {
-                position: new Vector3(
+                position: createGardenPosition(
                     -1 + GARDEN_POSITION_X_OFFSET,
                     0,
                     -1 + GARDEN_POSITION_Z_OFFSET,
@@ -1347,7 +1346,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
 
             // Transform garden stacks from flat list to nested
             const rootStacks = garden.stacks ?? [];
-            const stacks: Stack[] = [];
+            const stacks: GardenStack[] = [];
 
             const xPositions = Object.keys(rootStacks);
             for (const x of xPositions) {
@@ -1355,7 +1354,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 for (const y of yPositions) {
                     const blocks = rootStacks[x][y];
                     stacks.push({
-                        position: new Vector3(Number(x), 0, Number(y)),
+                        position: createGardenPosition(Number(x), 0, Number(y)),
                         blocks: blocks
                             ? blocks.map((block) => {
                                   return {

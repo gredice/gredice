@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeManager } from '@gredice/game';
+import { useThemeManager } from '@gredice/game/theme';
 import { AuthProvider } from '@gredice/ui/auth';
 import { NotificationsContainer } from '@gredice/ui/notifications';
 import { NuqsAdapter } from '@gredice/ui/nuqs';

@@ -8,7 +8,10 @@
     "type": "module",
     "license": "MIT",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./analytics": "./src/analytics/GameAnalyticsContext.tsx",
+        "./garden-2d": "./src/GardenOverview2DDynamic.tsx",
+        "./theme": "./src/hooks/useThemeManager.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

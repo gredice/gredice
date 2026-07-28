@@ -46,6 +46,8 @@ import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvi
 import { type CurrentGarden, useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
+import { useSceneCurrentGarden } from './hooks/useSceneCurrentGarden';
+import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundPalette';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
@@ -363,7 +365,8 @@ export function GameScene({
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
-    const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const garden = useSceneCurrentGarden(gardenData);
     const gardenInitialViewKey = garden?.id ?? 'default';
     const gardenInitialHomeCameraRef = useRef<{
         key: string | number;
@@ -391,24 +394,14 @@ export function GameScene({
     const sceneCameraZoom =
         gardenHomeCamera?.zoom ??
         (zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom);
-    const setBackgroundPaletteKey = useGameState(
-        (state) => state.setBackgroundPaletteKey,
-    );
     const gardenBackgroundPalette = garden?.backgroundPalette;
     useClearSandboxEnvironmentOverrides(garden);
+    useSyncGardenBackgroundPalette(gardenBackgroundPalette);
     useWeatherNow(
         !isLocalSandbox && !weatherDisabled && !weather && garden !== undefined,
         garden?.farmId,
     );
     const isLoading = gardenLoading;
-
-    useEffect(() => {
-        if (!gardenBackgroundPalette) {
-            return;
-        }
-
-        setBackgroundPaletteKey(gardenBackgroundPalette);
-    }, [gardenBackgroundPalette, setBackgroundPaletteKey]);
 
     const loadingContext = useGameLoading();
     useEffect(() => {

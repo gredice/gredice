@@ -41,7 +41,11 @@ function centerOffset(offset: number) {
     return `calc(50% ${operator} ${Math.abs(offset)}px)`;
 }
 
-export function RaisedBedFieldHud() {
+export function RaisedBedFieldHud({
+    instantTransition = false,
+}: {
+    instantTransition?: boolean;
+}) {
     const { data: currentGarden } = useCurrentGarden();
     const isSandbox = useIsSandboxGarden();
     const { track } = useGameAnalytics();
@@ -84,7 +88,10 @@ export function RaisedBedFieldHud() {
             className={cx(
                 'opacity-0 transition-opacity pointer-events-none duration-300',
                 view === 'closeup' &&
-                    'opacity-100 [transition-delay:950ms] pointer-events-auto',
+                    cx(
+                        'opacity-100 pointer-events-auto',
+                        !instantTransition && '[transition-delay:950ms]',
+                    ),
             )}
             style={hudStyles}
         >
