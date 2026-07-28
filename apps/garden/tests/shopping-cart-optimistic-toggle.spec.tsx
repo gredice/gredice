@@ -7,6 +7,7 @@ import {
     ShoppingCartOutletCountdownStory,
     ShoppingCartPaidItemStory,
     ShoppingCartPlantSortStory,
+    ShoppingCartSunflowerCheckoutStory,
     ShoppingCartTargetedOperationStory,
 } from './ShoppingCartOptimisticToggleStory';
 
@@ -792,6 +793,106 @@ test.describe('shopping cart item presence', () => {
         await expect(
             page.getByRole('dialog', { name: 'Košara' }),
         ).toContainText('Košara je prazna');
+    });
+
+    test('shows checkout success in place for a sunflower-only cart', async ({
+        mount,
+        page,
+    }) => {
+        let checkoutCompleted = false;
+        await page.route(
+            '**/api/gredice/api/checkout/checkout',
+            async (route) => {
+                checkoutCompleted = true;
+                await route.fulfill({
+                    body: JSON.stringify({ success: true }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(
+                    checkoutCompleted
+                        ? createShoppingCartServerData([])
+                        : {
+                              ...createShoppingCartServerData(),
+                              items: [
+                                  {
+                                      ...shoppingCartServerItem,
+                                      currency: 'sunflower',
+                                  },
+                              ],
+                              total: 0,
+                              totalSunflowers: 2500,
+                          },
+                ),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(<ShoppingCartSunflowerCheckoutStory />);
+        const initialUrl = page.url();
+
+        await page.getByTitle('Košara').click();
+        await page.getByRole('button', { name: 'Potvrdi i plati' }).click();
+        await page
+            .getByRole('alertdialog')
+            .getByRole('button', { name: 'Potvrdi' })
+            .click();
+
+        await expect(
+            page.getByRole('dialog', { name: 'Plaćanje uspješno' }),
+        ).toBeVisible();
+        await expect(page.getByRole('dialog', { name: 'Košara' })).toHaveCount(
+            0,
+        );
+        await expect(page).toHaveURL(initialUrl);
+    });
+
+    test('redirects when checkout returns a Stripe URL', async ({
+        mount,
+        page,
+    }) => {
+        await page.route(
+            '**/api/gredice/api/checkout/checkout',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify({
+                        sessionId: 'cs_test',
+                        url: '/stripe-checkout',
+                    }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+            },
+        );
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify(createShoppingCartServerData()),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(<ShoppingCartHudItemsPresenceStory />);
+
+        await page.getByTitle('Košara').click();
+        await page.getByRole('button', { name: 'Plati' }).click();
+
+        await expect(page).toHaveURL(/\/stripe-checkout$/u);
     });
 
     test('keeps cached cart items visible when the modal refresh fails', async ({
