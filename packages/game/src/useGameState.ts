@@ -30,7 +30,7 @@ import {
     setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
-import { defaultWaterColors, type WaterColors } from './scene/waterColors';
+import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -495,6 +495,7 @@ export function createGameState({
     localSandboxInitialStacks,
     mockGardenProfile,
     timeLocation: initialTimeLocation,
+    visualPlacementEffectsEnabled = true,
     winterMode,
 }: {
     appBaseUrl: string;
@@ -508,6 +509,7 @@ export function createGameState({
     localSandboxInitialStacks?: Stack[];
     mockGardenProfile?: MockGardenProfile;
     timeLocation?: GameLocation;
+    visualPlacementEffectsEnabled?: boolean;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -766,13 +768,18 @@ export function createGameState({
             })),
         clearGardenBoxTooltip: () => set({ gardenBoxTooltip: null }),
         placedBlockEffects: {},
-        queuePlacedBlockEffect: (blockId, effect) =>
+        queuePlacedBlockEffect: (blockId, effect) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
             set((state) => ({
                 placedBlockEffects: {
                     ...state.placedBlockEffects,
                     [blockId]: effect,
                 },
-            })),
+            }));
+        },
         consumePlacedBlockEffect: (blockId) => {
             const effect = get().placedBlockEffects[blockId] ?? null;
             if (!effect) {
@@ -787,7 +794,11 @@ export function createGameState({
             return effect;
         },
         blockPlacementDropAnimations: {},
-        queueBlockPlacementDropAnimation: (blockId, options) =>
+        queueBlockPlacementDropAnimation: (blockId, options) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
             set((state) => {
                 nextBlockPlacementDropAnimationRenderId += 1;
                 return {
@@ -808,7 +819,8 @@ export function createGameState({
                         },
                     },
                 };
-            }),
+            });
+        },
         confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
             set((state) => {
                 const animation = getBlockPlacementDropAnimationForBlockId(

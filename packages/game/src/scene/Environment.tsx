@@ -14,8 +14,8 @@ import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
-import { useLiveTime } from '../hooks/useLiveTime';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
+import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
@@ -579,9 +579,7 @@ export function Environment({
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const directionalLightRef = useRef<DirectionalLight | null>(null);
 
-    const currentTime = useLiveTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
-    const syncTimeOfDay = useGameState((state) => state.syncTimeOfDay);
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
@@ -618,9 +616,7 @@ export function Environment({
         }),
         [garden?.location.lat, garden?.location.lon],
     );
-    useEffect(() => {
-        syncTimeOfDay(location, currentTime);
-    }, [currentTime, location, syncTimeOfDay]);
+    const currentTime = useSyncGameTime(location);
     const shadowCameraSize = useMemo(() => {
         const stacks = garden?.stacks;
         if (!stacks?.length) {

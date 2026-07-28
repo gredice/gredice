@@ -1,4 +1,4 @@
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 
 export const SUNFLOWER_SPECIAL_ENTITY_REWARD_AMOUNT = 1000;
 
@@ -77,7 +77,7 @@ function resolveSpecialEntityPositionY({
 }: {
     blockDataByName: Map<string, SpecialEntityBlockData>;
     blockIndex: number;
-    stack: Stack;
+    stack: GardenStack;
 }) {
     let y = 0;
 
@@ -102,7 +102,7 @@ export function getSpecialEntityDebugEntries({
     stacks,
 }: {
     blockData?: SpecialEntityBlockData[] | null;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }) {
     const blockDataByName = resolveBlockDataByName(blockData ?? null);
     const entries: SpecialEntityDebugEntry[] = [];

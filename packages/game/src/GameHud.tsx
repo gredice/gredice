@@ -4,6 +4,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
+import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
@@ -11,7 +12,7 @@ import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
-import { DebugHud } from './hud/DebugHud';
+import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
@@ -61,10 +62,12 @@ export function GameHud({
     debugHud,
     noWeather,
     suppressOpeningHud,
+    viewMode = '3d',
 }: {
     debugHud?: boolean;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
+    viewMode?: GardenViewMode;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
@@ -129,7 +132,7 @@ export function GameHud({
                     'motion-safe:slide-in-from-left-4',
                 )}
             >
-                {!isLocalSandbox && <AccountHud />}
+                {!isLocalSandbox && <AccountHud viewMode={viewMode} />}
                 {!isLocalSandbox && raisedBedOnboardingAvailable && (
                     <RaisedBedOnboardingModal
                         autoOpen={raisedBedOnboardingEnabled}
@@ -194,8 +197,8 @@ export function GameHud({
                     )}
                 >
                     <CameraHud />
-                    <AudioHud />
-                    <ControlsTooltipHud />
+                    {viewMode === '3d' ? <AudioHud /> : null}
+                    {viewMode === '3d' ? <ControlsTooltipHud /> : null}
                     {whatsNewHudEnabled && (
                         <IconButton
                             title="Što je novo"
@@ -223,7 +226,9 @@ export function GameHud({
                     <ItemsHud />
                 </div>
             </div>
-            {!isLocalSandbox && <RaisedBedFieldHud />}
+            {!isLocalSandbox && (
+                <RaisedBedFieldHud instantTransition={viewMode === '2d'} />
+            )}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
@@ -249,7 +254,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {debugHud && <DebugHud />}
+            {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );
 }

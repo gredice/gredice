@@ -298,6 +298,28 @@ test('placement animation keeps render and completion identity through confirmed
     }
 });
 
+test('renderer-free state does not retain visual placement effects', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+        visualPlacementEffectsEnabled: false,
+    });
+
+    try {
+        store.getState().queuePlacedBlockEffect('optimistic', {
+            kind: 'sunflowers',
+            amount: 25,
+        });
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+
+        assert.deepEqual(store.getState().placedBlockEffects, {});
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('placement animation waits for mutation confirmation after visual completion', () => {
     const store = createGameState({
         appBaseUrl: '',

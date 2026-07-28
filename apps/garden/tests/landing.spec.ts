@@ -1,4 +1,9 @@
 import { type ConsoleMessage, expect, type Page, test } from '@playwright/test';
+import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
+
+type GardenRenderProbeWindow = Window & {
+    __gardenWebglContextRequests?: number;
+};
 
 const currentUser = {
     avatarUrl: null,
@@ -37,6 +42,85 @@ const tutorialChecklist = {
     },
 };
 
+const gardenOverviewListItem = {
+    createdAt: '2026-07-01T00:00:00.000Z',
+    id: 1,
+    isSandbox: false,
+    name: 'Testni vrt',
+};
+
+const gardenOverviewDetail = {
+    ...gardenOverviewListItem,
+    backgroundPalette: 'current',
+    farmId: 1,
+    homeCamera: null,
+    isPublic: false,
+    latitude: 45.739,
+    longitude: 16.572,
+    previewImage: null,
+    previewSourceRevision: null,
+    raisedBeds: [
+        {
+            abandonReason: null,
+            appliedOperations: [],
+            blockId: 'raised-bed-primary',
+            createdAt: '2026-07-01T00:00:00.000Z',
+            fields: [],
+            id: 10,
+            isValid: true,
+            name: 'Testna gredica',
+            orientation: 'vertical',
+            physicalId: null,
+            status: 'active',
+            updatedAt: '2026-07-01T00:00:00.000Z',
+            weedState: null,
+        },
+    ],
+    stacks: {
+        '0': {
+            '0': [
+                {
+                    id: 'grass-0-0',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                {
+                    id: 'raised-bed-primary',
+                    name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+            '1': [
+                {
+                    id: 'grass-0-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                {
+                    id: 'raised-bed-secondary',
+                    name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+        },
+        '2': {
+            '-1': [
+                {
+                    id: 'grass-2--1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                {
+                    id: 'tree-2--1',
+                    name: 'Tree',
+                    rotation: 0,
+                },
+            ],
+        },
+    },
+    updatedAt: '2026-07-01T00:00:00.000Z',
+};
+
 const crashPatterns = [
     /Maximum update depth exceeded/u,
     /The result of getSnapshot should be cached/u,
@@ -65,7 +149,14 @@ function collectRuntimeFailures(page: Page) {
     return failures;
 }
 
-async function mockGardenApi(page: Page, signedIn: boolean) {
+async function mockGardenApi(
+    page: Page,
+    signedIn: boolean,
+    {
+        withBlockData = false,
+        withGarden = false,
+    }: { withBlockData?: boolean; withGarden?: boolean } = {},
+) {
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
         let body: unknown;
@@ -76,8 +167,58 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             body = {};
         } else if (pathname.endsWith('/api/users/current')) {
             body = signedIn ? currentUser : null;
+        } else if (
+            withGarden &&
+            pathname.endsWith('/api/gardens/1/operations')
+        ) {
+            body = { items: [], nextCursor: null, total: 0 };
+        } else if (
+            withGarden &&
+            pathname.endsWith('/api/gardens/1/visit-summary/seen')
+        ) {
+            body = {
+                state: {
+                    accountId: 'test-account',
+                    gardenId: 1,
+                    id: 1,
+                    lastOpenedAt: '2026-07-28T00:00:00.000Z',
+                    lastSummaryFactsHash: null,
+                    lastSummarySeenAt: '2026-07-28T00:00:00.000Z',
+                    userId: currentUser.id,
+                },
+            };
+        } else if (
+            withGarden &&
+            pathname.endsWith('/api/gardens/1/visit-summary')
+        ) {
+            body = {
+                facts: [],
+                factsHash: null,
+                state: null,
+                window: {
+                    firstVisit: false,
+                    since: '2026-07-01T00:00:00.000Z',
+                    until: '2026-07-28T00:00:00.000Z',
+                },
+            };
+        } else if (
+            withGarden &&
+            pathname.endsWith('/api/gardens/1/raised-beds/10/ai-history')
+        ) {
+            body = [];
+        } else if (
+            withGarden &&
+            pathname.endsWith('/api/gardens/1/raised-beds/10/sensors')
+        ) {
+            body = [];
+        } else if (withGarden && pathname.endsWith('/api/gardens/1')) {
+            body = gardenOverviewDetail;
         } else if (pathname.endsWith('/api/gardens')) {
-            body = signedIn ? [] : null;
+            body = signedIn
+                ? withGarden
+                    ? [gardenOverviewListItem]
+                    : []
+                : null;
         } else if (pathname.endsWith('/api/accounts/gardens')) {
             body = signedIn
                 ? [
@@ -85,12 +226,22 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                           accountId: 'test-account',
                           name: 'test@example.com račun',
                           isCurrent: true,
-                          gardens: [],
+                          gardens: withGarden
+                              ? [
+                                    {
+                                        ...gardenOverviewListItem,
+                                        isDefault: true,
+                                    },
+                                ]
+                              : [],
                       },
                   ]
                 : null;
         } else if (pathname.includes('/api/directories/entities/')) {
-            body = [];
+            body =
+                withBlockData && pathname.endsWith('/entities/block')
+                    ? getLocalSandboxBlockData()
+                    : [];
         } else if (pathname.endsWith('/api/data/weather/now')) {
             body = {
                 cloudy: 0,
@@ -245,6 +396,195 @@ test('loads signed-in landing page HUD without immediate runtime failures', asyn
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
+test('loads the signed-out React-only garden page behind the login prompt', async ({
+    page,
+}) => {
+    const failures = collectRuntimeFailures(page);
+    await mockGardenApi(page, false, { withBlockData: true });
+
+    const response = await page.goto('/pregled-vrta');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.locator('[data-garden-renderer="2d"]')).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Prijava' }).first(),
+    ).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expectNoImmediateRuntimeFailures(page, failures);
+});
+
+test('opens the React-only garden page from the existing HUD', async ({
+    context,
+    page,
+}) => {
+    test.setTimeout(20_000);
+    await context.addCookies([
+        {
+            domain: '127.0.0.1',
+            name: 'gredice_impersonating',
+            path: '/',
+            value: '1',
+        },
+    ]);
+    await mockGardenApi(page, true);
+
+    const response = await page.goto('/?vrt=1');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.getByTitle('Profil')).toBeVisible({ timeout: 15_000 });
+    await page.getByTitle('Profil').click();
+    const overviewLink = page.getByRole('menuitem', {
+        name: '2D prikaz vrta',
+    });
+    await expect(overviewLink).toHaveAttribute('href', '/pregled-vrta?vrt=1');
+    await overviewLink.click();
+    await expect(page).toHaveURL(/\/pregled-vrta\?vrt=1$/u);
+    await expect(page.locator('[data-garden-renderer="2d"]')).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+});
+
+test('renders the shared HUD over a React-only 2D garden overview', async ({
+    context,
+    page,
+}) => {
+    test.setTimeout(20_000);
+    const failures = collectRuntimeFailures(page);
+    const modelRequests: string[] = [];
+    await page.setViewportSize({ height: 844, width: 390 });
+    await page.addInitScript(() => {
+        const probeWindow = window as GardenRenderProbeWindow;
+        probeWindow.__gardenWebglContextRequests = 0;
+        const originalGetContext = HTMLCanvasElement.prototype.getContext;
+        const instrumentedGetContext = function (
+            this: HTMLCanvasElement,
+            contextId: string,
+            ...args: unknown[]
+        ) {
+            if (contextId === 'webgl' || contextId === 'webgl2') {
+                probeWindow.__gardenWebglContextRequests =
+                    (probeWindow.__gardenWebglContextRequests ?? 0) + 1;
+            }
+            return Reflect.apply(originalGetContext, this, [
+                contextId,
+                ...args,
+            ]);
+        };
+        HTMLCanvasElement.prototype.getContext =
+            instrumentedGetContext as typeof originalGetContext;
+    });
+    page.on('request', (request) => {
+        if (new URL(request.url()).pathname.endsWith('.glb')) {
+            modelRequests.push(request.url());
+        }
+    });
+    await context.addCookies([
+        {
+            domain: '127.0.0.1',
+            name: 'gredice_impersonating',
+            path: '/',
+            value: '1',
+        },
+    ]);
+    await mockGardenApi(page, true, {
+        withBlockData: true,
+        withGarden: true,
+    });
+
+    const response = await page.goto('/pregled-vrta?vrt=1');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.locator('[data-garden-renderer="2d"]')).toBeVisible();
+    await expect(
+        page.getByRole('region', { name: 'Tlocrt vrta Testni vrt' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /Otvori gredicu Testna gredica/u }),
+    ).toBeVisible();
+    await expect(page.getByTitle('Profil')).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expect(page.getByTitle(/zvuk/u)).toHaveCount(0);
+    expect(modelRequests).toEqual([]);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    (window as GardenRenderProbeWindow)
+                        .__gardenWebglContextRequests ?? 0,
+            ),
+        )
+        .toBe(0);
+
+    const overview = page.getByRole('region', {
+        name: 'Tlocrt vrta Testni vrt',
+    });
+    const overviewScrollport = page.locator('[data-garden-overview-2d]');
+    await expect(overview).toHaveAttribute('data-preview-track-padding', '2');
+    const initialScrollBounds = await overviewScrollport.boundingBox();
+    const initialOverviewBounds = await overview.boundingBox();
+    expect(initialScrollBounds).not.toBeNull();
+    expect(initialOverviewBounds).not.toBeNull();
+    expect(initialOverviewBounds?.x).toBeGreaterThanOrEqual(
+        initialScrollBounds?.x ?? 0,
+    );
+    const horizontalScrollRange = await overviewScrollport.evaluate(
+        (element) => {
+            element.scrollLeft = element.scrollWidth - element.clientWidth;
+            return element.scrollWidth - element.clientWidth;
+        },
+    );
+    expect(horizontalScrollRange).toBeGreaterThan(0);
+    const finalScrollBounds = await overviewScrollport.boundingBox();
+    const finalOverviewBounds = await overview.boundingBox();
+    expect(finalScrollBounds).not.toBeNull();
+    expect(finalOverviewBounds).not.toBeNull();
+    expect(
+        (finalOverviewBounds?.x ?? 0) + (finalOverviewBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(
+        (finalScrollBounds?.x ?? 0) + (finalScrollBounds?.width ?? 0) + 1,
+    );
+
+    await expect(overview).toHaveAttribute('data-world-rotation', '0');
+    await expect(
+        overview.locator('img[src*="Raised_Bed_1"]').first(),
+    ).toBeVisible();
+    await page.getByTitle('Okreni desno').click();
+    await expect(overview).toHaveAttribute('data-world-rotation', '1');
+    await expect(
+        overview.locator('img[src*="Raised_Bed_2"]').first(),
+    ).toBeVisible();
+
+    await page.getByTitle('Profil').click();
+    await expect(
+        page.getByRole('menuitem', { name: '3D prikaz vrta' }),
+    ).toHaveAttribute('href', '/?vrt=1');
+
+    await page.keyboard.press('Escape');
+    await page
+        .getByRole('button', { name: /Otvori gredicu Testna gredica/u })
+        .click();
+    await expect(page).toHaveURL(/gredica=Testna\+gredica/u);
+    await expect(page.locator('[data-garden-overview-2d]')).toHaveClass(
+        /opacity-0/u,
+    );
+    await expect(
+        page.getByRole('button', {
+            name: 'Podignuta gredica Testna gredica',
+        }),
+    ).toBeVisible();
+    await expectNoImmediateRuntimeFailures(page, failures);
+    await expect(page.locator('canvas')).toHaveCount(0);
+    expect(modelRequests).toEqual([]);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    (window as GardenRenderProbeWindow)
+                        .__gardenWebglContextRequests ?? 0,
+            ),
+        )
+        .toBe(0);
+});
+
 test('renders the whole game edge to edge while keeping HUD controls safe', async ({
     context,
     page,
@@ -379,20 +719,25 @@ test('keeps landscape game dialogs inside the safe area', async ({ page }) => {
     ).toBeLessThanOrEqual(844 - landscapeSafeArea.right);
 });
 
-test('keeps edge-to-edge viewport behavior scoped to the game route', async ({
+test('keeps edge-to-edge viewport behavior scoped to garden experience routes', async ({
     request,
 }) => {
     const gameResponse = await request.get('/');
+    const overviewResponse = await request.get('/pregled-vrta');
     const documentResponse = await request.get('/pozivnica');
 
     expect(gameResponse.ok()).toBe(true);
+    expect(overviewResponse.ok()).toBe(true);
     expect(documentResponse.ok()).toBe(true);
 
     const gameHtml = await gameResponse.text();
+    const overviewHtml = await overviewResponse.text();
     const documentHtml = await documentResponse.text();
 
     expect(gameHtml.match(/name="viewport"/gu)).toHaveLength(1);
     expect(gameHtml).toContain('viewport-fit=cover');
+    expect(overviewHtml.match(/name="viewport"/gu)).toHaveLength(1);
+    expect(overviewHtml).toContain('viewport-fit=cover');
     expect(documentHtml).not.toContain('viewport-fit=cover');
 });
 
