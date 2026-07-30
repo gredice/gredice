@@ -2,6 +2,7 @@
 
 import type { PlantSortData } from '@gredice/client';
 import { SelectItems } from '@gredice/ui/SelectItems';
+import { useRouter } from 'next/navigation';
 import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
 import { canSwitchPlantingTaskSort } from '../../schedule/scheduleShared';
 
@@ -28,6 +29,7 @@ export function RaisedBedFieldPlantSortSelector({
     variant = 'outlined',
     className,
 }: RaisedBedFieldPlantSortSelectorProps) {
+    const router = useRouter();
     const items = plantSorts
         .map((sort) => ({
             value: sort.id.toString(),
@@ -48,7 +50,7 @@ export function RaisedBedFieldPlantSortSelector({
     const placeholder =
         items.length === 0 ? 'Nema dostupnih biljaka' : 'Odaberi biljku';
 
-    const handleChange = (newValue: string) => {
+    const handleChange = async (newValue: string) => {
         if (
             !newValue ||
             !plantSortId ||
@@ -63,7 +65,7 @@ export function RaisedBedFieldPlantSortSelector({
             return;
         }
 
-        raisedBedFieldUpdatePlant({
+        await raisedBedFieldUpdatePlant({
             raisedBedId,
             positionIndex,
             status: status ?? undefined,
@@ -72,6 +74,7 @@ export function RaisedBedFieldPlantSortSelector({
             expectedPlantCycleVersionEventId,
             expectedPlantSortId: plantSortId,
         });
+        router.refresh();
     };
 
     return (
