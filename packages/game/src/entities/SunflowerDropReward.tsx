@@ -43,6 +43,7 @@ const sunflowerDropLandingHeight = 0.9;
 const sunflowerDropBounceLift = 0.04;
 const sunflowerDropBounceSpeed = 2.1;
 const sunflowerDropBounceScale = 0.025;
+const sunflowerDropPickupRadius = 0.9;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 
 function prefersReducedMotion() {
@@ -194,6 +195,14 @@ function SunflowerDropAtPlacement({
         });
     }
 
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        if (event.button !== 0) {
+            return;
+        }
+
+        event.stopPropagation();
+    }
+
     function handlePointerEnter(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
         setHovered(true);
@@ -205,26 +214,36 @@ function SunflowerDropAtPlacement({
     }
 
     return (
-        <HoverOutline color="white" hovered={hovered} thickness={7}>
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js group uses raycast picking for the collectible model. */}
-            <group
-                onClick={handleClick}
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
-            >
-                <animated.group position-y={dropOffsetY}>
-                    <group
-                        position={drop.position}
-                        rotation={drop.rotation}
-                        scale={0.34}
-                    >
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js group uses raycast picking for the collectible model.
+        <group
+            onClick={handleClick}
+            onPointerDown={handlePointerDown}
+            onPointerEnter={handlePointerEnter}
+            onPointerLeave={handlePointerLeave}
+        >
+            <animated.group position-y={dropOffsetY}>
+                <group
+                    position={drop.position}
+                    rotation={drop.rotation}
+                    scale={0.34}
+                >
+                    <mesh name="Interaction:SunflowerDropPickup">
+                        <sphereGeometry
+                            args={[sunflowerDropPickupRadius, 16, 12]}
+                        />
+                        <meshBasicMaterial
+                            colorWrite={false}
+                            depthWrite={false}
+                        />
+                    </mesh>
+                    <HoverOutline color="white" hovered={hovered} thickness={7}>
                         <group ref={rewardRef}>
                             <SunflowerHeadModel />
                         </group>
-                    </group>
-                </animated.group>
-            </group>
-        </HoverOutline>
+                    </HoverOutline>
+                </group>
+            </animated.group>
+        </group>
     );
 }
 
