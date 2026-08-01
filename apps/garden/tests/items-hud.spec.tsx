@@ -211,8 +211,11 @@ test('controls instructions clear the item picker on tablet layouts', async ({
 
     const picker = page.locator('[data-items-hud]');
     const guide = page.locator('[data-controls-tooltip-hud="open"]');
+    const toggle = page.getByTitle('Sakrij kontrole');
     await expect(picker).toBeVisible();
     await expect(guide).toBeVisible();
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByText('Pokupi / spusti')).toBeVisible();
 
     const pickerBox = await picker.boundingBox();
@@ -222,6 +225,13 @@ test('controls instructions clear the item picker on tablet layouts', async ({
 
     expect((guideBox?.y ?? 0) + (guideBox?.height ?? 0)).toBeLessThanOrEqual(
         (pickerBox?.y ?? 0) - 8,
+    );
+
+    await toggle.click();
+    await expect(guide).toHaveCount(0);
+    await expect(page.getByTitle('Prikaži kontrole')).toHaveAttribute(
+        'aria-expanded',
+        'false',
     );
 });
 

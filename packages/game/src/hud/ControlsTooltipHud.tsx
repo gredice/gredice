@@ -93,36 +93,41 @@ export function ControlsTooltipHud() {
         writeStorage(map);
     };
 
-    if (!open) {
-        return (
+    return (
+        <>
+            {open ? (
+                <div
+                    id="game-controls-tooltip"
+                    data-controls-tooltip-hud="open"
+                    className="pointer-events-auto relative p-2 sm:p-3 md:mb-24"
+                >
+                    <ControlsVisualization
+                        deviceType={deviceType}
+                        phase={phase}
+                    />
+                    <ButtonGreen
+                        title="Zatvori"
+                        variant="soft"
+                        size="sm"
+                        onClick={dismiss}
+                        className="absolute top-4 right-4 z-10 shrink-0 size-7 min-h-0 p-0 rounded-full"
+                    >
+                        <Check className="size-4 shrink-0" />
+                    </ButtonGreen>
+                </div>
+            ) : null}
             <div className="pointer-events-auto">
                 <IconButton
-                    title="Prikaži kontrole"
+                    title={open ? 'Sakrij kontrole' : 'Prikaži kontrole'}
+                    aria-controls="game-controls-tooltip"
+                    aria-expanded={open}
                     variant="plain"
-                    onClick={() => setOpen(true)}
+                    onClick={open ? dismiss : () => setOpen(true)}
                     className="hover:bg-muted"
                 >
                     <GamepadDirectional className="size-5" />
                 </IconButton>
             </div>
-        );
-    }
-
-    return (
-        <div
-            data-controls-tooltip-hud="open"
-            className="pointer-events-auto relative p-2 sm:p-3 md:mb-24"
-        >
-            <ControlsVisualization deviceType={deviceType} phase={phase} />
-            <ButtonGreen
-                title="Zatvori"
-                variant="soft"
-                size="sm"
-                onClick={dismiss}
-                className="absolute top-4 right-4 z-10 shrink-0 size-7 min-h-0 p-0 rounded-full"
-            >
-                <Check className="size-4 shrink-0" />
-            </ButtonGreen>
-        </div>
+        </>
     );
 }
