@@ -334,6 +334,39 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
                     },
                 ],
             },
+            {
+                id: 802,
+                entityId: 202,
+                taskVersionEventId: 802,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'planned',
+                createdAt: '2026-05-11T00:00:00.000Z',
+                scheduledDate: '2026-05-12T00:00:00.000Z',
+                scheduledAt: '2026-05-11T00:00:00.000Z',
+                completedAt: null,
+                verifiedAt: null,
+                canceledAt: null,
+                cancellationReason: null,
+                blockedAt: null,
+                blockReasonLabel: null,
+                blockNote: null,
+                blockImageUrls: [],
+                imageUrls: [],
+                completionNotes: null,
+                targetLabel: 'Raised Bed 1 › Polje 1',
+                statusHistory: [
+                    {
+                        status: 'new',
+                        changedAt: '2026-05-11T00:00:00.000Z',
+                    },
+                    {
+                        status: 'planned',
+                        changedAt: '2026-05-11T00:00:00.000Z',
+                    },
+                ],
+            },
         ],
     };
 }
@@ -1208,10 +1241,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(recommendationsList).toContainText('Uklanjanje korova');
         await expect(
             recommendationsList.locator('[data-operation-id="201"]'),
-        ).toContainText('Zakazano');
+        ).not.toContainText('Zakazano');
         await expect(
             recommendationsList.locator('[data-operation-id="202"]'),
-        ).not.toContainText('Zakazano');
+        ).toContainText('Zakazano');
 
         await operationsHeader.click();
         await expect(operationsSection.getByTitle('2 preporuka')).toHaveClass(
@@ -1250,6 +1283,11 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             dialog
                 .getByRole('tabpanel', { name: 'Radnje' })
                 .locator('[data-operation-id="201"]'),
+        ).not.toContainText('Zakazano');
+        await expect(
+            dialog
+                .getByRole('tabpanel', { name: 'Radnje' })
+                .locator('[data-operation-id="202"]'),
         ).toContainText('Zakazano');
     });
 

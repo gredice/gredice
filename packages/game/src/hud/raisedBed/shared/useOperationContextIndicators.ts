@@ -1,5 +1,8 @@
 import { useEffect, useMemo } from 'react';
-import { useGardenOperations } from '../../../hooks/useGardenOperations';
+import {
+    type GardenOperationItem,
+    useGardenOperations,
+} from '../../../hooks/useGardenOperations';
 import {
     type ShoppingCartItemData,
     useShoppingCart,
@@ -10,6 +13,13 @@ type OperationContextTarget = {
     raisedBedId?: number;
     positionIndex?: number;
 };
+
+const scheduledOperationStatuses = new Set<GardenOperationItem['status']>([
+    'new',
+    'planned',
+    'assigned',
+    'confirmed',
+]);
 
 function isOperationInCurrentContext(
     {
@@ -77,7 +87,8 @@ export function useOperationContextIndicators({
             new Set(
                 (scheduledOperationPages ?? []).flatMap((page) =>
                     page.items.flatMap((operation) =>
-                        operation.entityTypeName === 'operation'
+                        operation.entityTypeName === 'operation' &&
+                        scheduledOperationStatuses.has(operation.status)
                             ? [operation.entityId]
                             : [],
                     ),
