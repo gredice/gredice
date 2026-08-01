@@ -9,6 +9,7 @@ export type AccountAssignUserPayload = {
 
 export type AccountSunflowersPayload = {
     amount: number;
+    idempotencyKey?: string;
     reason: string;
 };
 
