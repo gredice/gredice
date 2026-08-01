@@ -1,6 +1,9 @@
 import 'server-only';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import {
+    createEvent,
+    events,
+    knownEvents,
     type SelectSunflowerLedgerEntry,
     storage,
     sunflowerLedgerEntries,
@@ -356,12 +359,47 @@ export async function topUpSunflowerPackage(input: SunflowerPackageTopUpInput) {
             tx,
         );
 
+        const recordVisibleBalanceIfMissing = async (
+            amount: number,
+            reason: string,
+        ) => {
+            const visibleBalanceEvent = knownEvents.accounts.sunflowersEarnedV1(
+                input.accountId,
+                {
+                    amount,
+                    idempotencyKey: input.idempotencyKey,
+                    reason,
+                },
+            );
+            const existingEvent = await tx.query.events.findFirst({
+                columns: { id: true },
+                where: and(
+                    eq(events.type, visibleBalanceEvent.type),
+                    eq(events.version, visibleBalanceEvent.version),
+                    eq(events.aggregateId, visibleBalanceEvent.aggregateId),
+                    eq(
+                        sql<string>`${events.data}->>'idempotencyKey'`,
+                        input.idempotencyKey,
+                    ),
+                ),
+            });
+            if (!existingEvent) {
+                await createEvent(visibleBalanceEvent, tx);
+            }
+        };
+
         if (existingTopUp) {
             if (bonusSunflowers > 0 && !existingBonus) {
                 throw new Error(
                     'Sunflower package top-up already exists without a matching bonus entry.',
                 );
             }
+            await recordVisibleBalanceIfMissing(
+                existingTopUp.amount + (existingBonus?.amount ?? 0),
+                existingTopUp.reason ??
+                    input.reason ??
+                    `sunflowerPackage:${input.packageCode}`,
+            );
             return {
                 topUp: { status: 'existing' as const, entry: existingTopUp },
                 bonus: existingBonus
@@ -410,6 +448,10 @@ export async function topUpSunflowerPackage(input: SunflowerPackageTopUpInput) {
         };
 
         if (bonusSunflowers === 0) {
+            await recordVisibleBalanceIfMissing(
+                input.sunflowers,
+                input.reason ?? `sunflowerPackage:${input.packageCode}`,
+            );
             return { topUp, bonus: null };
         }
         assertPositiveInteger('bonusSunflowers', bonusSunflowers);
@@ -434,6 +476,11 @@ export async function topUpSunflowerPackage(input: SunflowerPackageTopUpInput) {
                       tx,
                   ),
               };
+
+        await recordVisibleBalanceIfMissing(
+            input.sunflowers,
+            input.reason ?? `sunflowerPackage:${input.packageCode}`,
+        );
 
         return { topUp, bonus };
     });
