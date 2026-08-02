@@ -2,6 +2,11 @@ type HarvestLabelField = {
     plantStatus?: string | null;
 };
 
-export function isHarvestLabelEligible(field: HarvestLabelField) {
-    return field.plantStatus === 'ready';
+type HarvestLabelScope = 'explicitField' | 'raisedBed';
+
+export function isHarvestLabelEligible(
+    field: HarvestLabelField,
+    scope: HarvestLabelScope,
+) {
+    return scope === 'explicitField' || field.plantStatus === 'ready';
 }

@@ -279,7 +279,9 @@ async function buildHarvestFieldLabel(
     dateLabel: string,
     createTraceLink: boolean,
 ): Promise<FieldOperationLabelData | null> {
-    if (createTraceLink && !isHarvestLabelEligible(field)) {
+    const labelScope =
+        operation.raisedBedFieldId === null ? 'raisedBed' : 'explicitField';
+    if (createTraceLink && !isHarvestLabelEligible(field, labelScope)) {
         return null;
     }
 
