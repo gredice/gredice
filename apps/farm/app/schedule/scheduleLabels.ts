@@ -7,6 +7,7 @@ import {
 } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
 import { formatScheduleLabelDate } from './scheduleLabelDate';
+import { isHarvestLabelEligible } from './scheduleLabelEligibility';
 import {
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
@@ -278,6 +279,10 @@ async function buildHarvestFieldLabel(
     dateLabel: string,
     createTraceLink: boolean,
 ): Promise<FieldOperationLabelData | null> {
+    if (createTraceLink && !isHarvestLabelEligible(field)) {
+        return null;
+    }
+
     const plantSortName = field.plantSortId
         ? plantSortById.get(field.plantSortId)?.information?.name
         : undefined;
