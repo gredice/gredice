@@ -85,12 +85,12 @@ export async function ScheduleLabelPrintSection({
             triggerVariant="solid"
             triggerSize="sm"
             triggerClassName="whitespace-nowrap"
-            printButtonLabel="Ispiši sve etikete"
+            printButtonLabel="Ispiši odabrane etikete"
             onPrintSuccess={markHarvestTraceLabelsPrintedAction}
             description={
                 <Stack spacing={1}>
                     <Typography>
-                        Ispis uključuje sve etikete za odabrani dan.
+                        Odaberite etikete koje želite ispisati za ovaj dan.
                     </Typography>
                     {labelSummary && (
                         <Typography
