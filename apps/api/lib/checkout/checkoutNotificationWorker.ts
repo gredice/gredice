@@ -266,7 +266,11 @@ export async function runCheckoutNotificationWorker({
                 continue;
             }
 
-            const deliveryOptions = { abortSignal, beforeProviderSubmission };
+            const deliveryOptions = {
+                abortSignal,
+                beforeProviderSubmission,
+                throwOnLookupError: true,
+            };
             const response =
                 claimed.claim.payload.kind === 'operation_scheduled_slack'
                     ? await resolved.notifyOperation(

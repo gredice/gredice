@@ -272,12 +272,14 @@ export async function enqueueCheckoutDeliveryNotifications(
     {
         accountId,
         addressId,
+        checkoutNotificationScope,
         mode,
         requestId,
         slotId,
     }: {
         accountId: string;
         addressId?: number;
+        checkoutNotificationScope?: string;
         mode: 'delivery' | 'pickup';
         requestId: string;
         slotId: number;
@@ -303,7 +305,17 @@ export async function enqueueCheckoutDeliveryNotifications(
                 .filter((email) => email.length > 0 && email.includes('@')),
         ),
     ).sort();
+    const normalizedCheckoutScope = checkoutNotificationScope?.trim();
+    if (
+        checkoutNotificationScope !== undefined &&
+        (!normalizedCheckoutScope || normalizedCheckoutScope.length > 256)
+    ) {
+        throw new TypeError(
+            'Checkout notification scope must contain 1 to 256 characters',
+        );
+    }
     const groupKey = [
+        normalizedCheckoutScope ?? `request:${requestId}`,
         accountId,
         mode,
         slotId.toString(),

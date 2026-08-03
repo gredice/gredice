@@ -12,9 +12,10 @@ The outbox covers only the normal checkout flow:
 - delivery-created Slack; and
 - scheduled-delivery email for each normalized account recipient.
 
-The previous delivery-email grouping rule is preserved: delivery requests for
-the same account, delivery slot, and address produce one email intent per
-recipient. Pickup requests do not produce a scheduled-delivery email. Existing
+The previous delivery-email grouping rule is preserved within one checkout:
+delivery requests for the same account, delivery slot, and address produce one
+email intent per recipient. A later independent checkout receives its own
+intent, and pickup requests do not produce a scheduled-delivery email. Existing
 Slack settings and message copy remain authoritative when the worker executes.
 
 `GET /api/internal/cron/checkout-notifications` runs every minute, requires an

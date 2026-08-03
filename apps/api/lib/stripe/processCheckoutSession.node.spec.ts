@@ -3655,6 +3655,10 @@ describe('processItem', () => {
                 slotId: 9,
             },
         );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'getOrCreateDeliveryRequest')[0]?.args[1],
+            { checkoutNotificationScope: 'cart:100' },
+        );
     });
 
     it('retries delivery creation without blocking on notification providers', async () => {

@@ -55,7 +55,7 @@ test('concurrent enqueue of one intent produces exactly one durable row', async 
     assert.equal(rows.length, 1);
 });
 
-test('delivery email grouping preserves the checkout eligibility rule', async () => {
+test('delivery email grouping is deduplicated only within one checkout scope', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const secondAccountId = await createTestAccount();
@@ -73,11 +73,13 @@ test('delivery email grouping preserves the checkout eligibility rule', async ()
     const enqueueDelivery = async ({
         targetAccountId = accountId,
         addressId = 12,
+        checkoutNotificationScope = 'checkout-one',
         mode = 'delivery',
         slotId = 34,
     }: {
         targetAccountId?: string;
         addressId?: number;
+        checkoutNotificationScope?: string;
         mode?: 'delivery' | 'pickup';
         slotId?: number;
     } = {}) => {
@@ -86,6 +88,7 @@ test('delivery email grouping preserves the checkout eligibility rule', async ()
                 {
                     accountId: targetAccountId,
                     addressId,
+                    checkoutNotificationScope,
                     mode,
                     requestId: randomUUID(),
                     slotId,
@@ -99,6 +102,7 @@ test('delivery email grouping preserves the checkout eligibility rule', async ()
     await enqueueDelivery({ addressId: 13 });
     await enqueueDelivery({ slotId: 35 });
     await enqueueDelivery({ targetAccountId: secondAccountId });
+    await enqueueDelivery({ checkoutNotificationScope: 'checkout-two' });
     await enqueueDelivery({ mode: 'pickup' });
 
     const rows = await storage()
@@ -112,12 +116,12 @@ test('delivery email grouping preserves the checkout eligibility rule', async ()
         );
     assert.equal(
         rows.filter(({ kind }) => kind === 'delivery_created_slack').length,
-        6,
+        7,
     );
     const emails = rows.filter(
         ({ kind }) => kind === 'delivery_scheduled_email',
     );
-    assert.equal(emails.length, 4);
+    assert.equal(emails.length, 5);
     assert.ok(
         emails.every(
             (email) =>

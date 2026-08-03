@@ -59,6 +59,17 @@ test('Slack distinguishes proven rejection from uncertain transport failure', as
     assert.equal(rejected.outcome, 'rejected');
     assert.equal(rejected.status, 429);
 
+    fetchMock.mock.mockImplementation(async () =>
+        Response.json({ error: 'internal_error', ok: false }, { status: 503 }),
+    );
+    const uncertainServerResponse = await postMessage({
+        channel: 'checkout-alerts',
+        text: 'Checkout event',
+        token: 'token',
+    });
+    assert.equal(uncertainServerResponse.outcome, 'uncertain');
+    assert.equal(uncertainServerResponse.status, 503);
+
     fetchMock.mock.mockImplementation(async () => {
         throw new Error('connection reset');
     });

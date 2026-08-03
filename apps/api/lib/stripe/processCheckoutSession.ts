@@ -2519,15 +2519,23 @@ export async function processItem(
                 if (deliveryInfo) {
                     try {
                         const deliveryRequest =
-                            await dependencies.getOrCreateDeliveryRequest({
-                                operationId,
-                                slotId: deliveryInfo.slotId,
-                                mode: deliveryInfo.mode,
-                                addressId: deliveryInfo.addressId,
-                                locationId: deliveryInfo.locationId,
-                                notes: deliveryInfo.notes,
-                                accountId: itemData.accountId,
-                            });
+                            await dependencies.getOrCreateDeliveryRequest(
+                                {
+                                    operationId,
+                                    slotId: deliveryInfo.slotId,
+                                    mode: deliveryInfo.mode,
+                                    addressId: deliveryInfo.addressId,
+                                    locationId: deliveryInfo.locationId,
+                                    notes: deliveryInfo.notes,
+                                    accountId: itemData.accountId,
+                                },
+                                {
+                                    checkoutNotificationScope:
+                                        itemData.checkoutSessionId
+                                            ? `session:${itemData.checkoutSessionId}`
+                                            : `cart:${itemData.cartId.toString()}`,
+                                },
+                            );
                         console.debug(
                             `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );

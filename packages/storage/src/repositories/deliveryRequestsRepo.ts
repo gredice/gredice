@@ -1609,7 +1609,10 @@ async function insertDeliveryRequest(
     requestId: string,
     data: DeliveryRequestInput,
     db: DatabaseClient,
-    enqueueCheckoutNotifications = false,
+    options: {
+        checkoutNotificationScope?: string;
+        enqueueCheckoutNotifications?: boolean;
+    } = {},
 ) {
     await db.insert(deliveryRequests).values({
         id: requestId,
@@ -1627,11 +1630,12 @@ async function insertDeliveryRequest(
         }),
         db,
     );
-    if (enqueueCheckoutNotifications) {
+    if (options.enqueueCheckoutNotifications) {
         await enqueueCheckoutDeliveryNotifications(
             {
                 accountId: data.accountId,
                 addressId: data.addressId,
+                checkoutNotificationScope: options.checkoutNotificationScope,
                 mode: data.mode,
                 requestId,
                 slotId: data.slotId,
@@ -1755,6 +1759,7 @@ export async function createDeliveryRequest(
 
 export async function getOrCreateDeliveryRequest(
     data: DeliveryRequestInput,
+    options: { checkoutNotificationScope?: string } = {},
 ): Promise<{ requestId: string; created: boolean }> {
     const existing = await getExistingCheckoutDeliveryRequest(data, storage());
     if (existing) {
@@ -1778,7 +1783,10 @@ export async function getOrCreateDeliveryRequest(
             closeExpiredSlot: false,
         });
         const requestId = randomUUID();
-        await insertDeliveryRequest(requestId, data, tx, true);
+        await insertDeliveryRequest(requestId, data, tx, {
+            checkoutNotificationScope: options.checkoutNotificationScope,
+            enqueueCheckoutNotifications: true,
+        });
         return { requestId, created: true };
     });
 }

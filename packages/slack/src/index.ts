@@ -88,7 +88,7 @@ export async function postMessage({
         if (!response.ok) {
             return {
                 ok: false,
-                outcome: 'rejected',
+                outcome: response.status >= 500 ? 'uncertain' : 'rejected',
                 status: response.status,
                 error:
                     typeof responseBody?.error === 'string'

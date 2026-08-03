@@ -187,7 +187,13 @@ test('pre-submission Slack failures are not classified as missing ACS configurat
                 };
             },
             monotonicNow: () => 0,
-            notifyOperation: async () => {
+            notifyOperation: async (
+                _operationId,
+                _type,
+                _options,
+                deliveryOptions = {},
+            ) => {
+                assert.equal(deliveryOptions.throwOnLookupError, true);
                 throw new Error('context lookup failed');
             },
             now: () => new Date('2026-08-03T09:00:00.000Z'),
