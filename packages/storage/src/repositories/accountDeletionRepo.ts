@@ -13,6 +13,10 @@ import { shoppingCartItems, shoppingCarts } from '../schema/shoppingCartSchema';
 import { transactions } from '../schema/transactionSchema';
 import { accounts, accountUsers, users } from '../schema/usersSchema';
 import { storage } from '../storage';
+import {
+    lockAccountForDeletionLifecycle,
+    markAccountDeletionStarted,
+} from './accountDeletionFenceRepo';
 import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import { getAccountGardens, getRaisedBeds } from './gardensRepo';
 import {
@@ -22,7 +26,7 @@ import {
 } from './notificationsRepo';
 import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
 
-async function detachOrDeleteAccountShoppingCarts(accountId: string) {
+export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
     const expectedCarts = await storage().query.shoppingCarts.findMany({
         where: eq(shoppingCarts.accountId, accountId),
     });
@@ -34,9 +38,16 @@ async function detachOrDeleteAccountShoppingCarts(accountId: string) {
               })
             : [];
 
-    await withCheckoutCartItemLocks(
+    return withCheckoutCartItemLocks(
         items.map((item) => item.id),
         async (db) => {
+            const account = await lockAccountForDeletionLifecycle(
+                accountId,
+                db,
+            );
+            if (!account) {
+                return false;
+            }
             await lockAndAssertShoppingCartsMutable(expectedCartIds, db);
             const liveCarts = await db.query.shoppingCarts.findMany({
                 where: eq(shoppingCarts.accountId, accountId),
@@ -50,6 +61,8 @@ async function detachOrDeleteAccountShoppingCarts(accountId: string) {
                     `Shopping carts changed while fencing account ${accountId} for deletion.`,
                 );
             }
+
+            await markAccountDeletionStarted(accountId, db);
 
             const newCartIds = liveCarts.flatMap((cart) =>
                 cart.status === 'new' ? [cart.id] : [],
@@ -71,6 +84,7 @@ async function detachOrDeleteAccountShoppingCarts(accountId: string) {
                     .set({ accountId: null })
                     .where(inArray(shoppingCarts.id, retainedCartIds));
             }
+            return true;
         },
     );
 }
@@ -113,7 +127,7 @@ export async function deleteAccountWithDependencies(
         console.info(
             `[AccountDelete] Detaching/deleting shopping carts for accountId=${accountId}`,
         );
-        await detachOrDeleteAccountShoppingCarts(accountId);
+        await fenceAccountShoppingCartsForDeletion(accountId);
 
         const gardens = await getAccountGardens(accountId);
         if (gardens.length > 0) {
@@ -219,12 +233,6 @@ export async function deleteAccountWithDependencies(
                 .where(eq(operations.id, op.id));
         }
 
-        // 14. Delete account events
-        console.info(
-            `[AccountDelete] Deleting account events for accountId=${accountId}`,
-        );
-        await storage().delete(events).where(eq(events.aggregateId, accountId));
-
         // Delete user-account association
         console.info(
             `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
@@ -264,9 +272,13 @@ export async function deleteAccountWithDependencies(
 
         // Final - Delete account
         console.info(
-            `[AccountDelete] Deleting account record for accountId=${accountId}`,
+            `[AccountDelete] Deleting account events and record for accountId=${accountId}`,
         );
-        await storage().delete(accounts).where(eq(accounts.id, accountId));
+        await storage().transaction(async (db) => {
+            await lockAccountForDeletionLifecycle(accountId, db);
+            await db.delete(events).where(eq(events.aggregateId, accountId));
+            await db.delete(accounts).where(eq(accounts.id, accountId));
+        });
         await bustScheduleCacheIfNeeded('after account deletion');
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,

@@ -23,6 +23,7 @@ export * from './helpers/plantStatusChronology';
 export * from './helpers/raisedBedPhotoOperations';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';
+export * from './repositories/accountDeletionFenceRepo';
 export * from './repositories/accountDeletionRepo';
 export * from './repositories/accountInvitationsRepo';
 export * from './repositories/accountsRepo';
