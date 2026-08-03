@@ -19,6 +19,7 @@ import {
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationForCartItem,
+    StripeCheckoutAttemptInProgressError,
     upsertOrRemoveCartItem,
     upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
@@ -375,6 +376,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         409,
                     );
                 }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije izmjene košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
+                        },
+                        409,
+                    );
+                }
 
                 throw error;
             }
@@ -409,6 +419,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         {
                             error: 'Checkout fulfillment is already processing for this cart',
                             code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije brisanja košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
                         },
                         409,
                     );

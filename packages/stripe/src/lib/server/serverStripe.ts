@@ -48,7 +48,9 @@ function getValidStripeImageUrls(imageUrls?: string[]): string[] | undefined {
     return validUrls;
 }
 
-async function ensureStripeCustomer(account: UserAccount): Promise<string> {
+export async function resolveStripeCustomerId(
+    account: UserAccount,
+): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
     if (account.stripeCustomerId && account.stripeCustomerId.length > 0) {
@@ -124,6 +126,7 @@ export async function getStripeCheckoutSession(sessionId: string) {
             lineItems: line_items,
             amountTotal: session.amount_total,
             metadata: session.metadata,
+            url: session.url,
         };
     } catch (error) {
         if (error instanceof Error) {
@@ -175,9 +178,16 @@ export async function stripeCheckout(
         allowPromotionCodes?: boolean;
         metadata?: Record<string, string | number | null>;
     },
+    options: {
+        customerId?: string;
+        idempotencyKey?: string;
+        returnUrls?: StripeCheckoutReturnUrls;
+    } = {},
 ) {
     try {
-        const customerId = await ensureStripeCustomer(account);
+        const customerId =
+            options.customerId ?? (await resolveStripeCustomerId(account));
+        const returnUrls = options.returnUrls ?? getStripeCheckoutReturnUrls();
         const params: StripeCheckoutSessionCreateParams = {
             customer: customerId,
             customer_update: {
@@ -199,8 +209,8 @@ export async function stripeCheckout(
             allow_promotion_codes: data.allowPromotionCodes ?? true,
             mode: 'payment',
             locale: 'hr',
-            cancel_url: getReturnUrl({ status: 'cancel' }),
-            success_url: getReturnUrl({ status: 'success' }),
+            cancel_url: returnUrls.cancel,
+            success_url: returnUrls.success,
             metadata: data.metadata,
         };
         if (data.expiresAt) {
@@ -210,10 +220,15 @@ export async function stripeCheckout(
         // Create a checkout session in Stripe
         let session: Stripe.Checkout.Session | undefined;
         try {
-            session = await getStripe().checkout.sessions.create(params);
+            session = await getStripe().checkout.sessions.create(
+                params,
+                options.idempotencyKey
+                    ? { idempotencyKey: options.idempotencyKey }
+                    : undefined,
+            );
         } catch (err) {
             console.error(err);
-            throw new Error('Unable to create checkout session.');
+            throw err;
         }
 
         if (session) {
@@ -242,9 +257,21 @@ export async function stripeCheckout(
     }
 }
 
+export type StripeCheckoutReturnUrls = {
+    cancel: string;
+    success: string;
+};
+
+export function getStripeCheckoutReturnUrls(): StripeCheckoutReturnUrls {
+    return {
+        cancel: getReturnUrl({ status: 'cancel' }),
+        success: getReturnUrl({ status: 'success' }),
+    };
+}
+
 export async function stripeCustomerBillingInfo(account: UserAccount) {
     try {
-        const customerId = await ensureStripeCustomer(account);
+        const customerId = await resolveStripeCustomerId(account);
         const stripeCustomer = await getStripe().customers.retrieve(customerId);
         if (stripeCustomer.deleted) throw new Error('Customer not found');
 
@@ -293,7 +320,7 @@ async function stripeListAll<T extends { id: string }>(
 
 export async function stripeCustomerPaymentMethods(account: UserAccount) {
     try {
-        const customerId = await ensureStripeCustomer(account);
+        const customerId = await resolveStripeCustomerId(account);
         const stripeCustomer = await getStripe().customers.retrieve(customerId);
         if (stripeCustomer.deleted) throw new Error('Customer not found');
 
@@ -339,7 +366,7 @@ export async function stripeCustomerPaymentMethods(account: UserAccount) {
 
 export async function stripeCreatePortal(account: UserAccount) {
     try {
-        const customerId = await ensureStripeCustomer(account);
+        const customerId = await resolveStripeCustomerId(account);
         try {
             const { url, id } = await getStripe().billingPortal.sessions.create(
                 {

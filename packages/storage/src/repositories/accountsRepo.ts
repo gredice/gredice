@@ -8,6 +8,7 @@ import {
     events,
     storage,
 } from '..';
+import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
 import {
     createEvent,
     getAllEvents,
@@ -15,6 +16,7 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { hasActiveStripeCheckoutAttemptForAccount } from './stripeCheckoutAttemptRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -219,6 +221,38 @@ export async function assignStripeCustomerId(
         .where(eq(accounts.id, accountId))
         .returning();
     return result[0];
+}
+
+export async function assignStripeCustomerIdIfUnchanged(
+    accountId: string,
+    expectedStripeCustomerId: string | null | undefined,
+    candidateStripeCustomerId: string,
+) {
+    return storage().transaction(async (db) => {
+        const account = await lockAccountAndAssertNotDeleting(accountId, db);
+        if (!account) {
+            return undefined;
+        }
+        const expectedCustomerId = expectedStripeCustomerId ?? null;
+        if (account.stripeCustomerId !== expectedCustomerId) {
+            return account.stripeCustomerId ?? undefined;
+        }
+        if (account.stripeCustomerId === candidateStripeCustomerId) {
+            return candidateStripeCustomerId;
+        }
+        if (
+            account.stripeCustomerId &&
+            (await hasActiveStripeCheckoutAttemptForAccount(accountId, db))
+        ) {
+            return account.stripeCustomerId;
+        }
+        const [updated] = await db
+            .update(accounts)
+            .set({ stripeCustomerId: candidateStripeCustomerId })
+            .where(eq(accounts.id, accountId))
+            .returning({ stripeCustomerId: accounts.stripeCustomerId });
+        return updated?.stripeCustomerId ?? undefined;
+    });
 }
 
 export async function updateAccountTimeZone(

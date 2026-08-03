@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     accountUsers,
     assignStripeCustomerId,
+    assignStripeCustomerIdIfUnchanged,
     createEvent,
     earnSunflowers,
     earnSunflowersForPayment,
@@ -171,6 +172,25 @@ test('assignStripeCustomerId sets stripeCustomerId', async () => {
     const updated = await assignStripeCustomerId(accountId, stripeId);
     assert.ok(updated);
     assert.strictEqual(updated.stripeCustomerId, stripeId);
+});
+
+test('assignStripeCustomerIdIfUnchanged keeps one canonical customer under concurrency', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const assigned = await Promise.all([
+        assignStripeCustomerIdIfUnchanged(accountId, null, 'cus_first'),
+        assignStripeCustomerIdIfUnchanged(accountId, null, 'cus_second'),
+    ]);
+    const account = await getAccount(accountId);
+    assert.ok(account?.stripeCustomerId);
+    assert.deepStrictEqual(assigned, [
+        account.stripeCustomerId,
+        account.stripeCustomerId,
+    ]);
+    assert.ok(
+        account.stripeCustomerId === 'cus_first' ||
+            account.stripeCustomerId === 'cus_second',
+    );
 });
 
 test('getAccountUsers returns empty array for new account', async () => {

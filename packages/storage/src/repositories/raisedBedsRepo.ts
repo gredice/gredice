@@ -37,6 +37,7 @@ import {
     raisedBedSensors,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import {
     createEvent,
     getAllEvents,
@@ -55,6 +56,7 @@ import {
 } from './raisedBedFieldsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
 import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
+import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
@@ -715,8 +717,46 @@ export async function mergeRaisedBeds(
     }
 
     const db = storage();
+    const expectedMutableCartItems = await db
+        .select({ id: shoppingCartItems.id })
+        .from(shoppingCartItems)
+        .where(
+            and(
+                eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                eq(shoppingCartItems.isDeleted, false),
+                eq(shoppingCartItems.status, 'new'),
+            ),
+        );
+    const expectedMutableCartItemIds = expectedMutableCartItems.map(
+        (item) => item.id,
+    );
 
-    await db.transaction(async (tx) => {
+    await withCheckoutCartItemLocks(expectedMutableCartItemIds, async (tx) => {
+        const liveMutableCartItems = await tx
+            .select({ id: shoppingCartItems.id })
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                ),
+            );
+        const expectedMutableCartItemIdSet = new Set(
+            expectedMutableCartItemIds,
+        );
+        if (
+            liveMutableCartItems.length !== expectedMutableCartItemIds.length ||
+            liveMutableCartItems.some(
+                (item) => !expectedMutableCartItemIdSet.has(item.id),
+            )
+        ) {
+            throw new Error(
+                'Shopping cart items changed while fencing raised bed merge.',
+            );
+        }
+        await lockAndAssertCartItemsMutable(expectedMutableCartItemIds, tx);
+
         const targetRaisedBed = await tx.query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, targetRaisedBedId),
