@@ -134,10 +134,11 @@ function createInsertBarrierDb(
 function legacyCoveredItem(
     item: { amount: number; reason: string },
     createdAt = new Date('2025-01-01T00:00:00.000Z'),
+    paymentState: 'paid' | 'pending' = 'pending',
 ) {
     const cartItemId = Number(item.reason.replace('shoppingCartItem:', ''));
     assert.ok(Number.isSafeInteger(cartItemId) && cartItemId > 0);
-    return { ...item, cartItemId, createdAt };
+    return { ...item, cartItemId, createdAt, paymentState };
 }
 
 test('createAccount creates a new account', async () => {
@@ -634,7 +635,56 @@ test('checkout replay can resolve a unique stored per-item amount across catalog
     );
 });
 
-test('legacy cart debit creates hidden per-item checkpoints only for pending covered items', async () => {
+test('checkout replay resolves paid covered items from durable per-item debits', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const paidItem = {
+        amount: 300,
+        reason: 'shoppingCartItem:8031',
+    };
+    await spendSunflowersBatch(accountId, [{ ...paidItem, amount: 200 }]);
+
+    const replay = await spendSunflowersBatch(accountId, [], undefined, {
+        legacyCartSpend: {
+            reason: 'shoppingCart:803',
+            coveredItems: [
+                legacyCoveredItem(
+                    paidItem,
+                    new Date('2025-01-01T00:00:00.000Z'),
+                    'paid',
+                ),
+            ],
+        },
+    });
+
+    assert.deepEqual(replay, {
+        createdReasons: [],
+        existingReasons: [],
+        resolvedAmountsByReason: { [paidItem.reason]: 200 },
+    });
+    assert.equal(await getSunflowers(accountId), 800);
+
+    await assert.rejects(
+        spendSunflowersBatch(accountId, [], undefined, {
+            legacyCartSpend: {
+                reason: 'shoppingCart:804',
+                coveredItems: [
+                    legacyCoveredItem(
+                        {
+                            amount: 400,
+                            reason: 'shoppingCartItem:8041',
+                        },
+                        new Date('2025-01-01T00:00:00.000Z'),
+                        'paid',
+                    ),
+                ],
+            },
+        }),
+        SunflowerSpendAmountConflictError,
+    );
+});
+
+test('legacy cart debit materializes durable amounts for paid and pending covered items', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const legacyCartReason = 'shoppingCart:901';
@@ -644,9 +694,15 @@ test('legacy cart debit creates hidden per-item checkpoints only for pending cov
         amount: 100,
         reason: 'shoppingCartItem:9013',
     };
-    const coveredItems = [firstItem, secondItem, alreadyPaidItem].map((item) =>
-        legacyCoveredItem(item),
-    );
+    const coveredItems = [
+        legacyCoveredItem(firstItem),
+        legacyCoveredItem(secondItem),
+        legacyCoveredItem(
+            alreadyPaidItem,
+            new Date('2025-01-01T00:00:00.000Z'),
+            'paid',
+        ),
+    ];
     const options = {
         legacyCartSpend: { reason: legacyCartReason, coveredItems },
     };
@@ -665,6 +721,7 @@ test('legacy cart debit creates hidden per-item checkpoints only for pending cov
         resolvedAmountsByReason: {
             [firstItem.reason]: firstItem.amount,
             [secondItem.reason]: secondItem.amount,
+            [alreadyPaidItem.reason]: alreadyPaidItem.amount,
         },
     });
     assert.equal(await getSunflowers(accountId), 401);
@@ -703,7 +760,13 @@ test('legacy cart debit creates hidden per-item checkpoints only for pending cov
         legacyCartReason,
         reason: secondItem.reason,
     });
-    assert.equal(firstCheckpointEvents.length, 2);
+    assert.deepEqual(checkpointDataForReason(alreadyPaidItem.reason), {
+        amount: 0,
+        coveredAmount: alreadyPaidItem.amount,
+        legacyCartReason,
+        reason: alreadyPaidItem.reason,
+    });
+    assert.equal(firstCheckpointEvents.length, 3);
 
     const driftedSecondItem = { ...secondItem, amount: 350 };
     const retry = await spendSunflowersBatch(
@@ -714,10 +777,14 @@ test('legacy cart debit creates hidden per-item checkpoints only for pending cov
             legacyCartSpend: {
                 reason: legacyCartReason,
                 coveredItems: [
-                    firstItem,
-                    driftedSecondItem,
-                    alreadyPaidItem,
-                ].map((item) => legacyCoveredItem(item)),
+                    legacyCoveredItem(firstItem),
+                    legacyCoveredItem(driftedSecondItem),
+                    legacyCoveredItem(
+                        alreadyPaidItem,
+                        new Date('2025-01-01T00:00:00.000Z'),
+                        'paid',
+                    ),
+                ],
             },
         },
     );
@@ -726,16 +793,37 @@ test('legacy cart debit creates hidden per-item checkpoints only for pending cov
         existingReasons: [secondItem.reason],
         resolvedAmountsByReason: {
             [secondItem.reason]: secondItem.amount,
+            [alreadyPaidItem.reason]: alreadyPaidItem.amount,
         },
     });
 
-    const finalPendingItem = await spendSunflowersBatch(
+    const allPaidResolution = await spendSunflowersBatch(
         accountId,
-        [alreadyPaidItem],
+        [],
         undefined,
-        options,
+        {
+            legacyCartSpend: {
+                reason: legacyCartReason,
+                coveredItems: [firstItem, secondItem, alreadyPaidItem].map(
+                    (item) =>
+                        legacyCoveredItem(
+                            item,
+                            new Date('2025-01-01T00:00:00.000Z'),
+                            'paid',
+                        ),
+                ),
+            },
+        },
     );
-    assert.deepEqual(finalPendingItem.createdReasons, [alreadyPaidItem.reason]);
+    assert.deepEqual(allPaidResolution, {
+        createdReasons: [],
+        existingReasons: [],
+        resolvedAmountsByReason: {
+            [firstItem.reason]: firstItem.amount,
+            [secondItem.reason]: secondItem.amount,
+            [alreadyPaidItem.reason]: alreadyPaidItem.amount,
+        },
+    });
     assert.equal(await getSunflowers(accountId), 401);
 
     await earnSunflowers(accountId, 2, 'legacy-history-new');

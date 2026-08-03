@@ -564,12 +564,6 @@ async function processNonStripeCartItems(
         console.warn(
             `Cart ${cartId} failed validation after all expected non-stripe items were already paid: ${cartInfo.notes.join('; ')}`,
         );
-        return {
-            confirmationItems,
-            processedItems,
-            resolvedSunflowerAmountsByCartItemId,
-            satisfiedExpectedItemIds,
-        };
     }
     for (const item of cartInfo.items) {
         if (
@@ -612,11 +606,6 @@ async function processNonStripeCartItems(
         (item) =>
             item.currency === 'sunflower' && isExpectedNonStripeItem(item),
     );
-    const sunflowerCartItemsWithShopData =
-        expectedSunflowerCartItemsWithShopData.filter(
-            (item) => item.status !== 'paid',
-        );
-
     // Precompute sunflower amounts so the durable batch debit can be retried
     // without charging an already-processed item again.
     const sunflowerAmountsByItem = new Map<number, number>();
@@ -627,10 +616,9 @@ async function processNonStripeCartItems(
                 ? calculateSunflowerReplayAmount(item)
                 : dependencies.calculateSunflowerAmount(item);
         sunflowerAmountsByItem.set(item.id, sunflowerAmount);
-        resolvedSunflowerAmountsByCartItemId.set(item.id, sunflowerAmount);
     }
 
-    if (sunflowerCartItemsWithShopData.length > 0) {
+    if (expectedSunflowerCartItemsWithShopData.length > 0) {
         await dependencies.withCheckoutCartItemProcessingLocks(
             expectedSunflowerCartItemsWithShopData.map((item) => item.id),
             async () => {
@@ -655,30 +643,32 @@ async function processNonStripeCartItems(
                                     `Cart ${cartId.toString()} account changed before sunflower fulfillment.`,
                                 );
                             }
+                            const paymentStatesByCartItemId = new Map<
+                                number,
+                                'paid' | 'pending'
+                            >();
+                            for (const item of expectedSunflowerCartItemsWithShopData) {
+                                const state = assertCheckoutCartItemSnapshot(
+                                    lockedCart.items.find(
+                                        (lockedItem) =>
+                                            lockedItem.id === item.id,
+                                    ),
+                                    item,
+                                );
+                                paymentStatesByCartItemId.set(item.id, state);
+                                if (
+                                    state === 'paid' &&
+                                    expectedNonStripeCartItemIds?.has(item.id)
+                                ) {
+                                    satisfiedExpectedItemIds.add(item.id);
+                                }
+                            }
                             const lockedPendingItems =
                                 expectedSunflowerCartItemsWithShopData.filter(
-                                    (item) => {
-                                        const state =
-                                            assertCheckoutCartItemSnapshot(
-                                                lockedCart.items.find(
-                                                    (lockedItem) =>
-                                                        lockedItem.id ===
-                                                        item.id,
-                                                ),
-                                                item,
-                                            );
-                                        if (
-                                            state === 'paid' &&
-                                            expectedNonStripeCartItemIds?.has(
-                                                item.id,
-                                            )
-                                        ) {
-                                            satisfiedExpectedItemIds.add(
-                                                item.id,
-                                            );
-                                        }
-                                        return state === 'pending';
-                                    },
+                                    (item) =>
+                                        paymentStatesByCartItemId.get(
+                                            item.id,
+                                        ) === 'pending',
                                 );
                             try {
                                 const spendResult =
@@ -698,16 +688,29 @@ async function processNonStripeCartItems(
                                                 reason: `shoppingCart:${cartId.toString()}`,
                                                 coveredItems:
                                                     expectedSunflowerCartItemsWithShopData.map(
-                                                        (item) => ({
-                                                            amount:
-                                                                sunflowerAmountsByItem.get(
+                                                        (item) => {
+                                                            const paymentState =
+                                                                paymentStatesByCartItemId.get(
                                                                     item.id,
-                                                                ) ?? 0,
-                                                            cartItemId: item.id,
-                                                            createdAt:
-                                                                item.createdAt,
-                                                            reason: `shoppingCartItem:${item.id.toString()}`,
-                                                        }),
+                                                                );
+                                                            if (!paymentState) {
+                                                                throw new Error(
+                                                                    `Sunflower cart item ${item.id.toString()} lost its payment state.`,
+                                                                );
+                                                            }
+                                                            return {
+                                                                amount:
+                                                                    sunflowerAmountsByItem.get(
+                                                                        item.id,
+                                                                    ) ?? 0,
+                                                                cartItemId:
+                                                                    item.id,
+                                                                createdAt:
+                                                                    item.createdAt,
+                                                                paymentState,
+                                                                reason: `shoppingCartItem:${item.id.toString()}`,
+                                                            };
+                                                        },
                                                     ),
                                             },
                                         },
@@ -716,7 +719,7 @@ async function processNonStripeCartItems(
                                     number,
                                     number
                                 >();
-                                for (const item of lockedPendingItems) {
+                                for (const item of expectedSunflowerCartItemsWithShopData) {
                                     const resolvedAmount =
                                         spendResult.resolvedAmountsByReason[
                                             `shoppingCartItem:${item.id.toString()}`
@@ -730,6 +733,10 @@ async function processNonStripeCartItems(
                                         );
                                     }
                                     resolvedAmountsByItemId.set(
+                                        item.id,
+                                        resolvedAmount,
+                                    );
+                                    resolvedSunflowerAmountsByCartItemId.set(
                                         item.id,
                                         resolvedAmount,
                                     );
@@ -1858,9 +1865,16 @@ async function processPaidCheckoutSession(
             purchasedItems.push(
                 ...dependencies.buildOrderConfirmationItems(
                     nonStripeResult.confirmationItems,
-                    (item) =>
-                        resolvedSunflowerAmountsByCartItemId.get(item.id) ??
-                        calculateSunflowerReplayAmount(item),
+                    (item) => {
+                        const resolvedAmount =
+                            resolvedSunflowerAmountsByCartItemId.get(item.id);
+                        if (resolvedAmount === undefined) {
+                            throw new Error(
+                                `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
+                            );
+                        }
+                        return resolvedAmount;
+                    },
                 ),
             );
         }

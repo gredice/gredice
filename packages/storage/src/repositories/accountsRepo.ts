@@ -75,6 +75,7 @@ export type SunflowerSpendBatchItem = {
 export type LegacySunflowerCartSpendCoveredItem = SunflowerSpendBatchItem & {
     cartItemId: number;
     createdAt: Date;
+    paymentState: 'paid' | 'pending';
 };
 
 export type SunflowerSpendBatchResult = {
@@ -717,6 +718,22 @@ export async function spendSunflowersBatch(
                     'Legacy checkout sunflower covered item requires a valid creation time',
                 );
             }
+            if (
+                coveredItem.paymentState !== 'paid' &&
+                coveredItem.paymentState !== 'pending'
+            ) {
+                throw new Error(
+                    'Legacy checkout sunflower covered item requires a payment state',
+                );
+            }
+            if (
+                coveredItem.paymentState === 'paid' &&
+                uniqueItems.has(coveredItem.reason)
+            ) {
+                throw new Error(
+                    'Legacy checkout sunflower paid covered item cannot be requested for debit',
+                );
+            }
         }
         for (const item of uniqueItems.values()) {
             const coveredItem = coveredItems.get(item.reason);
@@ -735,7 +752,7 @@ export async function spendSunflowersBatch(
         }
     }
 
-    if (uniqueItems.size === 0) {
+    if (uniqueItems.size === 0 && !legacyCartSpend) {
         return {
             createdReasons: [],
             existingReasons: [],
@@ -792,17 +809,18 @@ export async function spendSunflowersBatch(
             }
         }
 
+        const resolvedCoveredAmounts = new Map<string, number>();
         if (legacyCartSpend && coveredItems) {
             const legacyEvent = existingEventsByReason.get(
                 legacyCartSpend.reason,
             )?.[0];
             const existingCheckpoints = new Set<string>();
-            const resolvedCoveredAmounts = new Map(
-                Array.from(coveredItems.values(), (item) => [
-                    item.reason,
-                    item.amount,
-                ]),
-            );
+            for (const coveredItem of coveredItems.values()) {
+                resolvedCoveredAmounts.set(
+                    coveredItem.reason,
+                    coveredItem.amount,
+                );
+            }
 
             for (const coveredItem of coveredItems.values()) {
                 const existingEvent = existingEventsByReason.get(
@@ -811,6 +829,20 @@ export async function spendSunflowersBatch(
                 if (!existingEvent) continue;
 
                 if (existingEvent.amount !== 0) {
+                    const isValidExistingDebit =
+                        existingEvent.amountIsValid &&
+                        Number.isInteger(existingEvent.amount) &&
+                        existingEvent.amount > 0 &&
+                        !existingEvent.coveredAmountIsValid &&
+                        existingEvent.legacyCartReason === undefined &&
+                        !existingEvent.legacyRewardAlreadyEarned;
+                    if (!isValidExistingDebit) {
+                        throw new SunflowerSpendAmountConflictError(
+                            coveredItem.reason,
+                            existingEvent.amount,
+                            coveredItem.amount,
+                        );
+                    }
                     if (legacyEvent) {
                         throw new SunflowerSpendAmountConflictError(
                             coveredItem.reason,
@@ -818,6 +850,10 @@ export async function spendSunflowersBatch(
                             0,
                         );
                     }
+                    resolvedCoveredAmounts.set(
+                        coveredItem.reason,
+                        existingEvent.amount,
+                    );
                     continue;
                 }
                 const isMatchingCheckpoint =
@@ -868,22 +904,18 @@ export async function spendSunflowersBatch(
                     );
                 }
 
-                const createdReasons: string[] = [];
-                const existingReasons: string[] = [];
-                const resolvedAmounts = new Map<string, number>();
-                for (const item of uniqueItems.values()) {
-                    const coveredItem = coveredItems.get(item.reason);
-                    if (!coveredItem) {
-                        throw new Error(
-                            'Legacy checkout sunflower replay lost a covered item',
-                        );
+                const newlyCreatedCheckpointReasons = new Set<string>();
+                for (const coveredItem of coveredItems.values()) {
+                    if (
+                        coveredItem.paymentState !== 'paid' &&
+                        !uniqueItems.has(coveredItem.reason)
+                    ) {
+                        continue;
                     }
                     const resolvedAmount =
-                        resolvedCoveredAmounts.get(item.reason) ??
+                        resolvedCoveredAmounts.get(coveredItem.reason) ??
                         coveredItem.amount;
-                    resolvedAmounts.set(item.reason, resolvedAmount);
-                    if (existingCheckpoints.has(item.reason)) {
-                        existingReasons.push(item.reason);
+                    if (existingCheckpoints.has(coveredItem.reason)) {
                         continue;
                     }
                     await createEvent(
@@ -891,11 +923,30 @@ export async function spendSunflowersBatch(
                             amount: 0,
                             coveredAmount: resolvedAmount,
                             legacyCartReason: legacyCartSpend.reason,
-                            reason: item.reason,
+                            reason: coveredItem.reason,
                         }),
                         tx,
                     );
-                    createdReasons.push(item.reason);
+                    newlyCreatedCheckpointReasons.add(coveredItem.reason);
+                }
+                const createdReasons = [...uniqueItems.keys()].filter(
+                    (reason) => newlyCreatedCheckpointReasons.has(reason),
+                );
+                const existingReasons = [...uniqueItems.keys()].filter(
+                    (reason) => existingCheckpoints.has(reason),
+                );
+                const resolvedAmounts = new Map<string, number>();
+                for (const coveredItem of coveredItems.values()) {
+                    if (
+                        coveredItem.paymentState === 'paid' ||
+                        uniqueItems.has(coveredItem.reason)
+                    ) {
+                        resolvedAmounts.set(
+                            coveredItem.reason,
+                            resolvedCoveredAmounts.get(coveredItem.reason) ??
+                                coveredItem.amount,
+                        );
+                    }
                 }
                 return {
                     createdReasons,
@@ -903,6 +954,19 @@ export async function spendSunflowersBatch(
                     resolvedAmountsByReason:
                         Object.fromEntries(resolvedAmounts),
                 };
+            }
+
+            for (const coveredItem of coveredItems.values()) {
+                if (
+                    coveredItem.paymentState === 'paid' &&
+                    !existingEventsByReason.has(coveredItem.reason)
+                ) {
+                    throw new SunflowerSpendAmountConflictError(
+                        coveredItem.reason,
+                        0,
+                        coveredItem.amount,
+                    );
+                }
             }
         }
 
@@ -938,6 +1002,22 @@ export async function spendSunflowersBatch(
             }
             existingReasons.push(item.reason);
             resolvedAmounts.set(item.reason, existingAmount);
+        }
+        for (const coveredItem of coveredItems?.values() ?? []) {
+            if (coveredItem.paymentState !== 'paid') {
+                continue;
+            }
+            const resolvedAmount = resolvedCoveredAmounts.get(
+                coveredItem.reason,
+            );
+            if (resolvedAmount === undefined) {
+                throw new SunflowerSpendAmountConflictError(
+                    coveredItem.reason,
+                    0,
+                    coveredItem.amount,
+                );
+            }
+            resolvedAmounts.set(coveredItem.reason, resolvedAmount);
         }
 
         if (missingItems.length === 0) {

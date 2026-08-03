@@ -62,7 +62,6 @@ import {
     buildOrderConfirmationItems,
     ORDER_CONFIRMATION_MANAGE_URL,
 } from '../../../lib/checkout/orderConfirmationEmail';
-import { calculateSunflowerReplayAmount } from '../../../lib/checkout/sunflowerCalculations';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -547,14 +546,19 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                     cartId: cart.id,
                                     item,
                                     operation: async (payment) => {
+                                        for (const [
+                                            cartItemId,
+                                            resolvedAmount,
+                                        ] of payment.resolvedAmountsByCartItemId) {
+                                            resolvedSunflowerAmountsByCartItemId.set(
+                                                cartItemId,
+                                                resolvedAmount,
+                                            );
+                                        }
                                         if (payment.state === 'paid') {
                                             return;
                                         }
                                         processingStage = 'fulfillment';
-                                        resolvedSunflowerAmountsByCartItemId.set(
-                                            item.id,
-                                            payment.resolvedAmount,
-                                        );
                                         const checkoutOperationMapping =
                                             item.entityTypeName === 'operation'
                                                 ? await getCheckoutOperationMapping(
@@ -604,6 +608,63 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 throw error;
                             }
                         }
+                    }
+                    const unresolvedPaidSunflowerItem =
+                        allSunflowerCartItemsWithShopData.find(
+                            (item) =>
+                                item.status === 'paid' &&
+                                !resolvedSunflowerAmountsByCartItemId.has(
+                                    item.id,
+                                ),
+                        );
+                    if (unresolvedPaidSunflowerItem) {
+                        try {
+                            await withDirectSunflowerCheckoutPayment({
+                                accountId,
+                                allSunflowerItems:
+                                    allSunflowerCartItemsWithShopData,
+                                cartId: cart.id,
+                                item: unresolvedPaidSunflowerItem,
+                                operation: async (payment) => {
+                                    for (const [
+                                        cartItemId,
+                                        resolvedAmount,
+                                    ] of payment.resolvedAmountsByCartItemId) {
+                                        resolvedSunflowerAmountsByCartItemId.set(
+                                            cartItemId,
+                                            resolvedAmount,
+                                        );
+                                    }
+                                },
+                            });
+                        } catch (error) {
+                            checkoutTiming.setErrorCategory(
+                                'sunflower_spend_failed',
+                            );
+                            console.error(
+                                'Error resolving paid sunflower amounts',
+                                {
+                                    accountId,
+                                    cartId: cart.id,
+                                    error,
+                                },
+                            );
+                            throw error;
+                        }
+                    }
+                    const missingSunflowerAmountItemIds =
+                        allSunflowerCartItemsWithShopData
+                            .filter(
+                                (item) =>
+                                    !resolvedSunflowerAmountsByCartItemId.has(
+                                        item.id,
+                                    ),
+                            )
+                            .map((item) => item.id);
+                    if (missingSunflowerAmountItemIds.length > 0) {
+                        throw new Error(
+                            `Sunflower checkout did not resolve durable amounts for cart items ${missingSunflowerAmountItemIds.join(', ')}.`,
+                        );
                     }
 
                     // Handle inventory items
@@ -718,11 +779,18 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 currency: null,
                                 items: buildOrderConfirmationItems(
                                     cartInfo.items,
-                                    (item) =>
-                                        resolvedSunflowerAmountsByCartItemId.get(
-                                            item.id,
-                                        ) ??
-                                        calculateSunflowerReplayAmount(item),
+                                    (item) => {
+                                        const resolvedAmount =
+                                            resolvedSunflowerAmountsByCartItemId.get(
+                                                item.id,
+                                            );
+                                        if (resolvedAmount === undefined) {
+                                            throw new Error(
+                                                `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
+                                            );
+                                        }
+                                        return resolvedAmount;
+                                    },
                                 ),
                                 manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
                                 to: user.userName,

@@ -20,6 +20,17 @@ type DirectSunflowerCheckoutDependencies = {
     withCheckoutCartItemProcessingLocks: typeof withCheckoutCartItemProcessingLocks;
 };
 
+type DirectSunflowerCheckoutPayment =
+    | {
+          resolvedAmountsByCartItemId: ReadonlyMap<number, number>;
+          state: 'paid';
+      }
+    | {
+          resolvedAmount: number;
+          resolvedAmountsByCartItemId: ReadonlyMap<number, number>;
+          state: 'pending';
+      };
+
 const realDependencies: DirectSunflowerCheckoutDependencies = {
     calculateSunflowerAmount,
     calculateSunflowerReplayAmount,
@@ -42,11 +53,7 @@ export async function withDirectSunflowerCheckoutPayment<T>({
     cartId: number;
     dependencies?: DirectSunflowerCheckoutDependencies;
     item: ShoppingCartItemWithShopData;
-    operation: (
-        payment:
-            | { state: 'paid' }
-            | { resolvedAmount: number; state: 'pending' },
-    ) => Promise<T>;
+    operation: (payment: DirectSunflowerCheckoutPayment) => Promise<T>;
 }): Promise<T> {
     const coveredItemIds = allSunflowerItems.map(
         (coveredItem) => coveredItem.id,
@@ -82,7 +89,10 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                         );
                     }
 
-                    let itemState: 'paid' | 'pending' | undefined;
+                    const paymentStatesByCartItemId = new Map<
+                        number,
+                        'paid' | 'pending'
+                    >();
                     for (const coveredItem of allSunflowerItems) {
                         const state = assertCheckoutCartItemSnapshot(
                             lockedCart.items.find(
@@ -91,52 +101,100 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                             ),
                             coveredItem,
                         );
-                        if (coveredItem.id === item.id) {
-                            itemState = state;
-                        }
+                        paymentStatesByCartItemId.set(coveredItem.id, state);
                     }
+                    const itemState = paymentStatesByCartItemId.get(item.id);
                     if (!itemState) {
                         throw new Error(
                             `Sunflower cart item ${item.id.toString()} is not part of the checkout coverage.`,
                         );
                     }
-                    if (itemState === 'paid') {
-                        return { state: 'paid' as const };
-                    }
-
                     const reason = `shoppingCartItem:${item.id.toString()}`;
                     const spendResult = await dependencies.spendSunflowersBatch(
                         accountId,
-                        [
-                            {
-                                amount:
-                                    sunflowerAmountsByCartItemId.get(item.id) ??
-                                    0,
-                                reason,
-                            },
-                        ],
+                        itemState === 'pending'
+                            ? [
+                                  {
+                                      amount:
+                                          sunflowerAmountsByCartItemId.get(
+                                              item.id,
+                                          ) ?? 0,
+                                      reason,
+                                  },
+                              ]
+                            : [],
                         db,
                         {
                             existingCheckoutItemAmountsAreAuthoritative: true,
                             legacyCartSpend: {
                                 reason: `shoppingCart:${cartId.toString()}`,
                                 coveredItems: allSunflowerItems.map(
-                                    (coveredItem) => ({
-                                        amount:
-                                            sunflowerAmountsByCartItemId.get(
+                                    (coveredItem) => {
+                                        const paymentState =
+                                            paymentStatesByCartItemId.get(
                                                 coveredItem.id,
-                                            ) ?? 0,
-                                        cartItemId: coveredItem.id,
-                                        createdAt: coveredItem.createdAt,
-                                        reason: `shoppingCartItem:${coveredItem.id.toString()}`,
-                                    }),
+                                            );
+                                        if (!paymentState) {
+                                            throw new Error(
+                                                `Sunflower cart item ${coveredItem.id.toString()} lost its payment state.`,
+                                            );
+                                        }
+                                        return {
+                                            amount:
+                                                sunflowerAmountsByCartItemId.get(
+                                                    coveredItem.id,
+                                                ) ?? 0,
+                                            cartItemId: coveredItem.id,
+                                            createdAt: coveredItem.createdAt,
+                                            paymentState,
+                                            reason: `shoppingCartItem:${coveredItem.id.toString()}`,
+                                        };
+                                    },
                                 ),
                             },
                         },
                     );
-                    const resolvedAmount =
-                        spendResult.resolvedAmountsByReason[reason];
+                    const resolvedAmountsByCartItemId = new Map<
+                        number,
+                        number
+                    >();
+                    for (const coveredItem of allSunflowerItems) {
+                        const resolvedAmount =
+                            spendResult.resolvedAmountsByReason[
+                                `shoppingCartItem:${coveredItem.id.toString()}`
+                            ];
+                        if (resolvedAmount !== undefined) {
+                            if (
+                                !Number.isSafeInteger(resolvedAmount) ||
+                                resolvedAmount <= 0
+                            ) {
+                                throw new Error(
+                                    `Sunflower spend for cart item ${coveredItem.id.toString()} did not resolve a valid amount.`,
+                                );
+                            }
+                            resolvedAmountsByCartItemId.set(
+                                coveredItem.id,
+                                resolvedAmount,
+                            );
+                        }
+                    }
+                    if (itemState === 'paid') {
+                        if (!resolvedAmountsByCartItemId.has(item.id)) {
+                            throw new Error(
+                                `Paid sunflower cart item ${item.id.toString()} has no durable spend amount.`,
+                            );
+                        }
+                        return {
+                            resolvedAmountsByCartItemId,
+                            state: 'paid' as const,
+                        };
+                    }
+
+                    const resolvedAmount = resolvedAmountsByCartItemId.get(
+                        item.id,
+                    );
                     if (
+                        typeof resolvedAmount !== 'number' ||
                         !Number.isSafeInteger(resolvedAmount) ||
                         resolvedAmount <= 0
                     ) {
@@ -145,7 +203,11 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                         );
                     }
 
-                    return { resolvedAmount, state: 'pending' as const };
+                    return {
+                        resolvedAmount,
+                        resolvedAmountsByCartItemId,
+                        state: 'pending' as const,
+                    };
                 },
             );
             return operation(payment);

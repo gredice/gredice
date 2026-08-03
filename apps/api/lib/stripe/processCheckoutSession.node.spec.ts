@@ -263,12 +263,31 @@ function makeDependencies(
             const items = Array.isArray(args[1])
                 ? (args[1] as Array<{ amount: number; reason: string }>)
                 : [];
+            const options = args[3];
+            const legacyCartSpend =
+                isRecord(options) && isRecord(options.legacyCartSpend)
+                    ? options.legacyCartSpend
+                    : undefined;
+            const paidCoveredItems = Array.isArray(
+                legacyCartSpend?.coveredItems,
+            )
+                ? legacyCartSpend.coveredItems.filter(
+                      (item) => isRecord(item) && item.paymentState === 'paid',
+                  )
+                : [];
             return {
                 createdReasons: items.map((item) => item.reason),
                 existingReasons: [],
-                resolvedAmountsByReason: Object.fromEntries(
-                    items.map((item) => [item.reason, item.amount]),
-                ),
+                resolvedAmountsByReason: Object.fromEntries([
+                    ...items.map((item) => [item.reason, item.amount]),
+                    ...paidCoveredItems.flatMap((item) =>
+                        isRecord(item) &&
+                        typeof item.reason === 'string' &&
+                        typeof item.amount === 'number'
+                            ? [[item.reason, item.amount]]
+                            : [],
+                    ),
+                ]),
             };
         },
         topUpSunflowerPackage: async (...args: unknown[]) => {
@@ -2648,6 +2667,7 @@ describe('processCheckoutSession', () => {
                                 amount: 5000,
                                 cartItemId: 2,
                                 createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                paymentState: 'pending',
                                 reason: 'shoppingCartItem:2',
                             },
                         ],
@@ -2845,6 +2865,7 @@ describe('processCheckoutSession', () => {
                     createdReasons: [],
                     existingReasons: ['shoppingCartItem:3'],
                     resolvedAmountsByReason: {
+                        'shoppingCartItem:2': 4_500,
                         'shoppingCartItem:3': 6_000,
                     },
                 };
@@ -2887,12 +2908,14 @@ describe('processCheckoutSession', () => {
                                 amount: 5_000,
                                 cartItemId: 2,
                                 createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                paymentState: 'paid',
                                 reason: 'shoppingCartItem:2',
                             },
                             {
                                 amount: 7_000,
                                 cartItemId: 3,
                                 createdAt: new Date('2026-07-01T10:05:00.000Z'),
+                                paymentState: 'pending',
                                 reason: 'shoppingCartItem:3',
                             },
                         ],
@@ -2935,7 +2958,7 @@ describe('processCheckoutSession', () => {
         if (typeof resolveSunflowerAmount !== 'function') {
             throw new Error('Missing sunflower confirmation resolver.');
         }
-        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 5_000);
+        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 4_500);
         assert.equal(resolveSunflowerAmount(pendingSunflowerItem), 6_000);
     });
 
@@ -3093,6 +3116,16 @@ describe('processCheckoutSession', () => {
                     items: [paidSunflowerItem],
                 };
             },
+            spendSunflowersBatch: async (...args: unknown[]) => {
+                record(calls, 'spendSunflowersBatch', args);
+                return {
+                    createdReasons: [],
+                    existingReasons: [],
+                    resolvedAmountsByReason: {
+                        [`shoppingCartItem:${paidSunflowerItem.id.toString()}`]: 4_500,
+                    },
+                };
+            },
         });
 
         await processCheckoutSession('cs_paid', dependencies);
@@ -3101,7 +3134,7 @@ describe('processCheckoutSession', () => {
             callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
             [1],
         );
-        assert.equal(callsNamed(calls, 'spendSunflowersBatch').length, 0);
+        assert.equal(callsNamed(calls, 'spendSunflowersBatch').length, 1);
         assert.equal(callsNamed(calls, 'createTransaction').length, 1);
         const confirmationCall = callsNamed(
             calls,
@@ -3113,7 +3146,7 @@ describe('processCheckoutSession', () => {
         if (typeof resolveSunflowerAmount !== 'function') {
             throw new Error('Missing sunflower confirmation resolver.');
         }
-        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 5_000);
+        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 4_500);
     });
 
     it('uses the canonical harvest date for a mixed checkout and ignores a later non-Stripe cart item', async () => {
@@ -3213,6 +3246,7 @@ describe('processCheckoutSession', () => {
                                 amount: 5000,
                                 cartItemId: 2,
                                 createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                paymentState: 'pending',
                                 reason: 'shoppingCartItem:2',
                             },
                         ],

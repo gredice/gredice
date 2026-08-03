@@ -84,6 +84,7 @@ test('direct sunflower checkout verifies full legacy coverage and returns the du
                     createdReasons: [],
                     existingReasons: ['shoppingCartItem:3'],
                     resolvedAmountsByReason: {
+                        'shoppingCartItem:2': 4_500,
                         'shoppingCartItem:3': 6_000,
                     },
                 };
@@ -111,6 +112,10 @@ test('direct sunflower checkout verifies full legacy coverage and returns the du
 
     assert.deepStrictEqual(result, {
         resolvedAmount: 6_000,
+        resolvedAmountsByCartItemId: new Map([
+            [2, 4_500],
+            [3, 6_000],
+        ]),
         state: 'pending',
     });
     assert.deepStrictEqual(
@@ -143,12 +148,14 @@ test('direct sunflower checkout verifies full legacy coverage and returns the du
                     amount: 5_000,
                     cartItemId: 2,
                     createdAt: paidItem.createdAt,
+                    paymentState: 'paid',
                     reason: 'shoppingCartItem:2',
                 },
                 {
                     amount: 7_000,
                     cartItemId: 3,
                     createdAt: pendingItem.createdAt,
+                    paymentState: 'pending',
                     reason: 'shoppingCartItem:3',
                 },
             ],
