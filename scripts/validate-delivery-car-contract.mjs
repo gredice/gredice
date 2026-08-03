@@ -14,6 +14,9 @@ const manifest = read(
 const carDescriptor = read(
     "apps/delivery-android/app/src/main/res/xml/automotive_app_desc.xml",
 );
+const strings = read(
+    "apps/delivery-android/app/src/main/res/values/strings.xml",
+);
 const navigationUri = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationUri.java",
 );
@@ -40,11 +43,14 @@ assert.match(carDescriptor, /<uses name="template" \/>/);
 
 assert.match(stopsScreen, /CarContext\.ACTION_NAVIGATE/);
 assert.match(stopsScreen, /startCarApp\(intent\)/);
+assert.match(stopsScreen, /void onStart\(/);
+assert.match(stopsScreen, /void onResume\(/);
 assert.match(stopsScreen, /HostException \| SecurityException/);
 assert.doesNotMatch(stopsScreen, /setPackage\s*\(/);
 assert.doesNotMatch(stopsScreen, /setComponent\s*\(/);
 assert.doesNotMatch(stopsScreen, /com\.google\.android\.apps\.maps/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
+assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 
 console.log(
     "✅ Delivery Android contract is POI-only, permission-minimal, and provider-neutral.",

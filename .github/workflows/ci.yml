@@ -111,6 +111,7 @@ jobs:
               - apps/delivery/app/manifest.json
               - scripts/render-svg-png.swift
               - scripts/validate-android-store-listing.mjs
+              - scripts/validate-delivery-car-contract.mjs
               - .github/workflows/**
               - package.json
               - pnpm-lock.yaml

@@ -42,6 +42,11 @@ final class DeliveryStopsScreen extends Screen {
         this.stopRepository = stopRepository;
         getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override
+            public void onStart(@NonNull LifecycleOwner owner) {
+                invalidate();
+            }
+
+            @Override
             public void onResume(@NonNull LifecycleOwner owner) {
                 // Refresh the route projection after returning from the navigation app.
                 invalidate();
@@ -76,6 +81,7 @@ final class DeliveryStopsScreen extends Screen {
             rows.addItem(new Row.Builder()
                     .setTitle(position + " · " + stop.getTitle())
                     .addText(detail)
+                    .addText(getCarContext().getString(R.string.navigation_action))
                     .setOnClickListener(() -> startNavigation(stop))
                     .setMetadata(new Metadata.Builder()
                             .setPlace(new Place.Builder(CarLocation.create(
