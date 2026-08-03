@@ -34,7 +34,7 @@ export async function getCheckoutOutletReservationConflict(
         cartId: number;
         cartItemIds: readonly number[];
         expectations: readonly CheckoutOutletReservationExpectation[];
-        now: Date;
+        now?: Date;
         requireActiveHolds?: boolean;
     },
     db: TransactionClient,
@@ -69,6 +69,9 @@ export async function getCheckoutOutletReservationConflict(
                   .orderBy(asc(outletOfferReservations.id))
                   .for('update')
             : [];
+    // Callers that do not inject a deterministic test time must validate
+    // expiry after every offer and reservation lock wait has completed.
+    const activeHoldValidationTime = now ?? new Date();
 
     if (reservations.length !== expectations.length) {
         return 'outlet_reservation_membership_changed' as const;
@@ -107,11 +110,12 @@ export async function getCheckoutOutletReservationConflict(
         if (
             requireActiveHolds &&
             reservation.status === 'held' &&
-            (reservation.holdExpiresAt.getTime() <= now.getTime() ||
+            (reservation.holdExpiresAt.getTime() <=
+                activeHoldValidationTime.getTime() ||
                 offer.isDeleted ||
                 offer.status !== 'published' ||
-                offer.startAt.getTime() > now.getTime() ||
-                offer.endAt.getTime() <= now.getTime() ||
+                offer.startAt.getTime() > activeHoldValidationTime.getTime() ||
+                offer.endAt.getTime() <= activeHoldValidationTime.getTime() ||
                 (expected.expiresAt !== undefined &&
                     reservation.holdExpiresAt.getTime() <
                         new Date(expected.expiresAt).getTime()))

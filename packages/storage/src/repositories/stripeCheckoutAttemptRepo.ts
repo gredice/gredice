@@ -641,7 +641,7 @@ async function lockCartRow(cartId: number, db: TransactionClient) {
 
 export async function createStripeCheckoutAttempt(
     snapshot: StripeCheckoutAttemptSnapshot,
-    { accountId, now = new Date() }: { accountId: string; now?: Date },
+    { accountId, now }: { accountId: string; now?: Date },
 ) {
     parseSnapshot(snapshot);
     const itemIds = snapshot.items.map((item) => item.id);

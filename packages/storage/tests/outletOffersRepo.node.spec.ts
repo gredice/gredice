@@ -22,8 +22,10 @@ import {
     releaseOutletReservationForCartItem,
     releaseStripeCheckoutAttempt,
     reserveOutletOffer,
+    StripeCheckoutAttemptConflictError,
     type StripeCheckoutAttemptSnapshot,
     setCartItemPaid,
+    storage,
     updateEntity,
     updateOutletOffer,
     upsertEntityType,
@@ -31,6 +33,8 @@ import {
     upsertOrRemoveCartItemWithOutletReservation,
     verifyStripeCheckoutAttemptLiveCart,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
+import { outletOffers } from '../src/schema';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
@@ -339,7 +343,87 @@ test('opposite outlet switches lock offers and reservations canonically', async 
     assert.equal(secondOffer?.remainingQuantity, 1);
 });
 
-+test('stale attempt release cannot release a later attempt reservation', async () => {
+test('checkout rechecks outlet hold expiry after waiting for the offer lock', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async (t) => {
+    createTestDb();
+    const heldAt = new Date('2026-05-01T10:00:00.000Z');
+    const checkoutStartedAt = addMinutes(heldAt, 14);
+    const reallocatedAt = new Date(addMinutes(heldAt, 15).getTime() + 1);
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now: heldAt });
+    const firstAccountId = await createTestAccount();
+    const firstCartItem = await createCartItem(firstAccountId, plantSortId);
+    const firstReservation = await reserveOutletOffer({
+        accountId: firstAccountId,
+        cartId: firstCartItem.cart.id,
+        cartItemId: firstCartItem.cartItemId,
+        now: heldAt,
+        offerId,
+    });
+    const firstAttempt = outletAttemptSnapshot({
+        cartId: firstCartItem.cart.id,
+        cartItemId: firstCartItem.cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: firstReservation,
+    });
+    const secondAccountId = await createTestAccount();
+    const secondCartItem = await createCartItem(secondAccountId, plantSortId);
+
+    let signalOfferLocked: (() => void) | undefined;
+    const offerLocked = new Promise<void>((resolve) => {
+        signalOfferLocked = resolve;
+    });
+    let releaseOfferLock: (() => void) | undefined;
+    const holdOfferLock = new Promise<void>((resolve) => {
+        releaseOfferLock = resolve;
+    });
+    const reallocation = storage().transaction(async (tx) => {
+        await tx
+            .select({ id: outletOffers.id })
+            .from(outletOffers)
+            .where(eq(outletOffers.id, offerId))
+            .for('update');
+        signalOfferLocked?.();
+        await holdOfferLock;
+        return reserveOutletOffer({
+            accountId: secondAccountId,
+            cartId: secondCartItem.cart.id,
+            cartItemId: secondCartItem.cartItemId,
+            db: tx,
+            now: reallocatedAt,
+            offerId,
+        });
+    });
+    await offerLocked;
+
+    t.mock.timers.enable({ apis: ['Date'], now: checkoutStartedAt });
+    const rejectedAttempt = assert.rejects(
+        createStripeCheckoutAttempt(firstAttempt, {
+            accountId: firstAccountId,
+        }),
+        (error) => {
+            assert.ok(error instanceof StripeCheckoutAttemptConflictError);
+            assert.equal(error.category, 'outlet_reservation_inactive');
+            return true;
+        },
+    );
+    t.mock.timers.setTime(reallocatedAt.getTime());
+    releaseOfferLock?.();
+
+    const secondReservation = await reallocation;
+    await rejectedAttempt;
+    assert.equal(secondReservation.cartItemId, secondCartItem.cartItemId);
+    assert.equal(
+        await getActiveStripeCheckoutAttempt(firstCartItem.cart.id),
+        undefined,
+    );
+    const offer = await getOutletOffer(offerId, reallocatedAt);
+    assert.equal(offer?.reservedQuantity, 1);
+    assert.equal(offer?.remainingQuantity, 0);
+});
+
+test('stale attempt release cannot release a later attempt reservation', async () => {
     createTestDb();
     const now = new Date('2026-05-01T10:00:00.000Z');
     const plantSortId = await createTestPlantSort();
