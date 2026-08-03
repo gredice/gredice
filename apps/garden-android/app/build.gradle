@@ -93,6 +93,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    buildFeatures {
+        resValues true
+    }
+
     lint {
         abortOnError true
         checkReleaseBuilds true
