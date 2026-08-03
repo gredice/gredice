@@ -1,11 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import {
+    fingerprintStripeCheckoutValue,
     type StripeCheckoutAttempt,
     StripeCheckoutAttemptConflictError,
     type StripeCheckoutAttemptSnapshot,
     type StripeCheckoutAttemptSnapshotItem,
+    serializeStripeCheckoutValue,
 } from '@gredice/storage';
+import type {
+    CheckoutItem,
+    StripeCheckoutReturnUrls,
+} from '@gredice/stripe/server';
 import type { ShoppingCartItemWithShopData } from './cartInfo';
+import type { CheckoutDeliverySelection } from './deliverySelection';
+import {
+    buildCheckoutAdditionalData,
+    encodeHarvestDatesMetadata,
+} from './harvestCheckout';
 import { calculateSunflowerAmount } from './sunflowerCalculations';
 
 export const stripeCheckoutAttemptMetadataKeys = {
@@ -16,6 +27,7 @@ export const stripeCheckoutAttemptMetadataKeys = {
 
 export type StripeCheckoutSessionForSnapshot = {
     amountTotal: number | null;
+    customerId?: string | { id: string } | null;
     id: string;
     lineItems?: {
         data: Array<{
@@ -40,22 +52,6 @@ type SnapshotMetadata = {
     attemptId: string;
     cartId: number;
 };
-
-function normalizedJson(value: unknown): string {
-    if (Array.isArray(value)) {
-        return `[${value.map(normalizedJson).join(',')}]`;
-    }
-    if (value && typeof value === 'object') {
-        return `{${Object.entries(value)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(
-                ([key, entry]) =>
-                    `${JSON.stringify(key)}:${normalizedJson(entry)}`,
-            )
-            .join(',')}}`;
-    }
-    return JSON.stringify(value);
-}
 
 function parseOptionalInteger(value: string | null | undefined) {
     if (value === null || value === undefined || value === '') {
@@ -143,31 +139,38 @@ function getPaymentAmount(
 }
 
 export function buildStripeCheckoutAttemptSnapshot({
-    accountId,
     cartId,
     checkoutAdditionalDataByCartItemId,
+    customerId,
+    expiresAt,
     harvestDates,
     items,
+    returnUrls,
     userId,
 }: {
-    accountId: string;
     cartId: number;
     checkoutAdditionalDataByCartItemId: ReadonlyMap<number, unknown>;
+    customerId: string;
+    expiresAt?: Date;
     harvestDates: readonly {
         cartItemId: number;
         scheduledDate: string;
     }[];
     items: readonly ShoppingCartItemWithShopData[];
+    returnUrls: StripeCheckoutReturnUrls;
     userId: string;
 }): StripeCheckoutAttemptSnapshot {
     const snapshotItems = items.map((item) => {
         const paymentKind = getPaymentKind(item);
         return {
-            additionalData: item.additionalData,
+            additionalDataFingerprint: fingerprintStripeCheckoutValue(
+                item.additionalData,
+            ),
             amount: item.amount,
             cartId: item.cartId,
-            checkoutAdditionalData:
+            checkoutAdditionalDataFingerprint: fingerprintStripeCheckoutValue(
                 checkoutAdditionalDataByCartItemId.get(item.id) ?? {},
+            ),
             currency: item.currency,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
@@ -196,7 +199,6 @@ export function buildStripeCheckoutAttemptSnapshot({
         } satisfies StripeCheckoutAttemptSnapshotItem;
     });
     return {
-        accountId,
         attemptId: randomUUID(),
         cartId,
         expectedNonStripeCartItemIds: snapshotItems.flatMap((item) =>
@@ -206,7 +208,51 @@ export function buildStripeCheckoutAttemptSnapshot({
         ),
         harvestDates: harvestDates.map((selection) => ({ ...selection })),
         items: snapshotItems,
-        userId,
+        stripeSession: {
+            allowPromotionCodes: true,
+            customerFingerprint: fingerprintStripeCheckoutValue(customerId),
+            expiresAt: expiresAt?.toISOString() ?? null,
+            items: items.flatMap((item) => {
+                const snapshotItem = snapshotItems.find(
+                    (candidate) => candidate.id === item.id,
+                );
+                if (snapshotItem?.paymentKind !== 'stripe') {
+                    return [];
+                }
+                const name = item.shopData.name;
+                if (!name) {
+                    throw new StripeCheckoutAttemptConflictError(
+                        'stripe_item_name_invalid',
+                    );
+                }
+                const imageUrls = item.shopData.image
+                    ? [
+                          /^https?:\/\//u.test(item.shopData.image)
+                              ? item.shopData.image
+                              : `https://www.gredice.com${item.shopData.image}`,
+                      ]
+                    : undefined;
+                return [
+                    {
+                        cartItemId: item.id,
+                        price: {
+                            currency: 'eur' as const,
+                            valueInCents: snapshotItem.paymentAmount,
+                        },
+                        product: {
+                            ...(item.shopData.description
+                                ? { description: item.shopData.description }
+                                : {}),
+                            ...(imageUrls ? { imageUrls } : {}),
+                            name,
+                        },
+                        quantity: item.amount,
+                    },
+                ];
+            }),
+            returnUrls,
+        },
+        userFingerprint: fingerprintStripeCheckoutValue(userId),
         version: 1,
     };
 }
@@ -254,10 +300,167 @@ function parseProductAdditionalData(value: string | undefined) {
     }
 }
 
+export function buildStripeCheckoutReplayInput({
+    accountId,
+    attempt,
+    checkoutAdditionalDataByCartItemId,
+    customerId,
+    userId,
+}: {
+    accountId: string;
+    attempt: StripeCheckoutAttempt;
+    checkoutAdditionalDataByCartItemId: ReadonlyMap<number, unknown>;
+    customerId: string;
+    userId: string;
+}) {
+    if (
+        fingerprintStripeCheckoutValue(customerId) !==
+            attempt.snapshot.stripeSession.customerFingerprint ||
+        fingerprintStripeCheckoutValue(userId) !==
+            attempt.snapshot.userFingerprint
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'checkout_identity_changed',
+        );
+    }
+    for (const item of attempt.snapshot.items) {
+        if (
+            fingerprintStripeCheckoutValue(
+                checkoutAdditionalDataByCartItemId.get(item.id) ?? {},
+            ) !== item.checkoutAdditionalDataFingerprint
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_additional_data_changed',
+            );
+        }
+    }
+
+    const items: CheckoutItem[] = attempt.snapshot.stripeSession.items.map(
+        (sessionItem) => {
+            const item = attempt.snapshot.items.find(
+                (candidate) => candidate.id === sessionItem.cartItemId,
+            );
+            if (item?.paymentKind !== 'stripe') {
+                throw new StripeCheckoutAttemptConflictError(
+                    'stripe_membership_changed',
+                );
+            }
+            return {
+                price: { ...sessionItem.price },
+                product: {
+                    ...sessionItem.product,
+                    metadata: {
+                        accountId,
+                        additionalData: serializeStripeCheckoutValue(
+                            checkoutAdditionalDataByCartItemId.get(item.id) ??
+                                {},
+                        ),
+                        cartId: attempt.snapshot.cartId,
+                        cartItemId: item.id.toString(),
+                        entityId: item.entityId,
+                        entityTypeName: item.entityTypeName,
+                        gardenId: item.gardenId,
+                        outletComparePriceCents:
+                            item.outlet?.comparePriceCents ?? null,
+                        outletInitialPlantStatus:
+                            item.outlet?.initialPlantStatus ?? null,
+                        outletOfferId: item.outlet?.offerId ?? null,
+                        outletPriceCents: item.outlet?.priceCents ?? null,
+                        outletReservationId: item.outlet?.reservationId ?? null,
+                        outletSowingDate: item.outlet?.sowingDate ?? null,
+                        positionIndex: item.positionIndex?.toString() ?? null,
+                        raisedBedId: item.raisedBedId,
+                        userId,
+                    },
+                },
+                quantity: sessionItem.quantity,
+            };
+        },
+    );
+    return {
+        data: {
+            allowPromotionCodes:
+                attempt.snapshot.stripeSession.allowPromotionCodes,
+            ...(attempt.snapshot.stripeSession.expiresAt
+                ? {
+                      expiresAt: new Date(
+                          attempt.snapshot.stripeSession.expiresAt,
+                      ),
+                  }
+                : {}),
+            items,
+            metadata: {
+                ...encodeHarvestDatesMetadata(
+                    attempt.snapshot.harvestDates,
+                    attempt.snapshot.expectedNonStripeCartItemIds,
+                ),
+                ...encodeStripeCheckoutAttemptMetadata(attempt.snapshot),
+            },
+        },
+        options: {
+            customerId,
+            idempotencyKey: attempt.snapshot.attemptId,
+            returnUrls: attempt.snapshot.stripeSession.returnUrls,
+        },
+    };
+}
+
+export function rebuildStripeCheckoutAttemptAdditionalData({
+    attempt,
+    deliveryInfo,
+    liveItems,
+}: {
+    attempt: StripeCheckoutAttempt;
+    deliveryInfo?: CheckoutDeliverySelection;
+    liveItems: readonly { additionalData: string | null; id: number }[];
+}) {
+    const liveItemsById = new Map(liveItems.map((item) => [item.id, item]));
+    const harvestDates = getStripeCheckoutSnapshotHarvestDates(attempt);
+    const result = new Map<number, unknown>();
+    for (const item of attempt.snapshot.items) {
+        const live = liveItemsById.get(item.id);
+        if (!live) {
+            throw new StripeCheckoutAttemptConflictError(
+                'cart_membership_changed',
+            );
+        }
+        const additionalData =
+            item.paymentKind === 'paid'
+                ? {}
+                : buildCheckoutAdditionalData({
+                      additionalData: live.additionalData,
+                      deliveryInfo,
+                      scheduledHarvestDate: harvestDates.get(item.id),
+                  });
+        if (
+            fingerprintStripeCheckoutValue(additionalData) !==
+            item.checkoutAdditionalDataFingerprint
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_additional_data_changed',
+            );
+        }
+        result.set(item.id, additionalData);
+    }
+    return result;
+}
+
 export function assertStripeSessionMatchesCheckoutAttempt(
     session: StripeCheckoutSessionForSnapshot,
     attempt: StripeCheckoutAttempt,
+    { accountId, userId }: { accountId: string; userId: string },
 ) {
+    const sessionCustomerId =
+        typeof session.customerId === 'string'
+            ? session.customerId
+            : session.customerId?.id;
+    if (
+        !sessionCustomerId ||
+        fingerprintStripeCheckoutValue(sessionCustomerId) !==
+            attempt.snapshot.stripeSession.customerFingerprint
+    ) {
+        throw new StripeCheckoutAttemptConflictError('stripe_customer_changed');
+    }
     const expectedStripeItems = attempt.snapshot.items.filter(
         (item) => item.paymentKind === 'stripe',
     );
@@ -293,8 +496,8 @@ export function assertStripeSessionMatchesCheckoutAttempt(
             !Number.isSafeInteger(lineAmount) ||
             lineAmount < 0 ||
             lineAmount > expected.paymentAmount * expected.amount ||
-            productMetadata.accountId !== attempt.snapshot.accountId ||
-            productMetadata.userId !== attempt.snapshot.userId ||
+            productMetadata.accountId !== accountId ||
+            productMetadata.userId !== userId ||
             Number(productMetadata.cartId) !== attempt.snapshot.cartId ||
             productMetadata.entityId !== expected.entityId ||
             productMetadata.entityTypeName !== expected.entityTypeName ||
@@ -305,9 +508,9 @@ export function assertStripeSessionMatchesCheckoutAttempt(
             parseOptionalInteger(productMetadata.positionIndex) !==
                 expected.positionIndex ||
             !outletMetadataMatchesSnapshot(productMetadata, expected.outlet) ||
-            normalizedJson(
+            fingerprintStripeCheckoutValue(
                 parseProductAdditionalData(productMetadata.additionalData),
-            ) !== normalizedJson(expected.checkoutAdditionalData)
+            ) !== expected.checkoutAdditionalDataFingerprint
         ) {
             throw new StripeCheckoutAttemptConflictError('stripe_item_changed');
         }
@@ -350,15 +553,114 @@ export function getStripeCheckoutSnapshotNonStripePaymentKinds(
     );
 }
 
-export function getStripeCheckoutSnapshotAdditionalData(
-    attempt: StripeCheckoutAttempt,
-) {
-    return new Map(
-        attempt.snapshot.items.map((item) => [
-            item.id,
-            item.checkoutAdditionalData,
-        ]),
-    );
+function parseCheckoutDeliverySelection(
+    value: unknown,
+): CheckoutDeliverySelection | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+    const slotId = Reflect.get(value, 'slotId');
+    const mode = Reflect.get(value, 'mode');
+    const addressId = Reflect.get(value, 'addressId');
+    const locationId = Reflect.get(value, 'locationId');
+    const notes = Reflect.get(value, 'notes');
+    if (
+        !Number.isSafeInteger(slotId) ||
+        (mode !== 'delivery' && mode !== 'pickup') ||
+        (addressId !== undefined && !Number.isSafeInteger(addressId)) ||
+        (locationId !== undefined && !Number.isSafeInteger(locationId)) ||
+        (notes !== undefined && typeof notes !== 'string')
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'stripe_delivery_data_invalid',
+        );
+    }
+    return {
+        ...(typeof addressId === 'number' ? { addressId } : {}),
+        ...(typeof locationId === 'number' ? { locationId } : {}),
+        mode,
+        ...(typeof notes === 'string' ? { notes } : {}),
+        slotId,
+    };
+}
+
+export function buildVerifiedStripeCheckoutAdditionalData({
+    attempt,
+    liveItems,
+    session,
+}: {
+    attempt: StripeCheckoutAttempt;
+    liveItems: readonly { additionalData: string | null; id: number }[];
+    session: StripeCheckoutSessionForSnapshot;
+}) {
+    const stripeAdditionalDataByCartItemId = new Map<number, unknown>();
+    const deliverySelections = new Map<string, CheckoutDeliverySelection>();
+    for (const lineItem of session.lineItems?.data ?? []) {
+        const product = lineItem.price?.product;
+        if (typeof product === 'string' || product?.deleted) {
+            continue;
+        }
+        const cartItemId = Number(product?.metadata?.cartItemId);
+        if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
+            continue;
+        }
+        const additionalData = parseProductAdditionalData(
+            product?.metadata?.additionalData,
+        );
+        stripeAdditionalDataByCartItemId.set(cartItemId, additionalData);
+        if (
+            additionalData &&
+            typeof additionalData === 'object' &&
+            !Array.isArray(additionalData)
+        ) {
+            const delivery = parseCheckoutDeliverySelection(
+                Reflect.get(additionalData, 'delivery'),
+            );
+            if (delivery) {
+                deliverySelections.set(
+                    fingerprintStripeCheckoutValue(delivery),
+                    delivery,
+                );
+            }
+        }
+    }
+    if (deliverySelections.size > 1) {
+        throw new StripeCheckoutAttemptConflictError(
+            'stripe_delivery_data_changed',
+        );
+    }
+    const deliveryInfo = deliverySelections.values().next().value;
+    const liveItemsById = new Map(liveItems.map((item) => [item.id, item]));
+    const harvestDates = getStripeCheckoutSnapshotHarvestDates(attempt);
+    const verified = new Map<number, unknown>();
+    for (const item of attempt.snapshot.items) {
+        const live = liveItemsById.get(item.id);
+        if (!live) {
+            throw new StripeCheckoutAttemptConflictError(
+                'cart_membership_changed',
+            );
+        }
+        const additionalData =
+            item.paymentKind === 'stripe'
+                ? stripeAdditionalDataByCartItemId.get(item.id)
+                : item.paymentKind === 'paid'
+                  ? {}
+                  : buildCheckoutAdditionalData({
+                        additionalData: live.additionalData,
+                        deliveryInfo,
+                        scheduledHarvestDate: harvestDates.get(item.id),
+                    });
+        if (
+            fingerprintStripeCheckoutValue(additionalData ?? {}) !==
+            item.checkoutAdditionalDataFingerprint
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_additional_data_changed',
+            );
+        }
+        verified.set(item.id, additionalData ?? {});
+    }
+    return verified;
 }
 
 export function getStripeCheckoutSnapshotHarvestDates(

@@ -1,7 +1,4 @@
-import {
-    releaseOutletReservationsForCart,
-    releaseStripeCheckoutAttempt,
-} from '@gredice/storage';
+import { releaseStripeCheckoutAttempt } from '@gredice/storage';
 import { stripeWebhookConstructEvent } from '@gredice/stripe/server';
 import { decodeStripeCheckoutAttemptMetadata } from '../../../../lib/checkout/stripeCheckoutSnapshot';
 import { processCheckoutSession } from '../../../../lib/stripe/processCheckoutSession';
@@ -79,9 +76,6 @@ export async function POST(req: Request) {
                             reason: 'expired',
                             sessionId: checkoutSession.id,
                         });
-                        await releaseOutletReservationsForCart(
-                            attemptMetadata.cartId,
-                        );
                     }
                 }
                 break;

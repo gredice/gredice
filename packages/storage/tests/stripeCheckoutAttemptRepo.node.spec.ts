@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    accountDeletionStartedEventType,
     accounts,
     bindStripeCheckoutAttempt,
     createStripeCheckoutAttempt,
     deleteAccountWithDependencies,
     deleteShoppingCart,
+    fingerprintStripeCheckoutValue,
     foldStripeCheckoutAttemptEvents,
     getActiveStripeCheckoutAttempt,
     getGarden,
@@ -31,16 +33,19 @@ function snapshotFromCart(
     cart: NonNullable<Awaited<ReturnType<typeof getShoppingCart>>>,
 ): StripeCheckoutAttemptSnapshot {
     return {
-        accountId: cart.accountId ?? '',
         attemptId: randomUUID(),
         cartId: cart.id,
         expectedNonStripeCartItemIds: [],
         harvestDates: [],
         items: cart.items.map((item) => ({
-            additionalData: item.additionalData,
+            additionalDataFingerprint: fingerprintStripeCheckoutValue(
+                item.additionalData,
+            ),
             amount: item.amount,
             cartId: item.cartId,
-            checkoutAdditionalData: {},
+            checkoutAdditionalDataFingerprint: fingerprintStripeCheckoutValue(
+                {},
+            ),
             currency: item.currency,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
@@ -52,7 +57,24 @@ function snapshotFromCart(
             raisedBedId: item.raisedBedId,
             status: 'new',
         })),
-        userId: 'checkout-test-user',
+        stripeSession: {
+            allowPromotionCodes: true,
+            customerFingerprint: fingerprintStripeCheckoutValue(
+                'checkout-test-customer',
+            ),
+            expiresAt: '2026-08-04T00:00:00.000Z',
+            items: cart.items.map((item) => ({
+                cartItemId: item.id,
+                price: { currency: 'eur', valueInCents: 500 },
+                product: { name: 'Checkout test item' },
+                quantity: item.amount,
+            })),
+            returnUrls: {
+                cancel: 'https://example.test/cancel',
+                success: 'https://example.test/success',
+            },
+        },
+        userFingerprint: fingerprintStripeCheckoutValue('checkout-test-user'),
         version: 1,
     };
 }
@@ -82,17 +104,17 @@ async function createCartWithItem(existingAccountId?: string) {
 
 test('Stripe attempt events retain one immutable binding and retry-safe release', () => {
     const snapshot = {
-        accountId: 'account-1',
         attemptId: '79d24698-c458-45aa-b025-c311dc9a3c1a',
         cartId: 4,
         expectedNonStripeCartItemIds: [],
         harvestDates: [],
         items: [
             {
-                additionalData: null,
+                additionalDataFingerprint: fingerprintStripeCheckoutValue(null),
                 amount: 1,
                 cartId: 4,
-                checkoutAdditionalData: {},
+                checkoutAdditionalDataFingerprint:
+                    fingerprintStripeCheckoutValue({}),
                 currency: 'eur',
                 entityId: 'entity-1',
                 entityTypeName: 'plantSort',
@@ -105,7 +127,24 @@ test('Stripe attempt events retain one immutable binding and retry-safe release'
                 status: 'new',
             },
         ],
-        userId: 'user-1',
+        stripeSession: {
+            allowPromotionCodes: true,
+            customerFingerprint: fingerprintStripeCheckoutValue('cus_1'),
+            expiresAt: '2026-08-04T00:00:00.000Z',
+            items: [
+                {
+                    cartItemId: 5,
+                    price: { currency: 'eur', valueInCents: 500 },
+                    product: { name: 'Checkout test item' },
+                    quantity: 1,
+                },
+            ],
+            returnUrls: {
+                cancel: 'https://example.test/cancel',
+                success: 'https://example.test/success',
+            },
+        },
+        userFingerprint: fingerprintStripeCheckoutValue('user-1'),
         version: 1,
     } satisfies StripeCheckoutAttemptSnapshot;
     const created = {
@@ -145,9 +184,9 @@ test('Stripe attempt events retain one immutable binding and retry-safe release'
 
 test('active Stripe attempt fences insert, update, last-item removal, and cart deletion', async () => {
     createTestDb();
-    const { cart, itemId } = await createCartWithItem();
+    const { accountId, cart, itemId } = await createCartWithItem();
     const snapshot = snapshotFromCart(cart);
-    await createStripeCheckoutAttempt(snapshot);
+    await createStripeCheckoutAttempt(snapshot, { accountId });
 
     await assert.rejects(
         () =>
@@ -188,7 +227,7 @@ test('active Stripe attempt fences insert, update, last-item removal, and cart d
         StripeCheckoutAttemptInProgressError,
     );
     await assert.rejects(
-        () => deleteShoppingCart(snapshot.accountId),
+        () => deleteShoppingCart(accountId),
         StripeCheckoutAttemptInProgressError,
     );
 
@@ -196,11 +235,56 @@ test('active Stripe attempt fences insert, update, last-item removal, and cart d
     assert.equal(activeAttempt?.snapshot.attemptId, snapshot.attemptId);
 });
 
+test('serialized attempt event omits account, user, and raw delivery data', async () => {
+    createTestDb();
+    const { accountId, cart } = await createCartWithItem();
+    const snapshot = snapshotFromCart(cart);
+    const privateUserId = 'private-user-id-never-persist';
+    const privateAddressId = 987654321;
+    const privateNotes = 'private-delivery-note-never-persist';
+    snapshot.userFingerprint = fingerprintStripeCheckoutValue(privateUserId);
+    const item = snapshot.items[0];
+    assert.ok(item);
+    item.checkoutAdditionalDataFingerprint = fingerprintStripeCheckoutValue({
+        delivery: {
+            addressId: privateAddressId,
+            mode: 'delivery',
+            notes: privateNotes,
+            slotId: 7,
+        },
+    });
+
+    await createStripeCheckoutAttempt(snapshot, { accountId });
+    const createdEvent = await storage().query.events.findFirst({
+        where: (event, { and, eq }) =>
+            and(
+                eq(event.aggregateId, `shoppingCart:${cart.id.toString()}`),
+                eq(event.type, 'checkout.stripeAttempt.created'),
+            ),
+    });
+    assert.ok(createdEvent);
+    const serialized = JSON.stringify(createdEvent.data);
+    for (const forbidden of [
+        accountId,
+        privateUserId,
+        privateAddressId.toString(),
+        privateNotes,
+        '"accountId":',
+        '"userId":',
+        '"additionalData":',
+        '"checkoutAdditionalData":',
+        '"addressId":',
+        '"notes":',
+    ]) {
+        assert.equal(serialized.includes(forbidden), false, forbidden);
+    }
+});
+
 test('attempt binding, webhook recovery, cancellation, and a later cart mutation are idempotent', async () => {
     createTestDb();
-    const { cart, itemId } = await createCartWithItem();
+    const { accountId, cart, itemId } = await createCartWithItem();
     const snapshot = snapshotFromCart(cart);
-    await createStripeCheckoutAttempt(snapshot);
+    await createStripeCheckoutAttempt(snapshot, { accountId });
     await bindStripeCheckoutAttempt({
         attemptId: snapshot.attemptId,
         cartId: cart.id,
@@ -247,7 +331,7 @@ test('attempt binding, webhook recovery, cancellation, and a later cart mutation
 
 test('snapshot creation rejects cart membership and amount changes before Stripe', async () => {
     createTestDb();
-    const { cart, itemId } = await createCartWithItem();
+    const { accountId, cart, itemId } = await createCartWithItem();
     const staleSnapshot = snapshotFromCart(cart);
     await upsertOrRemoveCartItem(
         itemId,
@@ -262,7 +346,7 @@ test('snapshot creation rejects cart membership and amount changes before Stripe
         'eur',
     );
     await assert.rejects(
-        () => createStripeCheckoutAttempt(staleSnapshot),
+        () => createStripeCheckoutAttempt(staleSnapshot, { accountId }),
         (error) => {
             assert.ok(error instanceof StripeCheckoutAttemptConflictError);
             assert.equal(error.category, 'cart_item_changed');
@@ -275,7 +359,7 @@ test('snapshot creation rejects cart membership and amount changes before Stripe
     const missingItemSnapshot = snapshotFromCart(currentCart);
     missingItemSnapshot.items = [];
     await assert.rejects(
-        () => createStripeCheckoutAttempt(missingItemSnapshot),
+        () => createStripeCheckoutAttempt(missingItemSnapshot, { accountId }),
         StripeCheckoutAttemptConflictError,
     );
 });
@@ -288,7 +372,7 @@ test('an active snapshot wins account deletion before any garden mutation', asyn
         farmId: await ensureFarmId(),
     });
     const snapshot = snapshotFromCart(cart);
-    await createStripeCheckoutAttempt(snapshot);
+    await createStripeCheckoutAttempt(snapshot, { accountId });
 
     await assert.rejects(
         () => deleteAccountWithDependencies(accountId, 'missing-test-user'),
@@ -298,6 +382,16 @@ test('an active snapshot wins account deletion before any garden mutation', asyn
     const untouchedGarden = await getGarden(garden);
     assert.equal(untouchedGarden?.accountId, accountId);
     assert.ok(await getActiveStripeCheckoutAttempt(cart.id));
+    assert.equal(
+        await storage().query.events.findFirst({
+            where: (event, { and, eq }) =>
+                and(
+                    eq(event.aggregateId, accountId),
+                    eq(event.type, accountDeletionStartedEventType),
+                ),
+        }),
+        undefined,
+    );
 });
 
 test('account deletion can win and remains retryable while a stale snapshot fails', async () => {
@@ -312,10 +406,10 @@ test('account deletion can win and remains retryable while a stale snapshot fail
 
     assert.equal(await getShoppingCart(cart.id), undefined);
     await assert.rejects(
-        () => createStripeCheckoutAttempt(snapshot),
+        () => createStripeCheckoutAttempt(snapshot, { accountId }),
         (error) => {
             assert.ok(error instanceof StripeCheckoutAttemptConflictError);
-            assert.equal(error.category, 'cart_inactive');
+            assert.equal(error.category, 'account_inactive');
             return true;
         },
     );

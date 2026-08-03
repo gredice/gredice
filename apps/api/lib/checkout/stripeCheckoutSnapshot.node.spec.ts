@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    fingerprintStripeCheckoutValue,
     type StripeCheckoutAttempt,
     StripeCheckoutAttemptConflictError,
 } from '@gredice/storage';
 import {
     assertStripeSessionMatchesCheckoutAttempt,
+    buildVerifiedStripeCheckoutAdditionalData,
     decodeStripeCheckoutAttemptMetadata,
-    getStripeCheckoutSnapshotAdditionalData,
     getStripeCheckoutSnapshotNonStripeAmounts,
     getStripeCheckoutSnapshotNonStripePaymentKinds,
     type StripeCheckoutSessionForSnapshot,
@@ -16,19 +17,19 @@ import {
 const attempt: StripeCheckoutAttempt = {
     sessionId: 'cs_snapshot',
     snapshot: {
-        accountId: 'account-1',
         attemptId: 'f67ed76e-41f3-4a10-a7f6-472d21b3678b',
         cartId: 12,
         expectedNonStripeCartItemIds: [42],
         harvestDates: [],
         items: [
             {
-                additionalData: null,
+                additionalDataFingerprint: fingerprintStripeCheckoutValue(null),
                 amount: 2,
                 cartId: 12,
-                checkoutAdditionalData: {
-                    delivery: { mode: 'pickup', slotId: 7 },
-                },
+                checkoutAdditionalDataFingerprint:
+                    fingerprintStripeCheckoutValue({
+                        delivery: { mode: 'pickup', slotId: 7 },
+                    }),
                 currency: 'eur',
                 entityId: 'plant-7',
                 entityTypeName: 'plantSort',
@@ -41,12 +42,16 @@ const attempt: StripeCheckoutAttempt = {
                 status: 'new',
             },
             {
-                additionalData: '{"scheduledDate":"2026-08-10T00:00:00.000Z"}',
+                additionalDataFingerprint: fingerprintStripeCheckoutValue(
+                    '{"scheduledDate":"2026-08-10T00:00:00.000Z"}',
+                ),
                 amount: 1,
                 cartId: 12,
-                checkoutAdditionalData: {
-                    scheduledDate: '2026-08-10T00:00:00.000Z',
-                },
+                checkoutAdditionalDataFingerprint:
+                    fingerprintStripeCheckoutValue({
+                        delivery: { mode: 'pickup', slotId: 7 },
+                        scheduledDate: '2026-08-10T00:00:00.000Z',
+                    }),
                 currency: 'sunflower',
                 entityId: 'operation-9',
                 entityTypeName: 'operation',
@@ -59,16 +64,36 @@ const attempt: StripeCheckoutAttempt = {
                 status: 'new',
             },
         ],
-        userId: 'user-1',
+        stripeSession: {
+            allowPromotionCodes: true,
+            customerFingerprint: fingerprintStripeCheckoutValue('cus_1'),
+            expiresAt: '2026-08-10T12:00:00.000Z',
+            items: [
+                {
+                    cartItemId: 41,
+                    price: { currency: 'eur', valueInCents: 350 },
+                    product: { name: 'Biljka' },
+                    quantity: 2,
+                },
+            ],
+            returnUrls: {
+                cancel: 'https://example.test/cancel',
+                success: 'https://example.test/success',
+            },
+        },
+        userFingerprint: fingerprintStripeCheckoutValue('user-1'),
         version: 1,
     },
 };
+
+const runtimeIdentity = { accountId: 'account-1', userId: 'user-1' };
 
 function session(
     overrides: Partial<StripeCheckoutSessionForSnapshot> = {},
 ): StripeCheckoutSessionForSnapshot {
     return {
         amountTotal: 630,
+        customerId: 'cus_1',
         id: 'cs_snapshot',
         lineItems: {
             data: [
@@ -137,7 +162,11 @@ describe('Stripe checkout snapshot metadata', () => {
 describe('assertStripeSessionMatchesCheckoutAttempt', () => {
     it('accepts the immutable item identity and a Stripe promotion discount', () => {
         assert.doesNotThrow(() =>
-            assertStripeSessionMatchesCheckoutAttempt(session(), attempt),
+            assertStripeSessionMatchesCheckoutAttempt(
+                session(),
+                attempt,
+                runtimeIdentity,
+            ),
         );
     });
 
@@ -158,6 +187,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                         },
                     }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_membership_changed',
         );
@@ -166,6 +196,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                 assertStripeSessionMatchesCheckoutAttempt(
                     session({ amountTotal: 0, lineItems: { data: [] } }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_membership_changed',
         );
@@ -188,6 +219,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                         },
                     }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_item_changed',
         );
@@ -216,6 +248,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                         },
                     }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_item_changed',
         );
@@ -242,6 +275,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                         },
                     }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_item_changed',
         );
@@ -254,6 +288,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
                         },
                     }),
                     attempt,
+                    runtimeIdentity,
                 ),
             'stripe_membership_changed',
         );
@@ -261,7 +296,7 @@ describe('assertStripeSessionMatchesCheckoutAttempt', () => {
 });
 
 describe('immutable non-Stripe fulfillment inputs', () => {
-    it('replays the recorded amount and additional data independently of later catalog values', () => {
+    it('replays recorded amounts and verifies reconstructed delivery data', () => {
         assert.equal(
             getStripeCheckoutSnapshotNonStripeAmounts(attempt).get(42),
             275,
@@ -270,9 +305,21 @@ describe('immutable non-Stripe fulfillment inputs', () => {
             getStripeCheckoutSnapshotNonStripePaymentKinds(attempt).get(42),
             'sunflower',
         );
-        assert.deepEqual(
-            getStripeCheckoutSnapshotAdditionalData(attempt).get(42),
-            { scheduledDate: '2026-08-10T00:00:00.000Z' },
-        );
+        const additionalData = buildVerifiedStripeCheckoutAdditionalData({
+            attempt,
+            liveItems: [
+                { additionalData: null, id: 41 },
+                {
+                    additionalData:
+                        '{"scheduledDate":"2026-08-10T00:00:00.000Z"}',
+                    id: 42,
+                },
+            ],
+            session: session(),
+        });
+        assert.deepEqual(additionalData.get(42), {
+            delivery: { mode: 'pickup', slotId: 7 },
+            scheduledDate: '2026-08-10T00:00:00.000Z',
+        });
     });
 });

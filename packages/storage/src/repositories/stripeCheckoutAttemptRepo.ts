@@ -1,11 +1,14 @@
+import { createHash } from 'node:crypto';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
+import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
 import {
     type CheckoutCartItemLockTransaction,
     withCheckoutCartItemLocks,
 } from './checkoutCartItemLock';
+import { releaseOutletReservationsForCheckoutAttempt } from './outletOffersRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = CheckoutCartItemLockTransaction;
@@ -27,10 +30,10 @@ export type StripeCheckoutAttemptReleaseReason =
     | 'session_creation_failed';
 
 export type StripeCheckoutAttemptSnapshotItem = {
-    additionalData: string | null;
+    additionalDataFingerprint: string;
     amount: number;
     cartId: number;
-    checkoutAdditionalData: unknown;
+    checkoutAdditionalDataFingerprint: string;
     currency: string;
     entityId: string;
     entityTypeName: string;
@@ -51,8 +54,32 @@ export type StripeCheckoutAttemptSnapshotItem = {
     status: 'new' | 'paid';
 };
 
+export type StripeCheckoutAttemptSessionItem = {
+    cartItemId: number;
+    price: {
+        currency: 'eur';
+        valueInCents: number;
+    };
+    product: {
+        description?: string;
+        imageUrls?: string[];
+        name: string;
+    };
+    quantity: number;
+};
+
+export type StripeCheckoutAttemptSession = {
+    allowPromotionCodes: boolean;
+    customerFingerprint: string;
+    expiresAt: string | null;
+    items: StripeCheckoutAttemptSessionItem[];
+    returnUrls: {
+        cancel: string;
+        success: string;
+    };
+};
+
 export type StripeCheckoutAttemptSnapshot = {
-    accountId: string;
     attemptId: string;
     cartId: number;
     expectedNonStripeCartItemIds: number[];
@@ -61,7 +88,8 @@ export type StripeCheckoutAttemptSnapshot = {
         scheduledDate: string;
     }>;
     items: StripeCheckoutAttemptSnapshotItem[];
-    userId: string;
+    stripeSession: StripeCheckoutAttemptSession;
+    userFingerprint: string;
     version: 1;
 };
 
@@ -123,12 +151,39 @@ const canonicalUtcDaySchema = z
         return !Number.isNaN(date.getTime()) && date.toISOString() === value;
     });
 
+const fingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/u);
+
+export function serializeStripeCheckoutValue(value: unknown): string {
+    if (value === undefined) {
+        return 'undefined';
+    }
+    if (Array.isArray(value)) {
+        return `[${value.map(serializeStripeCheckoutValue).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        return `{${Object.entries(value)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(
+                ([key, entry]) =>
+                    `${JSON.stringify(key)}:${serializeStripeCheckoutValue(entry)}`,
+            )
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+export function fingerprintStripeCheckoutValue(value: unknown) {
+    return createHash('sha256')
+        .update(serializeStripeCheckoutValue(value))
+        .digest('hex');
+}
+
 const snapshotItemSchema = z
     .object({
-        additionalData: z.string().nullable(),
+        additionalDataFingerprint: fingerprintSchema,
         amount: positiveSafeIntegerSchema,
         cartId: positiveSafeIntegerSchema,
-        checkoutAdditionalData: z.unknown(),
+        checkoutAdditionalDataFingerprint: fingerprintSchema,
         currency: z.string().min(1),
         entityId: z.string().min(1),
         entityTypeName: z.string().min(1),
@@ -157,9 +212,38 @@ const snapshotItemSchema = z
     })
     .strict();
 
+const stripeSessionItemSchema = z
+    .object({
+        cartItemId: positiveSafeIntegerSchema,
+        price: z
+            .object({
+                currency: z.literal('eur'),
+                valueInCents: positiveSafeIntegerSchema,
+            })
+            .strict(),
+        product: z
+            .object({
+                description: z.string().optional(),
+                imageUrls: z.array(z.url()).optional(),
+                name: z.string().min(1),
+            })
+            .strict(),
+        quantity: positiveSafeIntegerSchema,
+    })
+    .strict();
+
+const stripeSessionSchema = z
+    .object({
+        allowPromotionCodes: z.boolean(),
+        customerFingerprint: fingerprintSchema,
+        expiresAt: z.iso.datetime().nullable(),
+        items: z.array(stripeSessionItemSchema).min(1).max(100),
+        returnUrls: z.object({ cancel: z.url(), success: z.url() }).strict(),
+    })
+    .strict();
+
 const snapshotSchema = z
     .object({
-        accountId: z.string().min(1),
         attemptId: z.uuid(),
         cartId: positiveSafeIntegerSchema,
         expectedNonStripeCartItemIds: z.array(positiveSafeIntegerSchema),
@@ -172,13 +256,15 @@ const snapshotSchema = z
                 .strict(),
         ),
         items: z.array(snapshotItemSchema).min(1).max(100),
-        userId: z.string().min(1),
+        stripeSession: stripeSessionSchema,
+        userFingerprint: fingerprintSchema,
         version: z.literal(1),
     })
     .strict()
     .superRefine((snapshot, context) => {
         const itemIds = new Set<number>();
         const harvestDateItemIds = new Set<number>();
+        const stripeSessionItemIds = new Set<number>();
         const expectedNonStripeIds = new Set(
             snapshot.expectedNonStripeCartItemIds,
         );
@@ -241,6 +327,33 @@ const snapshotSchema = z
                 });
             }
             harvestDateItemIds.add(harvestDate.cartItemId);
+        }
+        const expectedStripeItems = snapshot.items.filter(
+            (item) => item.paymentKind === 'stripe',
+        );
+        for (const sessionItem of snapshot.stripeSession.items) {
+            const cartItemId = sessionItem.cartItemId;
+            const expectedItem = expectedStripeItems.find(
+                (item) => item.id === cartItemId,
+            );
+            if (
+                !expectedItem ||
+                stripeSessionItemIds.has(cartItemId) ||
+                sessionItem.quantity !== expectedItem.amount ||
+                sessionItem.price.valueInCents !== expectedItem.paymentAmount
+            ) {
+                context.addIssue({
+                    code: 'custom',
+                    message: 'Stripe session item snapshot mismatch',
+                });
+            }
+            stripeSessionItemIds.add(cartItemId);
+        }
+        if (stripeSessionItemIds.size !== expectedStripeItems.length) {
+            context.addIssue({
+                code: 'custom',
+                message: 'Stripe session snapshot mismatch',
+            });
         }
     });
 
@@ -472,7 +585,8 @@ export function assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
             live.gardenId !== expected.gardenId ||
             live.raisedBedId !== expected.raisedBedId ||
             live.positionIndex !== expected.positionIndex ||
-            live.additionalData !== expected.additionalData ||
+            fingerprintStripeCheckoutValue(live.additionalData) !==
+                expected.additionalDataFingerprint ||
             live.amount !== expected.amount ||
             live.currency !== expected.currency ||
             live.isDeleted ||
@@ -502,6 +616,7 @@ async function lockCartRow(cartId: number, db: TransactionClient) {
 
 export async function createStripeCheckoutAttempt(
     snapshot: StripeCheckoutAttemptSnapshot,
+    { accountId }: { accountId: string },
 ) {
     parseSnapshot(snapshot);
     const itemIds = snapshot.items.map((item) => item.id);
@@ -509,12 +624,16 @@ export async function createStripeCheckoutAttempt(
         throw new StripeCheckoutAttemptConflictError('duplicate_cart_item');
     }
     return withCheckoutCartItemLocks(itemIds, async (db) => {
+        const account = await lockAccountAndAssertNotDeleting(accountId, db);
+        if (!account) {
+            throw new StripeCheckoutAttemptConflictError('account_inactive');
+        }
         const cart = await lockCartRow(snapshot.cartId, db);
         if (
             !cart ||
             cart.isDeleted ||
             cart.status !== 'new' ||
-            cart.accountId !== snapshot.accountId
+            cart.accountId !== accountId
         ) {
             throw new StripeCheckoutAttemptConflictError('cart_inactive');
         }
@@ -610,6 +729,17 @@ export async function releaseStripeCheckoutAttempt({
                 version: 1,
             });
         }
+        // Cleanup commits before the release event removes the cart fence.
+        // Replays of an already released attempt intentionally skip cleanup so
+        // they cannot release reservations created by a subsequent attempt.
+        await releaseOutletReservationsForCheckoutAttempt(
+            cartId,
+            attempt.snapshot.items.flatMap((item) =>
+                item.outlet ? [item.outlet.reservationId] : [],
+            ),
+            new Date(),
+            db,
+        );
         await db.insert(events).values({
             aggregateId: cartAggregateId(cartId),
             data: { attemptId, reason, sessionId },
@@ -628,6 +758,18 @@ export async function verifyStripeCheckoutAttemptLiveCart(
     attempt: StripeCheckoutAttempt,
     db: DatabaseClient = storage(),
 ) {
+    const cart = await db.query.shoppingCarts.findFirst({
+        columns: { accountId: true, id: true, isDeleted: true, status: true },
+        where: eq(shoppingCarts.id, attempt.snapshot.cartId),
+    });
+    if (
+        !cart ||
+        cart.isDeleted ||
+        (cart.status !== 'new' && cart.status !== 'paid') ||
+        !cart.accountId
+    ) {
+        throw new StripeCheckoutAttemptConflictError('cart_inactive');
+    }
     const liveItems = await db
         .select()
         .from(shoppingCartItems)
@@ -642,7 +784,7 @@ export async function verifyStripeCheckoutAttemptLiveCart(
         attempt.snapshot,
         liveItems,
     );
-    return liveItems;
+    return { accountId: cart.accountId, items: liveItems };
 }
 
 export const stripeCheckoutAttemptEventTypes = eventTypes;

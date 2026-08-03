@@ -22,6 +22,8 @@ import {
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
+    fingerprintStripeCheckoutValue,
+    getAccountUsers,
     getCheckoutFulfillmentStartedCartItemIds,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
@@ -86,8 +88,8 @@ import {
 } from '../checkout/orderConfirmationEmail';
 import {
     assertStripeSessionMatchesCheckoutAttempt,
+    buildVerifiedStripeCheckoutAdditionalData,
     decodeStripeCheckoutAttemptMetadata,
-    getStripeCheckoutSnapshotAdditionalData,
     getStripeCheckoutSnapshotHarvestDates,
     getStripeCheckoutSnapshotNonStripeAmounts,
     getStripeCheckoutSnapshotNonStripePaymentKinds,
@@ -125,6 +127,7 @@ export type ProcessCheckoutSessionDependencies = {
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
     getShoppingCart: typeof getShoppingCart;
     getStripeCheckoutAttempt: typeof getStripeCheckoutAttempt;
+    getAccountUsers: typeof getAccountUsers;
     getUser: typeof getUser;
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
@@ -188,6 +191,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     getStripeCheckoutAttempt,
+    getAccountUsers,
     getUser,
     isCartItemDeliverable,
     knownEvents,
@@ -1425,7 +1429,12 @@ class CheckoutPlantingRaisedBedUnavailableError extends Error {
 async function reconcileStripeCheckoutAttempt(
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
     dependencies: ProcessCheckoutSessionDependencies,
-): Promise<StripeCheckoutAttempt | null> {
+): Promise<{
+    accountId: string;
+    additionalDataByCartItemId: ReadonlyMap<number, unknown>;
+    attempt: StripeCheckoutAttempt;
+    userId: string;
+} | null> {
     const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
     if (!metadata) {
         // Sessions created before durable snapshots were deployed keep their
@@ -1454,10 +1463,7 @@ async function reconcileStripeCheckoutAttempt(
                 'session_binding_changed',
             );
         }
-        if (
-            attempt.snapshot.accountId.length === 0 ||
-            attempt.snapshot.cartId !== metadata.cartId
-        ) {
+        if (attempt.snapshot.cartId !== metadata.cartId) {
             throw new StripeCheckoutAttemptConflictError(
                 'snapshot_identity_changed',
             );
@@ -1505,19 +1511,46 @@ async function reconcileStripeCheckoutAttempt(
             );
         }
 
-        const liveItems =
+        const liveCart =
             await dependencies.verifyStripeCheckoutAttemptLiveCart(attempt);
-        assertStripeSessionMatchesCheckoutAttempt(session, attempt);
+        const matchingAccountUsers = (
+            await dependencies.getAccountUsers(liveCart.accountId)
+        ).filter(
+            (accountUser) =>
+                fingerprintStripeCheckoutValue(accountUser.userId) ===
+                attempt.snapshot.userFingerprint,
+        );
+        if (matchingAccountUsers.length !== 1) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_user_inactive',
+            );
+        }
+        const checkoutUser = matchingAccountUsers[0];
+        if (!checkoutUser) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_user_inactive',
+            );
+        }
+        assertStripeSessionMatchesCheckoutAttempt(session, attempt, {
+            accountId: liveCart.accountId,
+            userId: checkoutUser.userId,
+        });
+        const additionalDataByCartItemId =
+            buildVerifiedStripeCheckoutAdditionalData({
+                attempt,
+                liveItems: liveCart.items,
+                session,
+            });
 
         // Catalog labels and prices may legitimately change while Stripe is
         // open. Verify every snapshotted entity still resolves, then use the
         // immutable snapshot amounts below instead of today's catalog prices.
         const cartInfo = await dependencies.getCartInfo(
-            liveItems,
-            attempt.snapshot.accountId,
+            liveCart.items,
+            liveCart.accountId,
         );
         if (
-            cartInfo.items.length !== liveItems.length ||
+            cartInfo.items.length !== liveCart.items.length ||
             cartInfo.items.some(
                 (item) =>
                     !attempt.snapshot.items.some(
@@ -1529,7 +1562,12 @@ async function reconcileStripeCheckoutAttempt(
                 'catalog_entity_unavailable',
             );
         }
-        return attempt;
+        return {
+            accountId: liveCart.accountId,
+            additionalDataByCartItemId,
+            attempt,
+            userId: checkoutUser.userId,
+        };
     } catch (error) {
         console.error('Stripe checkout snapshot reconciliation failed', {
             attemptId: metadata.attemptId,
@@ -1583,12 +1621,14 @@ async function processPaidCheckoutSession(
 ) {
     const alreadyProcessed =
         await dependencies.getCompletedTransactionByStripePaymentId(session.id);
-    let checkoutAttempt: StripeCheckoutAttempt | null | undefined;
+    let checkoutReconciliation:
+        | Awaited<ReturnType<typeof reconcileStripeCheckoutAttempt>>
+        | undefined;
     if (session.paymentStatus === 'no_payment_required' && !alreadyProcessed) {
         // Zero-total sessions are accepted only for durable cart attempts. Do
         // this before specialized fulfillment branches so metadata alone can
         // never opt an unrelated checkout into no-payment fulfillment.
-        checkoutAttempt = await reconcileStripeCheckoutAttempt(
+        checkoutReconciliation = await reconcileStripeCheckoutAttempt(
             session,
             dependencies,
         );
@@ -1640,10 +1680,11 @@ async function processPaidCheckoutSession(
         `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
     );
 
-    checkoutAttempt ??= await reconcileStripeCheckoutAttempt(
+    checkoutReconciliation ??= await reconcileStripeCheckoutAttempt(
         session,
         dependencies,
     );
+    const checkoutAttempt = checkoutReconciliation?.attempt ?? null;
 
     const affectedCartIds: number[] = [];
     const purchasedItems: {
@@ -1652,8 +1693,8 @@ async function processPaidCheckoutSession(
         amountSubtotal?: number | null;
         currency?: string | null;
     }[] = [];
-    let accountId: string | undefined;
-    let customerUserId: string | undefined;
+    let accountId = checkoutReconciliation?.accountId;
+    let customerUserId = checkoutReconciliation?.userId;
     const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
     const fulfillmentErrors: unknown[] = [];
     const expectedNonStripeCartItemIds = checkoutAttempt
@@ -2032,7 +2073,9 @@ async function processPaidCheckoutSession(
     // All items in a single checkout session should share the same delivery information.
     let deliveryInfo: unknown;
     const deliveryInfosFound = new Set<string>();
-    for (const item of session.lineItems?.data ?? []) {
+    for (const item of checkoutReconciliation
+        ? []
+        : (session.lineItems?.data ?? [])) {
         const product = item.price?.product;
         if (typeof product !== 'string' && !product?.deleted) {
             const additionalData = product?.metadata?.additionalData
@@ -2081,19 +2124,17 @@ async function processPaidCheckoutSession(
                 expectedNonStripeCartItemIds,
                 session.id,
                 dependencies,
-                checkoutAttempt
+                checkoutReconciliation
                     ? {
                           additionalDataByCartItemId:
-                              getStripeCheckoutSnapshotAdditionalData(
-                                  checkoutAttempt,
-                              ),
+                              checkoutReconciliation.additionalDataByCartItemId,
                           paymentKindByCartItemId:
                               getStripeCheckoutSnapshotNonStripePaymentKinds(
-                                  checkoutAttempt,
+                                  checkoutReconciliation.attempt,
                               ),
                           sunflowerAmountsByCartItemId:
                               getStripeCheckoutSnapshotNonStripeAmounts(
-                                  checkoutAttempt,
+                                  checkoutReconciliation.attempt,
                               ),
                       }
                     : undefined,

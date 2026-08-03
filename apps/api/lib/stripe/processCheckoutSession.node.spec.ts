@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { SunflowerPackageAlreadyPurchasedError } from '@gredice/storage';
+import {
+    fingerprintStripeCheckoutValue,
+    SunflowerPackageAlreadyPurchasedError,
+} from '@gredice/storage';
 import {
     buildCheckoutInvoiceBillingSnapshot,
     buildCheckoutInvoiceLineItem,
@@ -193,6 +196,10 @@ function makeDependencies(
             record(calls, 'getStripeCheckoutAttempt', args);
             return undefined;
         },
+        getAccountUsers: async (...args: unknown[]) => {
+            record(calls, 'getAccountUsers', args);
+            return [{ userId: 'user-1' }];
+        },
         getUser: async (...args: unknown[]) => {
             record(calls, 'getUser', args);
             return { userName: 'buyer@example.test' };
@@ -380,7 +387,7 @@ function makeDependencies(
         },
         verifyStripeCheckoutAttemptLiveCart: async (...args: unknown[]) => {
             record(calls, 'verifyStripeCheckoutAttemptLiveCart', args);
-            return [];
+            return { accountId: 'account-1', items: [] };
         },
         getStripeCheckoutSession: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutSession', args);
@@ -439,6 +446,7 @@ function makeDependencies(
 
 function makeSession() {
     return {
+        customerId: 'cus_1',
         id: 'cs_paid',
         status: 'complete',
         paymentStatus: 'paid',
@@ -1152,19 +1160,20 @@ describe('processCheckoutSession', () => {
         const attempt = {
             sessionId: 'cs_snapshot_drift',
             snapshot: {
-                accountId: 'account-1',
                 attemptId: '5fe9b460-9b8d-4dd0-90a9-d05e46a3b0d5',
                 cartId: 100,
                 expectedNonStripeCartItemIds: [2],
                 harvestDates: [],
                 items: [
                     {
-                        additionalData: null,
+                        additionalDataFingerprint:
+                            fingerprintStripeCheckoutValue(null),
                         amount: 1,
                         cartId: 100,
-                        checkoutAdditionalData: {
-                            scheduledDate: '2026-07-01',
-                        },
+                        checkoutAdditionalDataFingerprint:
+                            fingerprintStripeCheckoutValue({
+                                scheduledDate: '2026-07-01',
+                            }),
                         currency: 'eur',
                         entityId: '42',
                         entityTypeName: 'operation',
@@ -1177,12 +1186,16 @@ describe('processCheckoutSession', () => {
                         status: 'new' as const,
                     },
                     {
-                        additionalData: sunflowerItem.additionalData,
+                        additionalDataFingerprint:
+                            fingerprintStripeCheckoutValue(
+                                sunflowerItem.additionalData,
+                            ),
                         amount: 1,
                         cartId: 100,
-                        checkoutAdditionalData: {
-                            scheduledDate: '2026-07-01',
-                        },
+                        checkoutAdditionalDataFingerprint:
+                            fingerprintStripeCheckoutValue({
+                                scheduledDate: '2026-07-01',
+                            }),
                         currency: 'sunflower',
                         entityId: '99',
                         entityTypeName: 'operation',
@@ -1195,7 +1208,28 @@ describe('processCheckoutSession', () => {
                         status: 'new' as const,
                     },
                 ],
-                userId: 'user-1',
+                stripeSession: {
+                    allowPromotionCodes: true,
+                    customerFingerprint:
+                        fingerprintStripeCheckoutValue('cus_1'),
+                    expiresAt: '2026-08-04T00:00:00.000Z',
+                    items: [
+                        {
+                            cartItemId: 1,
+                            price: {
+                                currency: 'eur' as const,
+                                valueInCents: 2500,
+                            },
+                            product: { name: 'Planting' },
+                            quantity: 1,
+                        },
+                    ],
+                    returnUrls: {
+                        cancel: 'https://example.test/cancel',
+                        success: 'https://example.test/success',
+                    },
+                },
+                userFingerprint: fingerprintStripeCheckoutValue('user-1'),
                 version: 1 as const,
             },
         };
@@ -1249,7 +1283,7 @@ describe('processCheckoutSession', () => {
             },
             verifyStripeCheckoutAttemptLiveCart: async (...args: unknown[]) => {
                 record(calls, 'verifyStripeCheckoutAttemptLiveCart', args);
-                return cart.items;
+                return { accountId: 'account-1', items: cart.items };
             },
             getShoppingCart: async (...args: unknown[]) => {
                 record(calls, 'getShoppingCart', args);

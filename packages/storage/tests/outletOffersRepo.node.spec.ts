@@ -6,14 +6,18 @@ import {
     convertOutletReservationForCartItem,
     createEntity,
     createOutletOffer,
+    createStripeCheckoutAttempt,
     expireOutletReservations,
+    fingerprintStripeCheckoutValue,
     getOrCreateShoppingCart,
     getOutletOffer,
     getOutletOfferReservation,
     getOutletOffers,
     getShoppingCart,
     OutletOfferUnavailableError,
+    releaseStripeCheckoutAttempt,
     reserveOutletOffer,
+    type StripeCheckoutAttemptSnapshot,
     updateEntity,
     updateOutletOffer,
     upsertEntityType,
@@ -91,6 +95,77 @@ async function createPublishedOffer({
         status: 'published',
         adminNotes: null,
     });
+}
+
+function outletAttemptSnapshot({
+    cartId,
+    cartItemId,
+    entityId,
+    reservation,
+}: {
+    cartId: number;
+    cartItemId: number;
+    entityId: string;
+    reservation: NonNullable<
+        Awaited<ReturnType<typeof getOutletOfferReservation>>
+    >;
+}): StripeCheckoutAttemptSnapshot {
+    const attemptId = randomUUID();
+    return {
+        attemptId,
+        cartId,
+        expectedNonStripeCartItemIds: [],
+        harvestDates: [],
+        items: [
+            {
+                additionalDataFingerprint: fingerprintStripeCheckoutValue(null),
+                amount: 1,
+                cartId,
+                checkoutAdditionalDataFingerprint:
+                    fingerprintStripeCheckoutValue({}),
+                currency: 'eur',
+                entityId,
+                entityTypeName: 'plantSort',
+                gardenId: null,
+                id: cartItemId,
+                outlet: {
+                    comparePriceCents: reservation.heldComparePriceCents,
+                    initialPlantStatus: reservation.heldInitialPlantStatus,
+                    offerId: reservation.outletOfferId,
+                    priceCents: reservation.heldOutletPriceCents,
+                    reservationId: reservation.id,
+                    sowingDate: reservation.heldSowingDate.toISOString(),
+                },
+                paymentAmount: reservation.heldOutletPriceCents,
+                paymentKind: 'stripe',
+                positionIndex: null,
+                raisedBedId: null,
+                status: 'new',
+            },
+        ],
+        stripeSession: {
+            allowPromotionCodes: true,
+            customerFingerprint: fingerprintStripeCheckoutValue('cus_outlet'),
+            expiresAt: '2026-05-01T11:00:00.000Z',
+            items: [
+                {
+                    cartItemId,
+                    price: {
+                        currency: 'eur',
+                        valueInCents: reservation.heldOutletPriceCents,
+                    },
+                    product: { name: 'Outlet item' },
+                    quantity: 1,
+                },
+            ],
+            returnUrls: {
+                cancel: 'https://example.test/cancel',
+                success: 'https://example.test/success',
+            },
+        },
+        userFingerprint: fingerprintStripeCheckoutValue('user-outlet'),
+        version: 1,
+    };
 }
 
 test('getOutletOffers returns active published offers with remaining stock', async () => {
@@ -180,6 +255,66 @@ test('reserveOutletOffer creates a held reservation and blocks overselling', asy
                 now,
             }),
         OutletOfferUnavailableError,
+    );
+});
+
+test('stale attempt release cannot release a later attempt reservation', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
+    const firstReservation = await reserveOutletOffer({
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        offerId,
+        now,
+    });
+    const firstAttempt = outletAttemptSnapshot({
+        cartId: cart.id,
+        cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: firstReservation,
+    });
+    await createStripeCheckoutAttempt(firstAttempt, { accountId });
+    await releaseStripeCheckoutAttempt({
+        attemptId: firstAttempt.attemptId,
+        cartId: cart.id,
+        reason: 'cancelled',
+        sessionId: null,
+    });
+    assert.equal(
+        (await getOutletOfferReservation(firstReservation.id))?.status,
+        'released',
+    );
+
+    const secondReservation = await reserveOutletOffer({
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        offerId,
+        now: addMinutes(now, 1),
+    });
+    assert.notEqual(secondReservation.id, firstReservation.id);
+    const secondAttempt = outletAttemptSnapshot({
+        cartId: cart.id,
+        cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: secondReservation,
+    });
+    await createStripeCheckoutAttempt(secondAttempt, { accountId });
+
+    await releaseStripeCheckoutAttempt({
+        attemptId: firstAttempt.attemptId,
+        cartId: cart.id,
+        reason: 'expired',
+        sessionId: null,
+    });
+    assert.equal(
+        (await getOutletOfferReservation(secondReservation.id))?.status,
+        'held',
     );
 });
 

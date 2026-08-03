@@ -509,6 +509,28 @@ export async function releaseOutletReservationsForCart(
         );
 }
 
+export async function releaseOutletReservationsForCheckoutAttempt(
+    cartId: number,
+    reservationIds: readonly number[],
+    now = new Date(),
+    db: DatabaseClient = storage(),
+) {
+    const uniqueReservationIds = [...new Set(reservationIds)];
+    if (uniqueReservationIds.length === 0) {
+        return;
+    }
+    await db
+        .update(outletOfferReservations)
+        .set({ status: 'released', releasedAt: now })
+        .where(
+            and(
+                eq(outletOfferReservations.cartId, cartId),
+                inArray(outletOfferReservations.id, uniqueReservationIds),
+                eq(outletOfferReservations.status, 'held'),
+            ),
+        );
+}
+
 export async function convertOutletReservationForCartItem(
     cartItemId: number,
     now = new Date(),
