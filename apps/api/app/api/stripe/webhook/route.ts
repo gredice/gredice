@@ -1,18 +1,36 @@
+import {
+    releaseOutletReservationsForCart,
+    releaseStripeCheckoutAttempt,
+} from '@gredice/storage';
 import { stripeWebhookConstructEvent } from '@gredice/stripe/server';
+import { decodeStripeCheckoutAttemptMetadata } from '../../../../lib/checkout/stripeCheckoutSnapshot';
 import { processCheckoutSession } from '../../../../lib/stripe/processCheckoutSession';
 
 export const dynamic = 'force-dynamic';
 
-function isPaymentCheckoutSession(
-    value: unknown,
-): value is { id: string; mode: 'payment' } {
+function isPaymentCheckoutSession(value: unknown): value is {
+    id: string;
+    metadata?: Record<string, string> | null;
+    mode: 'payment';
+} {
+    const metadata =
+        value && typeof value === 'object' && 'metadata' in value
+            ? value.metadata
+            : undefined;
     return (
         !!value &&
         typeof value === 'object' &&
         'id' in value &&
         typeof value.id === 'string' &&
         'mode' in value &&
-        value.mode === 'payment'
+        value.mode === 'payment' &&
+        (metadata === undefined ||
+            metadata === null ||
+            (typeof metadata === 'object' &&
+                !Array.isArray(metadata) &&
+                Object.values(metadata).every(
+                    (entry) => typeof entry === 'string',
+                )))
     );
 }
 
@@ -24,6 +42,7 @@ const relevantEvents = new Set([
     // 'price.updated',
     // 'price.deleted',
     'checkout.session.completed',
+    'checkout.session.expired',
 ]);
 
 export async function POST(req: Request) {
@@ -45,6 +64,25 @@ export async function POST(req: Request) {
                 const checkoutSession = event.data.object;
                 if (isPaymentCheckoutSession(checkoutSession)) {
                     await processCheckoutSession(checkoutSession.id);
+                }
+                break;
+            }
+            case 'checkout.session.expired': {
+                const checkoutSession = event.data.object;
+                if (isPaymentCheckoutSession(checkoutSession)) {
+                    const attemptMetadata = decodeStripeCheckoutAttemptMetadata(
+                        checkoutSession.metadata,
+                    );
+                    if (attemptMetadata) {
+                        await releaseStripeCheckoutAttempt({
+                            ...attemptMetadata,
+                            reason: 'expired',
+                            sessionId: checkoutSession.id,
+                        });
+                        await releaseOutletReservationsForCart(
+                            attemptMetadata.cartId,
+                        );
+                    }
                 }
                 break;
             }

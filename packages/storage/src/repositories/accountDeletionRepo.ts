@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import { events } from '../schema/eventsSchema';
 import {
@@ -13,12 +13,67 @@ import { shoppingCartItems, shoppingCarts } from '../schema/shoppingCartSchema';
 import { transactions } from '../schema/transactionSchema';
 import { accounts, accountUsers, users } from '../schema/usersSchema';
 import { storage } from '../storage';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import { getAccountGardens, getRaisedBeds } from './gardensRepo';
 import {
     deleteNotification,
     getNotificationsByAccount,
     getNotificationsByUser,
 } from './notificationsRepo';
+import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
+
+async function detachOrDeleteAccountShoppingCarts(accountId: string) {
+    const expectedCarts = await storage().query.shoppingCarts.findMany({
+        where: eq(shoppingCarts.accountId, accountId),
+    });
+    const expectedCartIds = expectedCarts.map((cart) => cart.id);
+    const items =
+        expectedCartIds.length > 0
+            ? await storage().query.shoppingCartItems.findMany({
+                  where: inArray(shoppingCartItems.cartId, expectedCartIds),
+              })
+            : [];
+
+    await withCheckoutCartItemLocks(
+        items.map((item) => item.id),
+        async (db) => {
+            await lockAndAssertShoppingCartsMutable(expectedCartIds, db);
+            const liveCarts = await db.query.shoppingCarts.findMany({
+                where: eq(shoppingCarts.accountId, accountId),
+            });
+            const expectedCartIdSet = new Set(expectedCartIds);
+            if (
+                liveCarts.length !== expectedCartIds.length ||
+                liveCarts.some((cart) => !expectedCartIdSet.has(cart.id))
+            ) {
+                throw new Error(
+                    `Shopping carts changed while fencing account ${accountId} for deletion.`,
+                );
+            }
+
+            const newCartIds = liveCarts.flatMap((cart) =>
+                cart.status === 'new' ? [cart.id] : [],
+            );
+            const retainedCartIds = liveCarts.flatMap((cart) =>
+                cart.status === 'new' ? [] : [cart.id],
+            );
+            if (newCartIds.length > 0) {
+                await db
+                    .delete(shoppingCartItems)
+                    .where(inArray(shoppingCartItems.cartId, newCartIds));
+                await db
+                    .delete(shoppingCarts)
+                    .where(inArray(shoppingCarts.id, newCartIds));
+            }
+            if (retainedCartIds.length > 0) {
+                await db
+                    .update(shoppingCarts)
+                    .set({ accountId: null })
+                    .where(inArray(shoppingCarts.id, retainedCartIds));
+            }
+        },
+    );
+}
 
 /**
  * Deletes an account and all related entities in the required order.
@@ -49,6 +104,17 @@ export async function deleteAccountWithDependencies(
         console.info(
             `[AccountDelete] Starting deletion for accountId=${accountId}, userId=${userId}`,
         );
+
+        // Fence every account cart in one transaction before touching gardens,
+        // notifications, or any other account data. If a checkout snapshot won
+        // the race, the whole transaction rolls back and deletion has made no
+        // destructive changes. If deletion wins, later snapshot creation sees
+        // a detached or deleted cart and fails before Stripe session creation.
+        console.info(
+            `[AccountDelete] Detaching/deleting shopping carts for accountId=${accountId}`,
+        );
+        await detachOrDeleteAccountShoppingCarts(accountId);
+
         const gardens = await getAccountGardens(accountId);
         if (gardens.length > 0) {
             hasScheduleAffectingChanges = true;
@@ -120,35 +186,6 @@ export async function deleteAccountWithDependencies(
         );
         for (const notification of accountNotifications) {
             await deleteNotification(notification.id);
-        }
-
-        // 11. Detach shopping carts from account - set account to null or delete new carts and their items
-        console.info(
-            `[AccountDelete] Detaching/deleting shopping carts for accountId=${accountId}`,
-        );
-        const carts = await storage().query.shoppingCarts.findMany({
-            where: eq(shoppingCarts.accountId, accountId),
-        });
-        for (const cart of carts) {
-            if (cart.status !== 'new') {
-                await storage()
-                    .update(shoppingCarts)
-                    .set({ accountId: null })
-                    .where(eq(shoppingCarts.id, cart.id));
-            }
-            if (cart.status === 'new') {
-                const items = await storage().query.shoppingCartItems.findMany({
-                    where: eq(shoppingCartItems.cartId, cart.id),
-                });
-                for (const item of items) {
-                    await storage()
-                        .delete(shoppingCartItems)
-                        .where(eq(shoppingCartItems.id, item.id));
-                }
-                await storage()
-                    .delete(shoppingCarts)
-                    .where(eq(shoppingCarts.id, cart.id));
-            }
         }
 
         // 12. Detach transactions from account - set account to null

@@ -12,6 +12,7 @@ import {
     notifyPurchase,
 } from '@gredice/notifications';
 import {
+    bindStripeCheckoutAttempt,
     type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
@@ -32,6 +33,7 @@ import {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getStripeCheckoutAttempt,
     getSunflowerPackageByCode,
     getUser,
     hasMatchingCheckoutPlantingPurchase,
@@ -44,12 +46,16 @@ import {
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     processReferralRewardsForAccount,
+    releaseStripeCheckoutAttempt,
+    type StripeCheckoutAttempt,
+    StripeCheckoutAttemptConflictError,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
     spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
     topUpSunflowerPackage,
     upsertRaisedBedField,
+    verifyStripeCheckoutAttemptLiveCart,
     withCheckoutCartItemLock,
     withCheckoutCartItemLocks,
     withCheckoutCartItemProcessingLock,
@@ -79,6 +85,14 @@ import {
     notifyOrderConfirmationEmail,
 } from '../checkout/orderConfirmationEmail';
 import {
+    assertStripeSessionMatchesCheckoutAttempt,
+    decodeStripeCheckoutAttemptMetadata,
+    getStripeCheckoutSnapshotAdditionalData,
+    getStripeCheckoutSnapshotHarvestDates,
+    getStripeCheckoutSnapshotNonStripeAmounts,
+    getStripeCheckoutSnapshotNonStripePaymentKinds,
+} from '../checkout/stripeCheckoutSnapshot';
+import {
     calculateSunflowerAmount,
     calculateSunflowerReplayAmount,
 } from '../checkout/sunflowerCalculations';
@@ -90,6 +104,7 @@ export type ProcessCheckoutSessionDependencies = {
     notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
+    bindStripeCheckoutAttempt: typeof bindStripeCheckoutAttempt;
     getOrCreateDeliveryRequest: typeof getOrCreateDeliveryRequest;
     createEvent: typeof createEvent;
     createNotificationWithStatus: typeof createNotificationWithStatus;
@@ -109,6 +124,7 @@ export type ProcessCheckoutSessionDependencies = {
     getRaisedBed: typeof getRaisedBed;
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
     getShoppingCart: typeof getShoppingCart;
+    getStripeCheckoutAttempt: typeof getStripeCheckoutAttempt;
     getUser: typeof getUser;
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
@@ -119,6 +135,7 @@ export type ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
     processReferralRewardsForAccount: typeof processReferralRewardsForAccount;
     setCartItemPaid: typeof setCartItemPaid;
+    releaseStripeCheckoutAttempt: typeof releaseStripeCheckoutAttempt;
     spendSunflowersBatch: typeof spendSunflowersBatch;
     topUpSunflowerPackage: typeof topUpSunflowerPackage;
     upsertRaisedBedField: typeof upsertRaisedBedField;
@@ -129,6 +146,7 @@ export type ProcessCheckoutSessionDependencies = {
     withCheckoutCartItemProcessingLocks: typeof withCheckoutCartItemProcessingLocks;
     withInventoryAccountTransaction: typeof withInventoryAccountTransaction;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
+    verifyStripeCheckoutAttemptLiveCart: typeof verifyStripeCheckoutAttemptLiveCart;
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
     isBillingAutomationEnabled: typeof isBillingAutomationEnabled;
     buildCheckoutInvoiceBillingSnapshot: typeof buildCheckoutInvoiceBillingSnapshot;
@@ -149,6 +167,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
+    bindStripeCheckoutAttempt,
     getOrCreateDeliveryRequest,
     createEvent,
     createNotificationWithStatus,
@@ -168,6 +187,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getStripeCheckoutAttempt,
     getUser,
     isCartItemDeliverable,
     knownEvents,
@@ -178,6 +198,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates,
     processReferralRewardsForAccount,
     setCartItemPaid,
+    releaseStripeCheckoutAttempt,
     spendSunflowersBatch,
     topUpSunflowerPackage,
     upsertRaisedBedField,
@@ -188,6 +209,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     withCheckoutCartItemProcessingLocks,
     withInventoryAccountTransaction,
     withStripePaymentProcessingLock,
+    verifyStripeCheckoutAttemptLiveCart,
     getStripeCheckoutSession,
     isBillingAutomationEnabled,
     buildCheckoutInvoiceBillingSnapshot,
@@ -452,6 +474,11 @@ async function processNonStripeCartItems(
     expectedNonStripeCartItemIds: ReadonlySet<number> | null = null,
     checkoutSessionId?: string | null,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+    checkoutSnapshot?: {
+        additionalDataByCartItemId: ReadonlyMap<number, unknown>;
+        paymentKindByCartItemId: ReadonlyMap<number, 'inventory' | 'sunflower'>;
+        sunflowerAmountsByCartItemId: ReadonlyMap<number, number>;
+    },
 ): Promise<{
     confirmationItems: ShoppingCartItemWithShopData[];
     processedItems: ShoppingCartItemWithShopData[];
@@ -499,6 +526,22 @@ async function processNonStripeCartItems(
     const isExpectedNonStripeItem = (item: { id: number }) =>
         expectedNonStripeCartItemIds === null ||
         expectedNonStripeCartItemIds.has(item.id);
+    const hasSnapshotPaymentKind = (
+        item: { id: number },
+        paymentKind: 'inventory' | 'sunflower',
+    ) =>
+        checkoutSnapshot
+            ? checkoutSnapshot.paymentKindByCartItemId.get(item.id) ===
+              paymentKind
+            : null;
+    const isSunflowerItem = (item: ShoppingCartItemWithShopData) =>
+        hasSnapshotPaymentKind(item, 'sunflower') ??
+        item.currency === 'sunflower';
+    const isInventoryItem = (item: ShoppingCartItemWithShopData) =>
+        hasSnapshotPaymentKind(item, 'inventory') ??
+        (item.currency === 'inventory' || item.usesInventory === true);
+    const isDirectNonStripeItem = (item: ShoppingCartItemWithShopData) =>
+        isSunflowerItem(item) || isInventoryItem(item);
     for (const item of cart.items) {
         if (
             item.status === 'paid' &&
@@ -511,7 +554,11 @@ async function processNonStripeCartItems(
     let cartInfo = await dependencies.getCartInfo(cart.items, accountId, {
         checkoutOperationMappings,
     });
-    if (!cartInfo.allowPurchase) {
+    // Snapshot-backed checkouts already passed cart validation before Stripe
+    // opened. Do not let a later catalog price/minimum-order change strand the
+    // captured payment; inventory and fulfillment availability are still
+    // checked explicitly below before their respective effects.
+    if (!checkoutSnapshot && !cartInfo.allowPurchase) {
         const pendingDirectItems = cart.items.filter(
             (item) =>
                 item.status !== 'paid' &&
@@ -533,13 +580,9 @@ async function processNonStripeCartItems(
         }
     }
     confirmationItems = cartInfo.items.filter(
-        (item) =>
-            isExpectedNonStripeItem(item) &&
-            (item.currency === 'sunflower' ||
-                item.currency === 'inventory' ||
-                item.usesInventory),
+        (item) => isExpectedNonStripeItem(item) && isDirectNonStripeItem(item),
     );
-    if (!cartInfo.allowPurchase) {
+    if (!checkoutSnapshot && !cartInfo.allowPurchase) {
         const pendingExpectedItem = cart.items.find(
             (item) => item.status !== 'paid' && isExpectedNonStripeItem(item),
         );
@@ -567,7 +610,7 @@ async function processNonStripeCartItems(
         }
     }
 
-    const checkoutAdditionalDataByCartItemId = new Map(
+    const checkoutAdditionalDataByCartItemId = new Map<number, unknown>(
         cartInfo.items
             .filter(
                 (item) =>
@@ -588,20 +631,37 @@ async function processNonStripeCartItems(
                 },
             ]),
     );
+    for (const [
+        cartItemId,
+        additionalData,
+    ] of checkoutSnapshot?.additionalDataByCartItemId ?? []) {
+        checkoutAdditionalDataByCartItemId.set(cartItemId, additionalData);
+    }
 
     const expectedSunflowerCartItemsWithShopData = cartInfo.items.filter(
-        (item) =>
-            item.currency === 'sunflower' && isExpectedNonStripeItem(item),
+        (item) => isSunflowerItem(item) && isExpectedNonStripeItem(item),
     );
     // Precompute sunflower amounts so the durable batch debit can be retried
     // without charging an already-processed item again.
     const sunflowerAmountsByItem = new Map<number, number>();
 
     for (const item of expectedSunflowerCartItemsWithShopData) {
+        const snapshotAmount =
+            checkoutSnapshot?.sunflowerAmountsByCartItemId.get(item.id);
         const sunflowerAmount =
-            item.status === 'paid'
+            snapshotAmount ??
+            (item.status === 'paid'
                 ? calculateSunflowerReplayAmount(item)
-                : dependencies.calculateSunflowerAmount(item);
+                : dependencies.calculateSunflowerAmount(item));
+        if (
+            checkoutSnapshot &&
+            (!Number.isSafeInteger(snapshotAmount) ||
+                (snapshotAmount ?? 0) <= 0)
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'snapshot_sunflower_amount_missing',
+            );
+        }
         sunflowerAmountsByItem.set(item.id, sunflowerAmount);
     }
 
@@ -798,7 +858,7 @@ async function processNonStripeCartItems(
     const inventoryCartItems = cartInfo.items.filter(
         (item) =>
             item.status !== 'paid' &&
-            (item.currency === 'inventory' || item.usesInventory) &&
+            isInventoryItem(item) &&
             isExpectedNonStripeItem(item),
     );
 
@@ -1348,6 +1408,156 @@ class CheckoutPlantingRaisedBedUnavailableError extends Error {
     }
 }
 
+async function reconcileStripeCheckoutAttempt(
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    dependencies: ProcessCheckoutSessionDependencies,
+): Promise<StripeCheckoutAttempt | null> {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) {
+        // Sessions created before durable snapshots were deployed keep their
+        // existing recovery path. Every newly created cart session has metadata.
+        return null;
+    }
+
+    try {
+        let attempt = await dependencies.getStripeCheckoutAttempt(
+            metadata.cartId,
+            metadata.attemptId,
+        );
+        if (!attempt) {
+            throw new StripeCheckoutAttemptConflictError('attempt_missing');
+        }
+        if (attempt.releaseReason) {
+            throw new StripeCheckoutAttemptConflictError('attempt_released');
+        }
+        if (!attempt.sessionId) {
+            attempt = await dependencies.bindStripeCheckoutAttempt({
+                ...metadata,
+                sessionId: session.id,
+            });
+        } else if (attempt.sessionId !== session.id) {
+            throw new StripeCheckoutAttemptConflictError(
+                'session_binding_changed',
+            );
+        }
+        if (
+            attempt.snapshot.accountId.length === 0 ||
+            attempt.snapshot.cartId !== metadata.cartId
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'snapshot_identity_changed',
+            );
+        }
+        let metadataNonStripeItemIds: Set<number> | null;
+        try {
+            metadataNonStripeItemIds =
+                decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+        } catch {
+            throw new StripeCheckoutAttemptConflictError(
+                'non_stripe_metadata_changed',
+            );
+        }
+        if (
+            metadataNonStripeItemIds === null ||
+            metadataNonStripeItemIds.size !==
+                attempt.snapshot.expectedNonStripeCartItemIds.length ||
+            attempt.snapshot.expectedNonStripeCartItemIds.some(
+                (itemId) => !metadataNonStripeItemIds.has(itemId),
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'non_stripe_metadata_changed',
+            );
+        }
+        let metadataHarvestDates: Map<number, string>;
+        try {
+            metadataHarvestDates = decodeHarvestDatesMetadata(session.metadata);
+        } catch {
+            throw new StripeCheckoutAttemptConflictError(
+                'harvest_metadata_changed',
+            );
+        }
+        if (
+            metadataHarvestDates.size !==
+                attempt.snapshot.harvestDates.length ||
+            attempt.snapshot.harvestDates.some(
+                (selection) =>
+                    metadataHarvestDates.get(selection.cartItemId) !==
+                    selection.scheduledDate,
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'harvest_metadata_changed',
+            );
+        }
+
+        const liveItems =
+            await dependencies.verifyStripeCheckoutAttemptLiveCart(attempt);
+        assertStripeSessionMatchesCheckoutAttempt(session, attempt);
+
+        // Catalog labels and prices may legitimately change while Stripe is
+        // open. Verify every snapshotted entity still resolves, then use the
+        // immutable snapshot amounts below instead of today's catalog prices.
+        const cartInfo = await dependencies.getCartInfo(
+            liveItems,
+            attempt.snapshot.accountId,
+        );
+        if (
+            cartInfo.items.length !== liveItems.length ||
+            cartInfo.items.some(
+                (item) =>
+                    !attempt.snapshot.items.some(
+                        (snapshotItem) => snapshotItem.id === item.id,
+                    ),
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'catalog_entity_unavailable',
+            );
+        }
+        return attempt;
+    } catch (error) {
+        console.error('Stripe checkout snapshot reconciliation failed', {
+            attemptId: metadata.attemptId,
+            cartId: metadata.cartId,
+            mismatchCategory:
+                error instanceof StripeCheckoutAttemptConflictError
+                    ? error.category
+                    : 'unexpected',
+            sessionId: session.id,
+        });
+        throw error;
+    }
+}
+
+async function releaseCompletedStripeCheckoutAttempt(
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    dependencies: ProcessCheckoutSessionDependencies,
+) {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) {
+        return;
+    }
+    const attempt = await dependencies.getStripeCheckoutAttempt(
+        metadata.cartId,
+        metadata.attemptId,
+    );
+    if (!attempt) {
+        throw new StripeCheckoutAttemptConflictError('attempt_missing');
+    }
+    if (
+        attempt.releaseReason === 'completed' &&
+        attempt.sessionId === session.id
+    ) {
+        return;
+    }
+    await dependencies.releaseStripeCheckoutAttempt({
+        ...metadata,
+        reason: 'completed',
+        sessionId: session.id,
+    });
+}
+
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
@@ -1389,6 +1599,7 @@ async function processPaidCheckoutSession(
     }
 
     if (alreadyProcessed) {
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies);
         console.info(
             `Checkout session ${checkoutSessionId} already processed; skipping.`,
         );
@@ -1397,6 +1608,11 @@ async function processPaidCheckoutSession(
 
     console.debug(
         `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
+    );
+
+    const checkoutAttempt = await reconcileStripeCheckoutAttempt(
+        session,
+        dependencies,
     );
 
     const affectedCartIds: number[] = [];
@@ -1410,8 +1626,9 @@ async function processPaidCheckoutSession(
     let customerUserId: string | undefined;
     const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
     const fulfillmentErrors: unknown[] = [];
-    const expectedNonStripeCartItemIds =
-        decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+    const expectedNonStripeCartItemIds = checkoutAttempt
+        ? new Set(checkoutAttempt.snapshot.expectedNonStripeCartItemIds)
+        : decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
     if (expectedNonStripeCartItemIds?.size) {
         const candidateCartIds = new Set<number>();
         for (const lineItem of session.lineItems?.data ?? []) {
@@ -1819,9 +2036,9 @@ async function processPaidCheckoutSession(
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
-    const harvestDateByCartItemId = decodeHarvestDatesMetadata(
-        session.metadata,
-    );
+    const harvestDateByCartItemId = checkoutAttempt
+        ? getStripeCheckoutSnapshotHarvestDates(checkoutAttempt)
+        : decodeHarvestDatesMetadata(session.metadata);
     const satisfiedExpectedNonStripeItemIds = new Set<number>();
     const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
     if (accountId && uniqueAffectedCartIds.length > 0) {
@@ -1834,6 +2051,22 @@ async function processPaidCheckoutSession(
                 expectedNonStripeCartItemIds,
                 session.id,
                 dependencies,
+                checkoutAttempt
+                    ? {
+                          additionalDataByCartItemId:
+                              getStripeCheckoutSnapshotAdditionalData(
+                                  checkoutAttempt,
+                              ),
+                          paymentKindByCartItemId:
+                              getStripeCheckoutSnapshotNonStripePaymentKinds(
+                                  checkoutAttempt,
+                              ),
+                          sunflowerAmountsByCartItemId:
+                              getStripeCheckoutSnapshotNonStripeAmounts(
+                                  checkoutAttempt,
+                              ),
+                      }
+                    : undefined,
             );
             for (const itemId of nonStripeResult.satisfiedExpectedItemIds) {
                 satisfiedExpectedNonStripeItemIds.add(itemId);
@@ -2017,6 +2250,10 @@ async function processPaidCheckoutSession(
                 checkout_session_id: session.id,
             },
         });
+    }
+
+    if (checkoutAttempt) {
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies);
     }
 }
 

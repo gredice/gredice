@@ -78,6 +78,10 @@ function makeDependencies(
         convertOutletReservationForCartItem: async (...args: unknown[]) => {
             record(calls, 'convertOutletReservationForCartItem', args);
         },
+        bindStripeCheckoutAttempt: async (...args: unknown[]) => {
+            record(calls, 'bindStripeCheckoutAttempt', args);
+            return undefined;
+        },
         getOrCreateDeliveryRequest: async (...args: unknown[]) => {
             record(calls, 'getOrCreateDeliveryRequest', args);
             return { created: true, requestId: 'delivery-request-701' };
@@ -185,6 +189,10 @@ function makeDependencies(
             return [];
         },
         getShoppingCart: readShoppingCart,
+        getStripeCheckoutAttempt: async (...args: unknown[]) => {
+            record(calls, 'getStripeCheckoutAttempt', args);
+            return undefined;
+        },
         getUser: async (...args: unknown[]) => {
             record(calls, 'getUser', args);
             return { userName: 'buyer@example.test' };
@@ -251,6 +259,9 @@ function makeDependencies(
         },
         setCartItemPaid: async (...args: unknown[]) => {
             record(calls, 'setCartItemPaid', args);
+        },
+        releaseStripeCheckoutAttempt: async (...args: unknown[]) => {
+            record(calls, 'releaseStripeCheckoutAttempt', args);
         },
         spendSunflowersBatch: async (...args: unknown[]) => {
             record(calls, 'spendSunflowersBatch', args);
@@ -366,6 +377,10 @@ function makeDependencies(
         ) => {
             record(calls, 'withStripePaymentProcessingLock', [id]);
             return callback();
+        },
+        verifyStripeCheckoutAttemptLiveCart: async (...args: unknown[]) => {
+            record(calls, 'verifyStripeCheckoutAttemptLiveCart', args);
+            return [];
         },
         getStripeCheckoutSession: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutSession', args);
@@ -986,6 +1001,182 @@ describe('processCheckoutSession', () => {
         assert.equal(
             callsNamed(calls, 'ensureInvoiceForTransaction').length,
             0,
+        );
+    });
+
+    it('uses captured sunflower amount when the catalog price changes while Stripe is open', async () => {
+        const calls: RecordedCall[] = [];
+        const createdAt = new Date('2026-07-01T09:00:00.000Z');
+        const euroItem = {
+            additionalData: null,
+            amount: 1,
+            cartId: 100,
+            createdAt,
+            currency: 'eur',
+            entityId: '42',
+            entityTypeName: 'operation',
+            gardenId: 200,
+            id: 1,
+            isDeleted: false,
+            positionIndex: 2,
+            raisedBedId: 300,
+            status: 'paid',
+            updatedAt: createdAt,
+        };
+        const sunflowerItem = {
+            ...euroItem,
+            additionalData: JSON.stringify({
+                scheduledDate: '2026-07-01',
+            }),
+            currency: 'sunflower',
+            entityId: '99',
+            id: 2,
+            positionIndex: 3,
+            status: 'new',
+        };
+        const cart = {
+            accountId: 'account-1',
+            createdAt,
+            id: 100,
+            isDeleted: false,
+            items: [euroItem, sunflowerItem],
+            status: 'new',
+            updatedAt: createdAt,
+        };
+        const attempt = {
+            sessionId: 'cs_snapshot_drift',
+            snapshot: {
+                accountId: 'account-1',
+                attemptId: '5fe9b460-9b8d-4dd0-90a9-d05e46a3b0d5',
+                cartId: 100,
+                expectedNonStripeCartItemIds: [2],
+                harvestDates: [],
+                items: [
+                    {
+                        additionalData: null,
+                        amount: 1,
+                        cartId: 100,
+                        checkoutAdditionalData: {
+                            scheduledDate: '2026-07-01',
+                        },
+                        currency: 'eur',
+                        entityId: '42',
+                        entityTypeName: 'operation',
+                        gardenId: 200,
+                        id: 1,
+                        paymentAmount: 2500,
+                        paymentKind: 'stripe' as const,
+                        positionIndex: 2,
+                        raisedBedId: 300,
+                        status: 'new' as const,
+                    },
+                    {
+                        additionalData: sunflowerItem.additionalData,
+                        amount: 1,
+                        cartId: 100,
+                        checkoutAdditionalData: {
+                            scheduledDate: '2026-07-01',
+                        },
+                        currency: 'sunflower',
+                        entityId: '99',
+                        entityTypeName: 'operation',
+                        gardenId: 200,
+                        id: 2,
+                        paymentAmount: 275,
+                        paymentKind: 'sunflower' as const,
+                        positionIndex: 3,
+                        raisedBedId: 300,
+                        status: 'new' as const,
+                    },
+                ],
+                userId: 'user-1',
+                version: 1 as const,
+            },
+        };
+        const enrichedItems = [
+            {
+                ...euroItem,
+                entityData: { attributes: { deliverable: false } },
+                inventoryAvailable: 0,
+                shopData: { price: 25 },
+                usesInventory: false,
+            },
+            {
+                ...sunflowerItem,
+                entityData: { attributes: { deliverable: false } },
+                inventoryAvailable: 0,
+                // The live catalog has drifted from 0.275 to 999. The debit
+                // must still use the amount captured before Stripe opened.
+                shopData: { price: 999 },
+                usesInventory: false,
+            },
+        ];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async () => ({
+                ...makeSession(),
+                id: 'cs_snapshot_drift',
+                metadata: {
+                    checkoutAttemptId: attempt.snapshot.attemptId,
+                    checkoutCartId: '100',
+                    checkoutSnapshotVersion: '1',
+                    harvestDatesChunkCount: '0',
+                    harvestDatesVersion: '1',
+                    nonStripeCartItemIds0: '[2]',
+                    nonStripeCartItemIdsChunkCount: '1',
+                },
+                lineItems: {
+                    data: [
+                        {
+                            ...makeSession().lineItems.data[0],
+                            price: {
+                                ...makeSession().lineItems.data[0]?.price,
+                                currency: 'eur',
+                                unit_amount: 2500,
+                            },
+                        },
+                    ],
+                },
+            }),
+            getStripeCheckoutAttempt: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutAttempt', args);
+                return attempt;
+            },
+            verifyStripeCheckoutAttemptLiveCart: async (...args: unknown[]) => {
+                record(calls, 'verifyStripeCheckoutAttemptLiveCart', args);
+                return cart.items;
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return cart;
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return cart;
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    // A live EUR catalog price can now fail the minimum-order
+                    // validation, but it must not strand an already captured
+                    // Stripe checkout snapshot.
+                    allowPurchase: false,
+                    notes: ['live catalog value is below the minimum'],
+                    items: enrichedItems,
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_snapshot_drift', dependencies);
+
+        const spend = callsNamed(calls, 'spendSunflowersBatch')[0];
+        assert.ok(spend);
+        assert.deepStrictEqual(spend.args[1], [
+            { amount: 275, reason: 'shoppingCartItem:2' },
+        ]);
+        assert.equal(callsNamed(calls, 'calculateSunflowerAmount').length, 0);
+        assert.equal(
+            callsNamed(calls, 'releaseStripeCheckoutAttempt').length,
+            1,
         );
     });
 

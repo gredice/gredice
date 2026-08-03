@@ -1,8 +1,11 @@
 import {
     assignStripeCustomerId,
+    bindStripeCheckoutAttempt,
     cartContainsDeliverableItems,
     consumeInventoryItem,
+    createStripeCheckoutAttempt,
     getAccount,
+    getActiveStripeCheckoutAttempt,
     getCheckoutFulfillmentStartedCartItemIds,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
@@ -10,6 +13,7 @@ import {
     getHarvestScheduleForCart,
     getPickupLocation,
     getShoppingCart,
+    getStripeCheckoutAttempt,
     getSunflowerPackageEligibilityForAccount,
     getTimeSlot,
     getTimeSlotEffectiveClosesAt,
@@ -22,7 +26,10 @@ import {
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationsForCart,
+    releaseStripeCheckoutAttempt,
     reserveOutletOffer,
+    StripeCheckoutAttemptConflictError,
+    StripeCheckoutAttemptInProgressError,
     setCartItemPaid,
     sunflowerPackageEntityTypeName,
     validateHarvestDateSelections,
@@ -63,6 +70,11 @@ import {
     buildOrderConfirmationItems,
     ORDER_CONFIRMATION_MANAGE_URL,
 } from '../../../lib/checkout/orderConfirmationEmail';
+import {
+    buildStripeCheckoutAttemptSnapshot,
+    decodeStripeCheckoutAttemptMetadata,
+    encodeStripeCheckoutAttemptMetadata,
+} from '../../../lib/checkout/stripeCheckoutSnapshot';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -490,15 +502,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             const requiresStripePayment = cartInfo.items.some(
                 (item) => item.status !== 'paid' && item.currency === 'eur',
             );
-            const expectedNonStripeCartItemIds = cartInfo.items.flatMap(
-                (item) =>
-                    item.status !== 'paid' &&
-                    (item.currency === 'sunflower' ||
-                        item.currency === 'inventory' ||
-                        item.usesInventory)
-                        ? [item.id]
-                        : [],
-            );
             const hasSunflowerItems = cartInfo.items.some(
                 (item) =>
                     item.status !== 'paid' && item.currency === 'sunflower',
@@ -840,18 +843,36 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                         valueInCents,
                         quantity,
                     });
-                    continue;
+                    return context.json(
+                        {
+                            code: 'CHECKOUT_CART_CHANGED',
+                            error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
+                        },
+                        409,
+                    );
                 }
                 if (quantity <= 0) {
                     console.warn('Invalid item quantity', { quantity });
-                    continue;
+                    return context.json(
+                        {
+                            code: 'CHECKOUT_CART_CHANGED',
+                            error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
+                        },
+                        409,
+                    );
                 }
                 // Invalid price check
                 // - valueInCents should be a positive integer
                 // - valueInCents should not exceed a certain limit (e.g., 10000 cents = 100 EUR)
                 if (valueInCents < 0 || valueInCents > 10000) {
                     console.warn('Invalid item price', { valueInCents });
-                    continue;
+                    return context.json(
+                        {
+                            code: 'CHECKOUT_CART_CHANGED',
+                            error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
+                        },
+                        409,
+                    );
                 }
 
                 stripeItems.push({
@@ -902,44 +923,169 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             }
 
             if (stripeCartItemsWithShopData.length) {
-                const { customerId, sessionId, url } =
-                    await checkoutTiming.measure('stripe_session', () =>
-                        stripeCheckout(
+                const checkoutAttempt = buildStripeCheckoutAttemptSnapshot({
+                    accountId,
+                    cartId: cart.id,
+                    checkoutAdditionalDataByCartItemId,
+                    harvestDates: canonicalHarvestDates,
+                    items: cartInfo.items,
+                    userId,
+                });
+                try {
+                    await createStripeCheckoutAttempt(checkoutAttempt);
+                } catch (error) {
+                    if (error instanceof StripeCheckoutAttemptInProgressError) {
+                        const activeAttempt =
+                            await getActiveStripeCheckoutAttempt(cart.id);
+                        if (activeAttempt?.sessionId) {
+                            const activeSession =
+                                await getStripeCheckoutSession(
+                                    activeAttempt.sessionId,
+                                );
+                            if (
+                                activeSession?.status === 'open' &&
+                                activeAttempt.snapshot.accountId ===
+                                    accountId &&
+                                activeSession.url
+                            ) {
+                                return context.json({
+                                    sessionId: activeSession.id,
+                                    url: activeSession.url,
+                                });
+                            }
+                        }
+                        return context.json(
                             {
-                                id: account.id,
-                                email: user.userName,
-                                name: user.userName,
-                                stripeCustomerId:
-                                    account.stripeCustomerId ?? undefined,
+                                code: 'CHECKOUT_IN_PROGRESS',
+                                error: 'Plaćanje za ovu košaricu je već otvoreno. Dovrši ili otkaži postojeće plaćanje.',
                             },
+                            409,
+                        );
+                    }
+                    if (error instanceof StripeCheckoutAttemptConflictError) {
+                        checkoutTiming.setErrorCategory(
+                            'cart_validation_failed',
+                        );
+                        return context.json(
                             {
-                                items: stripeItems,
-                                expiresAt: hasOutletStripeItems
-                                    ? outletCheckoutExpiresAt
-                                    : undefined,
-                                metadata: encodeHarvestDatesMetadata(
-                                    canonicalHarvestDates,
-                                    expectedNonStripeCartItemIds,
-                                ),
+                                code: 'CHECKOUT_CART_CHANGED',
+                                error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
                             },
-                        ),
-                    );
-
-                if (account.stripeCustomerId !== customerId) {
-                    await assignStripeCustomerId(account.id, customerId);
+                            409,
+                        );
+                    }
+                    throw error;
                 }
 
-                await checkoutTiming.measure('analytics', async () => {
-                    (await getPostHogClient()).capture({
-                        distinctId: accountId,
-                        event: 'checkout_initiated',
-                        properties: {
-                            cart_id: cartId,
-                            payment_method: 'stripe',
-                            item_count: stripeItems.length,
-                        },
+                let stripeResult: Awaited<ReturnType<typeof stripeCheckout>>;
+                try {
+                    stripeResult = await checkoutTiming.measure(
+                        'stripe_session',
+                        () =>
+                            stripeCheckout(
+                                {
+                                    id: account.id,
+                                    email: user.userName,
+                                    name: user.userName,
+                                    stripeCustomerId:
+                                        account.stripeCustomerId ?? undefined,
+                                },
+                                {
+                                    items: stripeItems,
+                                    expiresAt: hasOutletStripeItems
+                                        ? outletCheckoutExpiresAt
+                                        : undefined,
+                                    metadata: {
+                                        ...encodeHarvestDatesMetadata(
+                                            canonicalHarvestDates,
+                                            checkoutAttempt.expectedNonStripeCartItemIds,
+                                        ),
+                                        ...encodeStripeCheckoutAttemptMetadata(
+                                            checkoutAttempt,
+                                        ),
+                                    },
+                                },
+                            ),
+                    );
+                } catch (error) {
+                    await releaseStripeCheckoutAttempt({
+                        attemptId: checkoutAttempt.attemptId,
+                        cartId: cart.id,
+                        reason: 'session_creation_failed',
+                        sessionId: null,
                     });
-                });
+                    if (hasOutletStripeItems) {
+                        await releaseOutletReservationsForCart(cart.id);
+                    }
+                    throw error;
+                }
+
+                const { customerId, sessionId, url } = stripeResult;
+                try {
+                    await bindStripeCheckoutAttempt({
+                        attemptId: checkoutAttempt.attemptId,
+                        cartId: cart.id,
+                        sessionId,
+                    });
+                } catch (error) {
+                    try {
+                        await stripeSessionCancel(sessionId);
+                        await releaseStripeCheckoutAttempt({
+                            attemptId: checkoutAttempt.attemptId,
+                            cartId: cart.id,
+                            reason: 'session_binding_failed',
+                            sessionId,
+                        });
+                        if (hasOutletStripeItems) {
+                            await releaseOutletReservationsForCart(cart.id);
+                        }
+                    } catch (recoveryError) {
+                        console.error(
+                            'Stripe checkout session binding recovery failed',
+                            {
+                                attemptId: checkoutAttempt.attemptId,
+                                cartId: cart.id,
+                                error: recoveryError,
+                                sessionId,
+                            },
+                        );
+                    }
+                    throw error;
+                }
+
+                if (account.stripeCustomerId !== customerId) {
+                    try {
+                        await assignStripeCustomerId(account.id, customerId);
+                    } catch (error) {
+                        console.error('Stripe customer persistence failed', {
+                            accountId,
+                            attemptId: checkoutAttempt.attemptId,
+                            error,
+                            sessionId,
+                        });
+                    }
+                }
+
+                try {
+                    await checkoutTiming.measure('analytics', async () => {
+                        (await getPostHogClient()).capture({
+                            distinctId: accountId,
+                            event: 'checkout_initiated',
+                            properties: {
+                                cart_id: cartId,
+                                payment_method: 'stripe',
+                                item_count: stripeItems.length,
+                            },
+                        });
+                    });
+                } catch (error) {
+                    console.warn('Checkout initiation analytics failed', {
+                        attemptId: checkoutAttempt.attemptId,
+                        cartId,
+                        error,
+                        sessionId,
+                    });
+                }
 
                 return context.json({ sessionId, url });
             }
@@ -1129,14 +1275,58 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                         400,
                     );
                 }
+                const attemptMetadata = decodeStripeCheckoutAttemptMetadata(
+                    session.metadata,
+                );
                 if (session.status === 'expired') {
-                    return context.json(
-                        { error: 'Session already canceled' },
-                        400,
-                    );
+                    if (attemptMetadata) {
+                        const attempt = await getStripeCheckoutAttempt(
+                            attemptMetadata.cartId,
+                            attemptMetadata.attemptId,
+                        );
+                        if (attempt?.snapshot.accountId !== accountId) {
+                            return context.json(
+                                {
+                                    error: 'Session does not belong to this account',
+                                },
+                                403,
+                            );
+                        }
+                        await releaseStripeCheckoutAttempt({
+                            ...attemptMetadata,
+                            reason: 'expired',
+                            sessionId,
+                        });
+                        await releaseOutletReservationsForCart(
+                            attemptMetadata.cartId,
+                        );
+                    }
+                    return context.json({ success: true });
                 }
                 await stripeSessionCancel(sessionId);
+                if (attemptMetadata) {
+                    const attempt = await getStripeCheckoutAttempt(
+                        attemptMetadata.cartId,
+                        attemptMetadata.attemptId,
+                    );
+                    if (attempt?.snapshot.accountId !== accountId) {
+                        return context.json(
+                            {
+                                error: 'Session does not belong to this account',
+                            },
+                            403,
+                        );
+                    }
+                    await releaseStripeCheckoutAttempt({
+                        ...attemptMetadata,
+                        reason: 'cancelled',
+                        sessionId,
+                    });
+                }
                 const outletCartIds = new Set<number>();
+                if (attemptMetadata) {
+                    outletCartIds.add(attemptMetadata.cartId);
+                }
                 for (const item of session.lineItems?.data ?? []) {
                     const product = item.price?.product;
                     if (typeof product === 'string' || product?.deleted) {

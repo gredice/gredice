@@ -26,6 +26,10 @@ import {
     releaseOutletReservationsForCart,
     reserveOutletOffer,
 } from './outletOffersRepo';
+import {
+    assertNoActiveStripeCheckoutAttempt,
+    getActiveStripeCheckoutAttempt,
+} from './stripeCheckoutAttemptRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -626,6 +630,15 @@ export async function normalizeShoppingCartScheduledDates(
 
     const itemIds = itemUpdates.map((item) => item.id);
     await withCheckoutCartItemLocks(itemIds, async (db) => {
+        const [lockedCart] = await db
+            .select({ id: shoppingCarts.id })
+            .from(shoppingCarts)
+            .where(eq(shoppingCarts.id, cartId))
+            .for('update')
+            .limit(1);
+        if (!lockedCart || (await getActiveStripeCheckoutAttempt(cartId, db))) {
+            return;
+        }
         const lockedItems = await db
             .select()
             .from(shoppingCartItems)
@@ -797,20 +810,31 @@ export async function upsertOrRemoveCartItem(
         // Re-read after taking the checkout-item lock. A checkout that won the
         // race may have committed a payment or fulfillment effect meanwhile.
         const existingItem = await findExistingItem(db, lockedItemId);
+        if (existingItem && existingItem.cartId !== cartId) {
+            throw new Error('Shopping cart item does not belong to this cart');
+        }
+        const [mutationCart] = await db
+            .select({
+                accountId: shoppingCarts.accountId,
+                id: shoppingCarts.id,
+                isDeleted: shoppingCarts.isDeleted,
+                status: shoppingCarts.status,
+            })
+            .from(shoppingCarts)
+            .where(eq(shoppingCarts.id, cartId))
+            .for('update')
+            .limit(1);
+        if (!mutationCart) {
+            throw new Error('Shopping cart not found');
+        }
+        await assertNoActiveStripeCheckoutAttempt(cartId, db);
         if (existingItem) {
-            const cart = await db.query.shoppingCarts.findFirst({
-                columns: { accountId: true },
-                where: eq(shoppingCarts.id, existingItem.cartId),
-            });
-            if (!cart) {
-                throw new Error('Shopping cart not found');
-            }
-            if (!cart.accountId) {
+            if (!mutationCart.accountId) {
                 throw new Error('Shopping cart account is missing');
             }
             const fulfillmentStartedItemIds =
                 await getCheckoutFulfillmentStartedCartItemIds(
-                    cart.accountId,
+                    mutationCart.accountId,
                     [existingItem],
                     db,
                 );
@@ -1064,6 +1088,7 @@ export async function deleteShoppingCart(accountId: string) {
                 if (lockedCart.accountId !== accountId) {
                     throw new Error('Shopping cart account mismatch');
                 }
+                await assertNoActiveStripeCheckoutAttempt(lockedCart.id, db);
 
                 const liveItems = await db.query.shoppingCartItems.findMany({
                     where: and(
@@ -1151,6 +1176,18 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
     }
 
     await withCheckoutCartItemLocks(inventoryItemIds, async (checkoutTx) => {
+        const [lockedCart] = await checkoutTx
+            .select({ id: shoppingCarts.id })
+            .from(shoppingCarts)
+            .where(eq(shoppingCarts.id, cartId))
+            .for('update')
+            .limit(1);
+        if (
+            !lockedCart ||
+            (await getActiveStripeCheckoutAttempt(cartId, checkoutTx))
+        ) {
+            return;
+        }
         await withInventoryAccountTransaction(
             accountId,
             async (tx) => {

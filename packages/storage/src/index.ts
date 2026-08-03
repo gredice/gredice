@@ -91,6 +91,7 @@ export * from './repositories/settingsRepo';
 export * from './repositories/shoppingCartRepo';
 export * from './repositories/socialAccountsRepo';
 export * from './repositories/socialPostsRepo';
+export * from './repositories/stripeCheckoutAttemptRepo';
 export * from './repositories/sunflowerDropsRepo';
 export * from './repositories/sunflowerLedgerRepo';
 export * from './repositories/sunflowerPackagesRepo';

@@ -124,6 +124,7 @@ export async function getStripeCheckoutSession(sessionId: string) {
             lineItems: line_items,
             amountTotal: session.amount_total,
             metadata: session.metadata,
+            url: session.url,
         };
     } catch (error) {
         if (error instanceof Error) {
