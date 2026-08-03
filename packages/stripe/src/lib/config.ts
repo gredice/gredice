@@ -3,6 +3,9 @@ import Stripe from 'stripe';
 
 let stripe: Stripe | null = null;
 
+export const STRIPE_REQUEST_TIMEOUT_MS = 20_000;
+const STRIPE_DEFAULT_MAX_NETWORK_RETRIES = 1;
+
 export function getPublishableKey() {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE;
     if (!key) {
@@ -54,7 +57,10 @@ export function getReturnUrl(params?: Record<string, string> | string) {
 
 export function getStripe() {
     if (!stripe) {
-        stripe = new Stripe(getSecretKey(), {});
+        stripe = new Stripe(getSecretKey(), {
+            maxNetworkRetries: STRIPE_DEFAULT_MAX_NETWORK_RETRIES,
+            timeout: STRIPE_REQUEST_TIMEOUT_MS,
+        });
     }
     return stripe;
 }

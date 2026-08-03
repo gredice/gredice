@@ -1,6 +1,11 @@
 import 'server-only';
 import type Stripe from 'stripe';
-import { getReturnUrl, getStripe } from '../config';
+import { getReturnUrl, getStripe, STRIPE_REQUEST_TIMEOUT_MS } from '../config';
+
+const STRIPE_CHECKOUT_SESSION_PAGE_SIZE = 100;
+const STRIPE_CHECKOUT_SESSION_MAX_PAGES = 100;
+const STRIPE_CHECKOUT_SESSION_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const STRIPE_RECONCILIATION_MAX_NETWORK_RETRIES = 0;
 
 export type UserAccount = {
     id: string;
@@ -102,6 +107,103 @@ export async function getStripeCheckoutSessions(lastDateTime: Date) {
         console.error('Error fetching checkout sessions:', error);
         throw error;
     }
+}
+
+export type ExhaustiveStripePageResult<T> =
+    | {
+          status: 'exhaustive';
+          items: T[];
+          pageCount: number;
+      }
+    | {
+          status: 'partial';
+          pageCount: number;
+          reason: 'invalid_pagination' | 'page_limit' | 'request_failed';
+      };
+
+export async function collectStripePagesExhaustively<T extends { id: string }>({
+    fetchPage,
+    maxPages = STRIPE_CHECKOUT_SESSION_MAX_PAGES,
+}: {
+    fetchPage: (startingAfter?: string) => Promise<{
+        data: T[];
+        hasMore: boolean;
+    }>;
+    maxPages?: number;
+}): Promise<ExhaustiveStripePageResult<T>> {
+    if (!Number.isSafeInteger(maxPages) || maxPages <= 0) {
+        throw new RangeError('Stripe page limit must be a positive integer.');
+    }
+
+    const items: T[] = [];
+    const cursors = new Set<string>();
+    let startingAfter: string | undefined;
+    for (let pageCount = 1; pageCount <= maxPages; pageCount += 1) {
+        let page: { data: T[]; hasMore: boolean };
+        try {
+            page = await fetchPage(startingAfter);
+        } catch {
+            return {
+                status: 'partial',
+                pageCount: pageCount - 1,
+                reason: 'request_failed',
+            };
+        }
+        items.push(...page.data);
+        if (!page.hasMore) {
+            return { status: 'exhaustive', items, pageCount };
+        }
+
+        const cursor = page.data.at(-1)?.id;
+        if (!cursor || cursor === startingAfter || cursors.has(cursor)) {
+            return {
+                status: 'partial',
+                pageCount,
+                reason: 'invalid_pagination',
+            };
+        }
+        if (pageCount === maxPages) {
+            return { status: 'partial', pageCount, reason: 'page_limit' };
+        }
+        cursors.add(cursor);
+        startingAfter = cursor;
+    }
+
+    return {
+        status: 'partial',
+        pageCount: maxPages,
+        reason: 'page_limit',
+    };
+}
+
+export function listStripeCheckoutSessionsForCustomerExhaustively({
+    createdAt,
+    customerId,
+}: {
+    createdAt: Date;
+    customerId: string;
+}) {
+    const createdGte = Math.floor(
+        (createdAt.getTime() - STRIPE_CHECKOUT_SESSION_CLOCK_SKEW_MS) / 1000,
+    );
+    return collectStripePagesExhaustively<Stripe.Checkout.Session>({
+        fetchPage: async (startingAfter) => {
+            const page = await getStripe().checkout.sessions.list(
+                {
+                    created: { gte: createdGte },
+                    customer: customerId,
+                    limit: STRIPE_CHECKOUT_SESSION_PAGE_SIZE,
+                    ...(startingAfter ? { starting_after: startingAfter } : {}),
+                },
+                {
+                    maxNetworkRetries:
+                        STRIPE_RECONCILIATION_MAX_NETWORK_RETRIES,
+                    timeout: STRIPE_REQUEST_TIMEOUT_MS,
+                },
+            );
+            return { data: page.data, hasMore: page.has_more };
+        },
+    });
 }
 
 export async function getStripeCheckoutSession(sessionId: string) {
@@ -220,12 +322,13 @@ export async function stripeCheckout(
         // Create a checkout session in Stripe
         let session: Stripe.Checkout.Session | undefined;
         try {
-            session = await getStripe().checkout.sessions.create(
-                params,
-                options.idempotencyKey
+            session = await getStripe().checkout.sessions.create(params, {
+                ...(options.idempotencyKey
                     ? { idempotencyKey: options.idempotencyKey }
-                    : undefined,
-            );
+                    : {}),
+                maxNetworkRetries: STRIPE_RECONCILIATION_MAX_NETWORK_RETRIES,
+                timeout: STRIPE_REQUEST_TIMEOUT_MS,
+            });
         } catch (err) {
             console.error(err);
             throw err;
