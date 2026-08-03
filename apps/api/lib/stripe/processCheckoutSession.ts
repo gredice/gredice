@@ -66,7 +66,10 @@ import {
     withPlantingScheduleTaskTransaction,
     withStripePaymentProcessingLock,
 } from '@gredice/storage';
-import { getStripeCheckoutSession } from '@gredice/stripe/server';
+import {
+    getStripeCheckoutSession,
+    getStripeCheckoutSessionForReconciliation,
+} from '@gredice/stripe/server';
 import { isBillingAutomationEnabled } from '../billing/automationFlag';
 import { notifyBillingDocumentsEmail } from '../billing/billingDocumentEmail';
 import {
@@ -1047,6 +1050,15 @@ export async function processCheckoutSession(
     return dependencies.withStripePaymentProcessingLock(session.id, () =>
         processPaidCheckoutSession(checkoutSessionId, session, dependencies),
     );
+}
+
+export function processCheckoutSessionForReconciliation(
+    checkoutSessionId: string,
+) {
+    return processCheckoutSession(checkoutSessionId, {
+        ...realDependencies,
+        getStripeCheckoutSession: getStripeCheckoutSessionForReconciliation,
+    });
 }
 
 async function recordSunflowerPackageFulfillmentFailure({
