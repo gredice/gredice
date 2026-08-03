@@ -1,0 +1,13 @@
+interface:
+  display_name: "Plan a Gredice garden cart"
+  short_description: "Find products and prepare confirmed cart changes"
+  default_prompt: "Use $plan-garden-cart to find plants and prepare my Gredice cart."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "gredice"
+      description: "Authenticated Gredice catalog and cart tools"
+      transport: "streamable_http"
+      url: "https://api.gredice.com/api/mcp"
+policy:
+  allow_implicit_invocation: true

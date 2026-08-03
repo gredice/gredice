@@ -36,7 +36,10 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'node ../../scripts/run-app-command.mjs start',
-        env: { GREDICE_DETACH_CHILD_PROCESS: 'false' },
+        env: {
+            GREDICE_DETACH_CHILD_PROCESS: 'false',
+            GREDICE_MCP_PUBLIC_ENABLED: 'true',
+        },
         gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
         url: getPlaywrightBaseUrl(app),
         reuseExistingServer: shouldReusePlaywrightServer(),

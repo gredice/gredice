@@ -110,10 +110,10 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
             icon: '📱',
         },
         {
-            title: 'MCP test konzola',
+            title: 'MCP dokumentacija',
             description:
-                'Sigurna JSON-RPC konzola za provjeru MCP alata, resursa i autorizacije.',
-            href: `${hosts.api}/test`,
+                'Javni pregled povezivanja AI asistenata, dostupnih mogućnosti i sigurnosnih granica.',
+            href: `${hosts.www}/mcp`,
             icon: '🧾',
         },
     ];

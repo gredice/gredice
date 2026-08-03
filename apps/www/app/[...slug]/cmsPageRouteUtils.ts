@@ -68,6 +68,7 @@ const reservedFirstSegments = new Set([
     'dostava',
     'kontakt',
     'legalno',
+    'mcp',
     'novosti',
     'o-nama',
     'outlet',

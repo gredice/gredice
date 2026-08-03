@@ -1,0 +1,35 @@
+{
+	"name": "gredice",
+	"version": "0.1.0",
+	"description": "Explore Croatian plant knowledge and work with your Gredice garden and cart.",
+	"author": {
+		"name": "Gredice",
+		"email": "kontakt@gredice.com",
+		"url": "https://www.gredice.com"
+	},
+	"homepage": "https://www.gredice.com/mcp",
+	"repository": "https://github.com/gredice/gredice",
+	"license": "AGPL-3.0-only",
+	"keywords": ["gardening", "plants", "garden", "croatia", "mcp"],
+	"skills": "./skills/",
+	"mcpServers": "./.mcp.json",
+	"interface": {
+		"displayName": "Gredice",
+		"shortDescription": "Plant knowledge and your connected garden.",
+		"longDescription": "Use verified Croatian plant information, review your connected garden and raised beds, and prepare explicit cart changes through the Gredice MCP server.",
+		"developerName": "Gredice",
+		"category": "Productivity",
+		"capabilities": ["Plant knowledge", "Read garden", "Manage cart"],
+		"websiteURL": "https://www.gredice.com/mcp",
+		"privacyPolicyURL": "https://www.gredice.com/legalno/politika-privatnosti",
+		"termsOfServiceURL": "https://www.gredice.com/legalno/uvjeti-koristenja",
+		"defaultPrompt": [
+			"Help me choose plants for my garden using Gredice.",
+			"Review my Gredice garden and suggest the next useful work.",
+			"Find suitable plants and prepare my Gredice cart."
+		],
+		"brandColor": "#2E6F40",
+		"composerIcon": "./assets/gredice-icon.svg",
+		"logo": "./assets/gredice-icon.svg"
+	}
+}

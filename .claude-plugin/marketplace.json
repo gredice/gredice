@@ -1,0 +1,20 @@
+{
+	"name": "gredice",
+	"owner": {
+		"name": "Gredice",
+		"email": "kontakt@gredice.com"
+	},
+	"metadata": {
+		"description": "Official Gredice plugins"
+	},
+	"plugins": [
+		{
+			"name": "gredice",
+			"source": "./plugins/gredice",
+			"description": "Croatian plant knowledge and connected garden workflows.",
+			"category": "productivity",
+			"tags": ["gardening", "plants", "mcp"],
+			"strict": true
+		}
+	]
+}
