@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, lte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lte, ne, sql } from 'drizzle-orm';
 import {
     type InsertOutletOffer,
     type OutletOfferReservationStatus,
@@ -12,7 +12,10 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { withCheckoutCartItemLock } from './checkoutCartItemLock';
-import { assertNoActiveStripeCheckoutAttempt } from './stripeCheckoutAttemptRepo';
+import {
+    assertNoActiveStripeCheckoutAttempt,
+    getActiveStripeCheckoutAttempt,
+} from './stripeCheckoutAttemptRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -33,6 +36,14 @@ export class OutletReservationUnavailableError extends Error {
     constructor(message = 'Outlet reservation is not available.') {
         super(message);
         this.name = 'OutletReservationUnavailableError';
+    }
+}
+
+export class OutletOfferIdentityImmutableError extends Error {
+    override readonly name = 'OutletOfferIdentityImmutableError';
+
+    constructor(readonly offerId: number) {
+        super('An outlet offer with reservation history cannot change plant.');
     }
 }
 
@@ -151,9 +162,35 @@ export async function updateOutletOffer(
     data: Partial<
         Omit<InsertOutletOffer, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>
     >,
-    db: DatabaseClient = storage(),
 ) {
-    await db.update(outletOffers).set(data).where(eq(outletOffers.id, id));
+    await storage().transaction(async (db) => {
+        const [offer] = await db
+            .select({
+                id: outletOffers.id,
+                plantSortId: outletOffers.plantSortId,
+            })
+            .from(outletOffers)
+            .where(eq(outletOffers.id, id))
+            .for('update')
+            .limit(1);
+        if (!offer) {
+            return;
+        }
+        if (
+            data.plantSortId !== undefined &&
+            data.plantSortId !== offer.plantSortId
+        ) {
+            const reservation =
+                await db.query.outletOfferReservations.findFirst({
+                    columns: { id: true },
+                    where: eq(outletOfferReservations.outletOfferId, id),
+                });
+            if (reservation) {
+                throw new OutletOfferIdentityImmutableError(id);
+            }
+        }
+        await db.update(outletOffers).set(data).where(eq(outletOffers.id, id));
+    });
 }
 
 export async function getOutletOffer(
@@ -385,6 +422,26 @@ async function reserveOutletOfferInTransaction(
     if (offer.endAt.getTime() <= now.getTime()) {
         throw new OutletOfferUnavailableError('Outlet offer has expired.');
     }
+    const cartItem = await tx.query.shoppingCartItems.findFirst({
+        columns: {
+            cartId: true,
+            entityId: true,
+            entityTypeName: true,
+            isDeleted: true,
+        },
+        where: eq(shoppingCartItems.id, cartItemId),
+    });
+    if (
+        !cartItem ||
+        cartItem.isDeleted ||
+        cartItem.cartId !== cartId ||
+        cartItem.entityTypeName !== 'plantSort' ||
+        cartItem.entityId !== offer.plantSortId.toString()
+    ) {
+        throw new OutletOfferUnavailableError(
+            'Outlet offer does not match the cart item.',
+        );
+    }
 
     const existingReservation =
         await tx.query.outletOfferReservations.findFirst({
@@ -596,9 +653,9 @@ export async function releaseOutletReservationsForCart(
 export async function convertOutletReservationForCartItem(
     cartItemId: number,
     now = new Date(),
-    db?: DatabaseClient,
+    db?: TransactionClient,
 ) {
-    const convert = async (tx: DatabaseClient) => {
+    const convert = async (tx: TransactionClient) => {
         const reservation = await tx.query.outletOfferReservations.findFirst({
             where: and(
                 eq(outletOfferReservations.cartItemId, cartItemId),
@@ -621,9 +678,22 @@ export async function convertOutletReservationForCartItem(
         }
 
         if (reservation.holdExpiresAt.getTime() <= now.getTime()) {
-            throw new OutletReservationUnavailableError(
-                'Outlet reservation has expired.',
+            const activeAttempt = await getActiveStripeCheckoutAttempt(
+                reservation.cartId,
+                tx,
             );
+            const capturedByBoundAttempt =
+                Boolean(activeAttempt?.sessionId) &&
+                activeAttempt?.snapshot.items.some(
+                    (item) =>
+                        item.id === cartItemId &&
+                        item.outlet?.reservationId === reservation.id,
+                );
+            if (!capturedByBoundAttempt) {
+                throw new OutletReservationUnavailableError(
+                    'Outlet reservation has expired.',
+                );
+            }
         }
 
         const [updated] = await tx
@@ -638,28 +708,83 @@ export async function convertOutletReservationForCartItem(
         return updated;
     };
 
-    return db ? convert(db) : storage().transaction(convert);
+    return db ? convert(db) : withCheckoutCartItemLock(cartItemId, convert);
 }
 
 export async function expireOutletReservations(
     now = new Date(),
-    db: DatabaseClient = storage(),
+    db?: TransactionClient,
 ) {
-    const expired = await db
-        .update(outletOfferReservations)
-        .set({
-            status: 'released',
-            releasedAt: now,
+    const database = db ?? storage();
+    const candidates = await database
+        .select({
+            cartId: outletOfferReservations.cartId,
+            cartItemId: outletOfferReservations.cartItemId,
+            id: outletOfferReservations.id,
         })
+        .from(outletOfferReservations)
         .where(
             and(
                 eq(outletOfferReservations.status, 'held'),
                 lte(outletOfferReservations.holdExpiresAt, now),
             ),
         )
-        .returning({ id: outletOfferReservations.id });
+        .orderBy(
+            asc(outletOfferReservations.cartItemId),
+            asc(outletOfferReservations.id),
+        );
 
-    return expired.map((reservation) => reservation.id);
+    const releasedIds: number[] = [];
+    for (const candidate of candidates) {
+        const release = async (tx: TransactionClient) => {
+            const [reservation] = await tx
+                .select()
+                .from(outletOfferReservations)
+                .where(eq(outletOfferReservations.id, candidate.id))
+                .for('update')
+                .limit(1);
+            if (
+                reservation?.status !== 'held' ||
+                reservation.holdExpiresAt.getTime() > now.getTime()
+            ) {
+                return undefined;
+            }
+            const activeAttempt = await getActiveStripeCheckoutAttempt(
+                candidate.cartId,
+                tx,
+            );
+            if (
+                activeAttempt?.snapshot.items.some(
+                    (item) =>
+                        item.id === candidate.cartItemId &&
+                        item.outlet?.reservationId === candidate.id,
+                )
+            ) {
+                return undefined;
+            }
+            const [released] = await tx
+                .update(outletOfferReservations)
+                .set({ status: 'released', releasedAt: now })
+                .where(
+                    and(
+                        eq(outletOfferReservations.id, candidate.id),
+                        eq(outletOfferReservations.status, 'held'),
+                    ),
+                )
+                .returning({ id: outletOfferReservations.id });
+            return released?.id;
+        };
+        const releasedId = await withCheckoutCartItemLock(
+            candidate.cartItemId,
+            release,
+            db,
+        );
+        if (releasedId !== undefined) {
+            releasedIds.push(releasedId);
+        }
+    }
+
+    return releasedIds;
 }
 
 export async function closeExpiredOutletOffers(

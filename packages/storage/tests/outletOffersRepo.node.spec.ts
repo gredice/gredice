@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     assignStripeCustomerId,
+    bindStripeCheckoutAttempt,
     cleanupOutletLifecycle,
     convertOutletReservationForCartItem,
     createEntity,
@@ -10,21 +11,25 @@ import {
     createStripeCheckoutAttempt,
     expireOutletReservations,
     fingerprintStripeCheckoutValue,
+    getActiveStripeCheckoutAttempt,
     getOrCreateShoppingCart,
     getOutletOffer,
     getOutletOfferReservation,
     getOutletOffers,
     getShoppingCart,
+    OutletOfferIdentityImmutableError,
     OutletOfferUnavailableError,
     releaseOutletReservationForCartItem,
     releaseStripeCheckoutAttempt,
     reserveOutletOffer,
     type StripeCheckoutAttemptSnapshot,
+    setCartItemPaid,
     updateEntity,
     updateOutletOffer,
     upsertEntityType,
     upsertOrRemoveCartItem,
     upsertOrRemoveCartItemWithOutletReservation,
+    verifyStripeCheckoutAttemptLiveCart,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -338,6 +343,7 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
         quantity: 2,
         now,
     });
+    const otherPlantSortId = await createTestPlantSort();
     const accountId = await createTestAccount();
     const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
     const firstReservation = await reserveOutletOffer({
@@ -348,6 +354,13 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
         now,
         offerId: firstOfferId,
     });
+    await assert.rejects(
+        () =>
+            updateOutletOffer(firstOfferId, {
+                plantSortId: otherPlantSortId,
+            }),
+        OutletOfferIdentityImmutableError,
+    );
     const staleAttempt = outletAttemptSnapshot({
         cartId: cart.id,
         cartItemId,
@@ -403,6 +416,38 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
         () => releaseOutletReservationForCartItem(cartItemId),
         /active Stripe checkout attempt/u,
     );
+    await bindStripeCheckoutAttempt({
+        attemptId: currentAttempt.attemptId,
+        cartId: cart.id,
+        sessionId: 'cs_delayed_outlet',
+    });
+    const delayedWebhookAt = new Date(
+        secondReservation.holdExpiresAt.getTime() + 1,
+    );
+    const releasedAtExpiry = await expireOutletReservations(delayedWebhookAt);
+    assert.equal(releasedAtExpiry.includes(secondReservation.id), false);
+    assert.equal(
+        (await getOutletOfferReservation(secondReservation.id))?.status,
+        'held',
+    );
+    assert.equal(
+        (
+            await convertOutletReservationForCartItem(
+                cartItemId,
+                delayedWebhookAt,
+            )
+        ).status,
+        'converted',
+    );
+    const fulfillmentCommittedAttempt = await getActiveStripeCheckoutAttempt(
+        cart.id,
+    );
+    assert.ok(fulfillmentCommittedAttempt);
+    await verifyStripeCheckoutAttemptLiveCart(fulfillmentCommittedAttempt);
+    await setCartItemPaid(cartItemId);
+    const resumableAttempt = await getActiveStripeCheckoutAttempt(cart.id);
+    assert.ok(resumableAttempt);
+    await verifyStripeCheckoutAttemptLiveCart(resumableAttempt);
 });
 
 test('outlet cart upsert rolls back when reservation fails', async () => {

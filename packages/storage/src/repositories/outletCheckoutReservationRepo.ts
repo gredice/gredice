@@ -15,10 +15,11 @@ export type CheckoutOutletReservationExpectation = {
     id: number;
     initialPlantStatus: string;
     offerId: number;
+    plantSortId: string;
     priceCents: number;
     quantity: number;
     sowingDate: string;
-    status: 'converted' | 'held';
+    statuses: readonly ('converted' | 'held')[];
 };
 
 export async function getCheckoutOutletReservationConflict(
@@ -89,17 +90,24 @@ export async function getCheckoutOutletReservationConflict(
             reservation.cartItemId !== expected.cartItemId ||
             reservation.outletOfferId !== expected.offerId ||
             reservation.quantity !== expected.quantity ||
-            reservation.status !== expected.status ||
+            !(
+                (reservation.status === 'held' &&
+                    expected.statuses.includes('held')) ||
+                (reservation.status === 'converted' &&
+                    expected.statuses.includes('converted'))
+            ) ||
             reservation.heldOutletPriceCents !== expected.priceCents ||
             reservation.heldComparePriceCents !== expected.comparePriceCents ||
             reservation.heldSowingDate.toISOString() !== expected.sowingDate ||
-            reservation.heldInitialPlantStatus !== expected.initialPlantStatus
+            reservation.heldInitialPlantStatus !==
+                expected.initialPlantStatus ||
+            offer.plantSortId.toString() !== expected.plantSortId
         ) {
             return 'outlet_reservation_changed' as const;
         }
         if (
             requireActiveHolds &&
-            expected.status === 'held' &&
+            reservation.status === 'held' &&
             (reservation.holdExpiresAt.getTime() <= now.getTime() ||
                 offer.isDeleted ||
                 offer.status !== 'published' ||

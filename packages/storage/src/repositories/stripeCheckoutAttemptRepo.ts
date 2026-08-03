@@ -708,13 +708,14 @@ export async function createStripeCheckoutAttempt(
                                       initialPlantStatus:
                                           item.outlet.initialPlantStatus,
                                       offerId: item.outlet.offerId,
+                                      plantSortId: item.entityId,
                                       priceCents: item.outlet.priceCents,
                                       quantity: item.amount,
                                       sowingDate: item.outlet.sowingDate,
-                                      status:
+                                      statuses:
                                           item.status === 'paid'
-                                              ? ('converted' as const)
-                                              : ('held' as const),
+                                              ? (['converted'] as const)
+                                              : (['held'] as const),
                                   },
                               ]
                             : [],
@@ -870,6 +871,9 @@ export async function verifyStripeCheckoutAttemptLiveCart(
                 attempt.snapshot,
                 liveItems,
             );
+            const liveItemStatusById = new Map(
+                liveItems.map((item) => [item.id, item.status]),
+            );
             const outletReservationConflict =
                 await getCheckoutOutletReservationConflict(
                     {
@@ -899,13 +903,19 @@ export async function verifyStripeCheckoutAttemptLiveCart(
                                           initialPlantStatus:
                                               item.outlet.initialPlantStatus,
                                           offerId: item.outlet.offerId,
+                                          plantSortId: item.entityId,
                                           priceCents: item.outlet.priceCents,
                                           quantity: item.amount,
                                           sowingDate: item.outlet.sowingDate,
-                                          status:
-                                              item.status === 'paid'
-                                                  ? ('converted' as const)
-                                                  : ('held' as const),
+                                          statuses:
+                                              liveItemStatusById.get(
+                                                  item.id,
+                                              ) === 'paid'
+                                                  ? (['converted'] as const)
+                                                  : ([
+                                                        'held',
+                                                        'converted',
+                                                    ] as const),
                                       },
                                   ]
                                 : [],

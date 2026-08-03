@@ -1,5 +1,4 @@
 import {
-    assignStripeCustomerId,
     assignStripeCustomerIdIfUnchanged,
     bindStripeCheckoutAttempt,
     cartContainsDeliverableItems,
@@ -584,12 +583,10 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 }
             }
             if (hasOutletStripeItems) {
-                cartInfo = await checkoutTiming.measure(
-                    'cart_enrichment',
-                    () =>
-                        getCartInfo(cart.items, accountId, {
-                            checkoutOperationMappings,
-                        }),
+                cartInfo = await checkoutTiming.measure('cart_enrichment', () =>
+                    getCartInfo(cart.items, accountId, {
+                        checkoutOperationMappings,
+                    }),
                 );
                 if (!cartInfo.allowPurchase) {
                     return context.json(
@@ -1171,7 +1168,25 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 return context.json({ error: 'Package is not available' }, 400);
             }
 
-            const { customerId, sessionId, url } = await stripeCheckout(
+            const resolvedCustomerId = await resolveStripeCustomerId({
+                id: account.id,
+                email: user.userName,
+                name: user.userName,
+                stripeCustomerId: account.stripeCustomerId ?? undefined,
+            });
+            const canonicalCustomerId = await assignStripeCustomerIdIfUnchanged(
+                account.id,
+                account.stripeCustomerId,
+                resolvedCustomerId,
+            );
+            if (!canonicalCustomerId) {
+                return context.json(
+                    { error: 'Package checkout is temporarily unavailable' },
+                    409,
+                );
+            }
+
+            const { sessionId, url } = await stripeCheckout(
                 {
                     id: account.id,
                     email: user.userName,
@@ -1218,11 +1233,8 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     ],
                     allowPromotionCodes: false,
                 },
+                { customerId: canonicalCustomerId },
             );
-
-            if (account.stripeCustomerId !== customerId) {
-                await assignStripeCustomerId(account.id, customerId);
-            }
 
             (await getPostHogClient()).capture({
                 distinctId: accountId,
