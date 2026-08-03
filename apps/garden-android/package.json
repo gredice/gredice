@@ -1,0 +1,16 @@
+{
+    "name": "@gredice/garden-android",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Android Trusted Web Activity wrapper for Gredice Garden.",
+    "scripts": {
+        "android:bundle": "./gradlew --no-daemon bundleRelease",
+        "android:clean": "./gradlew --no-daemon clean",
+        "android:verify": "./gradlew --no-daemon lintRelease testDebugUnitTest assembleDebug bundleRelease",
+        "contract:validate": "node ../../scripts/validate-garden-twa-contract.mjs",
+        "store:validate": "node ../../scripts/validate-android-store-listing.mjs apps/garden-android"
+    },
+    "gredice": {
+        "bubblewrapVersion": "1.25.0"
+    }
+}

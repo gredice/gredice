@@ -129,7 +129,7 @@ const appWorkspaceDeps = collectAppWorkspaceDeps(workspacePackages);
 let hasErrors = false;
 
 for (const [appName, expectedPackages] of appWorkspaceDeps.entries()) {
-    const filterKey = `app_${appName}`;
+    const filterKey = `app_${appName.replaceAll("-", "_")}`;
     const filterEntries = filters[filterKey];
 
     if (!filterEntries) {

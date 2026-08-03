@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseKeystorePath = System.getenv('ANDROID_UPLOAD_KEYSTORE_PATH')
+def releaseKeystorePassword = System.getenv('ANDROID_UPLOAD_STORE_PASSWORD')
+def releaseKeyAlias = System.getenv('ANDROID_UPLOAD_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('ANDROID_UPLOAD_KEY_PASSWORD')
+def releaseSigningConfigured = [
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { value -> value != null && !value.isBlank() }
+
+android {
+    namespace 'com.gredice.dostava'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.gredice.dostava'
+        minSdk 28
+        targetSdk 36
+        versionCode providers.gradleProperty('GREDICE_VERSION_CODE').get().toInteger()
+        versionName providers.gradleProperty('GREDICE_VERSION_NAME').get()
+
+        resValue 'string', 'launchUrl', 'https://dostava.gredice.com/'
+        resValue 'string', 'hostName', 'dostava.gredice.com'
+        resValue 'string', 'providerAuthority', 'com.gredice.dostava.fileprovider'
+        resValue 'color', 'colorPrimary', '#166534'
+        resValue 'color', 'colorPrimaryDark', '#14532D'
+        resValue 'color', 'navigationColor', '#052E16'
+        resValue 'color', 'navigationColorDark', '#052E16'
+        resValue 'color', 'navigationDividerColor', '#166534'
+        resValue 'color', 'navigationDividerColorDark', '#166534'
+        resValue 'color', 'backgroundColor', '#F8FBF8'
+        resValue 'integer', 'splashScreenFadeOutDuration', '250'
+        resValue 'string', 'fallbackType', 'customtabs'
+        resValue 'string', 'orientation', 'portrait'
+    }
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+dependencies {
+    implementation 'androidx.car.app:app-projected:1.7.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.2'
+
+    testImplementation 'junit:junit:4.13.2'
+}

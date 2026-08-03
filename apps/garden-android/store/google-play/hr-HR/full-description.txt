@@ -1,0 +1,14 @@
+Gredice spajaju virtualni vrt sa stvarnim povrćem.
+
+Složi vrt po svojoj mjeri, odaberi gredice i zasadi povrće koje želiš. U aplikaciji pratiš svoj vrt i brineš o biljkama, a kada je urod spreman preuzimaš stvarno povrće iz svojih gredica.
+
+Što možeš napraviti:
+• urediti vlastiti virtualni vrt
+• odabrati i zasaditi povrće
+• pratiti razvoj biljaka i stanje vrta
+• obaviti radove ili ih prepustiti Gredicama
+• pregledati košaricu i dogovoriti preuzimanje uroda
+
+Nema pretplate ni oglasa. Plaćaš samo ono što odabereš za svoj vrt, a ista prijava i podaci dostupni su ti na webu i u Android aplikaciji.
+
+Gredice su za ljude koji žele svoje povrće i iskustvo vrta, bez potrebe za vlastitim zemljištem, alatom i svakodnevnim odlaskom na lokaciju.

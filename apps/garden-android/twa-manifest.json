@@ -19,15 +19,14 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1",
-  "appVersionCode": 1,
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://vrt.gredice.com/manifest.json",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {
-      "enabled": true
+      "enabled": false
     }
   },
   "alphaDependencies": {
@@ -37,11 +36,17 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://vrt.gredice.com/",
-  "minSdkVersion": 21,
+  "minSdkVersion": 23,
   "orientation": "any",
-  "fingerprints": [],
+  "fingerprints": [
+    {
+      "name": "Google Play app signing",
+      "value": "33:8A:CB:39:A4:46:2F:AD:42:1B:97:63:F2:76:CE:2E:91:47:01:E0:79:37:61:C2:55:3E:EE:E3:DD:39:77:F2"
+    }
+  ],
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "protocolHandlers": [],
-  "appVersion": "1"
+  "appVersion": "2.0.0",
+  "launchHandlerClientMode": "navigate-existing"
 }

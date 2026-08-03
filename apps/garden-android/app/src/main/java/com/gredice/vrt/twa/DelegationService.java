@@ -1,18 +1,6 @@
 package com.gredice.vrt.twa;
 
-
-import com.google.androidbrowserhelper.locationdelegation.LocationDelegationExtraCommandHandler;
-
-
-public class DelegationService extends
-        com.google.androidbrowserhelper.trusted.DelegationService {
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        
-            registerExtraCommandHandler(new LocationDelegationExtraCommandHandler());
-        
-    }
+/** Delegates web-push notifications from the trusted origin to Android. */
+public final class DelegationService
+        extends com.google.androidbrowserhelper.trusted.DelegationService {
 }
-

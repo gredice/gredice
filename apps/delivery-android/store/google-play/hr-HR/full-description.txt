@@ -1,0 +1,5 @@
+Gredice Dostava je pilot-aplikacija za zatvoreno testiranje podrške u sustavu Android Auto.
+
+Na zaslonu vozila prikazuje dvije ogledne stanice na području Zagreba, bez podataka stvarnih kupaca. Odabirom stanice lokacija se otvara u zadanoj navigacijskoj aplikaciji vozača.
+
+Aplikacija ne pruža vlastite upute za skretanje, ne prati lokaciju vozača i ne mijenja stanje dostave. Namijenjena je isključivo odobrenim testerima za provjeru prikaza stanica i sigurnog prijelaza u navigaciju u vozilu.

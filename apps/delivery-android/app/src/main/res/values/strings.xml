@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gredice Dostava</string>
+    <string name="car_screen_title">Stanice dostave</string>
+    <string name="next_stop">Sljedeća</string>
+    <string name="later_stop">Nakon toga</string>
+    <string name="navigation_unavailable">Navigaciju trenutačno nije moguće otvoriti.</string>
+    <string name="asset_statements">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://dostava.gredice.com\"}}]</string>
+</resources>
