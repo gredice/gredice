@@ -1,6 +1,33 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { collectStripePagesExhaustively } from '@gredice/stripe/server';
+import {
+    collectStripePagesExhaustively,
+    getStripeCheckoutSessionCreationRange,
+} from '@gredice/stripe/server';
+
+test('bounds a customer scan to the checkout creation window', () => {
+    const createdAt = new Date('2026-08-03T20:00:00.000Z');
+    assert.deepEqual(
+        getStripeCheckoutSessionCreationRange({
+            createdAt,
+            expiresAt: new Date('2026-08-03T20:30:00.000Z'),
+        }),
+        {
+            gte: Date.parse('2026-08-03T19:55:00.000Z') / 1000,
+            lte: Date.parse('2026-08-03T20:35:00.000Z') / 1000,
+        },
+    );
+    assert.deepEqual(
+        getStripeCheckoutSessionCreationRange({
+            createdAt,
+            expiresAt: null,
+        }),
+        {
+            gte: Date.parse('2026-08-03T19:55:00.000Z') / 1000,
+            lte: Date.parse('2026-08-03T20:05:20.000Z') / 1000,
+        },
+    );
+});
 
 test('collects every Stripe page with a stable forward cursor', async () => {
     const cursors: Array<string | undefined> = [];
@@ -62,6 +89,21 @@ test('fails closed for invalid, truncated, and failed pagination', async () => {
     assert.deepEqual(requestFailure, {
         pageCount: 0,
         reason: 'request_failed',
+        status: 'partial',
+    });
+
+    let now = 0;
+    const timeLimit = await collectStripePagesExhaustively({
+        fetchPage: async () => {
+            now += 10;
+            return { data: [{ id: `cs_${now.toString()}` }], hasMore: true };
+        },
+        maxDurationMs: 10,
+        now: () => now,
+    });
+    assert.deepEqual(timeLimit, {
+        pageCount: 1,
+        reason: 'time_limit',
         status: 'partial',
     });
 });
