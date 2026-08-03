@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     accountDeletionStartedEventType,
     accounts,
+    assignStripeCustomerId,
     bindStripeCheckoutAttempt,
     createStripeCheckoutAttempt,
     deleteAccountWithDependencies,
@@ -81,6 +82,7 @@ function snapshotFromCart(
 
 async function createCartWithItem(existingAccountId?: string) {
     const accountId = existingAccountId ?? (await createTestAccount());
+    await assignStripeCustomerId(accountId, 'checkout-test-customer');
     const cart = await getOrCreateShoppingCart(accountId);
     assert.ok(cart);
     const itemId = await upsertOrRemoveCartItem(
@@ -362,6 +364,23 @@ test('snapshot creation rejects cart membership and amount changes before Stripe
         () => createStripeCheckoutAttempt(missingItemSnapshot, { accountId }),
         StripeCheckoutAttemptConflictError,
     );
+});
+
+test('snapshot creation rejects a customer that lost the canonical assignment race', async () => {
+    createTestDb();
+    const { accountId, cart } = await createCartWithItem();
+    const snapshot = snapshotFromCart(cart);
+    await assignStripeCustomerId(accountId, 'checkout-race-winner');
+
+    await assert.rejects(
+        () => createStripeCheckoutAttempt(snapshot, { accountId }),
+        (error) => {
+            assert.ok(error instanceof StripeCheckoutAttemptConflictError);
+            assert.equal(error.category, 'checkout_identity_changed');
+            return true;
+        },
+    );
+    assert.equal(await getActiveStripeCheckoutAttempt(cart.id), undefined);
 });
 
 test('an active snapshot wins account deletion before any garden mutation', async () => {

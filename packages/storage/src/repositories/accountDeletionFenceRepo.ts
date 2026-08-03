@@ -22,7 +22,10 @@ export async function lockAccountForDeletionLifecycle(
     db: AccountDeletionFenceTransaction,
 ) {
     const [account] = await db
-        .select({ id: accounts.id })
+        .select({
+            id: accounts.id,
+            stripeCustomerId: accounts.stripeCustomerId,
+        })
         .from(accounts)
         .where(eq(accounts.id, accountId))
         .for('update')

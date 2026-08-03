@@ -7,8 +7,12 @@ import {
     outletOffers,
     type SelectOutletOffer,
     type SelectOutletOfferReservation,
+    shoppingCartItems,
+    shoppingCarts,
 } from '../schema';
 import { storage } from '../storage';
+import { withCheckoutCartItemLock } from './checkoutCartItemLock';
+import { assertNoActiveStripeCheckoutAttempt } from './stripeCheckoutAttemptRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -461,20 +465,62 @@ async function reserveOutletOfferInTransaction(
     return created;
 }
 
+async function lockCartAndAssertOutletMutationAllowed(
+    cartId: number,
+    db: TransactionClient,
+) {
+    const [cart] = await db
+        .select({
+            accountId: shoppingCarts.accountId,
+            id: shoppingCarts.id,
+            isDeleted: shoppingCarts.isDeleted,
+            status: shoppingCarts.status,
+        })
+        .from(shoppingCarts)
+        .where(eq(shoppingCarts.id, cartId))
+        .for('update')
+        .limit(1);
+    if (!cart || cart.isDeleted || cart.status !== 'new') {
+        throw new OutletReservationUnavailableError(
+            'Outlet reservation cart is no longer mutable.',
+        );
+    }
+    await assertNoActiveStripeCheckoutAttempt(cartId, db);
+    return cart;
+}
+
 export async function reserveOutletOffer(options: ReserveOutletOfferOptions) {
     if (options.db) {
         return reserveOutletOfferInTransaction(options, options.db);
     }
 
-    return storage().transaction((tx) =>
-        reserveOutletOfferInTransaction(options, tx),
-    );
+    return withCheckoutCartItemLock(options.cartItemId, async (tx) => {
+        const cart = await lockCartAndAssertOutletMutationAllowed(
+            options.cartId,
+            tx,
+        );
+        const item = await tx.query.shoppingCartItems.findFirst({
+            columns: { cartId: true, isDeleted: true },
+            where: eq(shoppingCartItems.id, options.cartItemId),
+        });
+        if (
+            cart.accountId !== options.accountId ||
+            !item ||
+            item.cartId !== options.cartId ||
+            item.isDeleted
+        ) {
+            throw new OutletReservationUnavailableError(
+                'Outlet reservation cart is no longer mutable.',
+            );
+        }
+        return reserveOutletOfferInTransaction(options, tx);
+    });
 }
 
-export async function releaseOutletReservationForCartItem(
+async function releaseOutletReservationForCartItemInDatabase(
     cartItemId: number,
-    now = new Date(),
-    db: DatabaseClient = storage(),
+    now: Date,
+    db: DatabaseClient,
 ) {
     await db
         .update(outletOfferReservations)
@@ -490,45 +536,61 @@ export async function releaseOutletReservationForCartItem(
         );
 }
 
+export async function releaseOutletReservationForCartItem(
+    cartItemId: number,
+    now = new Date(),
+    db?: DatabaseClient,
+) {
+    if (db) {
+        return releaseOutletReservationForCartItemInDatabase(
+            cartItemId,
+            now,
+            db,
+        );
+    }
+    return withCheckoutCartItemLock(cartItemId, async (tx) => {
+        const item = await tx.query.shoppingCartItems.findFirst({
+            columns: { cartId: true },
+            where: eq(shoppingCartItems.id, cartItemId),
+        });
+        if (!item) {
+            return;
+        }
+        await lockCartAndAssertOutletMutationAllowed(item.cartId, tx);
+        await releaseOutletReservationForCartItemInDatabase(
+            cartItemId,
+            now,
+            tx,
+        );
+    });
+}
+
 export async function releaseOutletReservationsForCart(
     cartId: number,
     now = new Date(),
-    db: DatabaseClient = storage(),
+    db?: DatabaseClient,
 ) {
-    await db
-        .update(outletOfferReservations)
-        .set({
-            status: 'released',
-            releasedAt: now,
-        })
-        .where(
-            and(
-                eq(outletOfferReservations.cartId, cartId),
-                eq(outletOfferReservations.status, 'held'),
-            ),
-        );
-}
-
-export async function releaseOutletReservationsForCheckoutAttempt(
-    cartId: number,
-    reservationIds: readonly number[],
-    now = new Date(),
-    db: DatabaseClient = storage(),
-) {
-    const uniqueReservationIds = [...new Set(reservationIds)];
-    if (uniqueReservationIds.length === 0) {
+    const release = async (database: DatabaseClient) =>
+        database
+            .update(outletOfferReservations)
+            .set({
+                status: 'released',
+                releasedAt: now,
+            })
+            .where(
+                and(
+                    eq(outletOfferReservations.cartId, cartId),
+                    eq(outletOfferReservations.status, 'held'),
+                ),
+            );
+    if (db) {
+        await release(db);
         return;
     }
-    await db
-        .update(outletOfferReservations)
-        .set({ status: 'released', releasedAt: now })
-        .where(
-            and(
-                eq(outletOfferReservations.cartId, cartId),
-                inArray(outletOfferReservations.id, uniqueReservationIds),
-                eq(outletOfferReservations.status, 'held'),
-            ),
-        );
+    await storage().transaction(async (tx) => {
+        await lockCartAndAssertOutletMutationAllowed(cartId, tx);
+        await release(tx);
+    });
 }
 
 export async function convertOutletReservationForCartItem(

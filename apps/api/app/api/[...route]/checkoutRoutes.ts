@@ -1,5 +1,6 @@
 import {
     assignStripeCustomerId,
+    assignStripeCustomerIdIfUnchanged,
     bindStripeCheckoutAttempt,
     cartContainsDeliverableItems,
     consumeInventoryItem,
@@ -582,6 +583,24 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     throw error;
                 }
             }
+            if (hasOutletStripeItems) {
+                cartInfo = await checkoutTiming.measure(
+                    'cart_outlet_revalidation',
+                    () =>
+                        getCartInfo(cart.items, accountId, {
+                            checkoutOperationMappings,
+                        }),
+                );
+                if (!cartInfo.allowPurchase) {
+                    return context.json(
+                        {
+                            code: 'CHECKOUT_CART_CHANGED',
+                            error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
+                        },
+                        409,
+                    );
+                }
+            }
 
             const requiresStripePayment = cartInfo.items.some(
                 (item) => item.status !== 'paid' && item.currency === 'eur',
@@ -958,12 +977,15 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     name: user.userName,
                     stripeCustomerId: account.stripeCustomerId ?? undefined,
                 });
-                if (account.stripeCustomerId !== resolvedCustomerId) {
-                    // Persist before the durable attempt so recovery always
-                    // derives the exact customer used by the idempotent request.
-                    await assignStripeCustomerId(
+                const canonicalCustomerId =
+                    await assignStripeCustomerIdIfUnchanged(
                         account.id,
+                        account.stripeCustomerId,
                         resolvedCustomerId,
+                    );
+                if (!canonicalCustomerId) {
+                    throw new StripeCheckoutAttemptConflictError(
+                        'checkout_identity_changed',
                     );
                 }
                 const checkoutExpiresAt = hasOutletStripeItems
@@ -972,7 +994,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 const checkoutAttempt = buildStripeCheckoutAttemptSnapshot({
                     cartId: cart.id,
                     checkoutAdditionalDataByCartItemId,
-                    customerId: resolvedCustomerId,
+                    customerId: canonicalCustomerId,
                     expiresAt: checkoutExpiresAt,
                     harvestDates: canonicalHarvestDates,
                     items: cartInfo.items,
@@ -991,7 +1013,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                             const recovery = await recoverAttempt(
                                 activeAttempt,
                                 cart.items,
-                                resolvedCustomerId,
+                                canonicalCustomerId,
                             );
                             if (recovery.status === 'open' && recovery.url) {
                                 return context.json({
@@ -1029,7 +1051,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                         recoverAttempt(
                             { snapshot: checkoutAttempt },
                             cart.items,
-                            resolvedCustomerId,
+                            canonicalCustomerId,
                         ),
                 );
                 if (recovery.status !== 'open' || !recovery.url) {

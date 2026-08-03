@@ -8,7 +8,10 @@ import {
     type CheckoutCartItemLockTransaction,
     withCheckoutCartItemLocks,
 } from './checkoutCartItemLock';
-import { releaseOutletReservationsForCheckoutAttempt } from './outletOffersRepo';
+import {
+    getCheckoutOutletReservationConflict,
+    releaseOutletReservationsForCheckoutAttempt,
+} from './outletCheckoutReservationRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = CheckoutCartItemLockTransaction;
@@ -616,7 +619,7 @@ async function lockCartRow(cartId: number, db: TransactionClient) {
 
 export async function createStripeCheckoutAttempt(
     snapshot: StripeCheckoutAttemptSnapshot,
-    { accountId }: { accountId: string },
+    { accountId, now = new Date() }: { accountId: string; now?: Date },
 ) {
     parseSnapshot(snapshot);
     const itemIds = snapshot.items.map((item) => item.id);
@@ -627,6 +630,15 @@ export async function createStripeCheckoutAttempt(
         const account = await lockAccountAndAssertNotDeleting(accountId, db);
         if (!account) {
             throw new StripeCheckoutAttemptConflictError('account_inactive');
+        }
+        if (
+            !account.stripeCustomerId ||
+            fingerprintStripeCheckoutValue(account.stripeCustomerId) !==
+                snapshot.stripeSession.customerFingerprint
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_identity_changed',
+            );
         }
         const cart = await lockCartRow(snapshot.cartId, db);
         if (
@@ -649,6 +661,51 @@ export async function createStripeCheckoutAttempt(
             )
             .orderBy(asc(shoppingCartItems.id));
         assertStripeCheckoutAttemptSnapshotMatchesLiveCart(snapshot, liveItems);
+        const outletReservationConflict =
+            await getCheckoutOutletReservationConflict(
+                {
+                    accountId,
+                    cartId: snapshot.cartId,
+                    cartItemIds: snapshot.items.map((item) => item.id),
+                    expectations: snapshot.items.flatMap((item) =>
+                        item.outlet
+                            ? [
+                                  {
+                                      cartItemId: item.id,
+                                      comparePriceCents:
+                                          item.outlet.comparePriceCents,
+                                      ...(item.paymentKind === 'stripe' &&
+                                      snapshot.stripeSession.expiresAt
+                                          ? {
+                                                expiresAt:
+                                                    snapshot.stripeSession
+                                                        .expiresAt,
+                                            }
+                                          : {}),
+                                      id: item.outlet.reservationId,
+                                      initialPlantStatus:
+                                          item.outlet.initialPlantStatus,
+                                      offerId: item.outlet.offerId,
+                                      priceCents: item.outlet.priceCents,
+                                      quantity: item.amount,
+                                      sowingDate: item.outlet.sowingDate,
+                                      status:
+                                          item.status === 'paid'
+                                              ? ('converted' as const)
+                                              : ('held' as const),
+                                  },
+                              ]
+                            : [],
+                    ),
+                    now,
+                },
+                db,
+            );
+        if (outletReservationConflict) {
+            throw new StripeCheckoutAttemptConflictError(
+                outletReservationConflict,
+            );
+        }
         await db.insert(events).values({
             aggregateId: cartAggregateId(snapshot.cartId),
             data: snapshot,
@@ -756,35 +813,94 @@ export async function releaseStripeCheckoutAttempt({
 
 export async function verifyStripeCheckoutAttemptLiveCart(
     attempt: StripeCheckoutAttempt,
-    db: DatabaseClient = storage(),
 ) {
-    const cart = await db.query.shoppingCarts.findFirst({
-        columns: { accountId: true, id: true, isDeleted: true, status: true },
-        where: eq(shoppingCarts.id, attempt.snapshot.cartId),
-    });
-    if (
-        !cart ||
-        cart.isDeleted ||
-        (cart.status !== 'new' && cart.status !== 'paid') ||
-        !cart.accountId
-    ) {
-        throw new StripeCheckoutAttemptConflictError('cart_inactive');
-    }
-    const liveItems = await db
-        .select()
-        .from(shoppingCartItems)
-        .where(
-            and(
-                eq(shoppingCartItems.cartId, attempt.snapshot.cartId),
-                eq(shoppingCartItems.isDeleted, false),
-            ),
-        )
-        .orderBy(asc(shoppingCartItems.id));
-    assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
-        attempt.snapshot,
-        liveItems,
+    return withCheckoutCartItemLocks(
+        attempt.snapshot.items.map((item) => item.id),
+        async (db) => {
+            const cart = await db.query.shoppingCarts.findFirst({
+                columns: {
+                    accountId: true,
+                    id: true,
+                    isDeleted: true,
+                    status: true,
+                },
+                where: eq(shoppingCarts.id, attempt.snapshot.cartId),
+            });
+            if (
+                !cart ||
+                cart.isDeleted ||
+                (cart.status !== 'new' && cart.status !== 'paid') ||
+                !cart.accountId
+            ) {
+                throw new StripeCheckoutAttemptConflictError('cart_inactive');
+            }
+            const liveItems = await db
+                .select()
+                .from(shoppingCartItems)
+                .where(
+                    and(
+                        eq(shoppingCartItems.cartId, attempt.snapshot.cartId),
+                        eq(shoppingCartItems.isDeleted, false),
+                    ),
+                )
+                .orderBy(asc(shoppingCartItems.id));
+            assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
+                attempt.snapshot,
+                liveItems,
+            );
+            const outletReservationConflict =
+                await getCheckoutOutletReservationConflict(
+                    {
+                        accountId: cart.accountId,
+                        cartId: attempt.snapshot.cartId,
+                        cartItemIds: attempt.snapshot.items.map(
+                            (item) => item.id,
+                        ),
+                        expectations: attempt.snapshot.items.flatMap((item) =>
+                            item.outlet
+                                ? [
+                                      {
+                                          cartItemId: item.id,
+                                          comparePriceCents:
+                                              item.outlet.comparePriceCents,
+                                          ...(item.paymentKind === 'stripe' &&
+                                          attempt.snapshot.stripeSession
+                                              .expiresAt
+                                              ? {
+                                                    expiresAt:
+                                                        attempt.snapshot
+                                                            .stripeSession
+                                                            .expiresAt,
+                                                }
+                                              : {}),
+                                          id: item.outlet.reservationId,
+                                          initialPlantStatus:
+                                              item.outlet.initialPlantStatus,
+                                          offerId: item.outlet.offerId,
+                                          priceCents: item.outlet.priceCents,
+                                          quantity: item.amount,
+                                          sowingDate: item.outlet.sowingDate,
+                                          status:
+                                              item.status === 'paid'
+                                                  ? ('converted' as const)
+                                                  : ('held' as const),
+                                      },
+                                  ]
+                                : [],
+                        ),
+                        now: new Date(),
+                        requireActiveHolds: false,
+                    },
+                    db,
+                );
+            if (outletReservationConflict) {
+                throw new StripeCheckoutAttemptConflictError(
+                    outletReservationConflict,
+                );
+            }
+            return { accountId: cart.accountId, items: liveItems };
+        },
     );
-    return { accountId: cart.accountId, items: liveItems };
 }
 
 export const stripeCheckoutAttemptEventTypes = eventTypes;

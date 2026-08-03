@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    assignStripeCustomerId,
     cleanupOutletLifecycle,
     convertOutletReservationForCartItem,
     createEntity,
@@ -15,6 +16,7 @@ import {
     getOutletOffers,
     getShoppingCart,
     OutletOfferUnavailableError,
+    releaseOutletReservationForCartItem,
     releaseStripeCheckoutAttempt,
     reserveOutletOffer,
     type StripeCheckoutAttemptSnapshot,
@@ -49,6 +51,7 @@ function addMinutes(date: Date, minutes: number) {
 }
 
 async function createCartItem(accountId: string, plantSortId: number) {
+    await assignStripeCustomerId(accountId, 'cus_outlet');
     const cart = await getOrCreateShoppingCart(accountId);
     assert.ok(cart, 'Cart should be created');
 
@@ -146,7 +149,7 @@ function outletAttemptSnapshot({
         stripeSession: {
             allowPromotionCodes: true,
             customerFingerprint: fingerprintStripeCheckoutValue('cus_outlet'),
-            expiresAt: '2026-05-01T11:00:00.000Z',
+            expiresAt: reservation.holdExpiresAt.toISOString(),
             items: [
                 {
                     cartItemId,
@@ -278,7 +281,7 @@ test('stale attempt release cannot release a later attempt reservation', async (
         entityId: plantSortId.toString(),
         reservation: firstReservation,
     });
-    await createStripeCheckoutAttempt(firstAttempt, { accountId });
+    await createStripeCheckoutAttempt(firstAttempt, { accountId, now });
     await releaseStripeCheckoutAttempt({
         attemptId: firstAttempt.attemptId,
         cartId: cart.id,
@@ -304,7 +307,10 @@ test('stale attempt release cannot release a later attempt reservation', async (
         entityId: plantSortId.toString(),
         reservation: secondReservation,
     });
-    await createStripeCheckoutAttempt(secondAttempt, { accountId });
+    await createStripeCheckoutAttempt(secondAttempt, {
+        accountId,
+        now: addMinutes(now, 1),
+    });
 
     await releaseStripeCheckoutAttempt({
         attemptId: firstAttempt.attemptId,
@@ -315,6 +321,87 @@ test('stale attempt release cannot release a later attempt reservation', async (
     assert.equal(
         (await getOutletOfferReservation(secondReservation.id))?.status,
         'held',
+    );
+});
+
+test('checkout rejects an outlet switch and active attempt fences later reservations', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const firstOfferId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const secondOfferId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const accountId = await createTestAccount();
+    const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
+    const firstReservation = await reserveOutletOffer({
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        holdMinutes: 31,
+        now,
+        offerId: firstOfferId,
+    });
+    const staleAttempt = outletAttemptSnapshot({
+        cartId: cart.id,
+        cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: firstReservation,
+    });
+    const switchedAt = addMinutes(now, 1);
+    const secondReservation = await reserveOutletOffer({
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        holdMinutes: 31,
+        now: switchedAt,
+        offerId: secondOfferId,
+    });
+
+    await assert.rejects(
+        () =>
+            createStripeCheckoutAttempt(staleAttempt, {
+                accountId,
+                now: switchedAt,
+            }),
+        (error) => {
+            assert.ok(error instanceof Error);
+            assert.match(error.message, /outlet_reservation/u);
+            return true;
+        },
+    );
+
+    const currentAttempt = outletAttemptSnapshot({
+        cartId: cart.id,
+        cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: secondReservation,
+    });
+    await createStripeCheckoutAttempt(currentAttempt, {
+        accountId,
+        now: switchedAt,
+    });
+    await assert.rejects(
+        () =>
+            reserveOutletOffer({
+                accountId,
+                cartId: cart.id,
+                cartItemId,
+                holdMinutes: 31,
+                now: addMinutes(switchedAt, 1),
+                offerId: firstOfferId,
+            }),
+        /active Stripe checkout attempt/u,
+    );
+    await assert.rejects(
+        () => releaseOutletReservationForCartItem(cartItemId),
+        /active Stripe checkout attempt/u,
     );
 });
 
