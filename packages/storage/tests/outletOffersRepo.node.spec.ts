@@ -340,7 +340,7 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
     });
     const secondOfferId = await createPublishedOffer({
         plantSortId,
-        quantity: 2,
+        quantity: 1,
         now,
     });
     const otherPlantSortId = await createTestPlantSort();
@@ -416,13 +416,27 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
         () => releaseOutletReservationForCartItem(cartItemId),
         /active Stripe checkout attempt/u,
     );
-    await bindStripeCheckoutAttempt({
-        attemptId: currentAttempt.attemptId,
-        cartId: cart.id,
-        sessionId: 'cs_delayed_outlet',
-    });
     const delayedWebhookAt = new Date(
         secondReservation.holdExpiresAt.getTime() + 1,
+    );
+    const protectedOffer = await getOutletOffer(
+        secondOfferId,
+        delayedWebhookAt,
+    );
+    assert.equal(protectedOffer?.reservedQuantity, 1);
+    assert.equal(protectedOffer?.remainingQuantity, 0);
+    const otherAccountId = await createTestAccount();
+    const otherCartItem = await createCartItem(otherAccountId, plantSortId);
+    await assert.rejects(
+        () =>
+            reserveOutletOffer({
+                accountId: otherAccountId,
+                cartId: otherCartItem.cart.id,
+                cartItemId: otherCartItem.cartItemId,
+                now: delayedWebhookAt,
+                offerId: secondOfferId,
+            }),
+        OutletOfferUnavailableError,
     );
     const releasedAtExpiry = await expireOutletReservations(delayedWebhookAt);
     assert.equal(releasedAtExpiry.includes(secondReservation.id), false);
@@ -430,6 +444,11 @@ test('checkout rejects an outlet switch and active attempt fences later reservat
         (await getOutletOfferReservation(secondReservation.id))?.status,
         'held',
     );
+    await bindStripeCheckoutAttempt({
+        attemptId: currentAttempt.attemptId,
+        cartId: cart.id,
+        sessionId: 'cs_delayed_outlet',
+    });
     assert.equal(
         (
             await convertOutletReservationForCartItem(
@@ -562,6 +581,7 @@ test('cleanupOutletLifecycle releases expired holds and closes expired offers', 
     const later = addMinutes(now, 61);
     const plantSortId = await createTestPlantSort();
     const offerId = await createPublishedOffer({ plantSortId, now });
+    const secondOfferId = await createPublishedOffer({ plantSortId, now });
     const accountId = await createTestAccount();
     const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
     const reservation = await reserveOutletOffer({
@@ -576,11 +596,18 @@ test('cleanupOutletLifecycle releases expired holds and closes expired offers', 
 
     assert.ok(cleanup.releasedReservationIds.includes(reservation.id));
     assert.ok(cleanup.closedOfferIds.includes(offerId));
+    assert.ok(cleanup.closedOfferIds.includes(secondOfferId));
+    assert.deepEqual(
+        cleanup.closedOfferIds,
+        [...cleanup.closedOfferIds].sort((left, right) => left - right),
+    );
 
     const releasedReservation = await getOutletOfferReservation(reservation.id);
     const closedOffer = await getOutletOffer(offerId, later);
+    const secondClosedOffer = await getOutletOffer(secondOfferId, later);
     assert.equal(releasedReservation?.status, 'released');
     assert.equal(closedOffer?.status, 'closed');
+    assert.equal(secondClosedOffer?.status, 'closed');
 });
 
 test('removing a cart item releases its outlet reservation', async () => {

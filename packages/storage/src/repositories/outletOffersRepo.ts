@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lte, ne } from 'drizzle-orm';
 import {
     type InsertOutletOffer,
     type OutletOfferReservationStatus,
@@ -77,20 +77,22 @@ function activeOfferWhere(now: Date) {
     );
 }
 
-function activeHeldReservationWhere(now: Date) {
-    return and(
-        eq(outletOfferReservations.status, 'held'),
-        gt(outletOfferReservations.holdExpiresAt, now),
-    );
-}
+type AvailabilityReservation = Pick<
+    SelectOutletOfferReservation,
+    | 'cartId'
+    | 'cartItemId'
+    | 'holdExpiresAt'
+    | 'id'
+    | 'outletOfferId'
+    | 'quantity'
+    | 'status'
+>;
 
 function countQuantity(
-    reservations: Pick<
-        SelectOutletOfferReservation,
-        'quantity' | 'status' | 'holdExpiresAt'
-    >[],
+    reservations: readonly AvailabilityReservation[],
     now: Date,
     status: OutletOfferReservationStatus,
+    protectedReservationIds: ReadonlySet<number> = new Set(),
 ) {
     return reservations.reduce((sum, reservation) => {
         if (reservation.status !== status) {
@@ -99,7 +101,8 @@ function countQuantity(
 
         if (
             status === 'held' &&
-            reservation.holdExpiresAt.getTime() <= now.getTime()
+            reservation.holdExpiresAt.getTime() <= now.getTime() &&
+            !protectedReservationIds.has(reservation.id)
         ) {
             return sum;
         }
@@ -110,13 +113,16 @@ function countQuantity(
 
 function withAvailability(
     offer: SelectOutletOffer,
-    reservations: Pick<
-        SelectOutletOfferReservation,
-        'quantity' | 'status' | 'holdExpiresAt'
-    >[],
+    reservations: readonly AvailabilityReservation[],
     now: Date,
+    protectedReservationIds: ReadonlySet<number>,
 ): OutletOfferWithAvailability {
-    const reservedQuantity = countQuantity(reservations, now, 'held');
+    const reservedQuantity = countQuantity(
+        reservations,
+        now,
+        'held',
+        protectedReservationIds,
+    );
     const soldQuantity = countQuantity(reservations, now, 'converted');
     return {
         ...offer,
@@ -140,6 +146,61 @@ async function getReservationsForOfferIds(
     return db.query.outletOfferReservations.findMany({
         where: inArray(outletOfferReservations.outletOfferId, offerIds),
     });
+}
+
+async function getActiveAttemptProtectedReservationIds(
+    reservations: readonly AvailabilityReservation[],
+    now: Date,
+    db: DatabaseClient,
+) {
+    const expiredHeldReservationsByCartId = new Map<
+        number,
+        Map<number, AvailabilityReservation>
+    >();
+    for (const reservation of reservations) {
+        if (
+            reservation.status !== 'held' ||
+            reservation.holdExpiresAt.getTime() > now.getTime()
+        ) {
+            continue;
+        }
+        const cartReservations =
+            expiredHeldReservationsByCartId.get(reservation.cartId) ??
+            new Map<number, AvailabilityReservation>();
+        cartReservations.set(reservation.id, reservation);
+        expiredHeldReservationsByCartId.set(
+            reservation.cartId,
+            cartReservations,
+        );
+    }
+
+    const protectedReservationIds = new Set<number>();
+    const cartIds = [...expiredHeldReservationsByCartId.keys()].sort(
+        (left, right) => left - right,
+    );
+    for (const cartId of cartIds) {
+        const activeAttempt = await getActiveStripeCheckoutAttempt(cartId, db);
+        if (!activeAttempt) {
+            continue;
+        }
+        const cartReservations = expiredHeldReservationsByCartId.get(cartId);
+        if (!cartReservations) {
+            continue;
+        }
+        for (const item of activeAttempt.snapshot.items) {
+            if (!item.outlet) {
+                continue;
+            }
+            const reservation = cartReservations.get(item.outlet.reservationId);
+            if (
+                reservation?.cartItemId === item.id &&
+                reservation.outletOfferId === item.outlet.offerId
+            ) {
+                protectedReservationIds.add(reservation.id);
+            }
+        }
+    }
+    return protectedReservationIds;
 }
 
 export async function createOutletOffer(
@@ -206,7 +267,9 @@ export async function getOutletOffer(
     }
 
     const reservations = await getReservationsForOfferIds([offer.id], db);
-    return withAvailability(offer, reservations, now);
+    const protectedReservationIds =
+        await getActiveAttemptProtectedReservationIds(reservations, now, db);
+    return withAvailability(offer, reservations, now, protectedReservationIds);
 }
 
 export async function getOutletOfferReservation(
@@ -297,6 +360,8 @@ export async function getOutletOffers({
         offers.map((offer) => offer.id),
         db,
     );
+    const protectedReservationIds =
+        await getActiveAttemptProtectedReservationIds(reservations, now, db);
     const reservationsByOfferId = new Map<
         number,
         SelectOutletOfferReservation[]
@@ -309,7 +374,12 @@ export async function getOutletOffers({
     }
 
     const offersWithAvailability = offers.map((offer) =>
-        withAvailability(offer, reservationsByOfferId.get(offer.id) ?? [], now),
+        withAvailability(
+            offer,
+            reservationsByOfferId.get(offer.id) ?? [],
+            now,
+            protectedReservationIds,
+        ),
     );
 
     return includeUnavailable || statuses?.length
@@ -335,7 +405,7 @@ async function lockOutletOffer(
     return offer ?? null;
 }
 
-async function getActiveReservedQuantity({
+async function getReservedAndConvertedQuantities({
     offerId,
     now,
     excludeReservationId,
@@ -346,49 +416,31 @@ async function getActiveReservedQuantity({
     excludeReservationId?: number;
     db: TransactionClient;
 }) {
-    const [row] = await db
-        .select({
-            quantity: sql<number>`coalesce(sum(${outletOfferReservations.quantity}), 0)::int`,
-        })
+    const reservations = await db
+        .select()
         .from(outletOfferReservations)
         .where(
             and(
                 eq(outletOfferReservations.outletOfferId, offerId),
-                activeHeldReservationWhere(now),
+                inArray(outletOfferReservations.status, ['held', 'converted']),
                 excludeReservationId
                     ? ne(outletOfferReservations.id, excludeReservationId)
                     : undefined,
             ),
-        );
-
-    return row?.quantity ?? 0;
-}
-
-async function getConvertedQuantity({
-    offerId,
-    excludeReservationId,
-    db,
-}: {
-    offerId: number;
-    excludeReservationId?: number;
-    db: TransactionClient;
-}) {
-    const [row] = await db
-        .select({
-            quantity: sql<number>`coalesce(sum(${outletOfferReservations.quantity}), 0)::int`,
-        })
-        .from(outletOfferReservations)
-        .where(
-            and(
-                eq(outletOfferReservations.outletOfferId, offerId),
-                eq(outletOfferReservations.status, 'converted'),
-                excludeReservationId
-                    ? ne(outletOfferReservations.id, excludeReservationId)
-                    : undefined,
-            ),
-        );
-
-    return row?.quantity ?? 0;
+        )
+        .orderBy(asc(outletOfferReservations.id))
+        .for('update');
+    const protectedReservationIds =
+        await getActiveAttemptProtectedReservationIds(reservations, now, db);
+    return {
+        reservedQuantity: countQuantity(
+            reservations,
+            now,
+            'held',
+            protectedReservationIds,
+        ),
+        soldQuantity: countQuantity(reservations, now, 'converted'),
+    };
 }
 
 async function reserveOutletOfferInTransaction(
@@ -472,15 +524,13 @@ async function reserveOutletOfferInTransaction(
             ? existingReservation
             : null;
     const excludeReservationId = reusableReservation?.id;
-    const [reservedQuantity, soldQuantity] = await Promise.all([
-        getActiveReservedQuantity({
+    const { reservedQuantity, soldQuantity } =
+        await getReservedAndConvertedQuantities({
             offerId,
             now,
             excludeReservationId,
             db: tx,
-        }),
-        getConvertedQuantity({ offerId, excludeReservationId, db: tx }),
-    ]);
+        });
     const remainingQuantity = offer.quantity - reservedQuantity - soldQuantity;
     if (remainingQuantity < quantity) {
         throw new OutletOfferUnavailableError('Outlet offer is sold out.');
@@ -789,21 +839,44 @@ export async function expireOutletReservations(
 
 export async function closeExpiredOutletOffers(
     now = new Date(),
-    db: DatabaseClient = storage(),
+    db?: TransactionClient,
 ) {
-    const closed = await db
-        .update(outletOffers)
-        .set({ status: 'closed' })
-        .where(
-            and(
-                eq(outletOffers.isDeleted, false),
-                eq(outletOffers.status, 'published'),
-                lte(outletOffers.endAt, now),
-            ),
-        )
-        .returning({ id: outletOffers.id });
+    const close = async (tx: TransactionClient) => {
+        const expiredOffers = await tx
+            .select({ id: outletOffers.id })
+            .from(outletOffers)
+            .where(
+                and(
+                    eq(outletOffers.isDeleted, false),
+                    eq(outletOffers.status, 'published'),
+                    lte(outletOffers.endAt, now),
+                ),
+            )
+            .orderBy(asc(outletOffers.id))
+            .for('update');
+        if (expiredOffers.length === 0) {
+            return [];
+        }
+        const expiredOfferIds = expiredOffers.map((offer) => offer.id);
+        const closed = await tx
+            .update(outletOffers)
+            .set({ status: 'closed' })
+            .where(
+                and(
+                    inArray(outletOffers.id, expiredOfferIds),
+                    eq(outletOffers.isDeleted, false),
+                    eq(outletOffers.status, 'published'),
+                    lte(outletOffers.endAt, now),
+                ),
+            )
+            .returning({ id: outletOffers.id });
 
-    return closed.map((offer) => offer.id);
+        return closed
+            .map((offer) => offer.id)
+            .sort((left, right) => left - right);
+    };
+
+    return db ? close(db) : storage().transaction(close);
 }
 
 export async function cleanupOutletLifecycle(now = new Date()) {
