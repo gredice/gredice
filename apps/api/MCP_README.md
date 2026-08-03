@@ -36,8 +36,9 @@ value does not restrict origins.
 
 - Transport: Streamable HTTP JSON-RPC 2.0.
 - Supported versions: `2025-03-26` and `2024-11-05`.
-- Methods: `initialize`, `tools/list`, `tools/call`, `resources/list`,
-  `resources/templates/list`, and `prompts/list`.
+- Methods: `initialize`, `notifications/initialized`, `tools/list`,
+  `tools/call`, `resources/list`, `resources/templates/list`, and
+  `prompts/list`.
 - Maximum request body: 256 KiB.
 - Tool timeout: 8 seconds.
 - Rate limits: currently per runtime instance; shared production limits remain

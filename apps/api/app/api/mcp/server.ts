@@ -235,6 +235,24 @@ async function executeMcpTool({
     }
 }
 
+function buildMcpToolResult(result: unknown) {
+    const structuredContent =
+        result !== null && typeof result === 'object' && !Array.isArray(result)
+            ? result
+            : { value: result };
+
+    return {
+        ...structuredContent,
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(result) ?? 'null',
+            },
+        ],
+        structuredContent,
+    };
+}
+
 async function authenticateMcpRequest(
     request: NextRequest,
     requiredScope: string,
@@ -479,6 +497,13 @@ export async function handleMcpRequest(request: NextRequest) {
             );
         }
 
+        if (method === 'notifications/initialized') {
+            return new NextResponse(null, {
+                status: 202,
+                headers: { 'x-correlation-id': correlationId },
+            });
+        }
+
         if (method === 'tools/list') {
             return NextResponse.json(
                 {
@@ -609,7 +634,11 @@ export async function handleMcpRequest(request: NextRequest) {
                     role: authContext?.role,
                 });
                 return NextResponse.json(
-                    { jsonrpc: '2.0', id, result },
+                    {
+                        jsonrpc: '2.0',
+                        id,
+                        result: buildMcpToolResult(result),
+                    },
                     { headers: { 'x-correlation-id': correlationId } },
                 );
             } catch (error) {

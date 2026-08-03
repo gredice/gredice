@@ -1,3 +1,5 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { type APIRequestContext, expect, test } from '@playwright/test';
 
 const MCP_BASE_URL = '/api/mcp';
@@ -77,6 +79,64 @@ test.describe('MCP protocol surface', () => {
         expect(response.headers()['mcp-protocol-version']).toBe('2025-03-26');
     });
 
+    test('accepts the initialized notification without a JSON-RPC response', async ({
+        request,
+    }) => {
+        const response = await callMcp(request, {
+            jsonrpc: '2.0',
+            method: 'notifications/initialized',
+        });
+
+        expect(response.status()).toBe(202);
+        await expect(response.text()).resolves.toBe('');
+    });
+
+    test('connects and reads model-visible output through the official MCP client', async ({
+        request: _request,
+    }, testInfo) => {
+        const baseURL = testInfo.project.use.baseURL;
+        if (typeof baseURL !== 'string') {
+            throw new Error('Playwright baseURL is required');
+        }
+
+        const client = new Client(
+            { name: 'gredice-playwright', version: '1.0.0' },
+            { capabilities: {} },
+        );
+        const transport = new StreamableHTTPClientTransport(
+            new URL(MCP_BASE_URL, baseURL),
+        );
+
+        try {
+            await client.connect(transport);
+            const tools = await client.listTools();
+            expect(tools.tools).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        name: 'directories/get-plants',
+                    }),
+                ]),
+            );
+
+            const result = await client.callTool({
+                name: 'directories/get-plants',
+                arguments: { limit: 1, offset: 0 },
+            });
+            expect(result.content).toEqual([
+                expect.objectContaining({
+                    type: 'text',
+                    text: expect.any(String),
+                }),
+            ]);
+            expect(result.structuredContent).toMatchObject({
+                plants: expect.any(Array),
+                total: expect.any(Number),
+            });
+        } finally {
+            await client.close();
+        }
+    });
+
     test('lists tools and resources', async ({ request }) => {
         const toolsResponse = await callMcp(request, {
             jsonrpc: '2.0',
@@ -149,13 +209,28 @@ test.describe('MCP protocol surface', () => {
         });
 
         expect(response.status()).toBe(200);
-        await expect(response.json()).resolves.toMatchObject({
+        const payload = await response.json();
+        expect(payload).toMatchObject({
             jsonrpc: '2.0',
             id: 'directories-list',
             result: {
                 plants: expect.any(Array),
                 total: expect.any(Number),
+                content: [
+                    {
+                        type: 'text',
+                        text: expect.any(String),
+                    },
+                ],
+                structuredContent: {
+                    plants: expect.any(Array),
+                    total: expect.any(Number),
+                },
             },
+        });
+        expect(JSON.parse(payload.result.content[0].text)).toMatchObject({
+            plants: expect.any(Array),
+            total: expect.any(Number),
         });
     });
 
