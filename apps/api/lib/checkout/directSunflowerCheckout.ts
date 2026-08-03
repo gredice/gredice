@@ -1,4 +1,5 @@
 import {
+    getShoppingCart,
     lockShoppingCartForCheckout,
     spendSunflowersBatch,
     withCheckoutCartItemLocks,
@@ -14,63 +15,75 @@ import {
 type DirectSunflowerCheckoutDependencies = {
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
     calculateSunflowerReplayAmount: typeof calculateSunflowerReplayAmount;
+    getShoppingCart: typeof getShoppingCart;
     lockShoppingCartForCheckout: typeof lockShoppingCartForCheckout;
     spendSunflowersBatch: typeof spendSunflowersBatch;
     withCheckoutCartItemLocks: typeof withCheckoutCartItemLocks;
     withCheckoutCartItemProcessingLocks: typeof withCheckoutCartItemProcessingLocks;
 };
 
-type DirectSunflowerCheckoutPayment =
+export type DirectSunflowerCheckoutBatch = {
+    pendingItems: readonly ShoppingCartItemWithShopData[];
+    resolvedAmountsByCartItemId: ReadonlyMap<number, number>;
+};
+
+export type DirectSunflowerCheckoutResult<T> =
     | {
-          resolvedAmountsByCartItemId: ReadonlyMap<number, number>;
-          state: 'paid';
+          cart: {
+              accountId: string | null;
+              id: number;
+              status: string;
+          };
+          state: 'cart_paid';
       }
     | {
-          resolvedAmount: number;
-          resolvedAmountsByCartItemId: ReadonlyMap<number, number>;
-          state: 'pending';
+          state: 'processed';
+          value: T;
       };
 
 const realDependencies: DirectSunflowerCheckoutDependencies = {
     calculateSunflowerAmount,
     calculateSunflowerReplayAmount,
+    getShoppingCart,
     lockShoppingCartForCheckout,
     spendSunflowersBatch,
     withCheckoutCartItemLocks,
     withCheckoutCartItemProcessingLocks,
 };
 
-export async function withDirectSunflowerCheckoutPayment<T>({
+/**
+ * Serializes one direct checkout across every captured cart item. The database
+ * transaction is intentionally limited to snapshot validation and the durable
+ * sunflower debit; fulfillment runs after it commits while the process lock is
+ * still held.
+ */
+export async function withDirectSunflowerCheckoutBatch<T>({
     accountId,
-    allSunflowerItems,
+    allCheckoutItems,
     cartId,
     dependencies = realDependencies,
-    item,
     operation,
 }: {
     accountId: string;
-    allSunflowerItems: readonly ShoppingCartItemWithShopData[];
+    allCheckoutItems: readonly ShoppingCartItemWithShopData[];
     cartId: number;
     dependencies?: DirectSunflowerCheckoutDependencies;
-    item: ShoppingCartItemWithShopData;
-    operation: (payment: DirectSunflowerCheckoutPayment) => Promise<T>;
-}): Promise<T> {
-    const coveredItemIds = allSunflowerItems.map(
-        (coveredItem) => coveredItem.id,
-    );
-    const sunflowerAmountsByCartItemId = new Map(
-        allSunflowerItems.map((coveredItem) => [
-            coveredItem.id,
-            coveredItem.status === 'paid'
-                ? dependencies.calculateSunflowerReplayAmount(coveredItem)
-                : dependencies.calculateSunflowerAmount(coveredItem),
-        ]),
+    operation: (payment: DirectSunflowerCheckoutBatch) => Promise<T>;
+}): Promise<DirectSunflowerCheckoutResult<T>> {
+    const coveredItemIds = allCheckoutItems.map((item) => item.id);
+    if (coveredItemIds.length === 0) {
+        throw new Error('Direct checkout requires at least one cart item.');
+    }
+
+    const expectedItemIds = new Set(coveredItemIds);
+    const sunflowerItems = allCheckoutItems.filter(
+        (item) => item.currency === 'sunflower',
     );
 
     return dependencies.withCheckoutCartItemProcessingLocks(
         coveredItemIds,
         async () => {
-            const payment = await dependencies.withCheckoutCartItemLocks(
+            const prepared = await dependencies.withCheckoutCartItemLocks(
                 coveredItemIds,
                 async (db) => {
                     const lockedCart =
@@ -79,13 +92,43 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                             db,
                         );
                     if (!lockedCart) {
+                        const currentCart = await dependencies.getShoppingCart(
+                            cartId,
+                            db,
+                        );
+                        if (!currentCart) {
+                            throw new Error(
+                                `Cart ${cartId.toString()} disappeared before direct checkout.`,
+                            );
+                        }
+                        if (currentCart.accountId !== accountId) {
+                            throw new Error(
+                                `Cart ${cartId.toString()} account changed before direct checkout.`,
+                            );
+                        }
+                        if (currentCart.status === 'paid') {
+                            return {
+                                cart: currentCart,
+                                state: 'cart_paid' as const,
+                            };
+                        }
                         throw new Error(
-                            `Cart ${cartId.toString()} disappeared before sunflower fulfillment.`,
+                            `Cart ${cartId.toString()} is not active for direct checkout.`,
                         );
                     }
                     if (lockedCart.accountId !== accountId) {
                         throw new Error(
-                            `Cart ${cartId.toString()} account changed before sunflower fulfillment.`,
+                            `Cart ${cartId.toString()} account changed before direct checkout.`,
+                        );
+                    }
+                    if (
+                        lockedCart.items.length !== expectedItemIds.size ||
+                        lockedCart.items.some(
+                            (item) => !expectedItemIds.has(item.id),
+                        )
+                    ) {
+                        throw new Error(
+                            `Cart ${cartId.toString()} changed before direct checkout.`,
                         );
                     }
 
@@ -93,64 +136,88 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                         number,
                         'paid' | 'pending'
                     >();
-                    for (const coveredItem of allSunflowerItems) {
-                        const state = assertCheckoutCartItemSnapshot(
+                    for (const expectedItem of allCheckoutItems) {
+                        const paymentState = assertCheckoutCartItemSnapshot(
                             lockedCart.items.find(
-                                (lockedItem) =>
-                                    lockedItem.id === coveredItem.id,
+                                (item) => item.id === expectedItem.id,
                             ),
-                            coveredItem,
+                            expectedItem,
                         );
-                        paymentStatesByCartItemId.set(coveredItem.id, state);
-                    }
-                    const itemState = paymentStatesByCartItemId.get(item.id);
-                    if (!itemState) {
-                        throw new Error(
-                            `Sunflower cart item ${item.id.toString()} is not part of the checkout coverage.`,
+                        paymentStatesByCartItemId.set(
+                            expectedItem.id,
+                            paymentState,
                         );
                     }
-                    const reason = `shoppingCartItem:${item.id.toString()}`;
+
+                    if (sunflowerItems.length === 0) {
+                        return {
+                            pendingItems: [] as const,
+                            resolvedAmountsByCartItemId: new Map<
+                                number,
+                                number
+                            >(),
+                            state: 'ready' as const,
+                        };
+                    }
+
+                    const sunflowerAmountsByCartItemId = new Map(
+                        sunflowerItems.map((item) => {
+                            const paymentState = paymentStatesByCartItemId.get(
+                                item.id,
+                            );
+                            if (!paymentState) {
+                                throw new Error(
+                                    `Sunflower cart item ${item.id.toString()} lost its payment state.`,
+                                );
+                            }
+                            return [
+                                item.id,
+                                paymentState === 'paid'
+                                    ? dependencies.calculateSunflowerReplayAmount(
+                                          { ...item, status: 'paid' },
+                                      )
+                                    : dependencies.calculateSunflowerAmount(
+                                          item,
+                                      ),
+                            ] as const;
+                        }),
+                    );
+                    const pendingItems = sunflowerItems.filter(
+                        (item) =>
+                            paymentStatesByCartItemId.get(item.id) ===
+                            'pending',
+                    );
                     const spendResult = await dependencies.spendSunflowersBatch(
                         accountId,
-                        itemState === 'pending'
-                            ? [
-                                  {
-                                      amount:
-                                          sunflowerAmountsByCartItemId.get(
-                                              item.id,
-                                          ) ?? 0,
-                                      reason,
-                                  },
-                              ]
-                            : [],
+                        pendingItems.map((item) => ({
+                            amount:
+                                sunflowerAmountsByCartItemId.get(item.id) ?? 0,
+                            reason: `shoppingCartItem:${item.id.toString()}`,
+                        })),
                         db,
                         {
                             existingCheckoutItemAmountsAreAuthoritative: true,
                             legacyCartSpend: {
                                 reason: `shoppingCart:${cartId.toString()}`,
-                                coveredItems: allSunflowerItems.map(
-                                    (coveredItem) => {
-                                        const paymentState =
-                                            paymentStatesByCartItemId.get(
-                                                coveredItem.id,
-                                            );
-                                        if (!paymentState) {
-                                            throw new Error(
-                                                `Sunflower cart item ${coveredItem.id.toString()} lost its payment state.`,
-                                            );
-                                        }
-                                        return {
-                                            amount:
-                                                sunflowerAmountsByCartItemId.get(
-                                                    coveredItem.id,
-                                                ) ?? 0,
-                                            cartItemId: coveredItem.id,
-                                            createdAt: coveredItem.createdAt,
-                                            paymentState,
-                                            reason: `shoppingCartItem:${coveredItem.id.toString()}`,
-                                        };
-                                    },
-                                ),
+                                coveredItems: sunflowerItems.map((item) => {
+                                    const paymentState =
+                                        paymentStatesByCartItemId.get(item.id);
+                                    if (!paymentState) {
+                                        throw new Error(
+                                            `Sunflower cart item ${item.id.toString()} lost its payment state.`,
+                                        );
+                                    }
+                                    return {
+                                        amount:
+                                            sunflowerAmountsByCartItemId.get(
+                                                item.id,
+                                            ) ?? 0,
+                                        cartItemId: item.id,
+                                        createdAt: item.createdAt,
+                                        paymentState,
+                                        reason: `shoppingCartItem:${item.id.toString()}`,
+                                    };
+                                }),
                             },
                         },
                     );
@@ -158,59 +225,45 @@ export async function withDirectSunflowerCheckoutPayment<T>({
                         number,
                         number
                     >();
-                    for (const coveredItem of allSunflowerItems) {
+                    for (const item of sunflowerItems) {
                         const resolvedAmount =
                             spendResult.resolvedAmountsByReason[
-                                `shoppingCartItem:${coveredItem.id.toString()}`
+                                `shoppingCartItem:${item.id.toString()}`
                             ];
-                        if (resolvedAmount !== undefined) {
-                            if (
-                                !Number.isSafeInteger(resolvedAmount) ||
-                                resolvedAmount <= 0
-                            ) {
-                                throw new Error(
-                                    `Sunflower spend for cart item ${coveredItem.id.toString()} did not resolve a valid amount.`,
-                                );
-                            }
-                            resolvedAmountsByCartItemId.set(
-                                coveredItem.id,
-                                resolvedAmount,
-                            );
-                        }
-                    }
-                    if (itemState === 'paid') {
-                        if (!resolvedAmountsByCartItemId.has(item.id)) {
+                        if (
+                            typeof resolvedAmount !== 'number' ||
+                            !Number.isSafeInteger(resolvedAmount) ||
+                            resolvedAmount <= 0
+                        ) {
                             throw new Error(
-                                `Paid sunflower cart item ${item.id.toString()} has no durable spend amount.`,
+                                `Sunflower spend for cart item ${item.id.toString()} did not resolve a valid amount.`,
                             );
                         }
-                        return {
-                            resolvedAmountsByCartItemId,
-                            state: 'paid' as const,
-                        };
-                    }
-
-                    const resolvedAmount = resolvedAmountsByCartItemId.get(
-                        item.id,
-                    );
-                    if (
-                        typeof resolvedAmount !== 'number' ||
-                        !Number.isSafeInteger(resolvedAmount) ||
-                        resolvedAmount <= 0
-                    ) {
-                        throw new Error(
-                            `Sunflower spend for cart item ${item.id.toString()} did not resolve a valid amount.`,
+                        resolvedAmountsByCartItemId.set(
+                            item.id,
+                            resolvedAmount,
                         );
                     }
 
                     return {
-                        resolvedAmount,
+                        pendingItems,
                         resolvedAmountsByCartItemId,
-                        state: 'pending' as const,
+                        state: 'ready' as const,
                     };
                 },
             );
-            return operation(payment);
+            if (prepared.state === 'cart_paid') {
+                return prepared;
+            }
+
+            return {
+                state: 'processed',
+                value: await operation({
+                    pendingItems: prepared.pendingItems,
+                    resolvedAmountsByCartItemId:
+                        prepared.resolvedAmountsByCartItemId,
+                }),
+            };
         },
     );
 }
