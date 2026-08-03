@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lte, ne } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lte, ne, or } from 'drizzle-orm';
 import {
     type InsertOutletOffer,
     type OutletOfferReservationStatus,
@@ -387,59 +387,95 @@ export async function getOutletOffers({
         : offersWithAvailability.filter((offer) => offer.remainingQuantity > 0);
 }
 
-async function lockOutletOffer(
-    offerId: number,
+async function lockOutletOffers(
+    offerIds: readonly number[],
     db: TransactionClient,
-): Promise<SelectOutletOffer | null> {
-    const [offer] = await db
+) {
+    const uniqueOfferIds = [...new Set(offerIds)].sort(
+        (left, right) => left - right,
+    );
+    if (uniqueOfferIds.length === 0) {
+        return [];
+    }
+    return db
         .select()
         .from(outletOffers)
-        .where(
-            and(
-                eq(outletOffers.id, offerId),
-                eq(outletOffers.isDeleted, false),
-            ),
-        )
+        .where(inArray(outletOffers.id, uniqueOfferIds))
+        .orderBy(asc(outletOffers.id))
         .for('update');
+}
 
-    return offer ?? null;
+async function findCurrentOutletReservation(
+    cartItemId: number,
+    db: DatabaseClient,
+) {
+    return db.query.outletOfferReservations.findFirst({
+        where: and(
+            eq(outletOfferReservations.cartItemId, cartItemId),
+            ne(outletOfferReservations.status, 'released'),
+        ),
+        orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
+    });
+}
+
+async function lockOutletReservationsForSwitch({
+    existingReservationId,
+    targetOfferId,
+    db,
+}: {
+    existingReservationId?: number;
+    targetOfferId: number;
+    db: TransactionClient;
+}) {
+    const targetCapacityWhere = and(
+        eq(outletOfferReservations.outletOfferId, targetOfferId),
+        inArray(outletOfferReservations.status, ['held', 'converted']),
+    );
+    return db
+        .select()
+        .from(outletOfferReservations)
+        .where(
+            existingReservationId
+                ? or(
+                      eq(outletOfferReservations.id, existingReservationId),
+                      targetCapacityWhere,
+                  )
+                : targetCapacityWhere,
+        )
+        .orderBy(asc(outletOfferReservations.id))
+        .for('update');
 }
 
 async function getReservedAndConvertedQuantities({
-    offerId,
+    reservations,
     now,
     excludeReservationId,
     db,
 }: {
-    offerId: number;
+    reservations: readonly AvailabilityReservation[];
     now: Date;
     excludeReservationId?: number;
     db: TransactionClient;
 }) {
-    const reservations = await db
-        .select()
-        .from(outletOfferReservations)
-        .where(
-            and(
-                eq(outletOfferReservations.outletOfferId, offerId),
-                inArray(outletOfferReservations.status, ['held', 'converted']),
-                excludeReservationId
-                    ? ne(outletOfferReservations.id, excludeReservationId)
-                    : undefined,
-            ),
-        )
-        .orderBy(asc(outletOfferReservations.id))
-        .for('update');
+    const capacityReservations = excludeReservationId
+        ? reservations.filter(
+              (reservation) => reservation.id !== excludeReservationId,
+          )
+        : reservations;
     const protectedReservationIds =
-        await getActiveAttemptProtectedReservationIds(reservations, now, db);
+        await getActiveAttemptProtectedReservationIds(
+            capacityReservations,
+            now,
+            db,
+        );
     return {
         reservedQuantity: countQuantity(
-            reservations,
+            capacityReservations,
             now,
             'held',
             protectedReservationIds,
         ),
-        soldQuantity: countQuantity(reservations, now, 'converted'),
+        soldQuantity: countQuantity(capacityReservations, now, 'converted'),
     };
 }
 
@@ -461,19 +497,6 @@ async function reserveOutletOfferInTransaction(
         );
     }
 
-    const offer = await lockOutletOffer(offerId, tx);
-    if (!offer) {
-        throw new OutletOfferUnavailableError();
-    }
-    if (offer.status !== 'published') {
-        throw new OutletOfferUnavailableError();
-    }
-    if (offer.startAt.getTime() > now.getTime()) {
-        throw new OutletOfferUnavailableError('Outlet offer has not started.');
-    }
-    if (offer.endAt.getTime() <= now.getTime()) {
-        throw new OutletOfferUnavailableError('Outlet offer has expired.');
-    }
     const cartItem = await tx.query.shoppingCartItems.findFirst({
         columns: {
             cartId: true,
@@ -487,25 +510,69 @@ async function reserveOutletOfferInTransaction(
         !cartItem ||
         cartItem.isDeleted ||
         cartItem.cartId !== cartId ||
-        cartItem.entityTypeName !== 'plantSort' ||
-        cartItem.entityId !== offer.plantSortId.toString()
+        cartItem.entityTypeName !== 'plantSort'
     ) {
         throw new OutletOfferUnavailableError(
             'Outlet offer does not match the cart item.',
         );
     }
 
+    // Discover the source before taking database row locks, then keep the
+    // global order: all touched offers by ID, followed by all reservations by
+    // ID. The outer checkout-item and cart locks stabilize this cart item.
+    const discoveredReservation = await findCurrentOutletReservation(
+        cartItemId,
+        tx,
+    );
+    const lockedOffers = await lockOutletOffers(
+        [offerId, discoveredReservation?.outletOfferId].filter(
+            (id): id is number => id !== undefined,
+        ),
+        tx,
+    );
+    const offer = lockedOffers.find((candidate) => candidate.id === offerId);
+    if (!offer || offer.isDeleted || offer.status !== 'published') {
+        throw new OutletOfferUnavailableError();
+    }
+    if (offer.startAt.getTime() > now.getTime()) {
+        throw new OutletOfferUnavailableError('Outlet offer has not started.');
+    }
+    if (offer.endAt.getTime() <= now.getTime()) {
+        throw new OutletOfferUnavailableError('Outlet offer has expired.');
+    }
+    if (cartItem.entityId !== offer.plantSortId.toString()) {
+        throw new OutletOfferUnavailableError(
+            'Outlet offer does not match the cart item.',
+        );
+    }
+
+    const lockedReservations = await lockOutletReservationsForSwitch({
+        existingReservationId: discoveredReservation?.id,
+        targetOfferId: offerId,
+        db: tx,
+    });
+    const lockedExistingReservation = discoveredReservation
+        ? lockedReservations.find(
+              (reservation) => reservation.id === discoveredReservation.id,
+          )
+        : undefined;
+    if (
+        discoveredReservation &&
+        (!lockedExistingReservation ||
+            lockedExistingReservation.accountId !== accountId ||
+            lockedExistingReservation.cartId !== cartId ||
+            lockedExistingReservation.cartItemId !== cartItemId ||
+            lockedExistingReservation.outletOfferId !==
+                discoveredReservation.outletOfferId)
+    ) {
+        throw new OutletReservationUnavailableError(
+            'Outlet reservation changed while switching offers.',
+        );
+    }
     const existingReservation =
-        await tx.query.outletOfferReservations.findFirst({
-            where: and(
-                eq(outletOfferReservations.cartItemId, cartItemId),
-                ne(outletOfferReservations.status, 'released'),
-            ),
-            orderBy: (table, { desc }) => [
-                desc(table.createdAt),
-                desc(table.id),
-            ],
-        });
+        lockedExistingReservation?.status === 'released'
+            ? undefined
+            : lockedExistingReservation;
 
     if (existingReservation?.status === 'converted') {
         throw new OutletReservationUnavailableError(
@@ -526,7 +593,9 @@ async function reserveOutletOfferInTransaction(
     const excludeReservationId = reusableReservation?.id;
     const { reservedQuantity, soldQuantity } =
         await getReservedAndConvertedQuantities({
-            offerId,
+            reservations: lockedReservations.filter(
+                (reservation) => reservation.outletOfferId === offerId,
+            ),
             now,
             excludeReservationId,
             db: tx,
@@ -624,12 +693,41 @@ export async function reserveOutletOffer(options: ReserveOutletOfferOptions) {
     });
 }
 
-async function releaseOutletReservationForCartItemInDatabase(
-    cartItemId: number,
-    now: Date,
-    db: DatabaseClient,
+async function releaseHeldOutletReservations(
+    {
+        cartId,
+        cartItemId,
+        now,
+    }: {
+        cartId?: number;
+        cartItemId?: number;
+        now: Date;
+    },
+    db: TransactionClient,
 ) {
-    await db
+    if (cartId === undefined && cartItemId === undefined) {
+        throw new TypeError('An outlet reservation release scope is required.');
+    }
+    const reservations = await db
+        .select({ id: outletOfferReservations.id })
+        .from(outletOfferReservations)
+        .where(
+            and(
+                cartId !== undefined
+                    ? eq(outletOfferReservations.cartId, cartId)
+                    : undefined,
+                cartItemId !== undefined
+                    ? eq(outletOfferReservations.cartItemId, cartItemId)
+                    : undefined,
+                eq(outletOfferReservations.status, 'held'),
+            ),
+        )
+        .orderBy(asc(outletOfferReservations.id))
+        .for('update');
+    if (reservations.length === 0) {
+        return [];
+    }
+    return db
         .update(outletOfferReservations)
         .set({
             status: 'released',
@@ -637,23 +735,23 @@ async function releaseOutletReservationForCartItemInDatabase(
         })
         .where(
             and(
-                eq(outletOfferReservations.cartItemId, cartItemId),
+                inArray(
+                    outletOfferReservations.id,
+                    reservations.map((reservation) => reservation.id),
+                ),
                 eq(outletOfferReservations.status, 'held'),
             ),
-        );
+        )
+        .returning({ id: outletOfferReservations.id });
 }
 
 export async function releaseOutletReservationForCartItem(
     cartItemId: number,
     now = new Date(),
-    db?: DatabaseClient,
+    db?: TransactionClient,
 ) {
     if (db) {
-        return releaseOutletReservationForCartItemInDatabase(
-            cartItemId,
-            now,
-            db,
-        );
+        return releaseHeldOutletReservations({ cartItemId, now }, db);
     }
     return withCheckoutCartItemLock(cartItemId, async (tx) => {
         const item = await tx.query.shoppingCartItems.findFirst({
@@ -664,39 +762,22 @@ export async function releaseOutletReservationForCartItem(
             return;
         }
         await lockCartAndAssertOutletMutationAllowed(item.cartId, tx);
-        await releaseOutletReservationForCartItemInDatabase(
-            cartItemId,
-            now,
-            tx,
-        );
+        await releaseHeldOutletReservations({ cartItemId, now }, tx);
     });
 }
 
 export async function releaseOutletReservationsForCart(
     cartId: number,
     now = new Date(),
-    db?: DatabaseClient,
+    db?: TransactionClient,
 ) {
-    const release = async (database: DatabaseClient) =>
-        database
-            .update(outletOfferReservations)
-            .set({
-                status: 'released',
-                releasedAt: now,
-            })
-            .where(
-                and(
-                    eq(outletOfferReservations.cartId, cartId),
-                    eq(outletOfferReservations.status, 'held'),
-                ),
-            );
     if (db) {
-        await release(db);
+        await releaseHeldOutletReservations({ cartId, now }, db);
         return;
     }
     await storage().transaction(async (tx) => {
         await lockCartAndAssertOutletMutationAllowed(cartId, tx);
-        await release(tx);
+        await releaseHeldOutletReservations({ cartId, now }, tx);
     });
 }
 

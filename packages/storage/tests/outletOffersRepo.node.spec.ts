@@ -266,7 +266,80 @@ test('reserveOutletOffer creates a held reservation and blocks overselling', asy
     );
 });
 
-test('stale attempt release cannot release a later attempt reservation', async () => {
+test('opposite outlet switches lock offers and reservations canonically', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const switchedAt = addMinutes(now, 1);
+    const plantSortId = await createTestPlantSort();
+    const firstOfferId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const secondOfferId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const firstAccountId = await createTestAccount();
+    const secondAccountId = await createTestAccount();
+    const firstCartItem = await createCartItem(firstAccountId, plantSortId);
+    const secondCartItem = await createCartItem(secondAccountId, plantSortId);
+    const [firstReservation, secondReservation] = await Promise.all([
+        reserveOutletOffer({
+            accountId: firstAccountId,
+            cartId: firstCartItem.cart.id,
+            cartItemId: firstCartItem.cartItemId,
+            now,
+            offerId: firstOfferId,
+        }),
+        reserveOutletOffer({
+            accountId: secondAccountId,
+            cartId: secondCartItem.cart.id,
+            cartItemId: secondCartItem.cartItemId,
+            now,
+            offerId: secondOfferId,
+        }),
+    ]);
+
+    const [firstSwitch, secondSwitch] = await Promise.all([
+        reserveOutletOffer({
+            accountId: firstAccountId,
+            cartId: firstCartItem.cart.id,
+            cartItemId: firstCartItem.cartItemId,
+            now: switchedAt,
+            offerId: secondOfferId,
+        }),
+        reserveOutletOffer({
+            accountId: secondAccountId,
+            cartId: secondCartItem.cart.id,
+            cartItemId: secondCartItem.cartItemId,
+            now: switchedAt,
+            offerId: firstOfferId,
+        }),
+    ]);
+
+    assert.equal(firstSwitch.outletOfferId, secondOfferId);
+    assert.equal(secondSwitch.outletOfferId, firstOfferId);
+    assert.equal(
+        (await getOutletOfferReservation(firstReservation.id))?.status,
+        'released',
+    );
+    assert.equal(
+        (await getOutletOfferReservation(secondReservation.id))?.status,
+        'released',
+    );
+    const [firstOffer, secondOffer] = await Promise.all([
+        getOutletOffer(firstOfferId, switchedAt),
+        getOutletOffer(secondOfferId, switchedAt),
+    ]);
+    assert.equal(firstOffer?.reservedQuantity, 1);
+    assert.equal(firstOffer?.remainingQuantity, 1);
+    assert.equal(secondOffer?.reservedQuantity, 1);
+    assert.equal(secondOffer?.remainingQuantity, 1);
+});
+
++test('stale attempt release cannot release a later attempt reservation', async () => {
     createTestDb();
     const now = new Date('2026-05-01T10:00:00.000Z');
     const plantSortId = await createTestPlantSort();

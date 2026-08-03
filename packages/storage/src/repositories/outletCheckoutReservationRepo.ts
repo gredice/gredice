@@ -6,7 +6,6 @@ type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
-type DatabaseClient = StorageClient | TransactionClient;
 
 export type CheckoutOutletReservationExpectation = {
     cartItemId: number;
@@ -128,10 +127,27 @@ export async function releaseOutletReservationsForCheckoutAttempt(
     cartId: number,
     reservationIds: readonly number[],
     now = new Date(),
-    db: DatabaseClient,
+    db: TransactionClient,
 ) {
-    const uniqueReservationIds = [...new Set(reservationIds)];
+    const uniqueReservationIds = [...new Set(reservationIds)].sort(
+        (left, right) => left - right,
+    );
     if (uniqueReservationIds.length === 0) {
+        return;
+    }
+    const lockedReservations = await db
+        .select({ id: outletOfferReservations.id })
+        .from(outletOfferReservations)
+        .where(
+            and(
+                eq(outletOfferReservations.cartId, cartId),
+                inArray(outletOfferReservations.id, uniqueReservationIds),
+                eq(outletOfferReservations.status, 'held'),
+            ),
+        )
+        .orderBy(asc(outletOfferReservations.id))
+        .for('update');
+    if (lockedReservations.length === 0) {
         return;
     }
     await db
@@ -140,7 +156,10 @@ export async function releaseOutletReservationsForCheckoutAttempt(
         .where(
             and(
                 eq(outletOfferReservations.cartId, cartId),
-                inArray(outletOfferReservations.id, uniqueReservationIds),
+                inArray(
+                    outletOfferReservations.id,
+                    lockedReservations.map((reservation) => reservation.id),
+                ),
                 eq(outletOfferReservations.status, 'held'),
             ),
         );
