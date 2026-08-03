@@ -585,7 +585,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             }
             if (hasOutletStripeItems) {
                 cartInfo = await checkoutTiming.measure(
-                    'cart_outlet_revalidation',
+                    'cart_enrichment',
                     () =>
                         getCartInfo(cart.items, accountId, {
                             checkoutOperationMappings,
