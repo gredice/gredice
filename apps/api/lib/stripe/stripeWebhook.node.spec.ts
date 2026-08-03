@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { StripePaymentProcessingPermanentError } from '@gredice/storage';
+import {
+    StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
+} from '@gredice/storage';
 import { handleStripeWebhook } from './stripeWebhook';
 
 function webhookRequest() {
@@ -125,6 +128,26 @@ test('payment webhook retryable processing failures return 503 for Stripe retry'
         maintenanceEnabled: () => false,
         process: async () => {
             throw new Error('fulfillment failed');
+        },
+    });
+
+    assert.strictEqual(response.status, 503);
+    assert.strictEqual(response.headers.get('retry-after'), '60');
+    assert.strictEqual(await response.text(), 'Stripe webhook handler failed');
+});
+
+test('payment webhook returns 503 while another worker owns the retryable claim', async (t) => {
+    t.mock.method(console, 'warn', () => undefined);
+    const response = await handleStripeWebhook(webhookRequest(), {
+        constructEvent: async () => completedPaymentEvent(),
+        maintenanceEnabled: () => false,
+        process: async () => {
+            throw new StripePaymentProcessingUnavailableError(
+                'cs_paid',
+                'processing',
+                new Date('2026-08-04T10:01:00.000Z'),
+                2,
+            );
         },
     });
 

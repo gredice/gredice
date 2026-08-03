@@ -5,6 +5,7 @@ import {
     StripePaymentProcessingClaimLostError,
     StripePaymentProcessingDeferredError,
     StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
     SunflowerPackageAlreadyPurchasedError,
 } from '@gredice/storage';
 import {
@@ -16,6 +17,7 @@ import {
     __testUtils,
     type ProcessCheckoutSessionDependencies,
     processCheckoutSession,
+    processCheckoutSessionForReconciliation,
     processItem,
 } from './processCheckoutSession';
 
@@ -604,6 +606,12 @@ function makeSunflowerPackageSession({
     amountTotal = 4999,
     lineAmountTotal = 4999,
     lineAmountSubtotal = 4999,
+    productMetadata = {},
+}: {
+    amountTotal?: number;
+    lineAmountTotal?: number;
+    lineAmountSubtotal?: number;
+    productMetadata?: Record<string, string>;
 } = {}) {
     return {
         id: 'cs_package_paid',
@@ -634,6 +642,7 @@ function makeSunflowerPackageSession({
                                 bonusSunflowers: '10000',
                                 priceCents: '4999',
                                 currency: 'eur',
+                                ...productMetadata,
                             },
                         },
                     },
@@ -989,19 +998,42 @@ describe('processCheckoutSession', () => {
         assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
     });
 
-    it('repairs missing outputs after a transaction commit without replaying fulfillment, billing, or analytics', async () => {
+    it('repairs outputs when a transaction commits after the migration snapshot without replaying side effects', async () => {
         const calls: RecordedCall[] = [];
+        let claimStatus: 'missing' | 'processing' | 'completed' = 'missing';
         const dependencies = makeDependencies(calls, {
+            withStripePaymentProcessingLock: async (
+                id: string,
+                callback: Parameters<
+                    ProcessCheckoutSessionDependencies['withStripePaymentProcessingLock']
+                >[1],
+            ) => {
+                record(calls, 'withStripePaymentProcessingLock', [id]);
+                assert.equal(claimStatus, 'missing');
+                claimStatus = 'processing';
+                const result = await callback({
+                    assertOwned: async () => undefined,
+                    claimToken: 'post-snapshot-claim-token',
+                    signal: new AbortController().signal,
+                });
+                claimStatus = 'completed';
+                return result;
+            },
             getStripeCheckoutSession: async (...args: unknown[]) => {
                 record(calls, 'getStripeCheckoutSession', args);
                 return makeSession();
             },
-            getCompletedTransactionByStripePaymentId: async () => ({
-                accountId: 'account-1',
-                amount: 2500,
-                currency: 'eur',
-                id: 123,
-            }),
+            getCompletedTransactionByStripePaymentId: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getCompletedTransactionByStripePaymentId', args);
+                return {
+                    accountId: 'account-1',
+                    amount: 2500,
+                    currency: 'eur',
+                    id: 123,
+                };
+            },
             getShoppingCart: async (...args: unknown[]) => {
                 record(calls, 'getShoppingCart', args);
                 const cart = makeCart();
@@ -1018,6 +1050,16 @@ describe('processCheckoutSession', () => {
 
         await processCheckoutSession('cs_paid', dependencies);
 
+        assert.equal(claimStatus, 'completed');
+        assert.equal(
+            callsNamed(calls, 'withStripePaymentProcessingLock').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'getCompletedTransactionByStripePaymentId')
+                .length,
+            1,
+        );
         assert.equal(
             callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
             1,
@@ -1249,6 +1291,40 @@ describe('processCheckoutSession', () => {
         assert.deepStrictEqual(callNames(calls), [
             'withStripePaymentProcessingLock',
         ]);
+    });
+
+    it('propagates claim contention to webhooks but suppresses it for reconciliation', async (t) => {
+        t.mock.method(console, 'info', () => undefined);
+        const calls: RecordedCall[] = [];
+        const unavailable = new StripePaymentProcessingUnavailableError(
+            'cs_inflight',
+            'processing',
+            new Date('2026-08-04T10:01:00.000Z'),
+            2,
+        );
+        const dependencies = makeDependencies(calls, {
+            withStripePaymentProcessingLock: async (id: string) => {
+                record(calls, 'withStripePaymentProcessingLock', [id]);
+                throw unavailable;
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_inflight', dependencies),
+            (error: unknown) => error === unavailable,
+        );
+        await processCheckoutSessionForReconciliation(
+            'cs_inflight',
+            dependencies,
+        );
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withStripePaymentProcessingLock').map(
+                (call) => call.args,
+            ),
+            [['cs_inflight'], ['cs_inflight']],
+        );
+        assert.equal(callsNamed(calls, 'getStripeCheckoutSession').length, 0);
     });
 
     it('classifies Stripe resource-missing as permanent but preserves transport timeouts as retryable', async () => {
@@ -2156,43 +2232,128 @@ describe('processCheckoutSession', () => {
         );
     });
 
-    it('repairs sunflower package outputs without replaying fulfillment, billing, or analytics', async () => {
+    it('repairs sunflower package outputs from the Stripe snapshot after catalog retirement or change', async () => {
+        for (const catalogValue of [
+            null,
+            { ...makeSunflowerPackageData(), name: 'Preimenovani paket' },
+        ]) {
+            const calls: RecordedCall[] = [];
+            const dependencies = makeDependencies(calls, {
+                getStripeCheckoutSession: async (...args: unknown[]) => {
+                    record(calls, 'getStripeCheckoutSession', args);
+                    return makeSunflowerPackageSession();
+                },
+                getCompletedTransactionByStripePaymentId: async (
+                    ...args: unknown[]
+                ) => {
+                    record(
+                        calls,
+                        'getCompletedTransactionByStripePaymentId',
+                        args,
+                    );
+                    return {
+                        accountId: 'account-1',
+                        amount: 4999,
+                        currency: 'eur',
+                        id: 902,
+                    };
+                },
+                getSunflowerPackageByCode: async (...args: unknown[]) => {
+                    record(calls, 'getSunflowerPackageByCode', args);
+                    return catalogValue;
+                },
+            });
+
+            await processCheckoutSession('cs_package_paid', dependencies);
+
+            assert.equal(
+                callsNamed(calls, 'getSunflowerPackageByCode').length,
+                0,
+            );
+            assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
+            assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+            assert.equal(
+                callsNamed(calls, 'ensureInvoiceForTransaction').length,
+                0,
+            );
+            assert.equal(
+                callsNamed(calls, 'ensureStripePaymentCompletionOutputs')
+                    .length,
+                1,
+            );
+            const output = callsNamed(
+                calls,
+                'ensureStripePaymentCompletionOutputs',
+            )[0]?.args[0];
+            assert.ok(isRecord(output));
+            assert.ok(isRecord(output.orderConfirmation));
+            assert.deepStrictEqual(output.orderConfirmation.items, [
+                {
+                    amountSubtotal: 4999,
+                    currency: 'eur',
+                    name: 'Puna gredica',
+                    quantity: 1,
+                },
+            ]);
+            assert.equal(callsNamed(calls, 'posthog.capture').length, 0);
+        }
+    });
+
+    it('rejects sunflower package output repair when the completed transaction identity differs', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
-            getStripeCheckoutSession: async (...args: unknown[]) => {
-                record(calls, 'getStripeCheckoutSession', args);
-                return makeSunflowerPackageSession();
-            },
-            getCompletedTransactionByStripePaymentId: async (
-                ...args: unknown[]
-            ) => {
-                record(calls, 'getCompletedTransactionByStripePaymentId', args);
-                return {
-                    accountId: 'account-1',
-                    amount: 4999,
-                    currency: 'eur',
-                    id: 902,
-                };
-            },
-            getSunflowerPackageByCode: async (...args: unknown[]) => {
-                record(calls, 'getSunflowerPackageByCode', args);
-                return makeSunflowerPackageData();
-            },
+            getStripeCheckoutSession: async () => makeSunflowerPackageSession(),
+            getCompletedTransactionByStripePaymentId: async () => ({
+                accountId: 'different-account',
+                amount: 4999,
+                currency: 'eur',
+                id: 902,
+            }),
         });
 
-        await processCheckoutSession('cs_package_paid', dependencies);
-
-        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
-        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
-        assert.equal(
-            callsNamed(calls, 'ensureInvoiceForTransaction').length,
-            0,
+        await assert.rejects(
+            processCheckoutSession('cs_package_paid', dependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'transaction_identity_conflict',
         );
+
+        assert.equal(callsNamed(calls, 'getSunflowerPackageByCode').length, 0);
         assert.equal(
             callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
-            1,
+            0,
         );
-        assert.equal(callsNamed(calls, 'posthog.capture').length, 0);
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
+    });
+
+    it('rejects internally inconsistent sunflower package snapshot repair', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async () =>
+                makeSunflowerPackageSession({
+                    productMetadata: { sunflowers: '60001' },
+                }),
+            getCompletedTransactionByStripePaymentId: async () => ({
+                accountId: 'account-1',
+                amount: 4999,
+                currency: 'eur',
+                id: 902,
+            }),
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_package_paid', dependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'sunflower_package_metadata_mismatch',
+        );
+
+        assert.equal(callsNamed(calls, 'getSunflowerPackageByCode').length, 0);
+        assert.equal(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
     });
 
     it('does not credit a sunflower package when Stripe metadata mismatches current package data', async () => {

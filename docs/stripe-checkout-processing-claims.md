@@ -116,13 +116,20 @@ schema change.
 The repository's `migrate:deploy` path uses Drizzle's PostgreSQL migrator, which
 executes all pending migration statements and their migration-journal writes in
 one database transaction. Migration `0078` additionally places its duplicate
-and canonical-identity preflights before its first DDL statement, so it fails
-before creating even the enum or claim table. It sets transaction-local
-`lock_timeout` to five seconds and `statement_timeout` to five minutes. A busy
-writer therefore causes a prompt, atomic rollback instead of an indefinite DDL
-wait. Use the approved production migration runner with
-`pnpm --filter @gredice/storage migrate:deploy`; do not copy individual
-statements into an ad hoc non-transactional runner.
+and canonical-identity preflights before its first DDL statement. Before those
+preflights, it takes the exclusive transaction-scoped advisory drain fence that
+matches the shared fence held by legacy processors. It sets transaction-local
+`lock_timeout` to five seconds and `statement_timeout` to five minutes. An
+active legacy processor, busy writer, or failed identity preflight therefore
+fails the build with an atomic rollback instead of partially creating or
+seeding the claim schema.
+
+The API Vercel project's production Build Command runs
+`pnpm --filter @gredice/storage migrate:deploy` after the API build and before
+the new deployment is activated. Preview builds skip migrations. Do not run
+migration `0078` separately or copy its statements into an ad hoc runner: the
+production build is the cutover boundary, and its transaction must retain the
+exclusive drain fence and all preflights.
 
 Do not run the advisory-lock version and claim version concurrently: they use
 different ownership protocols. Keep the Stripe event destination enabled
@@ -140,39 +147,66 @@ The five-minute outlet lifecycle cron still performs outlet cleanup, reports
 its counts, skips only orphan Stripe-attempt reconciliation, and returns the
 same retryable 503. Missing or invalid cron authentication invokes neither job.
 
-Use this migration-first cutover:
+Follow the detailed prerequisite behavior and drain evidence in
+[Stripe checkout advisory drain gate](./stripe-checkout-advisory-drain.md).
+Use this prerequisite-gated cutover:
 
 1. Rehearse migration `0078` on a production-scale PostgreSQL clone. Record its
    duration and transaction row count; verify the real-PostgreSQL lock test
-   fails atomically under a conflicting writer and succeeds after release.
-2. Set
-   `GREDICE_STRIPE_CHECKOUT_PROCESSING_MAINTENANCE_ENABLED=true` in the API
-   Production environment and deploy the exact candidate SHA. Leave the Stripe
-   destination enabled.
-3. Confirm the authenticated reconciliation cron and a valid signed payment
-   delivery both return HTTP 503 with `Retry-After: 60`. Verify Stripe records
-   the delivery as failed or pending for retry.
-4. Confirm processors from the old advisory-lock deployment have drained in
-   runtime observability; do not rely on a guessed sleep interval.
-5. Run every identity preflight above and require empty results, then apply
-   migration `0078` through the approved production migration runner with
-   `pnpm --filter @gredice/storage migrate:deploy`. If the five-second lock
-   timeout fires, keep maintenance enabled, drain the writer, and retry the
-   entire migration.
-6. Verify `stripe_payment_processing_claims`,
+   fails atomically under the matching shared advisory drain fence and succeeds
+   after release.
+2. Merge prerequisite issue `#4387`. Confirm the production API deployment is
+   `READY`, references its exact merge SHA, and contains no new migration. Keep
+   the Stripe destination enabled. Confirm the authenticated reconciliation
+   cron and a valid signed completed-payment delivery return HTTP 503 with
+   `Retry-After: 60`; verify Stripe retains the delivery for retry.
+3. Record the immediately preceding production deployment's effective function
+   maximum duration. Confirm every production alias and rolling release is
+   fully routed to the exact `#4387` merge SHA, then wait for the entire
+   predecessor maximum duration plus an operational margin of at least five
+   minutes. Verify runtime logs show no continuing checkout invocation from the
+   preceding deployment. The aggregate drain probe cannot observe a processor
+   that started before the shared fence existed, so neither the timer nor the
+   probe is sufficient alone.
+4. Run
+   `pnpm --filter @gredice/storage stripe-payment-processing:drain-preflight`
+   through the approved production environment runner until its aggregate
+   result is `{"drained":true}` and exit status is zero. Require the
+   authenticated outlet-lifecycle aggregate readback to agree. Run all three
+   transaction-identity preflights above and require every result to be empty.
+5. Rebase claim PR `#4385` onto the fully routed prerequisite. Verify migration
+   `0078` takes the matching exclusive drain fence before identity preflights,
+   DDL, or legacy-claim seeding, then require its full CI and real-PostgreSQL
+   migration tests to pass.
+6. Merge PR `#4385`. Its Vercel production Build Command builds the API and then
+   automatically runs `migrate:deploy` before deploying the new outputs.
+   Migration `0078` reacquires the exclusive fence and reruns the identity
+   preflights in its transaction. A fence timeout or preflight failure fails
+   the build atomically while the exact `#4387` maintenance deployment remains
+   live; investigate the blocker and retry the full deployment without
+   bypassing the migration.
+7. Confirm the build log records successful migration `0078`, the resulting API
+   deployment is `READY` at the exact `#4385` merge SHA, and the production
+   aliases are fully routed. Verify `stripe_payment_processing_claims`,
    `stripe_payment_processing_claim_reviews`,
    `stripe_payment_discovery_checkpoints`,
    `stripe_payment_recovery_cursors`, and
    `transactions_stripe_payment_id_unique` exist. Read back the singleton
-   discovery and recovery cursor rows.
-7. Set the maintenance variable to `false` and redeploy the same candidate SHA.
-8. Invoke the authenticated cron manually. A budget-limited discovery or
+   discovery and recovery cursor rows. The forced `#4387` maintenance gate must
+   still reject completed-payment work during this readback.
+8. Merge activation issue `#4388`. Confirm its exact merge SHA is `READY` and
+   fully routed in production before sending queued work to the claim
+   processor.
+9. Invoke the authenticated cron manually. A budget-limited discovery or
    recovery pass returns an unhealthy HTTP 503 while preserving both cursors.
-   Repeat it until one frozen discovery range and one recovery cycle complete.
-9. Make one low-risk paid checkout and verify a linked `completed` claim and one
-   transaction. Require a healthy cron response and watch claims, retries,
-   duplicate suppression, API latency, database pool wait, ledger effects, and
-   transaction count.
+   Repeat reconciliation until one frozen discovery range and one recovery
+   cycle complete, then confirm a subsequent cycle is healthy with no due or
+   expired work.
+10. Make one low-risk paid sunflower checkout and verify one linked `completed`
+    claim, one completed transaction, one ledger effect, and both deterministic
+    durable completion outputs. Record end-to-end checkout and processing
+    latency, then watch retries, duplicate suppression, database pool wait, and
+    transaction count through another healthy reconciliation cycle.
 
 For rollback, reactivate maintenance on the claim deployment and verify both
 entry points return 503. Drain claim workers and the current order-confirmation

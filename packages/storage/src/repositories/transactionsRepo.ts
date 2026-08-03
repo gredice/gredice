@@ -87,6 +87,19 @@ export class StripePaymentProcessingClaimLostError extends Error {
     }
 }
 
+export class StripePaymentProcessingUnavailableError extends Error {
+    override readonly name = 'StripePaymentProcessingUnavailableError';
+
+    constructor(
+        readonly stripePaymentId: string,
+        readonly claimStatus: 'processing' | 'retryable',
+        readonly availableAt: Date | null,
+        readonly attempt: number,
+    ) {
+        super('Stripe payment processing is temporarily unavailable');
+    }
+}
+
 export class StripePaymentProcessingPermanentError extends Error {
     override readonly name = 'StripePaymentProcessingPermanentError';
 
@@ -256,7 +269,7 @@ export type StripePaymentProcessingClaimResult =
     | {
           attempt: number;
           availableAt: Date | null;
-          claimStatus: 'processing' | 'queued' | 'retryable';
+          claimStatus: 'processing' | 'retryable';
           status: 'unavailable';
       }
     | {
@@ -304,42 +317,20 @@ export async function acquireStripePaymentProcessingClaim(
                 .for('update')
                 .limit(1);
             if (!claim) {
-                const completedTransaction =
-                    await tx.query.transactions.findFirst({
-                        columns: { id: true },
-                        where: and(
-                            eq(
-                                transactions.stripePaymentId,
-                                normalizedPaymentId,
-                            ),
-                            eq(transactions.status, 'completed'),
-                            eq(transactions.isDeleted, false),
-                        ),
-                    });
+                // Migration 0078 seeds every completed transaction visible in
+                // its snapshot. A transaction without a claim committed after
+                // that snapshot and must run the idempotent output-repair path.
                 await tx
                     .insert(stripePaymentProcessingClaims)
-                    .values(
-                        completedTransaction
-                            ? {
-                                  attemptCount: 0,
-                                  completedAt: now,
-                                  completedTransactionId:
-                                      completedTransaction.id,
-                                  completionOutputVersion: 0,
-                                  status: 'completed',
-                                  stripePaymentId: normalizedPaymentId,
-                                  updatedAt: now,
-                              }
-                            : {
-                                  attemptCount: 1,
-                                  claimedAt: now,
-                                  claimToken,
-                                  leaseExpiresAt,
-                                  status: 'processing',
-                                  stripePaymentId: normalizedPaymentId,
-                                  updatedAt: now,
-                              },
-                    )
+                    .values({
+                        attemptCount: 1,
+                        claimedAt: now,
+                        claimToken,
+                        leaseExpiresAt,
+                        status: 'processing',
+                        stripePaymentId: normalizedPaymentId,
+                        updatedAt: now,
+                    })
                     .onConflictDoNothing({
                         target: stripePaymentProcessingClaims.stripePaymentId,
                     });
@@ -1064,7 +1055,12 @@ export async function withStripePaymentProcessingLock<T>(
             claimStatus: claim.claimStatus,
             stripePaymentId,
         });
-        return;
+        throw new StripePaymentProcessingUnavailableError(
+            stripePaymentId,
+            claim.claimStatus,
+            claim.availableAt,
+            claim.attempt,
+        );
     }
     if (claim.recovered) {
         console.warn('stripe_payment.processing.claim_recovered', {

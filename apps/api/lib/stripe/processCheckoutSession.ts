@@ -55,11 +55,13 @@ import {
     StripePaymentProcessingClaimLostError,
     StripePaymentProcessingDeferredError,
     StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
     StripeTransactionIdentityConflictError,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
     spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
+    sunflowerPackageRoles,
     topUpSunflowerPackage,
     upsertRaisedBedField,
     verifyStripeCheckoutAttemptLiveCart,
@@ -476,6 +478,46 @@ function getSunflowerPackageCheckoutLineItems(session: PaidCheckoutSession) {
         items,
         malformedCount: packageLineItems.length - items.length,
     };
+}
+
+function getSunflowerPackageSnapshotMismatches(
+    item: SunflowerPackageCheckoutLineItem,
+) {
+    return [
+        item.entityTypeName === sunflowerPackageEntityTypeName
+            ? null
+            : 'entity_type',
+        Number.isSafeInteger(item.entityId) && item.entityId > 0
+            ? null
+            : 'entity_id',
+        sunflowerPackageRoles.some((role) => role === item.packageRole)
+            ? null
+            : 'role',
+        item.currency === 'eur' ? null : 'currency',
+        Number.isSafeInteger(item.quantity) && item.quantity === 1
+            ? null
+            : 'quantity',
+        Number.isSafeInteger(item.priceCents) && item.priceCents > 0
+            ? null
+            : 'price_cents',
+        Number.isSafeInteger(item.amountTotal) &&
+        item.amountTotal > 0 &&
+        item.amountTotal <= item.priceCents
+            ? null
+            : 'line_amount',
+        Number.isSafeInteger(item.sunflowers) && item.sunflowers > 0
+            ? null
+            : 'sunflowers',
+        Number.isSafeInteger(item.baseSunflowers) && item.baseSunflowers > 0
+            ? null
+            : 'base_sunflowers',
+        Number.isSafeInteger(item.bonusSunflowers) && item.bonusSunflowers >= 0
+            ? null
+            : 'bonus_sunflowers',
+        item.sunflowers === item.baseSunflowers + item.bonusSunflowers
+            ? null
+            : 'sunflower_total',
+    ].filter((mismatch) => mismatch !== null);
 }
 
 type StripePaymentCompletionItem = {
@@ -1206,11 +1248,28 @@ export async function processCheckoutSession(
 
 export function processCheckoutSessionForReconciliation(
     checkoutSessionId: string,
-) {
-    return processCheckoutSession(checkoutSessionId, {
+    dependencies: ProcessCheckoutSessionDependencies = {
         ...realDependencies,
         getStripeCheckoutSession: getStripeCheckoutSessionForReconciliation,
-    });
+    },
+) {
+    return processCheckoutSession(checkoutSessionId, dependencies).catch(
+        (error: unknown) => {
+            if (error instanceof StripePaymentProcessingUnavailableError) {
+                console.info(
+                    'stripe_payment.reconciliation.claim_already_processing',
+                    {
+                        attempt: error.attempt,
+                        availableAt: error.availableAt?.toISOString() ?? null,
+                        claimStatus: error.claimStatus,
+                        stripePaymentId: error.stripePaymentId,
+                    },
+                );
+                return;
+            }
+            throw error;
+        },
+    );
 }
 
 async function recordSunflowerPackageFulfillmentFailure({
@@ -1281,6 +1340,48 @@ async function processSunflowerPackageCheckoutSession({
     }
 
     const paidAmountCents = packageItem.amountTotal;
+    const snapshotMismatches =
+        getSunflowerPackageSnapshotMismatches(packageItem);
+    if (snapshotMismatches.length > 0) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: `metadata_mismatch:${snapshotMismatches.join(',')}`,
+        });
+        return;
+    }
+
+    const purchasedItems = [
+        {
+            name: packageItem.productName ?? packageItem.packageCode,
+            quantity: packageItem.quantity,
+            amountSubtotal: paidAmountCents,
+            currency: 'eur',
+        },
+    ];
+    if (existingTransactionId) {
+        const customer = await dependencies.getUser(packageItem.userId);
+        await ensureCheckoutCompletionOutputs({
+            accountId: packageItem.accountId,
+            cartId: null,
+            claimControl,
+            customerEmail: customer?.userName,
+            dependencies,
+            items: purchasedItems,
+            session,
+        });
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
+        console.info(
+            `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; completion outputs repaired without fulfillment replay.`,
+        );
+        return;
+    }
+
     const packageData = await dependencies.getSunflowerPackageByCode(
         packageItem.packageCode,
     );
@@ -1331,32 +1432,6 @@ async function processSunflowerPackageCheckoutSession({
     }
 
     const customer = await dependencies.getUser(packageItem.userId);
-    const purchasedItems = [
-        {
-            name: packageData.name,
-            quantity: 1,
-            amountSubtotal: paidAmountCents,
-            currency: 'eur',
-        },
-    ];
-    if (existingTransactionId) {
-        await ensureCheckoutCompletionOutputs({
-            accountId: packageItem.accountId,
-            cartId: null,
-            claimControl,
-            customerEmail: customer?.userName,
-            dependencies,
-            items: purchasedItems,
-            session,
-        });
-        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
-            allowMissingAttempt: true,
-        });
-        console.info(
-            `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; completion outputs repaired without fulfillment replay.`,
-        );
-        return;
-    }
 
     try {
         const oneTimeAccountPackage =

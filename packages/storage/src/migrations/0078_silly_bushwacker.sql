@@ -5,6 +5,7 @@ BEGIN
 	-- Drizzle migration transaction and therefore reset on commit or rollback.
 	PERFORM set_config('lock_timeout', '5s', true);
 	PERFORM set_config('statement_timeout', '5min', true);
+	PERFORM pg_advisory_xact_lock(1196573763, 1398035024);
 
 	IF EXISTS (
 		SELECT 1

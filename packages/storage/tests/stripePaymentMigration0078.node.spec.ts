@@ -274,12 +274,31 @@ test('0078 noncanonical transaction preflight fails before creating any claim sc
     }
 });
 
-test('0078 times out behind a transaction writer, rolls back atomically, and then succeeds', {
-    skip: process.env.TEST_POSTGRES_URL
-        ? false
-        : 'TEST_POSTGRES_URL is required for real PostgreSQL migration locking',
-    timeout: 30_000,
-}, async () => {
+async function holdMigrationBlocker(pool: Pool, blockerSql: string) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(blockerSql);
+    } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } finally {
+            client.release();
+        }
+        throw error;
+    }
+    return async () => {
+        try {
+            await client.query('ROLLBACK');
+        } finally {
+            client.release();
+        }
+    };
+}
+
+async function assertLockTimeoutRollbackAndRetry(
+    acquireBlocker: (pool: Pool) => Promise<() => Promise<void>>,
+) {
     const connectionString = process.env.TEST_POSTGRES_URL;
     assert.ok(connectionString);
     const databaseName = `gredice_0078_${process.pid.toString()}_${randomUUID()
@@ -303,26 +322,9 @@ test('0078 times out behind a transaction writer, rolls back atomically, and the
         });
         await migrationPool.query(preMigrationSchema);
         const database = drizzle(migrationPool);
-        const writer = await migrationPool.connect();
+        const releaseBlocker = await acquireBlocker(migrationPool);
 
         try {
-            await writer.query('BEGIN');
-            await writer.query(`
-                    INSERT INTO transactions (
-                        stripe_payment_id,
-                        status,
-                        is_deleted,
-                        created_at,
-                        updated_at
-                    ) VALUES (
-                        'cs_concurrent_writer',
-                        'completed',
-                        false,
-                        now(),
-                        now()
-                    )
-                `);
-
             const startedAt = performance.now();
             await assert.rejects(
                 migrate(database, { migrationsFolder: migrationFolder }),
@@ -378,8 +380,7 @@ test('0078 times out behind a transaction writer, rolls back atomically, and the
             assert.equal(enumResult.rows[0]?.count, 0);
             assert.equal(await migrationJournalEntryCount(migrationPool), 0);
         } finally {
-            await writer.query('ROLLBACK');
-            writer.release();
+            await releaseBlocker();
         }
 
         await migrate(database, { migrationsFolder: migrationFolder });
@@ -417,4 +418,49 @@ test('0078 times out behind a transaction writer, rolls back atomically, and the
         await adminPool.end();
         await rm(migrationFolder, { force: true, recursive: true });
     }
-});
+}
+
+const realPostgresTestOptions = {
+    skip: process.env.TEST_POSTGRES_URL
+        ? false
+        : 'TEST_POSTGRES_URL is required for real PostgreSQL migration locking',
+    timeout: 30_000,
+};
+
+test(
+    '0078 times out behind the legacy processor drain fence, rolls back atomically, and then succeeds',
+    realPostgresTestOptions,
+    async () => {
+        await assertLockTimeoutRollbackAndRetry((pool) =>
+            holdMigrationBlocker(
+                pool,
+                'SELECT pg_advisory_xact_lock_shared(1196573763, 1398035024)',
+            ),
+        );
+    },
+);
+
+test(
+    '0078 times out behind a transaction writer, rolls back atomically, and then succeeds',
+    realPostgresTestOptions,
+    async () => {
+        await assertLockTimeoutRollbackAndRetry((pool) =>
+            holdMigrationBlocker(
+                pool,
+                `INSERT INTO transactions (
+                stripe_payment_id,
+                status,
+                is_deleted,
+                created_at,
+                updated_at
+            ) VALUES (
+                'cs_concurrent_writer',
+                'completed',
+                false,
+                now(),
+                now()
+            )`,
+            ),
+        );
+    },
+);

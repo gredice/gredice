@@ -28,6 +28,7 @@ import {
     StripePaymentProcessingClaimLostError,
     StripePaymentProcessingDeferredError,
     StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
     StripeTransactionIdentityConflictError,
     STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY,
     STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE,
@@ -316,7 +317,7 @@ test('createTransaction rejects a conflicting replay for a Stripe payment identi
     );
 });
 
-test('webhook and cron deliveries share one active Stripe processing claim', async () => {
+test('an active Stripe processing claim rejects concurrent retryable delivery', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const stripePaymentId = randomUUID();
@@ -356,21 +357,27 @@ test('webhook and cron deliveries share one active Stripe processing claim', asy
         claimOptions,
     );
     await callbackStarted;
-    const cron = withStripePaymentProcessingLock(
-        stripePaymentId,
-        async () => {
-            callbackCount += 1;
-            return createTransaction({
-                accountId,
-                amount: 100,
-                currency: 'eur',
-                status: 'completed',
-                stripePaymentId,
-            });
-        },
-        claimOptions,
+    await assert.rejects(
+        withStripePaymentProcessingLock(
+            stripePaymentId,
+            async () => {
+                callbackCount += 1;
+                return createTransaction({
+                    accountId,
+                    amount: 100,
+                    currency: 'eur',
+                    status: 'completed',
+                    stripePaymentId,
+                });
+            },
+            claimOptions,
+        ),
+        (error: unknown) =>
+            error instanceof StripePaymentProcessingUnavailableError &&
+            error.stripePaymentId === stripePaymentId &&
+            error.claimStatus === 'processing' &&
+            error.attempt === 1,
     );
-    await cron;
     releaseCallback?.();
     await webhook;
 
@@ -385,6 +392,53 @@ test('webhook and cron deliveries share one active Stripe processing claim', asy
     const claim = await getStripePaymentProcessingClaim(stripePaymentId);
     assert.strictEqual(claim?.status, 'completed');
     assert.ok(claim?.completedTransactionId);
+
+    const duplicate = await withStripePaymentProcessingLock(
+        stripePaymentId,
+        async () => {
+            callbackCount += 1;
+        },
+        claimOptions,
+    );
+    assert.strictEqual(duplicate, undefined);
+    assert.strictEqual(callbackCount, 1);
+});
+
+test('a future retryable Stripe processing claim exposes its retry time', async () => {
+    createTestDb();
+    const stripePaymentId = randomUUID();
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const acquired = await acquireStripePaymentProcessingClaim(
+        stripePaymentId,
+        {
+            now,
+        },
+    );
+    assert.strictEqual(acquired.status, 'acquired');
+    if (acquired.status !== 'acquired') return;
+    const failure = await recordStripePaymentProcessingFailure({
+        claimToken: acquired.claimToken,
+        failureCode: 'provider_timeout',
+        now,
+        retryDelayMs: 60_000,
+        stripePaymentId,
+    });
+    assert.strictEqual(failure.status, 'retryable');
+    if (failure.status !== 'retryable') return;
+
+    await assert.rejects(
+        withStripePaymentProcessingLock(
+            stripePaymentId,
+            async () => undefined,
+            {
+                now: () => now,
+            },
+        ),
+        (error: unknown) =>
+            error instanceof StripePaymentProcessingUnavailableError &&
+            error.claimStatus === 'retryable' &&
+            error.availableAt?.getTime() === failure.nextAttemptAt.getTime(),
+    );
 });
 
 test('expired claims recover and fence every stale completion and failure', async () => {
@@ -612,6 +666,21 @@ test('a permanent processing error enters manual review on its first attempt', a
     assert.equal(claim?.lastFailureCode, 'checkout_session_missing');
     assert.equal(claim?.manualReviewReason, 'checkout_session_missing');
     assert.equal(claim?.status, 'manual_review');
+
+    let callbackRan = false;
+    const duplicate = await withStripePaymentProcessingLock(
+        stripePaymentId,
+        async () => {
+            callbackRan = true;
+        },
+        {
+            heartbeatIntervalMs: 500,
+            leaseDurationMs: 5_000,
+            maxAttempts: 5,
+        },
+    );
+    assert.strictEqual(duplicate, undefined);
+    assert.strictEqual(callbackRan, false);
 });
 
 test('provider settlement deferrals preserve lifetime attempts without exhausting the review cycle', async () => {
@@ -1252,7 +1321,7 @@ test('Stripe claim renewal never shortens a lease when an older heartbeat finish
     assert.equal(delayedOlderLease?.toISOString(), latestLease?.toISOString());
 });
 
-test('acquisition lazily suppresses a completed transaction created before claim rollout', async () => {
+test('a transaction committed after the migration snapshot acquires processing so outputs can be repaired', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const stripePaymentId = randomUUID();
@@ -1263,17 +1332,35 @@ test('acquisition lazily suppresses a completed transaction created before claim
         status: 'completed',
         stripePaymentId,
     });
+    let callbackCount = 0;
 
-    const claim = await acquireStripePaymentProcessingClaim(stripePaymentId);
+    const repairedTransactionId = await withStripePaymentProcessingLock(
+        stripePaymentId,
+        async (claimControl) => {
+            callbackCount += 1;
+            const existingTransaction =
+                await getCompletedTransactionByStripePaymentId(stripePaymentId);
+            assert.equal(existingTransaction?.id, transactionId);
+            await ensureTestCompletionOutputs({
+                claimToken: claimControl.claimToken,
+                stripePaymentId,
+            });
+            return existingTransaction?.id;
+        },
+    );
 
-    assert.deepEqual(claim, {
-        attempt: 0,
-        completedTransactionId: transactionId,
-        status: 'completed',
-    });
+    assert.equal(repairedTransactionId, transactionId);
+    assert.equal(callbackCount, 1);
     const stored = await getStripePaymentProcessingClaim(stripePaymentId);
-    assert.equal(stored?.completionOutputVersion, 0);
+    assert.equal(stored?.attemptCount, 1);
+    assert.equal(stored?.completedTransactionId, transactionId);
+    assert.equal(stored?.completionOutputVersion, 1);
     assert.equal(stored?.status, 'completed');
+
+    await withStripePaymentProcessingLock(stripePaymentId, async () => {
+        callbackCount += 1;
+    });
+    assert.equal(callbackCount, 1);
 });
 
 test('a discovered queued Stripe claim is acquired as its first attempt', async () => {
