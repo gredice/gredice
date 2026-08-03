@@ -26,6 +26,7 @@
         "test:db:migrate": "bash ./tests/migrateTestDb.sh",
         "test:db:stop": "bash ./tests/stopTestDb.sh",
         "test:node": "bash ./tests/runNodeTests.sh",
+        "stripe-payment-processing:drain-preflight": "tsx --conditions=react-server ./scripts/checkStripePaymentProcessingDrain.ts",
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
         "sunflower-packages:seed": "tsx --conditions=react-server --env-file=.env ./scripts/seedSunflowerPackageCatalog.ts",
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
