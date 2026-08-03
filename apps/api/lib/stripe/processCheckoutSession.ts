@@ -1583,6 +1583,16 @@ async function processPaidCheckoutSession(
 ) {
     const alreadyProcessed =
         await dependencies.getCompletedTransactionByStripePaymentId(session.id);
+    let checkoutAttempt: StripeCheckoutAttempt | null | undefined;
+    if (session.paymentStatus === 'no_payment_required' && !alreadyProcessed) {
+        // Zero-total sessions are accepted only for durable cart attempts. Do
+        // this before specialized fulfillment branches so metadata alone can
+        // never opt an unrelated checkout into no-payment fulfillment.
+        checkoutAttempt = await reconcileStripeCheckoutAttempt(
+            session,
+            dependencies,
+        );
+    }
     const sunflowerPackageCheckout =
         getSunflowerPackageCheckoutLineItems(session);
     if (sunflowerPackageCheckout.malformedCount > 0) {
@@ -1630,7 +1640,7 @@ async function processPaidCheckoutSession(
         `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
     );
 
-    const checkoutAttempt = await reconcileStripeCheckoutAttempt(
+    checkoutAttempt ??= await reconcileStripeCheckoutAttempt(
         session,
         dependencies,
     );
