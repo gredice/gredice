@@ -198,12 +198,22 @@ async function buildOperationContext(
     }
 }
 
-async function sendSlackMessage(channel: string | undefined, text: string) {
+export type SlackNotificationDeliveryOptions = {
+    abortSignal?: AbortSignal;
+    beforeProviderSubmission?: () => Promise<void>;
+};
+
+async function sendSlackMessage(
+    channel: string | undefined,
+    text: string,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
     const token = process.env.SLACK_BOT_TOKEN;
     const result = await postMessage({
         token,
         channel,
         text,
+        ...deliveryOptions,
     });
     if (!result.ok) {
         if (result.skipped) {
@@ -253,6 +263,19 @@ export async function notifyOperationUpdate(
         | OperationCompletePayload
         | OperationSchedulePayload
         | OperationCancelPayload,
+): Promise<void> {
+    await deliverOperationSlackNotification(operationId, type, options);
+}
+
+export async function deliverOperationSlackNotification(
+    operationId: number,
+    type: OperationEventType,
+    options:
+        | OperationCompletePayload
+        | OperationSchedulePayload
+        | OperationCancelPayload
+        | undefined,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
 ) {
     const context = await buildOperationContext(operationId);
     if (!context) {
@@ -321,13 +344,26 @@ export async function notifyOperationUpdate(
     }
     lines.push(`• ID radnje: ${operationId}`);
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyDeliveryRequestEvent(
     requestId: string,
     type: DeliveryRequestEventType,
+    options?: DeliveryRequestEventOptions,
+): Promise<void> {
+    await deliverDeliveryRequestSlackNotification(requestId, type, options);
+}
+
+export async function deliverDeliveryRequestSlackNotification(
+    requestId: string,
+    type: DeliveryRequestEventType,
     options: DeliveryRequestEventOptions = {},
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
 ) {
     const request = await getDeliveryRequest(requestId);
     if (!request) {
@@ -389,7 +425,11 @@ export async function notifyDeliveryRequestEvent(
         lines.push(`• Napomena: ${options.note}`);
     }
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyNewUserRegistered(userId: string) {

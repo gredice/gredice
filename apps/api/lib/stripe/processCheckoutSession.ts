@@ -9,8 +9,6 @@ import {
 } from '@gredice/js/raisedBeds';
 import {
     notifyCheckoutFulfillmentIncident,
-    notifyDeliveryRequestEvent,
-    notifyOperationUpdate,
     notifyPurchase,
 } from '@gredice/notifications';
 import {
@@ -84,15 +82,11 @@ import {
     calculateSunflowerAmount,
     calculateSunflowerReplayAmount,
 } from '../checkout/sunflowerCalculations';
-import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
-import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
 import { getPostHogClient } from '../posthog-server';
 
 export type ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned: typeof isRaisedBedAbandoned;
-    notifyDeliveryRequestEvent: typeof notifyDeliveryRequestEvent;
     notifyCheckoutFulfillmentIncident: typeof notifyCheckoutFulfillmentIncident;
-    notifyOperationUpdate: typeof notifyOperationUpdate;
     notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
@@ -143,8 +137,6 @@ export type ProcessCheckoutSessionDependencies = {
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
     buildOrderConfirmationItems: typeof buildOrderConfirmationItems;
     notifyOrderConfirmationEmail: typeof notifyOrderConfirmationEmail;
-    notifyDeliveryScheduled: typeof notifyDeliveryScheduled;
-    notifyScheduledDeliveryEmailOnce: typeof notifyScheduledDeliveryEmailOnce;
     getPostHogClient: typeof getPostHogClient;
     issueReceiptForPaidInvoice: typeof issueReceiptForPaidInvoice;
     fiscalizeReceipt: typeof fiscalizeReceipt;
@@ -153,9 +145,7 @@ export type ProcessCheckoutSessionDependencies = {
 
 const realDependencies: ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned,
-    notifyDeliveryRequestEvent,
     notifyCheckoutFulfillmentIncident,
-    notifyOperationUpdate,
     notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
@@ -206,8 +196,6 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     calculateSunflowerAmount,
     buildOrderConfirmationItems,
     notifyOrderConfirmationEmail,
-    notifyDeliveryScheduled,
-    notifyScheduledDeliveryEmailOnce,
     getPostHogClient,
     issueReceiptForPaidInvoice,
     fiscalizeReceipt,
@@ -462,7 +450,6 @@ async function processNonStripeCartItems(
     deliveryInfo?: unknown,
     harvestDateByCartItemId = new Map<number, string>(),
     expectedNonStripeCartItemIds: ReadonlySet<number> | null = null,
-    scheduledDeliveryEmailKeys?: Set<string>,
     checkoutSessionId?: string | null,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ): Promise<{
@@ -789,7 +776,6 @@ async function processNonStripeCartItems(
                             currency: item.currency,
                             amount_total: sunflowerAmount,
                             additionalData,
-                            scheduledDeliveryEmailKeys,
                             checkoutSessionId,
                             checkoutOperationMapping:
                                 item.entityTypeName === 'operation'
@@ -918,7 +904,6 @@ async function processNonStripeCartItems(
                             currency: item.currency,
                             amount_total: 0,
                             additionalData,
-                            scheduledDeliveryEmailKeys,
                             checkoutSessionId,
                             checkoutOperationMapping:
                                 item.entityTypeName === 'operation'
@@ -1421,7 +1406,6 @@ async function processPaidCheckoutSession(
         amountSubtotal?: number | null;
         currency?: string | null;
     }[] = [];
-    const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
     let customerUserId: string | undefined;
     const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
@@ -1741,7 +1725,6 @@ async function processPaidCheckoutSession(
                                 ...itemData,
                                 accountId: checkoutAccountId,
                                 amount_total: item.amount_total,
-                                scheduledDeliveryEmailKeys,
                                 checkoutSessionId: session.id,
                                 paymentRewardAlreadyEnsured: true,
                                 checkoutOperationMapping,
@@ -1849,7 +1832,6 @@ async function processPaidCheckoutSession(
                 deliveryInfo,
                 harvestDateByCartItemId,
                 expectedNonStripeCartItemIds,
-                scheduledDeliveryEmailKeys,
                 session.id,
                 dependencies,
             );
@@ -2367,7 +2349,6 @@ export async function processItem(
         outletPriceCents?: number | null;
         currency: string | null;
         amount_total: number; // Amount in cents or sunflowers
-        scheduledDeliveryEmailKeys?: Set<string>;
         checkoutSessionId?: string | null;
         paymentRewardAlreadyEnsured?: boolean;
         checkoutOperationMapping?: Awaited<
@@ -2521,24 +2502,6 @@ export async function processItem(
                 },
             );
 
-        if (created) {
-            try {
-                await dependencies.notifyOperationUpdate(
-                    operationId,
-                    'scheduled',
-                    {
-                        scheduledDate: new Date(
-                            operationScheduledDate,
-                        ).toISOString(),
-                    },
-                );
-            } catch (error) {
-                console.error(
-                    `Failed to notify about scheduled operation ${operationId.toString()}:`,
-                    error,
-                );
-            }
-        }
         console.debug(
             `${created ? 'Created' : 'Reused'} scheduled operation ${operationId.toString()} for cart item ${itemData.cartItemId.toString()}.`,
         );
@@ -2568,35 +2531,6 @@ export async function processItem(
                         console.debug(
                             `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );
-                        if (deliveryRequest.created) {
-                            const notificationResults =
-                                await Promise.allSettled([
-                                    dependencies.notifyDeliveryRequestEvent(
-                                        deliveryRequest.requestId,
-                                        'created',
-                                    ),
-                                    dependencies.notifyScheduledDeliveryEmailOnce(
-                                        {
-                                            requestId:
-                                                deliveryRequest.requestId,
-                                            accountId: itemData.accountId,
-                                            deliveryInfo,
-                                            notifiedKeys:
-                                                itemData.scheduledDeliveryEmailKeys,
-                                            notify: dependencies.notifyDeliveryScheduled,
-                                        },
-                                    ),
-                                ]);
-                            const failedNotificationCount =
-                                notificationResults.filter(
-                                    (result) => result.status === 'rejected',
-                                ).length;
-                            if (failedNotificationCount > 0) {
-                                console.error(
-                                    `Failed to send ${failedNotificationCount.toString()} notification(s) for delivery request ${deliveryRequest.requestId}`,
-                                );
-                            }
-                        }
                     } catch (error) {
                         console.error(
                             `Failed to create delivery request for operation ${operationId}:`,

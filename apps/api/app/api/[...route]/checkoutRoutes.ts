@@ -556,8 +556,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 resolvedAmountsByCartItemId,
                             }) => {
                                 processingStage = 'fulfillment';
-                                const scheduledDeliveryEmailKeys =
-                                    new Set<string>();
                                 try {
                                     for (const item of pendingItems) {
                                         const resolvedAmount =
@@ -580,7 +578,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                             cartItemId: item.id,
                                             ...item,
                                             amount_total: resolvedAmount,
-                                            scheduledDeliveryEmailKeys,
                                             additionalData:
                                                 checkoutAdditionalDataByCartItemId.get(
                                                     item.id,
@@ -674,7 +671,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                             cartItemId: item.id,
                                             ...item,
                                             amount_total: 0,
-                                            scheduledDeliveryEmailKeys,
                                             additionalData:
                                                 checkoutAdditionalDataByCartItemId.get(
                                                     item.id,

@@ -128,6 +128,12 @@ export async function sendBillingDocuments(
 export async function sendDeliveryScheduled(
     to: string,
     config: DeliveryScheduledEmailTemplateProps,
+    options: {
+        abortSignal?: AbortSignal;
+        beforeProviderSubmission?: () => Promise<void>;
+        existingEmailLogId?: number;
+        providerOperationId?: string;
+    } = {},
 ) {
     const templateProps = {
         ...config,
@@ -139,6 +145,14 @@ export async function sendDeliveryScheduled(
         to,
         subject: 'Gredice - termin tvoje dostave',
         template: DeliveryScheduledEmailTemplate(templateProps),
+        templateName: options.existingEmailLogId
+            ? 'checkout-notification'
+            : 'delivery-scheduled',
+        messageType: options.existingEmailLogId ? 'checkout' : 'delivery',
+        abortSignal: options.abortSignal,
+        beforeProviderSubmission: options.beforeProviderSubmission,
+        existingEmailLogId: options.existingEmailLogId,
+        operationId: options.providerOperationId,
     });
 }
 

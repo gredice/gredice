@@ -66,14 +66,8 @@ function makeDependencies(
             record(calls, 'isRaisedBedAbandoned', [status]);
             return status === 'abandoned';
         },
-        notifyDeliveryRequestEvent: async (...args: unknown[]) => {
-            record(calls, 'notifyDeliveryRequestEvent', args);
-        },
         notifyCheckoutFulfillmentIncident: async (...args: unknown[]) => {
             record(calls, 'notifyCheckoutFulfillmentIncident', args);
-        },
-        notifyOperationUpdate: async (...args: unknown[]) => {
-            record(calls, 'notifyOperationUpdate', args);
         },
         notifyPurchase: async (...args: unknown[]) => {
             record(calls, 'notifyPurchase', args);
@@ -413,12 +407,6 @@ function makeDependencies(
         },
         notifyOrderConfirmationEmail: async (...args: unknown[]) => {
             record(calls, 'notifyOrderConfirmationEmail', args);
-        },
-        notifyDeliveryScheduled: async (...args: unknown[]) => {
-            record(calls, 'notifyDeliveryScheduled', args);
-        },
-        notifyScheduledDeliveryEmailOnce: async (...args: unknown[]) => {
-            record(calls, 'notifyScheduledDeliveryEmailOnce', args);
         },
         getPostHogClient: async (...args: unknown[]) => {
             record(calls, 'getPostHogClient', args);
@@ -3667,14 +3655,9 @@ describe('processItem', () => {
                 slotId: 9,
             },
         );
-        assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 0);
-        assert.equal(
-            callsNamed(calls, 'notifyScheduledDeliveryEmailOnce').length,
-            0,
-        );
     });
 
-    it('retries delivery creation without duplicating the scheduled operation', async () => {
+    it('retries delivery creation without blocking on notification providers', async () => {
         const calls: RecordedCall[] = [];
         let operationAttempt = 0;
         let deliveryAttempt = 0;
@@ -3731,6 +3714,20 @@ describe('processItem', () => {
                 };
             },
         });
+        const providerCalls: string[] = [];
+        for (const providerName of [
+            'notifyDeliveryRequestEvent',
+            'notifyDeliveryScheduled',
+            'notifyOperationUpdate',
+            'notifyScheduledDeliveryEmailOnce',
+        ]) {
+            Reflect.set(dependencies, providerName, async () => {
+                providerCalls.push(providerName);
+                throw new Error(
+                    'Provider must not run in checkout fulfillment',
+                );
+            });
+        }
         const item = {
             accountId: 'account-1',
             amount_total: 2500,
@@ -3771,13 +3768,8 @@ describe('processItem', () => {
             2,
         );
         assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 2);
-        assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 1);
         assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 2);
-        assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 1);
-        assert.equal(
-            callsNamed(calls, 'notifyScheduledDeliveryEmailOnce').length,
-            1,
-        );
+        assert.deepStrictEqual(providerCalls, []);
     });
 
     it('places planned greenhouse sowing when requested in additional data', async () => {

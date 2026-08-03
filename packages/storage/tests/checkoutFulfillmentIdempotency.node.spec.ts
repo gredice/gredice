@@ -6,6 +6,7 @@ import {
     addInventoryItem,
     CheckoutDeliveryRequestConflictError,
     CheckoutOperationConflictError,
+    checkoutNotificationOutboxKind,
     consumeInventoryItem,
     createAccount,
     createDeliveryRequest,
@@ -13,6 +14,7 @@ import {
     createPickupLocation,
     createTimeSlot,
     deliveryRequests,
+    emailMessages,
     events,
     getCheckoutInventoryConsumptions,
     getCheckoutInventorySnapshot,
@@ -28,7 +30,7 @@ import {
     TimeSlotStatuses,
     timeSlots,
 } from '@gredice/storage';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 function uniqueCartItemId() {
@@ -87,6 +89,18 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
         ),
     });
     assert.equal(mappingEvents.length, 1);
+    const operationNotifications = await storage()
+        .select({ id: emailMessages.id, status: emailMessages.status })
+        .from(emailMessages)
+        .where(
+            and(
+                sql<boolean>`${emailMessages.metadata}->>'outboxKind' = ${checkoutNotificationOutboxKind}`,
+                sql<boolean>`${emailMessages.metadata}->>'notificationKind' = 'operation_scheduled_slack'`,
+                sql<boolean>`${emailMessages.metadata}->>'operationId' = ${operationId.toString()}`,
+            ),
+        );
+    assert.equal(operationNotifications.length, 1);
+    assert.equal(operationNotifications[0]?.status, 'queued');
     assert.deepEqual(
         await getCheckoutOperationMapping(cartItemId),
         mappingEvents[0]?.data,
@@ -156,6 +170,16 @@ test('checkout operation mapping rolls back with operation and schedule', async 
         ),
     });
     assert.equal(storedOperations.length, 0);
+    const rolledBackNotifications = await storage()
+        .select({ id: emailMessages.id })
+        .from(emailMessages)
+        .where(
+            and(
+                sql<boolean>`${emailMessages.metadata}->>'outboxKind' = ${checkoutNotificationOutboxKind}`,
+                sql<boolean>`${emailMessages.metadata}->>'scheduledDate' = '2099-04-07T00:00:00.000Z'`,
+            ),
+        );
+    assert.equal(rolledBackNotifications.length, 0);
 });
 
 test('checkout operation mapping lookup rejects malformed and duplicate mappings', async () => {
@@ -274,6 +298,17 @@ test('checkout delivery ensure reuses one owned request after its slot closes wh
         .from(deliveryRequests)
         .where(eq(deliveryRequests.operationId, operationId));
     assert.equal(requests.length, 1);
+    const deliveryNotifications = await storage()
+        .select({ id: emailMessages.id })
+        .from(emailMessages)
+        .where(
+            and(
+                sql<boolean>`${emailMessages.metadata}->>'outboxKind' = ${checkoutNotificationOutboxKind}`,
+                sql<boolean>`${emailMessages.metadata}->>'notificationKind' = 'delivery_created_slack'`,
+                sql<boolean>`${emailMessages.metadata}->>'requestId' = ${results[0].requestId}`,
+            ),
+        );
+    assert.equal(deliveryNotifications.length, 1);
 });
 
 test('checkout delivery ensure closes and rejects an expired new slot without nested locking', async () => {

@@ -36,6 +36,7 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { enqueueCheckoutDeliveryNotifications } from './checkoutNotificationOutboxRepo';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
 import {
     acquireDeliveryDispatchLock,
@@ -1608,6 +1609,7 @@ async function insertDeliveryRequest(
     requestId: string,
     data: DeliveryRequestInput,
     db: DatabaseClient,
+    enqueueCheckoutNotifications = false,
 ) {
     await db.insert(deliveryRequests).values({
         id: requestId,
@@ -1625,6 +1627,18 @@ async function insertDeliveryRequest(
         }),
         db,
     );
+    if (enqueueCheckoutNotifications) {
+        await enqueueCheckoutDeliveryNotifications(
+            {
+                accountId: data.accountId,
+                addressId: data.addressId,
+                mode: data.mode,
+                requestId,
+                slotId: data.slotId,
+            },
+            db,
+        );
+    }
 }
 
 function assertExistingCheckoutDeliveryRequest(
@@ -1764,7 +1778,7 @@ export async function getOrCreateDeliveryRequest(
             closeExpiredSlot: false,
         });
         const requestId = randomUUID();
-        await insertDeliveryRequest(requestId, data, tx);
+        await insertDeliveryRequest(requestId, data, tx, true);
         return { requestId, created: true };
     });
 }
