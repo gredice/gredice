@@ -478,3 +478,94 @@ test('rotates the durable cursor so candidate 51 is reached on the next run', as
     assert.equal(cursor, undefined);
     assert.equal(processedLast, true);
 });
+
+test('advances per candidate so a long fulfillment cannot starve its page peer', async () => {
+    const candidates = [
+        {
+            ...candidate({
+                attempt: { ...checkoutAttempt(), sessionId: 'cs_1' },
+            }),
+            createdEventId: 1,
+        },
+        {
+            ...candidate({
+                attempt: { ...checkoutAttempt(), sessionId: 'cs_2' },
+            }),
+            createdEventId: 2,
+        },
+    ];
+    let cursor: number | undefined;
+    let signalFirstStarted: (() => void) | undefined;
+    let releaseFirst: (() => void) | undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+        signalFirstStarted = resolve;
+    });
+    const firstCanFinish = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+    });
+    const sharedDependencies = dependencies();
+    sharedDependencies.getCursor = async () => cursor;
+    sharedDependencies.setCursor = async (afterCreatedEventId) => {
+        cursor = afterCreatedEventId ?? undefined;
+        return cursor;
+    };
+    sharedDependencies.listAttempts = async ({
+        afterCreatedEventId,
+        limit = 25,
+    } = {}) => {
+        const remaining = candidates.filter(
+            (entry) =>
+                afterCreatedEventId === undefined ||
+                entry.createdEventId > afterCreatedEventId,
+        );
+        const items = remaining.slice(0, limit);
+        const hasMore = remaining.length > items.length;
+        const lastItem = items.at(-1);
+        return {
+            hasMore,
+            items,
+            ...(hasMore && lastItem
+                ? { nextCreatedEventId: lastItem.createdEventId }
+                : {}),
+        };
+    };
+    sharedDependencies.getSession = async (sessionId) =>
+        sessionId === 'cs_1'
+            ? checkoutSession({
+                  id: sessionId,
+                  paymentStatus: 'paid',
+                  status: 'complete',
+              })
+            : checkoutSession({ id: sessionId, status: 'open' });
+    sharedDependencies.processSession = async (sessionId) => {
+        assert.equal(sessionId, 'cs_1');
+        signalFirstStarted?.();
+        await firstCanFinish;
+    };
+    sharedDependencies.getAttempt = async () => ({
+        ...checkoutAttempt(),
+        releaseReason: 'completed',
+        sessionId: 'cs_1',
+    });
+
+    const firstRun = reconcileStripeCheckoutOrphanAttempts({
+        dependencies: sharedDependencies,
+        maxAttempts: 2,
+        pageSize: 2,
+    });
+    await firstStarted;
+    assert.equal(cursor, 1);
+
+    const secondRun = await reconcileStripeCheckoutOrphanAttempts({
+        dependencies: sharedDependencies,
+        maxAttempts: 2,
+        pageSize: 2,
+    });
+    assert.equal(secondRun.scannedCount, 1);
+    assert.equal(secondRun.retainedCount, 1);
+    assert.equal(cursor, undefined);
+
+    releaseFirst?.();
+    const completedFirstRun = await firstRun;
+    assert.equal(completedFirstRun.scannedCount, 2);
+});

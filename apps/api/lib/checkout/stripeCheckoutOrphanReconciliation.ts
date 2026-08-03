@@ -406,11 +406,6 @@ export async function reconcileStripeCheckoutOrphanAttempts({
             return summary;
         }
 
-        // Lease this page before external work. A hard function timeout can
-        // skip it for one cycle, but cannot pin every later attempt forever.
-        await dependencies.setCursor(
-            page.hasMore ? (page.nextCreatedEventId ?? null) : null,
-        );
         for (const candidate of page.items) {
             if (
                 summary.scannedCount >= maxAttempts ||
@@ -419,6 +414,9 @@ export async function reconcileStripeCheckoutOrphanAttempts({
                 summary.truncated = true;
                 return summary;
             }
+            // Advance immediately before external work so a hard timeout on
+            // this candidate cannot pin later peers in the same page.
+            await dependencies.setCursor(candidate.createdEventId);
             summary.scannedCount += 1;
             const outcome = await reconcileCandidate(candidate, dependencies);
             recordOutcome(summary, outcome);
@@ -431,8 +429,10 @@ export async function reconcileStripeCheckoutOrphanAttempts({
             }
         }
         if (!page.hasMore) {
+            await dependencies.setCursor(null);
             return summary;
         }
+        await dependencies.setCursor(page.nextCreatedEventId ?? null);
         afterCreatedEventId = page.nextCreatedEventId;
         if (
             summary.scannedCount >= maxAttempts ||
