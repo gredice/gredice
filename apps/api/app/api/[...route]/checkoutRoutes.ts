@@ -69,6 +69,7 @@ import {
     buildOrderConfirmationItems,
     ORDER_CONFIRMATION_MANAGE_URL,
 } from '../../../lib/checkout/orderConfirmationEmail';
+import { recoverStripeCheckoutAttemptAfterCreateRace } from '../../../lib/checkout/stripeCheckoutCreateRace';
 import { recoverStripeCheckoutAttemptSession } from '../../../lib/checkout/stripeCheckoutRecovery';
 import {
     buildStripeCheckoutAttemptSnapshot,
@@ -1004,20 +1005,39 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     });
                 } catch (error) {
                     if (error instanceof StripeCheckoutAttemptInProgressError) {
-                        const activeAttempt =
-                            await getActiveStripeCheckoutAttempt(cart.id);
-                        if (activeAttempt) {
-                            const recovery = await recoverAttempt(
-                                activeAttempt,
-                                cart.items,
-                                canonicalCustomerId,
+                        const concurrentRecovery =
+                            await recoverStripeCheckoutAttemptAfterCreateRace({
+                                getActiveAttempt: () =>
+                                    getActiveStripeCheckoutAttempt(cart.id),
+                                recoverAttempt: (activeAttempt) =>
+                                    recoverAttempt(
+                                        activeAttempt,
+                                        cart.items,
+                                        canonicalCustomerId,
+                                    ),
+                            });
+                        if (concurrentRecovery.status === 'cart_changed') {
+                            checkoutTiming.setErrorCategory(
+                                'cart_validation_failed',
                             );
-                            if (recovery.status === 'open' && recovery.url) {
-                                return context.json({
-                                    sessionId: recovery.sessionId,
-                                    url: recovery.url,
-                                });
-                            }
+                            return context.json(
+                                {
+                                    code: 'CHECKOUT_CART_CHANGED',
+                                    error: 'Košarica se promijenila. Osvježi je i pokušaj ponovno.',
+                                },
+                                409,
+                            );
+                        }
+                        if (
+                            concurrentRecovery.status === 'recovered' &&
+                            concurrentRecovery.recovery.status === 'open' &&
+                            concurrentRecovery.recovery.url
+                        ) {
+                            return context.json({
+                                sessionId:
+                                    concurrentRecovery.recovery.sessionId,
+                                url: concurrentRecovery.recovery.url,
+                            });
                         }
                         return context.json(
                             {
