@@ -6,10 +6,14 @@ import {
     deleteTransaction,
     getAllTransactions,
     getCompletedTransactionByStripePaymentId,
+    getStripePaymentProcessingDrainPreflight,
     getTransaction,
     getTransactionByStripeId,
     type InsertTransaction,
+    STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY,
+    STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE,
     updateTransaction,
+    withStripePaymentProcessingLock,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -23,6 +27,69 @@ async function baseTransaction(): Promise<InsertTransaction> {
         stripePaymentId: 'stripe-123',
     };
 }
+
+test('Stripe payment processing drain fence uses the migration-reserved lock keys', () => {
+    assert.equal(
+        STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE,
+        1_196_573_763,
+    );
+    assert.equal(STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY, 1_398_035_024);
+});
+
+test('Stripe payment processing drain preflight waits for every shared processor transaction to commit', {
+    skip: process.env.TEST_POSTGRES_URL
+        ? false
+        : 'TEST_POSTGRES_URL is required for real PostgreSQL drain locking',
+    timeout: 10_000,
+}, async () => {
+    createTestDb();
+    let releaseFirstProcessor = () => {};
+    const firstProcessorRelease = new Promise<void>((resolve) => {
+        releaseFirstProcessor = resolve;
+    });
+    let markFirstProcessorStarted = () => {};
+    const firstProcessorStarted = new Promise<void>((resolve) => {
+        markFirstProcessorStarted = resolve;
+    });
+    let releaseSecondProcessor = () => {};
+    const secondProcessorRelease = new Promise<void>((resolve) => {
+        releaseSecondProcessor = resolve;
+    });
+    let markSecondProcessorStarted = () => {};
+    const secondProcessorStarted = new Promise<void>((resolve) => {
+        markSecondProcessorStarted = resolve;
+    });
+
+    const firstProcessor = withStripePaymentProcessingLock(
+        `drain-test-first-${randomUUID()}`,
+        async () => {
+            markFirstProcessorStarted();
+            await firstProcessorRelease;
+        },
+    );
+    const secondProcessor = withStripePaymentProcessingLock(
+        `drain-test-second-${randomUUID()}`,
+        async () => {
+            markSecondProcessorStarted();
+            await secondProcessorRelease;
+        },
+    );
+
+    await Promise.all([firstProcessorStarted, secondProcessorStarted]);
+    try {
+        assert.equal(await getStripePaymentProcessingDrainPreflight(), false);
+
+        releaseFirstProcessor();
+        await firstProcessor;
+        assert.equal(await getStripePaymentProcessingDrainPreflight(), false);
+    } finally {
+        releaseFirstProcessor();
+        releaseSecondProcessor();
+        await Promise.all([firstProcessor, secondProcessor]);
+    }
+
+    assert.equal(await getStripePaymentProcessingDrainPreflight(), true);
+});
 
 test('createTransaction and getTransaction', async () => {
     createTestDb();

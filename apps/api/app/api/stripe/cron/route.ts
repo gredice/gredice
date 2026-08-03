@@ -1,25 +1,9 @@
-import { getStripeCheckoutSessions } from '@gredice/stripe/server';
 import type { NextRequest } from 'next/server';
-import { processCheckoutSession } from '../../../../lib/stripe/processCheckoutSession';
+import { handleLegacyStripeReconciliationCron } from '../../../../lib/stripe/stripeLegacyReconciliationCron';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return new Response('Unauthorized', {
-            status: 401,
-        });
-    }
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 3);
-    const checkoutSessions = await getStripeCheckoutSessions(yesterday);
-    await Promise.all(
-        checkoutSessions.map((s) => s.id).map(processCheckoutSession),
-    );
-    return Response.json({
-        success: true,
-        processedCheckoutSessions: checkoutSessions.length,
-    });
+    return handleLegacyStripeReconciliationCron(request);
 }

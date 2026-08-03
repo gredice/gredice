@@ -9,6 +9,50 @@ import {
 import { storage } from '../storage';
 import { createEvent, knownEvents } from './eventsRepo';
 
+type StorageClient = ReturnType<typeof storage>;
+export type StripePaymentProcessingLockTransaction = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+
+// These signed int32 values encode "GRDC" and "STRP". Keep them stable: the
+// Stripe claim migration takes the matching exclusive two-key advisory lock
+// before it seeds durable processing claims.
+export const STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE = 1_196_573_763;
+export const STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY = 1_398_035_024;
+
+export async function acquireStripePaymentProcessingDrainFenceSharedLock(
+    transaction: StripePaymentProcessingLockTransaction,
+) {
+    await transaction.execute(
+        sql`select pg_advisory_xact_lock_shared(${STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE}, ${STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY});`,
+    );
+}
+
+export async function tryAcquireStripePaymentProcessingDrainFenceExclusiveLock(
+    transaction: StripePaymentProcessingLockTransaction,
+) {
+    const [result] = await transaction
+        .select({
+            acquired: sql<boolean>`pg_try_advisory_xact_lock(${STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_NAMESPACE}, ${STRIPE_PAYMENT_PROCESSING_DRAIN_FENCE_LOCK_KEY})`,
+        })
+        .from(sql`(select 1) as stripe_payment_processing_drain_probe`);
+
+    return result?.acquired === true;
+}
+
+/**
+ * Probes whether every legacy advisory-lock Stripe processor has committed.
+ * The exclusive lock is released when this read-only transaction completes.
+ */
+export async function getStripePaymentProcessingDrainPreflight() {
+    return storage().transaction(async (transaction) => {
+        await transaction.execute(sql`set transaction read only;`);
+        return tryAcquireStripePaymentProcessingDrainFenceExclusiveLock(
+            transaction,
+        );
+    });
+}
+
 export async function createTransaction(transaction: InsertTransaction) {
     if (!transaction.accountId) {
         throw new Error('Transaction must have an accountId');
@@ -59,6 +103,7 @@ export async function withStripePaymentProcessingLock<T>(
     callback: () => Promise<T>,
 ) {
     return storage().transaction(async (tx) => {
+        await acquireStripePaymentProcessingDrainFenceSharedLock(tx);
         await tx.execute(
             sql`select pg_advisory_xact_lock(hashtext(${`stripe-payment:${stripePaymentId}`}));`,
         );
