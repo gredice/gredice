@@ -9,7 +9,9 @@ import {
     classifyEmailProviderSubmissionFailure,
     createAtMostOnceEmailClient,
     EmailProviderSubmissionRejectedError,
+    EmailProviderTerminalFailureError,
     isEmailProviderSubmissionRejectedError,
+    isEmailProviderTerminalFailureError,
 } from './index';
 
 const operationId = '018f0d12-2ec4-7fab-9d91-91f890ad5d73';
@@ -171,7 +173,26 @@ test('terminal poll results throw after the provider has completed the operation
                     error: { code: 'ProviderFailure', message: 'terminal' },
                     status,
                 }),
-            /terminal/u,
+            (error: unknown) => {
+                assert.equal(isEmailProviderTerminalFailureError(error), true);
+                assert.ok(error instanceof EmailProviderTerminalFailureError);
+                assert.equal(error.providerStatus, status);
+                return true;
+            },
         );
     }
+    assert.equal(
+        isEmailProviderTerminalFailureError({
+            code: 'email_provider_terminal_failure',
+            providerStatus: KnownEmailSendStatus.Failed,
+        }),
+        true,
+    );
+    assert.equal(
+        isEmailProviderTerminalFailureError({
+            code: 'email_provider_terminal_failure',
+            providerStatus: KnownEmailSendStatus.Succeeded,
+        }),
+        false,
+    );
 });

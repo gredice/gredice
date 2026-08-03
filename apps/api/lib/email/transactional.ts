@@ -85,6 +85,12 @@ export async function sendWelcome(
 export async function sendOrderConfirmation(
     to: string,
     config: OrderConfirmationEmailTemplateProps,
+    options: {
+        abortSignal?: AbortSignal;
+        beforeProviderSubmission?: () => Promise<void>;
+        existingEmailLogId?: number;
+        providerOperationId?: string;
+    } = {},
 ) {
     return await sendEmail({
         from: 'suncokret@obavijesti.gredice.com',
@@ -96,6 +102,10 @@ export async function sendOrderConfirmation(
         metadata: {
             orderReference: config.orderReference ?? null,
         },
+        abortSignal: options.abortSignal,
+        beforeProviderSubmission: options.beforeProviderSubmission,
+        existingEmailLogId: options.existingEmailLogId,
+        operationId: options.providerOperationId,
     });
 }
 
