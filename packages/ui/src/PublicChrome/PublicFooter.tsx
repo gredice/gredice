@@ -229,6 +229,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'AI integracije',
+                            href: publicChromeHref(
+                                PublicPagePaths.MCP,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Status sustava',
                             href: PublicPagePaths.Status,
                         },

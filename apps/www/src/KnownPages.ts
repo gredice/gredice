@@ -38,6 +38,7 @@ export const KnownPages = {
     Recipes: '/recepti',
     Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
+    MCP: '/mcp',
     FAQ: PublicDirectoryPaths.FAQ as Route,
     CompanionPlanting: COMPANION_PLANTING_PATH as Route,
     QualityHarvestSafety: QUALITY_HARVEST_SAFETY_PATH as Route,

@@ -183,6 +183,14 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            plugin_package:
+              - .agents/plugins/**
+              - .claude-plugin/**
+              - plugins/**
+              - scripts/check-plugins.mjs
+              - apps/api/app/api/mcp/catalog.ts
+              - package.json
+              - .github/workflows/**
     outputs:
       app_www: ${{ steps.filter.outputs.app_www }}
       app_news: ${{ steps.filter.outputs.app_news }}
@@ -196,6 +204,19 @@ jobs:
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
       packages_email: ${{ steps.filter.outputs.packages_email }}
       packages_game: ${{ steps.filter.outputs.packages_game }}
+      plugin_package: ${{ steps.filter.outputs.plugin_package }}
+
+  plugin_package:
+    name: "Validate plugins"
+    needs: changes
+    if: success() && needs.changes.outputs.plugin_package == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+      - run: node scripts/check-plugins.mjs
 
   ci_www:
     name: "CI - www"

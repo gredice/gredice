@@ -18,6 +18,20 @@ async function callMcp(
 }
 
 test.describe('MCP protocol surface', () => {
+    test('keeps legacy domain-specific endpoints out of the public surface', async ({
+        request,
+    }) => {
+        for (const path of [
+            '/api/mcp/core/health',
+            '/api/mcp/directories',
+            '/api/mcp/gardens',
+            '/api/mcp/commerce',
+        ]) {
+            const response = await request.get(path);
+            expect(response.status()).toBe(404);
+        }
+    });
+
     test('initializes and negotiates protocol version', async ({ request }) => {
         const response = await callMcp(request, {
             jsonrpc: '2.0',
@@ -78,6 +92,35 @@ test.describe('MCP protocol surface', () => {
                 expect.objectContaining({ name: 'directories/get-plant' }),
             ]),
         );
+        expect(
+            tools.result.tools.find(
+                (tool: { name: string }) =>
+                    tool.name === 'directories/get-plants',
+            ),
+        ).toMatchObject({
+            annotations: {
+                readOnlyHint: true,
+                openWorldHint: false,
+                destructiveHint: false,
+            },
+        });
+        expect(
+            tools.result.tools.find(
+                (tool: { name: string }) =>
+                    tool.name === 'commerce/update-cart-item',
+            ),
+        ).toMatchObject({
+            annotations: {
+                readOnlyHint: false,
+                openWorldHint: false,
+                destructiveHint: true,
+            },
+            inputSchema: {
+                properties: expect.not.objectContaining({
+                    userId: expect.anything(),
+                }),
+            },
+        });
 
         const resourcesResponse = await callMcp(request, {
             jsonrpc: '2.0',

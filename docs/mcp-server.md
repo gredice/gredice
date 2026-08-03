@@ -1,5 +1,9 @@
 # MCP Server Contract And Hardening Spike
 
+> Historical survey: the supported current contract is documented in
+> [`apps/api/MCP_README.md`](../apps/api/MCP_README.md). Legacy domain routes
+> described below are now outside the public surface.
+
 This document records Plan 010 for the API MCP surface. It is a contract and
 hardening spike, not a runtime behavior change.
 
