@@ -17,37 +17,46 @@ import {
     type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
     createEvent,
     createNotificationWithStatus,
-    createOperation,
     createTransaction,
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
+    getCheckoutFulfillmentStartedCartItemIds,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
+    getOrCreateCheckoutOperation,
+    getOrCreateDeliveryRequest,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     getSunflowerPackageByCode,
     getUser,
+    hasMatchingCheckoutPlantingPurchase,
     type InvoiceForTransactionLineItem,
     isCartItemDeliverable,
     knownEvents,
     lockAndActivateRaisedBedForCheckoutPlanting,
+    lockShoppingCartForCheckout,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     processReferralRewardsForAccount,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
-    spendSunflowers,
+    spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
     topUpSunflowerPackage,
     upsertRaisedBedField,
+    withCheckoutCartItemLock,
+    withCheckoutCartItemLocks,
+    withCheckoutCartItemProcessingLock,
+    withCheckoutCartItemProcessingLocks,
+    withInventoryAccountTransaction,
     withPlantingScheduleTaskTransaction,
     withStripePaymentProcessingLock,
 } from '@gredice/storage';
@@ -62,6 +71,7 @@ import {
     getCartInfo,
     type ShoppingCartItemWithShopData,
 } from '../checkout/cartInfo';
+import { assertCheckoutCartItemSnapshot } from '../checkout/checkoutRecovery';
 import {
     decodeExpectedNonStripeCartItemIdsMetadata,
     decodeHarvestDatesMetadata,
@@ -70,7 +80,10 @@ import {
     buildOrderConfirmationItems,
     notifyOrderConfirmationEmail,
 } from '../checkout/orderConfirmationEmail';
-import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
+import {
+    calculateSunflowerAmount,
+    calculateSunflowerReplayAmount,
+} from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
 import { getPostHogClient } from '../posthog-server';
@@ -83,18 +96,21 @@ export type ProcessCheckoutSessionDependencies = {
     notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
-    createDeliveryRequest: typeof createDeliveryRequest;
+    getOrCreateDeliveryRequest: typeof getOrCreateDeliveryRequest;
     createEvent: typeof createEvent;
     createNotificationWithStatus: typeof createNotificationWithStatus;
-    createOperation: typeof createOperation;
+    getOrCreateCheckoutOperation: typeof getOrCreateCheckoutOperation;
     createTransaction: typeof createTransaction;
     deliverNotificationOperatorAlert: typeof deliverNotificationOperatorAlert;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
     ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
     getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
+    getCheckoutFulfillmentStartedCartItemIds: typeof getCheckoutFulfillmentStartedCartItemIds;
+    getCheckoutOperationMapping: typeof getCheckoutOperationMapping;
+    getCheckoutOperationMappings: typeof getCheckoutOperationMappings;
+    hasMatchingCheckoutPlantingPurchase: typeof hasMatchingCheckoutPlantingPurchase;
     getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
-    getInventory: typeof getInventory;
     getOutletOfferReservationForCartItem: typeof getOutletOfferReservationForCartItem;
     getRaisedBed: typeof getRaisedBed;
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
@@ -103,15 +119,21 @@ export type ProcessCheckoutSessionDependencies = {
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
     lockAndActivateRaisedBedForCheckoutPlanting: typeof lockAndActivateRaisedBedForCheckoutPlanting;
+    lockShoppingCartForCheckout: typeof lockShoppingCartForCheckout;
     markCartPaidIfAllItemsPaid: typeof markCartPaidIfAllItemsPaid;
     normalizeShoppingCartInventoryUsage: typeof normalizeShoppingCartInventoryUsage;
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
     processReferralRewardsForAccount: typeof processReferralRewardsForAccount;
     setCartItemPaid: typeof setCartItemPaid;
-    spendSunflowers: typeof spendSunflowers;
+    spendSunflowersBatch: typeof spendSunflowersBatch;
     topUpSunflowerPackage: typeof topUpSunflowerPackage;
     upsertRaisedBedField: typeof upsertRaisedBedField;
     withPlantingScheduleTaskTransaction: typeof withPlantingScheduleTaskTransaction;
+    withCheckoutCartItemLock: typeof withCheckoutCartItemLock;
+    withCheckoutCartItemLocks: typeof withCheckoutCartItemLocks;
+    withCheckoutCartItemProcessingLock: typeof withCheckoutCartItemProcessingLock;
+    withCheckoutCartItemProcessingLocks: typeof withCheckoutCartItemProcessingLocks;
+    withInventoryAccountTransaction: typeof withInventoryAccountTransaction;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
     isBillingAutomationEnabled: typeof isBillingAutomationEnabled;
@@ -137,18 +159,21 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
+    getOrCreateDeliveryRequest,
     createEvent,
     createNotificationWithStatus,
-    createOperation,
+    getOrCreateCheckoutOperation,
     createTransaction,
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
     getSunflowerPackageByCode,
     getCompletedTransactionByStripePaymentId,
+    getCheckoutFulfillmentStartedCartItemIds,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
+    hasMatchingCheckoutPlantingPurchase,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
@@ -157,15 +182,21 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     isCartItemDeliverable,
     knownEvents,
     lockAndActivateRaisedBedForCheckoutPlanting,
+    lockShoppingCartForCheckout,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     processReferralRewardsForAccount,
     setCartItemPaid,
-    spendSunflowers,
+    spendSunflowersBatch,
     topUpSunflowerPackage,
     upsertRaisedBedField,
     withPlantingScheduleTaskTransaction,
+    withCheckoutCartItemLock,
+    withCheckoutCartItemLocks,
+    withCheckoutCartItemProcessingLock,
+    withCheckoutCartItemProcessingLocks,
+    withInventoryAccountTransaction,
     withStripePaymentProcessingLock,
     getStripeCheckoutSession,
     isBillingAutomationEnabled,
@@ -200,6 +231,95 @@ function sortObjectKeys(obj: unknown): unknown {
             result[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
             return result;
         }, {});
+}
+
+function parseShoppingCartItemAdditionalData(
+    value: string | null | undefined,
+): object {
+    if (!value) {
+        return {};
+    }
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Shopping cart item additional data must be an object');
+    }
+    return parsed;
+}
+
+type CheckoutDeliveryInfo = {
+    addressId?: number;
+    locationId?: number;
+    mode: 'delivery' | 'pickup';
+    notes?: string;
+    slotId: number;
+};
+
+function checkoutDeliveryInfoFromAdditionalData(
+    additionalData: unknown,
+): CheckoutDeliveryInfo | null {
+    if (
+        !additionalData ||
+        typeof additionalData !== 'object' ||
+        !('delivery' in additionalData)
+    ) {
+        return null;
+    }
+    const delivery = additionalData.delivery;
+    if (!delivery || typeof delivery !== 'object') {
+        return null;
+    }
+    const value = delivery as Record<string, unknown>;
+    if (
+        typeof value.slotId !== 'number' ||
+        !Number.isSafeInteger(value.slotId) ||
+        (value.mode !== 'delivery' && value.mode !== 'pickup') ||
+        (value.addressId !== undefined &&
+            !Number.isSafeInteger(value.addressId)) ||
+        (value.locationId !== undefined &&
+            !Number.isSafeInteger(value.locationId)) ||
+        (value.notes !== undefined && typeof value.notes !== 'string')
+    ) {
+        return null;
+    }
+    return {
+        addressId:
+            typeof value.addressId === 'number' ? value.addressId : undefined,
+        locationId:
+            typeof value.locationId === 'number' ? value.locationId : undefined,
+        mode: value.mode,
+        notes: typeof value.notes === 'string' ? value.notes : undefined,
+        slotId: value.slotId,
+    };
+}
+
+function checkoutDeliveryProvenance(deliveryInfo: CheckoutDeliveryInfo | null) {
+    return deliveryInfo
+        ? {
+              addressId: deliveryInfo.addressId ?? null,
+              locationId: deliveryInfo.locationId ?? null,
+              mode: deliveryInfo.mode,
+              notes: deliveryInfo.notes ?? null,
+              slotId: deliveryInfo.slotId,
+          }
+        : null;
+}
+
+function checkoutDeliveryInfoFromProvenance(
+    provenance: NonNullable<
+        NonNullable<
+            Awaited<ReturnType<typeof getCheckoutOperationMapping>>
+        >['delivery']
+    > | null,
+): CheckoutDeliveryInfo | null {
+    return provenance
+        ? {
+              addressId: provenance.addressId ?? undefined,
+              locationId: provenance.locationId ?? undefined,
+              mode: provenance.mode,
+              notes: provenance.notes ?? undefined,
+              slotId: provenance.slotId,
+          }
+        : null;
 }
 
 type PaidCheckoutSession = NonNullable<
@@ -345,34 +465,106 @@ async function processNonStripeCartItems(
     scheduledDeliveryEmailKeys?: Set<string>,
     checkoutSessionId?: string | null,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
-): Promise<ShoppingCartItemWithShopData[]> {
+): Promise<{
+    confirmationItems: ShoppingCartItemWithShopData[];
+    processedItems: ShoppingCartItemWithShopData[];
+    resolvedSunflowerAmountsByCartItemId: Map<number, number>;
+    satisfiedExpectedItemIds: Set<number>;
+}> {
+    let confirmationItems: ShoppingCartItemWithShopData[] = [];
     const processedItems: ShoppingCartItemWithShopData[] = [];
+    const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
+    const satisfiedExpectedItemIds = new Set<number>();
     const inventoryNormalizedCart =
         await dependencies.normalizeShoppingCartInventoryUsage(cartId);
     if (!inventoryNormalizedCart) {
-        console.warn(
-            `No cart found for ID ${cartId} when processing non-stripe items.`,
-        );
-        return [];
+        const message = `No cart found for ID ${cartId} when processing non-stripe items.`;
+        if (expectedNonStripeCartItemIds !== null) {
+            throw new Error(message);
+        }
+        console.warn(message);
+        return {
+            confirmationItems,
+            processedItems,
+            resolvedSunflowerAmountsByCartItemId,
+            satisfiedExpectedItemIds,
+        };
     }
+    const checkoutOperationMappings =
+        await dependencies.getCheckoutOperationMappings(
+            inventoryNormalizedCart.items
+                .filter(
+                    (item) =>
+                        item.status !== 'paid' &&
+                        item.entityTypeName === 'operation',
+                )
+                .map((item) => item.id),
+        );
     const cart =
         (await dependencies.normalizeShoppingCartScheduledDates(
             inventoryNormalizedCart.id,
             {
+                checkoutOperationMappings,
                 defaultMissingScheduledDates: true,
             },
         )) ?? inventoryNormalizedCart;
 
-    const cartInfo = await dependencies.getCartInfo(cart.items, accountId);
-    if (!cartInfo.allowPurchase) {
-        console.warn(
-            `Cart ${cartId} failed validation when processing non-stripe items: ${cartInfo.notes.join('; ')}`,
-        );
-        return [];
-    }
     const isExpectedNonStripeItem = (item: { id: number }) =>
         expectedNonStripeCartItemIds === null ||
         expectedNonStripeCartItemIds.has(item.id);
+    for (const item of cart.items) {
+        if (
+            item.status === 'paid' &&
+            expectedNonStripeCartItemIds?.has(item.id)
+        ) {
+            satisfiedExpectedItemIds.add(item.id);
+        }
+    }
+
+    let cartInfo = await dependencies.getCartInfo(cart.items, accountId, {
+        checkoutOperationMappings,
+    });
+    if (!cartInfo.allowPurchase) {
+        const pendingDirectItems = cart.items.filter(
+            (item) =>
+                item.status !== 'paid' &&
+                item.currency !== 'eur' &&
+                isExpectedNonStripeItem(item),
+        );
+        const resumableDirectCartItemIds =
+            pendingDirectItems.length > 0
+                ? await dependencies.getCheckoutFulfillmentStartedCartItemIds(
+                      accountId,
+                      pendingDirectItems,
+                  )
+                : new Set<number>();
+        if (resumableDirectCartItemIds.size > 0) {
+            cartInfo = await dependencies.getCartInfo(cart.items, accountId, {
+                checkoutOperationMappings,
+                resumableCartItemIds: resumableDirectCartItemIds,
+            });
+        }
+    }
+    confirmationItems = cartInfo.items.filter(
+        (item) =>
+            isExpectedNonStripeItem(item) &&
+            (item.currency === 'sunflower' ||
+                item.currency === 'inventory' ||
+                item.usesInventory),
+    );
+    if (!cartInfo.allowPurchase) {
+        const pendingExpectedItem = cart.items.find(
+            (item) => item.status !== 'paid' && isExpectedNonStripeItem(item),
+        );
+        if (pendingExpectedItem) {
+            throw new Error(
+                `Cart ${cartId} failed validation when processing expected non-stripe item ${pendingExpectedItem.id.toString()}: ${cartInfo.notes.join('; ')}`,
+            );
+        }
+        console.warn(
+            `Cart ${cartId} failed validation after all expected non-stripe items were already paid: ${cartInfo.notes.join('; ')}`,
+        );
+    }
     for (const item of cartInfo.items) {
         if (
             expectedNonStripeCartItemIds?.has(item.id) &&
@@ -388,84 +580,233 @@ async function processNonStripeCartItems(
         }
     }
 
-    const sunflowerCartItemsWithShopData = cartInfo.items.filter(
-        (item) =>
-            item.status !== 'paid' &&
-            item.currency === 'sunflower' &&
-            isExpectedNonStripeItem(item),
+    const checkoutAdditionalDataByCartItemId = new Map(
+        cartInfo.items
+            .filter(
+                (item) =>
+                    item.status !== 'paid' && isExpectedNonStripeItem(item),
+            )
+            .map((item) => [
+                item.id,
+                {
+                    ...parseShoppingCartItemAdditionalData(item.additionalData),
+                    ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                    ...(harvestDateByCartItemId.has(item.id)
+                        ? {
+                              scheduledDate: harvestDateByCartItemId.get(
+                                  item.id,
+                              ),
+                          }
+                        : {}),
+                },
+            ]),
     );
 
-    // Precompute sunflower amounts and total required, so we can spend in a single operation
+    const expectedSunflowerCartItemsWithShopData = cartInfo.items.filter(
+        (item) =>
+            item.currency === 'sunflower' && isExpectedNonStripeItem(item),
+    );
+    // Precompute sunflower amounts so the durable batch debit can be retried
+    // without charging an already-processed item again.
     const sunflowerAmountsByItem = new Map<number, number>();
-    let totalSunflowersToSpend = 0;
 
-    for (const item of sunflowerCartItemsWithShopData) {
-        const sunflowerAmount = dependencies.calculateSunflowerAmount(item);
+    for (const item of expectedSunflowerCartItemsWithShopData) {
+        const sunflowerAmount =
+            item.status === 'paid'
+                ? calculateSunflowerReplayAmount(item)
+                : dependencies.calculateSunflowerAmount(item);
         sunflowerAmountsByItem.set(item.id, sunflowerAmount);
-        totalSunflowersToSpend += sunflowerAmount;
     }
 
-    let didSpendSunflowersForCart = false;
-    if (totalSunflowersToSpend > 0) {
-        try {
-            // Spend all sunflowers in a single transaction for the entire cart
-            // to prevent race conditions. Reference format: shoppingCart:${cartId}
-            // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
-            await dependencies.spendSunflowers(
-                accountId,
-                totalSunflowersToSpend,
-                `shoppingCart:${cartId}`,
-            );
-            didSpendSunflowersForCart = true;
-        } catch (error) {
-            console.error('Error spending sunflowers during cart processing', {
-                error,
-                accountId,
-                totalSunflowersToSpend,
-                cartId,
-            });
-        }
-    }
+    if (expectedSunflowerCartItemsWithShopData.length > 0) {
+        await dependencies.withCheckoutCartItemProcessingLocks(
+            expectedSunflowerCartItemsWithShopData.map((item) => item.id),
+            async () => {
+                const { pendingItems, resolvedAmountsByItemId } =
+                    await dependencies.withCheckoutCartItemLocks(
+                        expectedSunflowerCartItemsWithShopData.map(
+                            (item) => item.id,
+                        ),
+                        async (db) => {
+                            const lockedCart =
+                                await dependencies.lockShoppingCartForCheckout(
+                                    cartId,
+                                    db,
+                                );
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} disappeared before sunflower fulfillment.`,
+                                );
+                            }
+                            if (lockedCart.accountId !== accountId) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} account changed before sunflower fulfillment.`,
+                                );
+                            }
+                            const paymentStatesByCartItemId = new Map<
+                                number,
+                                'paid' | 'pending'
+                            >();
+                            for (const item of expectedSunflowerCartItemsWithShopData) {
+                                const state = assertCheckoutCartItemSnapshot(
+                                    lockedCart.items.find(
+                                        (lockedItem) =>
+                                            lockedItem.id === item.id,
+                                    ),
+                                    item,
+                                );
+                                paymentStatesByCartItemId.set(item.id, state);
+                                if (
+                                    state === 'paid' &&
+                                    expectedNonStripeCartItemIds?.has(item.id)
+                                ) {
+                                    satisfiedExpectedItemIds.add(item.id);
+                                }
+                            }
+                            const lockedPendingItems =
+                                expectedSunflowerCartItemsWithShopData.filter(
+                                    (item) =>
+                                        paymentStatesByCartItemId.get(
+                                            item.id,
+                                        ) === 'pending',
+                                );
+                            try {
+                                const spendResult =
+                                    await dependencies.spendSunflowersBatch(
+                                        accountId,
+                                        lockedPendingItems.map((item) => ({
+                                            amount:
+                                                sunflowerAmountsByItem.get(
+                                                    item.id,
+                                                ) ?? 0,
+                                            reason: `shoppingCartItem:${item.id.toString()}`,
+                                        })),
+                                        db,
+                                        {
+                                            existingCheckoutItemAmountsAreAuthoritative: true,
+                                            legacyCartSpend: {
+                                                reason: `shoppingCart:${cartId.toString()}`,
+                                                coveredItems:
+                                                    expectedSunflowerCartItemsWithShopData.map(
+                                                        (item) => {
+                                                            const paymentState =
+                                                                paymentStatesByCartItemId.get(
+                                                                    item.id,
+                                                                );
+                                                            if (!paymentState) {
+                                                                throw new Error(
+                                                                    `Sunflower cart item ${item.id.toString()} lost its payment state.`,
+                                                                );
+                                                            }
+                                                            return {
+                                                                amount:
+                                                                    sunflowerAmountsByItem.get(
+                                                                        item.id,
+                                                                    ) ?? 0,
+                                                                cartItemId:
+                                                                    item.id,
+                                                                createdAt:
+                                                                    item.createdAt,
+                                                                paymentState,
+                                                                reason: `shoppingCartItem:${item.id.toString()}`,
+                                                            };
+                                                        },
+                                                    ),
+                                            },
+                                        },
+                                    );
+                                const resolvedAmountsByItemId = new Map<
+                                    number,
+                                    number
+                                >();
+                                for (const item of expectedSunflowerCartItemsWithShopData) {
+                                    const resolvedAmount =
+                                        spendResult.resolvedAmountsByReason[
+                                            `shoppingCartItem:${item.id.toString()}`
+                                        ];
+                                    if (
+                                        !Number.isSafeInteger(resolvedAmount) ||
+                                        resolvedAmount <= 0
+                                    ) {
+                                        throw new Error(
+                                            `Sunflower spend for cart item ${item.id.toString()} did not resolve a valid amount.`,
+                                        );
+                                    }
+                                    resolvedAmountsByItemId.set(
+                                        item.id,
+                                        resolvedAmount,
+                                    );
+                                    resolvedSunflowerAmountsByCartItemId.set(
+                                        item.id,
+                                        resolvedAmount,
+                                    );
+                                }
+                                return {
+                                    pendingItems: lockedPendingItems,
+                                    resolvedAmountsByItemId,
+                                };
+                            } catch (error) {
+                                console.error(
+                                    'Error spending sunflowers during cart processing',
+                                    { error, accountId, cartId },
+                                );
+                                throw error;
+                            }
+                        },
+                    );
 
-    if (didSpendSunflowersForCart) {
-        for (const item of sunflowerCartItemsWithShopData) {
-            const sunflowerAmount = sunflowerAmountsByItem.get(item.id) ?? 0;
-            const baseAdditionalData = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const additionalData = {
-                ...baseAdditionalData,
-                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-                ...(harvestDateByCartItemId.has(item.id)
-                    ? {
-                          scheduledDate: harvestDateByCartItemId.get(item.id),
-                      }
-                    : {}),
-            };
-
-            await Promise.all([
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: sunflowerAmount,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
-            processedItems.push(item);
-        }
+                for (const item of pendingItems) {
+                    const sunflowerAmount = resolvedAmountsByItemId.get(
+                        item.id,
+                    );
+                    if (sunflowerAmount === undefined) {
+                        throw new Error(
+                            `Sunflower spend for cart item ${item.id.toString()} lost its resolved amount.`,
+                        );
+                    }
+                    resolvedSunflowerAmountsByCartItemId.set(
+                        item.id,
+                        sunflowerAmount,
+                    );
+                    const checkoutOperationMapping =
+                        item.entityTypeName === 'operation'
+                            ? await dependencies.getCheckoutOperationMapping(
+                                  item.id,
+                              )
+                            : undefined;
+                    const additionalData =
+                        checkoutAdditionalDataByCartItemId.get(item.id) ?? {};
+                    const fulfillment = await processItem(
+                        {
+                            accountId,
+                            cartItemId: item.id,
+                            entityId: item.entityId,
+                            entityTypeName: item.entityTypeName,
+                            cartId: item.cartId,
+                            gardenId: item.gardenId,
+                            raisedBedId: item.raisedBedId,
+                            positionIndex: item.positionIndex,
+                            currency: item.currency,
+                            amount_total: sunflowerAmount,
+                            additionalData,
+                            scheduledDeliveryEmailKeys,
+                            checkoutSessionId,
+                            checkoutOperationMapping:
+                                item.entityTypeName === 'operation'
+                                    ? checkoutOperationMapping
+                                    : undefined,
+                        },
+                        dependencies,
+                    );
+                    assertCheckoutItemFulfilled(fulfillment);
+                    await dependencies.setCartItemPaid(item.id);
+                    processedItems.push(item);
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedItemIds.add(item.id);
+                    }
+                }
+            },
+        );
     }
 
     const inventoryCartItems = cartInfo.items.filter(
@@ -483,22 +824,15 @@ async function processNonStripeCartItems(
 
     // Pre-validate that total required inventory for all items is available
     // This prevents partial processing when multiple items consume the same inventory
-    let inventoryLookup = new Map<string, number>();
     if (inventoryCartItems.length > 0) {
-        const inventory = await dependencies.getInventory(accountId);
-        inventoryLookup = new Map(
-            inventory.map((inventoryItem) => [
-                getInventoryKey(inventoryItem),
-                inventoryItem.amount,
-            ]),
-        );
-
         // Calculate total required inventory for each unique entity
         const requiredInventory = new Map<string, number>();
+        const availableInventory = new Map<string, number>();
         for (const item of inventoryCartItems) {
             const inventoryKey = getInventoryKey(item);
             const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
             requiredInventory.set(inventoryKey, currentRequired + item.amount);
+            availableInventory.set(inventoryKey, item.inventoryAvailable ?? 0);
         }
 
         // Validate all required inventory is available before processing any items
@@ -506,7 +840,7 @@ async function processNonStripeCartItems(
             inventoryKey,
             requiredAmount,
         ] of requiredInventory.entries()) {
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
+            const available = availableInventory.get(inventoryKey) ?? 0;
             if (available < requiredAmount) {
                 const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
                 console.error(errorMsg);
@@ -515,56 +849,101 @@ async function processNonStripeCartItems(
         }
 
         for (const item of inventoryCartItems) {
-            const inventoryKey = getInventoryKey(item);
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
-            const baseAdditionalData = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const additionalData = {
-                ...baseAdditionalData,
-                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-                ...(harvestDateByCartItemId.has(item.id)
-                    ? {
-                          scheduledDate: harvestDateByCartItemId.get(item.id),
-                      }
-                    : {}),
-            };
+            await dependencies.withCheckoutCartItemProcessingLock(
+                item.id,
+                async () => {
+                    const state = await dependencies.withCheckoutCartItemLock(
+                        item.id,
+                        async (db) => {
+                            const lockedCart =
+                                await dependencies.getShoppingCart(cartId, db);
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} disappeared before inventory fulfillment.`,
+                                );
+                            }
+                            const lockedState = assertCheckoutCartItemSnapshot(
+                                lockedCart.items.find(
+                                    (lockedItem) => lockedItem.id === item.id,
+                                ),
+                                item,
+                            );
+                            if (lockedState === 'pending') {
+                                await dependencies.withInventoryAccountTransaction(
+                                    accountId,
+                                    (inventoryDb) =>
+                                        dependencies.consumeInventoryItem(
+                                            accountId,
+                                            {
+                                                entityTypeName:
+                                                    item.entityTypeName,
+                                                entityId: item.entityId,
+                                                amount: item.amount,
+                                                source: `shoppingCartItem:${item.id}`,
+                                            },
+                                            inventoryDb,
+                                        ),
+                                    db,
+                                );
+                            }
+                            return lockedState;
+                        },
+                    );
+                    if (state === 'paid') {
+                        if (expectedNonStripeCartItemIds?.has(item.id)) {
+                            satisfiedExpectedItemIds.add(item.id);
+                        }
+                        return;
+                    }
+                    const checkoutOperationMapping =
+                        item.entityTypeName === 'operation'
+                            ? await dependencies.getCheckoutOperationMapping(
+                                  item.id,
+                              )
+                            : undefined;
 
-            await Promise.all([
-                dependencies.consumeInventoryItem(accountId, {
-                    entityTypeName: item.entityTypeName,
-                    entityId: item.entityId,
-                    amount: item.amount,
-                    source: `shoppingCartItem:${item.id}`,
-                }),
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: 0,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
-            processedItems.push(item);
+                    const additionalData =
+                        checkoutAdditionalDataByCartItemId.get(item.id) ?? {};
 
-            // Update the lookup to reflect consumed inventory
-            inventoryLookup.set(inventoryKey, available - item.amount);
+                    const fulfillment = await processItem(
+                        {
+                            accountId,
+                            cartItemId: item.id,
+                            entityId: item.entityId,
+                            entityTypeName: item.entityTypeName,
+                            cartId: item.cartId,
+                            gardenId: item.gardenId,
+                            raisedBedId: item.raisedBedId,
+                            positionIndex: item.positionIndex,
+                            currency: item.currency,
+                            amount_total: 0,
+                            additionalData,
+                            scheduledDeliveryEmailKeys,
+                            checkoutSessionId,
+                            checkoutOperationMapping:
+                                item.entityTypeName === 'operation'
+                                    ? checkoutOperationMapping
+                                    : undefined,
+                        },
+                        dependencies,
+                    );
+                    assertCheckoutItemFulfilled(fulfillment);
+                    await dependencies.setCartItemPaid(item.id);
+                    processedItems.push(item);
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedItemIds.add(item.id);
+                    }
+                },
+            );
         }
     }
 
-    return processedItems;
+    return {
+        confirmationItems,
+        processedItems,
+        resolvedSunflowerAmountsByCartItemId,
+        satisfiedExpectedItemIds,
+    };
 }
 
 export async function processCheckoutSession(
@@ -1046,21 +1425,59 @@ async function processPaidCheckoutSession(
     let accountId: string | undefined;
     let customerUserId: string | undefined;
     const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
+    const fulfillmentErrors: unknown[] = [];
+    const expectedNonStripeCartItemIds =
+        decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+    if (expectedNonStripeCartItemIds?.size) {
+        const candidateCartIds = new Set<number>();
+        for (const lineItem of session.lineItems?.data ?? []) {
+            const product = lineItem.price?.product;
+            if (typeof product === 'string' || product?.deleted) {
+                continue;
+            }
+            const cartId = Number(product?.metadata.cartId);
+            if (Number.isSafeInteger(cartId) && cartId > 0) {
+                candidateCartIds.add(cartId);
+            }
+        }
+
+        const presentExpectedItemIds = new Set<number>();
+        for (const cartId of candidateCartIds) {
+            const candidateCart = await dependencies.getShoppingCart(cartId);
+            for (const item of candidateCart?.items ?? []) {
+                if (expectedNonStripeCartItemIds.has(item.id)) {
+                    presentExpectedItemIds.add(item.id);
+                }
+            }
+        }
+        const missingExpectedItemIds = [...expectedNonStripeCartItemIds].filter(
+            (itemId) => !presentExpectedItemIds.has(itemId),
+        );
+        if (missingExpectedItemIds.length > 0) {
+            throw new Error(
+                `Expected non-Stripe cart items are missing before fulfillment: ${missingExpectedItemIds.join(', ')}`,
+            );
+        }
+    }
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
         const product = item.price?.product;
         if (typeof product === 'string') {
-            console.warn(
-                `Product is a string: ${product}. This is not supported.`,
+            const error = new Error(
+                `Stripe line item ${item.id} has an unexpanded product and cannot be fulfilled.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
         if (product?.deleted) {
-            console.warn(
-                `Product is deleted: ${product.id}. This is not supported.`,
+            const error = new Error(
+                `Stripe line item ${item.id} references deleted product ${product.id} and cannot be fulfilled.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
@@ -1086,6 +1503,21 @@ async function processPaidCheckoutSession(
         });
 
         // Extract metadata from the product
+        let additionalData: unknown;
+        try {
+            additionalData = product?.metadata.additionalData
+                ? JSON.parse(product.metadata.additionalData)
+                : undefined;
+        } catch (cause) {
+            const error = new Error(
+                `Stripe line item ${item.id} has invalid additionalData metadata.`,
+                { cause },
+            );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
+            continue;
+        }
+
         const itemData = {
             cartItemId: product?.metadata.cartItemId
                 ? parseInt(product.metadata.cartItemId, 10)
@@ -1106,9 +1538,7 @@ async function processPaidCheckoutSession(
             positionIndex: product?.metadata.positionIndex
                 ? parseInt(product.metadata.positionIndex, 10)
                 : undefined,
-            additionalData: product?.metadata.additionalData
-                ? JSON.parse(product.metadata.additionalData)
-                : undefined,
+            additionalData,
             outletOfferId: product?.metadata.outletOfferId
                 ? parseInt(product.metadata.outletOfferId, 10)
                 : undefined,
@@ -1124,8 +1554,6 @@ async function processPaidCheckoutSession(
             currency: 'eur',
         };
 
-        // Save accountId from metadata if not already set
-        accountId ??= itemData.accountId;
         customerUserId ??= itemData.userId;
 
         // Validate required metadata (accountId can be derived from cart)
@@ -1135,9 +1563,11 @@ async function processPaidCheckoutSession(
             !itemData.entityTypeName ||
             !itemData.cartId
         ) {
-            console.warn(
-                `Missing required metadata for item ${item.id} in session ${checkoutSessionId}`,
+            const error = new Error(
+                `Missing required metadata for item ${item.id} in session ${checkoutSessionId}.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
@@ -1146,28 +1576,31 @@ async function processPaidCheckoutSession(
         try {
             const cart = await dependencies.getShoppingCart(itemData.cartId);
             if (!cart) {
-                console.warn(
-                    `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`,
+                throw new Error(
+                    `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}.`,
                 );
-                continue;
             }
 
-            resolvedAccountId =
-                itemData.accountId ?? cart.accountId ?? undefined;
-            if (!resolvedAccountId) {
-                console.warn(
-                    `Missing accountId for cart ${itemData.cartId} when processing session ${checkoutSessionId}`,
+            if (!cart.accountId) {
+                throw new Error(
+                    `Missing accountId for cart ${itemData.cartId} when processing session ${checkoutSessionId}.`,
                 );
-                continue;
             }
+            if (itemData.accountId && itemData.accountId !== cart.accountId) {
+                throw new Error(
+                    `Stripe metadata account does not own cart ${itemData.cartId} in session ${checkoutSessionId}.`,
+                );
+            }
+            resolvedAccountId = cart.accountId;
+            const checkoutAccountId = resolvedAccountId;
 
-            // Ensure we have an accountId for the whole session (prefer the cart value)
+            // Every line in one checkout must resolve to the same cart owner.
             if (accountId && accountId !== resolvedAccountId) {
-                console.warn(
-                    `AccountId mismatch for session ${checkoutSessionId}: metadata ${accountId} vs cart ${resolvedAccountId}. Using cart accountId.`,
+                throw new Error(
+                    `Checkout session ${checkoutSessionId} references carts owned by different accounts.`,
                 );
             }
-            accountId = resolvedAccountId;
+            accountId = checkoutAccountId;
 
             // Find cart item by cartItemId for more reliable matching
             const cartItem = cart.items.find(
@@ -1175,10 +1608,9 @@ async function processPaidCheckoutSession(
             );
 
             if (!cartItem) {
-                console.warn(
-                    `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`,
+                throw new Error(
+                    `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}.`,
                 );
-                continue;
             }
 
             // Additional validation: ensure the cart item matches the expected entity details
@@ -1186,17 +1618,15 @@ async function processPaidCheckoutSession(
                 cartItem.entityId !== itemData.entityId ||
                 cartItem.entityTypeName !== itemData.entityTypeName
             ) {
-                console.warn(
-                    `Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}`,
+                throw new Error(
+                    `Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}.`,
                 );
-                continue;
             }
 
             if (typeof item.amount_total !== 'number') {
-                console.warn(
-                    `Missing amount_total for Stripe line item ${item.id} in session ${checkoutSessionId}. Skipping processing to avoid inconsistent state.`,
+                throw new Error(
+                    `Missing amount_total for Stripe line item ${item.id} in session ${checkoutSessionId}.`,
                 );
-                continue;
             }
 
             affectedCartIds.push(cart.id);
@@ -1225,65 +1655,147 @@ async function processPaidCheckoutSession(
                 );
                 continue;
             }
-            const isPlantingItem = itemData.entityTypeName === 'plantSort';
-            if (
-                !(await assertRaisedBedAllowsCheckoutItem(
-                    cartItem.raisedBedId,
-                    dependencies,
-                ))
-            ) {
-                if (isPlantingItem) {
-                    throw new CheckoutPlantingRaisedBedUnavailableError(
-                        'abandoned',
+            await dependencies.withCheckoutCartItemProcessingLock(
+                cartItem.id,
+                async () => {
+                    const state = await dependencies.withCheckoutCartItemLock(
+                        cartItem.id,
+                        async (db) => {
+                            const lockedCart =
+                                await dependencies.getShoppingCart(cart.id, db);
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cart.id.toString()} disappeared before Stripe fulfillment.`,
+                                );
+                            }
+                            const lockedState = assertCheckoutCartItemSnapshot(
+                                lockedCart.items.find(
+                                    (lockedItem) =>
+                                        lockedItem.id === cartItem.id,
+                                ),
+                                cartItem,
+                            );
+                            if (lockedState === 'pending') {
+                                const legacyRewardAlreadyEarned =
+                                    itemData.entityTypeName === 'plantSort' &&
+                                    typeof cartItem.positionIndex ===
+                                        'number' &&
+                                    typeof cartItem.raisedBedId === 'number' &&
+                                    (await dependencies.hasMatchingCheckoutPlantingPurchase(
+                                        {
+                                            cartItemId: cartItem.id,
+                                            euroAmountCents: item.amount_total,
+                                            plantSortId: cartItem.entityId,
+                                            positionIndex:
+                                                cartItem.positionIndex,
+                                            raisedBedId: cartItem.raisedBedId,
+                                        },
+                                        db,
+                                    ));
+                                await dependencies.earnSunflowersForPayment(
+                                    checkoutAccountId,
+                                    item.amount_total / 100,
+                                    `shoppingCartItem:${cartItem.id.toString()}`,
+                                    db,
+                                    { legacyRewardAlreadyEarned },
+                                );
+                            }
+                            return lockedState;
+                        },
                     );
-                }
-                continue;
-            }
+                    if (state === 'paid') {
+                        console.warn(
+                            `Cart item ${cartItem.id} became paid while waiting for its fulfillment lock. Skipping replay.`,
+                        );
+                        return;
+                    }
 
-            if (!isPlantingItem) {
-                await dependencies.setCartItemPaid(cartItem.id);
-            }
+                    try {
+                        const isPlantingItem =
+                            itemData.entityTypeName === 'plantSort';
+                        const checkoutOperationMapping =
+                            itemData.entityTypeName === 'operation'
+                                ? await dependencies.getCheckoutOperationMapping(
+                                      cartItem.id,
+                                  )
+                                : undefined;
+                        if (
+                            !checkoutOperationMapping &&
+                            !(await assertRaisedBedAllowsCheckoutItem(
+                                cartItem.raisedBedId,
+                                dependencies,
+                            ))
+                        ) {
+                            if (isPlantingItem) {
+                                throw new CheckoutPlantingRaisedBedUnavailableError(
+                                    'abandoned',
+                                );
+                            }
+                            throw new CheckoutItemFulfillmentError(
+                                'raised_bed_unavailable',
+                            );
+                        }
 
-            await processItem(
-                {
-                    ...itemData,
-                    accountId: resolvedAccountId,
-                    amount_total: item.amount_total,
-                    scheduledDeliveryEmailKeys,
-                    checkoutSessionId: session.id,
+                        const fulfillment = await processItem(
+                            {
+                                ...itemData,
+                                accountId: checkoutAccountId,
+                                amount_total: item.amount_total,
+                                scheduledDeliveryEmailKeys,
+                                checkoutSessionId: session.id,
+                                paymentRewardAlreadyEnsured: true,
+                                checkoutOperationMapping,
+                            },
+                            dependencies,
+                        );
+                        assertCheckoutItemFulfilled(fulfillment);
+                        await dependencies.setCartItemPaid(cartItem.id);
+                    } catch (error) {
+                        if (
+                            error instanceof
+                            CheckoutPlantingRaisedBedUnavailableError
+                        ) {
+                            try {
+                                await recordCheckoutPlantingRaisedBedUnavailable(
+                                    {
+                                        accountId: checkoutAccountId,
+                                        cartItemId: cartItem.id,
+                                        checkoutSessionId: session.id,
+                                        dependencies,
+                                        gardenId: itemData.gardenId,
+                                        positionIndex: itemData.positionIndex,
+                                        raisedBedId: itemData.raisedBedId,
+                                        reason: error.reason,
+                                    },
+                                );
+                            } catch (incidentError) {
+                                console.error(
+                                    'Failed to record checkout planting incident',
+                                    incidentError,
+                                );
+                            }
+                        }
+                        throw error;
+                    }
                 },
-                dependencies,
             );
-            if (isPlantingItem) {
-                await dependencies.setCartItemPaid(cartItem.id);
-            }
         } catch (error) {
-            if (
-                error instanceof CheckoutPlantingRaisedBedUnavailableError &&
-                resolvedAccountId &&
-                itemData.cartItemId
-            ) {
-                await recordCheckoutPlantingRaisedBedUnavailable({
-                    accountId: resolvedAccountId,
-                    cartItemId: itemData.cartItemId,
-                    checkoutSessionId: session.id,
-                    dependencies,
-                    gardenId: itemData.gardenId,
-                    positionIndex: itemData.positionIndex,
-                    raisedBedId: itemData.raisedBedId,
-                    reason: error.reason,
-                });
-            }
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
             );
-            if (itemData.entityTypeName === 'plantSort') {
-                throw error;
-            }
+            fulfillmentErrors.push(error);
         }
 
         // TODO: Send invoice to customer
+    }
+
+    if (fulfillmentErrors.length > 0) {
+        const firstFulfillmentError = fulfillmentErrors[0];
+        if (firstFulfillmentError !== undefined) {
+            throw firstFulfillmentError;
+        }
+        throw new Error('Checkout item fulfillment failed');
     }
 
     // Extract and validate delivery info from Stripe items to use for non-Stripe items.
@@ -1327,11 +1839,11 @@ async function processPaidCheckoutSession(
     const harvestDateByCartItemId = decodeHarvestDatesMetadata(
         session.metadata,
     );
-    const expectedNonStripeCartItemIds =
-        decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+    const satisfiedExpectedNonStripeItemIds = new Set<number>();
+    const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            const nonStripeItems = await processNonStripeCartItems(
+            const nonStripeResult = await processNonStripeCartItems(
                 cartId,
                 accountId,
                 deliveryInfo,
@@ -1341,11 +1853,39 @@ async function processPaidCheckoutSession(
                 session.id,
                 dependencies,
             );
+            for (const itemId of nonStripeResult.satisfiedExpectedItemIds) {
+                satisfiedExpectedNonStripeItemIds.add(itemId);
+            }
+            for (const [
+                itemId,
+                amount,
+            ] of nonStripeResult.resolvedSunflowerAmountsByCartItemId) {
+                resolvedSunflowerAmountsByCartItemId.set(itemId, amount);
+            }
             purchasedItems.push(
                 ...dependencies.buildOrderConfirmationItems(
-                    nonStripeItems,
-                    dependencies.calculateSunflowerAmount,
+                    nonStripeResult.confirmationItems,
+                    (item) => {
+                        const resolvedAmount =
+                            resolvedSunflowerAmountsByCartItemId.get(item.id);
+                        if (resolvedAmount === undefined) {
+                            throw new Error(
+                                `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
+                            );
+                        }
+                        return resolvedAmount;
+                    },
                 ),
+            );
+        }
+    }
+    if (expectedNonStripeCartItemIds !== null) {
+        const missingExpectedItemIds = [...expectedNonStripeCartItemIds].filter(
+            (itemId) => !satisfiedExpectedNonStripeItemIds.has(itemId),
+        );
+        if (missingExpectedItemIds.length > 0) {
+            throw new Error(
+                `Expected non-Stripe cart items were not fulfilled: ${missingExpectedItemIds.join(', ')}`,
             );
         }
     }
@@ -1775,6 +2315,40 @@ class CheckoutPlantingTargetConflictError extends Error {
     override readonly name = 'CheckoutPlantingTargetConflictError';
 }
 
+export type ProcessItemFulfillmentResult =
+    | { status: 'fulfilled' }
+    | {
+          reason:
+              | 'delivery_configuration_missing'
+              | 'delivery_request_failed'
+              | 'invalid_entity_id'
+              | 'missing_metadata'
+              | 'raised_bed_unavailable'
+              | 'unsupported_item';
+          status: 'not_fulfilled';
+      };
+
+type CheckoutItemFulfillmentFailureReason = Extract<
+    ProcessItemFulfillmentResult,
+    { status: 'not_fulfilled' }
+>['reason'];
+
+export class CheckoutItemFulfillmentError extends Error {
+    override readonly name = 'CheckoutItemFulfillmentError';
+
+    constructor(readonly reason: CheckoutItemFulfillmentFailureReason) {
+        super(`Checkout item fulfillment was not confirmed (${reason})`);
+    }
+}
+
+export function assertCheckoutItemFulfilled(
+    result: ProcessItemFulfillmentResult,
+): asserts result is { status: 'fulfilled' } {
+    if (result.status !== 'fulfilled') {
+        throw new CheckoutItemFulfillmentError(result.reason);
+    }
+}
+
 export async function processItem(
     itemData: {
         entityId: string | null | undefined;
@@ -1795,18 +2369,26 @@ export async function processItem(
         amount_total: number; // Amount in cents or sunflowers
         scheduledDeliveryEmailKeys?: Set<string>;
         checkoutSessionId?: string | null;
+        paymentRewardAlreadyEnsured?: boolean;
+        checkoutOperationMapping?: Awaited<
+            ReturnType<typeof getCheckoutOperationMapping>
+        >;
     },
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
-) {
+): Promise<ProcessItemFulfillmentResult> {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
 
     const earnSunflowersFunc = () =>
-        itemData.accountId && itemData.currency === 'eur'
+        itemData.accountId &&
+        itemData.cartItemId &&
+        itemData.currency === 'eur' &&
+        itemData.paymentRewardAlreadyEnsured !== true
             ? dependencies.earnSunflowersForPayment(
                   itemData.accountId,
                   itemData.amount_total / 100,
+                  `shoppingCartItem:${itemData.cartItemId.toString()}`,
               )
             : Promise.resolve();
 
@@ -1818,6 +2400,7 @@ export async function processItem(
         // Validate item data
         if (
             !itemData.accountId ||
+            !itemData.cartItemId ||
             !itemData.entityId ||
             !itemData.entityTypeName
         ) {
@@ -1825,7 +2408,7 @@ export async function processItem(
                 `Missing required metadata for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'missing_metadata' };
         }
         const entityIdNumber = parseInt(itemData.entityId, 10);
         if (Number.isNaN(entityIdNumber)) {
@@ -1833,20 +2416,46 @@ export async function processItem(
                 `Invalid entityId ${itemData.entityId} for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'invalid_entity_id' };
         }
+        const paymentCurrency = itemData.currency;
         if (
+            paymentCurrency !== 'eur' &&
+            paymentCurrency !== 'inventory' &&
+            paymentCurrency !== 'sunflower'
+        ) {
+            console.error(
+                `Invalid payment currency for operation item in order.`,
+                itemData,
+            );
+            return { status: 'not_fulfilled', reason: 'unsupported_item' };
+        }
+        const checkoutOperationMapping =
+            itemData.checkoutOperationMapping === undefined
+                ? await dependencies.getCheckoutOperationMapping(
+                      itemData.cartItemId,
+                  )
+                : itemData.checkoutOperationMapping;
+        if (
+            !checkoutOperationMapping &&
             !(await assertRaisedBedAllowsCheckoutItem(
                 itemData.raisedBedId,
                 dependencies,
             ))
         ) {
-            return;
+            return {
+                status: 'not_fulfilled',
+                reason: 'raised_bed_unavailable',
+            };
         }
 
-        // Try to resolve field ID from position index (only active fields)
+        // New operations target the currently active field. Retries must keep
+        // the field captured in the durable mapping, even if the active field
+        // at this position has changed since the first attempt.
         let fieldId: number | undefined;
-        if (
+        if (checkoutOperationMapping) {
+            fieldId = checkoutOperationMapping.raisedBedFieldId ?? undefined;
+        } else if (
             typeof itemData.positionIndex === 'number' &&
             itemData.raisedBedId
         ) {
@@ -1881,50 +2490,58 @@ export async function processItem(
             additionalData,
             dependencies,
         );
+        const operationScheduledDate =
+            checkoutOperationMapping?.scheduledDate ?? scheduledDate;
+        const requestedDeliveryInfo =
+            checkoutDeliveryInfoFromAdditionalData(additionalData);
+        const deliveryProvenance = checkoutOperationMapping
+            ? checkoutOperationMapping.delivery
+            : checkoutDeliveryProvenance(requestedDeliveryInfo);
+        const deliveryInfo =
+            checkoutDeliveryInfoFromProvenance(deliveryProvenance);
 
-        const operationId = await dependencies.createOperation({
-            accountId: itemData.accountId,
-            entityId: entityIdNumber,
-            entityTypeName: itemData.entityTypeName,
-            gardenId: itemData.gardenId,
-            raisedBedId: itemData.raisedBedId,
-            raisedBedFieldId: fieldId,
-        });
-
-        try {
-            await earnSunflowersFunc();
-        } catch (error) {
-            console.error(
-                `Failed to award sunflowers for operation item in order.`,
-                error,
+        // Credit the captured-payment reward first. Its cart-item key makes a
+        // replay a no-op if operation creation or later fulfillment fails.
+        await earnSunflowersFunc();
+        const { created, operationId } =
+            await dependencies.getOrCreateCheckoutOperation(
+                itemData.cartItemId,
+                {
+                    accountId: itemData.accountId,
+                    entityId: entityIdNumber,
+                    entityTypeName: itemData.entityTypeName,
+                    gardenId: itemData.gardenId,
+                    raisedBedId: itemData.raisedBedId,
+                    raisedBedFieldId: fieldId,
+                },
+                {
+                    delivery: deliveryProvenance,
+                    paymentCurrency,
+                    scheduledDate: new Date(operationScheduledDate),
+                },
             );
+
+        if (created) {
+            try {
+                await dependencies.notifyOperationUpdate(
+                    operationId,
+                    'scheduled',
+                    {
+                        scheduledDate: new Date(
+                            operationScheduledDate,
+                        ).toISOString(),
+                    },
+                );
+            } catch (error) {
+                console.error(
+                    `Failed to notify about scheduled operation ${operationId.toString()}:`,
+                    error,
+                );
+            }
         }
         console.debug(
-            `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+            `${created ? 'Created' : 'Reused'} scheduled operation ${operationId.toString()} for cart item ${itemData.cartItemId.toString()}.`,
         );
-
-        // Every purchased operation is scheduled; missing dates default to tomorrow.
-        try {
-            await dependencies.createEvent(
-                dependencies.knownEvents.operations.scheduledV1(
-                    operationId.toString(),
-                    {
-                        scheduledDate,
-                    },
-                ),
-            );
-            console.debug(
-                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-            );
-        } catch (error) {
-            console.error(
-                `Failed to create scheduled event for operation ${operationId}:`,
-                error,
-            );
-        }
-        await dependencies.notifyOperationUpdate(operationId, 'scheduled', {
-            scheduledDate: new Date(scheduledDate).toISOString(),
-        });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
@@ -1936,33 +2553,10 @@ export async function processItem(
                     `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
                 );
 
-                // Check if delivery information was stored in additionalData
-                let deliveryInfo: {
-                    slotId?: number;
-                    mode?: 'delivery' | 'pickup';
-                    addressId?: number;
-                    locationId?: number;
-                    notes?: string;
-                } | null = null;
-                if (
-                    typeof additionalData === 'object' &&
-                    additionalData !== null &&
-                    'delivery' in additionalData
-                ) {
-                    deliveryInfo = (additionalData as Record<string, unknown>)
-                        .delivery as {
-                        slotId?: number;
-                        mode?: 'delivery' | 'pickup';
-                        addressId?: number;
-                        locationId?: number;
-                        notes?: string;
-                    };
-                }
-
-                if (deliveryInfo?.slotId && deliveryInfo.mode) {
+                if (deliveryInfo) {
                     try {
-                        const deliveryRequestId =
-                            await dependencies.createDeliveryRequest({
+                        const deliveryRequest =
+                            await dependencies.getOrCreateDeliveryRequest({
                                 operationId,
                                 slotId: deliveryInfo.slotId,
                                 mode: deliveryInfo.mode,
@@ -1972,19 +2566,37 @@ export async function processItem(
                                 accountId: itemData.accountId,
                             });
                         console.debug(
-                            `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
+                            `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );
-                        await dependencies.notifyDeliveryRequestEvent(
-                            deliveryRequestId,
-                            'created',
-                        );
-                        await dependencies.notifyScheduledDeliveryEmailOnce({
-                            requestId: deliveryRequestId,
-                            accountId: itemData.accountId,
-                            deliveryInfo,
-                            notifiedKeys: itemData.scheduledDeliveryEmailKeys,
-                            notify: dependencies.notifyDeliveryScheduled,
-                        });
+                        if (deliveryRequest.created) {
+                            const notificationResults =
+                                await Promise.allSettled([
+                                    dependencies.notifyDeliveryRequestEvent(
+                                        deliveryRequest.requestId,
+                                        'created',
+                                    ),
+                                    dependencies.notifyScheduledDeliveryEmailOnce(
+                                        {
+                                            requestId:
+                                                deliveryRequest.requestId,
+                                            accountId: itemData.accountId,
+                                            deliveryInfo,
+                                            notifiedKeys:
+                                                itemData.scheduledDeliveryEmailKeys,
+                                            notify: dependencies.notifyDeliveryScheduled,
+                                        },
+                                    ),
+                                ]);
+                            const failedNotificationCount =
+                                notificationResults.filter(
+                                    (result) => result.status === 'rejected',
+                                ).length;
+                            if (failedNotificationCount > 0) {
+                                console.error(
+                                    `Failed to send ${failedNotificationCount.toString()} notification(s) for delivery request ${deliveryRequest.requestId}`,
+                                );
+                            }
+                        }
                     } catch (error) {
                         console.error(
                             `Failed to create delivery request for operation ${operationId}:`,
@@ -2004,14 +2616,23 @@ export async function processItem(
                                     itemData.checkoutSessionId ?? null,
                             },
                         });
+                        return {
+                            status: 'not_fulfilled',
+                            reason: 'delivery_request_failed',
+                        };
                     }
                 } else {
                     console.warn(
                         `Operation ${operationId} is deliverable but no delivery information found in metadata`,
                     );
+                    return {
+                        status: 'not_fulfilled',
+                        reason: 'delivery_configuration_missing',
+                    };
                 }
             }
         }
+        return { status: 'fulfilled' };
     } else if (
         itemData.entityId &&
         itemData.entityTypeName === 'plantSort' &&
@@ -2037,6 +2658,7 @@ export async function processItem(
         const aggregateId = `${raisedBedId}|${positionIndex}`;
         const purchase = plantingPurchaseFromCheckoutItem(itemData);
 
+        await earnSunflowersFunc();
         let placementResult: 'already-placed' | 'placed';
         try {
             placementResult =
@@ -2162,25 +2784,6 @@ export async function processItem(
                                 );
                             }
                         }
-
-                        if (itemData.accountId && itemData.currency === 'eur') {
-                            const earnedSunflowers = Math.round(
-                                itemData.amount_total / 10,
-                            );
-                            if (earnedSunflowers > 0) {
-                                await dependencies.createEvent(
-                                    dependencies.knownEvents.accounts.sunflowersEarnedV1(
-                                        itemData.accountId,
-                                        {
-                                            amount: earnedSunflowers,
-                                            reason: 'payment',
-                                        },
-                                    ),
-                                    transaction,
-                                );
-                            }
-                        }
-
                         return 'placed';
                     },
                 );
@@ -2292,10 +2895,12 @@ export async function processItem(
                 },
             });
         }
+        return { status: 'fulfilled' };
     } else {
         console.error(
             `Unsupported item type for entityId ${itemData.entityId} in order.`,
             itemData,
         );
+        return { status: 'not_fulfilled', reason: 'unsupported_item' };
     }
 }

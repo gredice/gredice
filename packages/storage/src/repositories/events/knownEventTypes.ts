@@ -1,4 +1,7 @@
 export const knownEventTypes = {
+    checkout: {
+        operationCreated: 'checkout.operation.created',
+    },
     accounts: {
         create: 'account.create',
         assignUser: 'account.assignUser',

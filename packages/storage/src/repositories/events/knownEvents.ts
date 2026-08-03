@@ -8,6 +8,7 @@ import type {
     AdventCalendarOpenPayload,
     ApprovalRequestCreatePayload,
     ApprovalRequestReviewPayload,
+    CheckoutOperationCreatedPayload,
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
@@ -66,6 +67,17 @@ import type {
 } from './types';
 
 export const knownEvents = {
+    checkout: {
+        operationCreatedV1: (
+            aggregateId: string,
+            data: CheckoutOperationCreatedPayload,
+        ) => ({
+            type: knownEventTypes.checkout.operationCreated,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
     accounts: {
         createdV1: (aggregateId: string) => ({
             type: knownEventTypes.accounts.create,

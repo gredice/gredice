@@ -64,6 +64,15 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = StorageClient | TransactionClient;
+type DeliveryRequestInput = {
+    operationId: number;
+    slotId: number;
+    mode: 'delivery' | 'pickup';
+    addressId?: number;
+    locationId?: number;
+    notes?: string;
+    accountId: string;
+};
 type DbEvent = Awaited<ReturnType<typeof getAllEvents>>[number];
 type DeliveryTraceLink = Awaited<
     ReturnType<typeof getHarvestTraceLinksForOperationIds>
@@ -92,6 +101,10 @@ export class DeliveryRequestFulfillmentError extends Error {
     ) {
         super(message);
     }
+}
+
+export class CheckoutDeliveryRequestConflictError extends Error {
+    override name = 'CheckoutDeliveryRequestConflictError';
 }
 
 // TODO: Should use types from union of payloads for delivery events
@@ -1506,20 +1519,13 @@ export async function getDeliveryRequestByOperation(
     return reconstructDeliveryRequestFromEvents(request, events);
 }
 
-// Create a new delivery request with event sourcing
-export async function createDeliveryRequest(data: {
-    operationId: number;
-    slotId: number;
-    mode: 'delivery' | 'pickup';
-    addressId?: number;
-    locationId?: number;
-    notes?: string;
-    accountId: string;
-}): Promise<string> {
-    const requestId = randomUUID();
-
+async function validateDeliveryRequestInput(
+    data: DeliveryRequestInput,
+    db: DatabaseClient = storage(),
+    options: { closeExpiredSlot?: boolean } = {},
+) {
     // Validate slot is available and not in the past
-    const slot = await storage().query.timeSlots.findFirst({
+    const slot = await db.query.timeSlots.findFirst({
         where: eq(timeSlots.id, data.slotId),
     });
 
@@ -1538,7 +1544,9 @@ export async function createDeliveryRequest(data: {
     }
 
     if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
-        await closeTimeSlot(slot.id);
+        if (options.closeExpiredSlot ?? true) {
+            await closeTimeSlot(slot.id);
+        }
         throw new Error('Time slot is not available for booking');
     }
 
@@ -1555,7 +1563,7 @@ export async function createDeliveryRequest(data: {
         throw new Error('Location ID is required for pickup mode');
     }
 
-    const operation = await storage().query.operations.findFirst({
+    const operation = await db.query.operations.findFirst({
         columns: {
             id: true,
         },
@@ -1571,23 +1579,150 @@ export async function createDeliveryRequest(data: {
     }
 
     if (data.mode === 'delivery' && data.addressId) {
-        const address = await getDeliveryAddress(
-            data.addressId,
-            data.accountId,
-        );
+        const address = await db.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(deliveryAddresses.id, data.addressId),
+                eq(deliveryAddresses.accountId, data.accountId),
+                isNull(deliveryAddresses.deletedAt),
+            ),
+        });
         if (!address) {
             throw new Error('Delivery address not found or access denied');
         }
     }
 
     if (data.mode === 'pickup' && data.locationId) {
-        const location = await getPickupLocation(data.locationId);
+        const location = await db.query.pickupLocations.findFirst({
+            where: eq(pickupLocations.id, data.locationId),
+        });
         if (!location?.isActive || location.id !== slot.locationId) {
             throw new Error(
                 'Pickup location does not match the selected time slot',
             );
         }
     }
+}
+
+async function insertDeliveryRequest(
+    requestId: string,
+    data: DeliveryRequestInput,
+    db: DatabaseClient,
+) {
+    await db.insert(deliveryRequests).values({
+        id: requestId,
+        operationId: data.operationId,
+    });
+    await createEvent(
+        knownEvents.delivery.requestCreatedV1(requestId, {
+            operationId: data.operationId,
+            slotId: data.slotId,
+            mode: data.mode,
+            addressId: data.addressId,
+            locationId: data.locationId,
+            notes: data.notes,
+            accountId: data.accountId,
+        }),
+        db,
+    );
+}
+
+function assertExistingCheckoutDeliveryRequest(
+    data: DeliveryRequestInput,
+    event: DbEvent,
+) {
+    if (
+        event.version !== 1 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Existing checkout delivery request has malformed creation data.',
+        );
+    }
+    const stored = event.data as Record<string, unknown>;
+    const expected = {
+        operationId: data.operationId,
+        slotId: data.slotId,
+        mode: data.mode,
+        addressId: data.addressId ?? null,
+        locationId: data.locationId ?? null,
+        notes: data.notes ?? null,
+        accountId: data.accountId,
+    };
+    const storedFingerprint = {
+        operationId: stored.operationId,
+        slotId: stored.slotId,
+        mode: stored.mode,
+        addressId: stored.addressId ?? null,
+        locationId: stored.locationId ?? null,
+        notes: stored.notes ?? null,
+        accountId: stored.accountId,
+    };
+    const mismatch = (
+        Object.keys(expected) as Array<keyof typeof expected>
+    ).find((field) => storedFingerprint[field] !== expected[field]);
+    if (mismatch) {
+        throw new CheckoutDeliveryRequestConflictError(
+            `Existing checkout delivery request conflicts on ${mismatch}.`,
+        );
+    }
+}
+
+async function getExistingCheckoutDeliveryRequest(
+    data: DeliveryRequestInput,
+    db: DatabaseClient,
+): Promise<{ requestId: string; created: false } | null> {
+    const existingRequests = await db.query.deliveryRequests.findMany({
+        columns: { id: true },
+        where: eq(deliveryRequests.operationId, data.operationId),
+        limit: 2,
+    });
+    if (existingRequests.length > 1) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Operation has multiple delivery requests.',
+        );
+    }
+
+    const existingRequest = existingRequests[0];
+    if (!existingRequest) {
+        return null;
+    }
+
+    const ownedOperation = await db.query.operations.findFirst({
+        columns: { id: true },
+        where: and(
+            eq(operations.id, data.operationId),
+            eq(operations.accountId, data.accountId),
+            eq(operations.isDeleted, false),
+        ),
+    });
+    if (!ownedOperation) {
+        throw new Error('Operation not found or access denied');
+    }
+
+    const creationEvents = await getAllEvents(
+        knownEventTypes.delivery.requestCreated,
+        [existingRequest.id],
+        { db },
+    );
+    if (creationEvents.length !== 1) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Existing checkout delivery request has invalid creation history.',
+        );
+    }
+    assertExistingCheckoutDeliveryRequest(data, creationEvents[0]);
+    return { requestId: existingRequest.id, created: false };
+}
+
+// Create a new delivery request with event sourcing.
+// Ordinary callers retain the historical duplicate-rejection contract.
+export async function createDeliveryRequest(
+    data: DeliveryRequestInput,
+): Promise<string> {
+    const requestId = randomUUID();
+    await validateDeliveryRequestInput(data);
 
     return await withDeliveryDispatchTransaction(async (tx) => {
         const existingRequest = await tx.query.deliveryRequests.findFirst({
@@ -1598,24 +1733,39 @@ export async function createDeliveryRequest(data: {
             throw new Error('Operation already has a delivery request');
         }
 
-        await tx.insert(deliveryRequests).values({
-            id: requestId,
-            operationId: data.operationId,
-        });
-        await createEvent(
-            knownEvents.delivery.requestCreatedV1(requestId, {
-                operationId: data.operationId,
-                slotId: data.slotId,
-                mode: data.mode,
-                addressId: data.addressId,
-                locationId: data.locationId,
-                notes: data.notes,
-                accountId: data.accountId,
-            }),
-            tx,
-        );
+        await insertDeliveryRequest(requestId, data, tx);
 
         return requestId;
+    });
+}
+
+export async function getOrCreateDeliveryRequest(
+    data: DeliveryRequestInput,
+): Promise<{ requestId: string; created: boolean }> {
+    const existing = await getExistingCheckoutDeliveryRequest(data, storage());
+    if (existing) {
+        return existing;
+    }
+
+    // Validate before acquiring the dispatch lock because closing an expired
+    // slot acquires that same lock on its own transaction.
+    await validateDeliveryRequestInput(data);
+
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        const existingAfterLock = await getExistingCheckoutDeliveryRequest(
+            data,
+            tx,
+        );
+        if (existingAfterLock) {
+            return existingAfterLock;
+        }
+
+        await validateDeliveryRequestInput(data, tx, {
+            closeExpiredSlot: false,
+        });
+        const requestId = randomUUID();
+        await insertDeliveryRequest(requestId, data, tx);
+        return { requestId, created: true };
     });
 }
 
