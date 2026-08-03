@@ -24,6 +24,7 @@ export type CheckoutTimingOutcome =
     | 'unexpected_failure';
 
 export type CheckoutTimingErrorCategory =
+    | 'cart_validation_failed'
     | 'sunflower_spend_failed'
     | 'unexpected';
 

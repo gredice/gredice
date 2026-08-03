@@ -4,6 +4,7 @@ import {
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
 import {
+    CheckoutCartItemFulfillmentStartedError,
     cartContainsDeliverableItems,
     deleteShoppingCart,
     getHarvestScheduleForCart,
@@ -365,6 +366,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         400,
                     );
                 }
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this item',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
 
                 throw error;
             }
@@ -391,7 +401,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            await deleteShoppingCart(accountId);
+            try {
+                await deleteShoppingCart(accountId);
+            } catch (error) {
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this cart',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             return context.json({ success: true });
         },
     );

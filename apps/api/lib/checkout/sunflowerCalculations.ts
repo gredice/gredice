@@ -19,6 +19,25 @@ export function calculateSunflowerAmount(
     return Math.round(price * 1000);
 }
 
+/**
+ * Reconstructs the candidate amount for a durable checkout replay. Paid cart
+ * items are represented with a zero discount by getCartInfo, so their
+ * checkout amount must come from the captured outlet price or the base price.
+ * The durable spend event remains authoritative when one already exists.
+ */
+export function calculateSunflowerReplayAmount(item: {
+    outlet?: { outletPrice: number };
+    shopData: { discountPrice?: number; price?: number };
+    status: string;
+}): number {
+    if (item.status !== 'paid') {
+        return calculateSunflowerAmount(item);
+    }
+
+    const price = item.outlet?.outletPrice ?? item.shopData.price ?? 0;
+    return Math.round(price * 1000);
+}
+
 export function getDefaultCartItemCurrency({
     availableSunflowers,
     items,

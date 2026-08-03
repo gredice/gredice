@@ -15,6 +15,9 @@ import {
     deliveryRequests,
     events,
     getCheckoutInventoryConsumptions,
+    getCheckoutInventorySnapshot,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
     getInventory,
     getOrCreateCheckoutOperation,
     getOrCreateDeliveryRequest,
@@ -48,9 +51,13 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
 
     const results = await Promise.all([
         getOrCreateCheckoutOperation(cartItemId, operationInput, {
+            delivery: null,
+            paymentCurrency: 'eur',
             scheduledDate,
         }),
         getOrCreateCheckoutOperation(cartItemId, operationInput, {
+            delivery: null,
+            paymentCurrency: 'eur',
             scheduledDate,
         }),
     ]);
@@ -80,17 +87,29 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
         ),
     });
     assert.equal(mappingEvents.length, 1);
+    assert.deepEqual(
+        await getCheckoutOperationMapping(cartItemId),
+        mappingEvents[0]?.data,
+    );
+    assert.deepEqual(
+        Array.from(
+            (await getCheckoutOperationMappings([cartItemId])).entries(),
+        ),
+        [[cartItemId, mappingEvents[0]?.data]],
+    );
 
     await acceptOperation(operationId);
     const acceptedRetry = await getOrCreateCheckoutOperation(
         cartItemId,
         operationInput,
-        { scheduledDate },
+        { delivery: null, paymentCurrency: 'eur', scheduledDate },
     );
     assert.deepEqual(acceptedRetry, { operationId, created: false });
 
     await assert.rejects(
         getOrCreateCheckoutOperation(cartItemId, operationInput, {
+            delivery: null,
+            paymentCurrency: 'eur',
             scheduledDate: new Date('2099-04-06T00:00:00.000Z'),
         }),
         CheckoutOperationConflictError,
@@ -111,7 +130,11 @@ test('checkout operation mapping rolls back with operation and schedule', async 
                     entityId: 37,
                     entityTypeName: 'operation',
                 },
-                { scheduledDate: new Date('2099-04-07T00:00:00.000Z') },
+                {
+                    delivery: null,
+                    paymentCurrency: 'eur',
+                    scheduledDate: new Date('2099-04-07T00:00:00.000Z'),
+                },
                 tx,
             );
             throw new Error('force rollback');
@@ -133,6 +156,60 @@ test('checkout operation mapping rolls back with operation and schedule', async 
         ),
     });
     assert.equal(storedOperations.length, 0);
+});
+
+test('checkout operation mapping lookup rejects malformed and duplicate mappings', async () => {
+    createTestDb();
+    const malformedCartItemId = uniqueCartItemId();
+    await storage()
+        .insert(events)
+        .values({
+            type: knownEventTypes.checkout.operationCreated,
+            version: 1,
+            aggregateId: `shoppingCartItem:${malformedCartItemId.toString()}`,
+            data: {},
+        });
+    await assert.rejects(
+        getCheckoutOperationMapping(malformedCartItemId),
+        CheckoutOperationConflictError,
+    );
+
+    const accountId = await createAccount();
+    const duplicateCartItemId = uniqueCartItemId();
+    await getOrCreateCheckoutOperation(
+        duplicateCartItemId,
+        {
+            accountId,
+            entityId: 41,
+            entityTypeName: 'operation',
+        },
+        {
+            delivery: null,
+            paymentCurrency: 'eur',
+            scheduledDate: new Date('2099-04-08T00:00:00.000Z'),
+        },
+    );
+    const [storedMapping] = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.checkout.operationCreated),
+            eq(
+                events.aggregateId,
+                `shoppingCartItem:${duplicateCartItemId.toString()}`,
+            ),
+        ),
+    });
+    assert.ok(storedMapping);
+    await storage().insert(events).values({
+        type: storedMapping.type,
+        version: storedMapping.version,
+        aggregateId: storedMapping.aggregateId,
+        data: storedMapping.data,
+    });
+
+    await assert.rejects(
+        getCheckoutOperationMappings([duplicateCartItemId]),
+        CheckoutOperationConflictError,
+    );
 });
 
 test('checkout delivery ensure reuses one owned request after its slot closes while ordinary create rejects duplicates', async () => {
@@ -310,6 +387,40 @@ test('checkout inventory lookup surfaces malformed requested source rows', async
 
     await assert.rejects(
         getCheckoutInventoryConsumptions(accountId, [cartItemId]),
+        InventoryConsumptionSourceConflictError,
+    );
+});
+
+test('checkout inventory lookup surfaces duplicate requested source rows', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const cartItemId = uniqueCartItemId();
+    const source = `shoppingCartItem:${cartItemId.toString()}`;
+    const duplicateConsumption = {
+        entityTypeName: 'block',
+        entityId: 'duplicate-checkout-consumption',
+        amount: 1,
+        source,
+    };
+    await storage()
+        .insert(events)
+        .values([
+            {
+                type: knownEventTypes.inventory.consume,
+                version: 1,
+                aggregateId: `inventory:${accountId}`,
+                data: duplicateConsumption,
+            },
+            {
+                type: knownEventTypes.inventory.consume,
+                version: 1,
+                aggregateId: `inventory:${accountId}`,
+                data: duplicateConsumption,
+            },
+        ]);
+
+    await assert.rejects(
+        getCheckoutInventorySnapshot(accountId, [cartItemId]),
         InventoryConsumptionSourceConflictError,
     );
 });

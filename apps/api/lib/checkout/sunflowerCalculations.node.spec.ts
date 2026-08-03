@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getDefaultCartItemCurrency } from './sunflowerCalculations';
+import {
+    calculateSunflowerReplayAmount,
+    getDefaultCartItemCurrency,
+} from './sunflowerCalculations';
 
 function cartItem({
     currency = 'eur',
@@ -98,5 +101,30 @@ test('uses the effective discounted price and requires a positive price', () => 
             newCartItemId: 2,
         }),
         'eur',
+    );
+});
+
+test('reconstructs paid sunflower replay amounts without the paid-item zero discount', () => {
+    assert.equal(
+        calculateSunflowerReplayAmount({
+            shopData: { discountPrice: 0, price: 2.5 },
+            status: 'paid',
+        }),
+        2_500,
+    );
+    assert.equal(
+        calculateSunflowerReplayAmount({
+            outlet: { outletPrice: 1.2 },
+            shopData: { discountPrice: 0, price: 2.5 },
+            status: 'paid',
+        }),
+        1_200,
+    );
+    assert.equal(
+        calculateSunflowerReplayAmount({
+            shopData: { discountPrice: 1.4, price: 2.5 },
+            status: 'new',
+        }),
+        1_400,
     );
 });

@@ -7,6 +7,7 @@ import {
     getNewRaisedBedPlantingNote,
     getPendingInventoryCartItemIds,
     getTotalCartValueCents,
+    hasBlockingOpenItemsForRaisedBed,
     hasEnoughInventoryForCartItem,
 } from './cartInfo';
 
@@ -162,6 +163,67 @@ describe('getAbandonedRaisedBedCartNote', () => {
         assert.strictEqual(
             getAbandonedRaisedBedCartNote('Gredica 12'),
             'Gredica 12 je napuštena zbog neaktivnosti. Nove sjetve i radnje više nisu dostupne za ovu gredicu.',
+        );
+    });
+});
+
+describe('hasBlockingOpenItemsForRaisedBed', () => {
+    const mappedOperation = {
+        id: 71,
+        entityTypeName: 'operation',
+        raisedBedId: 9,
+        status: 'new',
+    };
+
+    it('lets direct and mixed retries continue for a durably mapped operation', () => {
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [mappedOperation],
+                9,
+                new Set([mappedOperation.id]),
+            ),
+            false,
+        );
+    });
+
+    it('still blocks unmapped operations and planting items on an abandoned bed', () => {
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed([mappedOperation], 9, new Set()),
+            true,
+        );
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [
+                    mappedOperation,
+                    {
+                        id: 72,
+                        entityTypeName: 'plantSort',
+                        raisedBedId: 9,
+                        status: 'new',
+                    },
+                ],
+                9,
+                new Set([mappedOperation.id]),
+            ),
+            true,
+        );
+    });
+
+    it('lets a direct-currency item resume after its durable payment effect', () => {
+        const plantingItem = {
+            id: 72,
+            entityTypeName: 'plantSort',
+            raisedBedId: 9,
+            status: 'new',
+        };
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [plantingItem],
+                9,
+                new Set(),
+                new Set([plantingItem.id]),
+            ),
+            false,
         );
     });
 });

@@ -53,6 +53,14 @@ function makeDependencies(
         Record<keyof ProcessCheckoutSessionDependencies, unknown>
     > = {},
 ): ProcessCheckoutSessionDependencies {
+    const readShoppingCart = async (...args: unknown[]) => {
+        const override = overrides.getShoppingCart;
+        if (typeof override === 'function') {
+            return override(...args);
+        }
+        record(calls, 'getShoppingCart', args);
+        return null;
+    };
     const dependencies = {
         isRaisedBedAbandoned: (status: unknown) => {
             record(calls, 'isRaisedBedAbandoned', [status]);
@@ -148,6 +156,24 @@ function makeDependencies(
             record(calls, 'getCompletedTransactionByStripePaymentId', args);
             return undefined;
         },
+        getCheckoutFulfillmentStartedCartItemIds: async (
+            ...args: unknown[]
+        ) => {
+            record(calls, 'getCheckoutFulfillmentStartedCartItemIds', args);
+            return new Set<number>();
+        },
+        getCheckoutOperationMapping: async (...args: unknown[]) => {
+            record(calls, 'getCheckoutOperationMapping', args);
+            return null;
+        },
+        getCheckoutOperationMappings: async (...args: unknown[]) => {
+            record(calls, 'getCheckoutOperationMappings', args);
+            return new Map();
+        },
+        hasMatchingCheckoutPlantingPurchase: async (...args: unknown[]) => {
+            record(calls, 'hasMatchingCheckoutPlantingPurchase', args);
+            return false;
+        },
         getDefaultShoppingCartScheduledDate: (...args: unknown[]) => {
             record(calls, 'getDefaultShoppingCartScheduledDate', args);
             return '2026-07-02';
@@ -164,10 +190,7 @@ function makeDependencies(
             record(calls, 'getRaisedBedFieldsWithEvents', args);
             return [];
         },
-        getShoppingCart: async (...args: unknown[]) => {
-            record(calls, 'getShoppingCart', args);
-            return null;
-        },
+        getShoppingCart: readShoppingCart,
         getUser: async (...args: unknown[]) => {
             record(calls, 'getUser', args);
             return { userName: 'buyer@example.test' };
@@ -210,6 +233,10 @@ function makeDependencies(
             record(calls, 'lockAndActivateRaisedBedForCheckoutPlanting', args);
             return { available: true, activatedAccountId: null };
         },
+        lockShoppingCartForCheckout: async (...args: unknown[]) => {
+            record(calls, 'lockShoppingCartForCheckout', args.slice(0, 1));
+            return readShoppingCart(...args);
+        },
         markCartPaidIfAllItemsPaid: async (cartId: unknown) => {
             record(calls, 'markCartPaidIfAllItemsPaid', [cartId]);
         },
@@ -233,7 +260,16 @@ function makeDependencies(
         },
         spendSunflowersBatch: async (...args: unknown[]) => {
             record(calls, 'spendSunflowersBatch', args);
-            return { createdReasons: [], existingReasons: [] };
+            const items = Array.isArray(args[1])
+                ? (args[1] as Array<{ amount: number; reason: string }>)
+                : [];
+            return {
+                createdReasons: items.map((item) => item.reason),
+                existingReasons: [],
+                resolvedAmountsByReason: Object.fromEntries(
+                    items.map((item) => [item.reason, item.amount]),
+                ),
+            };
         },
         topUpSunflowerPackage: async (...args: unknown[]) => {
             record(calls, 'topUpSunflowerPackage', args);
@@ -256,6 +292,60 @@ function makeDependencies(
                 throw new Error('Missing planting transaction callback.');
             }
             return callback({ transaction: 'planting-test' });
+        },
+        withCheckoutCartItemLock: async (...args: unknown[]) => {
+            record(calls, 'withCheckoutCartItemLock', args.slice(0, 1));
+            const callback = args[1];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing checkout cart item lock callback.');
+            }
+            return callback({ transaction: 'checkout-item-test' });
+        },
+        withCheckoutCartItemLocks: async (...args: unknown[]) => {
+            record(calls, 'withCheckoutCartItemLocks', args.slice(0, 1));
+            const callback = args[1];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing checkout cart item locks callback.');
+            }
+            return callback({ transaction: 'checkout-items-test' });
+        },
+        withCheckoutCartItemProcessingLock: async (...args: unknown[]) => {
+            record(
+                calls,
+                'withCheckoutCartItemProcessingLock',
+                args.slice(0, 1),
+            );
+            const callback = args[1];
+            if (typeof callback !== 'function') {
+                throw new Error(
+                    'Missing checkout cart item processing lock callback.',
+                );
+            }
+            return callback();
+        },
+        withCheckoutCartItemProcessingLocks: async (...args: unknown[]) => {
+            record(
+                calls,
+                'withCheckoutCartItemProcessingLocks',
+                args.slice(0, 1),
+            );
+            const callback = args[1];
+            if (typeof callback !== 'function') {
+                throw new Error(
+                    'Missing checkout cart item processing locks callback.',
+                );
+            }
+            return callback();
+        },
+        withInventoryAccountTransaction: async (...args: unknown[]) => {
+            record(calls, 'withInventoryAccountTransaction', args.slice(0, 1));
+            const callback = args[1];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing inventory transaction callback.');
+            }
+            return callback(
+                args[2] ?? { transaction: 'inventory-account-test' },
+            );
         },
         withStripePaymentProcessingLock: async (
             id: string,
@@ -534,6 +624,31 @@ function makePlantingCart(status: 'open' | 'paid' = 'open') {
     };
 }
 
+function makeDetailedPlantingCart() {
+    const cart = makePlantingCart();
+    const item = cart.items[0];
+    if (!item) {
+        throw new Error('Planting cart fixture is invalid.');
+    }
+    return {
+        ...cart,
+        items: [
+            {
+                ...item,
+                additionalData: JSON.stringify({
+                    scheduledDate: '2026-07-01',
+                }),
+                amount: 1,
+                cartId: cart.id,
+                createdAt: new Date('2026-07-01T09:00:00.000Z'),
+                currency: 'eur',
+                gardenId: 200,
+                positionIndex: 2,
+            },
+        ],
+    };
+}
+
 function makeSunflowerCartItem() {
     return {
         id: 2,
@@ -547,6 +662,8 @@ function makeSunflowerCartItem() {
         positionIndex: 3,
         amount: 1,
         additionalData: null,
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+        entityData: { attributes: { deliverable: false } },
         usesInventory: false,
         shopData: {
             price: 5,
@@ -814,8 +931,8 @@ describe('processCheckoutSession', () => {
                 ].includes(name),
             ),
             [
-                'getOrCreateCheckoutOperation',
                 'earnSunflowersForPayment',
+                'getOrCreateCheckoutOperation',
                 'setCartItemPaid',
                 'markCartPaidIfAllItemsPaid',
                 'createTransaction',
@@ -826,8 +943,22 @@ describe('processCheckoutSession', () => {
             [1],
         );
         assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemLock')[0]?.args,
+            [1],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemProcessingLock')[0]?.args,
+            [1],
+        );
+        assert.deepStrictEqual(
             callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
-            ['account-1', 25],
+            [
+                'account-1',
+                25,
+                'shoppingCartItem:1',
+                { transaction: 'checkout-item-test' },
+                { legacyRewardAlreadyEarned: false },
+            ],
         );
         assert.deepStrictEqual(
             callsNamed(calls, 'markCartPaidIfAllItemsPaid')[0]?.args,
@@ -849,6 +980,134 @@ describe('processCheckoutSession', () => {
             callsNamed(calls, 'ensureInvoiceForTransaction').length,
             0,
         );
+    });
+
+    it('passes exact legacy planting evidence into the keyed payment reward', async () => {
+        for (const legacyRewardAlreadyEarned of [false, true]) {
+            const calls: RecordedCall[] = [];
+            const plantingCart = makeDetailedPlantingCart();
+            const dependencies = makeDependencies(calls, {
+                getStripeCheckoutSession: async (...args: unknown[]) => {
+                    record(calls, 'getStripeCheckoutSession', args);
+                    return makePlantingSession();
+                },
+                getShoppingCart: async (...args: unknown[]) => {
+                    record(calls, 'getShoppingCart', args);
+                    return plantingCart;
+                },
+                getRaisedBed: async (...args: unknown[]) => {
+                    record(calls, 'getRaisedBed', args);
+                    return { status: 'active' };
+                },
+                hasMatchingCheckoutPlantingPurchase: async (
+                    ...args: unknown[]
+                ) => {
+                    record(calls, 'hasMatchingCheckoutPlantingPurchase', args);
+                    return legacyRewardAlreadyEarned;
+                },
+            });
+
+            await processCheckoutSession('cs_paid', dependencies);
+
+            assert.deepStrictEqual(
+                callsNamed(calls, 'hasMatchingCheckoutPlantingPurchase')[0]
+                    ?.args,
+                [
+                    {
+                        cartItemId: 1,
+                        euroAmountCents: 2_500,
+                        plantSortId: '101',
+                        positionIndex: 2,
+                        raisedBedId: 300,
+                    },
+                    { transaction: 'checkout-item-test' },
+                ],
+            );
+            assert.deepStrictEqual(
+                callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
+                [
+                    'account-1',
+                    25,
+                    'shoppingCartItem:1',
+                    { transaction: 'checkout-item-test' },
+                    { legacyRewardAlreadyEarned },
+                ],
+            );
+        }
+    });
+
+    it('fails before rewarding or fulfilling when legacy planting evidence conflicts', async () => {
+        const calls: RecordedCall[] = [];
+        const plantingCart = makeDetailedPlantingCart();
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makePlantingSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return plantingCart;
+            },
+            hasMatchingCheckoutPlantingPurchase: async (...args: unknown[]) => {
+                record(calls, 'hasMatchingCheckoutPlantingPurchase', args);
+                throw new Error('legacy planting purchase conflicts');
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /legacy planting purchase conflicts/,
+        );
+
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 0);
+        assert.equal(callsNamed(calls, 'createEvent').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+    });
+
+    it('rejects Stripe metadata that does not match the cart owner before any payment effect', async () => {
+        const calls: RecordedCall[] = [];
+        const session = makeSession();
+        const lineItem = session.lineItems.data[0];
+        const product = lineItem?.price.product;
+        assert.ok(lineItem && product);
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...session,
+                    lineItems: {
+                        data: [
+                            {
+                                ...lineItem,
+                                price: {
+                                    product: {
+                                        ...product,
+                                        metadata: {
+                                            ...product.metadata,
+                                            accountId: 'different-account',
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /metadata account does not own cart/u,
+        );
+
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
     });
 
     it('retries operation fulfillment before marking a Stripe-paid item complete', async () => {
@@ -897,6 +1156,71 @@ describe('processCheckoutSession', () => {
         );
         assert.strictEqual(callsNamed(calls, 'setCartItemPaid').length, 1);
         assert.strictEqual(callsNamed(calls, 'createTransaction').length, 1);
+    });
+
+    it('finishes a mapped Stripe operation after its raised bed is abandoned', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getCheckoutOperationMapping: async (...args: unknown[]) => {
+                record(calls, 'getCheckoutOperationMapping', args);
+                return {
+                    operationId: 501,
+                    accountId: 'account-1',
+                    entityId: 42,
+                    entityTypeName: 'operation',
+                    farmId: null,
+                    gardenId: 200,
+                    raisedBedId: 300,
+                    raisedBedFieldId: 88,
+                    operationTimestamp: null,
+                    paymentCurrency: 'eur',
+                    delivery: null,
+                    scheduledDate: '2026-07-01T00:00:00.000Z',
+                    accepted: false,
+                };
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: 'abandoned' };
+            },
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                return { created: false, operationId: 501 };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(
+            callsNamed(calls, 'getCheckoutOperationMapping').length,
+            1,
+        );
+        assert.equal(callsNamed(calls, 'getRaisedBed').length, 0);
+        assert.equal(callsNamed(calls, 'isRaisedBedAbandoned').length, 0);
+        assert.deepEqual(callsNamed(calls, 'setCartItemPaid')[0]?.args, [1]);
+        const operationCall = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        )[0];
+        assert.ok(operationCall);
+        const operationInput = operationCall.args[1];
+        assert.ok(isRecord(operationInput));
+        assert.equal(operationInput.raisedBedFieldId, 88);
+        const operationOptions = operationCall.args[2];
+        assert.ok(isRecord(operationOptions));
+        assert.ok(operationOptions.scheduledDate instanceof Date);
+        assert.equal(
+            operationOptions.scheduledDate.toISOString(),
+            '2026-07-01T00:00:00.000Z',
+        );
     });
 
     it('generates an invoice from mapped Stripe line items when billing automation is enabled', async () => {
@@ -1620,11 +1944,11 @@ describe('processCheckoutSession', () => {
             ).length,
             1,
         );
-        assert.equal(
-            writtenEvents.filter(
-                (event) => event.type === 'accounts.sunflowersEarned',
-            ).length,
-            1,
+        assert.deepStrictEqual(
+            callsNamed(calls, 'earnSunflowersForPayment').map(
+                (call) => call.args[2],
+            ),
+            ['shoppingCartItem:1', 'shoppingCartItem:1'],
         );
         assert.equal(activePlantCycle?.plantStatus, 'sprouted');
         assert.equal(raisedBedStatus, 'active');
@@ -1671,6 +1995,22 @@ describe('processCheckoutSession', () => {
                 record(calls, 'getRaisedBed', args);
                 return { status: 'active' };
             },
+            withCheckoutCartItemLock: async (...args: unknown[]) => {
+                record(calls, 'checkoutItemLock.enter', args.slice(0, 1));
+                const callback = args[1];
+                if (typeof callback !== 'function') {
+                    throw new Error(
+                        'Missing checkout cart item lock callback.',
+                    );
+                }
+                try {
+                    return await callback({
+                        transaction: 'checkout-item-test',
+                    });
+                } finally {
+                    record(calls, 'checkoutItemLock.exit', args.slice(0, 1));
+                }
+            },
             withPlantingScheduleTaskTransaction: async (
                 _raisedBedId: number,
                 _positionIndex: number,
@@ -1711,6 +2051,14 @@ describe('processCheckoutSession', () => {
             ?.args[0];
         assert.ok(isRecord(incident));
         assert.equal(incident.type, 'checkout_planting_raised_bed_unavailable');
+        assert.ok(
+            callNames(calls).indexOf('earnSunflowersForPayment') <
+                callNames(calls).indexOf('checkoutItemLock.exit'),
+        );
+        assert.ok(
+            callNames(calls).indexOf('checkoutItemLock.exit') <
+                callNames(calls).indexOf('createNotificationWithStatus'),
+        );
     });
 
     it('keeps an initially abandoned paid planting recoverable and fulfills it after reactivation', async () => {
@@ -1995,7 +2343,7 @@ describe('processCheckoutSession', () => {
         assert.equal(conflictCaptures.length, 2);
     });
 
-    it('rebuilds all invoice lines and cart finalization after a later planting item retries', async () => {
+    it('continues later paid lines after an earlier failure and rebuilds finalization on retry', async () => {
         const calls: RecordedCall[] = [];
         let operationItemStatus: 'open' | 'paid' = 'open';
         let plantingItemStatus: 'open' | 'paid' = 'open';
@@ -2033,7 +2381,13 @@ describe('processCheckoutSession', () => {
         const dependencies = makeDependencies(calls, {
             getStripeCheckoutSession: async (...args: unknown[]) => {
                 record(calls, 'getStripeCheckoutSession', args);
-                return makeMultiLinePlantingSession();
+                const session = makeMultiLinePlantingSession();
+                return {
+                    ...session,
+                    lineItems: {
+                        data: [...session.lineItems.data].reverse(),
+                    },
+                };
             },
             getShoppingCart: async (...args: unknown[]) => {
                 record(calls, 'getShoppingCart', args);
@@ -2104,7 +2458,7 @@ describe('processCheckoutSession', () => {
             callsNamed(calls, 'markCartPaidIfAllItemsPaid')
                 .slice(-2)
                 .map((call) => call.args[0]),
-            [100, 200],
+            [200, 100],
         );
         assert.equal(callsNamed(calls, 'createTransaction').length, 1);
         const invoiceInput = callsNamed(calls, 'ensureInvoiceForTransaction')[0]
@@ -2115,7 +2469,7 @@ describe('processCheckoutSession', () => {
             invoiceInput.items.map((item) =>
                 isRecord(item) ? item.entityTypeName : null,
             ),
-            ['operation', 'plantSort'],
+            ['plantSort', 'operation'],
         );
         assert.equal(
             callsNamed(calls, 'createEvent')
@@ -2126,14 +2480,114 @@ describe('processCheckoutSession', () => {
                         event.type === 'raisedBedFields.plantPlace' ||
                         event.type === 'accounts.sunflowersEarned',
                 ).length,
-            2,
+            1,
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'earnSunflowersForPayment').map(
+                (call) => call.args[2],
+            ),
+            ['shoppingCartItem:2', 'shoppingCartItem:1', 'shoppingCartItem:2'],
         );
         const billingEmailInput = callsNamed(
             calls,
             'notifyBillingDocumentsEmail',
         )[0]?.args[0];
         assert.ok(isRecord(billingEmailInput));
-        assert.deepStrictEqual(billingEmailInput.cartIds, [100, 200]);
+        assert.deepStrictEqual(billingEmailInput.cartIds, [200, 100]);
+    });
+
+    it('keeps finalization retryable when an earlier paid line cannot be resolved', async () => {
+        const calls: RecordedCall[] = [];
+        const baseSession = makeSession();
+        const validLine = baseSession.lineItems.data[0];
+        const validProduct = validLine?.price.product;
+        assert.ok(validLine && validProduct);
+
+        let repairedMalformedLine = false;
+        const itemStatuses = new Map<number, 'open' | 'paid'>([
+            [1, 'open'],
+            [2, 'open'],
+        ]);
+        const repairedLine = {
+            ...validLine,
+            id: 'li_repaired',
+            price: {
+                product: {
+                    ...validProduct,
+                    id: 'prod_repaired',
+                    metadata: {
+                        ...validProduct.metadata,
+                        cartId: '200',
+                        cartItemId: '2',
+                        entityId: '43',
+                    },
+                },
+            },
+        };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...baseSession,
+                    amountTotal: 5000,
+                    lineItems: {
+                        data: [
+                            repairedMalformedLine
+                                ? repairedLine
+                                : {
+                                      ...repairedLine,
+                                      price: { product: 'prod_repaired' },
+                                  },
+                            validLine,
+                        ],
+                    },
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cartId = Number(args[0]);
+                const itemId = cartId === 100 ? 1 : 2;
+                return {
+                    id: cartId,
+                    accountId: 'account-1',
+                    status:
+                        itemStatuses.get(itemId) === 'paid' ? 'paid' : 'new',
+                    items: [
+                        {
+                            id: itemId,
+                            status: itemStatuses.get(itemId) ?? 'open',
+                            entityId: itemId === 1 ? '42' : '43',
+                            entityTypeName: 'operation',
+                            raisedBedId: 300,
+                        },
+                    ],
+                };
+            },
+            setCartItemPaid: async (...args: unknown[]) => {
+                record(calls, 'setCartItemPaid', args);
+                itemStatuses.set(Number(args[0]), 'paid');
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /unexpanded product/,
+        );
+        assert.equal(itemStatuses.get(1), 'paid');
+        assert.equal(itemStatuses.get(2), 'open');
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+
+        repairedMalformedLine = true;
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(itemStatuses.get(1), 'paid');
+        assert.equal(itemStatuses.get(2), 'paid');
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(
+            callsNamed(calls, 'getCompletedTransactionByStripePaymentId')
+                .length,
+            2,
+        );
     });
 
     it('keeps checkout retryable when sunflower spending fails for non-Stripe cart items', async () => {
@@ -2146,7 +2600,8 @@ describe('processCheckoutSession', () => {
             },
             getShoppingCart: async (...args: unknown[]) => {
                 record(calls, 'getShoppingCart', args);
-                return makeCart();
+                const cart = makeCart();
+                return { ...cart, items: [...cart.items, sunflowerItem] };
             },
             getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
                 record(calls, 'getRaisedBedFieldsWithEvents', args);
@@ -2180,13 +2635,485 @@ describe('processCheckoutSession', () => {
 
         assert.deepStrictEqual(
             callsNamed(calls, 'spendSunflowersBatch')[0]?.args,
-            ['account-1', [{ amount: 5000, reason: 'shoppingCartItem:2' }]],
+            [
+                'account-1',
+                [{ amount: 5000, reason: 'shoppingCartItem:2' }],
+                { transaction: 'checkout-items-test' },
+                {
+                    existingCheckoutItemAmountsAreAuthoritative: true,
+                    legacyCartSpend: {
+                        reason: 'shoppingCart:100',
+                        coveredItems: [
+                            {
+                                amount: 5000,
+                                cartItemId: 2,
+                                createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                reason: 'shoppingCartItem:2',
+                            },
+                        ],
+                    },
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemLocks')[0]?.args,
+            [[2]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemProcessingLocks')[0]?.args,
+            [[2]],
         );
         assert.deepStrictEqual(
             callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
             [1],
         );
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+    });
+
+    it('rejects malformed non-Stripe additional data before committing its payment marker', async () => {
+        const calls: RecordedCall[] = [];
+        const malformedItem = {
+            ...makeSunflowerCartItem(),
+            additionalData: '[',
+        };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [],
+                        [malformedItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return { ...cart, items: [...cart.items, malformedItem] };
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return { id: 100, items: [malformedItem] };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    allowPurchase: true,
+                    notes: [],
+                    items: [malformedItem],
+                };
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            (error) => error instanceof SyntaxError,
+        );
+
+        assert.equal(callsNamed(calls, 'spendSunflowersBatch').length, 0);
+        assert.equal(callsNamed(calls, 'consumeInventoryItem').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+    });
+
+    it('resumes a direct-currency item that already has a durable checkout effect', async () => {
+        const calls: RecordedCall[] = [];
+        const sunflowerItem = {
+            ...makeSunflowerCartItem(),
+            entityData: { attributes: { deliverable: false } },
+        };
+        let cartInfoCalls = 0;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [],
+                        [sunflowerItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return { ...cart, items: [...cart.items, sunflowerItem] };
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return { id: 100, items: [sunflowerItem] };
+            },
+            getCheckoutFulfillmentStartedCartItemIds: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getCheckoutFulfillmentStartedCartItemIds', args);
+                return new Set([sunflowerItem.id]);
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                cartInfoCalls += 1;
+                return {
+                    allowPurchase: cartInfoCalls > 1,
+                    notes:
+                        cartInfoCalls > 1
+                            ? []
+                            : ['raised bed is temporarily unavailable'],
+                    items: [sunflowerItem],
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'getCartInfo').length, 2);
+        const recoveryOptions = callsNamed(calls, 'getCartInfo')[1]?.args[2];
+        assert.ok(isRecord(recoveryOptions));
+        assert.ok(recoveryOptions.resumableCartItemIds instanceof Set);
+        assert.equal(
+            recoveryOptions.resumableCartItemIds.has(sunflowerItem.id),
+            true,
+        );
+        assert.equal(callsNamed(calls, 'spendSunflowersBatch').length, 1);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [1, 2],
+        );
+    });
+
+    it('covers paid and pending legacy sunflower items and fulfills with the durable resolved amount', async () => {
+        const calls: RecordedCall[] = [];
+        const paidSunflowerItem = {
+            ...makeSunflowerCartItem(),
+            shopData: { discountPrice: 0, price: 5 },
+            status: 'paid',
+        };
+        const pendingSunflowerItem = {
+            ...makeSunflowerCartItem(),
+            createdAt: new Date('2026-07-01T10:05:00.000Z'),
+            entityId: '101',
+            entityTypeName: 'plantSort',
+            id: 3,
+            positionIndex: 4,
+            shopData: { discountPrice: 7, price: 7 },
+        };
+        const allCartItems = [
+            ...makeCart().items,
+            paidSunflowerItem,
+            pendingSunflowerItem,
+        ];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [],
+                        [paidSunflowerItem.id, pendingSunflowerItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return {
+                    ...makeCart(),
+                    status: 'new',
+                    items: allCartItems,
+                };
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return {
+                    id: 100,
+                    items: [paidSunflowerItem, pendingSunflowerItem],
+                };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    allowPurchase: true,
+                    notes: [],
+                    items: [paidSunflowerItem, pendingSunflowerItem],
+                };
+            },
+            calculateSunflowerAmount: (...args: unknown[]) => {
+                record(calls, 'calculateSunflowerAmount', args);
+                return 7_000;
+            },
+            spendSunflowersBatch: async (...args: unknown[]) => {
+                record(calls, 'spendSunflowersBatch', args);
+                return {
+                    createdReasons: [],
+                    existingReasons: ['shoppingCartItem:3'],
+                    resolvedAmountsByReason: {
+                        'shoppingCartItem:3': 6_000,
+                    },
+                };
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: 'active' };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 89,
+                        positionIndex: 4,
+                        active: true,
+                        plantCycles: [],
+                    },
+                ];
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemLocks')[0]?.args,
+            [[2, 3]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'spendSunflowersBatch')[0]?.args,
+            [
+                'account-1',
+                [{ amount: 7_000, reason: 'shoppingCartItem:3' }],
+                { transaction: 'checkout-items-test' },
+                {
+                    existingCheckoutItemAmountsAreAuthoritative: true,
+                    legacyCartSpend: {
+                        reason: 'shoppingCart:100',
+                        coveredItems: [
+                            {
+                                amount: 5_000,
+                                cartItemId: 2,
+                                createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                reason: 'shoppingCartItem:2',
+                            },
+                            {
+                                amount: 7_000,
+                                cartItemId: 3,
+                                createdAt: new Date('2026-07-01T10:05:00.000Z'),
+                                reason: 'shoppingCartItem:3',
+                            },
+                        ],
+                    },
+                },
+            ],
+        );
+        const plantingEvent = callsNamed(calls, 'createEvent')
+            .map((call) => call.args[0])
+            .find(
+                (event) =>
+                    isRecordedEvent(event) &&
+                    event.type === 'raisedBedFields.plantPlace',
+            );
+        assert.ok(isRecordedEvent(plantingEvent));
+        assert.deepStrictEqual(plantingEvent.data, {
+            plantSortId: '101',
+            scheduledDate: '2026-07-02',
+            sowingLocation: undefined,
+            purchase: {
+                cartItemId: 3,
+                currency: 'sunflower',
+                sunflowerAmount: 6_000,
+            },
+        });
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [1, 3],
+        );
+        const confirmationCall = callsNamed(
+            calls,
+            'buildOrderConfirmationItems',
+        ).at(-1);
+        assert.deepStrictEqual(confirmationCall?.args[0], [
+            paidSunflowerItem,
+            pendingSunflowerItem,
+        ]);
+        const resolveSunflowerAmount = confirmationCall?.args[1];
+        assert.equal(typeof resolveSunflowerAmount, 'function');
+        if (typeof resolveSunflowerAmount !== 'function') {
+            throw new Error('Missing sunflower confirmation resolver.');
+        }
+        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 5_000);
+        assert.equal(resolveSunflowerAmount(pendingSunflowerItem), 6_000);
+    });
+
+    it('commits inventory consumption inside the short cart-item gate before fulfillment', async () => {
+        const calls: RecordedCall[] = [];
+        const inventoryItem = {
+            ...makeSunflowerCartItem(),
+            currency: 'inventory',
+            entityData: { attributes: { deliverable: false } },
+            inventoryAvailable: 1,
+            usesInventory: true,
+        };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [],
+                        [inventoryItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return { ...cart, items: [...cart.items, inventoryItem] };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    { id: 88, positionIndex: 2, active: true },
+                    { id: 89, positionIndex: 3, active: true },
+                ];
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return { id: 100, items: [inventoryItem] };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    allowPurchase: true,
+                    notes: [],
+                    items: [inventoryItem],
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemProcessingLock').at(-1)
+                ?.args,
+            [2],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemLock').at(-1)?.args,
+            [2],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withInventoryAccountTransaction')[0]?.args,
+            ['account-1'],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'consumeInventoryItem')[0]?.args,
+            [
+                'account-1',
+                {
+                    entityTypeName: 'operation',
+                    entityId: '99',
+                    amount: 1,
+                    source: 'shoppingCartItem:2',
+                },
+                { transaction: 'checkout-item-test' },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [1, 2],
+        );
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+    });
+
+    it('blocks finalization when an expected non-Stripe item is missing', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata([], [2]),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return { id: 100, items: [] };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return { allowPurchase: true, notes: [], items: [] };
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /Expected non-Stripe cart items are missing before fulfillment: 2/,
+        );
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [],
+        );
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+    });
+
+    it('accepts an expected non-Stripe item that was already paid on replay', async () => {
+        const calls: RecordedCall[] = [];
+        const paidSunflowerItem = {
+            ...makeSunflowerCartItem(),
+            status: 'paid',
+        };
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    metadata: encodeHarvestDatesMetadata(
+                        [],
+                        [paidSunflowerItem.id],
+                    ),
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return {
+                    ...cart,
+                    items: [...cart.items, paidSunflowerItem],
+                };
+            },
+            normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
+                record(calls, 'normalizeShoppingCartInventoryUsage', args);
+                return { id: 100, items: [paidSunflowerItem] };
+            },
+            getCartInfo: async (...args: unknown[]) => {
+                record(calls, 'getCartInfo', args);
+                return {
+                    allowPurchase: false,
+                    notes: ['historical cart state changed'],
+                    items: [paidSunflowerItem],
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
+            [1],
+        );
+        assert.equal(callsNamed(calls, 'spendSunflowersBatch').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        const confirmationCall = callsNamed(
+            calls,
+            'buildOrderConfirmationItems',
+        ).at(-1);
+        assert.deepStrictEqual(confirmationCall?.args[0], [paidSunflowerItem]);
+        const resolveSunflowerAmount = confirmationCall?.args[1];
+        assert.equal(typeof resolveSunflowerAmount, 'function');
+        if (typeof resolveSunflowerAmount !== 'function') {
+            throw new Error('Missing sunflower confirmation resolver.');
+        }
+        assert.equal(resolveSunflowerAmount(paidSunflowerItem), 5_000);
     });
 
     it('uses the canonical harvest date for a mixed checkout and ignores a later non-Stripe cart item', async () => {
@@ -2234,7 +3161,15 @@ describe('processCheckoutSession', () => {
             },
             getShoppingCart: async (...args: unknown[]) => {
                 record(calls, 'getShoppingCart', args);
-                return makeCart();
+                const cart = makeCart();
+                return {
+                    ...cart,
+                    items: [
+                        ...cart.items,
+                        expectedSunflowerItem,
+                        laterSunflowerItem,
+                    ],
+                };
             },
             getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
                 record(calls, 'getRaisedBedFieldsWithEvents', args);
@@ -2265,7 +3200,37 @@ describe('processCheckoutSession', () => {
 
         assert.deepStrictEqual(
             callsNamed(calls, 'spendSunflowersBatch')[0]?.args,
-            ['account-1', [{ amount: 5000, reason: 'shoppingCartItem:2' }]],
+            [
+                'account-1',
+                [{ amount: 5000, reason: 'shoppingCartItem:2' }],
+                { transaction: 'checkout-items-test' },
+                {
+                    existingCheckoutItemAmountsAreAuthoritative: true,
+                    legacyCartSpend: {
+                        reason: 'shoppingCart:100',
+                        coveredItems: [
+                            {
+                                amount: 5000,
+                                cartItemId: 2,
+                                createdAt: new Date('2026-07-01T10:00:00.000Z'),
+                                reason: 'shoppingCartItem:2',
+                            },
+                        ],
+                    },
+                },
+            ],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemLocks')[0]?.args,
+            [[2]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withCheckoutCartItemProcessingLocks')[0]?.args,
+            [[2]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'getCheckoutOperationMapping').at(-1)?.args,
+            [2],
         );
         assert.deepStrictEqual(
             callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
@@ -2338,6 +3303,7 @@ describe('processItem', () => {
         );
 
         assert.deepStrictEqual(callNames(calls), [
+            'getCheckoutOperationMapping',
             'getRaisedBed',
             'isRaisedBedAbandoned',
         ]);
@@ -2387,57 +3353,92 @@ describe('processItem', () => {
         });
     });
 
-    it('continues operation processing when earning sunflowers fails', async () => {
+    it('reuses an empty mapping snapshot on a first-attempt operation', async () => {
         const calls: RecordedCall[] = [];
-        const dependencies = makeDependencies(calls, {
-            earnSunflowersForPayment: async (...args: unknown[]) => {
-                record(calls, 'earnSunflowersForPayment', args);
-                throw new Error('sunflower ledger unavailable');
-            },
-        });
+        const dependencies = makeDependencies(calls);
 
         await processItem(
             {
                 accountId: 'account-1',
-                amount_total: 2500,
-                additionalData: {
-                    scheduledDate: '2026-07-01',
-                },
+                amount_total: 5000,
+                additionalData: { scheduledDate: '2026-07-01' },
                 cartId: 100,
-                cartItemId: 1,
-                currency: 'eur',
+                cartItemId: 2,
+                checkoutOperationMapping: null,
+                currency: 'sunflower',
                 entityId: '42',
                 entityTypeName: 'operation',
                 gardenId: 200,
-                positionIndex: null,
-                raisedBedId: null,
+                positionIndex: 2,
+                raisedBedId: 300,
             },
             dependencies,
         );
 
-        assert.deepStrictEqual(
-            callNames(calls).filter((name) =>
-                [
-                    'getOrCreateCheckoutOperation',
-                    'earnSunflowersForPayment',
-                    'notifyOperationUpdate',
-                    'isCartItemDeliverable',
-                ].includes(name),
-            ),
-            [
-                'getOrCreateCheckoutOperation',
-                'earnSunflowersForPayment',
-                'notifyOperationUpdate',
-                'isCartItemDeliverable',
-            ],
+        assert.equal(
+            callsNamed(calls, 'getCheckoutOperationMapping').length,
+            0,
         );
-        assert.deepStrictEqual(
-            callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
-            ['account-1', 25],
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
         );
     });
 
-    it('reuses a checkout operation without repeating its side effects', async () => {
+    it('keeps an operation retryable until its payment reward is durably earned', async () => {
+        const calls: RecordedCall[] = [];
+        let rewardAttempts = 0;
+        const dependencies = makeDependencies(calls, {
+            earnSunflowersForPayment: async (...args: unknown[]) => {
+                record(calls, 'earnSunflowersForPayment', args);
+                rewardAttempts += 1;
+                if (rewardAttempts === 1) {
+                    throw new Error('sunflower ledger unavailable');
+                }
+            },
+        });
+
+        const item = {
+            accountId: 'account-1',
+            amount_total: 2500,
+            additionalData: {
+                scheduledDate: '2026-07-01',
+            },
+            cartId: 100,
+            cartItemId: 1,
+            currency: 'eur',
+            entityId: '42',
+            entityTypeName: 'operation',
+            gardenId: 200,
+            positionIndex: null,
+            raisedBedId: null,
+        };
+
+        await assert.rejects(
+            processItem(item, dependencies),
+            /sunflower ledger unavailable/,
+        );
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            0,
+        );
+
+        assert.deepStrictEqual(await processItem(item, dependencies), {
+            status: 'fulfilled',
+        });
+
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 2);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
+            ['account-1', 25, 'shoppingCartItem:1'],
+        );
+    });
+
+    it('reuses a checkout operation while replaying its idempotent reward', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
             getOrCreateCheckoutOperation: async (...args: unknown[]) => {
@@ -2467,8 +3468,96 @@ describe('processItem', () => {
             callsNamed(calls, 'getOrCreateCheckoutOperation').length,
             1,
         );
-        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 0);
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 1);
         assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 0);
+    });
+
+    it('reuses mapped operation state after the field changes and bed is abandoned', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getCheckoutOperationMapping: async (...args: unknown[]) => {
+                record(calls, 'getCheckoutOperationMapping', args);
+                return {
+                    operationId: 501,
+                    accountId: 'account-1',
+                    entityId: 42,
+                    entityTypeName: 'operation',
+                    farmId: null,
+                    gardenId: 200,
+                    raisedBedId: 300,
+                    raisedBedFieldId: 701,
+                    operationTimestamp: null,
+                    paymentCurrency: 'eur',
+                    delivery: null,
+                    scheduledDate: '2026-07-01T00:00:00.000Z',
+                    accepted: false,
+                };
+            },
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [
+                    {
+                        id: 702,
+                        positionIndex: 2,
+                        active: true,
+                    },
+                ];
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return { status: 'abandoned' };
+            },
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                return { created: false, operationId: 501 };
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: {
+                    scheduledDate: '2026-07-09T00:00:00.000Z',
+                },
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'sunflower',
+                entityId: '42',
+                entityTypeName: 'operation',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.equal(
+            callsNamed(calls, 'getCheckoutOperationMapping').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'getRaisedBed').length, 0);
+        assert.equal(callsNamed(calls, 'isRaisedBedAbandoned').length, 0);
+        const operationInput = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        )[0]?.args[1];
+        assert.ok(isRecord(operationInput));
+        assert.equal(operationInput.raisedBedFieldId, 701);
+        const operationOptions = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        )[0]?.args[2];
+        assert.ok(isRecord(operationOptions));
+        assert.ok(operationOptions.scheduledDate instanceof Date);
+        assert.equal(
+            operationOptions.scheduledDate.toISOString(),
+            '2026-07-01T00:00:00.000Z',
+        );
     });
 
     it('reuses a delivery request without repeating its notifications', async () => {
@@ -2497,14 +3586,30 @@ describe('processItem', () => {
                 amount_total: 2500,
                 additionalData: {
                     scheduledDate: '2026-07-01',
-                    delivery: {
-                        slotId: 9,
-                        mode: 'pickup',
-                        locationId: 4,
-                    },
                 },
                 cartId: 100,
                 cartItemId: 1,
+                checkoutOperationMapping: {
+                    accepted: false,
+                    accountId: 'account-1',
+                    delivery: {
+                        addressId: null,
+                        locationId: 4,
+                        mode: 'pickup',
+                        notes: null,
+                        slotId: 9,
+                    },
+                    entityId: 42,
+                    entityTypeName: 'operation',
+                    farmId: null,
+                    gardenId: 200,
+                    operationId: 501,
+                    operationTimestamp: null,
+                    paymentCurrency: 'sunflower',
+                    raisedBedFieldId: null,
+                    raisedBedId: null,
+                    scheduledDate: '2026-07-01T00:00:00.000Z',
+                },
                 currency: 'sunflower',
                 entityId: '42',
                 entityTypeName: 'operation',
@@ -2516,6 +3621,18 @@ describe('processItem', () => {
         );
 
         assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 1);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'getOrCreateDeliveryRequest')[0]?.args[0],
+            {
+                accountId: 'account-1',
+                addressId: undefined,
+                locationId: 4,
+                mode: 'pickup',
+                notes: undefined,
+                operationId: 501,
+                slotId: 9,
+            },
+        );
         assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 0);
         assert.equal(
             callsNamed(calls, 'notifyScheduledDeliveryEmailOnce').length,
@@ -2527,7 +3644,35 @@ describe('processItem', () => {
         const calls: RecordedCall[] = [];
         let operationAttempt = 0;
         let deliveryAttempt = 0;
+        let mappingAttempt = 0;
         const dependencies = makeDependencies(calls, {
+            getCheckoutOperationMapping: async (...args: unknown[]) => {
+                record(calls, 'getCheckoutOperationMapping', args);
+                mappingAttempt += 1;
+                return mappingAttempt === 1
+                    ? null
+                    : {
+                          accepted: false,
+                          accountId: 'account-1',
+                          delivery: {
+                              addressId: null,
+                              locationId: 4,
+                              mode: 'pickup',
+                              notes: null,
+                              slotId: 9,
+                          },
+                          entityId: 42,
+                          entityTypeName: 'operation',
+                          farmId: null,
+                          gardenId: 200,
+                          operationId: 501,
+                          operationTimestamp: null,
+                          paymentCurrency: 'eur',
+                          raisedBedFieldId: null,
+                          raisedBedId: null,
+                          scheduledDate: '2026-07-01T00:00:00.000Z',
+                      };
+            },
             getOrCreateCheckoutOperation: async (...args: unknown[]) => {
                 record(calls, 'getOrCreateCheckoutOperation', args);
                 operationAttempt += 1;
@@ -2574,7 +3719,13 @@ describe('processItem', () => {
         };
 
         const first = await processItem(item, dependencies);
-        const retry = await processItem(item, dependencies);
+        const retry = await processItem(
+            {
+                ...item,
+                additionalData: { scheduledDate: '2026-07-01' },
+            },
+            dependencies,
+        );
 
         assert.deepStrictEqual(first, {
             status: 'not_fulfilled',
@@ -2585,7 +3736,7 @@ describe('processItem', () => {
             callsNamed(calls, 'getOrCreateCheckoutOperation').length,
             2,
         );
-        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 1);
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 2);
         assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 1);
         assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 2);
         assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 1);
@@ -2874,7 +4025,11 @@ describe('processItem', () => {
                 .filter(isRecordedEvent)
                 .filter((event) => event.type === 'accounts.sunflowersEarned')
                 .length,
-            1,
+            0,
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
+            ['account-1', 25, 'shoppingCartItem:1'],
         );
     });
 

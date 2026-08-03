@@ -188,6 +188,33 @@ async function lockInventoryAggregate(aggregateId: string, db: DatabaseClient) {
     );
 }
 
+/**
+ * Run account-inventory work while holding the same aggregate lock used by
+ * checkout consumption. Acquire this lock before any cart-row locks so
+ * normalization and consumption have one stable lock order.
+ */
+export async function withInventoryAccountTransaction<T>(
+    accountId: string,
+    callback: (db: TransactionClient) => Promise<T>,
+    transaction?: TransactionClient,
+) {
+    const aggregateId = getInventoryAggregateId(accountId);
+    const runInTransaction = async (db: TransactionClient) => {
+        if (!isPgliteTestDatabase()) {
+            await lockInventoryAggregate(aggregateId, db);
+        }
+        return callback(db);
+    };
+    const run = () =>
+        transaction
+            ? runInTransaction(transaction)
+            : storage().transaction(runInTransaction);
+
+    return isPgliteTestDatabase()
+        ? withInventoryInProcessLock(aggregateId, run)
+        : run();
+}
+
 async function getInventoryForAggregateIds(
     aggregateIds: string[],
     db: DatabaseClient = storage(),
@@ -353,7 +380,10 @@ async function readCheckoutInventoryConsumptions(
         const existing = bySource.get(consumption.source);
         if (existing) {
             assertMatchingCheckoutInventoryConsumption(existing, consumption);
-            continue;
+            throw new InventoryConsumptionSourceConflictError(
+                consumption.source,
+                'Checkout inventory consumption source has multiple events.',
+            );
         }
         bySource.set(consumption.source, consumption);
     }
@@ -389,6 +419,24 @@ export async function getCheckoutInventoryConsumptions(
     return Array.from(consumptions.values()).filter((consumption) =>
         requestedSources.has(consumption.source),
     );
+}
+
+export async function getCheckoutInventorySnapshot(
+    accountId: string,
+    cartItemIds: readonly number[],
+) {
+    return withInventoryAccountTransaction(accountId, async (db) => {
+        // Keep these reads ordered inside the locked transaction. Under READ
+        // COMMITTED, the aggregate lock prevents checkout consumption from
+        // committing between the balance and source projections.
+        const inventory = await getInventory(accountId, db);
+        const consumptions = await getCheckoutInventoryConsumptions(
+            accountId,
+            cartItemIds,
+            db,
+        );
+        return { inventory, consumptions };
+    });
 }
 
 async function consumeInventoryItemInTransaction(
@@ -450,24 +498,9 @@ export async function consumeInventoryItem(
         return;
     }
 
-    const aggregateId = getInventoryAggregateId(accountId);
-    const consumeInTransaction = () =>
-        storage().transaction(async (transaction) => {
-            if (!isPgliteTestDatabase()) {
-                await lockInventoryAggregate(aggregateId, transaction);
-            }
-            await consumeInventoryItemInTransaction(
-                accountId,
-                payload,
-                transaction,
-            );
-        });
-
-    if (isPgliteTestDatabase()) {
-        await withInventoryInProcessLock(aggregateId, consumeInTransaction);
-        return;
-    }
-    await consumeInTransaction();
+    await withInventoryAccountTransaction(accountId, (transaction) =>
+        consumeInventoryItemInTransaction(accountId, payload, transaction),
+    );
 }
 
 export async function getInventory(

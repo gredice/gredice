@@ -3,6 +3,9 @@ import {
     cartContainsDeliverableItems,
     consumeInventoryItem,
     getAccount,
+    getCheckoutFulfillmentStartedCartItemIds,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
     getDeliveryAddress,
     getHarvestScheduleForCart,
     getPickupLocation,
@@ -21,9 +24,11 @@ import {
     releaseOutletReservationsForCart,
     reserveOutletOffer,
     setCartItemPaid,
-    spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
     validateHarvestDateSelections,
+    withCheckoutCartItemLock,
+    withCheckoutCartItemProcessingLock,
+    withInventoryAccountTransaction,
 } from '@gredice/storage';
 import {
     type CheckoutItem,
@@ -36,6 +41,10 @@ import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
+    assertCheckoutCartItemSnapshot,
+    getCheckoutOperationRecoveryState,
+} from '../../../lib/checkout/checkoutRecovery';
+import {
     type CheckoutPaymentKind,
     type CheckoutTimingVariables,
     checkoutTimingMiddleware,
@@ -44,6 +53,7 @@ import {
     CheckoutDeliverySelectionError,
     validateCheckoutDeliverySelection,
 } from '../../../lib/checkout/deliverySelection';
+import { withDirectSunflowerCheckoutPayment } from '../../../lib/checkout/directSunflowerCheckout';
 import {
     buildCheckoutAdditionalData,
     encodeHarvestDatesMetadata,
@@ -52,7 +62,7 @@ import {
     buildOrderConfirmationItems,
     ORDER_CONFIRMATION_MANAGE_URL,
 } from '../../../lib/checkout/orderConfirmationEmail';
-import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
+import { calculateSunflowerReplayAmount } from '../../../lib/checkout/sunflowerCalculations';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -187,22 +197,70 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 return context.json({ error: 'Cart already paid' }, 400);
             }
 
-            const cart = await checkoutTiming.measure(
-                'cart_normalization',
-                async () => {
+            const { cart, checkoutOperationMappings } =
+                await checkoutTiming.measure('cart_normalization', async () => {
+                    const mappings = await getCheckoutOperationMappings(
+                        initialCart.items
+                            .filter(
+                                (item) =>
+                                    item.status !== 'paid' &&
+                                    item.entityTypeName === 'operation',
+                            )
+                            .map((item) => item.id),
+                    );
                     const inventoryNormalizedCart =
                         (await normalizeShoppingCartInventoryUsage(cartId)) ??
                         initialCart;
-                    return (
+                    const normalizedCart =
                         (await normalizeShoppingCartScheduledDates(
                             inventoryNormalizedCart.id,
                             {
+                                checkoutOperationMappings: mappings,
                                 defaultMissingScheduledDates: true,
                             },
-                        )) ?? inventoryNormalizedCart
-                    );
-                },
+                        )) ?? inventoryNormalizedCart;
+                    return {
+                        cart: normalizedCart,
+                        checkoutOperationMappings: mappings,
+                    };
+                });
+            const mappedOperationCartItemIds = new Set(
+                checkoutOperationMappings.keys(),
             );
+            const pendingEuroItems = cart.items.filter(
+                (item) => item.status !== 'paid' && item.currency === 'eur',
+            );
+            const fulfillmentStartedCartItemIds =
+                pendingEuroItems.length > 0
+                    ? await getCheckoutFulfillmentStartedCartItemIds(
+                          accountId,
+                          pendingEuroItems,
+                      )
+                    : new Set<number>();
+            const checkoutOperationRecoveryState =
+                getCheckoutOperationRecoveryState(
+                    cart.items,
+                    checkoutOperationMappings,
+                    fulfillmentStartedCartItemIds,
+                );
+            if (checkoutOperationRecoveryState) {
+                checkoutTiming.setContext({ paymentKind: 'stripe' });
+                return context.json(
+                    {
+                        code:
+                            checkoutOperationRecoveryState ===
+                            'stripe_payment_processing'
+                                ? 'CHECKOUT_PAYMENT_PROCESSING'
+                                : 'CHECKOUT_PAYMENT_CONFLICT',
+                        error:
+                            checkoutOperationRecoveryState ===
+                            'stripe_payment_processing'
+                                ? 'Plaćanje se još obrađuje. Pričekaj trenutak i pokušaj ponovno.'
+                                : 'Način plaćanja promijenjen je tijekom obrade. Osvježi košaricu i pokušaj ponovno.',
+                    },
+                    409,
+                );
+            }
             const endDeliveryValidation = checkoutTiming.startPhase(
                 'delivery_validation',
             );
@@ -214,43 +272,71 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             try {
                 const requiresDelivery = await cartContainsDeliverableItems(
                     cart.id,
+                    {
+                        excludeCartItemIds: [...mappedOperationCartItemIds],
+                    },
                 );
-                const [slot, address, location] = await Promise.all([
-                    deliveryInfo
-                        ? getTimeSlot(deliveryInfo.slotId)
-                        : Promise.resolve(undefined),
-                    deliveryInfo?.mode === 'delivery' && deliveryInfo.addressId
-                        ? getDeliveryAddress(deliveryInfo.addressId, accountId)
-                        : Promise.resolve(undefined),
-                    deliveryInfo?.mode === 'pickup' && deliveryInfo.locationId
-                        ? getPickupLocation(deliveryInfo.locationId)
-                        : Promise.resolve(undefined),
-                ]);
-                validateCheckoutDeliverySelection({
-                    address,
-                    location,
-                    requiresDelivery,
-                    selection: deliveryInfo,
-                    slot: slot
-                        ? {
-                              ...slot,
-                              effectiveClosesAt:
-                                  getTimeSlotEffectiveClosesAt(slot),
-                          }
-                        : undefined,
-                });
+                const requiresMutableDeliveryPreflight =
+                    mappedOperationCartItemIds.size === 0 || requiresDelivery;
+                const [slot, address, location] =
+                    requiresMutableDeliveryPreflight
+                        ? await Promise.all([
+                              deliveryInfo
+                                  ? getTimeSlot(deliveryInfo.slotId)
+                                  : Promise.resolve(undefined),
+                              deliveryInfo?.mode === 'delivery' &&
+                              deliveryInfo.addressId
+                                  ? getDeliveryAddress(
+                                        deliveryInfo.addressId,
+                                        accountId,
+                                    )
+                                  : Promise.resolve(undefined),
+                              deliveryInfo?.mode === 'pickup' &&
+                              deliveryInfo.locationId
+                                  ? getPickupLocation(deliveryInfo.locationId)
+                                  : Promise.resolve(undefined),
+                          ])
+                        : [undefined, undefined, undefined];
+                if (requiresMutableDeliveryPreflight) {
+                    validateCheckoutDeliverySelection({
+                        address,
+                        location,
+                        requiresDelivery,
+                        selection: deliveryInfo,
+                        slot: slot
+                            ? {
+                                  ...slot,
+                                  effectiveClosesAt:
+                                      getTimeSlotEffectiveClosesAt(slot),
+                              }
+                            : undefined,
+                    });
+                }
 
-                if (deliveryInfo) {
+                if (deliveryInfo && requiresMutableDeliveryPreflight) {
                     const schedule = await getHarvestScheduleForCart({
                         accountId,
                         cartId: cart.id,
                         deliverySlotId: deliveryInfo.slotId,
+                        excludeCartItemIds: [...mappedOperationCartItemIds],
                     });
                     canonicalHarvestDates = validateHarvestDateSelections(
                         schedule,
-                        harvestDates ?? [],
+                        (harvestDates ?? []).filter(
+                            (selection) =>
+                                !mappedOperationCartItemIds.has(
+                                    selection.cartItemId,
+                                ),
+                        ),
                     );
-                } else if (harvestDates?.length) {
+                } else if (
+                    harvestDates?.some(
+                        (selection) =>
+                            !mappedOperationCartItemIds.has(
+                                selection.cartItemId,
+                            ),
+                    )
+                ) {
                     return context.json(
                         {
                             error: 'Delivery selection is required for harvest dates',
@@ -291,12 +377,64 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 ]),
             );
             // Retrieve entities data
-            const cartInfo = await checkoutTiming.measure(
-                'cart_enrichment',
-                () => getCartInfo(cart.items, accountId),
+            let cartInfo = await checkoutTiming.measure('cart_enrichment', () =>
+                getCartInfo(cart.items, accountId, {
+                    checkoutOperationMappings,
+                }),
             );
             if (!cartInfo.allowPurchase) {
+                const pendingDirectItems = cart.items.filter(
+                    (item) => item.status !== 'paid' && item.currency !== 'eur',
+                );
+                const resumableDirectCartItemIds =
+                    pendingDirectItems.length > 0
+                        ? await getCheckoutFulfillmentStartedCartItemIds(
+                              accountId,
+                              pendingDirectItems,
+                          )
+                        : new Set<number>();
+                if (resumableDirectCartItemIds.size > 0) {
+                    cartInfo = await getCartInfo(cart.items, accountId, {
+                        checkoutOperationMappings,
+                        resumableCartItemIds: resumableDirectCartItemIds,
+                    });
+                }
+            }
+            if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
+            }
+            let checkoutAdditionalDataByCartItemId: ReadonlyMap<
+                number,
+                ReturnType<typeof buildCheckoutAdditionalData>
+            >;
+            try {
+                checkoutAdditionalDataByCartItemId = new Map(
+                    cartInfo.items
+                        .filter((item) => item.status !== 'paid')
+                        .map((item) => [
+                            item.id,
+                            buildCheckoutAdditionalData({
+                                additionalData: item.additionalData,
+                                deliveryInfo,
+                                scheduledHarvestDate:
+                                    harvestDateByCartItemId.get(item.id),
+                            }),
+                        ]),
+                );
+            } catch (error) {
+                checkoutTiming.setErrorCategory('cart_validation_failed');
+                console.warn('Invalid checkout cart item additional data', {
+                    accountId,
+                    cartId,
+                    error,
+                });
+                return context.json(
+                    {
+                        error: 'Cart item additional data is invalid',
+                        code: 'CHECKOUT_ADDITIONAL_DATA_INVALID',
+                    },
+                    400,
+                );
             }
             const outletCheckoutStartedAt = new Date();
             const outletCheckoutExpiresAt = addMinutes(
@@ -382,59 +520,88 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 const endNonStripeFulfillment = checkoutTiming.startPhase(
                     'non_stripe_fulfillment',
                 );
+                const resolvedSunflowerAmountsByCartItemId = new Map<
+                    number,
+                    number
+                >();
                 try {
                     const scheduledDeliveryEmailKeys = new Set<string>();
-                    const sunflowerCartItemsWithShopData =
+                    const allSunflowerCartItemsWithShopData =
                         cartInfo.items.filter(
-                            (item) =>
-                                item.status !== 'paid' &&
-                                item.currency === 'sunflower',
+                            (item) => item.currency === 'sunflower',
+                        );
+                    const sunflowerCartItemsWithShopData =
+                        allSunflowerCartItemsWithShopData.filter(
+                            (item) => item.status !== 'paid',
                         );
                     if (sunflowerCartItemsWithShopData.length > 0) {
                         // Check if there are enough sunflowers in the account
                         for (const item of sunflowerCartItemsWithShopData) {
-                            const scheduledHarvestDate =
-                                harvestDateByCartItemId.get(item.id);
-                            const sunflowerAmount =
-                                calculateSunflowerAmount(item);
-                            let didPaySunflowers = false;
+                            let processingStage: 'payment' | 'fulfillment' =
+                                'payment';
                             try {
-                                await spendSunflowersBatch(accountId, [
-                                    {
-                                        amount: sunflowerAmount,
-                                        reason: `shoppingCartItem:${item.id.toString()}`,
-                                    },
-                                ]);
-                                didPaySunflowers = true;
-                            } catch (error) {
-                                checkoutTiming.setErrorCategory(
-                                    'sunflower_spend_failed',
-                                );
-                                console.error('Error spending sunflowers', {
-                                    error,
+                                await withDirectSunflowerCheckoutPayment({
                                     accountId,
-                                    sunflowerAmount,
+                                    allSunflowerItems:
+                                        allSunflowerCartItemsWithShopData,
+                                    cartId: cart.id,
                                     item,
-                                });
-                            }
+                                    operation: async (payment) => {
+                                        if (payment.state === 'paid') {
+                                            return;
+                                        }
+                                        processingStage = 'fulfillment';
+                                        resolvedSunflowerAmountsByCartItemId.set(
+                                            item.id,
+                                            payment.resolvedAmount,
+                                        );
+                                        const checkoutOperationMapping =
+                                            item.entityTypeName === 'operation'
+                                                ? await getCheckoutOperationMapping(
+                                                      item.id,
+                                                  )
+                                                : undefined;
 
-                            if (didPaySunflowers) {
-                                const fulfillment = await processItem({
-                                    accountId,
-                                    cartItemId: item.id,
-                                    ...item,
-                                    amount_total: sunflowerAmount,
-                                    scheduledDeliveryEmailKeys,
-                                    additionalData: buildCheckoutAdditionalData(
-                                        {
-                                            additionalData: item.additionalData,
-                                            deliveryInfo,
-                                            scheduledHarvestDate,
-                                        },
-                                    ),
+                                        const fulfillment = await processItem({
+                                            accountId,
+                                            cartItemId: item.id,
+                                            ...item,
+                                            amount_total:
+                                                payment.resolvedAmount,
+                                            scheduledDeliveryEmailKeys,
+                                            additionalData:
+                                                checkoutAdditionalDataByCartItemId.get(
+                                                    item.id,
+                                                ) ?? {},
+                                            checkoutOperationMapping:
+                                                item.entityTypeName ===
+                                                'operation'
+                                                    ? checkoutOperationMapping
+                                                    : undefined,
+                                        });
+                                        assertCheckoutItemFulfilled(
+                                            fulfillment,
+                                        );
+                                        await setCartItemPaid(item.id);
+                                    },
                                 });
-                                assertCheckoutItemFulfilled(fulfillment);
-                                await setCartItemPaid(item.id);
+                            } catch (error) {
+                                if (processingStage === 'payment') {
+                                    checkoutTiming.setErrorCategory(
+                                        'sunflower_spend_failed',
+                                    );
+                                    console.error('Error spending sunflowers', {
+                                        accountId,
+                                        cartId: cart.id,
+                                        error,
+                                        cartItemId: item.id,
+                                    });
+                                } else {
+                                    checkoutTiming.setErrorCategory(
+                                        'unexpected',
+                                    );
+                                }
+                                throw error;
                             }
                         }
                     }
@@ -449,8 +616,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
 
                     if (inventoryCartItems.length > 0) {
                         for (const item of inventoryCartItems) {
-                            const scheduledHarvestDate =
-                                harvestDateByCartItemId.get(item.id);
                             if ((item.inventoryAvailable ?? 0) < item.amount) {
                                 return context.json(
                                     {
@@ -460,26 +625,83 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 );
                             }
 
-                            await consumeInventoryItem(accountId, {
-                                entityTypeName: item.entityTypeName,
-                                entityId: item.entityId,
-                                amount: item.amount,
-                                source: `shoppingCartItem:${item.id.toString()}`,
-                            });
-                            const fulfillment = await processItem({
-                                accountId,
-                                cartItemId: item.id,
-                                ...item,
-                                amount_total: 0,
-                                scheduledDeliveryEmailKeys,
-                                additionalData: buildCheckoutAdditionalData({
-                                    additionalData: item.additionalData,
-                                    deliveryInfo,
-                                    scheduledHarvestDate,
-                                }),
-                            });
-                            assertCheckoutItemFulfilled(fulfillment);
-                            await setCartItemPaid(item.id);
+                            await withCheckoutCartItemProcessingLock(
+                                item.id,
+                                async () => {
+                                    const state =
+                                        await withCheckoutCartItemLock(
+                                            item.id,
+                                            async (db) => {
+                                                const lockedCart =
+                                                    await getShoppingCart(
+                                                        cart.id,
+                                                        db,
+                                                    );
+                                                if (!lockedCart) {
+                                                    throw new Error(
+                                                        `Cart ${cart.id.toString()} disappeared before inventory fulfillment.`,
+                                                    );
+                                                }
+                                                const lockedState =
+                                                    assertCheckoutCartItemSnapshot(
+                                                        lockedCart.items.find(
+                                                            (lockedItem) =>
+                                                                lockedItem.id ===
+                                                                item.id,
+                                                        ),
+                                                        item,
+                                                    );
+                                                if (lockedState === 'pending') {
+                                                    await withInventoryAccountTransaction(
+                                                        accountId,
+                                                        (inventoryDb) =>
+                                                            consumeInventoryItem(
+                                                                accountId,
+                                                                {
+                                                                    entityTypeName:
+                                                                        item.entityTypeName,
+                                                                    entityId:
+                                                                        item.entityId,
+                                                                    amount: item.amount,
+                                                                    source: `shoppingCartItem:${item.id.toString()}`,
+                                                                },
+                                                                inventoryDb,
+                                                            ),
+                                                        db,
+                                                    );
+                                                }
+                                                return lockedState;
+                                            },
+                                        );
+                                    if (state === 'paid') {
+                                        return;
+                                    }
+                                    const checkoutOperationMapping =
+                                        item.entityTypeName === 'operation'
+                                            ? await getCheckoutOperationMapping(
+                                                  item.id,
+                                              )
+                                            : undefined;
+
+                                    const fulfillment = await processItem({
+                                        accountId,
+                                        cartItemId: item.id,
+                                        ...item,
+                                        amount_total: 0,
+                                        scheduledDeliveryEmailKeys,
+                                        additionalData:
+                                            checkoutAdditionalDataByCartItemId.get(
+                                                item.id,
+                                            ) ?? {},
+                                        checkoutOperationMapping:
+                                            item.entityTypeName === 'operation'
+                                                ? checkoutOperationMapping
+                                                : undefined,
+                                    });
+                                    assertCheckoutItemFulfilled(fulfillment);
+                                    await setCartItemPaid(item.id);
+                                },
+                            );
                         }
                     }
                 } finally {
@@ -496,7 +718,11 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 currency: null,
                                 items: buildOrderConfirmationItems(
                                     cartInfo.items,
-                                    calculateSunflowerAmount,
+                                    (item) =>
+                                        resolvedSunflowerAmountsByCartItemId.get(
+                                            item.id,
+                                        ) ??
+                                        calculateSunflowerReplayAmount(item),
                                 ),
                                 manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
                                 to: user.userName,
@@ -528,9 +754,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             for (const item of stripeCartItemsWithShopData) {
                 // TODO: Apply discounted price if available
 
-                const scheduledHarvestDate = harvestDateByCartItemId.get(
-                    item.id,
-                );
                 const name = item.shopData?.name;
                 const description = item.shopData?.description || undefined;
                 const finalPrice =
@@ -586,11 +809,9 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                             positionIndex:
                                 item.positionIndex?.toString() ?? null,
                             additionalData: JSON.stringify(
-                                buildCheckoutAdditionalData({
-                                    additionalData: item.additionalData,
-                                    deliveryInfo,
-                                    scheduledHarvestDate,
-                                }),
+                                checkoutAdditionalDataByCartItemId.get(
+                                    item.id,
+                                ) ?? {},
                             ),
                             outletOfferId: item.outlet?.offerId ?? null,
                             outletReservationId:

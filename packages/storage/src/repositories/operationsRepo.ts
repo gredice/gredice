@@ -31,7 +31,13 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
-import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
+import {
+    createEvent,
+    getAllEvents,
+    getEvents,
+    knownEvents,
+    knownEventTypes,
+} from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
 import type {
@@ -1594,6 +1600,8 @@ export async function createScheduledOperation(
 
 type CheckoutOperationOptions = {
     accept?: boolean;
+    delivery: CheckoutOperationCreatedPayload['delivery'];
+    paymentCurrency: CheckoutOperationCreatedPayload['paymentCurrency'];
     scheduledDate: Date;
 };
 
@@ -1622,6 +1630,8 @@ function checkoutOperationFingerprint(
         raisedBedId: operation.raisedBedId ?? null,
         raisedBedFieldId: operation.raisedBedFieldId ?? null,
         operationTimestamp,
+        paymentCurrency: options.paymentCurrency,
+        delivery: options.delivery,
         scheduledDate,
         accepted: options.accept ?? false,
     };
@@ -1639,7 +1649,56 @@ function parseCheckoutOperationCreatedPayload(
     const nullableNumber = (candidate: unknown): candidate is number | null =>
         (typeof candidate === 'number' && Number.isSafeInteger(candidate)) ||
         candidate === null;
+    const paymentCurrency = (
+        candidate: unknown,
+    ): candidate is CheckoutOperationCreatedPayload['paymentCurrency'] =>
+        candidate === 'eur' ||
+        candidate === 'inventory' ||
+        candidate === 'sunflower';
+    const delivery = (
+        candidate: unknown,
+    ): CheckoutOperationCreatedPayload['delivery'] | undefined => {
+        if (candidate === null) {
+            return null;
+        }
+        if (
+            !candidate ||
+            typeof candidate !== 'object' ||
+            Array.isArray(candidate)
+        ) {
+            return undefined;
+        }
+        const value = candidate as Record<string, unknown>;
+        if (
+            typeof value.slotId !== 'number' ||
+            !Number.isSafeInteger(value.slotId) ||
+            (value.mode !== 'delivery' && value.mode !== 'pickup') ||
+            !nullableNumber(value.addressId) ||
+            !nullableNumber(value.locationId) ||
+            !nullableString(value.notes)
+        ) {
+            return undefined;
+        }
+        return {
+            addressId: value.addressId,
+            locationId: value.locationId,
+            mode: value.mode,
+            notes: value.notes,
+            slotId: value.slotId,
+        };
+    };
+    const isoDateString = (candidate: unknown): candidate is string => {
+        if (typeof candidate !== 'string') {
+            return false;
+        }
+        const parsed = new Date(candidate);
+        return (
+            !Number.isNaN(parsed.getTime()) &&
+            parsed.toISOString() === candidate
+        );
+    };
 
+    const parsedDelivery = delivery(data.delivery);
     if (
         typeof data.operationId !== 'number' ||
         !Number.isSafeInteger(data.operationId) ||
@@ -1653,7 +1712,11 @@ function parseCheckoutOperationCreatedPayload(
         !nullableNumber(data.raisedBedId) ||
         !nullableNumber(data.raisedBedFieldId) ||
         !nullableString(data.operationTimestamp) ||
-        typeof data.scheduledDate !== 'string' ||
+        (data.operationTimestamp !== null &&
+            !isoDateString(data.operationTimestamp)) ||
+        !paymentCurrency(data.paymentCurrency) ||
+        parsedDelivery === undefined ||
+        !isoDateString(data.scheduledDate) ||
         typeof data.accepted !== 'boolean'
     ) {
         return null;
@@ -1669,9 +1732,75 @@ function parseCheckoutOperationCreatedPayload(
         raisedBedId: data.raisedBedId,
         raisedBedFieldId: data.raisedBedFieldId,
         operationTimestamp: data.operationTimestamp,
+        paymentCurrency: data.paymentCurrency,
+        delivery: parsedDelivery,
         scheduledDate: data.scheduledDate,
         accepted: data.accepted,
     };
+}
+
+export async function getCheckoutOperationMappings(
+    cartItemIds: number[],
+    db: DatabaseClient = storage(),
+): Promise<ReadonlyMap<number, CheckoutOperationCreatedPayload>> {
+    const uniqueCartItemIds = Array.from(new Set(cartItemIds));
+    if (uniqueCartItemIds.length === 0) {
+        return new Map();
+    }
+
+    const cartItemIdsByAggregateId = new Map(
+        uniqueCartItemIds.map((cartItemId) => [
+            checkoutOperationAggregateId(cartItemId),
+            cartItemId,
+        ]),
+    );
+    const mappingEvents = await getAllEvents(
+        knownEventTypes.checkout.operationCreated,
+        Array.from(cartItemIdsByAggregateId.keys()),
+        { db },
+    );
+    const mappings = new Map<number, CheckoutOperationCreatedPayload>();
+
+    for (const mappingEvent of mappingEvents) {
+        const cartItemId = cartItemIdsByAggregateId.get(
+            mappingEvent.aggregateId,
+        );
+        if (cartItemId === undefined) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping has an unexpected aggregate.',
+            );
+        }
+        if (mappings.has(cartItemId)) {
+            throw new CheckoutOperationConflictError(
+                'Checkout cart item has multiple operation mappings.',
+            );
+        }
+        if (mappingEvent.version !== 1) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping has an unsupported version.',
+            );
+        }
+        const mapping = parseCheckoutOperationCreatedPayload(mappingEvent.data);
+        if (!mapping) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping is malformed.',
+            );
+        }
+        mappings.set(cartItemId, mapping);
+    }
+
+    return mappings;
+}
+
+export async function getCheckoutOperationMapping(
+    cartItemId: number,
+    db: DatabaseClient = storage(),
+) {
+    return (
+        (await getCheckoutOperationMappings([cartItemId], db)).get(
+            cartItemId,
+        ) ?? null
+    );
 }
 
 function assertCheckoutOperationFingerprint(
@@ -1687,6 +1816,7 @@ function assertCheckoutOperationFingerprint(
         'raisedBedId',
         'raisedBedFieldId',
         'operationTimestamp',
+        'paymentCurrency',
         'scheduledDate',
         'accepted',
     ] as const;
@@ -1698,6 +1828,22 @@ function assertCheckoutOperationFingerprint(
             `Checkout operation fingerprint conflicts on ${mismatch}.`,
         );
     }
+    const storedDelivery = stored.delivery;
+    const expectedDelivery = expected.delivery;
+    const deliveryMismatch =
+        (storedDelivery === null) !== (expectedDelivery === null) ||
+        (storedDelivery !== null &&
+            expectedDelivery !== null &&
+            (storedDelivery.addressId !== expectedDelivery.addressId ||
+                storedDelivery.locationId !== expectedDelivery.locationId ||
+                storedDelivery.mode !== expectedDelivery.mode ||
+                storedDelivery.notes !== expectedDelivery.notes ||
+                storedDelivery.slotId !== expectedDelivery.slotId));
+    if (deliveryMismatch) {
+        throw new CheckoutOperationConflictError(
+            'Checkout operation fingerprint conflicts on delivery.',
+        );
+    }
 }
 
 async function ensureCheckoutOperation(
@@ -1706,35 +1852,9 @@ async function ensureCheckoutOperation(
     options: CheckoutOperationOptions,
     db: DatabaseClient,
 ) {
-    const aggregateId = checkoutOperationAggregateId(cartItemId);
     const fingerprint = checkoutOperationFingerprint(operation, options);
-    const mappingEvents = await getEvents(
-        knownEventTypes.checkout.operationCreated,
-        [aggregateId],
-        0,
-        2,
-        db,
-    );
-
-    if (mappingEvents.length > 1) {
-        throw new CheckoutOperationConflictError(
-            'Checkout cart item has multiple operation mappings.',
-        );
-    }
-
-    const mappingEvent = mappingEvents[0];
-    if (mappingEvent) {
-        if (mappingEvent.version !== 1) {
-            throw new CheckoutOperationConflictError(
-                'Checkout operation mapping has an unsupported version.',
-            );
-        }
-        const stored = parseCheckoutOperationCreatedPayload(mappingEvent.data);
-        if (!stored) {
-            throw new CheckoutOperationConflictError(
-                'Checkout operation mapping is malformed.',
-            );
-        }
+    const stored = await getCheckoutOperationMapping(cartItemId, db);
+    if (stored) {
         assertCheckoutOperationFingerprint(stored, fingerprint);
 
         const mappedOperation = await db.query.operations.findFirst({
@@ -1794,10 +1914,13 @@ async function ensureCheckoutOperation(
         await acceptOperation(operationId, db);
     }
     await createEvent(
-        knownEvents.checkout.operationCreatedV1(aggregateId, {
-            operationId,
-            ...fingerprint,
-        }),
+        knownEvents.checkout.operationCreatedV1(
+            checkoutOperationAggregateId(cartItemId),
+            {
+                operationId,
+                ...fingerprint,
+            },
+        ),
         db,
     );
 

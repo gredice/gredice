@@ -13,6 +13,14 @@ export type CheckoutOperationCreatedPayload = {
     raisedBedId: number | null;
     raisedBedFieldId: number | null;
     operationTimestamp: string | null;
+    paymentCurrency: 'eur' | 'inventory' | 'sunflower';
+    delivery: {
+        addressId: number | null;
+        locationId: number | null;
+        mode: 'delivery' | 'pickup';
+        notes: string | null;
+        slotId: number;
+    } | null;
     scheduledDate: string;
     accepted: boolean;
 };
@@ -26,7 +34,10 @@ export type AccountAssignUserPayload = {
 
 export type AccountSunflowersPayload = {
     amount: number;
+    coveredAmount?: number;
     idempotencyKey?: string;
+    legacyCartReason?: string;
+    legacyRewardAlreadyEarned?: boolean;
     reason: string;
 };
 
