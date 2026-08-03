@@ -24,6 +24,7 @@ const stopsScreen = read(
 assert.match(appBuild, /applicationId 'com\.gredice\.dostava'/);
 assert.match(appBuild, /minSdk 28/);
 assert.match(appBuild, /targetSdk 36/);
+assert.match(appBuild, /androidx\.car\.app:app:1\.7\.0/);
 assert.match(appBuild, /androidx\.car\.app:app-projected:1\.7\.0/);
 
 const permissions = [...manifest.matchAll(/<uses-permission android:name="([^"]+)"/g)]
