@@ -5,7 +5,10 @@ import {
     knownEventTypes,
     type RaisedBedFieldPlantPurchase,
 } from './eventsRepo';
-import { getInventory } from './inventoryRepo';
+import {
+    getCheckoutInventoryConsumptions,
+    getInventory,
+} from './inventoryRepo';
 import {
     getOutletOfferReservationForCartItem,
     releaseOutletReservationForCartItem,
@@ -558,14 +561,7 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
     if (!cart?.accountId) {
         return cart;
     }
-
-    const inventory = await getInventory(cart.accountId);
-    const availableInventory = new Map(
-        inventory.map((item) => [
-            `${item.entityTypeName}-${item.entityId}`,
-            item.amount,
-        ]),
-    );
+    const accountId = cart.accountId;
 
     await storage().transaction(async (tx) => {
         const inventoryItems = await tx
@@ -585,7 +581,50 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
             )
             .for('update');
 
+        if (inventoryItems.length === 0) {
+            return;
+        }
+
+        const [inventory, checkoutConsumptions] = await Promise.all([
+            getInventory(accountId, tx),
+            getCheckoutInventoryConsumptions(
+                accountId,
+                inventoryItems.map((item) => item.id),
+                tx,
+            ),
+        ]);
+        const availableInventory = new Map(
+            inventory.map((item) => [
+                `${item.entityTypeName}-${item.entityId}`,
+                item.amount,
+            ]),
+        );
+        const inventoryItemsById = new Map(
+            inventoryItems.map((item) => [item.id, item]),
+        );
+        const consumedInventoryItemIds = new Set<number>();
+        for (const consumption of checkoutConsumptions) {
+            const item = inventoryItemsById.get(consumption.cartItemId);
+            if (
+                !item ||
+                item.entityTypeName !== consumption.entityTypeName ||
+                item.entityId !== consumption.entityId ||
+                item.amount !== consumption.amount
+            ) {
+                throw new Error(
+                    `Inventory consumption for cart item ${consumption.cartItemId.toString()} conflicts with the pending cart item`,
+                );
+            }
+            consumedInventoryItemIds.add(item.id);
+        }
+
         for (const item of inventoryItems) {
+            // A prior checkout attempt already consumed this exact item's
+            // inventory. Reserve that durable consumption for the same item;
+            // only still-live inventory may be allocated to other cart items.
+            if (consumedInventoryItemIds.has(item.id)) {
+                continue;
+            }
             const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
             const remainingInventory =
                 availableInventory.get(inventoryKey) ?? 0;

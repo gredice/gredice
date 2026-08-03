@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     addInventoryItem,
+    consumeInventoryItem,
     deleteShoppingCart,
     getAllShoppingCarts,
     getOrCreateShoppingCart,
@@ -362,6 +363,111 @@ test('normalizeShoppingCartInventoryUsage splits partially covered inventory ite
         eurItems.map((item) => item.amount),
         [1],
     );
+});
+
+test('normalizeShoppingCartInventoryUsage preserves a consumed pending checkout item for retry', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    await addInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+    });
+
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+    const itemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        null,
+        'inventory',
+    );
+    assert.ok(itemId);
+    await consumeInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+        source: `shoppingCartItem:${itemId.toString()}`,
+    });
+
+    const normalizedCart = await normalizeShoppingCartInventoryUsage(cart.id);
+    assert.ok(normalizedCart);
+    const retriableItem = normalizedCart.items.find(
+        (item) => item.id === itemId,
+    );
+    assert.strictEqual(retriableItem?.currency, 'inventory');
+    assert.strictEqual(retriableItem?.amount, 1);
+    assert.strictEqual(retriableItem?.status, 'new');
+    assert.strictEqual(
+        normalizedCart.items.some((item) => item.currency === 'eur'),
+        false,
+    );
+});
+
+test('normalizeShoppingCartInventoryUsage reserves a durable consumption for its cart item', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    await addInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+    });
+
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+    const unconsumedItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        'older-item',
+        'inventory',
+        true,
+    );
+    const consumedItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        'consumed-item',
+        'inventory',
+        true,
+    );
+    assert.ok(unconsumedItemId);
+    assert.ok(consumedItemId);
+    await consumeInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+        source: `shoppingCartItem:${consumedItemId.toString()}`,
+    });
+
+    const normalizedCart = await normalizeShoppingCartInventoryUsage(cart.id);
+    assert.ok(normalizedCart);
+    const unconsumedItem = normalizedCart.items.find(
+        (item) => item.id === unconsumedItemId,
+    );
+    const consumedItem = normalizedCart.items.find(
+        (item) => item.id === consumedItemId,
+    );
+    assert.strictEqual(unconsumedItem?.currency, 'eur');
+    assert.strictEqual(consumedItem?.currency, 'inventory');
+    assert.strictEqual(consumedItem?.amount, 1);
+    assert.strictEqual(consumedItem?.status, 'new');
 });
 
 test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow when date is in the past', async () => {

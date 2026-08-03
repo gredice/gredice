@@ -1,6 +1,23 @@
 import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
 
 // ============================================================================
+// Checkout event payload types
+// ============================================================================
+export type CheckoutOperationCreatedPayload = {
+    operationId: number;
+    accountId: string | null;
+    entityId: number;
+    entityTypeName: string;
+    farmId: number | null;
+    gardenId: number | null;
+    raisedBedId: number | null;
+    raisedBedFieldId: number | null;
+    operationTimestamp: string | null;
+    scheduledDate: string;
+    accepted: boolean;
+};
+
+// ============================================================================
 // Account event payload types
 // ============================================================================
 export type AccountAssignUserPayload = {

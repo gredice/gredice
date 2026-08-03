@@ -12,7 +12,10 @@ import {
     getSunflowers,
     getSunflowersHistory,
     grantBirthdaySunflowers,
+    InsufficientSunflowersError,
+    SunflowerSpendAmountConflictError,
     spendSunflowers,
+    spendSunflowersBatch,
     storage,
     users,
 } from '@gredice/storage';
@@ -274,6 +277,124 @@ test('spendSunflowers allows sequential spends', async () => {
     await spendSunflowers(accountId, 300, 'second-spend');
     const sunflowers = await getSunflowers(accountId);
     assert.strictEqual(sunflowers, 500);
+});
+
+test('spendSunflowersBatch writes one durable debit per item', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+
+    const result = await spendSunflowersBatch(accountId, [
+        { amount: 200, reason: 'shoppingCartItem:batch-1' },
+        { amount: 300, reason: 'shoppingCartItem:batch-2' },
+    ]);
+
+    assert.deepStrictEqual(result, {
+        createdReasons: [
+            'shoppingCartItem:batch-1',
+            'shoppingCartItem:batch-2',
+        ],
+        existingReasons: [],
+    });
+    assert.strictEqual(await getSunflowers(accountId), 500);
+    const history = await getSunflowersHistory(accountId, 0, 20);
+    assert.deepStrictEqual(
+        history
+            .filter((event) => event.reason?.startsWith('shoppingCartItem:'))
+            .map((event) => [event.reason, event.amount])
+            .sort(),
+        [
+            ['shoppingCartItem:batch-1', 200],
+            ['shoppingCartItem:batch-2', 300],
+        ],
+    );
+});
+
+test('spendSunflowersBatch validates the full debit before writing', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+
+    await assert.rejects(
+        () =>
+            spendSunflowersBatch(accountId, [
+                { amount: 700, reason: 'shoppingCartItem:no-partial-1' },
+                { amount: 400, reason: 'shoppingCartItem:no-partial-2' },
+            ]),
+        InsufficientSunflowersError,
+    );
+
+    assert.strictEqual(await getSunflowers(accountId), 1000);
+    const history = await getSunflowersHistory(accountId, 0, 20);
+    assert.ok(
+        history.every(
+            (event) =>
+                event.reason !== 'shoppingCartItem:no-partial-1' &&
+                event.reason !== 'shoppingCartItem:no-partial-2',
+        ),
+    );
+});
+
+test('spendSunflowersBatch treats an identical retry as already spent', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const debit = {
+        amount: 250,
+        reason: 'shoppingCartItem:identical-retry',
+    };
+
+    const first = await spendSunflowersBatch(accountId, [debit]);
+    const retry = await spendSunflowersBatch(accountId, [debit]);
+
+    assert.deepStrictEqual(first, {
+        createdReasons: [debit.reason],
+        existingReasons: [],
+    });
+    assert.deepStrictEqual(retry, {
+        createdReasons: [],
+        existingReasons: [debit.reason],
+    });
+    assert.strictEqual(await getSunflowers(accountId), 750);
+});
+
+test('spendSunflowersBatch rejects a retry with a changed amount', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const reason = 'shoppingCartItem:amount-conflict';
+    await spendSunflowersBatch(accountId, [{ amount: 200, reason }]);
+
+    await assert.rejects(
+        () => spendSunflowersBatch(accountId, [{ amount: 300, reason }]),
+        (error) => {
+            assert.ok(error instanceof SunflowerSpendAmountConflictError);
+            assert.strictEqual(error.reason, reason);
+            assert.strictEqual(error.existingAmount, 200);
+            assert.strictEqual(error.requestedAmount, 300);
+            return true;
+        },
+    );
+    assert.strictEqual(await getSunflowers(accountId), 800);
+});
+
+test('spendSunflowersBatch serializes concurrent identical retries', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const debit = {
+        amount: 400,
+        reason: 'shoppingCartItem:concurrent-retry',
+    };
+
+    const results = await Promise.all([
+        spendSunflowersBatch(accountId, [debit]),
+        spendSunflowersBatch(accountId, [debit]),
+    ]);
+
+    assert.strictEqual(
+        results.reduce(
+            (count, result) => count + result.createdReasons.length,
+            0,
+        ),
+        1,
+    );
+    assert.strictEqual(await getSunflowers(accountId), 600);
 });
 
 test('getSunflowersHistory returns correct history', async () => {

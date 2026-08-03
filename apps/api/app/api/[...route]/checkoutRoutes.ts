@@ -21,7 +21,7 @@ import {
     releaseOutletReservationsForCart,
     reserveOutletOffer,
     setCartItemPaid,
-    spendSunflowers,
+    spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
     validateHarvestDateSelections,
 } from '@gredice/storage';
@@ -59,7 +59,10 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
-import { processItem } from '../../../lib/stripe/processCheckoutSession';
+import {
+    assertCheckoutItemFulfilled,
+    processItem,
+} from '../../../lib/stripe/processCheckoutSession';
 import {
     buildSunflowerPackageCatalogResponse,
     sunflowerPackageCatalogResponseSchema,
@@ -396,11 +399,12 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 calculateSunflowerAmount(item);
                             let didPaySunflowers = false;
                             try {
-                                await spendSunflowers(
-                                    accountId,
-                                    sunflowerAmount,
-                                    `shoppingCartItem:${item.id}`,
-                                );
+                                await spendSunflowersBatch(accountId, [
+                                    {
+                                        amount: sunflowerAmount,
+                                        reason: `shoppingCartItem:${item.id.toString()}`,
+                                    },
+                                ]);
                                 didPaySunflowers = true;
                             } catch (error) {
                                 checkoutTiming.setErrorCategory(
@@ -415,23 +419,22 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                             }
 
                             if (didPaySunflowers) {
-                                await Promise.all([
-                                    setCartItemPaid(item.id),
-                                    processItem({
-                                        accountId,
-                                        cartItemId: item.id,
-                                        ...item,
-                                        amount_total: sunflowerAmount,
-                                        scheduledDeliveryEmailKeys,
-                                        additionalData:
-                                            buildCheckoutAdditionalData({
-                                                additionalData:
-                                                    item.additionalData,
-                                                deliveryInfo,
-                                                scheduledHarvestDate,
-                                            }),
-                                    }),
-                                ]);
+                                const fulfillment = await processItem({
+                                    accountId,
+                                    cartItemId: item.id,
+                                    ...item,
+                                    amount_total: sunflowerAmount,
+                                    scheduledDeliveryEmailKeys,
+                                    additionalData: buildCheckoutAdditionalData(
+                                        {
+                                            additionalData: item.additionalData,
+                                            deliveryInfo,
+                                            scheduledHarvestDate,
+                                        },
+                                    ),
+                                });
+                                assertCheckoutItemFulfilled(fulfillment);
+                                await setCartItemPaid(item.id);
                             }
                         }
                     }
@@ -457,29 +460,26 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 );
                             }
 
-                            await Promise.all([
-                                consumeInventoryItem(accountId, {
-                                    entityTypeName: item.entityTypeName,
-                                    entityId: item.entityId,
-                                    amount: item.amount,
-                                    source: `shoppingCartItem:${item.id}`,
+                            await consumeInventoryItem(accountId, {
+                                entityTypeName: item.entityTypeName,
+                                entityId: item.entityId,
+                                amount: item.amount,
+                                source: `shoppingCartItem:${item.id.toString()}`,
+                            });
+                            const fulfillment = await processItem({
+                                accountId,
+                                cartItemId: item.id,
+                                ...item,
+                                amount_total: 0,
+                                scheduledDeliveryEmailKeys,
+                                additionalData: buildCheckoutAdditionalData({
+                                    additionalData: item.additionalData,
+                                    deliveryInfo,
+                                    scheduledHarvestDate,
                                 }),
-                                setCartItemPaid(item.id),
-                                processItem({
-                                    accountId,
-                                    cartItemId: item.id,
-                                    ...item,
-                                    amount_total: 0,
-                                    scheduledDeliveryEmailKeys,
-                                    additionalData: buildCheckoutAdditionalData(
-                                        {
-                                            additionalData: item.additionalData,
-                                            deliveryInfo,
-                                            scheduledHarvestDate,
-                                        },
-                                    ),
-                                }),
-                            ]);
+                            });
+                            assertCheckoutItemFulfilled(fulfillment);
+                            await setCartItemPaid(item.id);
                         }
                     }
                 } finally {

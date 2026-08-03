@@ -76,9 +76,9 @@ function makeDependencies(
         convertOutletReservationForCartItem: async (...args: unknown[]) => {
             record(calls, 'convertOutletReservationForCartItem', args);
         },
-        createDeliveryRequest: async (...args: unknown[]) => {
-            record(calls, 'createDeliveryRequest', args);
-            return 701;
+        getOrCreateDeliveryRequest: async (...args: unknown[]) => {
+            record(calls, 'getOrCreateDeliveryRequest', args);
+            return { created: true, requestId: 'delivery-request-701' };
         },
         createEvent: async (...args: unknown[]) => {
             record(calls, 'createEvent', args);
@@ -96,9 +96,9 @@ function makeDependencies(
             await deliver();
             return { attempted: true, status: 'sent' as const };
         },
-        createOperation: async (...args: unknown[]) => {
-            record(calls, 'createOperation', args);
-            return 501;
+        getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+            record(calls, 'getOrCreateCheckoutOperation', args);
+            return { created: true, operationId: 501 };
         },
         createTransaction: async (...args: unknown[]) => {
             record(calls, 'createTransaction', args);
@@ -151,10 +151,6 @@ function makeDependencies(
         getDefaultShoppingCartScheduledDate: (...args: unknown[]) => {
             record(calls, 'getDefaultShoppingCartScheduledDate', args);
             return '2026-07-02';
-        },
-        getInventory: async (...args: unknown[]) => {
-            record(calls, 'getInventory', args);
-            return [];
         },
         getOutletOfferReservationForCartItem: async (...args: unknown[]) => {
             record(calls, 'getOutletOfferReservationForCartItem', args);
@@ -235,8 +231,9 @@ function makeDependencies(
         setCartItemPaid: async (...args: unknown[]) => {
             record(calls, 'setCartItemPaid', args);
         },
-        spendSunflowers: async (...args: unknown[]) => {
-            record(calls, 'spendSunflowers', args);
+        spendSunflowersBatch: async (...args: unknown[]) => {
+            record(calls, 'spendSunflowersBatch', args);
+            return { createdReasons: [], existingReasons: [] };
         },
         topUpSunflowerPackage: async (...args: unknown[]) => {
             record(calls, 'topUpSunflowerPackage', args);
@@ -810,16 +807,16 @@ describe('processCheckoutSession', () => {
             callNames(calls).filter((name) =>
                 [
                     'setCartItemPaid',
-                    'createOperation',
+                    'getOrCreateCheckoutOperation',
                     'earnSunflowersForPayment',
                     'markCartPaidIfAllItemsPaid',
                     'createTransaction',
                 ].includes(name),
             ),
             [
-                'setCartItemPaid',
-                'createOperation',
+                'getOrCreateCheckoutOperation',
                 'earnSunflowersForPayment',
+                'setCartItemPaid',
                 'markCartPaidIfAllItemsPaid',
                 'createTransaction',
             ],
@@ -852,6 +849,54 @@ describe('processCheckoutSession', () => {
             callsNamed(calls, 'ensureInvoiceForTransaction').length,
             0,
         );
+    });
+
+    it('retries operation fulfillment before marking a Stripe-paid item complete', async () => {
+        const calls: RecordedCall[] = [];
+        let itemStatus = 'open';
+        let operationAttempts = 0;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return {
+                    ...makeCart(),
+                    status: itemStatus === 'paid' ? 'paid' : 'new',
+                    items: [{ ...makeCart().items[0], status: itemStatus }],
+                };
+            },
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                operationAttempts += 1;
+                if (operationAttempts === 1) {
+                    throw new Error('transient schedule transaction failure');
+                }
+                return { created: true, operationId: 501 };
+            },
+            setCartItemPaid: async (...args: unknown[]) => {
+                record(calls, 'setCartItemPaid', args);
+                itemStatus = 'paid';
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /transient schedule transaction failure/,
+        );
+        assert.strictEqual(itemStatus, 'open');
+        assert.strictEqual(callsNamed(calls, 'createTransaction').length, 0);
+
+        await processCheckoutSession('cs_paid', dependencies);
+        assert.strictEqual(itemStatus, 'paid');
+        assert.strictEqual(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            2,
+        );
+        assert.strictEqual(callsNamed(calls, 'setCartItemPaid').length, 1);
+        assert.strictEqual(callsNamed(calls, 'createTransaction').length, 1);
     });
 
     it('generates an invoice from mapped Stripe line items when billing automation is enabled', async () => {
@@ -2040,7 +2085,10 @@ describe('processCheckoutSession', () => {
         );
         assert.equal(operationItemStatus, 'paid');
         assert.equal(plantingItemStatus, 'open');
-        assert.equal(callsNamed(calls, 'createOperation').length, 1);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
+        );
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
 
         targetOccupied = false;
@@ -2048,7 +2096,10 @@ describe('processCheckoutSession', () => {
 
         assert.equal(operationItemStatus, 'paid');
         assert.equal(plantingItemStatus, 'paid');
-        assert.equal(callsNamed(calls, 'createOperation').length, 1);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
+        );
         assert.deepStrictEqual(
             callsNamed(calls, 'markCartPaidIfAllItemsPaid')
                 .slice(-2)
@@ -2085,7 +2136,7 @@ describe('processCheckoutSession', () => {
         assert.deepStrictEqual(billingEmailInput.cartIds, [100, 200]);
     });
 
-    it('continues when sunflower spending fails for non-Stripe cart items but leaves them unpaid', async () => {
+    it('keeps checkout retryable when sunflower spending fails for non-Stripe cart items', async () => {
         const calls: RecordedCall[] = [];
         const sunflowerItem = makeSunflowerCartItem();
         const dependencies = makeDependencies(calls, {
@@ -2116,25 +2167,26 @@ describe('processCheckoutSession', () => {
                     items: [sunflowerItem],
                 };
             },
-            spendSunflowers: async (...args: unknown[]) => {
-                record(calls, 'spendSunflowers', args);
+            spendSunflowersBatch: async (...args: unknown[]) => {
+                record(calls, 'spendSunflowersBatch', args);
                 throw new Error('insufficient sunflowers');
             },
         });
 
-        await processCheckoutSession('cs_paid', dependencies);
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /insufficient sunflowers/,
+        );
 
-        assert.deepStrictEqual(callsNamed(calls, 'spendSunflowers')[0]?.args, [
-            'account-1',
-            5000,
-            'shoppingCart:100',
-        ]);
-        // Characterization: see plan 006 — this silent-swallow behavior is slated to change.
+        assert.deepStrictEqual(
+            callsNamed(calls, 'spendSunflowersBatch')[0]?.args,
+            ['account-1', [{ amount: 5000, reason: 'shoppingCartItem:2' }]],
+        );
         assert.deepStrictEqual(
             callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
             [1],
         );
-        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
     });
 
     it('uses the canonical harvest date for a mixed checkout and ignores a later non-Stripe cart item', async () => {
@@ -2211,32 +2263,33 @@ describe('processCheckoutSession', () => {
 
         await processCheckoutSession('cs_paid', dependencies);
 
-        assert.deepStrictEqual(callsNamed(calls, 'spendSunflowers')[0]?.args, [
-            'account-1',
-            5000,
-            'shoppingCart:100',
-        ]);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'spendSunflowersBatch')[0]?.args,
+            ['account-1', [{ amount: 5000, reason: 'shoppingCartItem:2' }]],
+        );
         assert.deepStrictEqual(
             callsNamed(calls, 'setCartItemPaid').map((call) => call.args[0]),
             [1, 2],
         );
         assert.deepStrictEqual(
-            callsNamed(calls, 'createOperation').map((call) =>
-                isRecord(call.args[0]) ? call.args[0].entityId : undefined,
+            callsNamed(calls, 'getOrCreateCheckoutOperation').map((call) =>
+                isRecord(call.args[1]) ? call.args[1].entityId : undefined,
             ),
             [42, 99],
         );
 
-        const scheduledEvents = callsNamed(calls, 'createEvent')
-            .map((call) => call.args[0])
-            .filter(isRecordedEvent)
-            .filter((event) => event.type === 'operations.scheduled');
-        assert.equal(scheduledEvents.length, 2);
+        const scheduledOperations = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        );
+        assert.equal(scheduledOperations.length, 2);
         assert.ok(
-            scheduledEvents.some(
-                (event) =>
-                    isRecord(event.data) &&
-                    event.data.scheduledDate === canonicalHarvestDate,
+            scheduledOperations.some(
+                (call) =>
+                    isRecord(call.args[2]) &&
+                    call.args[2].scheduledDate instanceof Date &&
+                    call.args[2].scheduledDate.toISOString() ===
+                        new Date(canonicalHarvestDate).toISOString(),
             ),
         );
         assert.equal(
@@ -2246,10 +2299,10 @@ describe('processCheckoutSession', () => {
             false,
         );
         assert.equal(
-            callsNamed(calls, 'createOperation').some(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').some(
                 (call) =>
-                    isRecord(call.args[0]) &&
-                    call.args[0].entityId ===
+                    isRecord(call.args[1]) &&
+                    call.args[1].entityId ===
                         Number(laterSunflowerItem.entityId),
             ),
             false,
@@ -2288,7 +2341,10 @@ describe('processItem', () => {
             'getRaisedBed',
             'isRaisedBedAbandoned',
         ]);
-        assert.equal(callsNamed(calls, 'createOperation').length, 0);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            0,
+        );
     });
 
     it('uses greenhouse sowing location from scheduled plant additional data', async () => {
@@ -2362,17 +2418,15 @@ describe('processItem', () => {
         assert.deepStrictEqual(
             callNames(calls).filter((name) =>
                 [
-                    'createOperation',
+                    'getOrCreateCheckoutOperation',
                     'earnSunflowersForPayment',
-                    'createEvent',
                     'notifyOperationUpdate',
                     'isCartItemDeliverable',
                 ].includes(name),
             ),
             [
-                'createOperation',
+                'getOrCreateCheckoutOperation',
                 'earnSunflowersForPayment',
-                'createEvent',
                 'notifyOperationUpdate',
                 'isCartItemDeliverable',
             ],
@@ -2380,6 +2434,164 @@ describe('processItem', () => {
         assert.deepStrictEqual(
             callsNamed(calls, 'earnSunflowersForPayment')[0]?.args,
             ['account-1', 25],
+        );
+    });
+
+    it('reuses a checkout operation without repeating its side effects', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                return { created: false, operationId: 501 };
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'eur',
+                entityId: '42',
+                entityTypeName: 'operation',
+                gardenId: 200,
+                positionIndex: null,
+                raisedBedId: null,
+            },
+            dependencies,
+        );
+
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
+        );
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 0);
+        assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 0);
+    });
+
+    it('reuses a delivery request without repeating its notifications', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                return { created: false, operationId: 501 };
+            },
+            isCartItemDeliverable: async (...args: unknown[]) => {
+                record(calls, 'isCartItemDeliverable', args);
+                return true;
+            },
+            getOrCreateDeliveryRequest: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateDeliveryRequest', args);
+                return {
+                    created: false,
+                    requestId: 'delivery-request-701',
+                };
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: {
+                    scheduledDate: '2026-07-01',
+                    delivery: {
+                        slotId: 9,
+                        mode: 'pickup',
+                        locationId: 4,
+                    },
+                },
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'sunflower',
+                entityId: '42',
+                entityTypeName: 'operation',
+                gardenId: 200,
+                positionIndex: null,
+                raisedBedId: null,
+            },
+            dependencies,
+        );
+
+        assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 1);
+        assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 0);
+        assert.equal(
+            callsNamed(calls, 'notifyScheduledDeliveryEmailOnce').length,
+            0,
+        );
+    });
+
+    it('retries delivery creation without duplicating the scheduled operation', async () => {
+        const calls: RecordedCall[] = [];
+        let operationAttempt = 0;
+        let deliveryAttempt = 0;
+        const dependencies = makeDependencies(calls, {
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                operationAttempt += 1;
+                return {
+                    created: operationAttempt === 1,
+                    operationId: 501,
+                };
+            },
+            isCartItemDeliverable: async (...args: unknown[]) => {
+                record(calls, 'isCartItemDeliverable', args);
+                return true;
+            },
+            getOrCreateDeliveryRequest: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateDeliveryRequest', args);
+                deliveryAttempt += 1;
+                if (deliveryAttempt === 1) {
+                    throw new Error('transient delivery database failure');
+                }
+                return {
+                    created: true,
+                    requestId: 'delivery-request-701',
+                };
+            },
+        });
+        const item = {
+            accountId: 'account-1',
+            amount_total: 2500,
+            additionalData: {
+                scheduledDate: '2026-07-01',
+                delivery: {
+                    slotId: 9,
+                    mode: 'pickup' as const,
+                    locationId: 4,
+                },
+            },
+            cartId: 100,
+            cartItemId: 1,
+            currency: 'eur',
+            entityId: '42',
+            entityTypeName: 'operation',
+            gardenId: 200,
+            positionIndex: null,
+            raisedBedId: null,
+        };
+
+        const first = await processItem(item, dependencies);
+        const retry = await processItem(item, dependencies);
+
+        assert.deepStrictEqual(first, {
+            status: 'not_fulfilled',
+            reason: 'delivery_request_failed',
+        });
+        assert.deepStrictEqual(retry, { status: 'fulfilled' });
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            2,
+        );
+        assert.equal(callsNamed(calls, 'earnSunflowersForPayment').length, 1);
+        assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 1);
+        assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 2);
+        assert.equal(callsNamed(calls, 'notifyDeliveryRequestEvent').length, 1);
+        assert.equal(
+            callsNamed(calls, 'notifyScheduledDeliveryEmailOnce').length,
+            1,
         );
     });
 

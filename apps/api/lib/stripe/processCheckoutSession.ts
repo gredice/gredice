@@ -17,17 +17,16 @@ import {
     type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
     createEvent,
     createNotificationWithStatus,
-    createOperation,
     createTransaction,
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
+    getOrCreateCheckoutOperation,
+    getOrCreateDeliveryRequest,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
@@ -44,7 +43,7 @@ import {
     processReferralRewardsForAccount,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
-    spendSunflowers,
+    spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
     topUpSunflowerPackage,
     upsertRaisedBedField,
@@ -83,10 +82,10 @@ export type ProcessCheckoutSessionDependencies = {
     notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
-    createDeliveryRequest: typeof createDeliveryRequest;
+    getOrCreateDeliveryRequest: typeof getOrCreateDeliveryRequest;
     createEvent: typeof createEvent;
     createNotificationWithStatus: typeof createNotificationWithStatus;
-    createOperation: typeof createOperation;
+    getOrCreateCheckoutOperation: typeof getOrCreateCheckoutOperation;
     createTransaction: typeof createTransaction;
     deliverNotificationOperatorAlert: typeof deliverNotificationOperatorAlert;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
@@ -94,7 +93,6 @@ export type ProcessCheckoutSessionDependencies = {
     getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
     getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
-    getInventory: typeof getInventory;
     getOutletOfferReservationForCartItem: typeof getOutletOfferReservationForCartItem;
     getRaisedBed: typeof getRaisedBed;
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
@@ -108,7 +106,7 @@ export type ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
     processReferralRewardsForAccount: typeof processReferralRewardsForAccount;
     setCartItemPaid: typeof setCartItemPaid;
-    spendSunflowers: typeof spendSunflowers;
+    spendSunflowersBatch: typeof spendSunflowersBatch;
     topUpSunflowerPackage: typeof topUpSunflowerPackage;
     upsertRaisedBedField: typeof upsertRaisedBedField;
     withPlantingScheduleTaskTransaction: typeof withPlantingScheduleTaskTransaction;
@@ -137,10 +135,10 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
+    getOrCreateDeliveryRequest,
     createEvent,
     createNotificationWithStatus,
-    createOperation,
+    getOrCreateCheckoutOperation,
     createTransaction,
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
@@ -148,7 +146,6 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getSunflowerPackageByCode,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
@@ -162,7 +159,7 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     normalizeShoppingCartScheduledDates,
     processReferralRewardsForAccount,
     setCartItemPaid,
-    spendSunflowers,
+    spendSunflowersBatch,
     topUpSunflowerPackage,
     upsertRaisedBedField,
     withPlantingScheduleTaskTransaction,
@@ -395,77 +392,70 @@ async function processNonStripeCartItems(
             isExpectedNonStripeItem(item),
     );
 
-    // Precompute sunflower amounts and total required, so we can spend in a single operation
+    // Precompute sunflower amounts so the durable batch debit can be retried
+    // without charging an already-processed item again.
     const sunflowerAmountsByItem = new Map<number, number>();
-    let totalSunflowersToSpend = 0;
 
     for (const item of sunflowerCartItemsWithShopData) {
         const sunflowerAmount = dependencies.calculateSunflowerAmount(item);
         sunflowerAmountsByItem.set(item.id, sunflowerAmount);
-        totalSunflowersToSpend += sunflowerAmount;
     }
 
-    let didSpendSunflowersForCart = false;
-    if (totalSunflowersToSpend > 0) {
+    if (sunflowerCartItemsWithShopData.length > 0) {
         try {
-            // Spend all sunflowers in a single transaction for the entire cart
-            // to prevent race conditions. Reference format: shoppingCart:${cartId}
-            // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
-            await dependencies.spendSunflowers(
+            await dependencies.spendSunflowersBatch(
                 accountId,
-                totalSunflowersToSpend,
-                `shoppingCart:${cartId}`,
+                sunflowerCartItemsWithShopData.map((item) => ({
+                    amount: sunflowerAmountsByItem.get(item.id) ?? 0,
+                    reason: `shoppingCartItem:${item.id.toString()}`,
+                })),
             );
-            didSpendSunflowersForCart = true;
         } catch (error) {
             console.error('Error spending sunflowers during cart processing', {
                 error,
                 accountId,
-                totalSunflowersToSpend,
                 cartId,
             });
+            throw error;
         }
     }
 
-    if (didSpendSunflowersForCart) {
-        for (const item of sunflowerCartItemsWithShopData) {
-            const sunflowerAmount = sunflowerAmountsByItem.get(item.id) ?? 0;
-            const baseAdditionalData = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const additionalData = {
-                ...baseAdditionalData,
-                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-                ...(harvestDateByCartItemId.has(item.id)
-                    ? {
-                          scheduledDate: harvestDateByCartItemId.get(item.id),
-                      }
-                    : {}),
-            };
+    for (const item of sunflowerCartItemsWithShopData) {
+        const sunflowerAmount = sunflowerAmountsByItem.get(item.id) ?? 0;
+        const baseAdditionalData = item.additionalData
+            ? JSON.parse(item.additionalData)
+            : {};
+        const additionalData = {
+            ...baseAdditionalData,
+            ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+            ...(harvestDateByCartItemId.has(item.id)
+                ? {
+                      scheduledDate: harvestDateByCartItemId.get(item.id),
+                  }
+                : {}),
+        };
 
-            await Promise.all([
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: sunflowerAmount,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
-            processedItems.push(item);
-        }
+        const fulfillment = await processItem(
+            {
+                accountId,
+                cartItemId: item.id,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                cartId: item.cartId,
+                gardenId: item.gardenId,
+                raisedBedId: item.raisedBedId,
+                positionIndex: item.positionIndex,
+                currency: item.currency,
+                amount_total: sunflowerAmount,
+                additionalData,
+                scheduledDeliveryEmailKeys,
+                checkoutSessionId,
+            },
+            dependencies,
+        );
+        assertCheckoutItemFulfilled(fulfillment);
+        await dependencies.setCartItemPaid(item.id);
+        processedItems.push(item);
     }
 
     const inventoryCartItems = cartInfo.items.filter(
@@ -483,22 +473,15 @@ async function processNonStripeCartItems(
 
     // Pre-validate that total required inventory for all items is available
     // This prevents partial processing when multiple items consume the same inventory
-    let inventoryLookup = new Map<string, number>();
     if (inventoryCartItems.length > 0) {
-        const inventory = await dependencies.getInventory(accountId);
-        inventoryLookup = new Map(
-            inventory.map((inventoryItem) => [
-                getInventoryKey(inventoryItem),
-                inventoryItem.amount,
-            ]),
-        );
-
         // Calculate total required inventory for each unique entity
         const requiredInventory = new Map<string, number>();
+        const availableInventory = new Map<string, number>();
         for (const item of inventoryCartItems) {
             const inventoryKey = getInventoryKey(item);
             const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
             requiredInventory.set(inventoryKey, currentRequired + item.amount);
+            availableInventory.set(inventoryKey, item.inventoryAvailable ?? 0);
         }
 
         // Validate all required inventory is available before processing any items
@@ -506,7 +489,7 @@ async function processNonStripeCartItems(
             inventoryKey,
             requiredAmount,
         ] of requiredInventory.entries()) {
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
+            const available = availableInventory.get(inventoryKey) ?? 0;
             if (available < requiredAmount) {
                 const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
                 console.error(errorMsg);
@@ -515,8 +498,6 @@ async function processNonStripeCartItems(
         }
 
         for (const item of inventoryCartItems) {
-            const inventoryKey = getInventoryKey(item);
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
             const baseAdditionalData = item.additionalData
                 ? JSON.parse(item.additionalData)
                 : {};
@@ -530,37 +511,33 @@ async function processNonStripeCartItems(
                     : {}),
             };
 
-            await Promise.all([
-                dependencies.consumeInventoryItem(accountId, {
-                    entityTypeName: item.entityTypeName,
+            await dependencies.consumeInventoryItem(accountId, {
+                entityTypeName: item.entityTypeName,
+                entityId: item.entityId,
+                amount: item.amount,
+                source: `shoppingCartItem:${item.id}`,
+            });
+            const fulfillment = await processItem(
+                {
+                    accountId,
+                    cartItemId: item.id,
                     entityId: item.entityId,
-                    amount: item.amount,
-                    source: `shoppingCartItem:${item.id}`,
-                }),
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: 0,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
+                    entityTypeName: item.entityTypeName,
+                    cartId: item.cartId,
+                    gardenId: item.gardenId,
+                    raisedBedId: item.raisedBedId,
+                    positionIndex: item.positionIndex,
+                    currency: item.currency,
+                    amount_total: 0,
+                    additionalData,
+                    scheduledDeliveryEmailKeys,
+                    checkoutSessionId,
+                },
+                dependencies,
+            );
+            assertCheckoutItemFulfilled(fulfillment);
+            await dependencies.setCartItemPaid(item.id);
             processedItems.push(item);
-
-            // Update the lookup to reflect consumed inventory
-            inventoryLookup.set(inventoryKey, available - item.amount);
         }
     }
 
@@ -1237,14 +1214,12 @@ async function processPaidCheckoutSession(
                         'abandoned',
                     );
                 }
-                continue;
+                throw new CheckoutItemFulfillmentError(
+                    'raised_bed_unavailable',
+                );
             }
 
-            if (!isPlantingItem) {
-                await dependencies.setCartItemPaid(cartItem.id);
-            }
-
-            await processItem(
+            const fulfillment = await processItem(
                 {
                     ...itemData,
                     accountId: resolvedAccountId,
@@ -1254,9 +1229,8 @@ async function processPaidCheckoutSession(
                 },
                 dependencies,
             );
-            if (isPlantingItem) {
-                await dependencies.setCartItemPaid(cartItem.id);
-            }
+            assertCheckoutItemFulfilled(fulfillment);
+            await dependencies.setCartItemPaid(cartItem.id);
         } catch (error) {
             if (
                 error instanceof CheckoutPlantingRaisedBedUnavailableError &&
@@ -1278,9 +1252,7 @@ async function processPaidCheckoutSession(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
             );
-            if (itemData.entityTypeName === 'plantSort') {
-                throw error;
-            }
+            throw error;
         }
 
         // TODO: Send invoice to customer
@@ -1775,6 +1747,40 @@ class CheckoutPlantingTargetConflictError extends Error {
     override readonly name = 'CheckoutPlantingTargetConflictError';
 }
 
+export type ProcessItemFulfillmentResult =
+    | { status: 'fulfilled' }
+    | {
+          reason:
+              | 'delivery_configuration_missing'
+              | 'delivery_request_failed'
+              | 'invalid_entity_id'
+              | 'missing_metadata'
+              | 'raised_bed_unavailable'
+              | 'unsupported_item';
+          status: 'not_fulfilled';
+      };
+
+type CheckoutItemFulfillmentFailureReason = Extract<
+    ProcessItemFulfillmentResult,
+    { status: 'not_fulfilled' }
+>['reason'];
+
+export class CheckoutItemFulfillmentError extends Error {
+    override readonly name = 'CheckoutItemFulfillmentError';
+
+    constructor(readonly reason: CheckoutItemFulfillmentFailureReason) {
+        super(`Checkout item fulfillment was not confirmed (${reason})`);
+    }
+}
+
+export function assertCheckoutItemFulfilled(
+    result: ProcessItemFulfillmentResult,
+): asserts result is { status: 'fulfilled' } {
+    if (result.status !== 'fulfilled') {
+        throw new CheckoutItemFulfillmentError(result.reason);
+    }
+}
+
 export async function processItem(
     itemData: {
         entityId: string | null | undefined;
@@ -1797,7 +1803,7 @@ export async function processItem(
         checkoutSessionId?: string | null;
     },
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
-) {
+): Promise<ProcessItemFulfillmentResult> {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
@@ -1818,6 +1824,7 @@ export async function processItem(
         // Validate item data
         if (
             !itemData.accountId ||
+            !itemData.cartItemId ||
             !itemData.entityId ||
             !itemData.entityTypeName
         ) {
@@ -1825,7 +1832,7 @@ export async function processItem(
                 `Missing required metadata for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'missing_metadata' };
         }
         const entityIdNumber = parseInt(itemData.entityId, 10);
         if (Number.isNaN(entityIdNumber)) {
@@ -1833,7 +1840,7 @@ export async function processItem(
                 `Invalid entityId ${itemData.entityId} for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'invalid_entity_id' };
         }
         if (
             !(await assertRaisedBedAllowsCheckoutItem(
@@ -1841,7 +1848,10 @@ export async function processItem(
                 dependencies,
             ))
         ) {
-            return;
+            return {
+                status: 'not_fulfilled',
+                reason: 'raised_bed_unavailable',
+            };
         }
 
         // Try to resolve field ID from position index (only active fields)
@@ -1882,49 +1892,47 @@ export async function processItem(
             dependencies,
         );
 
-        const operationId = await dependencies.createOperation({
-            accountId: itemData.accountId,
-            entityId: entityIdNumber,
-            entityTypeName: itemData.entityTypeName,
-            gardenId: itemData.gardenId,
-            raisedBedId: itemData.raisedBedId,
-            raisedBedFieldId: fieldId,
-        });
-
-        try {
-            await earnSunflowersFunc();
-        } catch (error) {
-            console.error(
-                `Failed to award sunflowers for operation item in order.`,
-                error,
+        const { created, operationId } =
+            await dependencies.getOrCreateCheckoutOperation(
+                itemData.cartItemId,
+                {
+                    accountId: itemData.accountId,
+                    entityId: entityIdNumber,
+                    entityTypeName: itemData.entityTypeName,
+                    gardenId: itemData.gardenId,
+                    raisedBedId: itemData.raisedBedId,
+                    raisedBedFieldId: fieldId,
+                },
+                { scheduledDate: new Date(scheduledDate) },
             );
+
+        if (created) {
+            try {
+                await earnSunflowersFunc();
+            } catch (error) {
+                console.error(
+                    `Failed to award sunflowers for operation item in order.`,
+                    error,
+                );
+            }
+            try {
+                await dependencies.notifyOperationUpdate(
+                    operationId,
+                    'scheduled',
+                    {
+                        scheduledDate: new Date(scheduledDate).toISOString(),
+                    },
+                );
+            } catch (error) {
+                console.error(
+                    `Failed to notify about scheduled operation ${operationId.toString()}:`,
+                    error,
+                );
+            }
         }
         console.debug(
-            `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+            `${created ? 'Created' : 'Reused'} scheduled operation ${operationId.toString()} for cart item ${itemData.cartItemId.toString()}.`,
         );
-
-        // Every purchased operation is scheduled; missing dates default to tomorrow.
-        try {
-            await dependencies.createEvent(
-                dependencies.knownEvents.operations.scheduledV1(
-                    operationId.toString(),
-                    {
-                        scheduledDate,
-                    },
-                ),
-            );
-            console.debug(
-                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-            );
-        } catch (error) {
-            console.error(
-                `Failed to create scheduled event for operation ${operationId}:`,
-                error,
-            );
-        }
-        await dependencies.notifyOperationUpdate(operationId, 'scheduled', {
-            scheduledDate: new Date(scheduledDate).toISOString(),
-        });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
@@ -1961,8 +1969,8 @@ export async function processItem(
 
                 if (deliveryInfo?.slotId && deliveryInfo.mode) {
                     try {
-                        const deliveryRequestId =
-                            await dependencies.createDeliveryRequest({
+                        const deliveryRequest =
+                            await dependencies.getOrCreateDeliveryRequest({
                                 operationId,
                                 slotId: deliveryInfo.slotId,
                                 mode: deliveryInfo.mode,
@@ -1972,19 +1980,37 @@ export async function processItem(
                                 accountId: itemData.accountId,
                             });
                         console.debug(
-                            `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
+                            `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );
-                        await dependencies.notifyDeliveryRequestEvent(
-                            deliveryRequestId,
-                            'created',
-                        );
-                        await dependencies.notifyScheduledDeliveryEmailOnce({
-                            requestId: deliveryRequestId,
-                            accountId: itemData.accountId,
-                            deliveryInfo,
-                            notifiedKeys: itemData.scheduledDeliveryEmailKeys,
-                            notify: dependencies.notifyDeliveryScheduled,
-                        });
+                        if (deliveryRequest.created) {
+                            const notificationResults =
+                                await Promise.allSettled([
+                                    dependencies.notifyDeliveryRequestEvent(
+                                        deliveryRequest.requestId,
+                                        'created',
+                                    ),
+                                    dependencies.notifyScheduledDeliveryEmailOnce(
+                                        {
+                                            requestId:
+                                                deliveryRequest.requestId,
+                                            accountId: itemData.accountId,
+                                            deliveryInfo,
+                                            notifiedKeys:
+                                                itemData.scheduledDeliveryEmailKeys,
+                                            notify: dependencies.notifyDeliveryScheduled,
+                                        },
+                                    ),
+                                ]);
+                            const failedNotificationCount =
+                                notificationResults.filter(
+                                    (result) => result.status === 'rejected',
+                                ).length;
+                            if (failedNotificationCount > 0) {
+                                console.error(
+                                    `Failed to send ${failedNotificationCount.toString()} notification(s) for delivery request ${deliveryRequest.requestId}`,
+                                );
+                            }
+                        }
                     } catch (error) {
                         console.error(
                             `Failed to create delivery request for operation ${operationId}:`,
@@ -2004,14 +2030,23 @@ export async function processItem(
                                     itemData.checkoutSessionId ?? null,
                             },
                         });
+                        return {
+                            status: 'not_fulfilled',
+                            reason: 'delivery_request_failed',
+                        };
                     }
                 } else {
                     console.warn(
                         `Operation ${operationId} is deliverable but no delivery information found in metadata`,
                     );
+                    return {
+                        status: 'not_fulfilled',
+                        reason: 'delivery_configuration_missing',
+                    };
                 }
             }
         }
+        return { status: 'fulfilled' };
     } else if (
         itemData.entityId &&
         itemData.entityTypeName === 'plantSort' &&
@@ -2292,10 +2327,12 @@ export async function processItem(
                 },
             });
         }
+        return { status: 'fulfilled' };
     } else {
         console.error(
             `Unsupported item type for entityId ${itemData.entityId} in order.`,
             itemData,
         );
+        return { status: 'not_fulfilled', reason: 'unsupported_item' };
     }
 }

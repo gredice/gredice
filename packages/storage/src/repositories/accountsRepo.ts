@@ -1,7 +1,13 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { asc, desc, eq, sql } from 'drizzle-orm';
-import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import {
+    accounts,
+    accountUsers,
+    ensureAccountAchievement,
+    events,
+    storage,
+} from '..';
 import {
     createEvent,
     getAllEvents,
@@ -15,6 +21,39 @@ interface SunflowerEventData {
     amount: number;
     reason?: string;
 }
+
+export class InsufficientSunflowersError extends Error {
+    override readonly name = 'InsufficientSunflowersError';
+
+    constructor(
+        readonly availableAmount: number,
+        readonly requiredAmount: number,
+    ) {
+        super('Insufficient sunflowers');
+    }
+}
+
+export class SunflowerSpendAmountConflictError extends Error {
+    override readonly name = 'SunflowerSpendAmountConflictError';
+
+    constructor(
+        readonly reason: string,
+        readonly existingAmount: number,
+        readonly requestedAmount: number,
+    ) {
+        super('Sunflower spend amount conflicts with an existing event');
+    }
+}
+
+export type SunflowerSpendBatchItem = {
+    amount: number;
+    reason: string;
+};
+
+export type SunflowerSpendBatchResult = {
+    createdReasons: string[];
+    existingReasons: string[];
+};
 
 export type BirthdaySunflowerGrantResult =
     | {
@@ -283,7 +322,7 @@ export async function spendSunflowers(
 
         const currentSunflowers = await getSunflowers(accountId, tx);
         if (currentSunflowers < amount) {
-            throw new Error('Insufficient sunflowers');
+            throw new InsufficientSunflowersError(currentSunflowers, amount);
         }
 
         await createEvent(
@@ -293,5 +332,123 @@ export async function spendSunflowers(
             }),
             tx,
         );
+    });
+}
+
+/**
+ * Spend sunflowers for durable, independently retryable operations.
+ *
+ * Each reason is an idempotency key. A retry with the same amount is a no-op,
+ * while reusing a reason for a different amount is rejected. All missing
+ * debits are validated before any event is written.
+ */
+export async function spendSunflowersBatch(
+    accountId: string,
+    items: readonly SunflowerSpendBatchItem[],
+    db: ReturnType<typeof storage> = storage(),
+): Promise<SunflowerSpendBatchResult> {
+    const uniqueItems = new Map<string, SunflowerSpendBatchItem>();
+    for (const item of items) {
+        if (!Number.isInteger(item.amount) || item.amount <= 0) {
+            throw new Error(
+                'Sunflower spend amount must be a positive integer',
+            );
+        }
+        if (!item.reason.trim()) {
+            throw new Error('Sunflower spend reason is required');
+        }
+
+        const duplicate = uniqueItems.get(item.reason);
+        if (duplicate && duplicate.amount !== item.amount) {
+            throw new SunflowerSpendAmountConflictError(
+                item.reason,
+                duplicate.amount,
+                item.amount,
+            );
+        }
+        uniqueItems.set(item.reason, item);
+    }
+
+    if (uniqueItems.size === 0) {
+        return { createdReasons: [], existingReasons: [] };
+    }
+
+    return db.transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`account-sunflowers:${accountId}`}));`,
+        );
+
+        const reasons = Array.from(uniqueItems.keys());
+        const existingEvents = await tx
+            .select({ data: events.data })
+            .from(events)
+            .where(
+                and(
+                    eq(events.aggregateId, accountId),
+                    eq(events.type, knownEventTypes.accounts.spendSunflowers),
+                    inArray(sql<string>`${events.data}->>'reason'`, reasons),
+                ),
+            );
+        const existingAmounts = new Map<string, number>();
+        for (const event of existingEvents) {
+            const { amount, reason } = parseSunflowerEventData(event.data);
+            if (!reason) continue;
+
+            const previousAmount = existingAmounts.get(reason);
+            if (previousAmount !== undefined && previousAmount !== amount) {
+                throw new SunflowerSpendAmountConflictError(
+                    reason,
+                    previousAmount,
+                    amount,
+                );
+            }
+            existingAmounts.set(reason, amount);
+        }
+
+        const missingItems: SunflowerSpendBatchItem[] = [];
+        const existingReasons: string[] = [];
+        for (const item of uniqueItems.values()) {
+            const existingAmount = existingAmounts.get(item.reason);
+            if (existingAmount === undefined) {
+                missingItems.push(item);
+                continue;
+            }
+            if (existingAmount !== item.amount) {
+                throw new SunflowerSpendAmountConflictError(
+                    item.reason,
+                    existingAmount,
+                    item.amount,
+                );
+            }
+            existingReasons.push(item.reason);
+        }
+
+        if (missingItems.length === 0) {
+            return { createdReasons: [], existingReasons };
+        }
+
+        const currentSunflowers = await getSunflowers(accountId, tx);
+        const requiredSunflowers = missingItems.reduce(
+            (total, item) => total + item.amount,
+            0,
+        );
+        if (currentSunflowers < requiredSunflowers) {
+            throw new InsufficientSunflowersError(
+                currentSunflowers,
+                requiredSunflowers,
+            );
+        }
+
+        for (const item of missingItems) {
+            await createEvent(
+                knownEvents.accounts.sunflowersSpentV1(accountId, item),
+                tx,
+            );
+        }
+
+        return {
+            createdReasons: missingItems.map((item) => item.reason),
+            existingReasons,
+        };
     });
 }

@@ -34,7 +34,10 @@ import { storage } from '../storage';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
-import type { OperationEventsAnyPayload } from './events/types';
+import type {
+    CheckoutOperationCreatedPayload,
+    OperationEventsAnyPayload,
+} from './events/types';
 
 export type OperationStatus =
     | 'new'
@@ -50,6 +53,42 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = StorageClient | TransactionClient;
+
+const checkoutOperationLockTails = new Map<string, Promise<void>>();
+
+export class CheckoutOperationConflictError extends Error {
+    override name = 'CheckoutOperationConflictError';
+}
+
+async function withCheckoutOperationInProcessLock<T>(
+    key: string,
+    callback: () => Promise<T>,
+) {
+    const previous = checkoutOperationLockTails.get(key) ?? Promise.resolve();
+    let release = () => {};
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const tail = previous.then(() => current);
+    checkoutOperationLockTails.set(key, tail);
+
+    await previous;
+    try {
+        return await callback();
+    } finally {
+        release();
+        if (checkoutOperationLockTails.get(key) === tail) {
+            checkoutOperationLockTails.delete(key);
+        }
+    }
+}
+
+function isPgliteTestDatabase() {
+    return (
+        process.env.TEST_ENV === '1' &&
+        process.env.GREDICE_TEST_DB_PROVIDER === 'pglite'
+    );
+}
 
 type OperationsFilter = {
     from?: Date;
@@ -1551,6 +1590,256 @@ export async function createScheduledOperation(
     });
     await bustScheduleCache();
     return operationId;
+}
+
+type CheckoutOperationOptions = {
+    accept?: boolean;
+    scheduledDate: Date;
+};
+
+function checkoutOperationAggregateId(cartItemId: number) {
+    if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
+        throw new CheckoutOperationConflictError(
+            'Checkout cart item id must be a positive safe integer.',
+        );
+    }
+    return `shoppingCartItem:${cartItemId.toString()}`;
+}
+
+function checkoutOperationFingerprint(
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+): Omit<CheckoutOperationCreatedPayload, 'operationId'> {
+    const scheduledDate = options.scheduledDate.toISOString();
+    const operationTimestamp = operation.timestamp?.toISOString() ?? null;
+
+    return {
+        accountId: operation.accountId ?? null,
+        entityId: operation.entityId,
+        entityTypeName: operation.entityTypeName,
+        farmId: operation.farmId ?? null,
+        gardenId: operation.gardenId ?? null,
+        raisedBedId: operation.raisedBedId ?? null,
+        raisedBedFieldId: operation.raisedBedFieldId ?? null,
+        operationTimestamp,
+        scheduledDate,
+        accepted: options.accept ?? false,
+    };
+}
+
+function parseCheckoutOperationCreatedPayload(
+    value: unknown,
+): CheckoutOperationCreatedPayload | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null;
+    }
+    const data = value as Record<string, unknown>;
+    const nullableString = (candidate: unknown): candidate is string | null =>
+        typeof candidate === 'string' || candidate === null;
+    const nullableNumber = (candidate: unknown): candidate is number | null =>
+        (typeof candidate === 'number' && Number.isSafeInteger(candidate)) ||
+        candidate === null;
+
+    if (
+        typeof data.operationId !== 'number' ||
+        !Number.isSafeInteger(data.operationId) ||
+        data.operationId <= 0 ||
+        !nullableString(data.accountId) ||
+        typeof data.entityId !== 'number' ||
+        !Number.isSafeInteger(data.entityId) ||
+        typeof data.entityTypeName !== 'string' ||
+        !nullableNumber(data.farmId) ||
+        !nullableNumber(data.gardenId) ||
+        !nullableNumber(data.raisedBedId) ||
+        !nullableNumber(data.raisedBedFieldId) ||
+        !nullableString(data.operationTimestamp) ||
+        typeof data.scheduledDate !== 'string' ||
+        typeof data.accepted !== 'boolean'
+    ) {
+        return null;
+    }
+
+    return {
+        operationId: data.operationId,
+        accountId: data.accountId,
+        entityId: data.entityId,
+        entityTypeName: data.entityTypeName,
+        farmId: data.farmId,
+        gardenId: data.gardenId,
+        raisedBedId: data.raisedBedId,
+        raisedBedFieldId: data.raisedBedFieldId,
+        operationTimestamp: data.operationTimestamp,
+        scheduledDate: data.scheduledDate,
+        accepted: data.accepted,
+    };
+}
+
+function assertCheckoutOperationFingerprint(
+    stored: CheckoutOperationCreatedPayload,
+    expected: Omit<CheckoutOperationCreatedPayload, 'operationId'>,
+) {
+    const fingerprintFields = [
+        'accountId',
+        'entityId',
+        'entityTypeName',
+        'farmId',
+        'gardenId',
+        'raisedBedId',
+        'raisedBedFieldId',
+        'operationTimestamp',
+        'scheduledDate',
+        'accepted',
+    ] as const;
+    const mismatch = fingerprintFields.find(
+        (field) => stored[field] !== expected[field],
+    );
+    if (mismatch) {
+        throw new CheckoutOperationConflictError(
+            `Checkout operation fingerprint conflicts on ${mismatch}.`,
+        );
+    }
+}
+
+async function ensureCheckoutOperation(
+    cartItemId: number,
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+    db: DatabaseClient,
+) {
+    const aggregateId = checkoutOperationAggregateId(cartItemId);
+    const fingerprint = checkoutOperationFingerprint(operation, options);
+    const mappingEvents = await getEvents(
+        knownEventTypes.checkout.operationCreated,
+        [aggregateId],
+        0,
+        2,
+        db,
+    );
+
+    if (mappingEvents.length > 1) {
+        throw new CheckoutOperationConflictError(
+            'Checkout cart item has multiple operation mappings.',
+        );
+    }
+
+    const mappingEvent = mappingEvents[0];
+    if (mappingEvent) {
+        if (mappingEvent.version !== 1) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping has an unsupported version.',
+            );
+        }
+        const stored = parseCheckoutOperationCreatedPayload(mappingEvent.data);
+        if (!stored) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping is malformed.',
+            );
+        }
+        assertCheckoutOperationFingerprint(stored, fingerprint);
+
+        const mappedOperation = await db.query.operations.findFirst({
+            columns: {
+                id: true,
+                accountId: true,
+                entityId: true,
+                entityTypeName: true,
+                farmId: true,
+                gardenId: true,
+                raisedBedId: true,
+                raisedBedFieldId: true,
+                timestamp: true,
+            },
+            where: and(
+                eq(operations.id, stored.operationId),
+                eq(operations.isDeleted, false),
+            ),
+        });
+        if (!mappedOperation) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping points to a missing or deleted operation.',
+            );
+        }
+        const operationMismatch = (
+            [
+                'accountId',
+                'entityId',
+                'entityTypeName',
+                'farmId',
+                'gardenId',
+                'raisedBedId',
+                'raisedBedFieldId',
+            ] as const
+        ).find((field) => mappedOperation[field] !== fingerprint[field]);
+        if (
+            operationMismatch ||
+            (fingerprint.operationTimestamp !== null &&
+                mappedOperation.timestamp.toISOString() !==
+                    fingerprint.operationTimestamp)
+        ) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping conflicts with the stored operation.',
+            );
+        }
+        return { operationId: stored.operationId, created: false } as const;
+    }
+
+    const operationId = await createOperation(operation, db);
+    await createEvent(
+        knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate: fingerprint.scheduledDate,
+        }),
+        db,
+    );
+    if (fingerprint.accepted) {
+        await acceptOperation(operationId, db);
+    }
+    await createEvent(
+        knownEvents.checkout.operationCreatedV1(aggregateId, {
+            operationId,
+            ...fingerprint,
+        }),
+        db,
+    );
+
+    return { operationId, created: true } as const;
+}
+
+export async function getOrCreateCheckoutOperation(
+    cartItemId: number,
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+    db?: DatabaseClient,
+): Promise<{ operationId: number; created: boolean }> {
+    if (db) {
+        return ensureCheckoutOperation(cartItemId, operation, options, db);
+    }
+
+    const aggregateId = checkoutOperationAggregateId(cartItemId);
+    const runInTransaction = () =>
+        storage().transaction(async (transaction) => {
+            if (!isPgliteTestDatabase()) {
+                await transaction.execute(
+                    sql`select pg_advisory_xact_lock(hashtext(${`checkout-operation:${aggregateId}`}));`,
+                );
+            }
+            return ensureCheckoutOperation(
+                cartItemId,
+                operation,
+                options,
+                transaction,
+            );
+        });
+
+    const result = isPgliteTestDatabase()
+        ? await withCheckoutOperationInProcessLock(
+              aggregateId,
+              runInTransaction,
+          )
+        : await runInTransaction();
+    if (result.created) {
+        await bustScheduleCache();
+    }
+    return result;
 }
 
 export async function switchOperationEntity(
