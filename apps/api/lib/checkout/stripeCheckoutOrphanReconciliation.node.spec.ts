@@ -99,6 +99,7 @@ function dependencies({
     listedItems = [{ id: 'cs_1', metadata: stringMetadata(attempt) }],
     now = beforeDeadline,
     onCall,
+    onFailure,
 }: {
     attempt?: StripeCheckoutAttempt;
     fullSession?: Session;
@@ -108,6 +109,11 @@ function dependencies({
     }>;
     now?: Date;
     onCall?: (name: string) => void;
+    onFailure?: (
+        diagnostic: Parameters<
+            StripeCheckoutOrphanReconciliationDependencies['reportFailure']
+        >[0],
+    ) => void;
 } = {}): StripeCheckoutOrphanReconciliationDependencies {
     let processed = false;
     return {
@@ -147,6 +153,7 @@ function dependencies({
             onCall?.('process');
             processed = true;
         },
+        reportFailure: (diagnostic) => onFailure?.(diagnostic),
         recordMiss: async ({ observedAt }) => {
             onCall?.('miss');
             return {
@@ -221,6 +228,11 @@ test('binds and processes a paid completed session', async () => {
 
 test('retries a bound completed attempt after transient processing failure', async () => {
     const firstCalls: string[] = [];
+    const failures: Array<
+        Parameters<
+            StripeCheckoutOrphanReconciliationDependencies['reportFailure']
+        >[0]
+    > = [];
     const completed = checkoutSession({
         paymentStatus: 'paid',
         status: 'complete',
@@ -228,6 +240,7 @@ test('retries a bound completed attempt after transient processing failure', asy
     const firstDependencies = dependencies({
         fullSession: completed,
         onCall: (name) => firstCalls.push(name),
+        onFailure: (diagnostic) => failures.push(diagnostic),
     });
     firstDependencies.processSession = async () => {
         firstCalls.push('process');
@@ -238,6 +251,15 @@ test('retries a bound completed attempt after transient processing failure', asy
     });
     assert.equal(first.failedCount, 1);
     assert.equal(first.failureCategories.unexpected, 1);
+    assert.deepEqual(failures, [
+        {
+            attemptId,
+            cartId,
+            category: 'unexpected',
+            causeName: 'Error',
+            stage: 'discovered_session_reconcile',
+        },
+    ]);
     assert.deepEqual(firstCalls, [
         'list',
         'retrieve',

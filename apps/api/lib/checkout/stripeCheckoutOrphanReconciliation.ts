@@ -68,6 +68,7 @@ export type StripeCheckoutOrphanReconciliationDependencies = {
     }) => Promise<StripeSessionListResult>;
     now: () => Date;
     processSession: typeof processCheckoutSessionForReconciliation;
+    reportFailure: (diagnostic: AttemptFailureDiagnostic) => void;
     recordMiss: typeof recordStripeCheckoutAttemptReconciliationMiss;
     releaseAfterMisses: typeof releaseStripeCheckoutAttemptAfterReconciliationMisses;
     releaseAttempt: typeof releaseStripeCheckoutAttempt;
@@ -85,6 +86,12 @@ const realDependencies: StripeCheckoutOrphanReconciliationDependencies = {
     listSessions: listStripeCheckoutSessionsForCustomerExhaustively,
     now: () => new Date(),
     processSession: processCheckoutSessionForReconciliation,
+    reportFailure: (diagnostic) => {
+        console.error(
+            'Stripe checkout orphan reconciliation failed',
+            diagnostic,
+        );
+    },
     recordMiss: recordStripeCheckoutAttemptReconciliationMiss,
     releaseAfterMisses: releaseStripeCheckoutAttemptAfterReconciliationMisses,
     releaseAttempt: releaseStripeCheckoutAttempt,
@@ -102,7 +109,31 @@ type AttemptOutcome =
               | 'released'
               | 'retained';
       }
-    | { category: string; status: 'failed' };
+    | {
+          category: string;
+          causeName?: string;
+          stage?: AttemptFailureStage;
+          status: 'failed';
+      };
+
+type AttemptFailureStage =
+    | 'absence_reconcile'
+    | 'bound_session_fetch'
+    | 'bound_session_reconcile'
+    | 'candidate_start'
+    | 'discovered_session_fetch'
+    | 'discovered_session_reconcile'
+    | 'identity_resolve'
+    | 'session_correlate'
+    | 'session_scan';
+
+type AttemptFailureDiagnostic = {
+    attemptId: string;
+    cartId: number;
+    category: string;
+    causeName?: string;
+    stage?: AttemptFailureStage;
+};
 
 export type StripeCheckoutOrphanReconciliationSummary = {
     boundCount: number;
@@ -120,6 +151,11 @@ function attemptFailureCategory(error: unknown) {
     return error instanceof StripeCheckoutAttemptConflictError
         ? error.category
         : 'unexpected';
+}
+
+function safeErrorName(error: unknown) {
+    const name = error instanceof Error ? error.name : 'unknown';
+    return /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : 'unknown';
 }
 
 function deadlineForAttempt(attempt: StripeCheckoutAttempt) {
@@ -291,19 +327,24 @@ async function reconcileCandidate(
     candidate: ActiveStripeCheckoutAttemptReconciliationCandidate,
     dependencies: StripeCheckoutOrphanReconciliationDependencies,
 ): Promise<AttemptOutcome> {
+    let stage: AttemptFailureStage = 'candidate_start';
     try {
         if (candidate.attempt.sessionId) {
+            stage = 'bound_session_fetch';
             const session = await dependencies.getSession(
                 candidate.attempt.sessionId,
             );
+            stage = 'bound_session_reconcile';
             return await reconcileAuthoritativeSession(
                 candidate.attempt,
                 session,
                 dependencies,
             );
         }
+        stage = 'identity_resolve';
         const identity = await dependencies.resolveIdentity(candidate.attempt);
         const deadline = deadlineForAttempt(candidate.attempt);
+        stage = 'session_scan';
         const listed = await dependencies.listSessions({
             createdAt: candidate.createdAt,
             customerId: identity.customerId,
@@ -315,22 +356,31 @@ async function reconcileCandidate(
                 status: 'failed',
             };
         }
+        stage = 'session_correlate';
         const matchingSessions = correlatedSessions(
             listed.items,
             candidate.attempt,
         );
         const matchingSession = matchingSessions[0];
         if (!matchingSession) {
+            stage = 'absence_reconcile';
             return await reconcileProvenAbsentSession(candidate, dependencies);
         }
+        stage = 'discovered_session_fetch';
         const session = await dependencies.getSession(matchingSession.id);
+        stage = 'discovered_session_reconcile';
         return await reconcileAuthoritativeSession(
             candidate.attempt,
             session,
             dependencies,
         );
     } catch (error) {
-        return { category: attemptFailureCategory(error), status: 'failed' };
+        return {
+            category: attemptFailureCategory(error),
+            causeName: safeErrorName(error),
+            stage,
+            status: 'failed',
+        };
     }
 }
 
@@ -421,10 +471,14 @@ export async function reconcileStripeCheckoutOrphanAttempts({
             const outcome = await reconcileCandidate(candidate, dependencies);
             recordOutcome(summary, outcome);
             if (outcome.status === 'failed') {
-                console.error('Stripe checkout orphan reconciliation failed', {
+                dependencies.reportFailure({
                     attemptId: candidate.attempt.snapshot.attemptId,
                     cartId: candidate.attempt.snapshot.cartId,
                     category: outcome.category,
+                    ...(outcome.causeName
+                        ? { causeName: outcome.causeName }
+                        : {}),
+                    ...(outcome.stage ? { stage: outcome.stage } : {}),
                 });
             }
         }
