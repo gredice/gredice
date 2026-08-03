@@ -1019,7 +1019,21 @@ export async function processCheckoutSession(
         );
         return;
     }
-    if (session.paymentStatus !== 'paid') {
+    let isZeroTotalSnapshotCheckout = false;
+    if (
+        session.paymentStatus === 'no_payment_required' &&
+        session.amountTotal === 0
+    ) {
+        try {
+            isZeroTotalSnapshotCheckout =
+                decodeStripeCheckoutAttemptMetadata(session.metadata) !== null;
+        } catch {
+            // Malformed snapshot metadata must not turn an unpaid session into
+            // a fulfillment candidate. Paid sessions retain the stricter
+            // reconciliation error below.
+        }
+    }
+    if (session.paymentStatus !== 'paid' && !isZeroTotalSnapshotCheckout) {
         console.warn(
             `Payment not completed for session ${checkoutSessionId} with status: ${session.paymentStatus}`,
         );
@@ -1533,6 +1547,7 @@ async function reconcileStripeCheckoutAttempt(
 async function releaseCompletedStripeCheckoutAttempt(
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
     dependencies: ProcessCheckoutSessionDependencies,
+    { allowMissingAttempt = false }: { allowMissingAttempt?: boolean } = {},
 ) {
     const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
     if (!metadata) {
@@ -1543,6 +1558,9 @@ async function releaseCompletedStripeCheckoutAttempt(
         metadata.attemptId,
     );
     if (!attempt) {
+        if (allowMissingAttempt) {
+            return;
+        }
         throw new StripeCheckoutAttemptConflictError('attempt_missing');
     }
     if (
@@ -1599,7 +1617,9 @@ async function processPaidCheckoutSession(
     }
 
     if (alreadyProcessed) {
-        await releaseCompletedStripeCheckoutAttempt(session, dependencies);
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
         console.info(
             `Checkout session ${checkoutSessionId} already processed; skipping.`,
         );

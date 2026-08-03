@@ -476,6 +476,23 @@ function makeSession() {
     };
 }
 
+function makeSnapshotMetadata() {
+    return {
+        checkoutAttemptId: '5fe9b460-9b8d-4dd0-90a9-d05e46a3b0d5',
+        checkoutCartId: '100',
+        checkoutSnapshotVersion: '1',
+    };
+}
+
+function makeNoPaymentRequiredSnapshotSession(amountTotal = 0) {
+    return {
+        ...makeSession(),
+        amountTotal,
+        metadata: makeSnapshotMetadata(),
+        paymentStatus: 'no_payment_required',
+    };
+}
+
 function makePlantingSession() {
     const session = makeSession();
     const [lineItem] = session.lineItems.data;
@@ -921,6 +938,95 @@ describe('processCheckoutSession', () => {
         ]);
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
         assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+    });
+
+    it('accepts a zero-total no-payment-required snapshot and tolerates absent attempt history on completed replay', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeNoPaymentRequiredSnapshotSession();
+            },
+            getCompletedTransactionByStripePaymentId: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getCompletedTransactionByStripePaymentId', args);
+                return { id: 123 };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.deepStrictEqual(callNames(calls), [
+            'getStripeCheckoutSession',
+            'withStripePaymentProcessingLock',
+            'getCompletedTransactionByStripePaymentId',
+            'getStripeCheckoutAttempt',
+        ]);
+        assert.equal(
+            callsNamed(calls, 'releaseStripeCheckoutAttempt').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+    });
+
+    it('still requires attempt history for first fulfillment of a zero-total no-payment-required snapshot', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeNoPaymentRequiredSnapshotSession();
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /Stripe checkout attempt conflict \(attempt_missing\)\./u,
+        );
+
+        assert.equal(
+            callsNamed(calls, 'withStripePaymentProcessingLock').length,
+            1,
+        );
+        assert.equal(callsNamed(calls, 'getStripeCheckoutAttempt').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+    });
+
+    it('rejects unpaid sessions and no-payment-required sessions without both a zero total and snapshot metadata', async () => {
+        const rejectedSessions = [
+            {
+                ...makeNoPaymentRequiredSnapshotSession(1),
+                id: 'cs_nonzero_no_payment_required',
+            },
+            {
+                ...makeNoPaymentRequiredSnapshotSession(),
+                id: 'cs_no_snapshot',
+                metadata: undefined,
+            },
+            {
+                ...makeNoPaymentRequiredSnapshotSession(),
+                id: 'cs_unpaid',
+                paymentStatus: 'unpaid',
+            },
+        ];
+
+        for (const session of rejectedSessions) {
+            const calls: RecordedCall[] = [];
+            const dependencies = makeDependencies(calls, {
+                getStripeCheckoutSession: async (...args: unknown[]) => {
+                    record(calls, 'getStripeCheckoutSession', args);
+                    return session;
+                },
+            });
+
+            await processCheckoutSession(session.id, dependencies);
+
+            assert.deepStrictEqual(callNames(calls), [
+                'getStripeCheckoutSession',
+            ]);
+        }
     });
 
     it('marks a Stripe-paid cart item paid, records the transaction, and awards sunflowers', async () => {
