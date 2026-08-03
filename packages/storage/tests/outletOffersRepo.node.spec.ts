@@ -19,8 +19,10 @@ import {
     getShoppingCart,
     OutletOfferIdentityImmutableError,
     OutletOfferUnavailableError,
+    recordStripeCheckoutAttemptReconciliationMiss,
     releaseOutletReservationForCartItem,
     releaseStripeCheckoutAttempt,
+    releaseStripeCheckoutAttemptAfterReconciliationMisses,
     reserveOutletOffer,
     StripeCheckoutAttemptConflictError,
     type StripeCheckoutAttemptSnapshot,
@@ -33,8 +35,8 @@ import {
     upsertOrRemoveCartItemWithOutletReservation,
     verifyStripeCheckoutAttemptLiveCart,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
-import { outletOffers } from '../src/schema';
+import { and, eq } from 'drizzle-orm';
+import { events, outletOfferReservations, outletOffers } from '../src/schema';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
@@ -482,6 +484,89 @@ test('stale attempt release cannot release a later attempt reservation', async (
     });
     assert.equal(
         (await getOutletOfferReservation(secondReservation.id))?.status,
+        'held',
+    );
+});
+
+test('orphan reconciliation releases only the reservation captured by the attempt snapshot', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({
+        plantSortId,
+        quantity: 3,
+        now,
+    });
+    const accountId = await createTestAccount();
+    const { cart, cartItemId } = await createCartItem(accountId, plantSortId);
+    const attemptReservation = await reserveOutletOffer({
+        accountId,
+        cartId: cart.id,
+        cartItemId,
+        offerId,
+        now,
+    });
+    const attempt = outletAttemptSnapshot({
+        cartId: cart.id,
+        cartItemId,
+        entityId: plantSortId.toString(),
+        reservation: attemptReservation,
+    });
+    await createStripeCheckoutAttempt(attempt, { accountId, now });
+
+    const [unrelatedReservation] = await storage()
+        .insert(outletOfferReservations)
+        .values({
+            accountId,
+            cartId: cart.id,
+            cartItemId,
+            heldComparePriceCents: attemptReservation.heldComparePriceCents,
+            heldInitialPlantStatus: attemptReservation.heldInitialPlantStatus,
+            heldOutletPriceCents: attemptReservation.heldOutletPriceCents,
+            heldSowingDate: attemptReservation.heldSowingDate,
+            holdExpiresAt: addMinutes(now, 120),
+            outletOfferId: offerId,
+            quantity: 1,
+            status: 'held',
+        })
+        .returning();
+    assert.ok(unrelatedReservation);
+
+    const firstObservedAt = addMinutes(attemptReservation.holdExpiresAt, 1);
+    await recordStripeCheckoutAttemptReconciliationMiss({
+        attemptId: attempt.attemptId,
+        cartId: cart.id,
+        observedAt: firstObservedAt,
+    });
+    await storage()
+        .update(events)
+        .set({ createdAt: firstObservedAt })
+        .where(
+            and(
+                eq(events.aggregateId, `shoppingCart:${cart.id.toString()}`),
+                eq(events.type, 'checkout.stripeAttempt.reconciliationMiss'),
+            ),
+        );
+    const secondObservedAt = addMinutes(firstObservedAt, 61);
+    await recordStripeCheckoutAttemptReconciliationMiss({
+        attemptId: attempt.attemptId,
+        cartId: cart.id,
+        observedAt: secondObservedAt,
+    });
+    const result = await releaseStripeCheckoutAttemptAfterReconciliationMisses({
+        attemptId: attempt.attemptId,
+        cartId: cart.id,
+        missBefore: addMinutes(secondObservedAt, -60),
+        now: secondObservedAt,
+    });
+
+    assert.equal(result.status, 'released');
+    assert.equal(
+        (await getOutletOfferReservation(attemptReservation.id))?.status,
+        'released',
+    );
+    assert.equal(
+        (await getOutletOfferReservation(unrelatedReservation.id))?.status,
         'held',
     );
 });

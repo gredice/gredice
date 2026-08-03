@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, notExists, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
@@ -20,10 +21,18 @@ type DatabaseClient = StorageClient | TransactionClient;
 const eventTypes = {
     bound: 'checkout.stripeAttempt.bound',
     created: 'checkout.stripeAttempt.created',
+    reconciliationMiss: 'checkout.stripeAttempt.reconciliationMiss',
     released: 'checkout.stripeAttempt.released',
 } as const;
 
 const relevantEventTypes = Object.values(eventTypes);
+
+const reconciliationCursorAggregateId =
+    'checkout:stripeAttemptReconciliationCursor';
+const reconciliationCursorEventTypes = {
+    advanced: 'checkout.stripeAttempt.reconciliationCursor.advanced',
+    reset: 'checkout.stripeAttempt.reconciliationCursor.reset',
+} as const;
 
 export type StripeCheckoutAttemptReleaseReason =
     | 'cancelled'
@@ -113,10 +122,55 @@ type AttemptReleasedData = {
     sessionId: string | null;
 };
 
+type AttemptReconciliationMissData = {
+    attemptId: string;
+    observedAt: string;
+};
+
 type AttemptEvent = {
+    createdAt?: Date;
     data: unknown;
     type: string;
 };
+
+type StripeCheckoutAttemptReconciliationMiss = {
+    createdAt: Date;
+    observedAt: Date;
+};
+
+type StripeCheckoutAttemptEventState = {
+    attempt?: StripeCheckoutAttempt;
+    reconciliationMisses: StripeCheckoutAttemptReconciliationMiss[];
+};
+
+export type ActiveStripeCheckoutAttemptReconciliationCandidate = {
+    attempt: StripeCheckoutAttempt;
+    createdAt: Date;
+    createdEventId: number;
+    lastReconciliationMissAt?: Date;
+};
+
+export type RecordStripeCheckoutAttemptReconciliationMissResult =
+    | {
+          createdAt: Date;
+          observedAt: Date;
+          status: 'existing' | 'recorded';
+      }
+    | { releaseReason: StripeCheckoutAttemptReleaseReason; status: 'released' }
+    | { sessionId: string; status: 'bound' }
+    | { status: 'attempt_missing' };
+
+export type ReleaseStripeCheckoutAttemptAfterReconciliationMissesResult =
+    | { attempt: StripeCheckoutAttempt; status: 'released' }
+    | {
+          releaseReason: StripeCheckoutAttemptReleaseReason;
+          status: 'already_released';
+      }
+    | { sessionId: string; status: 'bound' }
+    | { expiresAt: Date; status: 'not_expired' }
+    | { status: 'null_deadline' }
+    | { lastReconciliationMissAt?: Date; status: 'too_soon' }
+    | { status: 'attempt_missing' };
 
 export class StripeCheckoutAttemptInProgressError extends Error {
     override readonly name = 'StripeCheckoutAttemptInProgressError';
@@ -406,13 +460,68 @@ function parseReleasedData(value: unknown): AttemptReleasedData {
     return parsed.data;
 }
 
+function parseReconciliationMissData(
+    value: unknown,
+): AttemptReconciliationMissData {
+    const parsed = z
+        .object({ attemptId: z.uuid(), observedAt: z.iso.datetime() })
+        .strict()
+        .safeParse(value);
+    if (!parsed.success) {
+        throw new StripeCheckoutAttemptConflictError(
+            'reconciliation_miss_malformed',
+        );
+    }
+    return parsed.data;
+}
+
+function parseStripeCheckoutAttemptReconciliationCursorEvent({
+    data,
+    type,
+}: {
+    data: unknown;
+    type: string;
+}) {
+    if (type === reconciliationCursorEventTypes.advanced) {
+        const parsed = z
+            .object({ afterCreatedEventId: positiveSafeIntegerSchema })
+            .strict()
+            .safeParse(data);
+        if (parsed.success) {
+            return parsed.data.afterCreatedEventId;
+        }
+    }
+    if (type === reconciliationCursorEventTypes.reset) {
+        const parsed = z
+            .object({ afterCreatedEventId: z.null() })
+            .strict()
+            .safeParse(data);
+        if (parsed.success) {
+            return undefined;
+        }
+    }
+    throw new StripeCheckoutAttemptConflictError(
+        'reconciliation_cursor_malformed',
+    );
+}
+
+function assertValidDate(value: Date, field: string) {
+    if (Number.isNaN(value.getTime())) {
+        throw new StripeCheckoutAttemptConflictError(`${field}_invalid`);
+    }
+}
+
 function cartAggregateId(cartId: number) {
     return `shoppingCart:${cartId.toString()}`;
 }
 
 async function getAttemptEvents(cartId: number, db: DatabaseClient) {
     return db
-        .select({ data: events.data, type: events.type })
+        .select({
+            createdAt: events.createdAt,
+            data: events.data,
+            type: events.type,
+        })
         .from(events)
         .where(
             and(
@@ -423,11 +532,12 @@ async function getAttemptEvents(cartId: number, db: DatabaseClient) {
         .orderBy(asc(events.id));
 }
 
-export function foldStripeCheckoutAttemptEvents(
+function foldStripeCheckoutAttemptEventState(
     attemptId: string,
     attemptEvents: readonly AttemptEvent[],
-): StripeCheckoutAttempt | undefined {
+): StripeCheckoutAttemptEventState {
     let attempt: StripeCheckoutAttempt | undefined;
+    const reconciliationMisses: StripeCheckoutAttemptReconciliationMiss[] = [];
     for (const event of attemptEvents) {
         if (event.type === eventTypes.created) {
             const snapshot = parseSnapshot(event.data);
@@ -477,9 +587,38 @@ export function foldStripeCheckoutAttemptEvents(
             }
             attempt.sessionId = release.sessionId ?? attempt.sessionId;
             attempt.releaseReason = release.reason;
+            continue;
+        }
+        if (event.type === eventTypes.reconciliationMiss) {
+            const miss = parseReconciliationMissData(event.data);
+            if (miss.attemptId !== attemptId) {
+                continue;
+            }
+            if (!attempt) {
+                throw new StripeCheckoutAttemptConflictError(
+                    'reconciliation_miss_without_snapshot',
+                );
+            }
+            if (!event.createdAt) {
+                throw new StripeCheckoutAttemptConflictError(
+                    'reconciliation_miss_created_at_missing',
+                );
+            }
+            reconciliationMisses.push({
+                createdAt: event.createdAt,
+                observedAt: new Date(miss.observedAt),
+            });
         }
     }
-    return attempt;
+    return { attempt, reconciliationMisses };
+}
+
+export function foldStripeCheckoutAttemptEvents(
+    attemptId: string,
+    attemptEvents: readonly AttemptEvent[],
+): StripeCheckoutAttempt | undefined {
+    return foldStripeCheckoutAttemptEventState(attemptId, attemptEvents)
+        .attempt;
 }
 
 function getCreatedAttemptIds(attemptEvents: readonly AttemptEvent[]) {
@@ -521,6 +660,200 @@ export async function getActiveStripeCheckoutAttempt(
         );
     }
     return activeAttempts[0];
+}
+
+function getLastReconciliationMiss(
+    reconciliationMisses: readonly StripeCheckoutAttemptReconciliationMiss[],
+) {
+    return reconciliationMisses.reduce<
+        StripeCheckoutAttemptReconciliationMiss | undefined
+    >(
+        (latest, miss) =>
+            !latest || miss.createdAt.getTime() > latest.createdAt.getTime()
+                ? miss
+                : latest,
+        undefined,
+    );
+}
+
+export async function listActiveStripeCheckoutAttemptsForReconciliation({
+    afterCreatedEventId,
+    limit = 25,
+}: {
+    afterCreatedEventId?: number;
+    limit?: number;
+} = {}) {
+    if (!Number.isInteger(limit) || limit <= 0) {
+        throw new StripeCheckoutAttemptConflictError(
+            'reconciliation_page_limit_invalid',
+        );
+    }
+    if (
+        afterCreatedEventId !== undefined &&
+        (!Number.isSafeInteger(afterCreatedEventId) || afterCreatedEventId <= 0)
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'reconciliation_page_cursor_invalid',
+        );
+    }
+
+    const boundedLimit = Math.min(limit, 100);
+    const db = storage();
+    const terminalEvents = alias(
+        events,
+        'stripe_checkout_attempt_terminal_events',
+    );
+    const createdRows = await db
+        .select({
+            aggregateId: events.aggregateId,
+            createdAt: events.createdAt,
+            data: events.data,
+            id: events.id,
+        })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, eventTypes.created),
+                afterCreatedEventId === undefined
+                    ? undefined
+                    : gt(events.id, afterCreatedEventId),
+                notExists(
+                    db
+                        .select({ id: terminalEvents.id })
+                        .from(terminalEvents)
+                        .where(
+                            and(
+                                eq(
+                                    terminalEvents.aggregateId,
+                                    events.aggregateId,
+                                ),
+                                eq(terminalEvents.type, eventTypes.released),
+                                eq(
+                                    sql<string>`${terminalEvents.data}->>'attemptId'`,
+                                    sql<string>`${events.data}->>'attemptId'`,
+                                ),
+                            ),
+                        ),
+                ),
+            ),
+        )
+        .orderBy(asc(events.id))
+        .limit(boundedLimit + 1);
+    const hasMore = createdRows.length > boundedLimit;
+    const pageRows = createdRows.slice(0, boundedLimit);
+    if (pageRows.length === 0) {
+        return {
+            hasMore: false,
+            items: [] satisfies ActiveStripeCheckoutAttemptReconciliationCandidate[],
+        };
+    }
+
+    const aggregateIds = [...new Set(pageRows.map((row) => row.aggregateId))];
+    const relatedEvents = await db
+        .select({
+            aggregateId: events.aggregateId,
+            createdAt: events.createdAt,
+            data: events.data,
+            type: events.type,
+        })
+        .from(events)
+        .where(
+            and(
+                inArray(events.aggregateId, aggregateIds),
+                inArray(events.type, relevantEventTypes),
+            ),
+        )
+        .orderBy(asc(events.id));
+    const eventsByAggregateId = Map.groupBy(
+        relatedEvents,
+        (event) => event.aggregateId,
+    );
+    const items =
+        pageRows.flatMap<ActiveStripeCheckoutAttemptReconciliationCandidate>(
+            (createdRow) => {
+                const snapshot = parseSnapshot(createdRow.data);
+                const state = foldStripeCheckoutAttemptEventState(
+                    snapshot.attemptId,
+                    eventsByAggregateId.get(createdRow.aggregateId) ?? [],
+                );
+                if (!state.attempt || state.attempt.releaseReason) {
+                    return [];
+                }
+                const lastReconciliationMiss = getLastReconciliationMiss(
+                    state.reconciliationMisses,
+                );
+                return [
+                    {
+                        attempt: state.attempt,
+                        createdAt: createdRow.createdAt,
+                        createdEventId: createdRow.id,
+                        ...(lastReconciliationMiss
+                            ? {
+                                  lastReconciliationMissAt:
+                                      lastReconciliationMiss.createdAt,
+                              }
+                            : {}),
+                    },
+                ];
+            },
+        );
+    const lastPageRow = pageRows.at(-1);
+    return {
+        hasMore,
+        items,
+        ...(hasMore && lastPageRow
+            ? { nextCreatedEventId: lastPageRow.id }
+            : {}),
+    };
+}
+
+export async function getStripeCheckoutAttemptReconciliationCursor(): Promise<
+    number | undefined
+> {
+    const [latestEvent] = await storage()
+        .select({ data: events.data, type: events.type })
+        .from(events)
+        .where(eq(events.aggregateId, reconciliationCursorAggregateId))
+        .orderBy(desc(events.id))
+        .limit(1);
+    return latestEvent
+        ? parseStripeCheckoutAttemptReconciliationCursorEvent(latestEvent)
+        : undefined;
+}
+
+export async function setStripeCheckoutAttemptReconciliationCursor(
+    afterCreatedEventId: number | null,
+): Promise<number | undefined> {
+    if (
+        afterCreatedEventId !== null &&
+        (!Number.isSafeInteger(afterCreatedEventId) || afterCreatedEventId <= 0)
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'reconciliation_cursor_invalid',
+        );
+    }
+    // This append-only cursor schedules at-least-once scans; it is not a
+    // correctness lease. Attempt transitions still re-fold under their cart
+    // lock, so overlapping workers may duplicate work but cannot bypass the
+    // checkout attempt fence.
+    await storage()
+        .insert(events)
+        .values(
+            afterCreatedEventId === null
+                ? {
+                      aggregateId: reconciliationCursorAggregateId,
+                      data: { afterCreatedEventId: null },
+                      type: reconciliationCursorEventTypes.reset,
+                      version: 1,
+                  }
+                : {
+                      aggregateId: reconciliationCursorAggregateId,
+                      data: { afterCreatedEventId },
+                      type: reconciliationCursorEventTypes.advanced,
+                      version: 1,
+                  },
+        );
+    return afterCreatedEventId ?? undefined;
 }
 
 export async function hasActiveStripeCheckoutAttemptForAccount(
@@ -771,6 +1104,129 @@ export async function bindStripeCheckoutAttempt({
     });
 }
 
+export async function recordStripeCheckoutAttemptReconciliationMiss({
+    attemptId,
+    cartId,
+    observedAt,
+}: {
+    attemptId: string;
+    cartId: number;
+    observedAt: Date;
+}): Promise<RecordStripeCheckoutAttemptReconciliationMissResult> {
+    assertValidDate(observedAt, 'reconciliation_observed_at');
+    return storage().transaction(async (db) => {
+        await lockCartRow(cartId, db);
+        const state = foldStripeCheckoutAttemptEventState(
+            attemptId,
+            await getAttemptEvents(cartId, db),
+        );
+        const attempt = state.attempt;
+        if (!attempt) {
+            return { status: 'attempt_missing' };
+        }
+        if (attempt.releaseReason) {
+            return {
+                releaseReason: attempt.releaseReason,
+                status: 'released',
+            };
+        }
+        if (attempt.sessionId) {
+            return { sessionId: attempt.sessionId, status: 'bound' };
+        }
+        const existing = state.reconciliationMisses.find(
+            (miss) => miss.observedAt.getTime() === observedAt.getTime(),
+        );
+        if (existing) {
+            return {
+                createdAt: existing.createdAt,
+                observedAt: existing.observedAt,
+                status: 'existing',
+            };
+        }
+        const [recorded] = await db
+            .insert(events)
+            .values({
+                aggregateId: cartAggregateId(cartId),
+                data: { attemptId, observedAt: observedAt.toISOString() },
+                type: eventTypes.reconciliationMiss,
+                version: 1,
+            })
+            .returning({ createdAt: events.createdAt });
+        if (!recorded) {
+            throw new StripeCheckoutAttemptConflictError(
+                'reconciliation_miss_not_recorded',
+            );
+        }
+        return {
+            createdAt: recorded.createdAt,
+            observedAt,
+            status: 'recorded',
+        };
+    });
+}
+
+async function releaseLockedStripeCheckoutAttempt({
+    attempt,
+    attemptId,
+    cartId,
+    db,
+    now,
+    reason,
+    sessionId,
+}: AttemptReleasedData & {
+    attempt: StripeCheckoutAttempt;
+    cartId: number;
+    db: TransactionClient;
+    now: Date;
+}) {
+    if (attempt.sessionId && attempt.sessionId !== sessionId) {
+        throw new StripeCheckoutAttemptConflictError('session_binding_changed');
+    }
+    if (attempt.releaseReason) {
+        const equivalentAbandonment =
+            (attempt.releaseReason === 'cancelled' ||
+                attempt.releaseReason === 'expired') &&
+            (reason === 'cancelled' || reason === 'expired');
+        if (
+            (!equivalentAbandonment && attempt.releaseReason !== reason) ||
+            attempt.sessionId !== (sessionId ?? attempt.sessionId)
+        ) {
+            throw new StripeCheckoutAttemptConflictError('release_changed');
+        }
+        return attempt;
+    }
+    if (!attempt.sessionId && sessionId) {
+        await db.insert(events).values({
+            aggregateId: cartAggregateId(cartId),
+            data: { attemptId, sessionId },
+            type: eventTypes.bound,
+            version: 1,
+        });
+    }
+    // Cleanup commits before the release event removes the cart fence.
+    // Replays of an already released attempt intentionally skip cleanup so
+    // they cannot release reservations created by a subsequent attempt.
+    await releaseOutletReservationsForCheckoutAttempt(
+        cartId,
+        attempt.snapshot.items.flatMap((item) =>
+            item.outlet ? [item.outlet.reservationId] : [],
+        ),
+        now,
+        db,
+    );
+    await db.insert(events).values({
+        aggregateId: cartAggregateId(cartId),
+        data: { attemptId, reason, sessionId },
+        type: eventTypes.released,
+        version: 1,
+    });
+    return {
+        ...attempt,
+        releaseReason: reason,
+        sessionId: sessionId ?? attempt.sessionId,
+    };
+}
+
 export async function releaseStripeCheckoutAttempt({
     attemptId,
     cartId,
@@ -783,54 +1239,102 @@ export async function releaseStripeCheckoutAttempt({
         if (!attempt) {
             throw new StripeCheckoutAttemptConflictError('attempt_missing');
         }
-        if (attempt.sessionId && attempt.sessionId !== sessionId) {
-            throw new StripeCheckoutAttemptConflictError(
-                'session_binding_changed',
-            );
+        return releaseLockedStripeCheckoutAttempt({
+            attempt,
+            attemptId,
+            cartId,
+            db,
+            now: new Date(),
+            reason,
+            sessionId,
+        });
+    });
+}
+
+export async function releaseStripeCheckoutAttemptAfterReconciliationMisses({
+    attemptId,
+    cartId,
+    missBefore,
+    now,
+}: {
+    attemptId: string;
+    cartId: number;
+    missBefore: Date;
+    now: Date;
+}): Promise<ReleaseStripeCheckoutAttemptAfterReconciliationMissesResult> {
+    assertValidDate(now, 'reconciliation_now');
+    assertValidDate(missBefore, 'reconciliation_miss_before');
+    return storage().transaction(async (db) => {
+        await lockCartRow(cartId, db);
+        const state = foldStripeCheckoutAttemptEventState(
+            attemptId,
+            await getAttemptEvents(cartId, db),
+        );
+        const attempt = state.attempt;
+        if (!attempt) {
+            return { status: 'attempt_missing' };
         }
         if (attempt.releaseReason) {
-            const equivalentAbandonment =
-                (attempt.releaseReason === 'cancelled' ||
-                    attempt.releaseReason === 'expired') &&
-                (reason === 'cancelled' || reason === 'expired');
-            if (
-                (!equivalentAbandonment && attempt.releaseReason !== reason) ||
-                attempt.sessionId !== (sessionId ?? attempt.sessionId)
-            ) {
-                throw new StripeCheckoutAttemptConflictError('release_changed');
-            }
-            return attempt;
+            return {
+                releaseReason: attempt.releaseReason,
+                status: 'already_released',
+            };
         }
-        if (!attempt.sessionId && sessionId) {
-            await db.insert(events).values({
-                aggregateId: cartAggregateId(cartId),
-                data: { attemptId, sessionId },
-                type: eventTypes.bound,
-                version: 1,
-            });
+        if (attempt.sessionId) {
+            return { sessionId: attempt.sessionId, status: 'bound' };
         }
-        // Cleanup commits before the release event removes the cart fence.
-        // Replays of an already released attempt intentionally skip cleanup so
-        // they cannot release reservations created by a subsequent attempt.
-        await releaseOutletReservationsForCheckoutAttempt(
-            cartId,
-            attempt.snapshot.items.flatMap((item) =>
-                item.outlet ? [item.outlet.reservationId] : [],
+        const deadlineValue = attempt.snapshot.stripeSession.expiresAt;
+        if (!deadlineValue) {
+            return { status: 'null_deadline' };
+        }
+        const expiresAt = new Date(deadlineValue);
+        if (expiresAt.getTime() > now.getTime()) {
+            return { expiresAt, status: 'not_expired' };
+        }
+
+        const graceMs = now.getTime() - missBefore.getTime();
+        const currentMiss = getLastReconciliationMiss(
+            state.reconciliationMisses.filter(
+                (miss) =>
+                    miss.observedAt.getTime() === now.getTime() &&
+                    miss.createdAt.getTime() >= expiresAt.getTime(),
             ),
-            new Date(),
-            db,
         );
-        await db.insert(events).values({
-            aggregateId: cartAggregateId(cartId),
-            data: { attemptId, reason, sessionId },
-            type: eventTypes.released,
-            version: 1,
+        const previousMiss = currentMiss
+            ? getLastReconciliationMiss(
+                  state.reconciliationMisses.filter(
+                      (miss) =>
+                          miss.createdAt.getTime() >= expiresAt.getTime() &&
+                          miss.createdAt.getTime() <=
+                              currentMiss.createdAt.getTime() - graceMs,
+                  ),
+              )
+            : undefined;
+        if (graceMs <= 0 || !currentMiss || !previousMiss) {
+            const lastReconciliationMiss = getLastReconciliationMiss(
+                state.reconciliationMisses,
+            );
+            return {
+                ...(lastReconciliationMiss
+                    ? {
+                          lastReconciliationMissAt:
+                              lastReconciliationMiss.createdAt,
+                      }
+                    : {}),
+                status: 'too_soon',
+            };
+        }
+
+        const releasedAttempt = await releaseLockedStripeCheckoutAttempt({
+            attempt,
+            attemptId,
+            cartId,
+            db,
+            now,
+            reason: 'expired',
+            sessionId: null,
         });
-        return {
-            ...attempt,
-            releaseReason: reason,
-            sessionId: sessionId ?? attempt.sessionId,
-        };
+        return { attempt: releasedAttempt, status: 'released' };
     });
 }
 
