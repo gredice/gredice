@@ -31,6 +31,7 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { enqueueCheckoutOperationScheduledNotification } from './checkoutNotificationOutboxRepo';
 import {
     createEvent,
     getAllEvents,
@@ -1921,6 +1922,13 @@ async function ensureCheckoutOperation(
                 ...fingerprint,
             },
         ),
+        db,
+    );
+    await enqueueCheckoutOperationScheduledNotification(
+        {
+            operationId,
+            scheduledDate: new Date(fingerprint.scheduledDate),
+        },
         db,
     );
 

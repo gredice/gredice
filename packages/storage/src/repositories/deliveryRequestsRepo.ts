@@ -36,6 +36,7 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { enqueueCheckoutDeliveryNotifications } from './checkoutNotificationOutboxRepo';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
 import {
     acquireDeliveryDispatchLock,
@@ -1608,6 +1609,10 @@ async function insertDeliveryRequest(
     requestId: string,
     data: DeliveryRequestInput,
     db: DatabaseClient,
+    options: {
+        checkoutNotificationScope?: string;
+        enqueueCheckoutNotifications?: boolean;
+    } = {},
 ) {
     await db.insert(deliveryRequests).values({
         id: requestId,
@@ -1625,6 +1630,19 @@ async function insertDeliveryRequest(
         }),
         db,
     );
+    if (options.enqueueCheckoutNotifications) {
+        await enqueueCheckoutDeliveryNotifications(
+            {
+                accountId: data.accountId,
+                addressId: data.addressId,
+                checkoutNotificationScope: options.checkoutNotificationScope,
+                mode: data.mode,
+                requestId,
+                slotId: data.slotId,
+            },
+            db,
+        );
+    }
 }
 
 function assertExistingCheckoutDeliveryRequest(
@@ -1741,6 +1759,7 @@ export async function createDeliveryRequest(
 
 export async function getOrCreateDeliveryRequest(
     data: DeliveryRequestInput,
+    options: { checkoutNotificationScope?: string } = {},
 ): Promise<{ requestId: string; created: boolean }> {
     const existing = await getExistingCheckoutDeliveryRequest(data, storage());
     if (existing) {
@@ -1764,7 +1783,10 @@ export async function getOrCreateDeliveryRequest(
             closeExpiredSlot: false,
         });
         const requestId = randomUUID();
-        await insertDeliveryRequest(requestId, data, tx);
+        await insertDeliveryRequest(requestId, data, tx, {
+            checkoutNotificationScope: options.checkoutNotificationScope,
+            enqueueCheckoutNotifications: true,
+        });
         return { requestId, created: true };
     });
 }

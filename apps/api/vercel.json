@@ -35,6 +35,10 @@
             "schedule": "* * * * *"
         },
         {
+            "path": "/api/internal/cron/checkout-notifications",
+            "schedule": "* * * * *"
+        },
+        {
             "path": "/api/internal/cron/delivery-notification-health",
             "schedule": "*/5 * * * *"
         },

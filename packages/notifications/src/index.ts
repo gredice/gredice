@@ -93,6 +93,7 @@ function formatCurrency(amountCents?: number | null, currency?: string | null) {
 
 async function buildOperationContext(
     operationId: number,
+    throwOnLookupError = false,
 ): Promise<OperationContext | null> {
     try {
         const operation = await getOperationById(operationId);
@@ -190,6 +191,7 @@ async function buildOperationContext(
             scheduledDate: operation.scheduledDate || undefined,
         };
     } catch (error) {
+        if (throwOnLookupError) throw error;
         console.error('Failed to build operation context', {
             operationId,
             error,
@@ -198,12 +200,27 @@ async function buildOperationContext(
     }
 }
 
-async function sendSlackMessage(channel: string | undefined, text: string) {
+export type SlackNotificationDeliveryOptions = {
+    abortSignal?: AbortSignal;
+    beforeProviderSubmission?: () => Promise<void>;
+    throwOnLookupError?: boolean;
+};
+
+async function sendSlackMessage(
+    channel: string | undefined,
+    text: string,
+    {
+        abortSignal,
+        beforeProviderSubmission,
+    }: SlackNotificationDeliveryOptions = {},
+) {
     const token = process.env.SLACK_BOT_TOKEN;
     const result = await postMessage({
         token,
         channel,
         text,
+        abortSignal,
+        beforeProviderSubmission,
     });
     if (!result.ok) {
         if (result.skipped) {
@@ -219,6 +236,7 @@ async function sendSlackMessage(channel: string | undefined, text: string) {
 
 async function getSlackChannelId(
     key: NotificationSettingKey,
+    throwOnLookupError = false,
 ): Promise<string | undefined> {
     try {
         const setting = await getNotificationSetting(key);
@@ -238,6 +256,7 @@ async function getSlackChannelId(
 
         return undefined;
     } catch (error) {
+        if (throwOnLookupError) throw error;
         console.error('Failed to load Slack notification setting', {
             key,
             error,
@@ -253,8 +272,24 @@ export async function notifyOperationUpdate(
         | OperationCompletePayload
         | OperationSchedulePayload
         | OperationCancelPayload,
+): Promise<void> {
+    await deliverOperationSlackNotification(operationId, type, options);
+}
+
+export async function deliverOperationSlackNotification(
+    operationId: number,
+    type: OperationEventType,
+    options:
+        | OperationCompletePayload
+        | OperationSchedulePayload
+        | OperationCancelPayload
+        | undefined,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
 ) {
-    const context = await buildOperationContext(operationId);
+    const context = await buildOperationContext(
+        operationId,
+        deliveryOptions.throwOnLookupError,
+    );
     if (!context) {
         return;
     }
@@ -321,13 +356,26 @@ export async function notifyOperationUpdate(
     }
     lines.push(`• ID radnje: ${operationId}`);
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyDeliveryRequestEvent(
     requestId: string,
     type: DeliveryRequestEventType,
+    options?: DeliveryRequestEventOptions,
+): Promise<void> {
+    await deliverDeliveryRequestSlackNotification(requestId, type, options);
+}
+
+export async function deliverDeliveryRequestSlackNotification(
+    requestId: string,
+    type: DeliveryRequestEventType,
     options: DeliveryRequestEventOptions = {},
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
 ) {
     const request = await getDeliveryRequest(requestId);
     if (!request) {
@@ -339,11 +387,15 @@ export async function notifyDeliveryRequestEvent(
 
     let operationContext: OperationContext | null = null;
     if (request.operationId) {
-        operationContext = await buildOperationContext(request.operationId);
+        operationContext = await buildOperationContext(
+            request.operationId,
+            deliveryOptions.throwOnLookupError,
+        );
     }
 
     const channel = await getSlackChannelId(
         NotificationSettingKeys.SlackDeliveryChannel,
+        deliveryOptions.throwOnLookupError,
     );
     if (!channel) {
         console.debug('Skipping delivery Slack notification: missing channel', {
@@ -389,7 +441,11 @@ export async function notifyDeliveryRequestEvent(
         lines.push(`• Napomena: ${options.note}`);
     }
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyNewUserRegistered(userId: string) {
