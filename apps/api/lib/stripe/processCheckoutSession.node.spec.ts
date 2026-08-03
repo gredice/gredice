@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     fingerprintStripeCheckoutValue,
+    StripePaymentProcessingClaimLostError,
+    StripePaymentProcessingDeferredError,
+    StripePaymentProcessingPermanentError,
     SunflowerPackageAlreadyPurchasedError,
 } from '@gredice/storage';
 import {
@@ -56,10 +59,21 @@ function makeDependencies(
         Record<keyof ProcessCheckoutSessionDependencies, unknown>
     > = {},
 ): ProcessCheckoutSessionDependencies {
+    let completionOutputs: {
+        orderConfirmationEmailMessageId: number;
+        outputVersion: 1;
+        purchaseNotificationEmailMessageId: number;
+    } | null = null;
+    const paidCartIds = new Set<number>();
     const readShoppingCart = async (...args: unknown[]) => {
         const override = overrides.getShoppingCart;
         if (typeof override === 'function') {
-            return override(...args);
+            const cart = await override(...args);
+            return typeof args[0] === 'number' &&
+                paidCartIds.has(args[0]) &&
+                cart
+                ? { ...cart, status: 'paid' }
+                : cart;
         }
         record(calls, 'getShoppingCart', args);
         return null;
@@ -71,9 +85,6 @@ function makeDependencies(
         },
         notifyCheckoutFulfillmentIncident: async (...args: unknown[]) => {
             record(calls, 'notifyCheckoutFulfillmentIncident', args);
-        },
-        notifyPurchase: async (...args: unknown[]) => {
-            record(calls, 'notifyPurchase', args);
         },
         consumeInventoryItem: async (...args: unknown[]) => {
             record(calls, 'consumeInventoryItem', args);
@@ -116,6 +127,19 @@ function makeDependencies(
         earnSunflowersForPayment: async (...args: unknown[]) => {
             record(calls, 'earnSunflowersForPayment', args);
         },
+        ensureStripePaymentCompletionOutputs: async (...args: unknown[]) => {
+            record(calls, 'ensureStripePaymentCompletionOutputs', args);
+            completionOutputs = {
+                orderConfirmationEmailMessageId: 4378,
+                outputVersion: 1,
+                purchaseNotificationEmailMessageId: 4379,
+            };
+            return {
+                created: true,
+                ...completionOutputs,
+                status: 'ready' as const,
+            };
+        },
         ensureInvoiceForTransaction: async (...args: unknown[]) => {
             record(calls, 'ensureInvoiceForTransaction', args);
             return {
@@ -157,6 +181,10 @@ function makeDependencies(
             record(calls, 'getCompletedTransactionByStripePaymentId', args);
             return undefined;
         },
+        getStripePaymentCompletionOutputs: async (...args: unknown[]) => {
+            record(calls, 'getStripePaymentCompletionOutputs', args);
+            return completionOutputs;
+        },
         getCheckoutFulfillmentStartedCartItemIds: async (
             ...args: unknown[]
         ) => {
@@ -191,7 +219,6 @@ function makeDependencies(
             record(calls, 'getRaisedBedFieldsWithEvents', args);
             return [];
         },
-        getShoppingCart: readShoppingCart,
         getStripeCheckoutAttempt: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutAttempt', args);
             return undefined;
@@ -248,6 +275,7 @@ function makeDependencies(
         },
         markCartPaidIfAllItemsPaid: async (cartId: unknown) => {
             record(calls, 'markCartPaidIfAllItemsPaid', [cartId]);
+            if (typeof cartId === 'number') paidCartIds.add(cartId);
         },
         normalizeShoppingCartInventoryUsage: async (...args: unknown[]) => {
             record(calls, 'normalizeShoppingCartInventoryUsage', args);
@@ -380,10 +408,16 @@ function makeDependencies(
         },
         withStripePaymentProcessingLock: async (
             id: string,
-            callback: () => Promise<unknown>,
+            callback: Parameters<
+                ProcessCheckoutSessionDependencies['withStripePaymentProcessingLock']
+            >[1],
         ) => {
             record(calls, 'withStripePaymentProcessingLock', [id]);
-            return callback();
+            return callback({
+                assertOwned: async () => undefined,
+                claimToken: 'test-claim-token',
+                signal: new AbortController().signal,
+            });
         },
         verifyStripeCheckoutAttemptLiveCart: async (...args: unknown[]) => {
             record(calls, 'verifyStripeCheckoutAttemptLiveCart', args);
@@ -427,9 +461,6 @@ function makeDependencies(
             record(calls, 'buildOrderConfirmationItems', args);
             return [];
         },
-        notifyOrderConfirmationEmail: async (...args: unknown[]) => {
-            record(calls, 'notifyOrderConfirmationEmail', args);
-        },
         getPostHogClient: async (...args: unknown[]) => {
             record(calls, 'getPostHogClient', args);
             return {
@@ -439,6 +470,7 @@ function makeDependencies(
             };
         },
         ...overrides,
+        getShoppingCart: readShoppingCart,
     };
 
     return dependencies as unknown as ProcessCheckoutSessionDependencies;
@@ -922,7 +954,7 @@ async function assertCheckoutPlantingRace({
 }
 
 describe('processCheckoutSession', () => {
-    it('skips an already completed transaction without processing items again', async () => {
+    it('suppresses fulfillment when a completed transaction already has both durable outputs', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
             getStripeCheckoutSession: async (...args: unknown[]) => {
@@ -935,20 +967,75 @@ describe('processCheckoutSession', () => {
                 record(calls, 'getCompletedTransactionByStripePaymentId', args);
                 return { id: 123 };
             },
+            getStripePaymentCompletionOutputs: async (...args: unknown[]) => {
+                record(calls, 'getStripePaymentCompletionOutputs', args);
+                return {
+                    orderConfirmationEmailMessageId: 11,
+                    outputVersion: 1,
+                    purchaseNotificationEmailMessageId: 12,
+                };
+            },
         });
 
         await processCheckoutSession('cs_paid', dependencies);
 
         assert.deepStrictEqual(callNames(calls), [
-            'getStripeCheckoutSession',
             'withStripePaymentProcessingLock',
+            'getStripeCheckoutSession',
             'getCompletedTransactionByStripePaymentId',
+            'getStripePaymentCompletionOutputs',
         ]);
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
         assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
     });
 
-    it('accepts a zero-total no-payment-required snapshot and tolerates absent attempt history on completed replay', async () => {
+    it('repairs missing outputs after a transaction commit without replaying fulfillment, billing, or analytics', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getCompletedTransactionByStripePaymentId: async () => ({
+                accountId: 'account-1',
+                amount: 2500,
+                currency: 'eur',
+                id: 123,
+            }),
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return {
+                    ...cart,
+                    items: cart.items.map((item) => ({
+                        ...item,
+                        status: 'paid',
+                    })),
+                    status: 'paid',
+                };
+            },
+        });
+
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(
+            callsNamed(calls, 'ensureInvoiceForTransaction').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'posthog.capture').length, 0);
+    });
+
+    it('repairs zero-total completion outputs without attempt history or fulfillment replay', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
             getStripeCheckoutSession: async (...args: unknown[]) => {
@@ -959,18 +1046,42 @@ describe('processCheckoutSession', () => {
                 ...args: unknown[]
             ) => {
                 record(calls, 'getCompletedTransactionByStripePaymentId', args);
-                return { id: 123 };
+                return {
+                    accountId: 'account-1',
+                    amount: 0,
+                    currency: 'eur',
+                    id: 123,
+                };
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                const cart = makeCart();
+                return {
+                    ...cart,
+                    items: cart.items.map((item) => ({
+                        ...item,
+                        status: 'paid',
+                    })),
+                    status: 'paid',
+                };
             },
         });
 
         await processCheckoutSession('cs_paid', dependencies);
 
-        assert.deepStrictEqual(callNames(calls), [
-            'getStripeCheckoutSession',
-            'withStripePaymentProcessingLock',
-            'getCompletedTransactionByStripePaymentId',
-            'getStripeCheckoutAttempt',
-        ]);
+        assert.equal(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            1,
+        );
+        const output = callsNamed(
+            calls,
+            'ensureStripePaymentCompletionOutputs',
+        )[0]?.args[0];
+        assert.ok(isRecord(output));
+        assert.ok(isRecord(output.orderConfirmation));
+        assert.equal(output.orderConfirmation.totalAmountCents, 0);
+        assert.ok(isRecord(output.purchaseNotification));
+        assert.equal(output.purchaseNotification.amountTotal, 0);
         assert.equal(
             callsNamed(calls, 'releaseStripeCheckoutAttempt').length,
             0,
@@ -990,7 +1101,9 @@ describe('processCheckoutSession', () => {
 
         await assert.rejects(
             processCheckoutSession('cs_paid', dependencies),
-            /Stripe checkout attempt conflict \(attempt_missing\)\./u,
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'checkout_attempt_attempt_missing',
         );
 
         assert.equal(
@@ -1002,7 +1115,7 @@ describe('processCheckoutSession', () => {
         assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
     });
 
-    it('rejects unpaid sessions and no-payment-required sessions without both a zero total and snapshot metadata', async () => {
+    it('rejects no-payment-required sessions without both a zero total and snapshot metadata', async () => {
         const rejectedSessions = [
             {
                 ...makeNoPaymentRequiredSnapshotSession(1),
@@ -1012,11 +1125,6 @@ describe('processCheckoutSession', () => {
                 ...makeNoPaymentRequiredSnapshotSession(),
                 id: 'cs_no_snapshot',
                 metadata: undefined,
-            },
-            {
-                ...makeNoPaymentRequiredSnapshotSession(),
-                id: 'cs_unpaid',
-                paymentStatus: 'unpaid',
             },
         ];
 
@@ -1029,12 +1137,148 @@ describe('processCheckoutSession', () => {
                 },
             });
 
-            await processCheckoutSession(session.id, dependencies);
+            await assert.rejects(
+                processCheckoutSession(session.id, dependencies),
+                (error: unknown) =>
+                    error instanceof StripePaymentProcessingPermanentError &&
+                    error.failureCode === 'checkout_session_unpaid',
+            );
 
             assert.deepStrictEqual(callNames(calls), [
+                'withStripePaymentProcessingLock',
                 'getStripeCheckoutSession',
             ]);
         }
+    });
+
+    it('defers a complete unpaid session, then fulfills its paid state exactly once', async () => {
+        const calls: RecordedCall[] = [];
+        let paid = false;
+        let completed = false;
+        const dependencies = makeDependencies(calls, {
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [{ active: true, id: 88, positionIndex: 2 }];
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return {
+                    ...makeSession(),
+                    paymentStatus: paid ? 'paid' : 'unpaid',
+                };
+            },
+            withStripePaymentProcessingLock: async (
+                id: string,
+                callback: Parameters<
+                    ProcessCheckoutSessionDependencies['withStripePaymentProcessingLock']
+                >[1],
+            ) => {
+                record(calls, 'withStripePaymentProcessingLock', [id]);
+                if (completed) return undefined;
+                const result = await callback({
+                    assertOwned: async () => undefined,
+                    claimToken: 'deferred-test-claim-token',
+                    signal: new AbortController().signal,
+                });
+                completed = true;
+                return result;
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingDeferredError &&
+                error.failureCode === 'checkout_session_payment_pending',
+        );
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+        assert.equal(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            0,
+        );
+
+        paid = true;
+        await processCheckoutSession('cs_paid', dependencies);
+        await processCheckoutSession('cs_paid', dependencies);
+
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 1);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 1);
+        assert.equal(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            1,
+        );
+    });
+
+    it('rejects an invalid paid-session amount before fulfillment', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return { ...makeSession(), amountTotal: null };
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'checkout_session_amount_invalid',
+        );
+
+        assert.equal(callsNamed(calls, 'getShoppingCart').length, 0);
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
+    });
+
+    it('does not retrieve Stripe for a terminal durable claim', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            withStripePaymentProcessingLock: async (id: string) => {
+                record(calls, 'withStripePaymentProcessingLock', [id]);
+                return undefined;
+            },
+        });
+
+        await processCheckoutSession('cs_terminal', dependencies);
+
+        assert.deepStrictEqual(callNames(calls), [
+            'withStripePaymentProcessingLock',
+        ]);
+    });
+
+    it('classifies Stripe resource-missing as permanent but preserves transport timeouts as retryable', async () => {
+        const missingCalls: RecordedCall[] = [];
+        const missingDependencies = makeDependencies(missingCalls, {
+            getStripeCheckoutSession: async () => {
+                throw Object.assign(new Error('missing'), {
+                    code: 'resource_missing',
+                    statusCode: 404,
+                });
+            },
+        });
+        await assert.rejects(
+            processCheckoutSession('cs_missing', missingDependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'checkout_session_missing',
+        );
+
+        const timeout = new Error('request timed out');
+        timeout.name = 'StripeConnectionError';
+        const timeoutDependencies = makeDependencies([], {
+            getStripeCheckoutSession: async () => {
+                throw timeout;
+            },
+        });
+        await assert.rejects(
+            processCheckoutSession('cs_timeout', timeoutDependencies),
+            (error: unknown) => error === timeout,
+        );
     });
 
     it('marks a Stripe-paid cart item paid, records the transaction, and awards sunflowers', async () => {
@@ -1317,6 +1561,59 @@ describe('processCheckoutSession', () => {
         assert.equal(
             callsNamed(calls, 'releaseStripeCheckoutAttempt').length,
             1,
+        );
+    });
+
+    it('stops finalization when the durable Stripe claim is lost after fulfillment', async () => {
+        const calls: RecordedCall[] = [];
+        let ownershipChecks = 0;
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            withStripePaymentProcessingLock: async (
+                _stripePaymentId: string,
+                callback: Parameters<
+                    ProcessCheckoutSessionDependencies['withStripePaymentProcessingLock']
+                >[1],
+            ) =>
+                callback({
+                    assertOwned: async () => {
+                        ownershipChecks += 1;
+                        if (ownershipChecks === 6) {
+                            throw new StripePaymentProcessingClaimLostError(
+                                'cs_paid',
+                            );
+                        }
+                    },
+                    claimToken: 'lost-claim-token',
+                    signal: new AbortController().signal,
+                }),
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            StripePaymentProcessingClaimLostError,
+        );
+        assert.strictEqual(ownershipChecks, 6);
+        assert.strictEqual(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            1,
+        );
+        assert.strictEqual(
+            callsNamed(calls, 'notifyOperationUpdate').length,
+            0,
+        );
+        assert.strictEqual(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.strictEqual(callsNamed(calls, 'createTransaction').length, 0);
+        assert.strictEqual(
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            0,
         );
     });
 
@@ -1635,6 +1932,17 @@ describe('processCheckoutSession', () => {
                 },
             ],
         );
+        const billingCallOrder = callNames(calls);
+        assert.ok(
+            billingCallOrder.indexOf('createTransaction') <
+                billingCallOrder.indexOf(
+                    'ensureStripePaymentCompletionOutputs',
+                ),
+        );
+        assert.ok(
+            billingCallOrder.indexOf('ensureStripePaymentCompletionOutputs') <
+                billingCallOrder.indexOf('ensureInvoiceForTransaction'),
+        );
     });
 
     it('fulfills a paid sunflower package without cart processing or loyalty earning', async () => {
@@ -1721,24 +2029,53 @@ describe('processCheckoutSession', () => {
             ],
         );
         assert.deepStrictEqual(
-            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs')[0]?.args,
             [
                 {
-                    to: 'buyer@example.test',
-                    cartId: null,
-                    checkoutSessionId: 'cs_package_paid',
-                    items: [
-                        {
-                            name: 'Puna gredica',
-                            quantity: 1,
-                            amountSubtotal: 4999,
-                            currency: 'eur',
-                        },
-                    ],
-                    totalAmountCents: 4999,
-                    currency: 'eur',
+                    claimToken: 'test-claim-token',
+                    orderConfirmation: {
+                        cartId: null,
+                        currency: 'eur',
+                        items: [
+                            {
+                                amountSubtotal: 4999,
+                                currency: 'eur',
+                                name: 'Puna gredica',
+                                quantity: 1,
+                            },
+                        ],
+                        manageUrl: 'https://vrt.gredice.com',
+                        to: 'buyer@example.test',
+                        totalAmountCents: 4999,
+                    },
+                    purchaseNotification: {
+                        accountId: 'account-1',
+                        amountTotal: 4999,
+                        checkoutSessionId: 'cs_package_paid',
+                        currency: 'eur',
+                        customerEmail: 'buyer@example.test',
+                        items: [
+                            {
+                                amountSubtotal: 4999,
+                                name: 'Puna gredica',
+                                quantity: 1,
+                            },
+                        ],
+                    },
+                    stripePaymentId: 'cs_package_paid',
                 },
             ],
+        );
+        const packageCallOrder = callNames(calls);
+        assert.ok(
+            packageCallOrder.indexOf('createTransaction') <
+                packageCallOrder.indexOf(
+                    'ensureStripePaymentCompletionOutputs',
+                ),
+        );
+        assert.ok(
+            packageCallOrder.indexOf('ensureStripePaymentCompletionOutputs') <
+                packageCallOrder.indexOf('ensureInvoiceForTransaction'),
         );
         assert.deepStrictEqual(
             callsNamed(calls, 'posthog.capture').at(-1)?.args,
@@ -1798,26 +2135,15 @@ describe('processCheckoutSession', () => {
                 },
             ],
         );
-        assert.deepStrictEqual(
-            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
-            [
-                {
-                    to: 'buyer@example.test',
-                    cartId: null,
-                    checkoutSessionId: 'cs_package_paid',
-                    items: [
-                        {
-                            name: 'Puna gredica',
-                            quantity: 1,
-                            amountSubtotal: 3999,
-                            currency: 'eur',
-                        },
-                    ],
-                    totalAmountCents: 3999,
-                    currency: 'eur',
-                },
-            ],
-        );
+        const outputInput = callsNamed(
+            calls,
+            'ensureStripePaymentCompletionOutputs',
+        )[0]?.args[0];
+        assert.ok(isRecord(outputInput));
+        assert.ok(isRecord(outputInput.orderConfirmation));
+        assert.equal(outputInput.orderConfirmation.totalAmountCents, 3999);
+        assert.ok(isRecord(outputInput.purchaseNotification));
+        assert.equal(outputInput.purchaseNotification.amountTotal, 3999);
         assert.equal(
             callsNamed(calls, 'posthog.capture').some((call) => {
                 const event = call.args[0];
@@ -1830,7 +2156,7 @@ describe('processCheckoutSession', () => {
         );
     });
 
-    it('replays sunflower package fulfillment through idempotent ledger top-up without a duplicate transaction', async () => {
+    it('repairs sunflower package outputs without replaying fulfillment, billing, or analytics', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
             getStripeCheckoutSession: async (...args: unknown[]) => {
@@ -1841,7 +2167,12 @@ describe('processCheckoutSession', () => {
                 ...args: unknown[]
             ) => {
                 record(calls, 'getCompletedTransactionByStripePaymentId', args);
-                return { id: 902 };
+                return {
+                    accountId: 'account-1',
+                    amount: 4999,
+                    currency: 'eur',
+                    id: 902,
+                };
             },
             getSunflowerPackageByCode: async (...args: unknown[]) => {
                 record(calls, 'getSunflowerPackageByCode', args);
@@ -1851,17 +2182,16 @@ describe('processCheckoutSession', () => {
 
         await processCheckoutSession('cs_package_paid', dependencies);
 
-        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 1);
+        assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
         assert.equal(
             callsNamed(calls, 'ensureInvoiceForTransaction').length,
             0,
         );
         assert.equal(
-            callsNamed(calls, 'notifyOrderConfirmationEmail').length,
-            0,
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
+            1,
         );
-        assert.equal(callsNamed(calls, 'notifyPurchase').length, 0);
         assert.equal(callsNamed(calls, 'posthog.capture').length, 0);
     });
 
@@ -1881,7 +2211,12 @@ describe('processCheckoutSession', () => {
             },
         });
 
-        await processCheckoutSession('cs_package_paid', dependencies);
+        await assert.rejects(
+            processCheckoutSession('cs_package_paid', dependencies),
+            (error: unknown) =>
+                error instanceof StripePaymentProcessingPermanentError &&
+                error.failureCode === 'sunflower_package_metadata_mismatch',
+        );
 
         assert.equal(callsNamed(calls, 'topUpSunflowerPackage').length, 0);
         assert.equal(callsNamed(calls, 'createTransaction').length, 0);
@@ -2075,7 +2410,7 @@ describe('processCheckoutSession', () => {
             1,
         );
         assert.equal(
-            callsNamed(calls, 'notifyOrderConfirmationEmail').length,
+            callsNamed(calls, 'ensureStripePaymentCompletionOutputs').length,
             1,
         );
         assert.equal(callsNamed(calls, 'issueReceiptForPaidInvoice').length, 0);
@@ -2085,7 +2420,7 @@ describe('processCheckoutSession', () => {
         );
     });
 
-    it('sends an order confirmation email after the cart is marked paid', async () => {
+    it('records both durable completion outputs after the cart is marked paid', async () => {
         const calls: RecordedCall[] = [];
         let getShoppingCartCount = 0;
         const dependencies = makeDependencies(calls, {
@@ -2116,26 +2451,88 @@ describe('processCheckoutSession', () => {
         assert.deepStrictEqual(callsNamed(calls, 'getUser')[0]?.args, [
             'user-1',
         ]);
-        assert.deepStrictEqual(
-            callsNamed(calls, 'notifyOrderConfirmationEmail')[0]?.args,
-            [
+        const outputInput = callsNamed(
+            calls,
+            'ensureStripePaymentCompletionOutputs',
+        )[0]?.args[0];
+        assert.ok(isRecord(outputInput));
+        assert.equal(outputInput.claimToken, 'test-claim-token');
+        assert.equal(outputInput.stripePaymentId, 'cs_paid');
+        assert.deepStrictEqual(outputInput.orderConfirmation, {
+            cartId: 100,
+            currency: 'eur',
+            items: [
                 {
-                    to: 'buyer@example.test',
-                    cartId: 100,
-                    checkoutSessionId: 'cs_paid',
-                    items: [
-                        {
-                            name: 'Planting',
-                            quantity: 1,
-                            amountSubtotal: 2500,
-                            currency: 'eur',
-                        },
-                    ],
-                    totalAmountCents: 2500,
+                    amountSubtotal: 2500,
                     currency: 'eur',
+                    name: 'Planting',
+                    quantity: 1,
                 },
             ],
-        );
+            manageUrl: 'https://vrt.gredice.com',
+            to: 'buyer@example.test',
+            totalAmountCents: 2500,
+        });
+        assert.deepStrictEqual(outputInput.purchaseNotification, {
+            accountId: 'account-1',
+            amountTotal: 2500,
+            checkoutSessionId: 'cs_paid',
+            currency: 'eur',
+            customerEmail: 'buyer@example.test',
+            items: [
+                {
+                    amountSubtotal: 2500,
+                    name: 'Planting',
+                    quantity: 1,
+                },
+            ],
+        });
+    });
+
+    it('fails closed when completion output lacks a recipient or paid cart', async () => {
+        for (const failure of [
+            {
+                code: 'completion_recipient_missing',
+                missingRecipient: true,
+                paidCartMissing: false,
+            },
+            {
+                code: 'completion_paid_cart_missing',
+                missingRecipient: false,
+                paidCartMissing: true,
+            },
+        ] as const) {
+            const calls: RecordedCall[] = [];
+            const dependencies = makeDependencies(calls, {
+                getStripeCheckoutSession: async () => makeSession(),
+                getShoppingCart: async () => makeCart(),
+                getUser: async () =>
+                    failure.missingRecipient
+                        ? null
+                        : { userName: 'buyer@example.test' },
+                ...(failure.paidCartMissing
+                    ? {
+                          markCartPaidIfAllItemsPaid: async (
+                              ...args: unknown[]
+                          ) => {
+                              record(calls, 'markCartPaidIfAllItemsPaid', args);
+                          },
+                      }
+                    : {}),
+            });
+
+            await assert.rejects(
+                processCheckoutSession('cs_paid', dependencies),
+                (error: unknown) =>
+                    error instanceof StripePaymentProcessingPermanentError &&
+                    error.failureCode === failure.code,
+            );
+            assert.equal(
+                callsNamed(calls, 'ensureStripePaymentCompletionOutputs')
+                    .length,
+                0,
+            );
+        }
     });
 
     it('replays a paid planting after a crash without duplicating the cycle, reward, or outlet analytics', async () => {

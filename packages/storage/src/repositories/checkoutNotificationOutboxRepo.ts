@@ -39,6 +39,19 @@ export type CheckoutNotificationPayload =
           kind: 'delivery_scheduled_email';
           requestId: string;
           to: string;
+      }
+    | {
+          accountId: string | null;
+          amountTotal: number | null;
+          checkoutSessionId: string;
+          currency: string | null;
+          customerEmail: string | null;
+          items: {
+              amountSubtotal?: number | null;
+              name?: string | null;
+              quantity?: number | null;
+          }[];
+          kind: 'purchase_slack';
       };
 
 export type CheckoutNotificationClaim = {
@@ -173,6 +186,96 @@ function parsePayload(
             ? { kind, requestId, to }
             : null;
     }
+    if (kind === 'purchase_slack') {
+        const accountId = metadata.accountId;
+        const amountTotal = metadata.amountTotal;
+        const checkoutSessionId = metadata.checkoutSessionId;
+        const currency = metadata.currency;
+        const customerEmail = metadata.customerEmail;
+        const items = metadata.items;
+        if (
+            !(
+                accountId === null ||
+                (typeof accountId === 'string' &&
+                    accountId.length > 0 &&
+                    accountId.length <= 255)
+            ) ||
+            !(
+                amountTotal === null ||
+                (typeof amountTotal === 'number' &&
+                    Number.isSafeInteger(amountTotal) &&
+                    amountTotal >= 0)
+            ) ||
+            typeof checkoutSessionId !== 'string' ||
+            checkoutSessionId.length === 0 ||
+            checkoutSessionId.length > 255 ||
+            !(
+                currency === null ||
+                (typeof currency === 'string' &&
+                    currency.length > 0 &&
+                    currency.length <= 20)
+            ) ||
+            !(
+                customerEmail === null ||
+                (typeof customerEmail === 'string' &&
+                    customerEmail.length > 0 &&
+                    customerEmail.length <= 320 &&
+                    customerEmail.includes('@'))
+            ) ||
+            !Array.isArray(items) ||
+            items.length > 100
+        ) {
+            return null;
+        }
+        const parsedItems = items.flatMap((value) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return [];
+            }
+            const item = value as Record<string, unknown>;
+            if (
+                !(
+                    item.amountSubtotal === undefined ||
+                    item.amountSubtotal === null ||
+                    (typeof item.amountSubtotal === 'number' &&
+                        Number.isSafeInteger(item.amountSubtotal) &&
+                        item.amountSubtotal >= 0)
+                ) ||
+                !(
+                    item.name === undefined ||
+                    item.name === null ||
+                    (typeof item.name === 'string' &&
+                        item.name.length > 0 &&
+                        item.name.length <= 500)
+                ) ||
+                !(
+                    item.quantity === undefined ||
+                    item.quantity === null ||
+                    (typeof item.quantity === 'number' &&
+                        Number.isSafeInteger(item.quantity) &&
+                        item.quantity > 0)
+                )
+            ) {
+                return [];
+            }
+            return [
+                {
+                    amountSubtotal: item.amountSubtotal,
+                    name: item.name,
+                    quantity: item.quantity,
+                },
+            ];
+        });
+        if (parsedItems.length !== items.length) return null;
+        return {
+            accountId,
+            amountTotal,
+            checkoutSessionId,
+            currency,
+            customerEmail,
+            items: parsedItems,
+            kind,
+        };
+    }
     return null;
 }
 
@@ -183,7 +286,16 @@ function initialMetadata(payload: CheckoutNotificationPayload): Metadata {
                   operationId: payload.operationId,
                   scheduledDate: payload.scheduledDate,
               }
-            : { requestId: payload.requestId };
+            : payload.kind === 'purchase_slack'
+              ? {
+                    accountId: payload.accountId,
+                    amountTotal: payload.amountTotal,
+                    checkoutSessionId: payload.checkoutSessionId,
+                    currency: payload.currency,
+                    customerEmail: payload.customerEmail,
+                    items: payload.items,
+                }
+              : { requestId: payload.requestId };
     return {
         ...source,
         attemptCount: 0,

@@ -7,6 +7,7 @@ import {
 import {
     deliverDeliveryRequestSlackNotification,
     deliverOperationSlackNotification,
+    deliverPurchaseNotification,
 } from '@gredice/notifications';
 import {
     buildDeliveryEmailDetails,
@@ -50,6 +51,7 @@ type WorkerDependencies = {
     monotonicNow: () => number;
     notifyDelivery: typeof deliverDeliveryRequestSlackNotification;
     notifyOperation: typeof deliverOperationSlackNotification;
+    notifyPurchase: typeof deliverPurchaseNotification;
     now: () => Date;
     randomId: () => string;
     sendDeliveryEmail: typeof sendDeliveryScheduled;
@@ -67,6 +69,7 @@ const defaultDependencies: WorkerDependencies = {
     monotonicNow: () => performance.now(),
     notifyDelivery: deliverDeliveryRequestSlackNotification,
     notifyOperation: deliverOperationSlackNotification,
+    notifyPurchase: deliverPurchaseNotification,
     now: () => new Date(),
     randomId: randomUUID,
     sendDeliveryEmail: sendDeliveryScheduled,
@@ -279,23 +282,30 @@ export async function runCheckoutNotificationWorker({
                 beforeProviderSubmission,
                 throwOnLookupError: true,
             };
-            const response =
-                claimed.claim.payload.kind === 'operation_scheduled_slack'
-                    ? await resolved.notifyOperation(
-                          claimed.claim.payload.operationId,
-                          'scheduled',
-                          {
-                              scheduledDate:
-                                  claimed.claim.payload.scheduledDate,
-                          },
-                          deliveryOptions,
-                      )
-                    : await resolved.notifyDelivery(
-                          claimed.claim.payload.requestId,
-                          'created',
-                          {},
-                          deliveryOptions,
-                      );
+            const response = await (async () => {
+                if (
+                    claimed.claim.payload.kind === 'operation_scheduled_slack'
+                ) {
+                    return resolved.notifyOperation(
+                        claimed.claim.payload.operationId,
+                        'scheduled',
+                        {
+                            scheduledDate: claimed.claim.payload.scheduledDate,
+                        },
+                        deliveryOptions,
+                    );
+                }
+                if (claimed.claim.payload.kind === 'purchase_slack') {
+                    const { kind: _kind, ...details } = claimed.claim.payload;
+                    return resolved.notifyPurchase(details, deliveryOptions);
+                }
+                return resolved.notifyDelivery(
+                    claimed.claim.payload.requestId,
+                    'created',
+                    {},
+                    deliveryOptions,
+                );
+            })();
             if (!response || response.skipped === 'missing_channel') {
                 const skipped = await resolved.markSkipped({
                     claimId: claimed.claim.claimId,

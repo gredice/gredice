@@ -43,6 +43,35 @@ function deliveryEmailClaim() {
     };
 }
 
+function purchaseClaim() {
+    return {
+        claim: {
+            attempt: 1,
+            claimId: 'purchase-claim',
+            emailMessageId: 4380,
+            maxAttempts: 3,
+            payload: {
+                accountId: 'account-1',
+                amountTotal: 2500,
+                checkoutSessionId: 'cs_paid',
+                currency: 'eur',
+                customerEmail: 'customer@example.test',
+                items: [
+                    {
+                        amountSubtotal: 2500,
+                        name: 'Sadnja',
+                        quantity: 1,
+                    },
+                ],
+                kind: 'purchase_slack' as const,
+            },
+            providerOperationId: '00000000-0000-5000-a000-000000004380',
+            queuedAt,
+        },
+        status: 'claimed' as const,
+    };
+}
+
 test('worker fences Slack before submission and finalizes accepted delivery', async () => {
     let claims = 0;
     const events: string[] = [];
@@ -86,6 +115,58 @@ test('worker fences Slack before submission and finalizes accepted delivery', as
     assert.equal(result.claimed, 1);
     assert.equal(result.sent, 1);
     assert.equal(result.uncertain, 0);
+});
+
+test('worker delivers a durable purchase notification after fencing submission', async () => {
+    let claims = 0;
+    const events: string[] = [];
+    const result = await runCheckoutNotificationWorker({
+        dependencies: {
+            abortSignal: () => new AbortController().signal,
+            claim: async () => {
+                claims += 1;
+                return claims === 1 ? purchaseClaim() : { status: 'empty' };
+            },
+            markSent: async ({ providerDeliveryId }) => {
+                events.push(`sent:${providerDeliveryId}`);
+                return { status: 'sent' };
+            },
+            monotonicNow: () => 0,
+            notifyPurchase: async (details, deliveryOptions = {}) => {
+                assert.deepEqual(details, {
+                    accountId: 'account-1',
+                    amountTotal: 2500,
+                    checkoutSessionId: 'cs_paid',
+                    currency: 'eur',
+                    customerEmail: 'customer@example.test',
+                    items: [
+                        {
+                            amountSubtotal: 2500,
+                            name: 'Sadnja',
+                            quantity: 1,
+                        },
+                    ],
+                });
+                await deliveryOptions.beforeProviderSubmission?.();
+                events.push('provider');
+                return {
+                    ok: true,
+                    outcome: 'accepted',
+                    response: { ts: '4380.1' },
+                    status: 200,
+                };
+            },
+            now: () => new Date('2026-08-03T09:00:00.000Z'),
+            randomId: () => 'purchase-claim',
+            start: async () => {
+                events.push('fence');
+                return { status: 'started' };
+            },
+        },
+    });
+
+    assert.deepEqual(events, ['fence', 'provider', 'sent:4380.1']);
+    assert.equal(result.sent, 1);
 });
 
 test('worker never retries an uncertain Slack submission', async () => {

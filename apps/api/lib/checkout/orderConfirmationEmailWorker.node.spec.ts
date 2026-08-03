@@ -140,6 +140,42 @@ test('order confirmation worker starts, sends, and finalizes one claimed intent'
     ]);
 });
 
+test('package order confirmation renders without a cart reference', async () => {
+    const packageClaim = claim();
+    if (packageClaim.status !== 'claimed') {
+        throw new Error('Expected a claimed order confirmation');
+    }
+    packageClaim.claim.payload.cartId = null;
+    let claimCount = 0;
+    let orderReference: string | null | undefined;
+
+    const result = await runOrderConfirmationEmailWorker({
+        reconciliationLimit: 0,
+        dependencies: {
+            abortSignal: () => new AbortController().signal,
+            claim: async () => {
+                claimCount += 1;
+                return claimCount === 1
+                    ? packageClaim
+                    : { status: 'empty' as const };
+            },
+            markSent: async () => ({ status: 'sent' }),
+            monotonicNow: () => 0,
+            now: () => now,
+            randomId: () => 'claim-1',
+            send: async (_to, config, options) => {
+                orderReference = config.orderReference;
+                await options?.beforeProviderSubmission?.();
+                return { id: operationId, status: 'Succeeded' };
+            },
+            start: async () => ({ operationId, status: 'started' }),
+        },
+    });
+
+    assert.equal(orderReference, null);
+    assert.equal(result.sent, 1);
+});
+
 test('order confirmation worker fences a provider success when sent finalization throws', async (t) => {
     t.mock.method(console, 'info', () => undefined);
     t.mock.method(console, 'error', () => undefined);
