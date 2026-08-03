@@ -12,6 +12,7 @@ import {
     type EmailLogRecipient,
     type EmailLogRecipients,
     type EmailStatus,
+    getEmailMessage,
     updateEmailMessageLog,
 } from '@gredice/storage';
 import type { ReactElement } from 'react';
@@ -187,6 +188,9 @@ export type SendEmailParams = {
     messageType?: string | null;
     metadata?: Record<string, unknown>;
     operationId?: string;
+    existingEmailLogId?: number;
+    beforeProviderSubmission?: () => Promise<void>;
+    abortSignal?: AbortSignal;
 };
 
 const providerOperationIdPattern =
@@ -385,8 +389,17 @@ export async function sendEmail({
     messageType,
     metadata,
     operationId,
+    existingEmailLogId,
+    beforeProviderSubmission,
+    abortSignal,
 }: SendEmailParams) {
     const providerOperationId = normalizedProviderOperationId(operationId);
+    if (
+        existingEmailLogId !== undefined &&
+        (!Number.isSafeInteger(existingEmailLogId) || existingEmailLogId < 1)
+    ) {
+        throw new Error('Existing email log ID must be a positive integer.');
+    }
     const toRecipients = normalizeRecipients(to);
     if (toRecipients.length === 0) {
         throw new Error(
@@ -401,24 +414,54 @@ export async function sendEmail({
     const emailHtml = await render(template);
     const emailPlaintext = await render(template, { plainText: true });
 
-    const emailLog = await createEmailMessageLog({
-        fromAddress: from,
-        providerMessageId: providerOperationId ?? null,
-        subject,
-        templateName: templateName ?? null,
-        messageType: messageType ?? null,
-        recipients: toLogRecipients({
-            to: toRecipients,
-            cc: ccRecipients,
-            bcc: bccRecipients,
-            replyTo: replyToRecipients,
-        }),
-        attachments: buildAttachmentMetadata(attachments),
-        metadata: metadata ?? {},
-        htmlBody: emailHtml,
-        textBody: emailPlaintext,
-        status: 'queued',
-    });
+    const emailLog =
+        existingEmailLogId !== undefined
+            ? await (async () => {
+                  const existing = await getEmailMessage(existingEmailLogId);
+                  if (!existing) {
+                      throw new Error(
+                          'Existing email log entry was not found.',
+                      );
+                  }
+                  const updated = await updateEmailMessageLog(
+                      existingEmailLogId,
+                      {
+                          attachments: buildAttachmentMetadata(attachments),
+                          htmlBody: emailHtml,
+                          messageType: messageType ?? null,
+                          providerMessageId:
+                              existing.providerMessageId ??
+                              providerOperationId ??
+                              null,
+                          templateName: templateName ?? null,
+                          textBody: emailPlaintext,
+                      },
+                  );
+                  if (!updated) {
+                      throw new Error(
+                          'Existing email log entry was not updated.',
+                      );
+                  }
+                  return updated;
+              })()
+            : await createEmailMessageLog({
+                  fromAddress: from,
+                  providerMessageId: providerOperationId ?? null,
+                  subject,
+                  templateName: templateName ?? null,
+                  messageType: messageType ?? null,
+                  recipients: toLogRecipients({
+                      to: toRecipients,
+                      cc: ccRecipients,
+                      bcc: bccRecipients,
+                      replyTo: replyToRecipients,
+                  }),
+                  attachments: buildAttachmentMetadata(attachments),
+                  metadata: metadata ?? {},
+                  htmlBody: emailHtml,
+                  textBody: emailPlaintext,
+                  status: 'queued',
+              });
 
     const client = emailClient(providerOperationId !== undefined);
 
@@ -458,6 +501,8 @@ export async function sendEmail({
     let providerSubmissionStarted = false;
     let terminalProviderStatus: string | undefined;
     try {
+        abortSignal?.throwIfAborted();
+        await beforeProviderSubmission?.();
         // ACS Operation-Id identifies the long-running operation, but it is not
         // a repeatability guarantee. Disable the SDK's internal POST retries for
         // this durable at-most-once path, and fence any response that does not
@@ -465,34 +510,39 @@ export async function sendEmail({
         providerSubmissionStarted = true;
         const poller = await client.beginSend(
             azureMessage,
-            providerOperationId
-                ? { operationId: providerOperationId }
+            providerOperationId || abortSignal
+                ? { abortSignal, operationId: providerOperationId }
                 : undefined,
         );
         providerSubmissionAccepted = true;
         const operationState = poller.getOperationState();
         const operationStateId = getOperationStateId(operationState);
 
-        await updateEmailMessageLog(emailLog.id, {
-            status: 'sending',
-            providerMessageId: operationStateId ?? providerOperationId ?? null,
-            providerStatus: operationState.status ?? null,
-            lastAttemptAt: new Date(),
-        });
+        if (existingEmailLogId === undefined) {
+            await updateEmailMessageLog(emailLog.id, {
+                status: 'sending',
+                providerMessageId:
+                    operationStateId ?? providerOperationId ?? null,
+                providerStatus: operationState.status ?? null,
+                lastAttemptAt: new Date(),
+            });
+        }
 
         const response = await poller.pollUntilDone();
         terminalProviderStatus = response.status;
         const finalStatus = mapProviderStatus(response.status);
 
-        await updateEmailMessageLog(emailLog.id, {
-            status: finalStatus,
-            providerStatus: response.status,
-            providerMessageId: response.id ?? operationStateId ?? null,
-            sentAt: finalStatus === 'sent' ? new Date() : null,
-            completedAt: new Date(),
-            errorCode: response.error?.code ?? null,
-            errorMessage: response.error?.message ?? null,
-        });
+        if (existingEmailLogId === undefined) {
+            await updateEmailMessageLog(emailLog.id, {
+                status: finalStatus,
+                providerStatus: response.status,
+                providerMessageId: response.id ?? operationStateId ?? null,
+                sentAt: finalStatus === 'sent' ? new Date() : null,
+                completedAt: new Date(),
+                errorCode: response.error?.code ?? null,
+                errorMessage: response.error?.message ?? null,
+            });
+        }
 
         assertEmailProviderSendSucceeded(response);
 
@@ -513,15 +563,17 @@ export async function sendEmail({
               : error instanceof Error
                 ? error.message
                 : 'Failed to send email';
-        try {
-            await updateEmailMessageLog(emailLog.id, {
-                status: submissionIsUncertain ? 'sending' : 'failed',
-                errorMessage,
-                completedAt: submissionIsUncertain ? null : new Date(),
-            });
-        } catch {
-            // Preserve the provider result classification when audit-log storage
-            // is unavailable after the provider boundary.
+        if (existingEmailLogId === undefined) {
+            try {
+                await updateEmailMessageLog(emailLog.id, {
+                    status: submissionIsUncertain ? 'sending' : 'failed',
+                    errorMessage,
+                    completedAt: submissionIsUncertain ? null : new Date(),
+                });
+            } catch {
+                // Preserve the provider result classification when audit-log
+                // storage is unavailable after the provider boundary.
+            }
         }
         if (submissionIsUncertain && providerOperationId) {
             throw new EmailProviderSubmissionUncertainError(

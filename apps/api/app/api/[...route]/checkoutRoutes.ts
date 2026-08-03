@@ -12,7 +12,7 @@ import {
     getTimeSlotEffectiveClosesAt,
     getUser,
     HarvestScheduleConflictError,
-    markCartPaidIfAllItemsPaid,
+    markCartPaidAndEnqueueOrderConfirmation,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     OUTLET_RESERVATION_HOLD_MINUTES,
@@ -50,7 +50,7 @@ import {
 } from '../../../lib/checkout/harvestCheckout';
 import {
     buildOrderConfirmationItems,
-    notifyOrderConfirmationEmail,
+    ORDER_CONFIRMATION_MANAGE_URL,
 } from '../../../lib/checkout/orderConfirmationEmail';
 import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import { authSecurity } from '../../../lib/docs/security';
@@ -376,7 +376,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
 
             // Handle sunflower items
             if (!requiresStripePayment) {
-                let completedCart: Awaited<ReturnType<typeof getShoppingCart>>;
                 const endNonStripeFulfillment = checkoutTiming.startPhase(
                     'non_stripe_fulfillment',
                 );
@@ -435,9 +434,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 ]);
                             }
                         }
-
-                        // After processing sunflower items, check if all items are paid
-                        await markCartPaidIfAllItemsPaid(cart.id);
                     }
 
                     // Handle inventory items
@@ -485,28 +481,41 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 }),
                             ]);
                         }
-
-                        await markCartPaidIfAllItemsPaid(cart.id);
                     }
-
-                    completedCart = await getShoppingCart(cart.id);
                 } finally {
                     endNonStripeFulfillment();
                 }
-                if (completedCart?.status === 'paid') {
-                    await checkoutTiming.measure(
-                        'confirmation_side_effects',
-                        () =>
-                            notifyOrderConfirmationEmail({
-                                to: user.userName,
+
+                const confirmationIntent = await checkoutTiming.measure(
+                    'confirmation_side_effects',
+                    () =>
+                        markCartPaidAndEnqueueOrderConfirmation({
+                            cartId: cart.id,
+                            payload: {
                                 cartId: cart.id,
+                                currency: null,
                                 items: buildOrderConfirmationItems(
                                     cartInfo.items,
                                     calculateSunflowerAmount,
                                 ),
+                                manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
+                                to: user.userName,
                                 totalAmountCents: null,
-                                currency: null,
-                            }),
+                            },
+                        }),
+                );
+                if (
+                    confirmationIntent.status !== 'enqueued' &&
+                    !(
+                        confirmationIntent.status === 'already_paid' &&
+                        confirmationIntent.emailMessageId !== null
+                    )
+                ) {
+                    return context.json(
+                        {
+                            error: 'Narudžbu nije moguće dovršiti. Pokušaj ponovno.',
+                        },
+                        409,
                     );
                 }
             }
