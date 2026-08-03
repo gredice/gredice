@@ -92,13 +92,11 @@ export async function recoverStripeCheckoutAttemptSession({
 
     const expiresAt = attempt.snapshot.stripeSession.expiresAt;
     if (expiresAt && new Date(expiresAt).getTime() <= now.getTime()) {
-        await dependencies.releaseAttempt({
-            attemptId: attempt.snapshot.attemptId,
-            cartId: attempt.snapshot.cartId,
-            reason: 'expired',
-            sessionId: null,
-        });
-        return { status: 'released' };
+        // A lost create response can leave a real (or even paid) Stripe
+        // session unbound. Local time alone cannot prove that no session was
+        // created, so keep the cart fenced until Stripe-authoritative
+        // reconciliation binds or releases the attempt.
+        return { status: 'processing' };
     }
     if (!checkoutAdditionalDataByCartItemId) {
         throw new StripeCheckoutAttemptConflictError(

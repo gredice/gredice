@@ -150,3 +150,46 @@ test('recovers create-before-bind with exact parameters and one Stripe session',
         /93b43108-696d-48ca-92ef-9990c0a84d43/,
     );
 });
+
+test('keeps an expired unbound attempt fenced until Stripe reconciliation', async () => {
+    const attempt = checkoutAttempt();
+    let checkoutCalls = 0;
+    let releaseCalls = 0;
+
+    const result = await recoverStripeCheckoutAttemptSession({
+        account: {
+            email: 'buyer@example.test',
+            id: 'account-1',
+            name: 'Buyer',
+            stripeCustomerId: 'cus_1',
+        },
+        accountId: 'account-1',
+        attempt,
+        checkoutAdditionalDataByCartItemId: new Map([
+            [41, { delivery: { mode: 'pickup', slotId: 7 } }],
+        ]),
+        customerId: 'cus_1',
+        dependencies: {
+            bindAttempt: async () => undefined,
+            checkout: async () => {
+                checkoutCalls += 1;
+                return {
+                    customerId: 'cus_1',
+                    sessionId: 'cs_unsafe_replay',
+                    url: 'https://stripe.test/unsafe',
+                };
+            },
+            getAttempt: async () => attempt,
+            getSession: async () => undefined,
+            releaseAttempt: async () => {
+                releaseCalls += 1;
+            },
+        },
+        now: new Date('2026-08-04T00:00:00.001Z'),
+        userId: 'user-1',
+    });
+
+    assert.deepEqual(result, { status: 'processing' });
+    assert.equal(checkoutCalls, 0);
+    assert.equal(releaseCalls, 0);
+});
