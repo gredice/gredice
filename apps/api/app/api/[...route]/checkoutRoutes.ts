@@ -27,7 +27,6 @@ import {
     sunflowerPackageEntityTypeName,
     validateHarvestDateSelections,
     withCheckoutCartItemLock,
-    withCheckoutCartItemProcessingLock,
     withInventoryAccountTransaction,
 } from '@gredice/storage';
 import {
@@ -53,7 +52,9 @@ import {
     CheckoutDeliverySelectionError,
     validateCheckoutDeliverySelection,
 } from '../../../lib/checkout/deliverySelection';
-import { withDirectSunflowerCheckoutPayment } from '../../../lib/checkout/directSunflowerCheckout';
+import { getDirectCheckoutPaymentErrorResponse } from '../../../lib/checkout/directCheckoutErrors';
+import { getPaidCartCheckoutRetryResponse } from '../../../lib/checkout/directCheckoutRetry';
+import { withDirectSunflowerCheckoutBatch } from '../../../lib/checkout/directSunflowerCheckout';
 import {
     buildCheckoutAdditionalData,
     encodeHarvestDatesMetadata,
@@ -193,7 +194,17 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 return context.json({ error: 'Cart not found' }, 404);
             }
             if (initialCart.status === 'paid') {
-                return context.json({ error: 'Cart already paid' }, 400);
+                if (initialCart.items.some((item) => item.currency === 'eur')) {
+                    return context.json({ error: 'Cart already paid' }, 400);
+                }
+                const retryResponse = await getPaidCartCheckoutRetryResponse({
+                    accountId,
+                    cart: initialCart,
+                });
+                if (!retryResponse) {
+                    return context.json({ error: 'Cart not found' }, 404);
+                }
+                return context.json(retryResponse.body, retryResponse.status);
             }
 
             const { cart, checkoutOperationMappings } =
@@ -514,303 +525,291 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 paymentKind,
             });
 
-            // Handle sunflower items
+            // Batch and fulfill direct checkout while one process lock covers
+            // the complete cart snapshot. Database locks are released before
+            // any fulfillment or notification work begins.
             if (!requiresStripePayment) {
                 const endNonStripeFulfillment = checkoutTiming.startPhase(
                     'non_stripe_fulfillment',
                 );
-                const resolvedSunflowerAmountsByCartItemId = new Map<
-                    number,
-                    number
-                >();
+                let fulfillmentPhaseEnded = false;
+                const finishFulfillmentPhase = () => {
+                    if (fulfillmentPhaseEnded) {
+                        return;
+                    }
+                    fulfillmentPhaseEnded = true;
+                    endNonStripeFulfillment();
+                };
+                let processingStage:
+                    | 'payment'
+                    | 'fulfillment'
+                    | 'confirmation' = 'payment';
+
                 try {
-                    const scheduledDeliveryEmailKeys = new Set<string>();
-                    const allSunflowerCartItemsWithShopData =
-                        cartInfo.items.filter(
-                            (item) => item.currency === 'sunflower',
-                        );
-                    const sunflowerCartItemsWithShopData =
-                        allSunflowerCartItemsWithShopData.filter(
-                            (item) => item.status !== 'paid',
-                        );
-                    if (sunflowerCartItemsWithShopData.length > 0) {
-                        // Check if there are enough sunflowers in the account
-                        for (const item of sunflowerCartItemsWithShopData) {
-                            let processingStage: 'payment' | 'fulfillment' =
-                                'payment';
-                            try {
-                                await withDirectSunflowerCheckoutPayment({
-                                    accountId,
-                                    allSunflowerItems:
-                                        allSunflowerCartItemsWithShopData,
-                                    cartId: cart.id,
-                                    item,
-                                    operation: async (payment) => {
-                                        for (const [
-                                            cartItemId,
-                                            resolvedAmount,
-                                        ] of payment.resolvedAmountsByCartItemId) {
-                                            resolvedSunflowerAmountsByCartItemId.set(
-                                                cartItemId,
-                                                resolvedAmount,
+                    const directCheckoutResult =
+                        await withDirectSunflowerCheckoutBatch({
+                            accountId,
+                            allCheckoutItems: cartInfo.items,
+                            cartId: cart.id,
+                            operation: async ({
+                                pendingItems,
+                                resolvedAmountsByCartItemId,
+                            }) => {
+                                processingStage = 'fulfillment';
+                                const scheduledDeliveryEmailKeys =
+                                    new Set<string>();
+                                try {
+                                    for (const item of pendingItems) {
+                                        const resolvedAmount =
+                                            resolvedAmountsByCartItemId.get(
+                                                item.id,
+                                            );
+                                        if (resolvedAmount === undefined) {
+                                            throw new Error(
+                                                `Sunflower checkout amount is missing for cart item ${item.id.toString()}.`,
                                             );
                                         }
-                                        if (payment.state === 'paid') {
-                                            return;
-                                        }
-                                        processingStage = 'fulfillment';
                                         const checkoutOperationMapping =
                                             item.entityTypeName === 'operation'
                                                 ? await getCheckoutOperationMapping(
                                                       item.id,
                                                   )
                                                 : undefined;
-
                                         const fulfillment = await processItem({
                                             accountId,
                                             cartItemId: item.id,
                                             ...item,
-                                            amount_total:
-                                                payment.resolvedAmount,
+                                            amount_total: resolvedAmount,
                                             scheduledDeliveryEmailKeys,
                                             additionalData:
                                                 checkoutAdditionalDataByCartItemId.get(
                                                     item.id,
                                                 ) ?? {},
-                                            checkoutOperationMapping:
-                                                item.entityTypeName ===
-                                                'operation'
-                                                    ? checkoutOperationMapping
-                                                    : undefined,
+                                            checkoutOperationMapping,
                                         });
                                         assertCheckoutItemFulfilled(
                                             fulfillment,
                                         );
                                         await setCartItemPaid(item.id);
-                                    },
-                                });
-                            } catch (error) {
-                                if (processingStage === 'payment') {
-                                    checkoutTiming.setErrorCategory(
-                                        'sunflower_spend_failed',
-                                    );
-                                    console.error('Error spending sunflowers', {
-                                        accountId,
-                                        cartId: cart.id,
-                                        error,
-                                        cartItemId: item.id,
-                                    });
-                                } else {
-                                    checkoutTiming.setErrorCategory(
-                                        'unexpected',
-                                    );
-                                }
-                                throw error;
-                            }
-                        }
-                    }
-                    const unresolvedPaidSunflowerItem =
-                        allSunflowerCartItemsWithShopData.find(
-                            (item) =>
-                                item.status === 'paid' &&
-                                !resolvedSunflowerAmountsByCartItemId.has(
-                                    item.id,
-                                ),
-                        );
-                    if (unresolvedPaidSunflowerItem) {
-                        try {
-                            await withDirectSunflowerCheckoutPayment({
-                                accountId,
-                                allSunflowerItems:
-                                    allSunflowerCartItemsWithShopData,
-                                cartId: cart.id,
-                                item: unresolvedPaidSunflowerItem,
-                                operation: async (payment) => {
-                                    for (const [
-                                        cartItemId,
-                                        resolvedAmount,
-                                    ] of payment.resolvedAmountsByCartItemId) {
-                                        resolvedSunflowerAmountsByCartItemId.set(
-                                            cartItemId,
-                                            resolvedAmount,
-                                        );
                                     }
-                                },
-                            });
-                        } catch (error) {
-                            checkoutTiming.setErrorCategory(
-                                'sunflower_spend_failed',
-                            );
-                            console.error(
-                                'Error resolving paid sunflower amounts',
-                                {
-                                    accountId,
-                                    cartId: cart.id,
-                                    error,
-                                },
-                            );
-                            throw error;
-                        }
-                    }
-                    const missingSunflowerAmountItemIds =
-                        allSunflowerCartItemsWithShopData
-                            .filter(
-                                (item) =>
-                                    !resolvedSunflowerAmountsByCartItemId.has(
-                                        item.id,
-                                    ),
-                            )
-                            .map((item) => item.id);
-                    if (missingSunflowerAmountItemIds.length > 0) {
-                        throw new Error(
-                            `Sunflower checkout did not resolve durable amounts for cart items ${missingSunflowerAmountItemIds.join(', ')}.`,
-                        );
-                    }
 
-                    // Handle inventory items
-                    const inventoryCartItems = cartInfo.items.filter(
-                        (item) =>
-                            item.status !== 'paid' &&
-                            (item.currency === 'inventory' ||
-                                item.usesInventory),
-                    );
-
-                    if (inventoryCartItems.length > 0) {
-                        for (const item of inventoryCartItems) {
-                            if ((item.inventoryAvailable ?? 0) < item.amount) {
-                                return context.json(
-                                    {
-                                        error: 'Nema dovoljno predmeta u ruksaku',
-                                    },
-                                    400,
-                                );
-                            }
-
-                            await withCheckoutCartItemProcessingLock(
-                                item.id,
-                                async () => {
-                                    const state =
-                                        await withCheckoutCartItemLock(
-                                            item.id,
-                                            async (db) => {
-                                                const lockedCart =
-                                                    await getShoppingCart(
-                                                        cart.id,
-                                                        db,
-                                                    );
-                                                if (!lockedCart) {
-                                                    throw new Error(
-                                                        `Cart ${cart.id.toString()} disappeared before inventory fulfillment.`,
-                                                    );
-                                                }
-                                                const lockedState =
-                                                    assertCheckoutCartItemSnapshot(
-                                                        lockedCart.items.find(
-                                                            (lockedItem) =>
-                                                                lockedItem.id ===
-                                                                item.id,
-                                                        ),
-                                                        item,
-                                                    );
-                                                if (lockedState === 'pending') {
-                                                    await withInventoryAccountTransaction(
-                                                        accountId,
-                                                        (inventoryDb) =>
-                                                            consumeInventoryItem(
-                                                                accountId,
-                                                                {
-                                                                    entityTypeName:
-                                                                        item.entityTypeName,
-                                                                    entityId:
-                                                                        item.entityId,
-                                                                    amount: item.amount,
-                                                                    source: `shoppingCartItem:${item.id.toString()}`,
-                                                                },
-                                                                inventoryDb,
-                                                            ),
-                                                        db,
-                                                    );
-                                                }
-                                                return lockedState;
-                                            },
+                                    const inventoryCartItems =
+                                        cartInfo.items.filter(
+                                            (item) =>
+                                                item.status !== 'paid' &&
+                                                (item.currency ===
+                                                    'inventory' ||
+                                                    item.usesInventory),
                                         );
-                                    if (state === 'paid') {
-                                        return;
-                                    }
-                                    const checkoutOperationMapping =
-                                        item.entityTypeName === 'operation'
-                                            ? await getCheckoutOperationMapping(
-                                                  item.id,
-                                              )
-                                            : undefined;
-
-                                    const fulfillment = await processItem({
-                                        accountId,
-                                        cartItemId: item.id,
-                                        ...item,
-                                        amount_total: 0,
-                                        scheduledDeliveryEmailKeys,
-                                        additionalData:
-                                            checkoutAdditionalDataByCartItemId.get(
-                                                item.id,
-                                            ) ?? {},
-                                        checkoutOperationMapping:
-                                            item.entityTypeName === 'operation'
-                                                ? checkoutOperationMapping
-                                                : undefined,
-                                    });
-                                    assertCheckoutItemFulfilled(fulfillment);
-                                    await setCartItemPaid(item.id);
-                                },
-                            );
-                        }
-                    }
-                } finally {
-                    endNonStripeFulfillment();
-                }
-
-                const confirmationIntent = await checkoutTiming.measure(
-                    'confirmation_side_effects',
-                    () =>
-                        markCartPaidAndEnqueueOrderConfirmation({
-                            cartId: cart.id,
-                            payload: {
-                                cartId: cart.id,
-                                currency: null,
-                                items: buildOrderConfirmationItems(
-                                    cartInfo.items,
-                                    (item) => {
-                                        const resolvedAmount =
-                                            resolvedSunflowerAmountsByCartItemId.get(
-                                                item.id,
-                                            );
-                                        if (resolvedAmount === undefined) {
-                                            throw new Error(
-                                                `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
-                                            );
+                                    for (const item of inventoryCartItems) {
+                                        if (
+                                            (item.inventoryAvailable ?? 0) <
+                                            item.amount
+                                        ) {
+                                            return {
+                                                status: 'inventory_insufficient' as const,
+                                            };
                                         }
-                                        return resolvedAmount;
-                                    },
-                                ),
-                                manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
-                                to: user.userName,
-                                totalAmountCents: null,
+
+                                        const state =
+                                            await withCheckoutCartItemLock(
+                                                item.id,
+                                                async (db) => {
+                                                    const lockedCart =
+                                                        await getShoppingCart(
+                                                            cart.id,
+                                                            db,
+                                                        );
+                                                    if (!lockedCart) {
+                                                        throw new Error(
+                                                            `Cart ${cart.id.toString()} disappeared before inventory fulfillment.`,
+                                                        );
+                                                    }
+                                                    const lockedState =
+                                                        assertCheckoutCartItemSnapshot(
+                                                            lockedCart.items.find(
+                                                                (lockedItem) =>
+                                                                    lockedItem.id ===
+                                                                    item.id,
+                                                            ),
+                                                            item,
+                                                        );
+                                                    if (
+                                                        lockedState ===
+                                                        'pending'
+                                                    ) {
+                                                        await withInventoryAccountTransaction(
+                                                            accountId,
+                                                            (inventoryDb) =>
+                                                                consumeInventoryItem(
+                                                                    accountId,
+                                                                    {
+                                                                        entityTypeName:
+                                                                            item.entityTypeName,
+                                                                        entityId:
+                                                                            item.entityId,
+                                                                        amount: item.amount,
+                                                                        source: `shoppingCartItem:${item.id.toString()}`,
+                                                                    },
+                                                                    inventoryDb,
+                                                                ),
+                                                            db,
+                                                        );
+                                                    }
+                                                    return lockedState;
+                                                },
+                                            );
+                                        if (state === 'paid') {
+                                            continue;
+                                        }
+
+                                        const checkoutOperationMapping =
+                                            item.entityTypeName === 'operation'
+                                                ? await getCheckoutOperationMapping(
+                                                      item.id,
+                                                  )
+                                                : undefined;
+                                        const fulfillment = await processItem({
+                                            accountId,
+                                            cartItemId: item.id,
+                                            ...item,
+                                            amount_total: 0,
+                                            scheduledDeliveryEmailKeys,
+                                            additionalData:
+                                                checkoutAdditionalDataByCartItemId.get(
+                                                    item.id,
+                                                ) ?? {},
+                                            checkoutOperationMapping,
+                                        });
+                                        assertCheckoutItemFulfilled(
+                                            fulfillment,
+                                        );
+                                        await setCartItemPaid(item.id);
+                                    }
+                                } finally {
+                                    finishFulfillmentPhase();
+                                }
+
+                                processingStage = 'confirmation';
+                                const confirmationIntent =
+                                    await checkoutTiming.measure(
+                                        'confirmation_side_effects',
+                                        () =>
+                                            markCartPaidAndEnqueueOrderConfirmation(
+                                                {
+                                                    cartId: cart.id,
+                                                    payload: {
+                                                        cartId: cart.id,
+                                                        currency: null,
+                                                        items: buildOrderConfirmationItems(
+                                                            cartInfo.items,
+                                                            (item) => {
+                                                                const resolvedAmount =
+                                                                    resolvedAmountsByCartItemId.get(
+                                                                        item.id,
+                                                                    );
+                                                                if (
+                                                                    resolvedAmount ===
+                                                                    undefined
+                                                                ) {
+                                                                    throw new Error(
+                                                                        `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
+                                                                    );
+                                                                }
+                                                                return resolvedAmount;
+                                                            },
+                                                        ),
+                                                        manageUrl:
+                                                            ORDER_CONFIRMATION_MANAGE_URL,
+                                                        to: user.userName,
+                                                        totalAmountCents: null,
+                                                    },
+                                                },
+                                            ),
+                                    );
+                                const confirmationRecorded =
+                                    confirmationIntent.status === 'enqueued' ||
+                                    (confirmationIntent.status ===
+                                        'already_paid' &&
+                                        confirmationIntent.emailMessageId !==
+                                            null);
+                                return {
+                                    status: confirmationRecorded
+                                        ? ('completed' as const)
+                                        : ('confirmation_incomplete' as const),
+                                };
                             },
-                        }),
-                );
-                if (
-                    confirmationIntent.status !== 'enqueued' &&
-                    !(
-                        confirmationIntent.status === 'already_paid' &&
-                        confirmationIntent.emailMessageId !== null
-                    )
-                ) {
-                    return context.json(
-                        {
-                            error: 'Narudžbu nije moguće dovršiti. Pokušaj ponovno.',
-                        },
-                        409,
+                        });
+
+                    if (directCheckoutResult.state === 'cart_paid') {
+                        const retryResponse =
+                            await getPaidCartCheckoutRetryResponse({
+                                accountId,
+                                cart: directCheckoutResult.cart,
+                            });
+                        if (!retryResponse) {
+                            return context.json(
+                                { error: 'Cart not found' },
+                                404,
+                            );
+                        }
+                        return context.json(
+                            retryResponse.body,
+                            retryResponse.status,
+                        );
+                    }
+                    if (
+                        directCheckoutResult.value.status ===
+                        'inventory_insufficient'
+                    ) {
+                        return context.json(
+                            {
+                                error: 'Nema dovoljno predmeta u ruksaku',
+                            },
+                            400,
+                        );
+                    }
+                    if (
+                        directCheckoutResult.value.status ===
+                        'confirmation_incomplete'
+                    ) {
+                        return context.json(
+                            {
+                                code: 'CHECKOUT_CONFIRMATION_MISSING',
+                                error: 'Narudžbu nije moguće dovršiti. Pokušaj ponovno.',
+                            },
+                            409,
+                        );
+                    }
+                } catch (error) {
+                    const paymentErrorResponse =
+                        getDirectCheckoutPaymentErrorResponse(error);
+                    if (paymentErrorResponse) {
+                        checkoutTiming.setErrorCategory(
+                            paymentErrorResponse.errorCategory,
+                        );
+                        return context.json(
+                            paymentErrorResponse.body,
+                            paymentErrorResponse.status,
+                        );
+                    }
+
+                    checkoutTiming.setErrorCategory(
+                        processingStage === 'payment'
+                            ? 'sunflower_spend_failed'
+                            : processingStage === 'fulfillment'
+                              ? 'direct_checkout_fulfillment_failed'
+                              : 'unexpected',
                     );
+                    console.error('Direct checkout failed', {
+                        accountId,
+                        cartId: cart.id,
+                        error,
+                        processingStage,
+                    });
+                    throw error;
+                } finally {
+                    finishFulfillmentPhase();
                 }
             }
 

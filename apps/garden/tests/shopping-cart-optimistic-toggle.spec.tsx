@@ -857,6 +857,76 @@ test.describe('shopping cart item presence', () => {
         await expect(page).toHaveURL(initialUrl);
     });
 
+    test('shows a sunflower checkout conflict and keeps the cart open', async ({
+        mount,
+        page,
+    }) => {
+        let shoppingCartGetCount = 0;
+        await page.route(
+            '**/api/gredice/api/checkout/checkout',
+            async (route) => {
+                await route.fulfill({
+                    body: JSON.stringify({
+                        error: 'Nema dovoljno suncokreta za ovu kupnju.',
+                        code: 'INSUFFICIENT_SUNFLOWERS',
+                    }),
+                    contentType: 'application/json',
+                    status: 409,
+                });
+            },
+        );
+        await page.route('**/api/gredice/**/shopping-cart', async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.fallback();
+                return;
+            }
+
+            shoppingCartGetCount += 1;
+            await route.fulfill({
+                body: JSON.stringify({
+                    ...createShoppingCartServerData(),
+                    items: [
+                        {
+                            ...shoppingCartServerItem,
+                            currency: 'sunflower',
+                        },
+                    ],
+                    total: 0,
+                    totalSunflowers: 2500,
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(<ShoppingCartSunflowerCheckoutStory />);
+        const initialUrl = page.url();
+
+        await page.getByTitle('Košara').click();
+        await page.getByRole('button', { name: 'Potvrdi i plati' }).click();
+        await page
+            .getByRole('alertdialog')
+            .getByRole('button', { name: 'Potvrdi' })
+            .click();
+
+        await expect(
+            page.getByRole('alert').filter({
+                hasText: 'Nema dovoljno suncokreta za ovu kupnju.',
+            }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('dialog', { name: 'Košara' }),
+        ).toBeVisible();
+        await expect(
+            page.locator('[data-shopping-cart-item-id="1"]'),
+        ).toBeVisible();
+        await expect.poll(() => shoppingCartGetCount).toBeGreaterThanOrEqual(2);
+        await expect(
+            page.getByRole('button', { name: 'Potvrdi i plati' }),
+        ).toBeEnabled();
+        await expect(page).toHaveURL(initialUrl);
+    });
+
     test('redirects when checkout returns a Stripe URL', async ({
         mount,
         page,

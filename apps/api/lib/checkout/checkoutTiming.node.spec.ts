@@ -84,6 +84,21 @@ test('checkout timing emits one privacy-safe unexpected failure record', () => {
     ]);
 });
 
+test('checkout timing preserves a route-classified failure from middleware fallback', () => {
+    let record: Record<string, unknown> | undefined;
+    const timing = new CheckoutTiming({
+        write: (_level, _event, attributes) => {
+            record = attributes;
+        },
+    });
+
+    timing.setErrorCategory('direct_checkout_fulfillment_failed');
+    timing.setErrorCategoryIfUnset('unexpected');
+    timing.finish({ outcome: 'unexpected_failure', status: 500 });
+
+    assert.equal(record?.errorCategory, 'direct_checkout_fulfillment_failed');
+});
+
 test('checkout timing accumulates repeated phases and ends each phase once', () => {
     let currentTime = 0;
     let record: Record<string, unknown> | undefined;

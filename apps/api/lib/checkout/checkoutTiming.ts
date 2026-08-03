@@ -25,6 +25,9 @@ export type CheckoutTimingOutcome =
 
 export type CheckoutTimingErrorCategory =
     | 'cart_validation_failed'
+    | 'direct_checkout_fulfillment_failed'
+    | 'sunflower_amount_conflict'
+    | 'sunflower_insufficient'
     | 'sunflower_spend_failed'
     | 'unexpected';
 
@@ -173,6 +176,10 @@ export class CheckoutTiming {
         this.errorCategory = errorCategory;
     }
 
+    setErrorCategoryIfUnset(errorCategory: CheckoutTimingErrorCategory) {
+        this.errorCategory ??= errorCategory;
+    }
+
     startPhase(phase: CheckoutTimingPhase) {
         const startedAtMs = this.now();
         let ended = false;
@@ -245,7 +252,7 @@ export function checkoutTimingMiddleware<
         try {
             await next();
             if (context.error) {
-                checkoutTiming.setErrorCategory('unexpected');
+                checkoutTiming.setErrorCategoryIfUnset('unexpected');
                 checkoutTiming.finish({
                     outcome: 'unexpected_failure',
                     status: context.res.status,
@@ -254,7 +261,7 @@ export function checkoutTimingMiddleware<
             }
             checkoutTiming.finish({ status: context.res.status });
         } catch (error) {
-            checkoutTiming.setErrorCategory('unexpected');
+            checkoutTiming.setErrorCategoryIfUnset('unexpected');
             checkoutTiming.finish({
                 outcome: 'unexpected_failure',
                 status: 500,
