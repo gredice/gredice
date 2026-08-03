@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     EmailProviderSubmissionRejectedError,
     EmailProviderSubmissionUncertainError,
+    EmailProviderTerminalFailureError,
 } from '@gredice/email/acs';
 import type { OrderConfirmationEmailClaimResult } from '@gredice/storage';
 import { runOrderConfirmationEmailWorker } from './orderConfirmationEmailWorker';
@@ -235,6 +236,52 @@ test('order confirmation worker retries a proven provider rejection', async (t) 
         claimId: 'claim-1',
         emailMessageId: 42,
         failureCode: 'provider_rejected_retryable',
+        failureKind: 'definite',
+        now,
+    });
+});
+
+test('order confirmation worker records a terminal provider result without retrying', async (t) => {
+    t.mock.method(console, 'info', () => undefined);
+    let claimCount = 0;
+    let failure:
+        | {
+              failureCode: string;
+              failureKind: string;
+          }
+        | undefined;
+
+    const result = await runOrderConfirmationEmailWorker({
+        reconciliationLimit: 0,
+        dependencies: {
+            claim: async () => {
+                claimCount += 1;
+                return claimCount === 1 ? claim() : { status: 'empty' };
+            },
+            markFailed: async (input) => {
+                failure = input;
+                return { attempt: 1, status: 'failed' };
+            },
+            now: () => now,
+            send: async (_to, _config, options) => {
+                if (!options) throw new Error('Expected send options.');
+                await options.beforeProviderSubmission?.();
+                throw new EmailProviderTerminalFailureError('Failed');
+            },
+            start: async () => ({ operationId, status: 'started' }),
+        },
+    });
+
+    assert.equal(result.queuedForRetry, 0);
+    assert.equal(result.terminalFailures, 1);
+    assert.deepEqual(
+        result.failureCategories,
+        failureCategories({ provider_rejected_terminal: 1 }),
+    );
+    assert.deepEqual(failure, {
+        claimId: 'claim-1',
+        emailMessageId: 42,
+        failureCode: 'provider_rejected_terminal',
         failureKind: 'definite',
         now,
     });

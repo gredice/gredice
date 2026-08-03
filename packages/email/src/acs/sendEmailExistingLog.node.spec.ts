@@ -113,7 +113,9 @@ test('existing email logs preserve durable outbox ownership at the provider boun
 
     const moduleUrl = new URL('./index.ts', import.meta.url);
     moduleUrl.searchParams.set('test', 'existing-email-log');
-    const { sendEmail } = await import(moduleUrl.href);
+    const { isEmailProviderTerminalFailureError, sendEmail } = await import(
+        moduleUrl.href
+    );
     const originalConnectionString = process.env.ACS_CONNECTION_STRING;
     process.env.ACS_CONNECTION_STRING =
         'endpoint=https://email.example.test/;accesskey=test';
@@ -213,7 +215,13 @@ test('existing email logs preserve durable outbox ownership at the provider boun
                         events.push('before-provider-submission');
                     },
                 }),
-                /Provider failed/u,
+                (error: unknown) => {
+                    assert.equal(
+                        isEmailProviderTerminalFailureError(error),
+                        true,
+                    );
+                    return true;
+                },
             );
 
             assertOnlyContentUpdate();

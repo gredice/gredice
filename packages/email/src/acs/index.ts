@@ -266,6 +266,21 @@ export class EmailProviderSubmissionRejectedError extends Error {
     }
 }
 
+export type EmailProviderTerminalStatus = 'Canceled' | 'Failed';
+
+export class EmailProviderTerminalFailureError extends Error {
+    readonly code = 'email_provider_terminal_failure';
+    readonly providerStatus: EmailProviderTerminalStatus;
+
+    constructor(providerStatus: EmailProviderTerminalStatus) {
+        super(
+            `Email provider completed submission with terminal status ${providerStatus}.`,
+        );
+        this.name = 'EmailProviderTerminalFailureError';
+        this.providerStatus = providerStatus;
+    }
+}
+
 export function isEmailProviderSubmissionUncertainError(
     error: unknown,
 ): error is EmailProviderSubmissionUncertainError {
@@ -275,6 +290,18 @@ export function isEmailProviderSubmissionUncertainError(
             error !== null &&
             'code' in error &&
             error.code === 'email_provider_submission_uncertain')
+    );
+}
+
+export function isEmailProviderTerminalFailureError(
+    error: unknown,
+): error is EmailProviderTerminalFailureError {
+    return (
+        error instanceof EmailProviderTerminalFailureError ||
+        (isRecord(error) &&
+            error.code === 'email_provider_terminal_failure' &&
+            (error.providerStatus === KnownEmailSendStatus.Failed ||
+                error.providerStatus === KnownEmailSendStatus.Canceled))
     );
 }
 
@@ -360,9 +387,16 @@ export function emailProviderSubmissionIsUncertain({
 export function assertEmailProviderSendSucceeded(
     response: Pick<EmailSendResponse, 'error' | 'status'>,
 ) {
-    if (response.status !== KnownEmailSendStatus.Succeeded) {
-        throw new Error(response.error?.message ?? 'Failed to send email');
+    if (response.status === KnownEmailSendStatus.Succeeded) {
+        return;
     }
+    if (
+        response.status === KnownEmailSendStatus.Failed ||
+        response.status === KnownEmailSendStatus.Canceled
+    ) {
+        throw new EmailProviderTerminalFailureError(response.status);
+    }
+    throw new Error(response.error?.message ?? 'Failed to send email');
 }
 
 function normalizedProviderOperationId(value?: string) {

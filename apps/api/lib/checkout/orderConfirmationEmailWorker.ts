@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
     isEmailProviderSubmissionRejectedError,
     isEmailProviderSubmissionUncertainError,
+    isEmailProviderTerminalFailureError,
 } from '@gredice/email/acs';
 import {
     getAcsEmailOperationStatus,
@@ -403,7 +404,9 @@ export async function runOrderConfirmationEmailWorker({
             const uncertain = isEmailProviderSubmissionUncertainError(error);
             let failureCode: OrderConfirmationEmailDefiniteFailureCode =
                 'worker_error_before_submission';
-            if (isEmailProviderSubmissionRejectedError(error)) {
+            if (isEmailProviderTerminalFailureError(error)) {
+                failureCode = 'provider_rejected_terminal';
+            } else if (isEmailProviderSubmissionRejectedError(error)) {
                 failureCode = error.retryable
                     ? 'provider_rejected_retryable'
                     : 'provider_rejected_terminal';
