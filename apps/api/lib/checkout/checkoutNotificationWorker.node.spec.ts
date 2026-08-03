@@ -264,6 +264,48 @@ test('delivery email resolves details, fences ACS submission, and finalizes sent
     assert.equal(result.sent, 1);
 });
 
+test('delivery email is skipped as obsolete after the request is cancelled', async () => {
+    let claims = 0;
+    let skippedReason: string | undefined;
+    let providerCalls = 0;
+    const result = await runCheckoutNotificationWorker({
+        dependencies: {
+            buildDeliveryEmailDetails: async (requestId) => ({
+                accountId: 'account',
+                deliveryWindow: '4. kolovoza, 08:00 - 10:00',
+                recipients: ['customer@example.test'],
+                requestId,
+                state: 'cancelled',
+            }),
+            claim: async () => {
+                claims += 1;
+                return claims === 1
+                    ? deliveryEmailClaim()
+                    : { status: 'empty' };
+            },
+            markSkipped: async ({ reason }) => {
+                skippedReason = reason;
+                return { status: 'skipped' };
+            },
+            monotonicNow: () => 0,
+            now: () => new Date('2026-08-03T09:00:00.000Z'),
+            randomId: () => 'email-claim',
+            sendDeliveryEmail: async () => {
+                providerCalls += 1;
+                return {
+                    id: 'must-not-send',
+                    status: 'Succeeded',
+                };
+            },
+        },
+    });
+
+    assert.equal(skippedReason, 'obsolete');
+    assert.equal(providerCalls, 0);
+    assert.equal(result.skipped, 1);
+    assert.equal(result.sent, 0);
+});
+
 test('ambiguous ACS delivery submission is fenced without a send retry', async () => {
     let claims = 0;
     let failureKind: string | undefined;

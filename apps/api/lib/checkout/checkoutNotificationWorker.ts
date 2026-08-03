@@ -27,6 +27,11 @@ const finalizationReserveMilliseconds = 5_000;
 const claimLeaseMilliseconds = 5 * 60_000;
 const customerAppUrl =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
+const deliveryScheduledEmailEligibleStates = new Set([
+    'pending',
+    'confirmed',
+    'preparing',
+]);
 
 class CheckoutNotificationClaimUnavailableError extends Error {
     constructor() {
@@ -221,12 +226,15 @@ export async function runCheckoutNotificationWorker({
                 const details = await resolved.buildDeliveryEmailDetails(
                     claimed.claim.payload.requestId,
                 );
-                if (!details) {
+                if (
+                    !details ||
+                    !deliveryScheduledEmailEligibleStates.has(details.state)
+                ) {
                     const skipped = await resolved.markSkipped({
                         claimId: claimed.claim.claimId,
                         emailMessageId: claimed.claim.emailMessageId,
                         now: resolved.now(),
-                        reason: 'ineligible',
+                        reason: details ? 'obsolete' : 'ineligible',
                     });
                     if (skipped.status === 'skipped') result.skipped += 1;
                     else result.finalizationFailures += 1;

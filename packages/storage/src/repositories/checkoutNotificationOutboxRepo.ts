@@ -559,7 +559,11 @@ export async function markCheckoutNotificationSkipped({
 }: {
     claimId: string;
     emailMessageId: number;
-    reason: 'ineligible' | 'missing_destination' | 'source_not_found';
+    reason:
+        | 'ineligible'
+        | 'missing_destination'
+        | 'obsolete'
+        | 'source_not_found';
     now?: Date;
 }) {
     const normalizedClaimId = normalizeClaimId(claimId);
