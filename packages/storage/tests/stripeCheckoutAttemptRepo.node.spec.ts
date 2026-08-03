@@ -5,6 +5,7 @@ import {
     accountDeletionStartedEventType,
     accounts,
     assignStripeCustomerId,
+    assignStripeCustomerIdIfUnchanged,
     bindStripeCheckoutAttempt,
     createStripeCheckoutAttempt,
     deleteAccountWithDependencies,
@@ -381,6 +382,36 @@ test('snapshot creation rejects a customer that lost the canonical assignment ra
         },
     );
     assert.equal(await getActiveStripeCheckoutAttempt(cart.id), undefined);
+});
+
+test('an active snapshot fences replacement of its canonical Stripe customer', async () => {
+    createTestDb();
+    const { accountId, cart } = await createCartWithItem();
+    const snapshot = snapshotFromCart(cart);
+    await createStripeCheckoutAttempt(snapshot, { accountId });
+
+    assert.equal(
+        await assignStripeCustomerIdIfUnchanged(
+            accountId,
+            'checkout-test-customer',
+            'checkout-replacement-customer',
+        ),
+        'checkout-test-customer',
+    );
+    await releaseStripeCheckoutAttempt({
+        attemptId: snapshot.attemptId,
+        cartId: cart.id,
+        reason: 'cancelled',
+        sessionId: null,
+    });
+    assert.equal(
+        await assignStripeCustomerIdIfUnchanged(
+            accountId,
+            'checkout-test-customer',
+            'checkout-replacement-customer',
+        ),
+        'checkout-replacement-customer',
+    );
 });
 
 test('an active snapshot wins account deletion before any garden mutation', async () => {

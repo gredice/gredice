@@ -523,6 +523,28 @@ export async function getActiveStripeCheckoutAttempt(
     return activeAttempts[0];
 }
 
+export async function hasActiveStripeCheckoutAttemptForAccount(
+    accountId: string,
+    db: DatabaseClient = storage(),
+) {
+    const carts = await db
+        .select({ id: shoppingCarts.id })
+        .from(shoppingCarts)
+        .where(
+            and(
+                eq(shoppingCarts.accountId, accountId),
+                eq(shoppingCarts.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(shoppingCarts.id));
+    for (const cart of carts) {
+        if (await getActiveStripeCheckoutAttempt(cart.id, db)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export async function assertNoActiveStripeCheckoutAttempt(
     cartId: number,
     db: DatabaseClient,

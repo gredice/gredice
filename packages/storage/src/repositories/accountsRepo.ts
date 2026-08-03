@@ -16,6 +16,7 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { hasActiveStripeCheckoutAttemptForAccount } from './stripeCheckoutAttemptRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -238,6 +239,12 @@ export async function assignStripeCustomerIdIfUnchanged(
         }
         if (account.stripeCustomerId === candidateStripeCustomerId) {
             return candidateStripeCustomerId;
+        }
+        if (
+            account.stripeCustomerId &&
+            (await hasActiveStripeCheckoutAttemptForAccount(accountId, db))
+        ) {
+            return account.stripeCustomerId;
         }
         const [updated] = await db
             .update(accounts)
