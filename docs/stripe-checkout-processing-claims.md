@@ -126,10 +126,25 @@ seeding the claim schema.
 
 The API Vercel project's production Build Command runs
 `pnpm --filter @gredice/storage migrate:deploy` after the API build and before
-the new deployment is activated. Preview builds skip migrations. Do not run
-migration `0078` separately or copy its statements into an ad hoc runner: the
-production build is the cutover boundary, and its transaction must retain the
-exclusive drain fence and all preflights.
+the new deployment is activated. That command runs pending migrations and then
+verifies the exact migration `0078` journal hash, claim relations and indexes,
+validated singleton constraints, and cursor rows in a repeatable-read,
+read-only transaction. A mismatch fails before Vercel deploys outputs. Preview
+builds skip migrations and readback. Do not run migration `0078` separately or
+copy its statements into an ad hoc runner: the production build is the cutover
+boundary, and its migration transaction must retain the exclusive drain fence
+and all preflights.
+
+The same verification can be invoked independently through an approved
+environment runner:
+
+```sh
+pnpm --filter @gredice/storage stripe-payment-claim:migration-readback
+```
+
+It opens a repeatable-read, read-only transaction and emits only aggregate
+verification counts. Failures expose a bounded invariant code, not database
+credentials, cursor values, payment identities, or customer data.
 
 Do not run the advisory-lock version and claim version concurrently: they use
 different ownership protocols. Keep the Stripe event destination enabled
@@ -139,13 +154,15 @@ creates a failed delivery that Stripe can retry. See Stripe's documentation for
 [event destinations](https://docs.stripe.com/workbench/event-destinations) and
 [automatic webhook retries](https://docs.stripe.com/webhooks?lang=node).
 
-Maintenance is deliberately narrow. Authenticated Stripe reconciliation and
-valid `checkout.session.completed` deliveries return HTTP 503 with
-`Retry-After: 60` and `Cache-Control: private, no-store`.
-`checkout.session.expired` remains active so cart reservations can be released.
-The five-minute outlet lifecycle cron still performs outlet cleanup, reports
-its counts, skips only orphan Stripe-attempt reconciliation, and returns the
-same retryable 503. Missing or invalid cron authentication invokes neither job.
+When the emergency maintenance flag is enabled, maintenance is deliberately
+narrow. Authenticated Stripe reconciliation and valid
+`checkout.session.completed` deliveries return HTTP 503 with `Retry-After: 60`
+and `Cache-Control: private, no-store`. `checkout.session.expired` remains active
+so cart reservations can be released. The five-minute outlet lifecycle cron
+still performs outlet cleanup, reports its counts, skips only orphan
+Stripe-attempt reconciliation, and returns the same retryable 503. Missing or
+invalid cron authentication invokes neither job. With the flag unset or
+`false`, durable claim processing is active.
 
 Follow the detailed prerequisite behavior and drain evidence in
 [Stripe checkout advisory drain gate](./stripe-checkout-advisory-drain.md).
@@ -186,16 +203,19 @@ Use this prerequisite-gated cutover:
    live; investigate the blocker and retry the full deployment without
    bypassing the migration.
 7. Confirm the build log records successful migration `0078`, the resulting API
-   deployment is `READY` at the exact `#4385` merge SHA, and the production
-   aliases are fully routed. Verify `stripe_payment_processing_claims`,
+   deployment is `READY` at the exact `#4385` merge SHA, the production aliases
+   are fully routed, and the forced maintenance gate still reports a successful
+   aggregate drain.
+8. Merge activation issue `#4388`. Its production build reruns migrations and
+   then verifies the exact migration journal hash,
+   `stripe_payment_processing_claims`,
    `stripe_payment_processing_claim_reviews`,
    `stripe_payment_discovery_checkpoints`,
-   `stripe_payment_recovery_cursors`, and
-   `transactions_stripe_payment_id_unique` exist. Read back the singleton
-   discovery and recovery cursor rows. The forced `#4387` maintenance gate must
-   still reject completed-payment work during this readback.
-8. Merge activation issue `#4388`. Confirm its exact merge SHA is `READY` and
-   fully routed in production before sending queued work to the claim
+   `stripe_payment_recovery_cursors`, required unique indexes, validated
+   singleton constraints, and one row in each cursor table. The verifier is
+   read-only and privacy-safe. A mismatch fails before output activation and
+   leaves the exact `#4385` maintenance deployment live. Confirm the activation
+   merge SHA is `READY` and fully routed before sending queued work to the claim
    processor.
 9. Invoke the authenticated cron manually. A budget-limited discovery or
    recovery pass returns an unhealthy HTTP 503 while preserving both cursors.
@@ -208,9 +228,10 @@ Use this prerequisite-gated cutover:
     latency, then watch retries, duplicate suppression, database pool wait, and
     transaction count through another healthy reconciliation cycle.
 
-For rollback, reactivate maintenance on the claim deployment and verify both
-entry points return 503. Drain claim workers and the current order-confirmation
-and checkout-notification workers. Then run:
+For rollback, route to the exact maintenance-on `#4385` claim deployment, or
+enable the emergency maintenance flag and deploy that configuration. Verify
+both entry points return 503. Drain claim workers and the current
+order-confirmation and checkout-notification workers. Then run:
 
 ```sh
 pnpm --filter @gredice/storage stripe-payment-claim:rollback-preflight
