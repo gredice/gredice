@@ -1,12 +1,14 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Vector3 } from 'three';
 import { groundGameAssetNames } from '../../../data/models';
 import { RaisedBed } from '../../../entities/RaisedBed';
 import { Environment } from '../../../scene/Environment';
 import { Scene } from '../../../scene/Scene';
+import type { Block } from '../../../types/Block';
+import type { Stack } from '../../../types/Stack';
 import {
     createGameState,
     GameStateContext,
@@ -25,15 +27,29 @@ import { usePlantState } from './hooks/usePlantState';
 
 const zoom = 1000;
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-const desktopEditorTarget: [x: number, y: number, z: number] = [-0.55, 0.9, 0];
-const mobileEditorTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+const editorScenePosition: [x: number, y: number, z: number] = [0, 0.7, 0];
+const editorGrassPosition: [x: number, y: number, z: number] = [0, -0.4, 0];
+const editorPlantPosition: [x: number, y: number, z: number] = [0, 0.25, 0];
+const editorOrbitTarget: [x: number, y: number, z: number] = [
+    0,
+    editorScenePosition[1] + editorPlantPosition[1],
+    0,
+];
+const editorRaisedBedStack: Stack = {
+    position: new Vector3(0, 0, 0),
+    blocks: [],
+};
+const editorRaisedBedBlock: Block = {
+    id: '',
+    name: '',
+    rotation: 0,
+};
 
 export function PlantEditor({
     initialPlantType,
 }: {
     initialPlantType?: string;
 } = {}) {
-    const [isDesktop, setIsDesktop] = useState(false);
     const {
         state,
         visibility,
@@ -89,16 +105,6 @@ export function PlantEditor({
         },
         [state.generation, updateState],
     );
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(min-width: 768px)');
-        const handleChange = (event: MediaQueryListEvent) =>
-            setIsDesktop(event.matches);
-
-        setIsDesktop(mediaQuery.matches);
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, []);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -178,8 +184,6 @@ export function PlantEditor({
         () => serializeLSystemSymbols(lSystemSymbols),
         [lSystemSymbols],
     );
-    const orbitTarget = isDesktop ? desktopEditorTarget : mobileEditorTarget;
-
     /**
      * Common props for control components
      */
@@ -259,9 +263,11 @@ export function PlantEditor({
                         </mesh>
 
                         {/* Plant */}
-                        <group position={[0, 0.7, 0]}>
-                            <EditorGrassContext />
-                            <group position={[0, 0.25, 0]}>
+                        <group position={editorScenePosition}>
+                            <group position={editorGrassPosition}>
+                                <EditorGrassContext />
+                            </group>
+                            <group position={editorPlantPosition}>
                                 <PlantGenerator
                                     key={`${state.plantType}-${state.seed}`}
                                     plantDefinition={state.definition}
@@ -277,16 +283,8 @@ export function PlantEditor({
                             </group>
 
                             <RaisedBed
-                                stack={{
-                                    position: new Vector3(0, 0, 0),
-                                    blocks: [],
-                                }}
-                                block={{
-                                    id: '',
-                                    name: '',
-                                    rotation: 0,
-                                    variant: undefined,
-                                }}
+                                stack={editorRaisedBedStack}
+                                block={editorRaisedBedBlock}
                                 rotation={0}
                             />
                         </group>
@@ -295,7 +293,7 @@ export function PlantEditor({
                         <OrbitControls
                             minDistance={1}
                             maxDistance={40}
-                            target={orbitTarget}
+                            target={editorOrbitTarget}
                         />
                     </Scene>
                 </GameStateContext.Provider>

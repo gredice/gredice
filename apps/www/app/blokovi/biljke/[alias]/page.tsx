@@ -101,8 +101,8 @@ export default async function BlockPlantDetailPage(
         .sort((a, b) => a.information.name.localeCompare(b.information.name));
 
     return (
-        <div className="py-8">
-            <Stack spacing={8}>
+        <div className="py-6 sm:py-8">
+            <Stack spacing={6}>
                 <Breadcrumbs
                     items={[
                         { label: 'Blokovi', href: KnownPages.Blocks },
