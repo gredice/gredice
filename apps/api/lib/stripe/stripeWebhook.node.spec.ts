@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+    StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
+} from '@gredice/storage';
 import { handleStripeWebhook } from './stripeWebhook';
 
 function webhookRequest() {
@@ -117,7 +121,7 @@ test('unsupported signed webhook remains a 400 during maintenance', async () => 
     assert.strictEqual(maintenanceChecks, 0);
 });
 
-test('payment webhook processing failures return 503 for Stripe retry', async (t) => {
+test('payment webhook retryable processing failures return 503 for Stripe retry', async (t) => {
     t.mock.method(console, 'error', () => undefined);
     const response = await handleStripeWebhook(webhookRequest(), {
         constructEvent: async () => completedPaymentEvent(),
@@ -130,6 +134,46 @@ test('payment webhook processing failures return 503 for Stripe retry', async (t
     assert.strictEqual(response.status, 503);
     assert.strictEqual(response.headers.get('retry-after'), '60');
     assert.strictEqual(await response.text(), 'Stripe webhook handler failed');
+});
+
+test('payment webhook returns 503 while another worker owns the retryable claim', async (t) => {
+    t.mock.method(console, 'warn', () => undefined);
+    const response = await handleStripeWebhook(webhookRequest(), {
+        constructEvent: async () => completedPaymentEvent(),
+        maintenanceEnabled: () => false,
+        process: async () => {
+            throw new StripePaymentProcessingUnavailableError(
+                'cs_paid',
+                'processing',
+                new Date('2026-08-04T10:01:00.000Z'),
+                2,
+            );
+        },
+    });
+
+    assert.strictEqual(response.status, 503);
+    assert.strictEqual(response.headers.get('retry-after'), '60');
+    assert.strictEqual(await response.text(), 'Stripe webhook handler failed');
+});
+
+test('durably classified permanent payment failures are acknowledged', async (t) => {
+    t.mock.method(console, 'error', () => undefined);
+    const response = await handleStripeWebhook(webhookRequest(), {
+        constructEvent: async () => completedPaymentEvent(),
+        maintenanceEnabled: () => false,
+        process: async () => {
+            throw new StripePaymentProcessingPermanentError(
+                'checkout_session_unpaid',
+            );
+        },
+    });
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(
+        response.headers.get('cache-control'),
+        'private, no-store',
+    );
+    assert.deepStrictEqual(await response.json(), { received: true });
 });
 
 test('signed expired checkout releases its attempt even during maintenance', async () => {

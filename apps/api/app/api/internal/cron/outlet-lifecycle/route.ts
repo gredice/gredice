@@ -4,6 +4,6 @@ import { handleOutletLifecycleCron } from '../../../../../lib/stripe/outletLifec
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
     return handleOutletLifecycleCron(request);
 }

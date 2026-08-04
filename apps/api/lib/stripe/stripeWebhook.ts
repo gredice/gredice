@@ -1,4 +1,8 @@
-import { releaseStripeCheckoutAttempt } from '@gredice/storage';
+import {
+    releaseStripeCheckoutAttempt,
+    StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
+} from '@gredice/storage';
 import { stripeWebhookConstructEvent } from '@gredice/stripe/server';
 import { decodeStripeCheckoutAttemptMetadata } from '../checkout/stripeCheckoutSnapshot';
 import { processCheckoutSession } from './processCheckoutSession';
@@ -124,6 +128,27 @@ export async function handleStripeWebhook(
             }
         }
     } catch (error) {
+        if (error instanceof StripePaymentProcessingUnavailableError) {
+            console.warn(
+                'Stripe webhook payment processing is already active',
+                {
+                    attempt: error.attempt,
+                    availableAt: error.availableAt?.toISOString() ?? null,
+                    claimStatus: error.claimStatus,
+                    stripePaymentId: error.stripePaymentId,
+                },
+            );
+            return retryableFailureResponse();
+        }
+        if (error instanceof StripePaymentProcessingPermanentError) {
+            console.error('Stripe webhook payment requires manual review', {
+                failureCode: error.failureCode,
+            });
+            return Response.json(
+                { received: true },
+                { headers: { 'Cache-Control': 'private, no-store' } },
+            );
+        }
         console.error('Stripe webhook retryable failure', {
             ...getStripeOperationalErrorDiagnostic(error),
             eventType: event.type,

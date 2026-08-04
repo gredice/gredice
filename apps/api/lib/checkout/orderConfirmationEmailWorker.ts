@@ -373,7 +373,10 @@ export async function runOrderConfirmationEmailWorker({
                     email: claimed.claim.payload.to,
                     items: claimed.claim.payload.items,
                     manageUrl: claimed.claim.payload.manageUrl,
-                    orderReference: `Narudžba #${claimed.claim.payload.cartId}`,
+                    orderReference:
+                        claimed.claim.payload.cartId === null
+                            ? null
+                            : `Narudžba #${claimed.claim.payload.cartId}`,
                     totalAmountCents: claimed.claim.payload.totalAmountCents,
                 },
                 {

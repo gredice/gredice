@@ -37,7 +37,7 @@ interface DeliveryRequestEventOptions {
     status?: DeliveryRequestState | string | null;
 }
 
-interface PurchaseNotificationDetails {
+export interface PurchaseNotificationDetails {
     accountId?: string | null;
     amountTotal?: number | null;
     currency?: string | null;
@@ -537,8 +537,16 @@ export async function notifyOperationAssignedUsers(
 }
 
 export async function notifyPurchase(details: PurchaseNotificationDetails) {
+    await deliverPurchaseNotification(details);
+}
+
+export async function deliverPurchaseNotification(
+    details: PurchaseNotificationDetails,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
     const channel = await getSlackChannelId(
         NotificationSettingKeys.SlackShoppingChannel,
+        deliveryOptions.throwOnLookupError,
     );
     if (!channel) {
         console.debug('Skipping shopping Slack notification: missing channel');
@@ -575,7 +583,11 @@ export async function notifyPurchase(details: PurchaseNotificationDetails) {
         }
     }
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyCheckoutFulfillmentIncident(

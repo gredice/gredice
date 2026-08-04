@@ -547,6 +547,13 @@
       "when": 1784915842968,
       "tag": "0077_certain_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1785795248211,
+      "tag": "0078_silly_bushwacker",
+      "breakpoints": true
     }
   ]
 }

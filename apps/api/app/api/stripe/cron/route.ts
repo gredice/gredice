@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server';
-import { handleLegacyStripeReconciliationCron } from '../../../../lib/stripe/stripeLegacyReconciliationCron';
+import { handleStripeCheckoutReconciliationCron } from '../../../../lib/stripe/stripeCheckoutReconciliationCron';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-    return handleLegacyStripeReconciliationCron(request);
+    return handleStripeCheckoutReconciliationCron(request);
 }

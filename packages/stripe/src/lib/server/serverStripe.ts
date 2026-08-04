@@ -35,6 +35,13 @@ export type CheckoutItem = {
     quantity: number;
 };
 
+export type StripeCheckoutData = {
+    items: CheckoutItem[];
+    expiresAt?: Date;
+    allowPromotionCodes?: boolean;
+    metadata?: Record<string, string | number | null>;
+};
+
 type StripeCheckoutSessionCreateParams = NonNullable<
     Parameters<
         ReturnType<typeof getStripe>['checkout']['sessions']['create']
@@ -101,19 +108,90 @@ export async function resolveStripeCustomerId(
     return newCustomer.id;
 }
 
-export async function getStripeCheckoutSessions(lastDateTime: Date) {
-    try {
-        const sessions = await getStripe().checkout.sessions.list({
-            created: {
-                gte: Math.floor(lastDateTime.getTime() / 1000),
-            },
-            limit: 100,
-        });
-        return sessions.data;
-    } catch (error) {
-        console.error('Error fetching checkout sessions:', error);
-        throw error;
+const stripeCheckoutDiscoveryPageSize = 100;
+const stripeCheckoutDiscoveryRequestOptions = {
+    maxNetworkRetries: STRIPE_RECONCILIATION_MAX_NETWORK_RETRIES,
+    timeout: STRIPE_RECONCILIATION_REQUEST_TIMEOUT_MS,
+} satisfies Stripe.RequestOptions;
+
+type StripeCheckoutSessionDiscoveryPage = {
+    data: readonly { id: string }[];
+    has_more: boolean;
+};
+
+type StripeCheckoutSessionDiscoveryPageParams = {
+    created: { gte: number; lte: number };
+    limit: number;
+    starting_after?: string;
+    status: 'complete';
+};
+
+export type StripeCheckoutSessionDiscoveryPageResult = {
+    hasMore: boolean;
+    nextStartingAfter: string | null;
+    sessions: readonly { id: string }[];
+};
+
+export async function collectStripeCheckoutSessionDiscoveryPage(
+    {
+        rangeGte,
+        rangeLte,
+        startingAfter,
+    }: {
+        rangeGte: Date;
+        rangeLte: Date;
+        startingAfter: string | null;
+    },
+    listPage: (
+        params: StripeCheckoutSessionDiscoveryPageParams,
+        requestOptions: Stripe.RequestOptions,
+    ) => Promise<StripeCheckoutSessionDiscoveryPage>,
+): Promise<StripeCheckoutSessionDiscoveryPageResult> {
+    const rangeGteMs = rangeGte.getTime();
+    const rangeLteMs = rangeLte.getTime();
+    if (
+        !Number.isFinite(rangeGteMs) ||
+        !Number.isFinite(rangeLteMs) ||
+        rangeLteMs < rangeGteMs
+    ) {
+        throw new RangeError('Stripe checkout discovery range is invalid.');
     }
+    const page = await listPage(
+        {
+            created: {
+                gte: Math.floor(rangeGteMs / 1_000),
+                lte: Math.floor(rangeLteMs / 1_000),
+            },
+            limit: stripeCheckoutDiscoveryPageSize,
+            ...(startingAfter ? { starting_after: startingAfter } : {}),
+            status: 'complete',
+        },
+        stripeCheckoutDiscoveryRequestOptions,
+    );
+    const nextStartingAfter = page.has_more
+        ? (page.data.at(-1)?.id ?? null)
+        : null;
+    if (
+        page.has_more &&
+        (!nextStartingAfter || nextStartingAfter === startingAfter)
+    ) {
+        throw new Error('Stripe checkout session pagination did not advance');
+    }
+    return {
+        hasMore: page.has_more,
+        nextStartingAfter,
+        sessions: page.data,
+    };
+}
+
+export function getStripeCheckoutSessionDiscoveryPage(input: {
+    rangeGte: Date;
+    rangeLte: Date;
+    startingAfter: string | null;
+}) {
+    return collectStripeCheckoutSessionDiscoveryPage(input, (params, options) =>
+        getStripe().checkout.sessions.list(params, options),
+    );
 }
 
 export type ExhaustiveStripePageResult<T> =
@@ -351,14 +429,50 @@ export async function stripeSessionCancel(sessionId: string) {
     }
 }
 
+export function buildStripeCheckoutSessionCreateParams({
+    customerId,
+    data,
+    returnUrls,
+}: {
+    customerId: string;
+    data: StripeCheckoutData;
+    returnUrls: StripeCheckoutReturnUrls;
+}): StripeCheckoutSessionCreateParams {
+    const params: StripeCheckoutSessionCreateParams = {
+        customer: customerId,
+        customer_update: {
+            address: 'auto',
+        },
+        line_items: data.items.map((item) => ({
+            price_data: {
+                currency: item.price.currency,
+                product_data: {
+                    name: item.product.name,
+                    description: item.product.description,
+                    images: getValidStripeImageUrls(item.product.imageUrls),
+                    metadata: item.product.metadata,
+                },
+                unit_amount: item.price.valueInCents,
+            },
+            quantity: item.quantity,
+        })),
+        allow_promotion_codes: data.allowPromotionCodes ?? true,
+        mode: 'payment',
+        payment_method_types: ['card'],
+        locale: 'hr',
+        cancel_url: returnUrls.cancel,
+        success_url: returnUrls.success,
+        metadata: data.metadata,
+    };
+    if (data.expiresAt) {
+        params.expires_at = Math.floor(data.expiresAt.getTime() / 1000);
+    }
+    return params;
+}
+
 export async function stripeCheckout(
     account: UserAccount,
-    data: {
-        items: CheckoutItem[];
-        expiresAt?: Date;
-        allowPromotionCodes?: boolean;
-        metadata?: Record<string, string | number | null>;
-    },
+    data: StripeCheckoutData,
     options: {
         customerId?: string;
         idempotencyKey?: string;
@@ -369,34 +483,11 @@ export async function stripeCheckout(
         const customerId =
             options.customerId ?? (await resolveStripeCustomerId(account));
         const returnUrls = options.returnUrls ?? getStripeCheckoutReturnUrls();
-        const params: StripeCheckoutSessionCreateParams = {
-            customer: customerId,
-            customer_update: {
-                address: 'auto',
-            },
-            line_items: data.items.map((item) => ({
-                price_data: {
-                    currency: item.price.currency,
-                    product_data: {
-                        name: item.product.name,
-                        description: item.product.description,
-                        images: getValidStripeImageUrls(item.product.imageUrls),
-                        metadata: item.product.metadata,
-                    },
-                    unit_amount: item.price.valueInCents,
-                },
-                quantity: item.quantity,
-            })),
-            allow_promotion_codes: data.allowPromotionCodes ?? true,
-            mode: 'payment',
-            locale: 'hr',
-            cancel_url: returnUrls.cancel,
-            success_url: returnUrls.success,
-            metadata: data.metadata,
-        };
-        if (data.expiresAt) {
-            params.expires_at = Math.floor(data.expiresAt.getTime() / 1000);
-        }
+        const params = buildStripeCheckoutSessionCreateParams({
+            customerId,
+            data,
+            returnUrls,
+        });
 
         // Create a checkout session in Stripe
         let session: Stripe.Checkout.Session | undefined;
