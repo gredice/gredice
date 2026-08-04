@@ -5,8 +5,9 @@ import { type ComponentType, createElement, useEffect, useState } from 'react';
 import type { PlantViewerProps } from '../../../packages/game/src/viewers/PlantViewer';
 
 type PlantViewerComponent = ComponentType<PlantViewerProps>;
+type PlantSnapshotViewerProps = Omit<PlantViewerProps, 'includeGround'>;
 
-export function PlantSnapshotViewer(props: PlantViewerProps) {
+export function PlantSnapshotViewer(props: PlantSnapshotViewerProps) {
     const [Viewer, setViewer] = useState<PlantViewerComponent | null>(null);
     const [queryClient] = useState(() => new QueryClient());
 
@@ -35,7 +36,10 @@ export function PlantSnapshotViewer(props: PlantViewerProps) {
         ? createElement(
               QueryClientProvider,
               { client: queryClient },
-              createElement(Viewer, props),
+              createElement(Viewer, {
+                  ...props,
+                  includeGround: false,
+              }),
           )
         : null;
 }

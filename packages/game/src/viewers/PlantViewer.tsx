@@ -27,6 +27,7 @@ export interface PlantViewerProps {
     className?: string;
     animate?: boolean;
     includeEnvironment?: boolean;
+    includeGround?: boolean;
     lightingPreset?: 'default' | 'snapshot';
     zoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
@@ -66,6 +67,7 @@ export function PlantViewer({
     className,
     animate = true,
     includeEnvironment = true,
+    includeGround = true,
     lightingPreset = 'default',
     zoom = defaultZoom,
     cameraPosition = defaultCameraPosition,
@@ -91,7 +93,9 @@ export function PlantViewer({
         },
     );
 
-    preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
+    if (includeGround) {
+        preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
+    }
 
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -151,19 +155,21 @@ export function PlantViewer({
                             showProduce
                         />
                     </group>
-                    <BlockGround
-                        stack={{
-                            position: new Vector3(0, 0, 0),
-                            blocks: [],
-                        }}
-                        block={{
-                            id: '',
-                            name: '',
-                            rotation: 0,
-                            variant: undefined,
-                        }}
-                        rotation={0}
-                    />
+                    {includeGround ? (
+                        <BlockGround
+                            stack={{
+                                position: new Vector3(0, 0, 0),
+                                blocks: [],
+                            }}
+                            block={{
+                                id: '',
+                                name: '',
+                                rotation: 0,
+                                variant: undefined,
+                            }}
+                            rotation={0}
+                        />
+                    ) : null}
                 </group>
                 <OrbitControls
                     minDistance={1}
