@@ -160,7 +160,6 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
         assert.equal(scenario.budget, 'gameHighTarget');
         assert.equal(scenario.dpr, 2);
         assert.equal(scenario.isMobile, false);
-        assert.equal(request.blockGeometryMerging, '1');
         assert.equal(request.controls, '1');
         assert.equal(request.debugHud, '0');
         assert.equal(request.details, '1');
@@ -189,7 +188,6 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
     assert.equal(scenario.repeat, 3);
     assert.deepEqual(getScenarioRequest(scenario.path), {
         adaptiveHigh: '0',
-        blockGeometryMerging: '1',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -358,7 +356,6 @@ test('static scene-cache High scenarios use deterministic five-run ABBA pairs', 
         assert.equal(scenario.isMobile, false);
         assert.equal(scenario.repeat, 5);
         assert.equal(scenario.staticSceneCacheBenchmark, true);
-        assert.equal(request.blockGeometryMerging, '1');
         assert.equal(request.controls, '0');
         assert.equal(request.details, '1');
         assert.equal(request.gardenProfile, 'high-target');
@@ -692,12 +689,11 @@ test('historical dense High stays at DPR 1 while high-target uses DPR 2', () => 
 
 test('profile request parses the High target fixture contract', () => {
     const request = getScenarioRequest(
-        '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
     );
 
     assert.deepEqual(request, {
         adaptiveHigh: '0',
-        blockGeometryMerging: '1',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -824,7 +820,6 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
                 name: 'work-columns',
                 pageErrors: [],
                 requested: {
-                    blockGeometryMerging: 'default',
                     controls: '0',
                     debugHud: '0',
                     details: '1',
@@ -899,7 +894,6 @@ test('markdown distinguishes controlled governor evidence and formats range fail
                 pageErrors: [],
                 requested: {
                     adaptiveHigh: '1',
-                    blockGeometryMerging: '1',
                     controls: '1',
                     debugHud: '0',
                     details: '1',
@@ -1210,7 +1204,6 @@ test('high target acceptance proves the intended workload rendered', () => {
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'rain',
             motion: 'hover-scan',
@@ -1380,7 +1373,6 @@ test('operation-visual High acceptance gates batching, uploads, mulch, and highl
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             motion: 'none',
@@ -1587,7 +1579,6 @@ test('foliage-budget High acceptance keeps normal-view foliage clustered', () =>
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             foliageBudget: '1',
             gardenProfile: 'high-target',
             mode: 'details',
@@ -1693,7 +1684,6 @@ test('weather-surface High acceptance proves integrated work without hiding fall
             apiErrors: [],
             pageErrors: [],
             requested: {
-                blockGeometryMerging: '1',
                 gardenProfile: 'high-target',
                 mode,
                 motion: 'none',
@@ -2363,7 +2353,6 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
         pageErrors: [],
         requested: {
             adaptiveHigh: '1',
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             motion: 'pan-zoom-rotate',
@@ -2723,7 +2712,6 @@ test('high target acceptance distinguishes a cached map from refreshes and reset
             apiErrors: [],
             pageErrors: [],
             requested: {
-                blockGeometryMerging: '1',
                 gardenProfile: 'high-target',
                 mode: 'details',
                 quality: 'high',
@@ -2799,7 +2787,6 @@ test('high target placement acceptance requires one deferred final shadow flush'
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             placementProfile: 'placement-drop',
@@ -2878,7 +2865,6 @@ test('high target acceptance requires the full workload to remain visible', () =
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             quality: 'high',
@@ -2939,7 +2925,6 @@ test('high target acceptance rejects failed API requests', () => {
         ],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             quality: 'high',
@@ -2984,7 +2969,6 @@ test('high target acceptance rejects failed API requests', () => {
 
 test('static scene-cache acceptance requires a warm, stable timed window', () => {
     const requested = {
-        blockGeometryMerging: '1',
         comparisonPair: 'static-opaque-scene-cache',
         comparisonRole: 'cache',
         gardenProfile: 'high-target',
@@ -3137,7 +3121,6 @@ test('cloudy static scene-cache acceptance proves live cloud attenuation without
         consoleMessages: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             comparisonPair: 'static-opaque-scene-cache-cloudy',
             comparisonRole: 'cache',
             fixedTimeSeconds: 12,
@@ -3231,7 +3214,6 @@ test('cloudy static scene-cache acceptance proves live cloud attenuation without
 
 test('static scene-cache occlusion acceptance requires cached depth and live layers on verified hits', () => {
     const requested = {
-        blockGeometryMerging: '1',
         gardenProfile: 'high-target',
         mode: 'details',
         quality: 'high',
@@ -3401,7 +3383,6 @@ test('high target acceptance rejects a demand-render scene with one frame', () =
         apiErrors: [],
         pageErrors: [],
         requested: {
-            blockGeometryMerging: '1',
             gardenProfile: 'high-target',
             mode: 'details',
             quality: 'high',
@@ -3461,7 +3442,6 @@ test('high target acceptance rejects zero work and an incomplete fixture', () =>
         ],
         pageErrors: ['render failed'],
         requested: {
-            blockGeometryMerging: '0',
             gardenProfile: 'high-target',
             mode: 'snow',
             quality: 'medium',

@@ -239,7 +239,7 @@ const denseScenarios = [
 const highTargetScenarios = [
     {
         name: 'game-high-target-clear-idle-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -248,7 +248,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -258,7 +258,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-hover-selection-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -268,7 +268,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-placement-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&placement=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -281,7 +281,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-rain-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -290,7 +290,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-snow-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -302,7 +302,7 @@ const highTargetScenarios = [
 const highTargetOperationVisualScenarios = [
     {
         name: 'game-high-target-operation-visuals-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&operationVisuals=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&operationVisuals=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -314,7 +314,7 @@ const highTargetOperationVisualScenarios = [
 const highTargetFoliageBudgetScenarios = [
     {
         name: 'game-high-target-foliage-unbudgeted-zoom-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&foliageBudget=legacy',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&foliageBudget=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -327,7 +327,7 @@ const highTargetFoliageBudgetScenarios = [
     },
     {
         name: 'game-high-target-foliage-budget-zoom-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&foliageBudget=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&foliageBudget=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -343,7 +343,7 @@ const highTargetFoliageBudgetScenarios = [
 const highTargetWeatherMaterialScenarios = [
     {
         name: 'game-high-target-rain-legacy-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -354,7 +354,7 @@ const highTargetWeatherMaterialScenarios = [
     },
     {
         name: 'game-high-target-rain-integrated-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -365,7 +365,7 @@ const highTargetWeatherMaterialScenarios = [
     },
     {
         name: 'game-high-target-snow-legacy-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -376,7 +376,7 @@ const highTargetWeatherMaterialScenarios = [
     },
     {
         name: 'game-high-target-snow-integrated-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -390,7 +390,7 @@ const highTargetWeatherMaterialScenarios = [
 const highTargetStaticSceneCacheScenarios = [
     {
         name: 'game-high-target-static-scene-cache-legacy-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&blockGeometryMerging=1&staticSceneCache=legacy',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -403,7 +403,7 @@ const highTargetStaticSceneCacheScenarios = [
     },
     {
         name: 'game-high-target-static-scene-cache-cached-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&blockGeometryMerging=1&staticSceneCache=cache',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -416,7 +416,7 @@ const highTargetStaticSceneCacheScenarios = [
     },
     {
         name: 'game-high-target-static-scene-cache-cloudy-legacy-desktop',
-        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&blockGeometryMerging=1&staticSceneCache=legacy&fixedTimeSeconds=12',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=12',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -430,7 +430,7 @@ const highTargetStaticSceneCacheScenarios = [
     },
     {
         name: 'game-high-target-static-scene-cache-cloudy-cached-desktop',
-        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&blockGeometryMerging=1&staticSceneCache=cache&fixedTimeSeconds=12',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache&fixedTimeSeconds=12',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -444,7 +444,7 @@ const highTargetStaticSceneCacheScenarios = [
     },
     {
         name: 'game-high-target-static-scene-cache-occlusion-fixture-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&blockGeometryMerging=1&staticSceneCache=cache&staticSceneCacheOcclusionFixture=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache&staticSceneCacheOcclusionFixture=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -458,7 +458,7 @@ const highTargetStaticSceneCacheScenarios = [
 const highTargetWeatherOnsetScenarios = [
     {
         name: 'game-high-target-snow-onset-legacy-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=legacy',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -467,7 +467,7 @@ const highTargetWeatherOnsetScenarios = [
     },
     {
         name: 'game-high-target-snow-onset-integrated-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -476,7 +476,7 @@ const highTargetWeatherOnsetScenarios = [
     },
     {
         name: 'game-high-target-snow-threshold-transition-integrated-weather-surfaces-desktop',
-        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&weatherSurface=integrated',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -489,7 +489,7 @@ const highTargetWeatherOnsetScenarios = [
 const outlineScenarios = [
     {
         name: 'game-high-target-connected-raised-bed-outline-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&outline=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&outline=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -505,7 +505,7 @@ const outlineScenarios = [
 const adaptiveHighScenarios = [
     {
         name: 'game-high-target-adaptive-pair-fixed-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -517,7 +517,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -530,7 +530,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-motion-recovery-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -544,7 +544,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-runtime-gpu-source-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -555,7 +555,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-placement-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&placement=1&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -569,7 +569,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-rain-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -578,7 +578,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-snow-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -587,7 +587,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-cloudy-desktop',
-        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -596,7 +596,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-windy-plants-desktop',
-        path: '/debug/profile/game?mode=windy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=windy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -1329,8 +1329,6 @@ function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
         adaptiveHigh: url.searchParams.get('adaptiveHigh') ?? '0',
-        blockGeometryMerging:
-            url.searchParams.get('blockGeometryMerging') ?? 'default',
         controls: url.searchParams.get('controls') ?? '0',
         closeupRaisedBedId:
             Number.parseInt(
@@ -2800,8 +2798,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     typeof deviceMemory === 'number' ? deviceMemory : null,
                 narrowViewport: window.innerWidth <= 640,
             },
-            blockGeometryMerging:
-                element.dataset.gameProfileBlockGeometryMerging ?? null,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -2887,9 +2883,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 autoQualityDeviceClass:
                     scenario.autoQualityDeviceClass ?? 'unspecified',
                 autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
-                blockGeometryMerging:
-                    profileMetadata?.blockGeometryMerging ??
-                    request.blockGeometryMerging,
                 closeupRaisedBedId:
                     profileMetadata?.closeupRaisedBedId ??
                     request.closeupRaisedBedId,
@@ -4468,9 +4461,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
-        blockGeometryMerging:
-            profileMetadata?.blockGeometryMerging ??
-            request.blockGeometryMerging,
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
@@ -4872,7 +4862,6 @@ function evaluateHighTargetAcceptance({
                   runtime?.groundDecorationVisibleCount,
                   500,
               ),
-        exact('highTargetGeometryMerging', requested.blockGeometryMerging, '1'),
         exact('highTargetCanvasClientWidth', sample.canvas?.clientWidth, 1280),
         exact('highTargetCanvasClientHeight', sample.canvas?.clientHeight, 720),
         ...(adaptiveHighRequested
@@ -8356,8 +8345,8 @@ function buildMarkdown(report) {
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Merged | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Draw/render | Triangles/frame | Triangles/render | Long tasks | Heap | Run diagnostic | Screenshot |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Draw/render | Triangles/frame | Triangles/render | Long tasks | Heap | Run diagnostic | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -8395,7 +8384,7 @@ function buildMarkdown(report) {
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.blockGeometryMerging} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 

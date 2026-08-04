@@ -101,7 +101,6 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
-    enableBlockGeometryMerging?: boolean;
     deferDetails?: boolean;
     className?: string;
     capture?: {
@@ -280,7 +279,6 @@ function publicGardenTimeLocation(
 
 function PublicGardenScene({
     capture,
-    enableBlockGeometryMerging,
     initialView,
     className,
     garden,
@@ -290,7 +288,6 @@ function PublicGardenScene({
     renderDetails,
 }: {
     capture?: PublicGardenViewerProps['capture'];
-    enableBlockGeometryMerging: boolean;
     initialView: PublicGardenInitialView;
     className?: string;
     garden?: ReturnType<typeof publicGardenForGameState>;
@@ -373,9 +370,6 @@ function PublicGardenScene({
                                         )),
                                     )}
                                     <EntityInstances
-                                        enableBlockGeometryMerging={
-                                            enableBlockGeometryMerging
-                                        }
                                         farmId={garden?.farmId}
                                         quality={qualityProfile}
                                         renderGroundDecorations={
@@ -513,7 +507,6 @@ export function PublicGardenViewer({
     appBaseUrl,
     capture,
     spriteBaseUrl,
-    enableBlockGeometryMerging = false,
     deferDetails = true,
     garden,
     stacks,
@@ -673,9 +666,6 @@ export function PublicGardenViewer({
                                 <PublicGardenScene
                                     capture={capture}
                                     className="size-full"
-                                    enableBlockGeometryMerging={
-                                        enableBlockGeometryMerging
-                                    }
                                     garden={gameGarden}
                                     gardenCacheReady={gardenCacheReady}
                                     initialView={initialView}

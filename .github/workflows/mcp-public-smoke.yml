@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: "MCP public smoke"
+
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "Streamable HTTP MCP endpoint"
+        required: false
+        default: "https://api.gredice.com/api/mcp"
+        type: string
+  schedule:
+    - cron: "17 */6 * * *"
+
+concurrency:
+  group: mcp-public-smoke-${{ github.event_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  public-smoke:
+    name: "Verify public MCP contract"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - uses: pnpm/action-setup@v6.0.8
+        name: "Install pnpm"
+
+      - uses: actions/setup-node@v6.4.0
+        name: "Setup Node"
+        with:
+          node-version: "24.15.0"
+          cache: pnpm
+
+      - name: "Install MCP smoke dependencies"
+        run: pnpm install --frozen-lockfile --filter api... --filter .
+
+      - name: "Run public MCP smoke"
+        env:
+          MCP_SMOKE_URL: ${{ inputs.endpoint || 'https://api.gredice.com/api/mcp' }}
+        run: pnpm --filter api mcp:smoke:public

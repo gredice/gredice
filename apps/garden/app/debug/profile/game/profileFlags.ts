@@ -9,12 +9,6 @@ export const highTargetOperationVisualHighlightTarget = {
     raisedBedId: 2,
 } as const;
 
-export function resolveGameProfileBlockGeometryMerging(
-    value: string | undefined,
-) {
-    return value === '1';
-}
-
 export function resolveGameProfileAdaptiveHigh(value: string | undefined) {
     return value === '1';
 }
@@ -42,7 +36,6 @@ export function resolveGameProfileWeatherSurface(
 }
 
 export function resolveGameProfileFlags(
-    blockGeometryMerging: string | undefined,
     adaptiveHigh: string | undefined,
     weatherSurface: string | undefined,
     staticSceneCache: string | undefined,
@@ -54,8 +47,6 @@ export function resolveGameProfileFlags(
     return {
         enableAdaptiveHighQualityFlag:
             resolveGameProfileAdaptiveHigh(adaptiveHigh),
-        enableBlockGeometryMergingFlag:
-            resolveGameProfileBlockGeometryMerging(blockGeometryMerging),
         enableDebugHudFlag: true,
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
