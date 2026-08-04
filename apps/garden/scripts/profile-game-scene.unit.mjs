@@ -33,7 +33,7 @@ test('closeup acceptance rejects synchronous worker fallback', () => {
     const phase = (syncFallbackTaskCount) => ({
         detailOutcome: 'ready',
         profile: {
-            lSystem: {
+            generation: {
                 syncFallbackTaskCount,
                 workerFailureCount: 0,
             },
@@ -4436,8 +4436,8 @@ function closeupPhase(value) {
                     renderDataBuildDurationTotalMs: value * 2,
                     rootBatchingDurationMaxMs: value * 1.5,
                     rootBatchingDurationTotalMs: value * 3,
-                    symbolGenerationDurationMaxMs: value * 2,
-                    symbolGenerationDurationTotalMs: value * 4,
+                    topologyGenerationDurationMaxMs: value * 2,
+                    topologyGenerationDurationTotalMs: value * 4,
                     totalDurationMaxMs: value * 4,
                     totalDurationTotalMs: value * 8,
                     transferByteLengthMax: value * 500,
@@ -4514,7 +4514,7 @@ test('closeup medians include scheduler, template cache, and packed worker count
     assert.equal(summary.cold.pipeline.templateCacheEstimatedBytes, 20_000);
     assert.equal(summary.cold.pipeline.packedTransferByteLengthTotal, 2_000);
     assert.equal(
-        summary.cold.pipeline.packedSymbolGenerationDurationTotalMs,
+        summary.cold.pipeline.packedTopologyGenerationDurationTotalMs,
         8,
     );
     assert.equal(summary.cold.pipeline.packedRenderDataBuildDurationMaxMs, 2);

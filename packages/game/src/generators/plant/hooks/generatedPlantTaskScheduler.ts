@@ -1,24 +1,24 @@
-export type GeneratedLSystemTaskPriority = 'background' | 'normal' | 'focused';
+export type GeneratedPlantTaskPriority = 'background' | 'normal' | 'focused';
 
 const TASK_PRIORITY_WEIGHT = {
     background: 0,
     normal: 1,
     focused: 2,
-} satisfies Record<GeneratedLSystemTaskPriority, number>;
+} satisfies Record<GeneratedPlantTaskPriority, number>;
 
-export interface GeneratedLSystemTaskExecutionContext {
+export interface GeneratedPlantTaskExecutionContext {
     key: string;
-    priority: GeneratedLSystemTaskPriority;
+    priority: GeneratedPlantTaskPriority;
 }
 
-export interface ScheduleGeneratedLSystemTaskOptions<Task> {
+export interface ScheduleGeneratedPlantTaskOptions<Task> {
     key: string;
-    priority?: GeneratedLSystemTaskPriority;
+    priority?: GeneratedPlantTaskPriority;
     signal?: AbortSignal;
     task: Task;
 }
 
-export interface GeneratedLSystemTaskSchedulerSnapshot {
+export interface GeneratedPlantTaskSchedulerSnapshot {
     activeSubscriberCount: number;
     cancelledSubscriberCount: number;
     completedTaskCount: number;
@@ -38,9 +38,9 @@ export interface GeneratedLSystemTaskSchedulerSnapshot {
     submittedSubscriberCount: number;
 }
 
-type GeneratedLSystemTaskExecutor<Task, Result> = (
+type GeneratedPlantTaskExecutor<Task, Result> = (
     task: Task,
-    context: GeneratedLSystemTaskExecutionContext,
+    context: GeneratedPlantTaskExecutionContext,
 ) => Promise<Result> | Result;
 
 type TaskEntryState = 'queued' | 'in-flight';
@@ -55,7 +55,7 @@ interface TaskSubscriber<Result> {
 
 interface TaskEntry<Task, Result> {
     key: string;
-    priority: GeneratedLSystemTaskPriority;
+    priority: GeneratedPlantTaskPriority;
     sequence: number;
     state: TaskEntryState;
     subscribers: Set<TaskSubscriber<Result>>;
@@ -63,7 +63,7 @@ interface TaskEntry<Task, Result> {
 }
 
 function createAbortError() {
-    const error = new Error('Generated L-system task subscription aborted');
+    const error = new Error('Generated plant task subscription aborted');
     error.name = 'AbortError';
     return error;
 }
@@ -80,7 +80,7 @@ function getAbortReason(signal: AbortSignal) {
  * atomic in-flight executor, but queued work is removed when it has no active
  * subscribers and in-flight results with no subscribers are counted as stale.
  */
-export class GeneratedLSystemTaskScheduler<Task, Result> {
+export class GeneratedPlantTaskScheduler<Task, Result> {
     private readonly entriesByKey = new Map<string, TaskEntry<Task, Result>>();
     private inFlight: TaskEntry<Task, Result> | null = null;
     private drainScheduled = false;
@@ -101,7 +101,7 @@ export class GeneratedLSystemTaskScheduler<Task, Result> {
     private submittedSubscriberCount = 0;
 
     constructor(
-        private readonly execute: GeneratedLSystemTaskExecutor<Task, Result>,
+        private readonly execute: GeneratedPlantTaskExecutor<Task, Result>,
     ) {}
 
     schedule({
@@ -109,7 +109,7 @@ export class GeneratedLSystemTaskScheduler<Task, Result> {
         priority = 'normal',
         signal,
         task,
-    }: ScheduleGeneratedLSystemTaskOptions<Task>): Promise<Result> {
+    }: ScheduleGeneratedPlantTaskOptions<Task>): Promise<Result> {
         this.submittedSubscriberCount += 1;
         if (signal?.aborted) {
             this.cancelledSubscriberCount += 1;
@@ -143,7 +143,7 @@ export class GeneratedLSystemTaskScheduler<Task, Result> {
         return result;
     }
 
-    promote(key: string, priority: GeneratedLSystemTaskPriority = 'focused') {
+    promote(key: string, priority: GeneratedPlantTaskPriority = 'focused') {
         const entry = this.entriesByKey.get(key);
         if (entry?.state !== 'queued') {
             return false;
@@ -152,7 +152,7 @@ export class GeneratedLSystemTaskScheduler<Task, Result> {
         return this.promoteEntry(entry, priority);
     }
 
-    snapshot(): GeneratedLSystemTaskSchedulerSnapshot {
+    snapshot(): GeneratedPlantTaskSchedulerSnapshot {
         let activeSubscriberCount = 0;
         let focusedQueuedTaskCount = 0;
         let queuedTaskCount = 0;
@@ -258,7 +258,7 @@ export class GeneratedLSystemTaskScheduler<Task, Result> {
 
     private promoteEntry(
         entry: TaskEntry<Task, Result>,
-        priority: GeneratedLSystemTaskPriority,
+        priority: GeneratedPlantTaskPriority,
     ) {
         if (
             entry.state !== 'queued' ||

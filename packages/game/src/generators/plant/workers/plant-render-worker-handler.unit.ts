@@ -1,73 +1,34 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { GeneratedPlantTemplateCache } from '../hooks/generatedPlantTemplateCache';
-import { buildPlantRenderData } from '../lib/buildPlantRenderData';
-import { generateLSystemStringWithGenerations } from '../lib/l-system';
 import {
-    type LSystemGenerationTask,
-    PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION,
-    PACKED_PLANT_RENDER_WORKER_REQUEST_KIND,
-    PACKED_PLANT_RENDER_WORKER_RESPONSE_KIND,
-    type PackedPlantRenderWorkerRequest,
-} from '../lib/l-system-worker-types';
+    buildGeneratedPlantRenderData,
+    generatePlantTopology,
+} from '../lib/generatedPlantRenderData';
 import {
     getPackedPlantRenderDataTransferByteLength,
     mergePackedPlantRenderDataInstances,
     packPlantRenderData,
 } from '../lib/packedPlantRenderData';
 import { plantTypes } from '../lib/plant-definitions';
-import { SeededRNG } from '../lib/rng';
-import { handleLSystemWorkerRequest } from './l-system-worker-handler';
+import {
+    PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION,
+    PACKED_PLANT_RENDER_WORKER_REQUEST_KIND,
+    PACKED_PLANT_RENDER_WORKER_RESPONSE_KIND,
+    type PackedPlantRenderWorkerRequest,
+} from '../lib/plant-render-worker-types';
+import { handlePlantRenderWorkerRequest } from './plant-render-worker-handler';
 
-function generateExpectedSymbols(task: LSystemGenerationTask) {
-    return generateLSystemStringWithGenerations(
-        task.axiom,
-        task.rules,
-        task.iterations,
-        new SeededRNG(task.seed),
-    );
-}
-
-test('preserves the legacy symbol-only worker protocol', () => {
-    const task: LSystemGenerationTask = {
-        axiom: 'F',
-        iterations: 3,
-        rules: {
-            F: 'F[+F]F',
-        },
-        seed: 'legacy-worker',
-    };
-
-    const dispatched = handleLSystemWorkerRequest({
-        id: 41,
-        tasks: [task],
-    });
-
-    assert.equal(dispatched.response.id, 41);
-    assert.deepEqual(dispatched.response.results, [
-        generateExpectedSymbols(task),
-    ]);
-    assert.deepEqual(dispatched.transferables, []);
-});
-
-test('builds exact packed render data and exposes deterministic profiling metadata', () => {
-    const definition = plantTypes.tomato;
-    const generationTask: LSystemGenerationTask = {
-        axiom: definition.axiom,
-        iterations: 7,
-        rules: definition.rules,
-        seed: 'packed-worker-tomato',
-    };
-    const request: PackedPlantRenderWorkerRequest = {
+function createRequest(): PackedPlantRenderWorkerRequest {
+    return {
         id: 42,
         kind: PACKED_PLANT_RENDER_WORKER_REQUEST_KIND,
         tasks: [
             {
                 flowerGrowth: 0.8,
                 fruitGrowth: 0.9,
-                generation: 6.5,
-                generationTask,
-                plantDefinition: definition,
+                generation: 10,
+                plantDefinition: plantTypes.tomato,
                 rootTransforms: [
                     {
                         translation: [0.4, -0.75, 0.2],
@@ -80,6 +41,7 @@ test('builds exact packed render data and exposes deterministic profiling metada
                         yawRadians: 1.1,
                     },
                 ],
+                seed: 'packed-worker-tomato',
                 showFlowers: true,
                 showLeaves: true,
                 showProduce: true,
@@ -88,28 +50,63 @@ test('builds exact packed render data and exposes deterministic profiling metada
         ],
         version: PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION,
     };
-    let clockValue = 0;
+}
 
-    const dispatched = handleLSystemWorkerRequest(request, () => clockValue++);
+test('requires the graph-only packed plant protocol v3', () => {
+    const request = createRequest();
+    const unsupportedKind = { ...request };
+    const unsupportedVersion = { ...request };
+    Reflect.set(unsupportedKind, 'kind', 'unsupported-kind');
+    Reflect.set(unsupportedVersion, 'version', 2);
+
+    assert.equal(PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION, 3);
+    assert.throws(
+        () => handlePlantRenderWorkerRequest(unsupportedKind),
+        /Unsupported packed plant worker protocol/,
+    );
+    assert.throws(
+        () => handlePlantRenderWorkerRequest(unsupportedVersion),
+        /Unsupported packed plant worker protocol/,
+    );
+});
+
+test('builds deterministic graph render data and batches every root transform', () => {
+    const request = createRequest();
+    const task = request.tasks[0];
+    assert.ok(task);
+
+    const topology = generatePlantTopology({
+        generation: task.generation,
+        plantDefinition: task.plantDefinition,
+        seed: task.seed,
+    });
     const template = packPlantRenderData(
-        buildPlantRenderData({
-            flowerGrowth: 0.8,
-            fruitGrowth: 0.9,
-            generation: 6.5,
-            lSystemSymbols: generateExpectedSymbols(generationTask),
-            plantDefinition: definition,
+        buildGeneratedPlantRenderData({
+            flowerGrowth: task.flowerGrowth,
+            fruitGrowth: task.fruitGrowth,
+            plantDefinition: task.plantDefinition,
             renderDetailedGeometry: true,
-            seed: generationTask.seed,
-            showFlowers: true,
-            showLeaves: true,
-            showProduce: true,
+            showFlowers: task.showFlowers,
+            showLeaves: task.showLeaves,
+            showProduce: task.showProduce,
+            topology,
         }),
     );
     const expected = mergePackedPlantRenderDataInstances(
-        (request.tasks[0]?.rootTransforms ?? []).map((transform) => ({
+        (task.rootTransforms ?? []).map((transform) => ({
             template,
             transform,
         })),
+    );
+    let clockValue = 0;
+    const dispatched = handlePlantRenderWorkerRequest(
+        request,
+        () => clockValue++,
+    );
+    clockValue = 0;
+    const repeated = handlePlantRenderWorkerRequest(
+        request,
+        () => clockValue++,
     );
 
     assert.equal(
@@ -122,11 +119,20 @@ test('builds exact packed render data and exposes deterministic profiling metada
     );
     assert.equal(dispatched.response.id, request.id);
     assert.deepEqual(dispatched.response.results, [expected]);
+    assert.deepEqual(repeated.response.results, dispatched.response.results);
+    assert.equal(
+        dispatched.response.results[0]?.stems.count,
+        template.stems.count * 2,
+    );
+    assert.equal(
+        dispatched.response.results[0]?.leaves.count,
+        template.leaves.count * 2,
+    );
     assert.deepEqual(dispatched.response.timings, {
         packingDurationMs: 1,
         renderDataBuildDurationMs: 1,
         rootBatchingDurationMs: 1,
-        symbolGenerationDurationMs: 1,
+        topologyGenerationDurationMs: 1,
         totalDurationMs: 9,
     });
     assert.equal(
@@ -146,14 +152,7 @@ test('builds exact packed render data and exposes deterministic profiling metada
     );
 });
 
-test('posts packed buffers as transferables without copying their payload', () => {
-    const definition = plantTypes.carrot;
-    const generationTask: LSystemGenerationTask = {
-        axiom: definition.axiom,
-        iterations: 6,
-        rules: definition.rules,
-        seed: 'packed-worker-carrot',
-    };
+test('transfers response buffers while preserving cached templates for later hits', () => {
     const request: PackedPlantRenderWorkerRequest = {
         id: 43,
         kind: PACKED_PLANT_RENDER_WORKER_REQUEST_KIND,
@@ -161,9 +160,9 @@ test('posts packed buffers as transferables without copying their payload', () =
             {
                 flowerGrowth: 1,
                 fruitGrowth: 1,
-                generation: 6,
-                generationTask,
-                plantDefinition: definition,
+                generation: 10,
+                plantDefinition: plantTypes.carrot,
+                seed: 'packed-worker-carrot',
                 showLeaves: false,
                 templateKey: 'carrot:detailed:packed-worker-carrot',
             },
@@ -171,7 +170,7 @@ test('posts packed buffers as transferables without copying their payload', () =
         version: PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION,
     };
     const templateCache = new GeneratedPlantTemplateCache();
-    const dispatched = handleLSystemWorkerRequest(
+    const dispatched = handlePlantRenderWorkerRequest(
         request,
         undefined,
         templateCache,
@@ -209,7 +208,7 @@ test('posts packed buffers as transferables without copying their payload', () =
     assert.equal(cloned.transferByteLength, nonEmptyTransferByteLength);
     assert.ok(nonEmptyTransferables.every((buffer) => buffer.byteLength === 0));
 
-    const warmed = handleLSystemWorkerRequest(
+    const warmed = handlePlantRenderWorkerRequest(
         {
             ...request,
             id: 44,
@@ -238,59 +237,50 @@ test('posts packed buffers as transferables without copying their payload', () =
     assert.equal(warmed.response.templateCache.snapshot.entryCount, 1);
     assert.equal(warmed.response.timings.packingDurationMs, 0);
     assert.equal(warmed.response.timings.renderDataBuildDurationMs, 0);
-    assert.equal(warmed.response.timings.symbolGenerationDurationMs, 0);
+    assert.equal(warmed.response.timings.topologyGenerationDurationMs, 0);
     assert.ok((warmed.response.results[0]?.stems.count ?? 0) > 0);
 });
 
-test('reuses one request-local archetype when the worker LRU skips an oversized template', () => {
-    const definition = plantTypes.carrot;
-    const generationTask: LSystemGenerationTask = {
-        axiom: definition.axiom,
-        iterations: 6,
-        rules: definition.rules,
-        seed: 'oversized-request-local-carrot',
-    };
+test('reuses one request-local template when the LRU rejects an oversized entry', () => {
     const templateCache = new GeneratedPlantTemplateCache({
         maxEntryCount: 256,
         maxEstimatedBytes: 1,
     });
+    const sharedTask = {
+        flowerGrowth: 1,
+        fruitGrowth: 1,
+        generation: 10,
+        plantDefinition: plantTypes.carrot,
+        seed: 'oversized-request-local-carrot',
+        templateKey: 'carrot:oversized:shared',
+    };
     const request: PackedPlantRenderWorkerRequest = {
         id: 45,
         kind: PACKED_PLANT_RENDER_WORKER_REQUEST_KIND,
         tasks: [
             {
-                flowerGrowth: 1,
-                fruitGrowth: 1,
-                generation: 6,
-                generationTask,
-                plantDefinition: definition,
+                ...sharedTask,
                 rootTransforms: [
                     {
                         translation: [0, -0.75, 0],
                         uniformScale: 0.7,
                     },
                 ],
-                templateKey: 'carrot:oversized:shared',
             },
             {
-                flowerGrowth: 1,
-                fruitGrowth: 1,
-                generation: 6,
-                generationTask,
-                plantDefinition: definition,
+                ...sharedTask,
                 rootTransforms: [
                     {
                         translation: [0.5, -0.75, 0.2],
                         uniformScale: 0.65,
                     },
                 ],
-                templateKey: 'carrot:oversized:shared',
             },
         ],
         version: PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION,
     };
 
-    const dispatched = handleLSystemWorkerRequest(
+    const dispatched = handlePlantRenderWorkerRequest(
         request,
         undefined,
         templateCache,

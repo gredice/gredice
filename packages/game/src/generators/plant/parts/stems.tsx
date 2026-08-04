@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import CSM from 'three-custom-shader-material';
 import { usePlantInstanceBufferMetrics } from '../hooks/usePlantInstanceBufferMetrics';
 import { usePlantSway } from '../hooks/usePlantSway';
-import type { PlantStemSegment } from '../lib/buildPlantRenderData';
 import type {
     PackedPlantBounds,
     PackedPlantStemInstances,
@@ -25,6 +24,7 @@ import {
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
 import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import type { PlantStemSegment } from '../lib/plantRenderData';
 import {
     createPlantStemGeometryShell,
     disposePlantStemGeometryShell,

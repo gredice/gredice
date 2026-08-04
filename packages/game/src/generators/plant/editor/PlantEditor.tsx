@@ -16,9 +16,8 @@ import {
     useDisposeGameStateStore,
 } from '../../../useGameState';
 import { preloadGameAssetModels } from '../../../utils/useGameGLTF';
-import { useGeneratedLSystemSymbols } from '../hooks/useGeneratedLSystem';
-import { serializeLSystemSymbols } from '../lib/l-system';
-import { MAX_PLANT_GENERATION, type Rule } from '../lib/plant-definitions';
+import { buildDevelopmentalPlantGraph } from '../developmental/developmentalPlantGraph';
+import { MAX_PLANT_GENERATION } from '../lib/plant-definitions';
 import { PlantGenerator } from '../PlantGenerator';
 import { DesktopControls } from './components/DesktopControls';
 import { EditorGrassContext } from './components/EditorGrassContext';
@@ -56,6 +55,7 @@ export function PlantEditor({
         updateState,
         updateVisibility,
         updateDefinition,
+        updateDefinitionChanges,
         selectPlantType,
         randomizeSeed,
         undo,
@@ -78,16 +78,6 @@ export function PlantEditor({
         }, 500);
         return () => clearTimeout(saveTimeoutRef.current);
     }, [state.definition, state.plantType, saveDefinitionToStorage]);
-
-    /**
-     * Handle L-system rules changes
-     */
-    const handleRulesChange = useCallback(
-        (newRules: Record<string, Rule>) => {
-            updateDefinition('rules', newRules);
-        },
-        [updateDefinition],
-    );
 
     const stepGeneration = useCallback(
         (delta: number) => {
@@ -152,38 +142,16 @@ export function PlantEditor({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [redo, stepGeneration, undo]);
 
-    /**
-     * Generate L-system symbols based on current parameters
-     */
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: state.definition.axiom,
-            iterations: Math.ceil(state.generation),
-            rules: state.definition.rules,
-            seed: state.seed,
-        }),
-        [
-            state.definition.axiom,
-            state.definition.rules,
-            state.generation,
-            state.seed,
-        ],
+    const developmentalGraph = useMemo(
+        () =>
+            buildDevelopmentalPlantGraph({
+                generation: state.generation,
+                plantDefinition: state.definition,
+                seed: state.seed,
+            }),
+        [state.definition, state.generation, state.seed],
     );
-    const { symbols: lSystemSymbolsResult } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
-    const lSystemSymbols = lSystemSymbolsResult ?? [];
-
-    /**
-     * Generate L-system chain string for display
-     */
-    const lSystemChain = useMemo(
-        () => serializeLSystemSymbols(lSystemSymbols),
-        [lSystemSymbols],
-    );
+    const organCount = developmentalGraph.organs.length;
     /**
      * Common props for control components
      */
@@ -194,7 +162,7 @@ export function PlantEditor({
         onPlantTypeChange: selectPlantType,
         onVisibilityChange: updateVisibility,
         onDefinitionChange: updateDefinition,
-        onRulesChange: handleRulesChange,
+        onDefinitionChanges: updateDefinitionChanges,
         onRandomizeSeed: randomizeSeed,
         onUndo: undo,
         onRedo: redo,
@@ -204,8 +172,7 @@ export function PlantEditor({
         canResetDefinition,
         onCreateCustomPlant: createCustomPlant,
         onDeleteCustomPlant: deleteCustomPlant,
-        lSystemChain,
-        lSystemSymbolCount: lSystemSymbols.length,
+        organCount,
     };
 
     const freezeTime = new Date('2024-06-21T10:00:00'); // Noon on summer solstice
@@ -271,9 +238,9 @@ export function PlantEditor({
                                 <PlantGenerator
                                     key={`${state.plantType}-${state.seed}`}
                                     plantDefinition={state.definition}
-                                    lSystemSymbols={lSystemSymbols}
                                     generation={state.generation}
                                     seed={state.seed}
+                                    graph={developmentalGraph}
                                     flowerGrowth={state.flowerGrowth}
                                     fruitGrowth={state.fruitGrowth}
                                     showLeaves={visibility.showLeaves}

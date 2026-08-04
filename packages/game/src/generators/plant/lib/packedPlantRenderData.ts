@@ -1,5 +1,5 @@
-import type { PlantLodSummary, PlantRenderData } from './buildPlantRenderData';
 import type { VegetableType } from './plant-definitions';
+import type { PlantLodSummary, PlantRenderData } from './plantRenderData';
 
 export const PACKED_PLANT_RENDER_DATA_VERSION = 1 as const;
 

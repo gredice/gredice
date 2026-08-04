@@ -11,7 +11,7 @@ import { cx } from '@gredice/ui/utils';
 import { useCallback, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import { PlantBlockImage } from '../../PlantBlockImage';
-import { resolvePlantType } from '../../plantNamesWithLSystem';
+import { resolveProceduralPlantType } from '../../plantNamesWithProceduralModels';
 import { PlantGrowthControls } from './PlantGrowthControls';
 import { PlantViewerDynamic } from './PlantViewerDynamic';
 
@@ -37,7 +37,7 @@ export function PlantGrowthViewer({
     plant: PlantData;
     sorts: PlantSortData[];
 }) {
-    const plantType = resolvePlantType(plant.information.name);
+    const plantType = resolveProceduralPlantType(plant.information.name);
     const [generation, setGeneration] = useState(MAX_GENERATION * 0.9);
     const [hasInteractedWithViewer, setHasInteractedWithViewer] =
         useState(false);

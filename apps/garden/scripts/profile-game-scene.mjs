@@ -3978,49 +3978,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 metadata.hoverOutlineStyleGroupCount,
             ),
             hoverOutlineThickness: numberOrNull(metadata.hoverOutlineThickness),
-            generatedLSystemCacheEntryCount:
-                typeof metadata.generatedLSystemCacheEntryCount === 'number'
-                    ? metadata.generatedLSystemCacheEntryCount
-                    : null,
-            generatedLSystemCacheEstimatedBytes:
-                typeof metadata.generatedLSystemCacheEstimatedBytes === 'number'
-                    ? metadata.generatedLSystemCacheEstimatedBytes
-                    : null,
-            generatedLSystemCacheEvictionCount:
-                typeof metadata.generatedLSystemCacheEvictionCount === 'number'
-                    ? metadata.generatedLSystemCacheEvictionCount
-                    : null,
-            generatedLSystemCacheHitCount:
-                typeof metadata.generatedLSystemCacheHitCount === 'number'
-                    ? metadata.generatedLSystemCacheHitCount
-                    : null,
-            generatedLSystemCacheMaxEntryCount:
-                typeof metadata.generatedLSystemCacheMaxEntryCount === 'number'
-                    ? metadata.generatedLSystemCacheMaxEntryCount
-                    : null,
-            generatedLSystemCacheMaxEstimatedBytes:
-                typeof metadata.generatedLSystemCacheMaxEstimatedBytes ===
-                'number'
-                    ? metadata.generatedLSystemCacheMaxEstimatedBytes
-                    : null,
-            generatedLSystemCacheMissCount:
-                typeof metadata.generatedLSystemCacheMissCount === 'number'
-                    ? metadata.generatedLSystemCacheMissCount
-                    : null,
-            generatedLSystemCacheOversizeSkipCount:
-                typeof metadata.generatedLSystemCacheOversizeSkipCount ===
-                'number'
-                    ? metadata.generatedLSystemCacheOversizeSkipCount
-                    : null,
-            generatedLSystemCachePeakEstimatedBytes:
-                typeof metadata.generatedLSystemCachePeakEstimatedBytes ===
-                'number'
-                    ? metadata.generatedLSystemCachePeakEstimatedBytes
-                    : null,
-            generatedLSystemCacheWriteCount:
-                typeof metadata.generatedLSystemCacheWriteCount === 'number'
-                    ? metadata.generatedLSystemCacheWriteCount
-                    : null,
             generatedPlantBatchCount:
                 typeof metadata.generatedPlantBatchCount === 'number'
                     ? metadata.generatedPlantBatchCount
@@ -7780,17 +7737,18 @@ function buildPlantPipelineMedians(runs, phase) {
                 ),
             ),
         ),
-        packedSymbolGenerationDurationMaxMs: round(
+        packedTopologyGenerationDurationMaxMs: round(
             median(
                 runs.map(
-                    (run) => packedWorker(run)?.symbolGenerationDurationMaxMs,
+                    (run) => packedWorker(run)?.topologyGenerationDurationMaxMs,
                 ),
             ),
         ),
-        packedSymbolGenerationDurationTotalMs: round(
+        packedTopologyGenerationDurationTotalMs: round(
             median(
                 runs.map(
-                    (run) => packedWorker(run)?.symbolGenerationDurationTotalMs,
+                    (run) =>
+                        packedWorker(run)?.topologyGenerationDurationTotalMs,
                 ),
             ),
         ),
@@ -8138,8 +8096,8 @@ function buildPlantCloseupAcceptance(runs) {
     );
     const workerFailureFreePhaseCount = count(
         ({ profile }) =>
-            profile?.lSystem?.workerFailureCount === 0 &&
-            profile.lSystem.syncFallbackTaskCount === 0,
+            profile?.generation?.workerFailureCount === 0 &&
+            profile.generation.syncFallbackTaskCount === 0,
     );
     const foliageCoveredPhaseCount = count(
         ({ profile }) => (profile?.selected?.parts?.leaves ?? 0) > 0,
@@ -8806,7 +8764,7 @@ function buildMarkdown(report) {
         }
         lines.push('', '### Packed worker phase timings', '');
         lines.push(
-            '| Scenario | Phase | Builds | Symbol max/total | Render-data max/total | Packing max/total | Root batching max/total | Worker max/total | Transfer count | Transfer max/total |',
+            '| Scenario | Phase | Builds | Topology max/total | Render-data max/total | Packing max/total | Root batching max/total | Worker max/total | Transfer count | Transfer max/total |',
             '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
         );
         for (const [name, summary] of Object.entries(
@@ -8815,7 +8773,7 @@ function buildMarkdown(report) {
             for (const phase of ['cold', 'warm']) {
                 const pipeline = summary[phase].pipeline;
                 lines.push(
-                    `| ${name} | ${phase} | ${pipeline.packedBuildCount ?? 'n/a'} | ${pipeline.packedSymbolGenerationDurationMaxMs ?? 'n/a'}/${pipeline.packedSymbolGenerationDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRenderDataBuildDurationMaxMs ?? 'n/a'}/${pipeline.packedRenderDataBuildDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedPackingDurationMaxMs ?? 'n/a'}/${pipeline.packedPackingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRootBatchingDurationMaxMs ?? 'n/a'}/${pipeline.packedRootBatchingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTotalDurationMaxMs ?? 'n/a'}/${pipeline.packedTotalDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTransferCount ?? 'n/a'} | ${pipeline.packedTransferByteLengthMax ?? 'n/a'}/${pipeline.packedTransferByteLengthTotal ?? 'n/a'} |`,
+                    `| ${name} | ${phase} | ${pipeline.packedBuildCount ?? 'n/a'} | ${pipeline.packedTopologyGenerationDurationMaxMs ?? 'n/a'}/${pipeline.packedTopologyGenerationDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRenderDataBuildDurationMaxMs ?? 'n/a'}/${pipeline.packedRenderDataBuildDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedPackingDurationMaxMs ?? 'n/a'}/${pipeline.packedPackingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRootBatchingDurationMaxMs ?? 'n/a'}/${pipeline.packedRootBatchingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTotalDurationMaxMs ?? 'n/a'}/${pipeline.packedTotalDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTransferCount ?? 'n/a'} | ${pipeline.packedTransferByteLengthMax ?? 'n/a'}/${pipeline.packedTransferByteLengthTotal ?? 'n/a'} |`,
                 );
             }
         }

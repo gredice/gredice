@@ -24,7 +24,6 @@ import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
-import { getGeneratedLSystemCacheSnapshot } from '../generators/plant/hooks/generatedLSystemCache';
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import {
@@ -148,35 +147,6 @@ function RendererStatsReporter() {
             rendererShaders: gl.info.programs?.length,
             rendererTextures: gl.info.memory.textures,
             rendererTriangles: gl.info.render.triangles,
-        });
-    });
-
-    return null;
-}
-
-function GeneratedLSystemCacheStatsReporter() {
-    const lastUpdateRef = useRef(0);
-
-    useFrame(() => {
-        const now = performance.now();
-        if (now - lastUpdateRef.current < rendererStatsUpdateMs) {
-            return;
-        }
-
-        lastUpdateRef.current = now;
-        const snapshot = getGeneratedLSystemCacheSnapshot();
-        updateGameProfileMetadata({
-            generatedLSystemCacheEntryCount: snapshot.entryCount,
-            generatedLSystemCacheEstimatedBytes: snapshot.estimatedBytes,
-            generatedLSystemCacheEvictionCount: snapshot.evictionCount,
-            generatedLSystemCacheHitCount: snapshot.hitCount,
-            generatedLSystemCacheMaxEntryCount: snapshot.maxEntryCount,
-            generatedLSystemCacheMaxEstimatedBytes: snapshot.maxEstimatedBytes,
-            generatedLSystemCacheMissCount: snapshot.missCount,
-            generatedLSystemCacheOversizeSkipCount: snapshot.oversizeSkipCount,
-            generatedLSystemCachePeakEstimatedBytes:
-                snapshot.peakEstimatedBytes,
-            generatedLSystemCacheWriteCount: snapshot.writeCount,
         });
     });
 
@@ -331,7 +301,6 @@ export function Scene({
                         >
                             <HoverOutlineProvider>
                                 <SceneDebugName />
-                                <GeneratedLSystemCacheStatsReporter />
                                 {debugStats && <RendererStatsReporter />}
                                 <SceneWireframeMode
                                     enabled={Boolean(
