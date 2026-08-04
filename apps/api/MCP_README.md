@@ -10,24 +10,15 @@ https://api.gredice.com/api/mcp
 The public user guide is at
 [`https://www.gredice.com/mcp`](https://www.gredice.com/mcp). Older
 domain-specific routes under `/api/mcp/{core,directories,gardens,commerce}` are
-not part of the public contract and return `404`.
+removed. The unified endpoint and its protected-resource metadata are always
+available; authorization is enforced per tool.
 
-## Rollout controls
+## Availability and origin policy
 
-`GREDICE_MCP_PUBLIC_ENABLED` is fail-closed. When unset or false, anonymous
-protocol discovery, public tools, protected-resource metadata, and the `/test`
-console return `404`. Existing internal calls to protected tools may still
-present a bearer token and continue through normal authorization.
-
-Accepted explicit true values are `1`, `true`, `yes`, `on`, and `enabled`.
-
-`MCP_ROLLOUT_STAGE` controls the enabled tool class after public access is on:
-
-| Value | Behavior |
-| --- | --- |
-| `public-read-only` | Only `public-read` tools execute. |
-| `auth-read-only` | Public and authenticated read tools execute; mutations return `403`. |
-| `all` or unset | All catalog tools may execute subject to authorization. |
+The server does not use an MCP enablement or rollout-stage flag. Protocol
+discovery, public catalog tools, protected-resource metadata, and the `/test`
+console are part of the deployed API surface by default. Private tools still
+require their declared bearer scope and selected-account ownership checks.
 
 Optional `MCP_ALLOWED_ORIGINS` is a comma-separated origin allowlist. An empty
 value does not restrict origins.
@@ -62,8 +53,9 @@ curl https://api.gredice.com/api/mcp \
 
 ## Authorization
 
-Only `directories/get-plants` is anonymous. Other tools require a standard
-Gredice API bearer token:
+Directory lookups and published product-catalog reads are anonymous. Garden
+state, cart contents, and cart mutations require a standard Gredice API bearer
+token:
 
 ```http
 Authorization: Bearer <access-token>
@@ -81,9 +73,9 @@ checks these MCP scopes:
 | `admin-internal` | `mcp:admin` |
 
 Protected-resource metadata is available at
-`/.well-known/oauth-protected-resource/api/mcp` while public MCP access is
-enabled. Official external publication additionally requires a complete OAuth
-2.1 authorization-code and PKCE flow plus authorization-server discovery; see
+`/.well-known/oauth-protected-resource/api/mcp`. Official external publication
+additionally requires a complete OAuth 2.1 authorization-code and PKCE flow
+plus authorization-server discovery; see
 [`docs/plugin-marketplaces.md`](../../docs/plugin-marketplaces.md).
 
 ## Tool catalog
@@ -96,20 +88,20 @@ quantity zero removes an item.
 | Tool | Exposure | Purpose |
 | --- | --- | --- |
 | `directories/get-plants` | public read | List Croatian plants and calendar data. |
-| `directories/get-plant` | authenticated read | Get one plant and optional sorts. |
-| `directories/get-plant-sorts` | authenticated read | List plant sorts. |
-| `directories/search-entities` | authenticated read | Search directory entities. |
-| `directories/get-operations` | authenticated read | List gardening operations. |
-| `directories/get-seeds` | authenticated read | List seed data. |
+| `directories/get-plant` | public read | Get one plant and optional sorts. |
+| `directories/get-plant-sorts` | public read | List plant sorts. |
+| `directories/search-entities` | public read | Search directory entities. |
+| `directories/get-operations` | public read | List gardening operations. |
+| `directories/get-seeds` | public read | List seed data. |
 | `gardens/list-gardens` | authenticated read | List gardens for the selected account. |
 | `gardens/list-raised-beds` | authenticated read | List raised beds in an owned garden. |
 | `gardens/get-raised-bed-fields` | authenticated read | Read field and plant lifecycle state. |
 | `gardens/list-operations` | authenticated read | List scheduled and completed operations. |
 | `gardens/get-lifecycle-context` | authenticated read | Summarize active plant lifecycle state. |
 | `gardens/get-raised-bed-ai-history` | authenticated read | Read saved AI suggestions for a bed. |
-| `commerce/get-products` | authenticated read | List available plant-sort products. |
-| `commerce/search-products` | authenticated read | Search available plant-sort products. |
-| `commerce/get-product` | authenticated read | Get one product. |
+| `commerce/get-products` | public read | List available plant-sort products. |
+| `commerce/search-products` | public read | Search available plant-sort products. |
+| `commerce/get-product` | public read | Get one published product. |
 | `commerce/get-cart` | authenticated read | Read the selected account cart. |
 | `commerce/add-to-cart` | authenticated mutation | Add a product to the cart. |
 | `commerce/update-cart-item` | authenticated mutation | Change quantity or remove a cart item. |
@@ -147,6 +139,7 @@ From the repository root:
 
 ```sh
 pnpm plugins:check
+pnpm mcp:smoke:public
 pnpm typecheck --filter api
 pnpm --filter api test:node
 pnpm --filter api test:run -- tests/mcp.spec.ts
@@ -155,3 +148,8 @@ pnpm --filter api test:run -- tests/mcp.spec.ts
 The Playwright authenticated account-isolation test requires
 `GREDICE_MCP_TEST_BEARER_TOKEN` and `GREDICE_MCP_TEST_ACCOUNT_ID`. Do not use
 production customer credentials for marketplace fixtures.
+
+The public smoke uses the official MCP SDK against
+`https://api.gredice.com/api/mcp` by default. Override `MCP_SMOKE_URL` to check
+another deployed environment. The scheduled `MCP public smoke` workflow runs
+the same credential-free contract check every six hours.

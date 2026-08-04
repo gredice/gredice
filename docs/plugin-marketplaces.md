@@ -23,8 +23,11 @@ use strict semantic versions.
 - [x] Accurate `readOnlyHint`, `openWorldHint`, and `destructiveHint`
   annotations on every unified MCP tool.
 - [x] Public Croatian MCP documentation, support, privacy, and terms URLs.
-- [x] Fail-closed production flag `GREDICE_MCP_PUBLIC_ENABLED` and retirement of
-  the legacy public MCP routes.
+- [x] Always-public unified MCP endpoint, per-tool authorization, and removal
+  of the legacy domain-specific route handlers.
+- [x] Scheduled and manually dispatchable production smoke for discovery,
+  anonymous directory/product reads, metadata, and the private-data auth
+  boundary.
 - [x] Package validation command and CI coverage.
 
 ## Official-release TODO
@@ -33,9 +36,8 @@ use strict semantic versions.
 
 - [ ] Deploy the merged API and www changes through the protected production
   release workflow; do not treat the repository merge as deployment evidence.
-- [ ] Set `GREDICE_MCP_PUBLIC_ENABLED=true` in the production API environment
-  and verify anonymous `initialize`, `tools/list`, and
-  `directories/get-plants` against the canonical URL.
+- [ ] After deployment, confirm the `MCP public smoke` workflow passes against
+  the canonical production URL. It also runs automatically every six hours.
 - [ ] Implement and verify OAuth 2.1 authorization-code plus PKCE for MCP
   clients. Publish protected-resource and authorization-server metadata,
   preserve the exact `resource` value through authorization and token exchange,
@@ -122,6 +124,7 @@ Run from the repository root before every package release:
 
 ```sh
 pnpm plugins:check
+pnpm mcp:smoke:public
 python3 /path/to/plugin-creator/scripts/validate_plugin.py plugins/gredice
 python3 /path/to/skill-creator/scripts/quick_validate.py plugins/gredice/skills/explore-plants
 python3 /path/to/skill-creator/scripts/quick_validate.py plugins/gredice/skills/review-garden
@@ -136,6 +139,10 @@ pnpm --filter api test:run -- tests/mcp.spec.ts
 The Python validators require PyYAML. Install it only in an isolated tooling
 environment if the system Python does not provide it.
 
+`pnpm mcp:smoke:public` uses the official MCP SDK against production by
+default. Set `MCP_SMOKE_URL` to verify another deployed endpoint. It never uses
+customer credentials or reads private garden/cart data.
+
 ## Updating or withdrawing a release
 
 1. Make MCP changes backward-compatible and deploy them through the protected
@@ -146,6 +153,6 @@ environment if the system Python does not provide it.
 4. OpenAI requires a new tool scan, reviewed snapshot, approval, and explicit
    publication. Claude requires a new explicit version and verified catalog
    commit pin.
-5. For an emergency runtime rollback, disable
-   `GREDICE_MCP_PUBLIC_ENABLED`. Separately use each vendor's delisting or
-   rollback process; neither action replaces token revocation.
+5. For an emergency runtime rollback, revert through the protected production
+   release workflow and separately use each vendor's delisting or rollback
+   process. Neither action replaces token revocation.

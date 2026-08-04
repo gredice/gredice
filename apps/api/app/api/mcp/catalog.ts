@@ -66,7 +66,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-plant',
         description: 'Get one plant by name and optional sorts.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -80,7 +80,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'List plant sorts with optional plant filter and pagination.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -95,7 +95,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'Search directory entities by free text and optional type filters.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -109,7 +109,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-operations',
         description: 'List gardening operations with optional category filter.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -123,7 +123,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-seeds',
         description: 'List seeds with optional plant and variety filters.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -217,7 +217,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/get-products',
         description: 'List plant-sort products available for cart actions.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -231,7 +231,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/search-products',
         description: 'Search plant-sort products available for cart actions.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -245,7 +245,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/get-product',
         description: 'Get one plant-sort product by product id.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
