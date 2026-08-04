@@ -58,6 +58,14 @@ function assertUser(inputUserId: string | undefined, auth: McpAuthContext) {
     }
 }
 
+function requireCommerceAuth(auth: McpAuthContext | null) {
+    if (!auth) {
+        throw new Error('Cart tools require authentication');
+    }
+
+    return auth;
+}
+
 function productEntityId(productId: string) {
     const normalized = productId.replace(/^plant-sort-/, '');
     const entityId = Number(normalized);
@@ -208,7 +216,7 @@ async function validateCartLocation({
 export async function executeCommerceTool(
     name: string,
     args: unknown,
-    auth: McpAuthContext,
+    auth: McpAuthContext | null,
 ) {
     switch (name) {
         case 'commerce/get-products':
@@ -235,14 +243,16 @@ export async function executeCommerceTool(
             return formatProduct(product);
         }
         case 'commerce/get-cart': {
+            const authContext = requireCommerceAuth(auth);
             const input = GetCartSchema.parse(args ?? {});
-            assertUser(input.userId, auth);
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            assertUser(input.userId, authContext);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             return cart ? formatCart(cart) : null;
         }
         case 'commerce/add-to-cart': {
+            const authContext = requireCommerceAuth(auth);
             const input = AddToCartSchema.parse(args);
-            assertUser(input.userId, auth);
+            assertUser(input.userId, authContext);
             const entityId = productEntityId(input.productId);
             if (!entityId) {
                 throw new Error('Unsupported product id');
@@ -254,12 +264,12 @@ export async function executeCommerceTool(
             ) {
                 throw new Error('Product not found');
             }
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             if (!cart) {
                 throw new Error('Cart could not be created');
             }
             const location = await validateCartLocation({
-                accountId: auth.accountId,
+                accountId: authContext.accountId,
                 gardenId: input.gardenId,
                 raisedBedId: input.raisedBedId,
                 positionIndex: input.positionIndex,
@@ -278,7 +288,9 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 additionalData,
             );
-            const refreshedCart = await getOrCreateShoppingCart(auth.accountId);
+            const refreshedCart = await getOrCreateShoppingCart(
+                authContext.accountId,
+            );
             if (!refreshedCart) {
                 throw new Error('Cart could not be loaded');
             }
@@ -288,9 +300,10 @@ export async function executeCommerceTool(
             };
         }
         case 'commerce/update-cart-item': {
+            const authContext = requireCommerceAuth(auth);
             const input = UpdateCartItemSchema.parse(args);
-            assertUser(input.userId, auth);
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            assertUser(input.userId, authContext);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             if (!cart) {
                 throw new Error('Cart not found');
             }
@@ -303,7 +316,7 @@ export async function executeCommerceTool(
             const location =
                 input.quantity > 0
                     ? await validateCartLocation({
-                          accountId: auth.accountId,
+                          accountId: authContext.accountId,
                           gardenId: item.gardenId,
                           raisedBedId: item.raisedBedId,
                           positionIndex: item.positionIndex,
@@ -324,7 +337,9 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 item.additionalData,
             );
-            const refreshedCart = await getOrCreateShoppingCart(auth.accountId);
+            const refreshedCart = await getOrCreateShoppingCart(
+                authContext.accountId,
+            );
             if (!refreshedCart) {
                 throw new Error('Cart could not be loaded');
             }

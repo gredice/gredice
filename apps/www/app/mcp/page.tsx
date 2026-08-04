@@ -38,7 +38,7 @@ const accessLevels = [
         icon: '🌿',
         title: 'Javno znanje',
         description:
-            'AI asistent može dohvatiti javni katalog biljaka bez pristupa tvojem računu.',
+            'AI asistent može bez prijave pretraživati biljke, sorte, sjeme, radnje i objavljene proizvode.',
     },
     {
         icon: '🪴',
@@ -50,7 +50,7 @@ const accessLevels = [
         icon: '🛒',
         title: 'Zaštićene promjene',
         description:
-            'Alati koji mijenjaju košaricu traže zasebnu dozvolu za pisanje i uvode se postupno.',
+            'Čitanje košarice traži prijavu, a svaka promjena i zasebnu dozvolu za pisanje.',
     },
 ] as const;
 
@@ -72,7 +72,7 @@ export default function McpPage() {
 
                 <Stack spacing={4}>
                     <Chip color="success" variant="soft">
-                        MCP • rani pristup
+                        MCP • javno dostupan
                     </Chip>
                     <Typography level="h3" component="h2">
                         Manje prepisivanja, više korisnog konteksta
@@ -212,15 +212,15 @@ export default function McpPage() {
                 <section className="rounded-xl bg-muted p-6 md:p-8">
                     <Stack spacing={4}>
                         <Typography level="h4" component="h2">
-                            Dostupnost se uvodi postupno
+                            Javni podaci bez prijave
                         </Typography>
                         <Typography level="body1" secondary>
-                            Javni podaci mogu se uključiti bez prijave.
-                            Zaštićeni alati ovise o podršci za autorizaciju u
-                            odabranom MCP klijentu i fazi uvođenja pojedine
-                            mogućnosti. Ako klijent ne podržava udaljeni MCP ili
-                            prijavu, i dalje može koristiti javne stranice
-                            Gredica kao izvor informacija.
+                            Javni katalog i objavljeni proizvodi dostupni su
+                            svakom kompatibilnom MCP klijentu. Podaci vrta i
+                            košarice ostaju zaštićeni i dostupni su samo nakon
+                            prijave kroz klijent koji podržava autorizaciju.
+                            Klijent bez prijave i dalje može koristiti sve javne
+                            alate.
                         </Typography>
                         <NavigatingButton
                             href={KnownPages.Contact}

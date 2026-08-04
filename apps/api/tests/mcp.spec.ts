@@ -20,10 +20,11 @@ async function callMcp(
 }
 
 test.describe('MCP protocol surface', () => {
-    test('keeps legacy domain-specific endpoints out of the public surface', async ({
+    test('does not expose removed domain-specific endpoints', async ({
         request,
     }) => {
         for (const path of [
+            '/api/mcp/.well-known/oauth-protected-resource',
             '/api/mcp/core/health',
             '/api/mcp/directories',
             '/api/mcp/gardens',
@@ -262,8 +263,8 @@ test.describe('MCP auth and security', () => {
             id: 'auth-missing',
             method: 'tools/call',
             params: {
-                name: 'directories/get-plant',
-                arguments: { plantName: 'rajcica', includeSorts: true },
+                name: 'gardens/list-gardens',
+                arguments: { limit: 1, offset: 0 },
             },
         });
 
@@ -287,8 +288,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-invalid',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             { Authorization: 'Bearer not-a-valid-token' },
@@ -343,8 +344,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-account-ok',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             {
@@ -367,8 +368,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-account-isolated',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             {
