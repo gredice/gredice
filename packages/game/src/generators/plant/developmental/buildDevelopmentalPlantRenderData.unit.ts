@@ -5,7 +5,10 @@ import type { PlantDefinition } from '../lib/plant-definitions';
 import { plantTypes } from '../lib/plant-definitions';
 import type { PlantRenderData } from '../lib/plantRenderData';
 import { buildDevelopmentalPlantRenderData } from './buildDevelopmentalPlantRenderData';
-import { buildDevelopmentalPlantGraph } from './developmentalPlantGraph';
+import {
+    buildDevelopmentalPlantGraph,
+    type DevelopmentalPlantGraph,
+} from './developmentalPlantGraph';
 
 const PLANT_ENTRIES = Object.entries(plantTypes);
 
@@ -15,6 +18,24 @@ function assertFiniteMatrix(matrix: Matrix4) {
         matrix.elements.every((value) => Number.isFinite(value)),
         'Expected every transform component to be finite',
     );
+}
+
+function assertVectorClose(
+    actual: Vector3,
+    expected: Vector3,
+    message: string,
+) {
+    assert.ok(
+        actual.distanceTo(expected) < 1e-7,
+        `${message}: expected ${expected.toArray().join(', ')}, received ${actual.toArray().join(', ')}`,
+    );
+}
+
+function getStemEndpoints(matrix: Matrix4) {
+    return {
+        end: new Vector3(0, 1, 0).applyMatrix4(matrix),
+        start: new Vector3(0, 0, 0).applyMatrix4(matrix),
+    };
 }
 
 function assertValidRenderData(renderData: PlantRenderData) {
@@ -121,6 +142,107 @@ test('renders the expected lettuce, tomato, and carrot structures', () => {
     assert.deepEqual(
         carrot.vegetables.map((vegetable) => vegetable.type),
         ['carrot'],
+    );
+});
+
+test('keeps child organs attached while parent segments grow', () => {
+    const graph: DevelopmentalPlantGraph = {
+        architecture: 'upright',
+        generation: 1,
+        organs: [
+            {
+                birthGeneration: 0,
+                children: ['internode:test'],
+                developmentStage: 1,
+                health: 1,
+                id: 'meristem:root',
+                maturityGeneration: 0,
+                position: [0, 0, 0],
+                type: 'meristem',
+            },
+            {
+                birthGeneration: 0,
+                children: ['petiole:test'],
+                developmentStage: 0.5,
+                end: [0, 1, 0],
+                endRadius: 0.01,
+                health: 1,
+                id: 'internode:test',
+                maturityGeneration: 2,
+                parentId: 'meristem:root',
+                start: [0, 0, 0],
+                startRadius: 0.02,
+                type: 'internode',
+            },
+            {
+                birthGeneration: 0.5,
+                children: ['leaf:test'],
+                developmentStage: 0.5,
+                end: [1, 1, 0],
+                endRadius: 0.005,
+                health: 1,
+                id: 'petiole:test',
+                maturityGeneration: 2.5,
+                parentId: 'internode:test',
+                start: [0, 1, 0],
+                startRadius: 0.01,
+                type: 'petiole',
+            },
+            {
+                birthGeneration: 0.5,
+                children: [],
+                developmentStage: 0.5,
+                health: 1,
+                id: 'leaf:test',
+                maturityGeneration: 2.5,
+                parentId: 'petiole:test',
+                transform: {
+                    position: [1, 1, 0],
+                    rotationRadians: [0, 0, 0],
+                    scale: [0.1, 0.1, 0.1],
+                },
+                type: 'leaf',
+            },
+        ],
+        plantKey: plantTypes.tomato.key,
+        rootId: 'meristem:root',
+        seed: 'growing-child-attachment',
+    };
+    const renderData = buildDevelopmentalPlantRenderData({
+        flowerGrowth: 1,
+        fruitGrowth: 1,
+        graph,
+        plantDefinition: plantTypes.tomato,
+        renderDetailedGeometry: true,
+    });
+
+    assert.equal(renderData.stemSegments.length, 2);
+    assert.equal(renderData.leaves.length, 1);
+    const internode = getStemEndpoints(renderData.stemSegments[0]?.matrix);
+    const petiole = getStemEndpoints(renderData.stemSegments[1]?.matrix);
+    const leafPosition = new Vector3().setFromMatrixPosition(
+        renderData.leaves[0],
+    );
+
+    assertVectorClose(
+        internode.end,
+        new Vector3(0, 0.5, 0),
+        'Internode should end at its developed length',
+    );
+    assertVectorClose(
+        petiole.start,
+        internode.end,
+        'Petiole should start at the developed internode endpoint',
+    );
+    assertVectorClose(
+        petiole.end,
+        new Vector3(0.5, 0.5, 0),
+        'Petiole should grow from its translated start',
+    );
+    assertVectorClose(
+        leafPosition,
+        petiole.end,
+        'Leaf should stay attached to the developed petiole endpoint',
     );
 });
 

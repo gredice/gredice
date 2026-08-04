@@ -9,6 +9,7 @@ import { SeededRNG } from '../lib/rng';
 import { vegetableMaterialProps } from '../lib/vegetableRenderMetadata';
 import type {
     DevelopmentalPlantGraph,
+    PlantOrgan,
     PlantOrganTransform,
     PlantSegmentOrgan,
     PlantVector3,
@@ -28,13 +29,22 @@ interface BuildDevelopmentalPlantRenderDataOptions {
 const STEM_UP = new THREE.Vector3(0, 1, 0);
 const MIN_VISIBLE_SCALE = 0.001;
 
+interface OrganAttachment {
+    current: THREE.Vector3;
+    mature: THREE.Vector3;
+}
+
 function toVector3(value: PlantVector3) {
     return new THREE.Vector3(value[0], value[1], value[2]);
 }
 
-function toMatrix(transform: PlantOrganTransform, scaleMultiplier = 1) {
+function toMatrix(
+    transform: PlantOrganTransform,
+    position: THREE.Vector3,
+    scaleMultiplier = 1,
+) {
     return new THREE.Matrix4().compose(
-        toVector3(transform.position),
+        position,
         new THREE.Quaternion().setFromEuler(
             new THREE.Euler(
                 transform.rotationRadians[0],
@@ -51,11 +61,13 @@ function toMatrix(transform: PlantOrganTransform, scaleMultiplier = 1) {
     );
 }
 
-function toStemSegment(organ: PlantSegmentOrgan): PlantStemSegment | null {
-    const start = toVector3(organ.start);
-    const direction = toVector3(organ.end).sub(start);
-    const visibleGrowth = organ.developmentStage * organ.health;
-    direction.multiplyScalar(visibleGrowth);
+function toStemSegment(
+    organ: PlantSegmentOrgan,
+    start: THREE.Vector3,
+    end: THREE.Vector3,
+    visibleGrowth: number,
+): PlantStemSegment | null {
+    const direction = end.clone().sub(start);
     const length = direction.length();
     if (length <= MIN_VISIBLE_SCALE) {
         return null;
@@ -75,6 +87,36 @@ function toStemSegment(organ: PlantSegmentOrgan): PlantStemSegment | null {
         ),
         startRadius: organ.startRadius * visibleGrowth,
     };
+}
+
+function getParentOffset(
+    organ: PlantOrgan,
+    attachmentByOrganId: Map<string, OrganAttachment>,
+) {
+    if (!organ.parentId) {
+        return new THREE.Vector3();
+    }
+
+    const parentAttachment = attachmentByOrganId.get(organ.parentId);
+    if (!parentAttachment) {
+        throw new TypeError(
+            `Plant organ ${organ.id} cannot render before its parent ${organ.parentId}`,
+        );
+    }
+
+    return parentAttachment.current.clone().sub(parentAttachment.mature);
+}
+
+function rememberTranslatedAttachment(
+    organId: string,
+    maturePosition: PlantVector3,
+    parentOffset: THREE.Vector3,
+    attachmentByOrganId: Map<string, OrganAttachment>,
+) {
+    const mature = toVector3(maturePosition);
+    const current = mature.clone().add(parentOffset);
+    attachmentByOrganId.set(organId, { current, mature });
+    return current;
 }
 
 function getTransformRadius(transform: PlantOrganTransform) {
@@ -103,6 +145,7 @@ export function buildDevelopmentalPlantRenderData({
     const flowers: THREE.Matrix4[] = [];
     const thorns: THREE.Matrix4[] = [];
     const vegetables: PlantRenderData['vegetables'] = [];
+    const attachmentByOrganId = new Map<string, OrganAttachment>();
     const baseLeafColor = new THREE.Color(plantDefinition.leaf.color);
     const senescentLeafColor = new THREE.Color('#9b783d');
     const dominantColor = new THREE.Color(plantDefinition.stem.color);
@@ -115,23 +158,35 @@ export function buildDevelopmentalPlantRenderData({
     let accentSumY = 0;
     let accentColor: string | undefined;
 
-    const trackPosition = (position: PlantVector3, radius = 0) => {
-        maxHeight = Math.max(maxHeight, position[1] + radius);
+    const trackPosition = (position: THREE.Vector3, radius = 0) => {
+        maxHeight = Math.max(maxHeight, position.y + radius);
         maxHorizontalReach = Math.max(
             maxHorizontalReach,
-            Math.hypot(position[0], position[2]) + radius,
+            Math.hypot(position.x, position.z) + radius,
         );
     };
 
     for (const organ of graph.organs) {
+        const parentOffset = getParentOffset(organ, attachmentByOrganId);
         switch (organ.type) {
             case 'internode':
             case 'branch':
             case 'petiole':
             case 'runner':
             case 'tendril': {
-                trackPosition(organ.start, organ.startRadius);
-                trackPosition(organ.end, organ.endRadius);
+                const visibleGrowth = organ.developmentStage * organ.health;
+                const matureStart = toVector3(organ.start);
+                const start = matureStart.clone().add(parentOffset);
+                const end = toVector3(organ.end)
+                    .sub(matureStart)
+                    .multiplyScalar(visibleGrowth)
+                    .add(start);
+                attachmentByOrganId.set(organ.id, {
+                    current: end,
+                    mature: toVector3(organ.end),
+                });
+                trackPosition(start, organ.startRadius);
+                trackPosition(end, organ.endRadius);
                 maxStemRadius = Math.max(
                     maxStemRadius,
                     organ.startRadius,
@@ -141,13 +196,19 @@ export function buildDevelopmentalPlantRenderData({
                     break;
                 }
 
-                const segment = toStemSegment(organ);
+                const segment = toStemSegment(organ, start, end, visibleGrowth);
                 if (segment) {
                     stemSegments.push(segment);
                 }
                 break;
             }
             case 'leaf': {
+                const position = rememberTranslatedAttachment(
+                    organ.id,
+                    organ.transform.position,
+                    parentOffset,
+                    attachmentByOrganId,
+                );
                 const visibleGrowth = organ.developmentStage * organ.health;
                 if (!showLeaves || visibleGrowth <= 0.01) {
                     break;
@@ -156,8 +217,8 @@ export function buildDevelopmentalPlantRenderData({
                 const radius =
                     getTransformRadius(organ.transform) * organ.health;
                 foliageSamples += 1;
-                foliageSumY += organ.transform.position[1];
-                trackPosition(organ.transform.position, radius);
+                foliageSumY += position.y;
+                trackPosition(position, radius);
                 const leafRng = new SeededRNG(
                     `${graph.seed}:${graph.plantKey}:organ-renderer:${organ.id}`,
                 );
@@ -170,12 +231,20 @@ export function buildDevelopmentalPlantRenderData({
                     )
                     .lerp(senescentLeafColor, (1 - organ.health) * 0.82);
                 if (renderDetailedGeometry) {
-                    leaves.push(toMatrix(organ.transform, organ.health));
+                    leaves.push(
+                        toMatrix(organ.transform, position, organ.health),
+                    );
                     leafColors.push(color);
                 }
                 break;
             }
             case 'flower': {
+                const position = rememberTranslatedAttachment(
+                    organ.id,
+                    organ.transform.position,
+                    parentOffset,
+                    attachmentByOrganId,
+                );
                 const visibleGrowth = organ.developmentStage * flowerGrowth;
                 if (!showFlowers || visibleGrowth <= 0.01) {
                     break;
@@ -184,16 +253,24 @@ export function buildDevelopmentalPlantRenderData({
                 const radius =
                     getTransformRadius(organ.transform) * flowerGrowth;
                 accentSamples += 1;
-                accentSumY += organ.transform.position[1];
+                accentSumY += position.y;
                 accentColor = plantDefinition.flower.color;
-                trackPosition(organ.transform.position, radius);
+                trackPosition(position, radius);
                 if (renderDetailedGeometry) {
-                    flowers.push(toMatrix(organ.transform, flowerGrowth));
+                    flowers.push(
+                        toMatrix(organ.transform, position, flowerGrowth),
+                    );
                 }
                 break;
             }
             case 'fruit':
             case 'root': {
+                const position = rememberTranslatedAttachment(
+                    organ.id,
+                    organ.transform.position,
+                    parentOffset,
+                    attachmentByOrganId,
+                );
                 const visibleGrowth = organ.developmentStage * fruitGrowth;
                 if (!showProduce || visibleGrowth <= 0.01) {
                     break;
@@ -202,33 +279,46 @@ export function buildDevelopmentalPlantRenderData({
                 const radius =
                     getTransformRadius(organ.transform) * visibleGrowth;
                 accentSamples += 1;
-                accentSumY += Math.max(0.04, organ.transform.position[1]);
+                accentSumY += Math.max(0.04, position.y);
                 accentColor = vegetableMaterialProps[organ.produceType].color;
-                trackPosition(organ.transform.position, radius);
+                trackPosition(position, radius);
                 if (renderDetailedGeometry) {
                     vegetables.push({
                         growth: visibleGrowth,
-                        matrix: toMatrix(organ.transform),
+                        matrix: toMatrix(organ.transform, position),
                         type: organ.produceType,
                     });
                 }
                 break;
             }
             case 'thorn': {
+                const position = rememberTranslatedAttachment(
+                    organ.id,
+                    organ.transform.position,
+                    parentOffset,
+                    attachmentByOrganId,
+                );
                 if (organ.developmentStage <= 0.01) {
                     break;
                 }
 
                 const radius = getTransformRadius(organ.transform);
-                trackPosition(organ.transform.position, radius);
+                trackPosition(position, radius);
                 if (renderDetailedGeometry) {
-                    thorns.push(toMatrix(organ.transform));
+                    thorns.push(toMatrix(organ.transform, position));
                 }
                 break;
             }
-            case 'meristem':
-                trackPosition(organ.position);
+            case 'meristem': {
+                const position = rememberTranslatedAttachment(
+                    organ.id,
+                    organ.position,
+                    parentOffset,
+                    attachmentByOrganId,
+                );
+                trackPosition(position);
                 break;
+            }
         }
     }
 
