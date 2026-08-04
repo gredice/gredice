@@ -986,9 +986,24 @@ function summarizePlantCycle(
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantSowDate = plantSowDate ?? statusEventDate;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'sprouted') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'notSprouted') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -997,11 +1012,31 @@ function summarizePlantCycle(
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
             } else if (plantStatus === 'firstFlowers') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'firstFruitSet') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'ready') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantReadyDate = statusEventDate;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -1572,9 +1607,24 @@ function reduceRaisedBedFieldWithEvents(
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantSowDate = plantSowDate ?? statusEventDate;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'sprouted') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'notSprouted') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -1583,11 +1633,31 @@ function reduceRaisedBedFieldWithEvents(
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
             } else if (plantStatus === 'firstFlowers') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'firstFruitSet') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'ready') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantReadyDate = statusEventDate;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
