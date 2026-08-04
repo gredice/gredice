@@ -24,6 +24,13 @@ interface CheckoutPickupLocation {
     isActive: boolean;
 }
 
+interface CheckoutDeliveryLookupCartItem {
+    entityTypeName: string;
+    id: number;
+    isDeleted: boolean;
+    status: string;
+}
+
 export const checkoutDeliverySelectionErrorCodes = {
     REQUIRED: 'delivery-selection-required',
     SLOT_UNAVAILABLE: 'delivery-slot-unavailable',
@@ -45,6 +52,33 @@ export class CheckoutDeliverySelectionError extends Error {
     ) {
         super(message);
     }
+}
+
+export function hasCheckoutDeliveryLookupCandidate(
+    items: readonly CheckoutDeliveryLookupCartItem[],
+    mappedOperationCartItemIds: ReadonlySet<number>,
+) {
+    return items.some(
+        (item) =>
+            item.entityTypeName === 'operation' &&
+            item.status === 'new' &&
+            !item.isDeleted &&
+            !mappedOperationCartItemIds.has(item.id),
+    );
+}
+
+export async function resolveCheckoutRequiresDelivery(
+    items: readonly CheckoutDeliveryLookupCartItem[],
+    mappedOperationCartItemIds: ReadonlySet<number>,
+    lookupDeliverableItems: () => Promise<boolean>,
+) {
+    if (
+        !hasCheckoutDeliveryLookupCandidate(items, mappedOperationCartItemIds)
+    ) {
+        return false;
+    }
+
+    return lookupDeliverableItems();
 }
 
 export function validateCheckoutDeliverySelection({
