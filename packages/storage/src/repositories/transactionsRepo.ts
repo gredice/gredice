@@ -467,8 +467,14 @@ export async function renewStripePaymentProcessingClaim({
     const [renewed] = await database
         .update(stripePaymentProcessingClaims)
         .set({
-            leaseExpiresAt: sql`greatest(${stripePaymentProcessingClaims.leaseExpiresAt}, ${requestedLeaseExpiresAt})`,
-            updatedAt: sql`greatest(${stripePaymentProcessingClaims.updatedAt}, ${now})`,
+            leaseExpiresAt: sql`greatest(
+                ${stripePaymentProcessingClaims.leaseExpiresAt},
+                ${sql.param(requestedLeaseExpiresAt, stripePaymentProcessingClaims.leaseExpiresAt)}
+            )`,
+            updatedAt: sql`greatest(
+                ${stripePaymentProcessingClaims.updatedAt},
+                ${sql.param(now, stripePaymentProcessingClaims.updatedAt)}
+            )`,
         })
         .where(
             and(

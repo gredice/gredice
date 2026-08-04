@@ -431,6 +431,9 @@ test(
     '0078 times out behind the legacy processor drain fence, rolls back atomically, and then succeeds',
     realPostgresTestOptions,
     async () => {
+        // This is the cutover safety test: the post-migration durable claim
+        // wrapper intentionally does not retain the retired shared fence.
+        // Exercise the exact legacy shared lock against migration 0078 instead.
         await assertLockTimeoutRollbackAndRetry((pool) =>
             holdMigrationBlocker(
                 pool,
