@@ -3,12 +3,12 @@ import { animated, useSpring } from '@react-spring/three';
 import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
-import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
     calculateInGamePlantGeneration,
     getPlantLifecycleWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
 import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
@@ -136,10 +136,8 @@ export function RaisedBedPlantField({
           Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
         : 0;
     const approximateFieldPlantHeight = resolvedPlantPreset
-        ? getApproximatePlantHeight(
-              resolvedPlantPreset.definition,
-              visualPlantGeneration,
-          ) * plantInstanceScale
+        ? getApproximatePlantHeight(resolvedPlantPreset.definition) *
+          plantInstanceScale
         : 0.25;
     const fieldLod = usePlantLodState(
         fieldGroupRef,

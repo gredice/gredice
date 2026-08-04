@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { GeneratedLSystemTaskScheduler } from './generatedLSystemTaskScheduler';
+import { GeneratedPlantTaskScheduler } from './generatedPlantTaskScheduler';
 
 interface Deferred<Value> {
     promise: Promise<Value>;
@@ -33,7 +33,7 @@ test('runs one atomic task at a time by priority and FIFO order', async () => {
             createDeferred<string>(),
         ]),
     );
-    const scheduler = new GeneratedLSystemTaskScheduler((task: string) => {
+    const scheduler = new GeneratedPlantTaskScheduler((task: string) => {
         executionOrder.push(task);
         const deferred = deferredByTask.get(task);
         assert.ok(deferred);
@@ -104,7 +104,7 @@ test('deduplicates keyed work and lets one subscriber abort independently', asyn
     const abortController = new AbortController();
     const executionPriorities: string[] = [];
     let executionCount = 0;
-    const scheduler = new GeneratedLSystemTaskScheduler(
+    const scheduler = new GeneratedPlantTaskScheduler(
         (_task: string, context: { priority: string }): Promise<string> => {
             executionCount += 1;
             executionPriorities.push(context.priority);
@@ -155,7 +155,7 @@ test('promotes queued focused work ahead of normal work', async () => {
             createDeferred<string>(),
         ]),
     );
-    const scheduler = new GeneratedLSystemTaskScheduler((task: string) => {
+    const scheduler = new GeneratedPlantTaskScheduler((task: string) => {
         executionOrder.push(task);
         const deferred = deferredByTask.get(task);
         assert.ok(deferred);
@@ -203,7 +203,7 @@ test('removes queued tasks after their last subscriber aborts', async () => {
     const blockerDeferred = createDeferred<string>();
     const abortController = new AbortController();
     const executionOrder: string[] = [];
-    const scheduler = new GeneratedLSystemTaskScheduler((task: string) => {
+    const scheduler = new GeneratedPlantTaskScheduler((task: string) => {
         executionOrder.push(task);
         if (task === 'blocker') {
             return blockerDeferred.promise;
@@ -241,7 +241,7 @@ test('suppresses stale in-flight results and continues with fresh work', async (
     const freshDeferred = createDeferred<string>();
     const abortController = new AbortController();
     const executionOrder: string[] = [];
-    const scheduler = new GeneratedLSystemTaskScheduler((task: string) => {
+    const scheduler = new GeneratedPlantTaskScheduler((task: string) => {
         executionOrder.push(task);
         return task === 'stale' ? staleDeferred.promise : freshDeferred.promise;
     });

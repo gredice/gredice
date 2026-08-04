@@ -5,11 +5,11 @@ import {
     recordGeneratedPlantProfileBatch,
     recordGeneratedPlantProfileBuild,
     recordGeneratedPlantProfileFields,
+    recordGeneratedPlantProfileGenerationCancellation,
+    recordGeneratedPlantProfileGenerationCompletion,
+    recordGeneratedPlantProfileGenerationRequest,
+    recordGeneratedPlantProfileGenerationSyncFallback,
     recordGeneratedPlantProfileLodEvaluation,
-    recordGeneratedPlantProfileLSystemCancellation,
-    recordGeneratedPlantProfileLSystemCompletion,
-    recordGeneratedPlantProfileLSystemRequest,
-    recordGeneratedPlantProfileLSystemSyncFallback,
     recordGeneratedPlantProfilePackedWorkerResult,
     recordGeneratedPlantProfilePostSwapCompilation,
     recordGeneratedPlantProfileSchedulerSnapshot,
@@ -212,15 +212,15 @@ test('generated plant profile reset prevents counts leaking between sessions', (
         selectedBlockId: 'bed:1:0',
         selectedRaisedBedId: 1,
     });
-    recordGeneratedPlantProfileLSystemRequest({
+    recordGeneratedPlantProfileGenerationRequest({
         requestedTaskCount: 8,
         workerTaskCount: 6,
     });
-    recordGeneratedPlantProfileLSystemCompletion({
+    recordGeneratedPlantProfileGenerationCompletion({
         completedTaskCount: 6,
         durationMs: 12,
     });
-    recordGeneratedPlantProfileLSystemCancellation(2);
+    recordGeneratedPlantProfileGenerationCancellation(2);
     recordGeneratedPlantProfileBuild({
         buildId: 'first',
         durationMs: 5,
@@ -236,10 +236,10 @@ test('generated plant profile reset prevents counts leaking between sessions', (
 
     assert.equal(snapshot?.sessionId, (firstSessionId ?? 0) + 1);
     assert.equal(snapshot?.selectedRaisedBedId, 2);
-    assert.equal(snapshot?.lSystem.requestedTaskCount, 0);
-    assert.equal(snapshot?.lSystem.completedTaskCount, 0);
-    assert.equal(snapshot?.lSystem.cancelledTaskCount, 0);
-    assert.equal(snapshot?.lSystem.syncFallbackTaskCount, 0);
+    assert.equal(snapshot?.generation.requestedTaskCount, 0);
+    assert.equal(snapshot?.generation.completedTaskCount, 0);
+    assert.equal(snapshot?.generation.cancelledTaskCount, 0);
+    assert.equal(snapshot?.generation.syncFallbackTaskCount, 0);
     assert.equal(snapshot?.renderData.buildCount, 0);
     assert.equal(snapshot?.selected.totalFields, 0);
 });
@@ -251,11 +251,11 @@ test('generated plant profile exposes synchronous worker fallback tasks', () => 
         selectedRaisedBedId: 29,
     });
 
-    recordGeneratedPlantProfileLSystemSyncFallback(2, sessionId);
-    recordGeneratedPlantProfileLSystemSyncFallback(4, sessionId + 1);
+    recordGeneratedPlantProfileGenerationSyncFallback(2, sessionId);
+    recordGeneratedPlantProfileGenerationSyncFallback(4, sessionId + 1);
 
     assert.equal(
-        getGeneratedPlantProfileSnapshot()?.lSystem.syncFallbackTaskCount,
+        getGeneratedPlantProfileSnapshot()?.generation.syncFallbackTaskCount,
         2,
     );
 });
@@ -412,7 +412,7 @@ test('generated plant profile reports per-session pipeline deltas and gauges', (
             packingDurationMs: 1,
             renderDataBuildDurationMs: 1.5,
             rootBatchingDurationMs: 2.5,
-            symbolGenerationDurationMs: 2,
+            topologyGenerationDurationMs: 2,
             totalDurationMs: 7,
         },
     });
@@ -443,7 +443,7 @@ test('generated plant profile reports per-session pipeline deltas and gauges', (
     assert.equal(pipeline?.packedWorker.packingDurationMaxMs, 1);
     assert.equal(pipeline?.packedWorker.renderDataBuildDurationTotalMs, 1.5);
     assert.equal(pipeline?.packedWorker.rootBatchingDurationTotalMs, 2.5);
-    assert.equal(pipeline?.packedWorker.symbolGenerationDurationTotalMs, 2);
+    assert.equal(pipeline?.packedWorker.topologyGenerationDurationTotalMs, 2);
     assert.equal(pipeline?.packedWorker.totalDurationTotalMs, 11);
     assert.equal(pipeline?.packedWorker.totalDurationMaxMs, 7);
     assert.equal(pipeline?.packedWorker.transferByteLengthTotal, 3_072);

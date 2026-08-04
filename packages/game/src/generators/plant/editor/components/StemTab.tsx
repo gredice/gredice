@@ -6,8 +6,14 @@ import { defaultThornDefinition } from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantSlider } from './PlantSlider';
 
-export function StemTab({ state, onDefinitionChange }: PlantControlsProps) {
+export function StemTab({
+    state,
+    onDefinitionChange,
+    onDefinitionChanges,
+}: PlantControlsProps) {
     const thorn = state.definition.thorn ?? defaultThornDefinition;
+    const special = state.definition.development.special ?? {};
+    const thornCount = special.thornCount ?? 0;
 
     return (
         <div className="space-y-4">
@@ -18,14 +24,6 @@ export function StemTab({ state, onDefinitionChange }: PlantControlsProps) {
                 min={0.01}
                 max={0.2}
                 step={0.001}
-            />
-            <PlantSlider
-                label={`Dužina segmenta: ${state.definition.stem.length.toFixed(2)}`}
-                value={[state.definition.stem.length]}
-                onValueChange={(v) => onDefinitionChange('stem.length', v[0])}
-                min={0.01}
-                max={0.5}
-                step={0.01}
             />
             <PlantSlider
                 label={`Opadanje radijusa: ${state.definition.stem.radiusDecay.toFixed(2)}`}
@@ -60,9 +58,20 @@ export function StemTab({ state, onDefinitionChange }: PlantControlsProps) {
                 id="thorn-enabled"
                 label="Omogući trnje / bodlje"
                 checked={thorn.enabled}
-                onCheckedChange={(checked: boolean) =>
-                    onDefinitionChange('thorn.enabled', checked)
-                }
+                onCheckedChange={(checked: boolean) => {
+                    onDefinitionChanges([
+                        { path: 'thorn.enabled', value: checked },
+                        {
+                            path: 'development.special',
+                            value: {
+                                ...special,
+                                thornCount: checked
+                                    ? Math.max(8, thornCount)
+                                    : 0,
+                            },
+                        },
+                    ]);
+                }}
                 className="h-4 w-4"
             />
             <PlantSlider
@@ -75,11 +84,16 @@ export function StemTab({ state, onDefinitionChange }: PlantControlsProps) {
                 disabled={!thorn.enabled}
             />
             <PlantSlider
-                label={`Gustoća trnja: ${thorn.density}`}
-                value={[thorn.density]}
-                onValueChange={(v) => onDefinitionChange('thorn.density', v[0])}
-                min={1}
-                max={6}
+                label={`Broj trnja: ${thornCount}`}
+                value={[thornCount]}
+                onValueChange={(value) =>
+                    onDefinitionChange('development.special', {
+                        ...special,
+                        thornCount: value[0],
+                    })
+                }
+                min={0}
+                max={80}
                 step={1}
                 disabled={!thorn.enabled}
             />

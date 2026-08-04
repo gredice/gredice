@@ -1,11 +1,10 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { Vector3 } from 'three';
 import { groundGameAssetNames } from '../data/models';
 import { BlockGround } from '../entities/BlockGround';
-import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
 import { PlantGenerator } from '../generators/plant/PlantGenerator';
 import { Environment } from '../scene/Environment';
@@ -77,22 +76,6 @@ export function PlantViewer({
     const lighting = lightingPresets[lightingPreset];
     const snapshotLighting = lightingPresets.snapshot;
 
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(generation),
-            rules: definition.rules,
-            seed,
-        }),
-        [definition.axiom, definition.rules, generation, seed],
-    );
-    const { symbols: lSystemSymbols } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
-
     if (includeGround) {
         preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
     }
@@ -144,7 +127,6 @@ export function PlantViewer({
                         <PlantGenerator
                             key={`${plantType}-${seed}`}
                             plantDefinition={definition}
-                            lSystemSymbols={lSystemSymbols ?? []}
                             generation={generation}
                             seed={seed}
                             flowerGrowth={1}

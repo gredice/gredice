@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
-import { lSystemPlantsFlag } from '../flags';
+import { proceduralPlantsFlag } from '../flags';
 import { BlockGallery } from './BlockGallery';
 import { PlantBlockGallery } from './PlantBlockGallery';
 
@@ -33,10 +33,10 @@ async function getBlocksData() {
 }
 
 export default async function BlocksPage() {
-    const lSystemPlants = await lSystemPlantsFlag();
+    const proceduralPlants = await proceduralPlantsFlag();
     const [blocks, plants] = await Promise.all([
         getBlocksData(),
-        lSystemPlants ? getPlantsData() : Promise.resolve([]),
+        proceduralPlants ? getPlantsData() : Promise.resolve([]),
     ]);
     return (
         <Stack>
@@ -56,7 +56,7 @@ export default async function BlocksPage() {
             <Suspense>
                 <BlockGallery blocks={blocks} />
             </Suspense>
-            {lSystemPlants && (
+            {proceduralPlants && (
                 <Stack spacing={4} className="mt-8">
                     <Typography level="h3" className="px-2">
                         Biljke
