@@ -2,23 +2,25 @@
 
 ## Summary
 
-This temporary release gate pauses completed Stripe checkout processing before
-durable payment claims and migration `0078` are deployed. It prevents the
-legacy advisory-lock processor from crossing the claim backfill boundary while
-keeping Stripe retries, checkout expiration release, and outlet cleanup intact.
+This runbook records the temporary release gate used before durable payment
+claims and migration `0078` were activated. Issue `#4387` paused completed
+Stripe checkout processing so the legacy advisory-lock processor could not
+cross the claim backfill boundary, while keeping Stripe retries, checkout
+expiration release, and outlet cleanup intact.
 
-The gate is deliberately maintenance-on by default in issue `#4387`. Task
-`#4388` removes that forced default only after the advisory drain, claim schema,
-and reconciliation cursors have been verified in production.
+PR `#4385` deployed the claim schema under that forced gate. Activation task
+`#4388` removes the code-level default only after its production build runs a
+read-only migration, relation, index, constraint, and singleton-cursor
+verification. Keep this document as the cutover and rollback evidence record.
 
 ## Actors and entry points
 
 - Stripe delivers `checkout.session.completed` and
   `checkout.session.expired` to `POST /api/stripe/webhook`.
-- The authenticated legacy reconciliation job invokes `GET /api/stripe/cron`.
+- The authenticated reconciliation job invokes `GET /api/stripe/cron`.
 - The authenticated outlet job invokes
   `GET /api/internal/cron/outlet-lifecycle`.
-- Legacy paid-session processing is owned by
+- During the prerequisite release, legacy paid-session processing was owned by
   `withStripePaymentProcessingLock` in `packages/storage`.
 - An operator runs the read-only drain preflight through the approved
   production environment runner.
@@ -31,7 +33,7 @@ Signature and cron authentication are checked before maintenance state:
   `Cache-Control: private, no-store`. It performs no fulfillment or transaction
   work, so Stripe retains the delivery for retry.
 - An expired checkout remains active and releases its durable checkout attempt.
-- The authenticated legacy Stripe reconciliation job returns the same retryable
+- The authenticated Stripe reconciliation job returns the same retryable
   maintenance response before listing Stripe sessions.
 - Outlet lifecycle cleanup still releases expired reservations and closes
   offers. Stripe orphan-attempt reconciliation is skipped, and the response is
@@ -45,9 +47,12 @@ Signature and cron authentication are checked before maintenance state:
 - Missing or invalid authentication invokes neither maintenance checks nor
   business work.
 
-`GREDICE_STRIPE_CHECKOUT_PROCESSING_MAINTENANCE_ENABLED` remains the emergency
-maintenance setting after activation. During this prerequisite release, the
-code-level cutover default takes precedence and is always enabled.
+After activation,
+`GREDICE_STRIPE_CHECKOUT_PROCESSING_MAINTENANCE_ENABLED` is the sole emergency
+maintenance switch. Unset or `false` keeps durable claim processing active; a
+documented truthy value returns both entry points to retryable maintenance.
+Changing a Vercel environment value requires a new deployment, so the fastest
+rollback is routing to the exact maintenance-on `#4385` deployment.
 
 ## Drain fence
 
@@ -74,7 +79,8 @@ the numeric keys.
 
 The API Vercel project runs `pnpm --filter @gredice/storage migrate:deploy`
 during a production build, after the API build and before activating the new
-deployment. Preview deployments skip migrations. Use this order:
+deployment. The command runs pending migrations and then a read-only claim
+schema readback; preview deployments skip both. The completed cutover order is:
 
 1. Merge the `#4387` prerequisite PR. Confirm the production API deployment is
    `READY`, references the exact merge SHA, and contains no new migration.
@@ -105,11 +111,15 @@ deployment. Preview deployments skip migrations. Use this order:
 7. Merge PR `#4385`. The production build applies migration `0078` while the
    already-live prerequisite still rejects completed-payment work. A migration
    failure leaves the maintenance deployment live and retryable.
-8. Read back the claim tables, unique Stripe identity index, and singleton
-   discovery and recovery cursors. Keep maintenance active until this succeeds.
-9. Merge activation task `#4388`, verify its exact-SHA production deployment,
-   and invoke reconciliation until one frozen discovery range and one recovery
-   cycle complete.
+8. Confirm the exact `#4385` production deployment is `READY`, fully routed,
+   and still reports `drained: true` under maintenance.
+9. Merge activation task `#4388`. Its production `migrate:deploy` must read back
+   the exact migration `0078` journal hash, required claim tables and indexes,
+   validated singleton constraints, and one row in each cursor table inside a
+   repeatable-read, read-only transaction. Any mismatch fails before Vercel
+   activates outputs and leaves the `#4385` maintenance deployment live.
+   Verify the exact activation SHA is `READY`, then invoke reconciliation until
+   one frozen discovery range and one recovery cycle complete.
 10. Complete one low-risk paid sunflower checkout. Require one completed claim,
    one transaction, one ledger effect, and one pair of durable completion
    outputs before recording post-cutover latency.
@@ -127,6 +137,9 @@ deployment. Preview deployments skip migrations. Use this order:
   check.
 - A migration lock timeout or failed preflight must fail the production build;
   do not bypass it or run migration statements individually.
+- A migration-readback invariant failure also fails the build after migrations
+  may have committed. Repair forward and retry the deployment; do not attempt an
+  automatic schema rollback.
 - Keep the Stripe event destination enabled. HTTP `503` responses preserve
   automatic retries; disabling the destination can prevent automatic delivery
   of events created while it is disabled.
@@ -141,8 +154,11 @@ From the repository root:
 pnpm --filter api test:node
 pnpm --filter api exec tsc --noEmit
 pnpm --filter @gredice/storage test
+pnpm --filter @gredice/storage stripe-payment-claim:migration-readback
 git diff --check
 ```
 
 The storage CI job must run the drain concurrency case on real PostgreSQL with
-zero skips before merge.
+zero skips before merge. Run the migration readback only with the intended
+environment's `POSTGRES_URL`; it is read-only and prints aggregate counts or a
+bounded invariant code, never connection details or cursor values.
