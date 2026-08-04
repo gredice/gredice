@@ -2,6 +2,7 @@ package com.gredice.dostava.car;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.SystemClock;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 
@@ -26,6 +27,7 @@ import androidx.lifecycle.LifecycleOwner;
 import com.gredice.dostava.R;
 import com.gredice.dostava.data.DeliveryStop;
 import com.gredice.dostava.data.DeliveryStopRepository;
+import com.gredice.dostava.navigation.NavigationLaunchGate;
 import com.gredice.dostava.navigation.NavigationUri;
 
 import java.util.List;
@@ -33,6 +35,8 @@ import java.util.List;
 /** Shows privacy-safe delivery fixtures using the host-rendered POI map template. */
 final class DeliveryStopsScreen extends Screen {
     private final DeliveryStopRepository stopRepository;
+    private final NavigationLaunchGate navigationLaunchGate =
+            new NavigationLaunchGate();
 
     DeliveryStopsScreen(
             @NonNull CarContext carContext,
@@ -101,23 +105,33 @@ final class DeliveryStopsScreen extends Screen {
     }
 
     private void startNavigation(DeliveryStop stop) {
-        Intent intent = new Intent(
-                CarContext.ACTION_NAVIGATE,
-                Uri.parse(NavigationUri.forCoordinates(
-                        stop.getLatitude(),
-                        stop.getLongitude()
-                ))
-        );
-
         try {
-            // Intentionally implicit: the driver controls the default navigation app.
-            getCarContext().startCarApp(intent);
+            navigationLaunchGate.launchIfAllowed(
+                    SystemClock.elapsedRealtime(),
+                    () -> {
+                        Intent intent = new Intent(
+                                CarContext.ACTION_NAVIGATE,
+                                Uri.parse(NavigationUri.forCoordinates(
+                                        stop.getLatitude(),
+                                        stop.getLongitude()
+                                ))
+                        );
+
+                        // Implicit: the driver controls the default navigation app.
+                        getCarContext().startCarApp(intent);
+                    });
         } catch (HostException | SecurityException exception) {
-            CarToast.makeText(
-                    getCarContext(),
-                    getCarContext().getString(R.string.navigation_unavailable),
-                    CarToast.LENGTH_LONG
-            ).show();
+            showNavigationUnavailable();
+        } catch (RuntimeException exception) {
+            showNavigationUnavailable();
         }
+    }
+
+    private void showNavigationUnavailable() {
+        CarToast.makeText(
+                getCarContext(),
+                getCarContext().getString(R.string.navigation_unavailable),
+                CarToast.LENGTH_LONG
+        ).show();
     }
 }

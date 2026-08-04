@@ -20,6 +20,8 @@ pnpm --filter @gredice/delivery-android android:verify
 
 To exercise the car UI, install `app/build/outputs/apk/debug/app-debug.apk`, enable Android Auto developer mode, start the Desktop Head Unit, and open **Gredice Dostava**. A real DHU/device capture is a release gate; generated UI mockups are not accepted as Store screenshots.
 
+The complete packaging, signing, Digital Asset Links, Play-track, and recovery procedure is in [`docs/android-play-release.md`](../../docs/android-play-release.md).
+
 ## Web trust and authentication
 
 The phone surface falls back to a Custom Tab until the Delivery Play app-signing certificate is added to `https://dostava.gredice.com/.well-known/assetlinks.json`. That certificate does not exist yet and must not be guessed. The synthetic car fixture avoids authentication only for the category-feasibility review. Replacing it with the real route projection is tracked separately and must fail closed when the driver's session is unavailable.

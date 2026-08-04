@@ -2,7 +2,7 @@
 
 This project packages the existing Garden PWA at <https://vrt.gredice.com> as a Trusted Web Activity (TWA). It was imported from `gredice/gredice-twa` at commit `e7ee639f9f46904c509f534f0b22c81d5107dcf7` so the web app, Android wrapper, release automation, and store material can evolve in one repository.
 
-The Play application ID remains `com.gredice.vrt.twa`. Do not change it or replace the established upload/app-signing keys: both are part of the identity of the app already published on Google Play.
+The Play application ID remains `com.gredice.vrt.twa`. Do not change it or rotate the established upload/app-signing keys outside the documented recovery procedure: both are part of the identity of the app already published on Google Play.
 
 ## Requirements
 
@@ -30,14 +30,16 @@ Without signing environment variables, `bundleRelease` produces an unsigned AAB 
 
 ## Signed release bundle
 
-The protected GitHub release workflow supplies these environment variables:
+Gradle signs a release only when it receives all four runtime variables:
 
 - `ANDROID_UPLOAD_KEYSTORE_PATH`
 - `ANDROID_UPLOAD_STORE_PASSWORD`
 - `ANDROID_UPLOAD_KEY_ALIAS`
 - `ANDROID_UPLOAD_KEY_PASSWORD`
 
-The keystore and passwords must stay in GitHub environment secrets. Never commit or upload them as ordinary workflow artifacts. See [`store/README.md`](store/README.md) for the Play listing handoff.
+The protected GitHub workflow reconstructs the keystore at an ephemeral runner path from an environment secret. The keystore and passwords must stay in protected secret storage. Never commit or upload them as ordinary workflow artifacts. See [`store/README.md`](store/README.md) for the Play listing handoff.
+
+The complete packaging, signing, Digital Asset Links, Play-track, and recovery procedure is in [`docs/android-play-release.md`](../../docs/android-play-release.md).
 
 ## Web association
 

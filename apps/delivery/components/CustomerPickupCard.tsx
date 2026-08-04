@@ -19,6 +19,7 @@ import {
     formatDeliveryDateTime,
     formatDeliveryTime,
 } from '../lib/deliveryFormatting';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 
 function statusColor(
     status: string,
@@ -45,7 +46,7 @@ export function CustomerPickupCard({
         .filter(Boolean)
         .join(' · ');
     const navigationUrl = pickup.location
-        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.location.address)}`
+        ? buildGoogleMapsDirectionsUrl(pickup.location.address)
         : null;
     const supportHref = customerPickupSupportHref(pickup);
 

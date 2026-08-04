@@ -20,6 +20,9 @@ const strings = read(
 const navigationUri = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationUri.java",
 );
+const navigationLaunchGate = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationLaunchGate.java",
+);
 const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
 );
@@ -43,12 +46,17 @@ assert.match(carDescriptor, /<uses name="template" \/>/);
 
 assert.match(stopsScreen, /CarContext\.ACTION_NAVIGATE/);
 assert.match(stopsScreen, /startCarApp\(intent\)/);
+assert.match(stopsScreen, /navigationLaunchGate\.launchIfAllowed\(/);
+assert.match(stopsScreen, /SystemClock\.elapsedRealtime\(\)/);
 assert.match(stopsScreen, /void onStart\(/);
 assert.match(stopsScreen, /void onResume\(/);
 assert.match(stopsScreen, /HostException \| SecurityException/);
+assert.match(stopsScreen, /catch \(RuntimeException exception\)/);
 assert.doesNotMatch(stopsScreen, /setPackage\s*\(/);
 assert.doesNotMatch(stopsScreen, /setComponent\s*\(/);
 assert.doesNotMatch(stopsScreen, /com\.google\.android\.apps\.maps/);
+assert.match(navigationLaunchGate, /DEFAULT_SUPPRESSION_WINDOW_MILLIS = 1_500L/);
+assert.match(navigationLaunchGate, /catch \(RuntimeException \| Error failure\)/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 
