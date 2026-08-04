@@ -24,6 +24,25 @@ type CheckoutResult =
     | { kind: 'completed-in-app' }
     | { kind: 'stripe'; url: string };
 
+async function getCheckoutErrorMessage(response: Response) {
+    try {
+        const responseData: unknown = await response.json();
+        if (
+            responseData &&
+            typeof responseData === 'object' &&
+            'error' in responseData &&
+            typeof responseData.error === 'string' &&
+            responseData.error.trim()
+        ) {
+            return responseData.error;
+        }
+    } catch {
+        // The fallback also covers non-JSON gateway responses.
+    }
+
+    return 'Nije moguće pokrenuti plaćanje. Provjeri košaricu i pokušaj ponovno.';
+}
+
 // Type guard to check if delivery selection is complete
 export function isCompleteDeliverySelection(
     selection:
@@ -55,10 +74,7 @@ export function useCheckout() {
                     json: data,
                 });
             if (!response.ok) {
-                throw new Error(
-                    response.statusText ||
-                        'Nije moguće pokrenuti plaćanje. Provjeri odabrane datume.',
-                );
+                throw new Error(await getCheckoutErrorMessage(response));
             }
 
             const responseData = await response.json();
@@ -72,14 +88,13 @@ export function useCheckout() {
                 return { kind: 'completed-in-app' };
             }
 
-            const { url } = responseData;
-            if (!url) {
+            if (!('url' in responseData) || !responseData.url) {
                 throw new Error(
                     'Poslužitelj nije vratio poveznicu za plaćanje.',
                 );
             }
 
-            return { kind: 'stripe', url };
+            return { kind: 'stripe', url: responseData.url };
         },
         onSuccess: (result) => {
             if (result.kind === 'stripe') {
@@ -89,6 +104,12 @@ export function useCheckout() {
 
             setShoppingCartOpen(false);
             setPaymentStatus('uspjesno');
+            void queryClient.invalidateQueries();
+        },
+        onError: () => {
+            // A direct checkout can fail after durable payment or fulfillment
+            // work. Keep the cart open, but reconcile every active checkout-
+            // affected view before the user retries.
             void queryClient.invalidateQueries();
         },
         // Prevent the mutation from being run in parallel

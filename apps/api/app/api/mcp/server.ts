@@ -7,6 +7,11 @@ import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
 import {
+    canCallProtectedMcpToolWhilePublicAccessIsDisabled,
+    isMcpPublicAccessEnabled,
+    mcpPublicDocumentationUrl,
+} from '../../../lib/mcp/publicAccess';
+import {
     getMcpResources,
     getMcpResourceTemplates,
     getMcpToolCatalogEntry,
@@ -141,6 +146,19 @@ function forbiddenResponse(message: string) {
     );
 }
 
+function publicAccessDisabledResponse(correlationId?: string) {
+    return NextResponse.json(
+        { error: 'Not found' },
+        {
+            status: 404,
+            headers: {
+                'Cache-Control': 'private, no-store',
+                ...(correlationId ? { 'x-correlation-id': correlationId } : {}),
+            },
+        },
+    );
+}
+
 function unauthorizedResponse(request: NextRequest) {
     return NextResponse.json(
         {
@@ -215,6 +233,24 @@ async function executeMcpTool({
             }
             return executeCommerceTool(name, args, authContext);
     }
+}
+
+function buildMcpToolResult(result: unknown) {
+    const structuredContent =
+        result !== null && typeof result === 'object' && !Array.isArray(result)
+            ? result
+            : { value: result };
+
+    return {
+        ...structuredContent,
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(result) ?? 'null',
+            },
+        ],
+        structuredContent,
+    };
 }
 
 async function authenticateMcpRequest(
@@ -294,8 +330,17 @@ export async function handleMcpRequest(request: NextRequest) {
     const correlationId =
         request.headers.get('x-correlation-id') ?? randomUUID();
     const clientAddress = clientAddressForRateLimit(request);
+    const authorization = request.headers.get('authorization');
+    const publicAccessEnabled = isMcpPublicAccessEnabled();
 
     try {
+        if (
+            !publicAccessEnabled &&
+            !authorization?.toLowerCase().startsWith('bearer ')
+        ) {
+            return publicAccessDisabledResponse(correlationId);
+        }
+
         const originError = validateOrigin(request);
         if (originError) {
             return originError;
@@ -338,10 +383,25 @@ export async function handleMcpRequest(request: NextRequest) {
         const method = body?.method as string | undefined;
         const id = body?.id ?? null;
         const toolName = body?.params?.name as string | undefined;
+        const requestedTool =
+            typeof toolName === 'string'
+                ? getMcpToolCatalogEntry(toolName)
+                : null;
+
+        if (
+            !publicAccessEnabled &&
+            !canCallProtectedMcpToolWhilePublicAccessIsDisabled({
+                authorization,
+                exposure: requestedTool?.exposure,
+                method,
+            })
+        ) {
+            return publicAccessDisabledResponse(correlationId);
+        }
 
         const rolloutStage = process.env.MCP_ROLLOUT_STAGE ?? 'all';
         if (method === 'tools/call' && typeof toolName === 'string') {
-            const tool = getMcpToolCatalogEntry(toolName);
+            const tool = requestedTool;
             if (tool) {
                 if (
                     rolloutStage === 'public-read-only' &&
@@ -435,6 +495,13 @@ export async function handleMcpRequest(request: NextRequest) {
                     },
                 },
             );
+        }
+
+        if (method === 'notifications/initialized') {
+            return new NextResponse(null, {
+                status: 202,
+                headers: { 'x-correlation-id': correlationId },
+            });
         }
 
         if (method === 'tools/list') {
@@ -567,7 +634,11 @@ export async function handleMcpRequest(request: NextRequest) {
                     role: authContext?.role,
                 });
                 return NextResponse.json(
-                    { jsonrpc: '2.0', id, result },
+                    {
+                        jsonrpc: '2.0',
+                        id,
+                        result: buildMcpToolResult(result),
+                    },
                     { headers: { 'x-correlation-id': correlationId } },
                 );
             } catch (error) {
@@ -628,6 +699,10 @@ export async function handleMcpRequest(request: NextRequest) {
 }
 
 export function getProtectedResourceMetadata(request: NextRequest) {
+    if (!isMcpPublicAccessEnabled()) {
+        return publicAccessDisabledResponse();
+    }
+
     const resource = `${baseUrlFromRequest(request)}/api/mcp`;
     const issuer = process.env.AUTH_ISSUER_URL ?? baseUrlFromRequest(request);
 
@@ -635,7 +710,7 @@ export function getProtectedResourceMetadata(request: NextRequest) {
         resource,
         authorization_servers: [issuer],
         bearer_methods_supported: ['header'],
-        resource_documentation: `${baseUrlFromRequest(request)}/test`,
+        resource_documentation: mcpPublicDocumentationUrl,
         scopes_supported: [MCP_SCOPES.read, MCP_SCOPES.write, MCP_SCOPES.admin],
     });
 }

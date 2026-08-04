@@ -18,6 +18,7 @@ export const PublicPagePaths = {
     Contact: '/kontakt',
     Pricing: '/cjenik',
     AboutUs: '/o-nama',
+    MCP: '/mcp',
     News: '/novosti',
     WhatsNew: '/novosti/sto-je-novo',
 

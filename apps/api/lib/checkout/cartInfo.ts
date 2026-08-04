@@ -7,9 +7,11 @@ import {
     minimumShoppingCartAmountEur,
 } from '@gredice/js/shoppingCart';
 import {
+    type CheckoutInventoryConsumption,
     type EntityStandardized,
+    getCheckoutInventorySnapshot,
+    getCheckoutOperationMappings,
     getEntitiesFormatted,
-    getInventory,
     getOutletOfferReservationsForCartItems,
     getRaisedBed,
     type SelectShoppingCartItem,
@@ -52,8 +54,116 @@ type CartValueItem = Pick<
     'amount' | 'currency' | 'shopData' | 'status'
 >;
 
+type InventoryAvailabilityCartItem = Pick<
+    SelectShoppingCartItem,
+    'amount' | 'currency' | 'entityId' | 'entityTypeName' | 'id' | 'status'
+>;
+
+type InventoryAvailabilityItem = Pick<
+    CheckoutInventoryConsumption,
+    'amount' | 'entityId' | 'entityTypeName'
+>;
+
 const RAISED_BED_BLOCKS_PER_BED = 2;
 const REQUIRED_PLANT_ITEMS_PER_NEW_RAISED_BED = 9;
+
+function getInventoryKey(
+    item: Pick<InventoryAvailabilityItem, 'entityId' | 'entityTypeName'>,
+) {
+    return `${item.entityTypeName}-${item.entityId}`;
+}
+
+export function getEffectiveInventoryAvailability(
+    items: readonly InventoryAvailabilityCartItem[],
+    inventory: readonly InventoryAvailabilityItem[],
+    consumptions: readonly CheckoutInventoryConsumption[],
+) {
+    const itemsById = new Map(items.map((item) => [item.id, item]));
+    const availability = new Map<string, number>();
+
+    for (const item of inventory) {
+        const key = getInventoryKey(item);
+        availability.set(key, (availability.get(key) ?? 0) + item.amount);
+    }
+
+    for (const consumption of consumptions) {
+        const expectedSource = `shoppingCartItem:${consumption.cartItemId.toString()}`;
+        if (consumption.source !== expectedSource) {
+            throw new Error(
+                `Checkout inventory consumption source mismatch for cart item ${consumption.cartItemId.toString()}`,
+            );
+        }
+
+        const cartItem = itemsById.get(consumption.cartItemId);
+        if (
+            cartItem?.currency !== 'inventory' ||
+            cartItem.entityTypeName !== consumption.entityTypeName ||
+            cartItem.entityId !== consumption.entityId
+        ) {
+            throw new Error(
+                `Checkout inventory consumption item mismatch for cart item ${consumption.cartItemId.toString()}`,
+            );
+        }
+        if (cartItem.amount !== consumption.amount) {
+            throw new Error(
+                `Checkout inventory consumption amount mismatch for cart item ${consumption.cartItemId.toString()}`,
+            );
+        }
+
+        if (cartItem.status === 'paid') {
+            continue;
+        }
+
+        const key = getInventoryKey(consumption);
+        availability.set(
+            key,
+            (availability.get(key) ?? 0) + consumption.amount,
+        );
+    }
+
+    return availability;
+}
+
+export function hasEnoughInventoryForCartItem(
+    item: Pick<InventoryAvailabilityCartItem, 'amount' | 'status'>,
+    inventoryAvailable: number,
+) {
+    return item.status === 'paid' || inventoryAvailable >= item.amount;
+}
+
+export function getPendingInventoryCartItemIds(
+    items: readonly Pick<
+        InventoryAvailabilityCartItem,
+        'currency' | 'id' | 'status'
+    >[],
+) {
+    return items
+        .filter(
+            (item) => item.status !== 'paid' && item.currency === 'inventory',
+        )
+        .map((item) => item.id);
+}
+
+export function hasBlockingOpenItemsForRaisedBed(
+    items: readonly Pick<
+        SelectShoppingCartItem,
+        'entityTypeName' | 'id' | 'raisedBedId' | 'status'
+    >[],
+    raisedBedId: number,
+    mappedOperationCartItemIds: ReadonlySet<number>,
+    resumableCartItemIds: ReadonlySet<number> = new Set(),
+) {
+    return items.some(
+        (item) =>
+            item.status !== 'paid' &&
+            item.raisedBedId === raisedBedId &&
+            !resumableCartItemIds.has(item.id) &&
+            !(
+                item.entityTypeName === 'operation' &&
+                mappedOperationCartItemIds.has(item.id)
+            ),
+    );
+}
 
 function getNewRaisedBedCount(newRaisedBedBlockCount: number) {
     return Math.ceil(newRaisedBedBlockCount / RAISED_BED_BLOCKS_PER_BED);
@@ -118,11 +228,31 @@ export function getMinimumOrderNote(totalCartValueCents: number) {
 export async function getCartInfo(
     items: SelectShoppingCartItem[],
     accountId?: string,
+    {
+        checkoutOperationMappings: suppliedCheckoutOperationMappings,
+        resumableCartItemIds = new Set(),
+    }: {
+        checkoutOperationMappings?: Awaited<
+            ReturnType<typeof getCheckoutOperationMappings>
+        >;
+        resumableCartItemIds?: ReadonlySet<number>;
+    } = {},
 ) {
     const entityTypeNames = items.map((item) => item.entityTypeName);
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
-    const entitiesData = await Promise.all(
-        uniqueEntityTypeNames.map(getEntitiesFormatted),
+    const pendingOperationCartItemIds = items
+        .filter(
+            (item) =>
+                item.status !== 'paid' && item.entityTypeName === 'operation',
+        )
+        .map((item) => item.id);
+    const [entitiesData, checkoutOperationMappings] = await Promise.all([
+        Promise.all(uniqueEntityTypeNames.map(getEntitiesFormatted)),
+        suppliedCheckoutOperationMappings ??
+            getCheckoutOperationMappings(pendingOperationCartItemIds),
+    ]);
+    const mappedOperationCartItemIds = new Set(
+        checkoutOperationMappings.keys(),
     );
     const entitiesByTypeName = uniqueEntityTypeNames.reduce(
         (acc, typeName, index) => {
@@ -173,12 +303,21 @@ export async function getCartInfo(
         });
     }
 
-    const inventory = accountId ? await getInventory(accountId) : [];
-    const inventoryLookup = new Map(
-        inventory.map((item) => [
-            `${item.entityTypeName}-${item.entityId}`,
-            item.amount,
-        ]),
+    let inventory: InventoryAvailabilityItem[] = [];
+    let checkoutInventoryConsumptions: CheckoutInventoryConsumption[] = [];
+    const pendingInventoryCartItemIds = getPendingInventoryCartItemIds(items);
+    if (accountId && pendingInventoryCartItemIds.length > 0) {
+        const snapshot = await getCheckoutInventorySnapshot(
+            accountId,
+            pendingInventoryCartItemIds,
+        );
+        inventory = snapshot.inventory;
+        checkoutInventoryConsumptions = snapshot.consumptions;
+    }
+    const inventoryLookup = getEffectiveInventoryAvailability(
+        items,
+        inventory,
+        checkoutInventoryConsumptions,
     );
 
     // Process paid discounts for items that are already paid
@@ -201,7 +340,10 @@ export async function getCartInfo(
                 inventoryLookup.get(
                     `${item.entityTypeName}-${item.entityId}`,
                 ) ?? 0;
-            if (availableCount > 0) {
+            if (
+                item.status !== 'paid' &&
+                hasEnoughInventoryForCartItem(item, availableCount)
+            ) {
                 discounts.push({
                     cartItemId: item.id,
                     discountPrice: 0,
@@ -235,7 +377,10 @@ export async function getCartInfo(
                   ) ?? 0)
                 : 0;
 
-            if (wantsInventory && inventoryAvailable <= 0) {
+            if (
+                wantsInventory &&
+                !hasEnoughInventoryForCartItem(item, inventoryAvailable)
+            ) {
                 notes.push(
                     `${
                         entityData.information?.label ||
@@ -359,9 +504,11 @@ export async function getCartInfo(
     for (const raisedBed of abandonedRaisedBeds) {
         if (!raisedBed) continue;
 
-        const hasOpenCartItems = cartItemsWithShopInfo.some(
-            (item) =>
-                item.status !== 'paid' && item.raisedBedId === raisedBed.id,
+        const hasOpenCartItems = hasBlockingOpenItemsForRaisedBed(
+            cartItemsWithShopInfo,
+            raisedBed.id,
+            mappedOperationCartItemIds,
+            resumableCartItemIds,
         );
         if (!hasOpenCartItems) continue;
 

@@ -14,6 +14,7 @@ import {
 } from '../schema';
 import { raisedBedFields, raisedBedSensors } from '../schema/gardenSchema';
 import { storage } from '../storage';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import { removeGardenPreviewAndQueueBlobDeletionUsing } from './gardenPreviewsRepo';
@@ -22,6 +23,7 @@ import {
     deleteRaisedBedField,
     upsertRaisedBedField,
 } from './gardensRepo';
+import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
 type CreateDefaultGardenOptions = {
     accountId: string;
@@ -296,14 +298,13 @@ async function deleteSandboxShoppingCartItemBatch({
         .where(eq(shoppingCartItems.gardenId, gardenId))
         .limit(batchSize);
     if (byGarden.length > 0) {
-        await storage()
-            .delete(shoppingCartItems)
-            .where(
-                inArray(
-                    shoppingCartItems.id,
-                    byGarden.map((row) => row.id),
-                ),
-            );
+        const itemIds = byGarden.map((row) => row.id);
+        await withCheckoutCartItemLocks(itemIds, async (db) => {
+            await lockAndAssertCartItemsMutable(itemIds, db);
+            await db
+                .delete(shoppingCartItems)
+                .where(inArray(shoppingCartItems.id, itemIds));
+        });
         return byGarden.length;
     }
 
@@ -320,14 +321,13 @@ async function deleteSandboxShoppingCartItemBatch({
         return 0;
     }
 
-    await storage()
-        .delete(shoppingCartItems)
-        .where(
-            inArray(
-                shoppingCartItems.id,
-                byRaisedBed.map((row) => row.id),
-            ),
-        );
+    const itemIds = byRaisedBed.map((row) => row.id);
+    await withCheckoutCartItemLocks(itemIds, async (db) => {
+        await lockAndAssertCartItemsMutable(itemIds, db);
+        await db
+            .delete(shoppingCartItems)
+            .where(inArray(shoppingCartItems.id, itemIds));
+    });
     return byRaisedBed.length;
 }
 

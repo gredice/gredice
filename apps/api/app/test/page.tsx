@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { isMcpPublicAccessEnabled } from '../../lib/mcp/publicAccess';
 import {
     getMcpResourceCatalog,
     getMcpToolCatalog,
@@ -169,6 +171,10 @@ function resourceAddress(
 }
 
 export default function McpTestPage() {
+    if (!isMcpPublicAccessEnabled()) {
+        notFound();
+    }
+
     const tools = getMcpToolCatalog();
     const resources = getMcpResourceCatalog().filter(
         (resource) => resource.exposure !== 'excluded',

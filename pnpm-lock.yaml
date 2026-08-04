@@ -1140,12 +1140,18 @@ importers:
 
   packages/email:
     dependencies:
+      '@azure/communication-common':
+        specifier: 2.4.0
+        version: 2.4.0
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0
       '@azure/core-lro':
         specifier: 3.3.1
         version: 3.3.1
+      '@azure/core-rest-pipeline':
+        specifier: 1.22.2
+        version: 1.22.2
       '@gredice/storage':
         specifier: workspace:*
         version: link:../storage
@@ -1165,6 +1171,9 @@ importers:
       '@types/react':
         specifier: 19.2.17
         version: 19.2.17
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
       typescript:
         specifier: 7.0.2
         version: 7.0.2

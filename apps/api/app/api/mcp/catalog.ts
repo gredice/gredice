@@ -22,6 +22,12 @@ type McpToolCatalogEntry = {
     inputSchema: JsonSchemaObject;
 };
 
+type McpToolAnnotations = {
+    destructiveHint: boolean;
+    openWorldHint: boolean;
+    readOnlyHint: boolean;
+};
+
 type McpResourceCatalogEntry =
     | {
           name: string;
@@ -254,9 +260,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         exposure: 'auth-read',
         inputSchema: {
             type: 'object',
-            properties: {
-                userId: { type: 'string' },
-            },
+            properties: {},
         },
     },
     {
@@ -267,7 +271,6 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         inputSchema: {
             type: 'object',
             properties: {
-                userId: { type: 'string' },
                 productId: { type: 'string' },
                 quantity: { type: 'number' },
                 gardenId: { type: 'number' },
@@ -285,7 +288,6 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         inputSchema: {
             type: 'object',
             properties: {
-                userId: { type: 'string' },
                 cartItemId: { type: 'number' },
                 quantity: { type: 'number' },
             },
@@ -319,11 +321,22 @@ export function getMcpToolCatalogEntry(name: string) {
     return getMcpToolCatalog().find((tool) => tool.name === name) ?? null;
 }
 
+function getMcpToolAnnotations(tool: McpToolCatalogEntry): McpToolAnnotations {
+    const isMutation = tool.exposure === 'auth-mutation';
+
+    return {
+        readOnlyHint: !isMutation,
+        openWorldHint: false,
+        destructiveHint: tool.name === 'commerce/update-cart-item',
+    };
+}
+
 export function getMcpTools() {
     return getMcpToolCatalog().map((tool) => ({
         name: tool.name,
         description: tool.description,
         inputSchema: tool.inputSchema,
+        annotations: getMcpToolAnnotations(tool),
     }));
 }
 

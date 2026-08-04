@@ -4,6 +4,7 @@ import {
     getMcpResourceCatalog,
     getMcpToolCatalog,
     getMcpToolNamesByDomain,
+    getMcpTools,
 } from '../../app/api/mcp/catalog';
 
 describe('MCP catalog contract scaffold', () => {
@@ -23,6 +24,39 @@ describe('MCP catalog contract scaffold', () => {
             getMcpToolCatalog().some((tool) => tool.exposure === 'excluded'),
             false,
         );
+    });
+
+    test('publishes accurate review annotations for every tool', () => {
+        const tools = getMcpTools();
+
+        assert.equal(tools.length, getMcpToolCatalog().length);
+        for (const tool of tools) {
+            assert.equal(tool.annotations.openWorldHint, false);
+            assert.equal(
+                tool.annotations.readOnlyHint,
+                !['commerce/add-to-cart', 'commerce/update-cart-item'].includes(
+                    tool.name,
+                ),
+            );
+            assert.equal(
+                tool.annotations.destructiveHint,
+                tool.name === 'commerce/update-cart-item',
+            );
+        }
+    });
+
+    test('derives cart ownership from authentication instead of public inputs', () => {
+        for (const toolName of [
+            'commerce/get-cart',
+            'commerce/add-to-cart',
+            'commerce/update-cart-item',
+        ]) {
+            const tool = getMcpTools().find(
+                (candidate) => candidate.name === toolName,
+            );
+            assert.ok(tool);
+            assert.equal('userId' in tool.inputSchema.properties, false);
+        }
     });
 
     test('documents static directory resource metadata', () => {

@@ -1003,6 +1003,82 @@ test('greenhouse outlet seedlings preserve effective sowing date', async () => {
     );
 });
 
+test('live status correction clears stale terminal plant dates', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(
+        gardenId,
+        'block-live-status-correction',
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const aggregateId = `${raisedBedId.toString()}|0`;
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-06-26T00:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+            effectiveDate: '2026-07-13T10:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'died',
+            effectiveDate: '2026-08-02T16:11:19.314Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sprouted',
+            effectiveDate: '2026-08-02T10:00:00.000Z',
+        }),
+    );
+
+    const [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.active, true);
+    assert.strictEqual(field?.plantStatus, 'sprouted');
+    assert.strictEqual(field?.sowingLocation, 'greenhouse');
+    assert.strictEqual(
+        field?.plantGrowthDate?.toISOString(),
+        '2026-08-02T10:00:00.000Z',
+    );
+    assert.strictEqual(field?.plantDeadDate, undefined);
+    assert.strictEqual(field?.plantHarvestedDate, undefined);
+    assert.strictEqual(field?.plantRemovedDate, undefined);
+    assert.strictEqual(field?.stoppedDate, undefined);
+    assert.strictEqual(field?.toBeRemoved, false);
+
+    const [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.active, true);
+    assert.strictEqual(plantCycle?.plantStatus, 'sprouted');
+    assert.strictEqual(plantCycle?.sowingLocation, 'greenhouse');
+    assert.strictEqual(
+        plantCycle?.plantGrowthDate?.toISOString(),
+        '2026-08-02T10:00:00.000Z',
+    );
+    assert.strictEqual(plantCycle?.plantDeadDate, undefined);
+    assert.strictEqual(plantCycle?.plantHarvestedDate, undefined);
+    assert.strictEqual(plantCycle?.plantRemovedDate, undefined);
+    assert.strictEqual(plantCycle?.stoppedDate, undefined);
+    assert.strictEqual(plantCycle?.toBeRemoved, false);
+});
+
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
     createTestDb();
     const accountId = await createAccount();

@@ -2,7 +2,7 @@ import type { OrderConfirmationEmailItem } from '@gredice/transactional/emails/C
 import { sendOrderConfirmation } from '../email/transactional';
 import type { ShoppingCartItemWithShopData } from './cartInfo';
 
-const CUSTOMER_APP_URL =
+export const ORDER_CONFIRMATION_MANAGE_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
 export interface OrderConfirmationEmailParams {
@@ -79,7 +79,7 @@ export async function notifyOrderConfirmationEmail({
             orderReference: cartId ? `Narudžba #${cartId}` : null,
             totalAmountCents,
             currency,
-            manageUrl: CUSTOMER_APP_URL,
+            manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
         });
         return true;
     } catch (error) {
