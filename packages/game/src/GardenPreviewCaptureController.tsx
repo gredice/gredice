@@ -333,7 +333,6 @@ export function GardenPreviewCaptureController({
                 }}
                 className="size-full"
                 deferDetails={false}
-                enableBlockGeometryMerging
                 garden={captureGarden}
                 spriteBaseUrl={spriteBaseUrl}
             />

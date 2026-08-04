@@ -229,7 +229,6 @@ function EntityInstancesAssetBlock(props: EntityInstancesAssetBlockProps) {
 }
 
 export function EntityInstances({
-    enableBlockGeometryMerging = false,
     farmId,
     quality,
     renderGroundDecorations,
@@ -237,7 +236,6 @@ export function EntityInstances({
     renderDetails = true,
     weather,
 }: {
-    enableBlockGeometryMerging?: boolean;
     farmId?: number | null;
     quality?: GameQualityProfile;
     renderGroundDecorations?: boolean;
@@ -312,7 +310,7 @@ export function EntityInstances({
         snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
     };
     const mergedTerrainChunkProps = {
-        renderStableChunksAsMergedGeometry: enableBlockGeometryMerging,
+        renderStableChunksAsMergedGeometry: true,
     };
 
     return (
@@ -799,7 +797,6 @@ export function EntityInstances({
             </Suspense>
             <Suspense fallback={null}>
                 <AdditionalEntityInstances
-                    enableBlockGeometryMerging={enableBlockGeometryMerging}
                     stacks={stacks}
                     {...commonSnowProps}
                 />

@@ -1,7 +1,6 @@
 import type { GameFeatureFlags } from '@gredice/game';
 import {
     adaptiveHighQualityFlag,
-    blockGeometryMergingFlag,
     enableDebugHudFlag,
     enableSuncokretChatFlag,
     enableSuncokretDebugFlag,
@@ -12,7 +11,6 @@ import {
 export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
     const [
         enableAdaptiveHighQualityFlag,
-        enableBlockGeometryMergingFlag,
         enableDebugHud,
         enableRainWetOverlayFlag,
         enableStaticOpaqueSceneCacheFlag,
@@ -20,7 +18,6 @@ export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
         enableSuncokretDebug,
     ] = await Promise.all([
         adaptiveHighQualityFlag(),
-        blockGeometryMergingFlag(),
         enableDebugHudFlag(),
         rainWetOverlayFlag(),
         staticOpaqueSceneCacheFlag(),
@@ -30,7 +27,6 @@ export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
 
     return {
         enableAdaptiveHighQualityFlag,
-        enableBlockGeometryMergingFlag,
         enableDebugHudFlag: enableDebugHud,
         enableRainWetOverlayFlag,
         enableStaticOpaqueSceneCacheFlag,
