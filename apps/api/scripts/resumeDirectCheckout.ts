@@ -149,7 +149,23 @@ try {
         );
     }
 
-    const cartInfo = await getCartInfo(cart.items, accountId);
+    const existingDebits = await getExistingCartItemDebits(
+        accountId,
+        cart.items.map((item) => item.id),
+    );
+    let cartInfo = await getCartInfo(cart.items, accountId);
+    if (!cartInfo.allowPurchase && cart.status !== 'paid') {
+        // The durable item debits above prove payment already started. Mirror
+        // normal direct-checkout recovery by exempting those pending items from
+        // cart-state blockers that are only valid before payment begins.
+        cartInfo = await getCartInfo(cart.items, accountId, {
+            resumableCartItemIds: new Set(
+                cart.items
+                    .filter((item) => item.status !== 'paid')
+                    .map((item) => item.id),
+            ),
+        });
+    }
     if (cartInfo.items.length !== cart.items.length) {
         throw new Error('Not every cart item resolved to current shop data.');
     }
@@ -159,10 +175,6 @@ try {
         );
     }
 
-    const existingDebits = await getExistingCartItemDebits(
-        accountId,
-        cartInfo.items.map((item) => item.id),
-    );
     console.log(
         JSON.stringify(
             {
