@@ -29,13 +29,6 @@ export const enableDebugHudFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
-export const enableSuncokretChatFlag = flag<boolean>({
-    key: 'enableSuncokretChat',
-    description: 'Enable the in-game Suncokret AI chat HUD.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
 export const enableSuncokretDebugFlag = flag<boolean>({
     key: 'enableSuncokretDebug',
     description: 'Show Suncokret AI debug metadata in chat conversations.',

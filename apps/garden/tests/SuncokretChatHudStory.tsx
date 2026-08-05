@@ -13,6 +13,7 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { allSorts, buildOperation } from './raisedBedFieldHudScenarios';
 
 const gardenId = 1;
 const raisedBedId = 11;
@@ -54,6 +55,21 @@ const garden = {
     ],
 };
 
+const wateringOperationBase = buildOperation({
+    id: 77,
+    name: 'watering-raised-bed',
+    label: 'Zalijevanje gredice',
+    stageName: 'maintenance',
+    stageLabel: 'Održavanje',
+});
+const wateringOperation = {
+    ...wateringOperationBase,
+    attributes: {
+        ...wateringOperationBase.attributes,
+        application: 'raisedBedFull' as const,
+    },
+};
+
 function createQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -65,6 +81,8 @@ function createQueryClient() {
         [{ id: gardenId, name: garden.name, isSandbox: false }],
     );
     queryClient.setQueryData(currentGardenKeys('summer', gardenId), garden);
+    queryClient.setQueryData(['operations'], [wateringOperation]);
+    queryClient.setQueryData(['sorts'], allSorts);
     return queryClient;
 }
 
@@ -106,7 +124,6 @@ export function SuncokretChatHudStory({
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider
                         value={{
-                            enableSuncokretChatFlag: true,
                             enableSuncokretDebugFlag: debug,
                         }}
                     >

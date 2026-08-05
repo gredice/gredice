@@ -184,8 +184,19 @@ export function GameHud({
                     )}
                 </div>
                 {!isSandbox && <SunflowersHud />}
-                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
+            {!isSandbox && !isLocalSandbox && (
+                <div
+                    data-game-hud-bottom-right
+                    className={cx(
+                        'pointer-events-none absolute right-[calc(var(--game-safe-area-right,0px)+0.5rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] z-40',
+                        gameHudEntranceClassName,
+                        'motion-safe:slide-in-from-right-4',
+                    )}
+                >
+                    <SuncokretChatHud />
+                </div>
+            )}
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
