@@ -22,6 +22,7 @@ export interface RaisedBedGeneratedPlantClusterField {
     definition: PlantDefinition;
     fieldKey: string;
     instances: RaisedBedGeneratedPlantBatchInstance[];
+    renderVariant: string;
 }
 
 export function RaisedBedGeneratedPlantClusterBatch({

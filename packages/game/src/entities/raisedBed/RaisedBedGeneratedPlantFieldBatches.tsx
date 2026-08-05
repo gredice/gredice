@@ -17,6 +17,7 @@ import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     calculateInGamePlantGeneration,
+    getInGamePlantDefinition,
     getInGamePlantInstanceScale,
     getPlantMaturityWindowDays,
     type ResolvedInGamePlantPreset,
@@ -83,6 +84,7 @@ import {
 } from './RaisedBedGeneratedPlantClusterBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
+import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
     blockId: string;
@@ -103,9 +105,9 @@ type GeneratedPlantField = {
     definition: ResolvedInGamePlantPreset['definition'];
     fieldKey: string;
     instances: RaisedBedGeneratedPlantBatchInstance[];
-    plantType: ResolvedInGamePlantPreset['plantType'];
     position: readonly [number, number, number];
     raisedBedId: number;
+    renderVariant: string;
 };
 
 type GeneratedPlantBatch = {
@@ -113,7 +115,6 @@ type GeneratedPlantBatch = {
     definition: ResolvedInGamePlantPreset['definition'];
     instances: RaisedBedGeneratedPlantBatchInstance[];
     lodLevel: 'near';
-    plantType: ResolvedInGamePlantPreset['plantType'];
     signature: string;
     taskPriority: GeneratedPlantTaskPriority;
 };
@@ -703,6 +704,15 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         visualRewardsByRaisedBedId.get(raisedBed.id) ?? [],
                 }),
             );
+            const supportPositionSet = new Set(
+                resolveRaisedBedSupportPositions({
+                    blockOffset,
+                    fields: raisedBed.fields,
+                    raisedBedId: raisedBed.id,
+                    visualRewards:
+                        visualRewardsByRaisedBedId.get(raisedBed.id) ?? [],
+                }),
+            );
             const cartItems = cart?.items.filter(
                 (item) =>
                     item.gardenId === currentGarden.id &&
@@ -803,6 +813,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     resolvedPlantPreset,
                     safePlantsPerRow,
                 );
+                const supported = supportPositionSet.has(
+                    field.positionIndex - blockOffset,
+                );
+                const plantDefinition = getInGamePlantDefinition(
+                    resolvedPlantPreset,
+                    supported,
+                );
                 const fieldPosition = getFieldPosition({
                     blockIndex,
                     blockPosition: block.position,
@@ -810,7 +827,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     positionIndex: field.positionIndex - blockOffset,
                 });
                 const approximatePlantHeight =
-                    getApproximatePlantHeight(resolvedPlantPreset.definition) *
+                    getApproximatePlantHeight(plantDefinition) *
                     plantInstanceScale;
                 const instances: RaisedBedGeneratedPlantBatchInstance[] = [];
 
@@ -840,12 +857,12 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 fields.push({
                     approximatePlantHeight,
                     blockId: block.blockId,
-                    definition: resolvedPlantPreset.definition,
+                    definition: plantDefinition,
                     fieldKey: getFieldRenderKey(block.blockId, field),
                     instances,
-                    plantType: resolvedPlantPreset.plantType,
                     position: fieldPosition,
                     raisedBedId: raisedBed.id,
+                    renderVariant: `${resolvedPlantPreset.plantType}:${supported ? 'supported' : 'free'}`,
                 });
             }
         }
@@ -992,7 +1009,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     : getGeneratedPlantBatchKey({
                           focused: false,
                           lodLevel: lod.level,
-                          plantType: field.plantType,
+                          plantType: field.renderVariant,
                           raisedBedId: field.raisedBedId,
                       });
                 const clusterBatch = clusterBatchMap.get(batchKey);
@@ -1000,6 +1017,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     definition: field.definition,
                     fieldKey: field.fieldKey,
                     instances: field.instances,
+                    renderVariant: field.renderVariant,
                 } satisfies RaisedBedGeneratedPlantClusterField;
 
                 if (clusterBatch) {
@@ -1018,7 +1036,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
             const batchKey = getGeneratedPlantBatchKey({
                 focused,
                 lodLevel: 'near',
-                plantType: field.plantType,
+                plantType: field.renderVariant,
                 raisedBedId: field.raisedBedId,
             });
             let batch = detailedBatchMap.get(batchKey);
@@ -1029,7 +1047,6 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     definition: field.definition,
                     instances: [],
                     lodLevel: 'near',
-                    plantType: field.plantType,
                     signature: '',
                     taskPriority: focused
                         ? 'focused'
@@ -1051,6 +1068,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     ...batch.fields.flatMap((field) => [
                         field.fieldKey,
                         field.definition.name,
+                        field.renderVariant,
                         ...field.instances.map(
                             getGeneratedPlantInstanceSignature,
                         ),

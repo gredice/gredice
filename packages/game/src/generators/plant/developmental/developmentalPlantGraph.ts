@@ -316,6 +316,7 @@ function getAxisStep(
         Math.max(nodeCount, 1);
     const segmentLength = baseLength * rng.nextRange(0.92, 1.08);
     const alternating = index % 2 === 0 ? 1 : -1;
+    const supportedHorizontalScale = axes.mainStemHorizontalScale;
 
     switch (axes.habit) {
         case 'prostrate':
@@ -327,19 +328,19 @@ function getAxisStep(
         case 'climbing':
             return radial(
                 azimuth + alternating * 0.08,
-                segmentLength * 0.28,
+                segmentLength * (supportedHorizontalScale ?? 0.28),
                 segmentLength * 0.9,
             );
         case 'woody':
             return radial(
                 azimuth + alternating * 0.08,
-                segmentLength * 0.1,
+                segmentLength * (supportedHorizontalScale ?? 0.1),
                 segmentLength * 0.98,
             );
         case 'upright':
             return radial(
                 azimuth + alternating * 0.11,
-                segmentLength * 0.12,
+                segmentLength * (supportedHorizontalScale ?? 0.12),
                 segmentLength * 0.98,
             );
         case 'basal':
