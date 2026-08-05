@@ -321,6 +321,28 @@ test('calculateAiChatUsageCostMicroUsd rounds input and output token costs', () 
     });
 });
 
+test('calculateAiChatUsageCostMicroUsd applies cached input token pricing', () => {
+    const cost = calculateAiChatUsageCostMicroUsd({
+        inputTokens: 1200,
+        noCacheTokens: 700,
+        cacheReadTokens: 400,
+        cacheWriteTokens: 100,
+        outputTokens: 300,
+        pricing: {
+            inputUsdPerMillionTokens: 2,
+            outputUsdPerMillionTokens: 10,
+            cachedInputUsdPerMillionTokens: 0.2,
+            cacheWriteInputUsdPerMillionTokens: 2.5,
+        },
+    });
+
+    assert.deepStrictEqual(cost, {
+        inputMicroUsd: 1730,
+        outputMicroUsd: 3000,
+        totalMicroUsd: 4730,
+    });
+});
+
 test('normalizeAiChatMessagesForStorage keeps valid UI message payloads', () => {
     const messages = normalizeAiChatMessagesForStorage([
         null,

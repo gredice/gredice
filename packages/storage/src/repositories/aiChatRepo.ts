@@ -22,6 +22,8 @@ export const SUNCOKRET_FALLBACK_TIME_ZONE = 'Europe/Zagreb';
 export type AiChatPricing = {
     inputUsdPerMillionTokens: number;
     outputUsdPerMillionTokens: number;
+    cachedInputUsdPerMillionTokens?: number;
+    cacheWriteInputUsdPerMillionTokens?: number;
 };
 
 export type AiChatUsageCost = {
@@ -169,18 +171,45 @@ function finiteNonNegativeInteger(value: number) {
 }
 
 export function calculateAiChatUsageCostMicroUsd({
+    cacheReadTokens,
+    cacheWriteTokens,
     inputTokens,
+    noCacheTokens,
     outputTokens,
     pricing,
 }: {
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
     inputTokens: number;
+    noCacheTokens?: number;
     outputTokens: number;
     pricing: AiChatPricing;
 }): AiChatUsageCost {
     const normalizedInputTokens = finiteNonNegativeInteger(inputTokens);
     const normalizedOutputTokens = finiteNonNegativeInteger(outputTokens);
+    const normalizedCacheReadTokens = finiteNonNegativeInteger(
+        cacheReadTokens ?? 0,
+    );
+    const normalizedCacheWriteTokens = finiteNonNegativeInteger(
+        cacheWriteTokens ?? 0,
+    );
+    const normalizedNoCacheTokens =
+        noCacheTokens == null
+            ? Math.max(
+                  0,
+                  normalizedInputTokens -
+                      normalizedCacheReadTokens -
+                      normalizedCacheWriteTokens,
+              )
+            : finiteNonNegativeInteger(noCacheTokens);
     const inputMicroUsd = finiteNonNegativeInteger(
-        normalizedInputTokens * pricing.inputUsdPerMillionTokens,
+        normalizedNoCacheTokens * pricing.inputUsdPerMillionTokens +
+            normalizedCacheReadTokens *
+                (pricing.cachedInputUsdPerMillionTokens ??
+                    pricing.inputUsdPerMillionTokens) +
+            normalizedCacheWriteTokens *
+                (pricing.cacheWriteInputUsdPerMillionTokens ??
+                    pricing.inputUsdPerMillionTokens),
     );
     const outputMicroUsd = finiteNonNegativeInteger(
         normalizedOutputTokens * pricing.outputUsdPerMillionTokens,
@@ -521,23 +550,43 @@ export async function reserveAiChatUsage({
 }
 
 export async function finalizeAiChatUsage({
+    billedTotalMicroUsd,
+    cacheReadTokens,
+    cacheWriteTokens,
     inputTokens,
     ledgerId,
+    noCacheTokens,
     outputTokens,
     pricing,
     totalTokens,
 }: {
+    billedTotalMicroUsd?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
     inputTokens: number;
     ledgerId: string;
+    noCacheTokens?: number;
     outputTokens: number;
     pricing: AiChatPricing;
     totalTokens?: number;
 }) {
-    const cost = calculateAiChatUsageCostMicroUsd({
+    const estimatedCost = calculateAiChatUsageCostMicroUsd({
+        cacheReadTokens,
+        cacheWriteTokens,
         inputTokens,
+        noCacheTokens,
         outputTokens,
         pricing,
     });
+    const cost = {
+        ...estimatedCost,
+        // The component amounts remain useful diagnostics, while the total is
+        // the authoritative Gateway charge when it is available.
+        totalMicroUsd:
+            billedTotalMicroUsd == null
+                ? estimatedCost.totalMicroUsd
+                : finiteNonNegativeInteger(billedTotalMicroUsd),
+    };
 
     await storage()
         .update(aiUsageLedger)
