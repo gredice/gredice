@@ -1,21 +1,14 @@
 import type { GameFeatureFlags } from '@gredice/game';
-import {
-    enableDebugHudFlag,
-    enableSuncokretChatFlag,
-    enableSuncokretDebugFlag,
-} from './flags';
+import { enableDebugHudFlag, enableSuncokretDebugFlag } from './flags';
 
 export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
-    const [enableDebugHud, enableSuncokretChat, enableSuncokretDebug] =
-        await Promise.all([
-            enableDebugHudFlag(),
-            enableSuncokretChatFlag(),
-            enableSuncokretDebugFlag(),
-        ]);
+    const [enableDebugHud, enableSuncokretDebug] = await Promise.all([
+        enableDebugHudFlag(),
+        enableSuncokretDebugFlag(),
+    ]);
 
     return {
         enableDebugHudFlag: enableDebugHud,
-        enableSuncokretChatFlag: enableSuncokretChat,
         enableSuncokretDebugFlag: enableSuncokretDebug,
     };
 }

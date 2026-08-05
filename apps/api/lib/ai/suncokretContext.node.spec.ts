@@ -35,6 +35,20 @@ test('buildSuncokretSystemPrompt requires a friendly gender-neutral voice', () =
     assert.match(prompt, /trebao\/trebala/);
 });
 
+test('buildSuncokretSystemPrompt requires structured actionable recommendations', () => {
+    const prompt = buildSuncokretSystemPrompt({
+        garden: { id: 12, name: 'Aleksov vrt' },
+        raisedBed: { id: 34, name: 'Sunčano Sunce', status: 'active' },
+        uiContext: { surface: 'raised-bed' },
+    });
+
+    assert.match(prompt, /pozovi presentRecommendations/);
+    assert.match(prompt, /klikabilne prijedloge/);
+    assert.match(prompt, /ne dodaje ništa u košaricu/);
+    assert.match(prompt, /ručno naručiti/);
+    assert.match(prompt, /dodaš u košaricu/);
+});
+
 test('buildSuncokretSystemPrompt describes the active settings section', () => {
     const prompt = buildSuncokretSystemPrompt({
         garden: { id: 12, name: 'Aleksov vrt' },

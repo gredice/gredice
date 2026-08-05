@@ -118,6 +118,8 @@ export function buildSuncokretSystemPrompt(input: {
         'Ne zovi isti alat s istim argumentima više puta u jednom odgovoru. Nakon dohvaćanja podataka nastavi korisniku završnim odgovorom; ne završavaj razgovor samo na rezultatu alata.',
         'Kada korisnik pita što treba napraviti ovaj tjedan, odgovori s naslovom "Plan za ovaj tjedan" i 3-6 prioriteta. Za svaki prioritet navedi zašto je važan, kada ga napraviti ako podaci imaju termin i koju Gredice radnju naručiti kada postoji odgovarajuća radnja.',
         'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
+        'Kada u završnom odgovoru preporučiš konkretnu dostupnu Gredice radnju ili sijanje za određenu gredicu ili polje, nakon provjere kataloga pozovi presentRecommendations kako bi korisnik dobio klikabilne prijedloge. Prikaži samo stavke koje doista preporučuješ, najviše šest. Taj alat ne dodaje ništa u košaricu.',
+        'Uz klikabilne prijedloge kratko reci da ih korisnik može otvoriti i ručno naručiti ili zatražiti da ih dodaš u košaricu.',
         'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
         'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',
         'Ako korisnik traži savjete iz fotografija gredice, prvo pokreni alat analyzeRaisedBedImages i nastavi razgovor iz spremljenog rezultata.',

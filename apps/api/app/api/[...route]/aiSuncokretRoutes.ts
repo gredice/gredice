@@ -9,11 +9,14 @@ import {
     ensureAiChatConversation,
     finalizeAiChatUsage,
     getAiChatAccountLimitState,
+    getAiChatConversationForUser,
+    getAiChatConversationsForUser,
     getGarden,
     getRaisedBed,
     releaseAiChatUsageReservation,
     replaceAiChatMessages,
     reserveAiChatUsage,
+    updateAiChatConversationTitle,
 } from '@gredice/storage';
 import {
     consumeStream,
@@ -32,6 +35,10 @@ import {
     buildSuncokretFinalAnswerSystemPrompt,
     buildSuncokretSystemPrompt,
 } from '../../../lib/ai/suncokretContext';
+import {
+    fallbackSuncokretConversationTitle,
+    generateSuncokretConversationTitle,
+} from '../../../lib/ai/suncokretConversationTitle';
 import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenContext';
 import {
     estimateSuncokretPromptTokens,
@@ -51,12 +58,12 @@ import {
 const MIN_OUTPUT_TOKENS = 128;
 const MAX_CONTEXT_MESSAGES = 24;
 const MAX_IMAGE_URLS_PER_ANALYSIS = 6;
+const MAX_LEGACY_TITLE_BACKFILLS = 6;
 const MAX_TOOL_STEPS = 6;
 
 type ChatVariables = AuthVariables;
 
 const FeatureFlagsSchema = z.object({
-    enableSuncokretChatFlag: z.boolean().optional().default(false),
     enableSuncokretDebugFlag: z.boolean().optional().default(false),
 });
 
@@ -81,6 +88,27 @@ const SuncokretUiContextSchema = z.discriminatedUnion('surface', [
     }),
 ]);
 
+const RecommendationDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const SuncokretRecommendationSchema = z.discriminatedUnion('kind', [
+    z.object({
+        kind: z.literal('operation'),
+        operationId: z.number().int().positive(),
+        gardenId: z.number().int().positive(),
+        raisedBedId: z.number().int().positive(),
+        positionIndex: z.number().int().min(0).optional(),
+        scheduledDate: RecommendationDateSchema.optional(),
+    }),
+    z.object({
+        kind: z.literal('sowing'),
+        plantSortId: z.number().int().positive(),
+        gardenId: z.number().int().positive(),
+        raisedBedId: z.number().int().positive(),
+        positionIndex: z.number().int().min(0),
+        scheduledDate: RecommendationDateSchema.optional(),
+    }),
+]);
+
 const ChatBodySchema = z.object({
     id: z.string().optional(),
     conversationId: z.string().optional(),
@@ -92,16 +120,22 @@ const ChatBodySchema = z.object({
     uiContext: SuncokretUiContextSchema.optional().nullable(),
     debug: z.boolean().optional(),
     featureFlags: FeatureFlagsSchema.optional().default({
-        enableSuncokretChatFlag: false,
         enableSuncokretDebugFlag: false,
     }),
 });
 
 const StatusQuerySchema = z.object({
     modelId: z.string().optional(),
-    enableSuncokretChatFlag: z.string().optional(),
     enableSuncokretDebugFlag: z.string().optional(),
 });
+
+const ConversationParamsSchema = z.object({
+    conversationId: z.string().trim().min(1).max(128),
+});
+
+function conversationNeedsGeneratedTitle(title: string | null) {
+    return !title || title === 'Suncokret razgovor';
+}
 
 function booleanFlag(value: string | undefined) {
     return ['1', 'true', 'yes', 'on'].includes(value?.toLowerCase() ?? '');
@@ -109,7 +143,6 @@ function booleanFlag(value: string | undefined) {
 
 function queryFeatureFlags(query: z.infer<typeof StatusQuerySchema>) {
     return {
-        enableSuncokretChatFlag: booleanFlag(query.enableSuncokretChatFlag),
         enableSuncokretDebugFlag: booleanFlag(query.enableSuncokretDebugFlag),
     };
 }
@@ -132,18 +165,6 @@ function jsonError(
         },
         status,
     };
-}
-
-function enabledOrResponse(flags: z.infer<typeof FeatureFlagsSchema>) {
-    if (flags.enableSuncokretChatFlag) {
-        return null;
-    }
-
-    return jsonError(
-        'ai_feature_disabled',
-        'Suncokret chat trenutno nije omogućen.',
-        403,
-    );
 }
 
 function usageTokens(usage: LanguageModelUsage | undefined) {
@@ -523,6 +544,17 @@ function buildTools({
                 });
             },
         }),
+        presentRecommendations: tool({
+            description:
+                'Prikaži klikabilne prijedloge za konkretne radnje ili sijanja. Pozovi tek nakon provjere kataloga i ciljne gredice/polja. Za radnju koristi operationId iz kataloga radnji. Za sijanje koristi entityId sorte iz rezultata searchProducts kao plantSortId. Ako zadaješ datum, koristi YYYY-MM-DD. Ovaj alat samo prikazuje prijedloge; ne mijenja košaricu.',
+            inputSchema: z.object({
+                recommendations: z
+                    .array(SuncokretRecommendationSchema)
+                    .min(1)
+                    .max(6),
+            }),
+            execute: (input) => input,
+        }),
         prepareCheckout: tool({
             description:
                 'Pripremi korisnika za checkout. Uvijek treba odobrenje korisnika.',
@@ -549,7 +581,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
         async (context) => {
             const query = context.req.valid('query');
             const featureFlags = queryFeatureFlags(query);
-            const disabled = enabledOrResponse(featureFlags);
             const { accountId } = context.get('authContext');
             const model = getSuncokretModel(query.modelId);
             const limitState = await getAiChatAccountLimitState(accountId);
@@ -566,7 +597,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 : undefined;
 
             return context.json({
-                enabled: !disabled,
+                enabled: true,
                 debugEnabled: featureFlags.enableSuncokretDebugFlag,
                 model: model
                     ? {
@@ -603,12 +634,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
         zValidator('query', StatusQuerySchema),
         authValidator(['user', 'admin']),
         async (context) => {
-            const featureFlags = queryFeatureFlags(context.req.valid('query'));
-            const disabled = enabledOrResponse(featureFlags);
-            if (disabled) {
-                return context.json(disabled.body, disabled.status);
-            }
-
             return context.json({
                 models: getSuncokretModelRegistry()
                     .filter((model) => model.enabled)
@@ -616,6 +641,137 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         id: model.id,
                         label: model.label,
                     })),
+            });
+        },
+    )
+    .get(
+        '/conversations',
+        describeRoute({
+            description: 'List the current user Suncokret AI conversations',
+            security: authSecurity,
+        }),
+        zValidator('query', StatusQuerySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const auth = context.get('authContext');
+            const conversations = await getAiChatConversationsForUser({
+                accountId: auth.accountId,
+                userId: auth.userId,
+            });
+            const legacyTitleBackfillIds = new Set(
+                conversations
+                    .filter((conversation) =>
+                        conversationNeedsGeneratedTitle(conversation.title),
+                    )
+                    .slice(0, MAX_LEGACY_TITLE_BACKFILLS)
+                    .map((conversation) => conversation.id),
+            );
+            const titledConversations = await Promise.all(
+                conversations.map(async (conversation) => {
+                    if (!legacyTitleBackfillIds.has(conversation.id)) {
+                        return conversation;
+                    }
+
+                    const model =
+                        getSuncokretModel(conversation.model) ??
+                        getSuncokretModel();
+                    if (!model) {
+                        return conversation;
+                    }
+
+                    let title: string | null = null;
+                    try {
+                        title = await generateSuncokretConversationTitle({
+                            messages: conversation.messages,
+                            modelId: model.id,
+                        });
+                    } catch (error) {
+                        console.warn(
+                            'Suncokret legacy conversation title generation failed',
+                            { conversationId: conversation.id, error },
+                        );
+                        title = fallbackSuncokretConversationTitle(
+                            conversation.messages,
+                        );
+                    }
+
+                    if (!title) {
+                        return conversation;
+                    }
+
+                    try {
+                        await updateAiChatConversationTitle({
+                            accountId: auth.accountId,
+                            conversationId: conversation.id,
+                            title,
+                            userId: auth.userId,
+                        });
+                        return { ...conversation, title };
+                    } catch (error) {
+                        console.warn(
+                            'Suncokret legacy conversation title persistence failed',
+                            { conversationId: conversation.id, error },
+                        );
+                        return conversation;
+                    }
+                }),
+            );
+
+            return context.json({
+                conversations: titledConversations.map((conversation) => ({
+                    id: conversation.id,
+                    title: conversation.title,
+                    model: conversation.model,
+                    gardenId: conversation.gardenId,
+                    raisedBedId: conversation.raisedBedId,
+                    createdAt: conversation.createdAt.toISOString(),
+                    lastMessageAt: conversation.lastMessageAt?.toISOString(),
+                })),
+            });
+        },
+    )
+    .get(
+        '/conversations/:conversationId',
+        describeRoute({
+            description: 'Load a current user Suncokret AI conversation',
+            security: authSecurity,
+        }),
+        zValidator('param', ConversationParamsSchema),
+        zValidator('query', StatusQuerySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const auth = context.get('authContext');
+            const { conversationId } = context.req.valid('param');
+            const conversation = await getAiChatConversationForUser({
+                accountId: auth.accountId,
+                conversationId,
+                userId: auth.userId,
+            });
+            if (!conversation) {
+                const error = jsonError(
+                    'ai_conversation_not_found',
+                    'Razgovor nije pronađen.',
+                    404,
+                );
+                return context.json(error.body, error.status);
+            }
+
+            return context.json({
+                conversation: {
+                    id: conversation.id,
+                    title: conversation.title,
+                    model: conversation.model,
+                    gardenId: conversation.gardenId,
+                    raisedBedId: conversation.raisedBedId,
+                    createdAt: conversation.createdAt.toISOString(),
+                    lastMessageAt: conversation.lastMessageAt?.toISOString(),
+                    messages: conversation.messages.map((message) => ({
+                        id: message.id,
+                        role: message.role,
+                        parts: message.parts,
+                        metadata: message.metadata ?? undefined,
+                    })),
+                },
             });
         },
     )
@@ -629,11 +785,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const body = context.req.valid('json');
-            const disabled = enabledOrResponse(body.featureFlags);
-            if (disabled) {
-                return context.json(disabled.body, disabled.status);
-            }
-
             const debugAllowed = Boolean(
                 body.debug && body.featureFlags.enableSuncokretDebugFlag,
             );
@@ -673,7 +824,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 gardenId: validatedGardenId,
                 raisedBedId: validatedRaisedBedId,
                 model: model.id,
-                title: 'Suncokret razgovor',
+                title: null,
             });
             if (!conversation) {
                 const error = jsonError(
@@ -683,7 +834,6 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 );
                 return context.json(error.body, error.status);
             }
-
             const limitState = await getAiChatAccountLimitState(auth.accountId);
             if (limitState.blockedReason) {
                 const error = jsonError(
@@ -768,6 +918,20 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 return context.json(error.body, error.status);
             }
 
+            const generatedTitlePromise = conversationNeedsGeneratedTitle(
+                conversation.title,
+            )
+                ? generateSuncokretConversationTitle({
+                      messages: body.messages,
+                      modelId: model.id,
+                  }).catch((error) => {
+                      console.warn(
+                          'Suncokret conversation title generation failed',
+                          { conversationId, error },
+                      );
+                      return fallbackSuncokretConversationTitle(body.messages);
+                  })
+                : null;
             const token = await mcpToken(auth.userId, auth.accountId);
             const origin = new URL(context.req.url).origin;
             let finalized = false;
@@ -889,6 +1053,24 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             conversationId,
                             messages,
                         });
+                        if (generatedTitlePromise) {
+                            const title = await generatedTitlePromise;
+                            if (title) {
+                                try {
+                                    await updateAiChatConversationTitle({
+                                        accountId: auth.accountId,
+                                        conversationId,
+                                        title,
+                                        userId: auth.userId,
+                                    });
+                                } catch (error) {
+                                    console.warn(
+                                        'Suncokret conversation title persistence failed',
+                                        { conversationId, error },
+                                    );
+                                }
+                            }
+                        }
                         if (isAborted && !finalized) {
                             await releaseAiChatUsageReservation({
                                 ledgerId: reservation.ledgerId,

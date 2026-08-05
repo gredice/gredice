@@ -9,6 +9,8 @@ import {
     ensureAiChatConversation,
     getAccountGardens,
     getAiChatAccountLimitState,
+    getAiChatConversationForUser,
+    getAiChatConversationsForUser,
     getUser,
     normalizeAiChatMessagesForStorage,
     replaceAiChatMessages,
@@ -19,6 +21,7 @@ import {
     SUNCOKRET_TRIAL_DAILY_LIMIT_MICRO_USD,
     storage,
     updateAccountTimeZone,
+    updateAiChatConversationTitle,
     updateRaisedBed,
 } from '@gredice/storage';
 import { ensureFarmId } from './helpers/testHelpers';
@@ -385,6 +388,50 @@ test('replaceAiChatMessages records approved tool requests for audit', async () 
     assert.strictEqual(toolCall.needsApproval, true);
     assert.strictEqual(toolCall.approvedByUserId, userId);
     assert.ok(toolCall.approvedAt instanceof Date);
+});
+
+test('lists and restores user-scoped AI conversations', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+    });
+    await replaceAiChatMessages({
+        conversationId,
+        messages: [
+            {
+                id: 'user-history',
+                role: 'user',
+                parts: [{ type: 'text', text: 'Kako je vrt?' }],
+            },
+        ],
+    });
+    await updateAiChatConversationTitle({
+        accountId,
+        conversationId,
+        title: 'Stanje vrta',
+        userId,
+    });
+
+    const conversations = await getAiChatConversationsForUser({
+        accountId,
+        userId,
+    });
+    assert.strictEqual(conversations[0]?.id, conversationId);
+    assert.strictEqual(conversations[0]?.title, 'Stanje vrta');
+    assert.strictEqual(conversations[0]?.messages[0]?.role, 'user');
+
+    const restored = await getAiChatConversationForUser({
+        accountId,
+        conversationId,
+        userId,
+    });
+    assert.strictEqual(restored?.messages[0]?.id, 'user-history');
+    assert.strictEqual(restored?.messages[0]?.role, 'user');
 });
 
 test('normalizeAiChatMessagesForStorage does not persist provider tool protocol text', () => {

@@ -600,7 +600,7 @@ export async function ensureAiChatConversation({
     });
 
     if (existing) {
-        if (existing.accountId !== accountId) {
+        if (existing.accountId !== accountId || existing.userId !== userId) {
             return null;
         }
 
@@ -631,6 +631,91 @@ export async function ensureAiChatConversation({
         .returning();
 
     return created ?? null;
+}
+
+export async function getAiChatConversationsForUser({
+    accountId,
+    limit = 50,
+    userId,
+}: {
+    accountId: string;
+    limit?: number;
+    userId: string;
+}) {
+    return storage().query.aiChatConversations.findMany({
+        columns: {
+            id: true,
+            title: true,
+            model: true,
+            gardenId: true,
+            raisedBedId: true,
+            createdAt: true,
+            lastMessageAt: true,
+        },
+        where: and(
+            eq(aiChatConversations.accountId, accountId),
+            eq(aiChatConversations.userId, userId),
+        ),
+        orderBy: desc(aiChatConversations.lastMessageAt),
+        limit: Math.min(100, Math.max(1, limit)),
+        with: {
+            messages: {
+                columns: {
+                    parts: true,
+                    role: true,
+                },
+                where: eq(aiChatMessages.role, 'user'),
+                orderBy: aiChatMessages.createdAt,
+                limit: 1,
+            },
+        },
+    });
+}
+
+export async function getAiChatConversationForUser({
+    accountId,
+    conversationId,
+    userId,
+}: {
+    accountId: string;
+    conversationId: string;
+    userId: string;
+}) {
+    return storage().query.aiChatConversations.findFirst({
+        where: and(
+            eq(aiChatConversations.id, conversationId),
+            eq(aiChatConversations.accountId, accountId),
+            eq(aiChatConversations.userId, userId),
+        ),
+        with: {
+            messages: {
+                orderBy: aiChatMessages.createdAt,
+            },
+        },
+    });
+}
+
+export async function updateAiChatConversationTitle({
+    accountId,
+    conversationId,
+    title,
+    userId,
+}: {
+    accountId: string;
+    conversationId: string;
+    title: string;
+    userId: string;
+}) {
+    await storage()
+        .update(aiChatConversations)
+        .set({ title })
+        .where(
+            and(
+                eq(aiChatConversations.id, conversationId),
+                eq(aiChatConversations.accountId, accountId),
+                eq(aiChatConversations.userId, userId),
+            ),
+        );
 }
 
 export async function replaceAiChatMessages({
