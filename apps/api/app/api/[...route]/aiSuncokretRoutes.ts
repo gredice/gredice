@@ -63,6 +63,37 @@ const MAX_TOOL_STEPS = 6;
 
 type ChatVariables = AuthVariables;
 
+type McpErrorCategory =
+    | 'forbidden'
+    | 'http_error'
+    | 'invalid_params'
+    | 'invalid_response'
+    | 'network_error'
+    | 'rate_limited'
+    | 'timeout'
+    | 'tool_failure'
+    | 'unauthorized';
+
+type McpToolTelemetry = {
+    correlationId?: string;
+    errorCategory?: McpErrorCategory;
+};
+
+type SuncokretToolExecutionOptions = {
+    abortSignal?: AbortSignal;
+    toolCallId: string;
+};
+
+class SuncokretMcpToolError extends Error {
+    readonly userMessage: string;
+
+    constructor(userMessage: string) {
+        super(userMessage);
+        this.name = 'SuncokretMcpToolError';
+        this.userMessage = userMessage;
+    }
+}
+
 const FeatureFlagsSchema = z.object({
     enableSuncokretDebugFlag: z.boolean().optional().default(false),
 });
@@ -247,42 +278,132 @@ async function callMcpTool({
     accountId,
     args,
     name,
+    onTelemetry,
     origin,
+    signal,
     token,
+    toolCallId,
 }: {
     accountId: string;
     args: Record<string, unknown>;
     name: string;
+    onTelemetry: (toolCallId: string, telemetry: McpToolTelemetry) => void;
     origin: string;
+    signal?: AbortSignal;
     token: string;
+    toolCallId: string;
 }) {
-    const response = await fetch(`${origin}/api/mcp`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'x-gredice-account-id': accountId,
-        },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: crypto.randomUUID(),
-            method: 'tools/call',
-            params: {
-                name,
-                arguments: args,
+    let response: Response;
+    try {
+        response = await fetch(`${origin}/api/mcp`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'x-gredice-account-id': accountId,
             },
-        }),
-    });
-    const payload = (await response.json()) as {
-        result?: unknown;
-        error?: { message?: string };
-    };
-
-    if (!response.ok || payload.error) {
-        throw new Error(payload.error?.message ?? `MCP tool ${name} failed`);
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: crypto.randomUUID(),
+                method: 'tools/call',
+                params: {
+                    name,
+                    arguments: args,
+                },
+            }),
+            signal,
+        });
+    } catch (error) {
+        onTelemetry(toolCallId, { errorCategory: 'network_error' });
+        throw new SuncokretMcpToolError(
+            error instanceof DOMException && error.name === 'AbortError'
+                ? 'Provjera podataka je prekinuta. Pokušaj ponovno.'
+                : 'Podaci trenutačno nisu dostupni. Pokušaj ponovno.',
+        );
     }
 
+    const correlationId = response.headers.get('x-correlation-id') ?? undefined;
+    let payload: {
+        result?: unknown;
+        error?: {
+            code?: number;
+            data?: { category?: string } | unknown[];
+            message?: string;
+        };
+    };
+    try {
+        payload = (await response.json()) as typeof payload;
+    } catch {
+        onTelemetry(toolCallId, {
+            correlationId,
+            errorCategory: 'invalid_response',
+        });
+        throw new SuncokretMcpToolError(
+            'Primljen je neispravan odgovor. Pokušaj ponovno.',
+        );
+    }
+
+    if (!response.ok || payload.error) {
+        const errorData = payload.error?.data;
+        const reportedCategory = Array.isArray(errorData)
+            ? undefined
+            : errorData?.category;
+        const errorCategory: McpErrorCategory =
+            reportedCategory === 'invalid_params' ||
+            reportedCategory === 'timeout' ||
+            reportedCategory === 'tool_failure'
+                ? reportedCategory
+                : payload.error?.code === -32602
+                  ? 'invalid_params'
+                  : response.status === 401
+                    ? 'unauthorized'
+                    : response.status === 403
+                      ? 'forbidden'
+                      : response.status === 429
+                        ? 'rate_limited'
+                        : response.status >= 500
+                          ? 'tool_failure'
+                          : 'http_error';
+        onTelemetry(toolCallId, { correlationId, errorCategory });
+        const userMessage =
+            errorCategory === 'timeout'
+                ? 'Provjera podataka trajala je predugo. Pokušaj ponovno.'
+                : errorCategory === 'invalid_params'
+                  ? 'Nedostaju podaci za ovu radnju. Provjeri odabir i pokušaj ponovno.'
+                  : 'Radnja trenutačno nije uspjela. Pokušaj ponovno.';
+        throw new SuncokretMcpToolError(userMessage);
+    }
+
+    onTelemetry(toolCallId, { correlationId });
     return payload.result;
+}
+
+function attachMcpToolTelemetry(
+    messages: UIMessage[],
+    telemetryByToolCallId: ReadonlyMap<string, McpToolTelemetry>,
+) {
+    return messages.map((message) => ({
+        ...message,
+        parts: message.parts.map((part) => {
+            if (!('toolCallId' in part)) {
+                return part;
+            }
+            const telemetry = telemetryByToolCallId.get(part.toolCallId);
+            return telemetry
+                ? {
+                      ...part,
+                      mcpCorrelationId: telemetry.correlationId,
+                      mcpErrorCategory: telemetry.errorCategory,
+                  }
+                : part;
+        }),
+    }));
+}
+
+function suncokretStreamErrorMessage(error: unknown) {
+    return error instanceof SuncokretMcpToolError
+        ? error.userMessage
+        : 'Suncokret trenutačno ne može dovršiti radnju. Pokušaj ponovno.';
 }
 
 async function callPublicJson(url: URL) {
@@ -345,21 +466,41 @@ function buildTools({
     accountId,
     contextFarmId,
     contextGardenId,
+    contextPositionIndex,
     contextRaisedBedId,
     origin,
+    reportMcpTelemetry,
     token,
     userId,
 }: {
     accountId: string;
     contextFarmId?: number | null;
     contextGardenId?: number | null;
+    contextPositionIndex?: number | null;
     contextRaisedBedId?: number | null;
     origin: string;
+    reportMcpTelemetry: (
+        toolCallId: string,
+        telemetry: McpToolTelemetry,
+    ) => void;
     token: string;
     userId: string;
 }) {
-    const mcp = (name: string, args: Record<string, unknown>) =>
-        callMcpTool({ accountId, args, name, origin, token });
+    const mcp = (
+        name: string,
+        args: Record<string, unknown>,
+        options: SuncokretToolExecutionOptions,
+    ) =>
+        callMcpTool({
+            accountId,
+            args,
+            name,
+            onTelemetry: reportMcpTelemetry,
+            origin,
+            signal: options.abortSignal,
+            token,
+            toolCallId: options.toolCallId,
+        });
 
     const raisedBedDetailsTool = tool({
         description:
@@ -368,11 +509,15 @@ function buildTools({
             gardenId: z.number().int().positive().optional(),
             raisedBedId: z.number().int().positive().optional(),
         }),
-        execute: ({ gardenId, raisedBedId }) =>
-            mcp('gardens/get-raised-bed-fields', {
-                gardenId: gardenId ?? contextGardenId,
-                raisedBedId: raisedBedId ?? contextRaisedBedId,
-            }),
+        execute: ({ gardenId, raisedBedId }, options) =>
+            mcp(
+                'gardens/get-raised-bed-fields',
+                {
+                    gardenId: gardenId ?? contextGardenId,
+                    raisedBedId: raisedBedId ?? contextRaisedBedId,
+                },
+                options,
+            ),
     });
 
     return {
@@ -381,18 +526,22 @@ function buildTools({
             inputSchema: z.object({
                 limit: z.number().int().min(1).max(20).default(10),
             }),
-            execute: ({ limit }) =>
-                mcp('gardens/list-gardens', { limit, offset: 0 }),
+            execute: ({ limit }, options) =>
+                mcp('gardens/list-gardens', { limit, offset: 0 }, options),
         }),
         listRaisedBeds: tool({
             description: 'Dohvati gredice za vrt.',
             inputSchema: z.object({
                 gardenId: z.number().int().positive().optional(),
             }),
-            execute: ({ gardenId }) =>
-                mcp('gardens/list-raised-beds', {
-                    gardenId: gardenId ?? contextGardenId,
-                }),
+            execute: ({ gardenId }, options) =>
+                mcp(
+                    'gardens/list-raised-beds',
+                    {
+                        gardenId: gardenId ?? contextGardenId,
+                    },
+                    options,
+                ),
         }),
         getRaisedBedFields: raisedBedDetailsTool,
         getRaisedBedDetails: raisedBedDetailsTool,
@@ -430,13 +579,17 @@ function buildTools({
                 raisedBedId: z.number().int().positive().optional(),
                 limit: z.number().int().min(1).max(30).default(12),
             }),
-            execute: ({ gardenId, limit, raisedBedId }) =>
-                mcp('gardens/list-operations', {
-                    gardenId: gardenId ?? contextGardenId,
-                    raisedBedId: raisedBedId ?? contextRaisedBedId,
-                    limit,
-                    offset: 0,
-                }),
+            execute: ({ gardenId, limit, raisedBedId }, options) =>
+                mcp(
+                    'gardens/list-operations',
+                    {
+                        gardenId: gardenId ?? contextGardenId,
+                        raisedBedId: raisedBedId ?? contextRaisedBedId,
+                        limit,
+                        offset: 0,
+                    },
+                    options,
+                ),
         }),
         getRaisedBedAiHistory: tool({
             description: 'Dohvati već spremljene AI savjete za gredicu.',
@@ -445,12 +598,16 @@ function buildTools({
                 raisedBedId: z.number().int().positive().optional(),
                 limit: z.number().int().min(1).max(10).default(5),
             }),
-            execute: ({ gardenId, limit, raisedBedId }) =>
-                mcp('gardens/get-raised-bed-ai-history', {
-                    gardenId: gardenId ?? contextGardenId,
-                    raisedBedId: raisedBedId ?? contextRaisedBedId,
-                    limit,
-                }),
+            execute: ({ gardenId, limit, raisedBedId }, options) =>
+                mcp(
+                    'gardens/get-raised-bed-ai-history',
+                    {
+                        gardenId: gardenId ?? contextGardenId,
+                        raisedBedId: raisedBedId ?? contextRaisedBedId,
+                        limit,
+                    },
+                    options,
+                ),
         }),
         searchDirectory: tool({
             description: 'Pretraži Gredice katalog biljaka, sorti i radnji.',
@@ -459,7 +616,8 @@ function buildTools({
                 entityTypes: z.array(z.string()).optional(),
                 limit: z.number().int().min(1).max(20).default(8),
             }),
-            execute: (input) => mcp('directories/search-entities', input),
+            execute: (input, options) =>
+                mcp('directories/search-entities', input, options),
         }),
         getOperationsDirectory: tool({
             description: 'Dohvati katalog dostupnih vrtlarskih radnji.',
@@ -467,12 +625,16 @@ function buildTools({
                 category: z.string().optional(),
                 limit: z.number().int().min(1).max(30).default(12),
             }),
-            execute: ({ category, limit }) =>
-                mcp('directories/get-operations', {
-                    category,
-                    limit,
-                    offset: 0,
-                }),
+            execute: ({ category, limit }, options) =>
+                mcp(
+                    'directories/get-operations',
+                    {
+                        category,
+                        limit,
+                        offset: 0,
+                    },
+                    options,
+                ),
         }),
         searchProducts: tool({
             description: 'Pretraži proizvode koje je moguće dodati u košaricu.',
@@ -480,13 +642,18 @@ function buildTools({
                 query: z.string().optional(),
                 limit: z.number().int().min(1).max(20).default(8),
             }),
-            execute: ({ limit, query }) =>
-                mcp('commerce/search-products', { query, limit, offset: 0 }),
+            execute: ({ limit, query }, options) =>
+                mcp(
+                    'commerce/search-products',
+                    { query, limit, offset: 0 },
+                    options,
+                ),
         }),
         getCart: tool({
             description: 'Dohvati trenutnu košaricu korisnika.',
             inputSchema: z.object({}),
-            execute: () => mcp('commerce/get-cart', { userId }),
+            execute: (_input, options) =>
+                mcp('commerce/get-cart', { userId }, options),
         }),
         addProductToCart: tool({
             description:
@@ -500,8 +667,42 @@ function buildTools({
                 scheduledDate: z.string().optional(),
             }),
             needsApproval: true,
-            execute: (input) =>
-                mcp('commerce/add-to-cart', { ...input, userId }),
+            execute: (input, options) =>
+                mcp('commerce/add-to-cart', { ...input, userId }, options),
+        }),
+        addOperationToCart: tool({
+            description:
+                'Dodaj dostupnu radnju za cijelu gredicu ili biljku na polju u košaricu. ID radnje dohvati iz kataloga radnji. Uvijek treba odobrenje korisnika.',
+            inputSchema: z.object({
+                operationId: z.number().int().positive(),
+                quantity: z.number().positive().default(1),
+                gardenId: z.number().int().positive().optional(),
+                raisedBedId: z.number().int().positive().optional(),
+                positionIndex: z.number().int().min(0).optional(),
+                scheduledDate: z.string().optional(),
+            }),
+            needsApproval: true,
+            execute: (input, options) => {
+                const raisedBedId =
+                    input.raisedBedId ?? contextRaisedBedId ?? undefined;
+                const positionIndex =
+                    input.positionIndex ??
+                    (raisedBedId === contextRaisedBedId
+                        ? (contextPositionIndex ?? undefined)
+                        : undefined);
+                return mcp(
+                    'commerce/add-operation-to-cart',
+                    {
+                        ...input,
+                        gardenId:
+                            input.gardenId ?? contextGardenId ?? undefined,
+                        raisedBedId,
+                        positionIndex,
+                        userId,
+                    },
+                    options,
+                );
+            },
         }),
         updateCartItem: tool({
             description:
@@ -511,8 +712,8 @@ function buildTools({
                 quantity: z.number().min(0),
             }),
             needsApproval: true,
-            execute: (input) =>
-                mcp('commerce/update-cart-item', { ...input, userId }),
+            execute: (input, options) =>
+                mcp('commerce/update-cart-item', { ...input, userId }, options),
         }),
         analyzeRaisedBedImages: tool({
             description:
@@ -936,6 +1137,10 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const origin = new URL(context.req.url).origin;
             let finalized = false;
             let finishMetadata: Record<string, unknown> | null = null;
+            const mcpTelemetryByToolCallId = new Map<
+                string,
+                McpToolTelemetry
+            >();
 
             try {
                 const modelMessages = await convertToModelMessages(
@@ -949,8 +1154,12 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         accountId: auth.accountId,
                         contextFarmId: gardenContext.garden?.farmId,
                         contextGardenId: validatedGardenId,
+                        contextPositionIndex: body.positionIndex,
                         contextRaisedBedId: validatedRaisedBedId,
                         origin,
+                        reportMcpTelemetry: (toolCallId, telemetry) => {
+                            mcpTelemetryByToolCallId.set(toolCallId, telemetry);
+                        },
                         token,
                         userId: auth.userId,
                     }),
@@ -1020,6 +1229,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 return result.toUIMessageStreamResponse({
                     originalMessages: body.messages as UIMessage[],
                     consumeSseStream: consumeStream,
+                    onError: suncokretStreamErrorMessage,
                     messageMetadata: ({ part }) => {
                         if (part.type !== 'finish') {
                             return undefined;
@@ -1051,7 +1261,10 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         await replaceAiChatMessages({
                             approvedByUserId: auth.userId,
                             conversationId,
-                            messages,
+                            messages: attachMcpToolTelemetry(
+                                messages,
+                                mcpTelemetryByToolCallId,
+                            ),
                         });
                         if (generatedTitlePromise) {
                             const title = await generatedTitlePromise;
