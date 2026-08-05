@@ -210,6 +210,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
                     const profile = (
                         window as Window & {
                             __grediceGameProfile?: {
+                                adaptiveHighEnabled?: boolean;
                                 dprCap?: number;
                                 qualityTier?: string;
                             };
@@ -217,13 +218,21 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
                     ).__grediceGameProfile;
 
                     return {
-                        dprCap: profile?.dprCap,
+                        adaptiveHighEnabled: profile?.adaptiveHighEnabled,
+                        dprCapIsSupported:
+                            typeof profile?.dprCap === 'number' &&
+                            profile.dprCap >= 1 &&
+                            profile.dprCap <= 2,
                         qualityTier: profile?.qualityTier,
                     };
                 }),
             { timeout: 15_000 },
         )
-        .toEqual({ dprCap: 2, qualityTier: 'high' });
+        .toEqual({
+            adaptiveHighEnabled: true,
+            dprCapIsSupported: true,
+            qualityTier: 'high',
+        });
 
     const canvas = page.locator('canvas');
     const countVisibleCanvasPixels = async () => {
