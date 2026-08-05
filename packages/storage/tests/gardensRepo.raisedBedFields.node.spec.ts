@@ -893,6 +893,54 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
     );
 });
 
+test('a later placement supersedes an unterminated historical plant cycle', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-superseded-cycle');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const aggregateId = `${raisedBedId.toString()}|0`;
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-01-01T00:00:00.000Z',
+        }),
+    );
+    const replacement = await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '202',
+            scheduledDate: '2026-02-01T00:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'removed',
+        }),
+    );
+
+    const [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.ok(field);
+    assert.strictEqual(field.active, false);
+    assert.deepStrictEqual(
+        field.plantCycles.map((plantCycle) => plantCycle.plantSortId),
+        [101, 202],
+    );
+    assert.deepStrictEqual(
+        field.plantCycles.map((plantCycle) => plantCycle.active),
+        [false, false],
+    );
+    assert.strictEqual(
+        field.plantCycles[0]?.stoppedDate?.getTime(),
+        replacement.createdAt.getTime(),
+    );
+});
+
 test('raised bed field sowing location is projected from schedule events', async () => {
     createTestDb();
     const accountId = await createAccount();

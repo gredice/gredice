@@ -35,6 +35,7 @@
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
         "plant-health:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthDirectory.ts",
         "plants:max-harvest-days:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantMaxHarvestDaysBeforeDelivery.ts",
+        "plant-cycles:superseded-repair": "tsx --conditions=react-server --env-file=.env ./scripts/repairSupersededPlantCycles.ts",
         "operations:all-targets:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillOperationAppliesToAllTargets.ts",
         "plant-health:operations-backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthOperations.ts",
         "generated-images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts",
