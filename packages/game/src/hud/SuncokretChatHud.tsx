@@ -45,6 +45,7 @@ import {
     useState,
     useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
@@ -139,7 +140,7 @@ function SuncokretChatPositioner({
         return (
             <Popper
                 align="center"
-                className="!w-[440px] max-w-[calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem)] border-0 bg-transparent p-0 shadow-none"
+                className="z-[60] !w-[440px] max-w-[calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem)] border-0 bg-transparent p-0 shadow-none"
                 data-suncokret-placement="anchored"
                 onOpenChange={(nextOpen) => {
                     if (!nextOpen) {
@@ -156,10 +157,10 @@ function SuncokretChatPositioner({
         );
     }
 
-    return (
+    return createPortal(
         <div
             className={cx(
-                'pointer-events-auto fixed bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] z-50 flex justify-center md:block',
+                'pointer-events-auto fixed bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] z-[60] flex justify-center md:block',
                 isCloseup
                     ? 'md:right-auto md:left-[calc(var(--game-safe-area-left,0px)+0.5rem)]'
                     : 'md:right-[calc(var(--game-safe-area-right,0px)+0.5rem)] md:left-auto',
@@ -169,7 +170,8 @@ function SuncokretChatPositioner({
             }
         >
             {children}
-        </div>
+        </div>,
+        document.body,
     );
 }
 
