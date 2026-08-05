@@ -15,7 +15,10 @@ import {
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
-import { assertOperationCartTarget } from '../../../../../../lib/mcp/operationCartTarget';
+import {
+    assertOperationCartTarget,
+    resolveOperationCartTarget,
+} from '../../../../../../lib/mcp/operationCartTarget';
 
 type McpAuthContext = {
     accountId: string;
@@ -404,15 +407,18 @@ export async function executeCommerceTool(
             if (!operation) {
                 throw new Error('Operation not found');
             }
-            assertOperationCartTarget(operation.attributes?.application, {
-                raisedBedId: input.raisedBedId,
-                positionIndex: input.positionIndex,
-            });
+            const operationTarget = resolveOperationCartTarget(
+                operation.attributes?.application,
+                {
+                    raisedBedId: input.raisedBedId,
+                    positionIndex: input.positionIndex,
+                },
+            );
             const location = await validateCartLocation({
                 accountId: authContext.accountId,
                 gardenId: input.gardenId,
-                raisedBedId: input.raisedBedId,
-                positionIndex: input.positionIndex,
+                raisedBedId: operationTarget.raisedBedId,
+                positionIndex: operationTarget.positionIndex,
             });
             if (!location.raisedBedId || !location.raisedBed) {
                 throw new Error('Operation requires a raised bed');

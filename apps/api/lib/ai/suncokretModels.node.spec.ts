@@ -37,9 +37,9 @@ function withModelEnv(
     }
 }
 
-test('getSuncokretModel defaults to DeepSeek V4 Flash', () => {
+test('getSuncokretModel defaults to OpenAI GPT-5.6 Luna', () => {
     withModelEnv({}, () => {
-        assert.equal(getSuncokretModel()?.id, 'deepseek/deepseek-v4-flash');
+        assert.equal(getSuncokretModel()?.id, 'openai/gpt-5.6-luna');
     });
 });
 

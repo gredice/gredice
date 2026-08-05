@@ -475,7 +475,7 @@ test('replaceAiChatMessages records MCP correlation and error category', async (
         conversationId,
         messages: [
             {
-                id: 'assistant-error',
+                id: 'assistant-telemetry-error',
                 role: 'assistant',
                 parts: [
                     {
@@ -502,6 +502,89 @@ test('replaceAiChatMessages records MCP correlation and error category', async (
     assert.strictEqual(
         toolCall.error,
         '[timeout] Provjera podataka trajala je predugo. Pokušaj ponovno.',
+    );
+});
+
+test('replaceAiChatMessages preserves server MCP telemetry on later client snapshots', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+        title: 'Suncokret MCP telemetry preservation test',
+    });
+
+    const toolPart = {
+        type: 'tool-addOperationToCart',
+        toolCallId: 'operation-call-1',
+        state: 'output-error',
+        input: { operationId: 167, raisedBedId: 498 },
+        approval: { approved: true },
+        errorText: 'Radnja trenutačno nije uspjela. Pokušaj ponovno.',
+    };
+    await replaceAiChatMessages({
+        approvedByUserId: userId,
+        conversationId,
+        messages: [
+            {
+                id: 'assistant-preserve-error',
+                role: 'assistant',
+                parts: [
+                    {
+                        ...toolPart,
+                        mcpCorrelationId: 'mcp-correlation-456',
+                        mcpErrorCategory: 'tool_failure',
+                    },
+                ],
+            },
+        ],
+    });
+
+    const initialToolCall = (
+        await storage().query.aiChatToolCalls.findMany()
+    ).find((candidate) => candidate.toolCallId === 'operation-call-1');
+    assert.ok(initialToolCall);
+
+    await replaceAiChatMessages({
+        approvedByUserId: userId,
+        conversationId,
+        messages: [
+            {
+                id: 'assistant-preserve-error',
+                role: 'assistant',
+                parts: [toolPart],
+            },
+            {
+                id: 'later-user-message',
+                role: 'user',
+                parts: [{ type: 'text', text: 'Zašto nije uspjelo?' }],
+            },
+        ],
+    });
+
+    const rewrittenToolCall = (
+        await storage().query.aiChatToolCalls.findMany()
+    ).find((candidate) => candidate.toolCallId === 'operation-call-1');
+    assert.ok(rewrittenToolCall);
+    assert.strictEqual(rewrittenToolCall.id, initialToolCall.id);
+    assert.strictEqual(
+        rewrittenToolCall.mcpCorrelationId,
+        'mcp-correlation-456',
+    );
+    assert.strictEqual(
+        rewrittenToolCall.error,
+        '[tool_failure] Radnja trenutačno nije uspjela. Pokušaj ponovno.',
+    );
+    assert.strictEqual(
+        rewrittenToolCall.approvedAt?.toISOString(),
+        initialToolCall.approvedAt?.toISOString(),
+    );
+    assert.strictEqual(
+        rewrittenToolCall.createdAt.toISOString(),
+        initialToolCall.createdAt.toISOString(),
     );
 });
 

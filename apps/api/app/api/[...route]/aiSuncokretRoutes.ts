@@ -678,13 +678,20 @@ function buildTools({
         }),
         addOperationToCart: tool({
             description:
-                'Dodaj dostupnu radnju za cijelu gredicu ili biljku na polju u košaricu. ID radnje dohvati iz kataloga radnji. Uvijek treba odobrenje korisnika.',
+                'Dodaj dostupnu radnju za cijelu gredicu ili biljku na polju u košaricu. ID radnje dohvati iz kataloga radnji. Za radnju cijele gredice izostavi positionIndex; navedi ga samo za radnju biljke na konkretnom polju. Uvijek treba odobrenje korisnika.',
             inputSchema: z.object({
                 operationId: z.number().int().positive(),
                 quantity: z.number().positive().default(1),
                 gardenId: z.number().int().positive().optional(),
                 raisedBedId: z.number().int().positive().optional(),
-                positionIndex: z.number().int().min(0).optional(),
+                positionIndex: z
+                    .number()
+                    .int()
+                    .min(0)
+                    .optional()
+                    .describe(
+                        'Indeks polja samo za radnju biljke; izostavi za radnju cijele gredice.',
+                    ),
                 scheduledDate: z.string().optional(),
             }),
             needsApproval: true,

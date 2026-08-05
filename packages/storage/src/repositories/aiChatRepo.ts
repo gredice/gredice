@@ -306,6 +306,10 @@ function extractToolCallRows(
     conversationId: string,
     messages: AiChatMessageForStorage[],
     approvedByUserId?: string,
+    existingToolCallsById: ReadonlyMap<
+        string,
+        typeof aiChatToolCalls.$inferSelect
+    > = new Map(),
 ) {
     const rows: Array<typeof aiChatToolCalls.$inferInsert> = [];
 
@@ -325,16 +329,20 @@ function extractToolCallRows(
                 typeof part.mcpErrorCategory === 'string'
                     ? part.mcpErrorCategory
                     : null;
+            const toolCallId =
+                typeof part.toolCallId === 'string'
+                    ? part.toolCallId
+                    : typeof part.id === 'string'
+                      ? part.id
+                      : null;
+            const existingToolCall = toolCallId
+                ? existingToolCallsById.get(toolCallId)
+                : undefined;
             rows.push({
-                id: randomUUID(),
+                id: existingToolCall?.id ?? randomUUID(),
                 conversationId,
                 messageId: message.id,
-                toolCallId:
-                    typeof part.toolCallId === 'string'
-                        ? part.toolCallId
-                        : typeof part.id === 'string'
-                          ? part.id
-                          : null,
+                toolCallId,
                 toolName: type.slice('tool-'.length),
                 state:
                     typeof part.state === 'string'
@@ -347,14 +355,22 @@ function extractToolCallRows(
                     toolCallValue(part.output) ?? toolCallValue(part.result),
                 error: mcpErrorCategory
                     ? `[${mcpErrorCategory}]${errorText ? ` ${errorText}` : ''}`
-                    : errorText,
-                needsApproval: Boolean(approval),
-                approvedByUserId: approved ? approvedByUserId : undefined,
-                approvedAt: approved ? new Date() : undefined,
+                    : (existingToolCall?.error ?? errorText),
+                needsApproval:
+                    Boolean(approval) ||
+                    (existingToolCall?.needsApproval ?? false),
+                approvedByUserId: approved
+                    ? (existingToolCall?.approvedByUserId ?? approvedByUserId)
+                    : existingToolCall?.approvedByUserId,
+                approvedAt: approved
+                    ? (existingToolCall?.approvedAt ?? new Date())
+                    : existingToolCall?.approvedAt,
+                durationMs: existingToolCall?.durationMs,
                 mcpCorrelationId:
                     typeof part.mcpCorrelationId === 'string'
                         ? part.mcpCorrelationId
-                        : null,
+                        : (existingToolCall?.mcpCorrelationId ?? null),
+                createdAt: existingToolCall?.createdAt,
             });
         }
     }
@@ -790,6 +806,16 @@ export async function replaceAiChatMessages({
     const normalizedMessages = normalizeAiChatMessagesForStorage(messages);
 
     await storage().transaction(async (tx) => {
+        const existingToolCalls = await tx
+            .select()
+            .from(aiChatToolCalls)
+            .where(eq(aiChatToolCalls.conversationId, conversationId));
+        const existingToolCallsById = new Map(
+            existingToolCalls.flatMap((toolCall) =>
+                toolCall.toolCallId ? [[toolCall.toolCallId, toolCall]] : [],
+            ),
+        );
+
         await tx
             .delete(aiChatToolCalls)
             .where(eq(aiChatToolCalls.conversationId, conversationId));
@@ -813,6 +839,7 @@ export async function replaceAiChatMessages({
             conversationId,
             normalizedMessages,
             approvedByUserId,
+            existingToolCallsById,
         );
         if (toolCalls.length > 0) {
             await tx.insert(aiChatToolCalls).values(toolCalls);

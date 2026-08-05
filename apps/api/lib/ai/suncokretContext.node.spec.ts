@@ -34,6 +34,10 @@ test('buildSuncokretSystemPrompt requires a friendly gender-neutral voice', () =
     assert.match(prompt, /Uvijek koristi rodno neutralne rečenice/);
     assert.match(prompt, /trebao\/trebala/);
     assert.match(prompt, /addOperationToCart/);
+    assert.match(
+        prompt,
+        /Za radnju cijele gredice navedi gredicu, ali nikada indeks polja/,
+    );
     assert.match(prompt, /Gredice općenito ne podržavaju ili ne nude/);
 });
 

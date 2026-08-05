@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertOperationCartTarget } from './operationCartTarget';
+import {
+    assertOperationCartTarget,
+    resolveOperationCartTarget,
+} from './operationCartTarget';
 
-test('raised-bed operations require a raised bed and no individual field', () => {
+test('raised-bed operations require a raised bed', () => {
     assert.doesNotThrow(() =>
         assertOperationCartTarget('raisedBedFull', { raisedBedId: 12 }),
     );
@@ -13,22 +16,32 @@ test('raised-bed operations require a raised bed and no individual field', () =>
         () => assertOperationCartTarget('raisedBedFull', {}),
         /requires a raised bed/,
     );
-    assert.throws(
-        () =>
-            assertOperationCartTarget('raisedBed1m', {
-                raisedBedId: 12,
-                positionIndex: 3,
-            }),
-        /cannot target an individual field/,
+});
+
+test('raised-bed operations ignore an incidental focused field', () => {
+    assert.deepStrictEqual(
+        resolveOperationCartTarget('raisedBedFull', {
+            raisedBedId: 12,
+            positionIndex: 3,
+        }),
+        { raisedBedId: 12 },
+    );
+    assert.deepStrictEqual(
+        resolveOperationCartTarget('raisedBed1m', {
+            raisedBedId: 12,
+            positionIndex: 0,
+        }),
+        { raisedBedId: 12 },
     );
 });
 
 test('plant operations require a concrete field', () => {
-    assert.doesNotThrow(() =>
-        assertOperationCartTarget('plant', {
+    assert.deepStrictEqual(
+        resolveOperationCartTarget('plant', {
             raisedBedId: 12,
             positionIndex: 0,
         }),
+        { raisedBedId: 12, positionIndex: 0 },
     );
     assert.throws(
         () => assertOperationCartTarget('plant', { raisedBedId: 12 }),
