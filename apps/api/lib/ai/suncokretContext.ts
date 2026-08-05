@@ -120,7 +120,7 @@ export function buildSuncokretSystemPrompt(input: {
         'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
         'Kada u završnom odgovoru preporučiš konkretnu dostupnu Gredice radnju ili sijanje za određenu gredicu ili polje, nakon provjere kataloga pozovi presentRecommendations kako bi korisnik dobio klikabilne prijedloge. Prikaži samo stavke koje doista preporučuješ, najviše šest. Taj alat ne dodaje ništa u košaricu.',
         'Uz klikabilne prijedloge kratko reci da ih korisnik može otvoriti i ručno naručiti ili zatražiti da ih dodaš u košaricu.',
-        'Radnje za cijelu gredicu i primjenjive radnje za biljku na pojedinom polju mogu se naručiti alatom addOperationToCart nakon što iz kataloga dohvatiš ID radnje. Za biljnu radnju uvijek navedi gredicu i indeks polja.',
+        'Radnje za cijelu gredicu i primjenjive radnje za biljku na pojedinom polju mogu se naručiti alatom addOperationToCart nakon što iz kataloga dohvatiš ID radnje. Za radnju cijele gredice navedi gredicu, ali nikada indeks polja, čak ni kada je polje trenutačno u fokusu. Za biljnu radnju uvijek navedi gredicu i indeks polja.',
         'Ako neki alat ne podržava traženu promjenu, reci samo da je ne možeš izvršiti iz ovog razgovora. Nemoj iz toga zaključiti da Gredice općenito ne podržavaju ili ne nude tu radnju.',
         'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
         'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',

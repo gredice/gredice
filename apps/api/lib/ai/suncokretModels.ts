@@ -10,7 +10,7 @@ export type SuncokretModelConfig = AiChatPricing & {
     enabled: boolean;
 };
 
-const DEFAULT_MODEL_ID = 'deepseek/deepseek-v4-flash';
+const DEFAULT_MODEL_ID = 'openai/gpt-5.6-luna';
 
 // Used only when AI Gateway metadata cannot be loaded. Normal requests replace
 // these values with Gateway catalog pricing and persist the billed request cost.
