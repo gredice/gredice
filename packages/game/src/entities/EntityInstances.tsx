@@ -35,6 +35,7 @@ import {
 } from './helpers/groundPatchMaterial';
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
+import { RAISED_BED_SUPPORT_SCALE } from './raisedBed/raisedBedDimensions';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -778,6 +779,7 @@ export function EntityInstances({
                 name="Stick"
                 geometry={(gltf) => gltf.nodes.Stick.geometry}
                 material={(gltf) => gltf.nodes.Stick.material}
+                scale={RAISED_BED_SUPPORT_SCALE}
                 snow={snowPresets.tool}
                 snowLift={0.002}
                 {...commonSnowProps}
