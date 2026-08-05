@@ -3,8 +3,18 @@ import test from 'node:test';
 import {
     isStripeCheckoutProcessingMaintenanceEnabled,
     parseStripeCheckoutProcessingMaintenanceFlag,
-    stripeCheckoutClaimCutoverMaintenanceDefault,
 } from './stripeCheckoutProcessingMaintenance';
+
+const maintenanceEnvironmentKey =
+    'GREDICE_STRIPE_CHECKOUT_PROCESSING_MAINTENANCE_ENABLED';
+
+function setMaintenanceEnvironment(value: string | undefined) {
+    if (value === undefined) {
+        delete process.env[maintenanceEnvironmentKey];
+        return;
+    }
+    process.env[maintenanceEnvironmentKey] = value;
+}
 
 test('Stripe checkout maintenance flag accepts only documented truthy values', () => {
     for (const value of ['1', 'true', 'yes', 'on', 'enabled', ' TRUE ']) {
@@ -21,7 +31,25 @@ test('Stripe checkout maintenance flag accepts only documented truthy values', (
     }
 });
 
-test('claim cutover prerequisite forces maintenance on until activation', () => {
-    assert.strictEqual(stripeCheckoutClaimCutoverMaintenanceDefault, true);
-    assert.strictEqual(isStripeCheckoutProcessingMaintenanceEnabled(), true);
+test('durable Stripe claims are active unless maintenance is explicitly enabled', () => {
+    const originalValue = process.env[maintenanceEnvironmentKey];
+    try {
+        for (const value of [undefined, '', '0', 'false', 'disabled']) {
+            setMaintenanceEnvironment(value);
+            assert.strictEqual(
+                isStripeCheckoutProcessingMaintenanceEnabled(),
+                false,
+            );
+        }
+
+        for (const value of ['1', 'true', 'yes', 'on', 'enabled']) {
+            setMaintenanceEnvironment(value);
+            assert.strictEqual(
+                isStripeCheckoutProcessingMaintenanceEnabled(),
+                true,
+            );
+        }
+    } finally {
+        setMaintenanceEnvironment(originalValue);
+    }
 });

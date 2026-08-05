@@ -59,6 +59,7 @@ import {
 } from '../../../lib/checkout/checkoutTiming';
 import {
     CheckoutDeliverySelectionError,
+    resolveCheckoutRequiresDelivery,
     validateCheckoutDeliverySelection,
 } from '../../../lib/checkout/deliverySelection';
 import { getDirectCheckoutPaymentErrorResponse } from '../../../lib/checkout/directCheckoutErrors';
@@ -377,11 +378,13 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             }> = [];
 
             try {
-                const requiresDelivery = await cartContainsDeliverableItems(
-                    cart.id,
-                    {
-                        excludeCartItemIds: [...mappedOperationCartItemIds],
-                    },
+                const requiresDelivery = await resolveCheckoutRequiresDelivery(
+                    cart.items,
+                    mappedOperationCartItemIds,
+                    () =>
+                        cartContainsDeliverableItems(cart.id, {
+                            excludeCartItemIds: [...mappedOperationCartItemIds],
+                        }),
                 );
                 const requiresMutableDeliveryPreflight =
                     mappedOperationCartItemIds.size === 0 || requiresDelivery;

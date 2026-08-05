@@ -5,9 +5,9 @@ Claude. It connects to the production Streamable HTTP MCP endpoint and bundles
 three focused workflows for plant research, read-only garden review, and
 confirmed cart planning.
 
-The package does not publish either marketplace listing. Public MCP discovery
-also remains controlled by `GREDICE_MCP_PUBLIC_ENABLED` in the API environment.
-Authenticated garden and cart workflows require a compatible host
+The package does not publish either marketplace listing. MCP discovery, public
+directory data, and the published product catalog are available without
+sign-in. Garden state and cart workflows require a compatible host
 authorization flow; never paste bearer tokens into a conversation.
 
 ## Validate

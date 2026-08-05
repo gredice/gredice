@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {
-    buildPlantRenderData,
-    type PlantRenderData,
-} from './buildPlantRenderData';
-import { generateLSystemStringWithGenerations } from './l-system';
+import { buildDevelopmentalPlantRenderData } from '../developmental/buildDevelopmentalPlantRenderData';
+import { buildDevelopmentalPlantGraph } from '../developmental/developmentalPlantGraph';
 import {
     composePackedPlantRenderDataInstance,
     getPackedPlantRenderDataTransferables,
@@ -22,25 +19,32 @@ import {
     plantTypes,
     type VegetableType,
 } from './plant-definitions';
-import { SeededRNG } from './rng';
+import type { PlantRenderData } from './plantRenderData';
 
 const fixtures = [
-    { generation: 9, plantType: 'tomato' },
-    { generation: 6, plantType: 'carrot' },
-    { generation: 6, plantType: 'lettuce' },
-    { generation: 7, plantType: 'youngappletree' },
-    { generation: 8, plantType: 'raspberry' },
+    { generation: 10, plantType: 'tomato' },
+    { generation: 10, plantType: 'carrot' },
+    { generation: 10, plantType: 'lettuce' },
+    { generation: 10, plantType: 'youngappletree' },
+    { generation: 10, plantType: 'raspberry' },
 ] as const;
 
 const floweringDefinition: PlantDefinition = {
     ...plantTypes.tomato,
-    axiom: 'F[L][P]',
+    development: {
+        ...plantTypes.tomato.development,
+        reproduction: {
+            ...plantTypes.tomato.development.reproduction,
+            flowerStart: 0,
+            fruitStart: undefined,
+            produceCount: 0,
+            siteCount: 2,
+        },
+    },
     flower: {
         ...plantTypes.tomato.flower,
-        ageStart: 0,
         enabled: true,
     },
-    rules: {},
     vegetable: {
         ...plantTypes.tomato.vegetable,
         enabled: false,
@@ -56,21 +60,18 @@ function buildExactRenderData({
     generation: number;
     seed: string;
 }) {
-    const symbols = generateLSystemStringWithGenerations(
-        definition.axiom,
-        definition.rules,
+    const graph = buildDevelopmentalPlantGraph({
         generation,
-        new SeededRNG(seed),
-    );
+        plantDefinition: definition,
+        seed,
+    });
 
-    return buildPlantRenderData({
+    return buildDevelopmentalPlantRenderData({
         flowerGrowth: 1,
         fruitGrowth: 1,
-        generation,
-        lSystemSymbols: symbols,
+        graph,
         plantDefinition: definition,
         renderDetailedGeometry: true,
-        seed,
     });
 }
 
@@ -286,7 +287,7 @@ test('packs representative exact plant render data without changing GPU-visible 
 
     const exactFlowers = buildExactRenderData({
         definition: floweringDefinition,
-        generation: 1,
+        generation: 6,
         seed: 'flower:packed-golden',
     });
     assertPackedRenderDataEqual(
@@ -502,7 +503,7 @@ test('merges exact template instances while preserving channel and produce order
     });
     const flowerExact = buildExactRenderData({
         definition: floweringDefinition,
-        generation: 1,
+        generation: 6,
         seed: 'flower:packed-golden',
     });
     const tomatoTemplate = packPlantRenderData(tomatoExact);

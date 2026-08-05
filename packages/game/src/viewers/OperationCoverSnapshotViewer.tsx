@@ -11,7 +11,6 @@ import { EntityFactory } from '../entities/EntityFactory';
 import type { EntityName } from '../entities/entityNameMap';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
-import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { MAX_PLANT_GENERATION } from '../generators/plant/lib/plant-definition-types';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
 import { PlantGenerator } from '../generators/plant/PlantGenerator';
@@ -422,21 +421,6 @@ function OperationCoverPlantModel({ plant }: { plant: OperationCoverPlant }) {
     const generation = plant.generation ?? MAX_PLANT_GENERATION * 0.75;
     const seed = plant.seed ?? `operation-cover-${plant.plantType}`;
     const scale = normalizeOperationCoverScale(plant.scale);
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(generation),
-            rules: definition.rules,
-            seed,
-        }),
-        [definition.axiom, definition.rules, generation, seed],
-    );
-    const { symbols: lSystemSymbols } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
 
     return (
         <group
@@ -447,7 +431,6 @@ function OperationCoverPlantModel({ plant }: { plant: OperationCoverPlant }) {
             <PlantGenerator
                 key={`${plant.plantType}-${seed}`}
                 plantDefinition={definition}
-                lSystemSymbols={lSystemSymbols ?? []}
                 generation={generation}
                 seed={seed}
                 flowerGrowth={plant.showFlowers === false ? 0 : 1}

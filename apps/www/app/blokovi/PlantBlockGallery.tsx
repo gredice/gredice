@@ -11,7 +11,7 @@ import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 import { PlantBlockImage } from './PlantBlockImage';
-import { plantNamesWithLSystem } from './plantNamesWithLSystem';
+import { plantNamesWithProceduralModels } from './plantNamesWithProceduralModels';
 
 function PlantBlockGalleryItem(props: Omit<PlantData, 'id'> & { id: string }) {
     return (
@@ -43,7 +43,9 @@ export function PlantBlockGallery({
         a.information.name.localeCompare(b.information.name),
     )
         .filter((plant) =>
-            plantNamesWithLSystem.has(plant.information.name.toLowerCase()),
+            plantNamesWithProceduralModels.has(
+                plant.information.name.toLowerCase(),
+            ),
         )
         .filter((plant) => plantMatchesSearch(plant, normalizedSearch))
         .map((plant) => ({ ...plant, id: plant.id.toString() }));

@@ -11,7 +11,6 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldOperationsFlag?: boolean;
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
-    enableBlockGeometryMergingFlag?: boolean;
     enableIntegratedWeatherSurfacesFlag?: boolean;
     enableRainWetOverlayFlag?: boolean;
     enableStaticOpaqueSceneCacheFlag?: boolean;

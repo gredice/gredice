@@ -1,45 +1,11 @@
 import type { PlantDefinition } from '../plant-definition-types';
-import { createPlant } from './helpers';
+import { createDevelopmentProgram, createPlant } from './helpers';
 
-const legumeRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            left: ['P'],
-            rule: 'F(0.78,0.8)[+(14)L(0.76)]',
-            weight: 2,
-        },
-        {
-            left: ['L'],
-            right: ['P'],
-            rule: 'F(0.84,0.84)[+(12)P(0.74)]',
-            weight: 1,
-        },
-        {
-            rule: 'F(1.04,1.02)[+(24)L(0.92)P(0.88)]F(0.94,0.94)',
-            weight: 3,
-        },
-        {
-            rule: 'F(1.04,1.02)[-(24)L(0.92)P(0.88)]F(0.94,0.94)',
-            weight: 3,
-        },
-        {
-            rule: 'F(0.96,0.96)[+(18)L(0.84)][-(18)L(0.84)]P(0.82)',
-            weight: 1,
-        },
-    ],
-};
-
-const legumeBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'F',
-    rules: legumeRules,
-    angle: 26,
+const legumeAppearance = {
     height: 0.88,
-    branching: 1.1,
-    directionVariability: 0.18,
     stem: {
         color: '#5d7e36',
         radius: 0.024,
-        length: 0.1,
         radiusDecay: 0.5,
         minRadius: 0.003,
     },
@@ -47,84 +13,209 @@ const legumeBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
         color: '#5e8a30',
         size: 0.18,
         type: 'compound',
-        density: 2,
-        hangAngle: 28,
-        hangAngleRandomness: 16,
-        sizeDecay: 0.45,
     },
     flower: {
         enabled: true,
-        ageStart: 6,
         color: '#ffffff',
         size: 0.06,
     },
-};
+} satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
 
 export const legumePlants = {
-    broadbean: createPlant({
-        ...legumeBase,
+    broadbean: createPlant('broadbean', {
+        ...legumeAppearance,
         name: 'Bob',
         height: 0.9,
-        branching: 0.96,
+        development: createDevelopmentProgram('upright', {
+            axes: {
+                axisCount: 2,
+                branchCount: 2,
+                branchLengthScale: 0.34,
+                branchNodeCount: 2,
+                branchPitchDegrees: 38,
+                branchingPattern: 'multi-stem',
+                nodeCount: 8,
+                spread: 0.22,
+            },
+            foliage: {
+                arrangement: 'opposite',
+                count: 14,
+                emergenceInterval: 0.58,
+                maturityDuration: 1.65,
+                petioleLengthScale: 0.32,
+                pitchRangeDegrees: [34, 58],
+                sizeRange: [0.72, 1.05],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10,
+            },
+            reproduction: {
+                flowerStart: 6,
+                flowersPerSite: 1,
+                form: 'pea',
+                fruitStart: 8,
+                produceCount: 6,
+                site: 'axillary',
+                siteCount: 1,
+            },
+            variability: 0.1,
+        }),
         leaf: {
-            ...legumeBase.leaf,
+            ...legumeAppearance.leaf,
             size: 0.22,
             type: 'oval',
         },
         flower: {
-            ...legumeBase.flower,
+            ...legumeAppearance.flower,
             color: '#f7f7f7',
         },
         vegetable: {
             enabled: true,
-            ageStart: 8,
             type: 'beanpod',
-            yield: 0.65,
             baseSize: 0.25,
         },
     }),
-    bean: createPlant({
-        ...legumeBase,
+    bean: createPlant('bean', {
+        ...legumeAppearance,
         name: 'Grah',
         height: 0.92,
+        development: createDevelopmentProgram('upright', {
+            axes: {
+                branchCount: 3,
+                branchLengthScale: 0.4,
+                branchNodeCount: 2,
+                branchPitchDegrees: 40,
+                branchingPattern: 'opposite',
+                nodeCount: 8,
+                spread: 0.24,
+            },
+            foliage: {
+                arrangement: 'opposite',
+                count: 14,
+                emergenceInterval: 0.58,
+                maturityDuration: 1.65,
+                petioleLengthScale: 0.4,
+                pitchRangeDegrees: [34, 60],
+                sizeRange: [0.7, 1.06],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10,
+            },
+            reproduction: {
+                flowerStart: 6,
+                flowersPerSite: 1,
+                form: 'pea',
+                fruitStart: 8,
+                produceCount: 7,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            variability: 0.12,
+        }),
         vegetable: {
             enabled: true,
-            ageStart: 8,
             type: 'beanpod',
-            yield: 0.7,
             baseSize: 0.22,
         },
     }),
-    pea: createPlant({
-        ...legumeBase,
+    pea: createPlant('pea', {
+        ...legumeAppearance,
         name: 'Grašak',
         height: 0.8,
-        branching: 1.18,
+        development: createDevelopmentProgram('vine', {
+            axes: {
+                branchCount: 3,
+                branchLengthScale: 0.38,
+                branchNodeCount: 2,
+                branchPitchDegrees: 22,
+                habit: 'climbing',
+                nodeCount: 10,
+                pitchDegrees: 66,
+                spread: 0.28,
+            },
+            foliage: {
+                arrangement: 'opposite',
+                count: 15,
+                emergenceInterval: 0.52,
+                maturityDuration: 1.6,
+                petioleLengthScale: 0.36,
+                pitchRangeDegrees: [34, 58],
+                sizeRange: [0.7, 1.05],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 9.75,
+            },
+            reproduction: {
+                flowerStart: 5.5,
+                flowersPerSite: 1,
+                form: 'pea',
+                fruitStart: 7.5,
+                produceCount: 8,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { tendrilCount: 12 },
+            variability: 0.14,
+        }),
         leaf: {
-            ...legumeBase.leaf,
+            ...legumeAppearance.leaf,
             size: 0.16,
         },
         flower: {
-            ...legumeBase.flower,
+            ...legumeAppearance.flower,
             color: '#f2edf7',
         },
         vegetable: {
             enabled: true,
-            ageStart: 7,
             type: 'peapod',
-            yield: 0.8,
             baseSize: 0.19,
         },
     }),
-    greenbean: createPlant({
-        ...legumeBase,
+    greenbean: createPlant('greenbean', {
+        ...legumeAppearance,
         name: 'Mahuna',
         height: 0.84,
+        development: createDevelopmentProgram('vine', {
+            axes: {
+                branchCount: 3,
+                branchLengthScale: 0.4,
+                branchNodeCount: 2,
+                branchPitchDegrees: 24,
+                habit: 'climbing',
+                nodeCount: 11,
+                pitchDegrees: 68,
+                spread: 0.26,
+            },
+            foliage: {
+                count: 14,
+                emergenceInterval: 0.54,
+                maturityDuration: 1.6,
+                petioleLengthScale: 0.4,
+                pitchRangeDegrees: [34, 58],
+                sizeRange: [0.7, 1.06],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10,
+            },
+            reproduction: {
+                flowerStart: 5.75,
+                flowersPerSite: 1,
+                form: 'pea',
+                fruitStart: 7.75,
+                produceCount: 9,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { tendrilCount: 0 },
+            variability: 0.14,
+        }),
         vegetable: {
             enabled: true,
-            ageStart: 7,
             type: 'beanpod',
-            yield: 0.85,
             baseSize: 0.2,
         },
     }),

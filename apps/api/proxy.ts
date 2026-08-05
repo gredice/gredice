@@ -6,7 +6,6 @@ import {
     type NextRequest,
     NextResponse,
 } from 'next/server';
-import { isLegacyMcpPath } from './lib/mcp/publicAccess';
 import {
     flushPostHogLogs,
     getPostHogLogger,
@@ -66,16 +65,6 @@ const proxyHandler: NextProxy = async (
     request: NextRequest,
     event: NextFetchEvent,
 ) => {
-    if (isLegacyMcpPath(request.nextUrl.pathname)) {
-        return NextResponse.json(
-            { error: 'Not found' },
-            {
-                status: 404,
-                headers: { 'Cache-Control': 'private, no-store' },
-            },
-        );
-    }
-
     const response =
         (await baseProxyHandler(request, event)) ?? NextResponse.next();
 

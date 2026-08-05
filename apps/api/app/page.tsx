@@ -4,11 +4,9 @@ import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { isMcpPublicAccessEnabled } from '../lib/mcp/publicAccess';
-
-export const dynamic = 'force-dynamic';
 
 const apiReferences = [
+    { label: '/api/mcp', href: '/test' },
     { label: '/api/auth', href: '/docs/auth' },
     { label: '/api/accounts', href: '/docs/accounts' },
     { label: '/api/users', href: '/docs/users' },
@@ -25,20 +23,13 @@ const apiReferences = [
 ];
 
 export default function Home() {
-    const apis = [
-        ...(isMcpPublicAccessEnabled()
-            ? [{ label: '/api/mcp', href: '/test' }]
-            : []),
-        ...apiReferences,
-    ];
-
     return (
         <Stack spacing={2} className="p-4">
             <Typography level="body2">API Reference</Typography>
             <Card>
                 <CardOverflow>
                     <List variant="outlined">
-                        {apis.map(({ label, href }) => (
+                        {apiReferences.map(({ label, href }) => (
                             <ListItem
                                 key={label}
                                 variant="outlined"

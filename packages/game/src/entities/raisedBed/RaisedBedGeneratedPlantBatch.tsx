@@ -2,15 +2,15 @@
 
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
+import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     type GeneratedPackedPlantRenderTask,
     useGeneratedPackedPlantRenderDataBatch,
-} from '../../generators/plant/hooks/useGeneratedLSystem';
-import { buildGeneratedPlantLodTasks } from '../../generators/plant/lib/generatedPlantLodTasks';
+} from '../../generators/plant/hooks/useGeneratedPlantRenderData';
 import {
     getGeneratedPlantInstanceVariation,
     getGeneratedPlantTemplateKey,
+    getGeneratedPlantTemplateSeed,
     resolveGeneratedPlantTemplateVariant,
 } from '../../generators/plant/lib/generatedPlantTemplates';
 import {
@@ -64,7 +64,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     leafGeometryDetail?: PlantLeafGeometryDetail;
     lodLevel?: PlantLodLevel;
     showProduce?: boolean;
-    taskPriority?: GeneratedLSystemTaskPriority;
+    taskPriority?: GeneratedPlantTaskPriority;
 }
 
 type DetailedBatchBuildResult = {
@@ -152,6 +152,7 @@ function RaisedBedDetailedPlantBatch({
                     seed={swaySeed}
                     packed={batchedData.flowers}
                     color={definition.flower.color}
+                    form={definition.development.reproduction.form}
                     castShadow={false}
                 />
             )}
@@ -227,24 +228,23 @@ export function RaisedBedGeneratedPlantBatch({
             showProduce,
         ],
     );
-    const generationTasks = useMemo(
-        () => buildGeneratedPlantLodTasks(definition, instances, lodLevel),
-        [definition, instances, lodLevel],
-    );
     const renderChunks = useMemo<GeneratedPackedPlantRenderChunk[]>(() => {
+        if (!renderDetailedGeometry) {
+            return [];
+        }
+
         const chunks = new Map<string, GeneratedPackedPlantRenderChunk>();
 
-        generationTasks.forEach((generationTask, index) => {
-            const instance = instances[index];
-            if (!instance) {
-                return;
-            }
-
+        instances.forEach((instance, index) => {
             const generation = Math.min(
                 MAX_PLANT_GENERATION,
                 Math.max(0, instance.generation),
             );
             const variant = resolveGeneratedPlantTemplateVariant(instance.seed);
+            const seed = getGeneratedPlantTemplateSeed({
+                definition,
+                variant,
+            });
             const templateKey = getGeneratedPlantTemplateKey({
                 definition,
                 flowerGrowth,
@@ -277,9 +277,9 @@ export function RaisedBedGeneratedPlantBatch({
                     flowerGrowth,
                     fruitGrowth,
                     generation,
-                    generationTask,
                     plantDefinition: definition,
                     rootTransforms: [rootTransform],
+                    seed,
                     showProduce,
                     templateKey,
                 },
@@ -297,9 +297,9 @@ export function RaisedBedGeneratedPlantBatch({
         definition,
         flowerGrowth,
         fruitGrowth,
-        generationTasks,
         instances,
         instanceVariations,
+        renderDetailedGeometry,
         showProduce,
     ]);
     const renderChunkSignature = useMemo(

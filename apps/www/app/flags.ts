@@ -5,17 +5,10 @@ function isDevelopmentEnvironment() {
     return process.env.NODE_ENV === 'development';
 }
 
-export const lSystemPlantsFlag = flag<boolean>({
-    key: 'lSystemPlants',
-    description: 'Enable L-System plants content rendering.',
+export const proceduralPlantsFlag = flag<boolean>({
+    key: 'proceduralPlants',
+    description: 'Enable procedural plant content rendering.',
     decide: () => false,
-    options: booleanFlagOptions,
-});
-
-export const blockGeometryMergingFlag = flag<boolean>({
-    key: 'blockGeometryMerging',
-    description: 'Enable merged geometry chunks for stable terrain blocks.',
-    decide: () => true,
     options: booleanFlagOptions,
 });
 

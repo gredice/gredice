@@ -14,8 +14,7 @@ import {
 import * as THREE from 'three';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
-import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
-import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
+import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     calculateInGamePlantGeneration,
     getPlantLifecycleWindowDays,
@@ -24,6 +23,7 @@ import {
 } from '../../generators/plant/lib/inGamePlantPresets';
 import { resolvePlantLeafGeometryDetail } from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
+import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
 import {
     getHighTargetMockGardenPlantInstanceCount,
     getHighTargetOperationVisualFixtureCounts,
@@ -112,7 +112,7 @@ type GeneratedPlantBatch = {
     lodLevel: 'near';
     plantType: ResolvedInGamePlantPreset['plantType'];
     signature: string;
-    taskPriority: GeneratedLSystemTaskPriority;
+    taskPriority: GeneratedPlantTaskPriority;
 };
 
 type GeneratedPlantClusterBatch = {
@@ -809,10 +809,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     positionIndex: field.positionIndex - blockOffset,
                 });
                 const approximatePlantHeight =
-                    getApproximatePlantHeight(
-                        resolvedPlantPreset.definition,
-                        plantGeneration,
-                    ) * plantInstanceScale;
+                    getApproximatePlantHeight(resolvedPlantPreset.definition) *
+                    plantInstanceScale;
                 const instances: RaisedBedGeneratedPlantBatchInstance[] = [];
 
                 for (let index = 0; index < totalPlants; index += 1) {

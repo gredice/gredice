@@ -6,11 +6,7 @@ import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
-import {
-    canCallProtectedMcpToolWhilePublicAccessIsDisabled,
-    isMcpPublicAccessEnabled,
-    mcpPublicDocumentationUrl,
-} from '../../../lib/mcp/publicAccess';
+import { mcpPublicDocumentationUrl } from '../../../lib/mcp/publicMetadata';
 import {
     getMcpResources,
     getMcpResourceTemplates,
@@ -146,19 +142,6 @@ function forbiddenResponse(message: string) {
     );
 }
 
-function publicAccessDisabledResponse(correlationId?: string) {
-    return NextResponse.json(
-        { error: 'Not found' },
-        {
-            status: 404,
-            headers: {
-                'Cache-Control': 'private, no-store',
-                ...(correlationId ? { 'x-correlation-id': correlationId } : {}),
-            },
-        },
-    );
-}
-
 function unauthorizedResponse(request: NextRequest) {
     return NextResponse.json(
         {
@@ -228,9 +211,6 @@ async function executeMcpTool({
             }
             return executeGardenTool(name, args, authContext);
         case 'commerce':
-            if (!authContext) {
-                throw new Error('Commerce tools require authentication');
-            }
             return executeCommerceTool(name, args, authContext);
     }
 }
@@ -330,17 +310,8 @@ export async function handleMcpRequest(request: NextRequest) {
     const correlationId =
         request.headers.get('x-correlation-id') ?? randomUUID();
     const clientAddress = clientAddressForRateLimit(request);
-    const authorization = request.headers.get('authorization');
-    const publicAccessEnabled = isMcpPublicAccessEnabled();
 
     try {
-        if (
-            !publicAccessEnabled &&
-            !authorization?.toLowerCase().startsWith('bearer ')
-        ) {
-            return publicAccessDisabledResponse(correlationId);
-        }
-
         const originError = validateOrigin(request);
         if (originError) {
             return originError;
@@ -383,62 +354,6 @@ export async function handleMcpRequest(request: NextRequest) {
         const method = body?.method as string | undefined;
         const id = body?.id ?? null;
         const toolName = body?.params?.name as string | undefined;
-        const requestedTool =
-            typeof toolName === 'string'
-                ? getMcpToolCatalogEntry(toolName)
-                : null;
-
-        if (
-            !publicAccessEnabled &&
-            !canCallProtectedMcpToolWhilePublicAccessIsDisabled({
-                authorization,
-                exposure: requestedTool?.exposure,
-                method,
-            })
-        ) {
-            return publicAccessDisabledResponse(correlationId);
-        }
-
-        const rolloutStage = process.env.MCP_ROLLOUT_STAGE ?? 'all';
-        if (method === 'tools/call' && typeof toolName === 'string') {
-            const tool = requestedTool;
-            if (tool) {
-                if (
-                    rolloutStage === 'public-read-only' &&
-                    tool.exposure !== 'public-read'
-                ) {
-                    return NextResponse.json(
-                        {
-                            jsonrpc: '2.0',
-                            id,
-                            error: {
-                                code: -32004,
-                                message:
-                                    'Tool not enabled in current rollout stage',
-                            },
-                        },
-                        { status: 403 },
-                    );
-                }
-                if (
-                    rolloutStage === 'auth-read-only' &&
-                    tool.exposure === 'auth-mutation'
-                ) {
-                    return NextResponse.json(
-                        {
-                            jsonrpc: '2.0',
-                            id,
-                            error: {
-                                code: -32004,
-                                message:
-                                    'Tool not enabled in current rollout stage',
-                            },
-                        },
-                        { status: 403 },
-                    );
-                }
-            }
-        }
 
         const rateClass = method === 'tools/call' ? 'tool-call' : 'metadata';
         const rateKey = `${clientAddress}:${rateClass}:${toolName ?? method ?? 'unknown'}`;
@@ -699,10 +614,6 @@ export async function handleMcpRequest(request: NextRequest) {
 }
 
 export function getProtectedResourceMetadata(request: NextRequest) {
-    if (!isMcpPublicAccessEnabled()) {
-        return publicAccessDisabledResponse();
-    }
-
     const resource = `${baseUrlFromRequest(request)}/api/mcp`;
     const issuer = process.env.AUTH_ISSUER_URL ?? baseUrlFromRequest(request);
 

@@ -55,8 +55,8 @@ export type GeneratedPlantProfilePipelineCounts = {
         renderDataBuildDurationTotalMs: number;
         rootBatchingDurationMaxMs: number;
         rootBatchingDurationTotalMs: number;
-        symbolGenerationDurationMaxMs: number;
-        symbolGenerationDurationTotalMs: number;
+        topologyGenerationDurationMaxMs: number;
+        topologyGenerationDurationTotalMs: number;
         totalDurationMaxMs: number;
         totalDurationTotalMs: number;
         transferByteLengthMax: number;
@@ -121,7 +121,7 @@ export type GeneratedPlantProfileSnapshot = {
     };
     error: string | null;
     instanceBuffers: PlantInstanceBufferMetricsSnapshot;
-    lSystem: {
+    generation: {
         cancelledTaskCount: number;
         completedTaskCount: number;
         requestedTaskCount: number;
@@ -249,16 +249,6 @@ export type GameProfileMetadata = {
     hoverOutlineRoiRatio?: number;
     hoverOutlineStyleGroupCount?: number;
     hoverOutlineThickness?: number;
-    generatedLSystemCacheEntryCount?: number;
-    generatedLSystemCacheEstimatedBytes?: number;
-    generatedLSystemCacheEvictionCount?: number;
-    generatedLSystemCacheHitCount?: number;
-    generatedLSystemCacheMaxEntryCount?: number;
-    generatedLSystemCacheMaxEstimatedBytes?: number;
-    generatedLSystemCacheMissCount?: number;
-    generatedLSystemCacheOversizeSkipCount?: number;
-    generatedLSystemCachePeakEstimatedBytes?: number;
-    generatedLSystemCacheWriteCount?: number;
     generatedPlantBatchCount?: number;
     generatedPlantClusterInstanceCount?: number;
     generatedPlantClusterPrimitiveTriangleCount?: number;

@@ -300,7 +300,6 @@ export function PublicGardenPreviewBackfill({
                 }}
                 className="size-full"
                 deferDetails={false}
-                enableBlockGeometryMerging
                 garden={activeCapture.garden}
                 spriteBaseUrl={gameAssetBaseUrl}
             />

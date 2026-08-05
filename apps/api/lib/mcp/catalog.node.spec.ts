@@ -26,6 +26,44 @@ describe('MCP catalog contract scaffold', () => {
         );
     });
 
+    test('keeps public catalog data anonymous and user data authenticated', () => {
+        const exposures = new Map(
+            getMcpToolCatalog().map((tool) => [tool.name, tool.exposure]),
+        );
+
+        for (const toolName of [
+            'directories/get-plants',
+            'directories/get-plant',
+            'directories/get-plant-sorts',
+            'directories/search-entities',
+            'directories/get-operations',
+            'directories/get-seeds',
+            'commerce/get-products',
+            'commerce/search-products',
+            'commerce/get-product',
+        ]) {
+            assert.equal(exposures.get(toolName), 'public-read');
+        }
+
+        for (const toolName of [
+            'gardens/list-gardens',
+            'gardens/list-raised-beds',
+            'gardens/get-raised-bed-fields',
+            'gardens/list-operations',
+            'gardens/get-lifecycle-context',
+            'gardens/get-raised-bed-ai-history',
+            'commerce/get-cart',
+        ]) {
+            assert.equal(exposures.get(toolName), 'auth-read');
+        }
+
+        assert.equal(exposures.get('commerce/add-to-cart'), 'auth-mutation');
+        assert.equal(
+            exposures.get('commerce/update-cart-item'),
+            'auth-mutation',
+        );
+    });
+
     test('publishes accurate review annotations for every tool', () => {
         const tools = getMcpTools();
 
