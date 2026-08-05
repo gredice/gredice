@@ -587,7 +587,6 @@ export function OperationCoverSnapshotViewer({
                 <GameFlagsContext.Provider
                     value={{
                         enableDebugHudFlag: false,
-                        enableRainWetOverlayFlag: false,
                     }}
                 >
                     <GameSceneDetailContext.Provider

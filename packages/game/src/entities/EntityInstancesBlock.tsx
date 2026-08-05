@@ -496,7 +496,6 @@ function IntegratedWeatherEntityInstancesGeometry({
     >[0];
     weatherSurfaceMode: WeatherSurfaceMode;
 } & EntityInstancesGeometryProps) {
-    const flags = useGameFlags();
     const {
         geometry,
         renderRainWetOverlay = false,
@@ -513,9 +512,7 @@ function IntegratedWeatherEntityInstancesGeometry({
     const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const rainOverlayVisible = useRainWetOverlayVisible();
     const rainSurfaceActive =
-        renderRainWetOverlay &&
-        Boolean(flags.enableRainWetOverlayFlag) &&
-        Boolean(rainOverlayVisible);
+        renderRainWetOverlay && Boolean(rainOverlayVisible);
     const snowOverlayVisible = useSnowOverlayVisible({
         coverageMultiplier: snow?.coverageMultiplier,
         minCoverage: snowOverlayMinCoverage,
@@ -650,7 +647,6 @@ function EntityInstancesGeometryRenderer(
         weatherSurfaceMode: WeatherSurfaceMode;
     },
 ) {
-    const flags = useGameFlags();
     const {
         instanceKey,
         instances: incomingInstances,
@@ -798,8 +794,7 @@ function EntityInstancesGeometryRenderer(
     );
     const weatherRegistryId = useId();
     const rainOverlayVisible = useRainWetOverlayVisible();
-    const rainOverlayEnabled =
-        renderRainWetOverlay && Boolean(flags.enableRainWetOverlayFlag);
+    const rainOverlayEnabled = renderRainWetOverlay;
     const rainWetnessActive = useRainSurfaceWetnessActive({
         drySpeed: 1.8,
         enabled: rainOverlayEnabled,

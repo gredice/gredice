@@ -7,6 +7,7 @@ import {
 import { ProfileGameScene } from './ProfileGameScene';
 import {
     highTargetOperationVisualHighlightTarget,
+    resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
@@ -293,9 +294,7 @@ export default async function GameProfilePage({
         mockGardenProfile === 'high-target' &&
         resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
     const debugGameFlags = resolveGameProfileFlags(
-        firstValue(params.adaptiveHigh),
         firstValue(params.weatherSurface),
-        firstValue(params.staticSceneCache),
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
         firstValue(params.staticSceneCache),
@@ -308,7 +307,9 @@ export default async function GameProfilePage({
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(
         firstValue(params.weatherSurface),
     );
-    const adaptiveHigh = debugGameFlags.enableAdaptiveHighQualityFlag;
+    const adaptiveHigh = resolveGameProfileAdaptiveHigh(
+        firstValue(params.adaptiveHigh),
+    );
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -355,6 +356,7 @@ export default async function GameProfilePage({
             }
         >
             <ProfileGameScene
+                adaptiveHighQuality={adaptiveHigh}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
@@ -379,6 +381,7 @@ export default async function GameProfilePage({
                 noControls={!enableControls}
                 noSound
                 renderDetails={renderDetails}
+                staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}

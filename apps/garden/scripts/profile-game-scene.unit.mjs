@@ -1574,7 +1574,7 @@ test('operation-visual High acceptance gates batching, uploads, mulch, and highl
     );
 });
 
-test('foliage-budget High acceptance keeps normal-view foliage clustered', () => {
+test('foliage-budget High acceptance admits one normal-view detail bed', () => {
     const input = {
         apiErrors: [],
         pageErrors: [],
@@ -1592,27 +1592,27 @@ test('foliage-budget High acceptance keeps normal-view foliage clustered', () =>
             actorGroundingShadowPrimaryCasterCount: 0,
             actorGroundingShadowVisibleCount: 5,
             animatedCasterShadowRefreshCount: 0,
-            generatedPlantClusterInstanceCount: 537,
-            generatedPlantClusterPrimitiveTriangleCount: 3_354,
-            generatedPlantDetailedInstanceCount: 0,
-            generatedPlantDetailAdmittedBedCount: 0,
-            generatedPlantDetailAdmittedInstanceCount: 0,
+            generatedPlantClusterInstanceCount: 358,
+            generatedPlantClusterPrimitiveTriangleCount: 2_740,
+            generatedPlantDetailedInstanceCount: 179,
+            generatedPlantDetailAdmittedBedCount: 1,
+            generatedPlantDetailAdmittedInstanceCount: 179,
             generatedPlantDetailBudgetInstanceCount: 179,
-            generatedPlantDetailDemotedBedCount: 0,
+            generatedPlantDetailDemotedBedCount: 2,
             generatedPlantDetailOverflowInstanceCount: 0,
-            generatedPlantDetailRequestedBedCount: 0,
-            generatedPlantDetailRequestedInstanceCount: 0,
+            generatedPlantDetailRequestedBedCount: 3,
+            generatedPlantDetailRequestedInstanceCount: 537,
             generatedPlantDetailTransitionCount: 0,
-            generatedPlantDetailUsedBudgetInstanceCount: 0,
+            generatedPlantDetailUsedBudgetInstanceCount: 179,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFarFieldCount: 9,
             generatedPlantFarInstanceCount: 81,
             generatedPlantFieldCount: 54,
             generatedPlantInstanceCount: 537,
-            generatedPlantMidFieldCount: 45,
-            generatedPlantMidInstanceCount: 456,
-            generatedPlantNearFieldCount: 0,
-            generatedPlantNearInstanceCount: 0,
+            generatedPlantMidFieldCount: 27,
+            generatedPlantMidInstanceCount: 277,
+            generatedPlantNearFieldCount: 18,
+            generatedPlantNearInstanceCount: 179,
             generatedPlantPendingDetailInstanceCount: 0,
             generatedPlantRenderBatchCount: 6,
             generatedPlantVisibleFieldCount: 54,
@@ -1643,16 +1643,16 @@ test('foliage-budget High acceptance keeps normal-view foliage clustered', () =>
     };
 
     assert.equal(evaluateHighTargetAcceptance(input).pass, true);
-    const exactLeak = evaluateHighTargetAcceptance({
+    const missingDetail = evaluateHighTargetAcceptance({
         ...input,
         runtime: {
             ...input.runtime,
-            generatedPlantDetailedInstanceCount: 179,
+            generatedPlantDetailedInstanceCount: 0,
         },
     });
-    assert.equal(exactLeak.pass, false);
+    assert.equal(missingDetail.pass, false);
     assert.equal(
-        exactLeak.checks.find(
+        missingDetail.checks.find(
             (check) =>
                 check.name === 'highTargetFoliageDetailedRenderInstances',
         )?.pass,

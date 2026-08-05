@@ -17,29 +17,6 @@ export const addressDistanceVerificationFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
-export const rainWetOverlayFlag = flag<boolean>({
-    key: 'rainWetOverlay',
-    description: 'Enable rain wetness overlays on exposed garden entities.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
-export const adaptiveHighQualityFlag = flag<boolean>({
-    key: 'adaptiveHighQuality',
-    description:
-        'Adapt the runtime ceiling of manually selected High game quality.',
-    decide: () => true,
-    options: booleanFlagOptions,
-});
-
-export const staticOpaqueSceneCacheFlag = flag<boolean>({
-    key: 'staticOpaqueSceneCache',
-    description:
-        'Cache stable opaque terrain while rendering the game at High quality.',
-    decide: () => true,
-    options: booleanFlagOptions,
-});
-
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
