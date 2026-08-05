@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { SuncokretChatHudStory } from './SuncokretChatHudStory';
 
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
+
 const statusResponse = {
     enabled: true,
     debugEnabled: false,
@@ -177,6 +179,21 @@ test('production chat hides developer controls and shows visual usage', async ({
     await expect(usage).toContainText('87,5% preostalo');
     await expect(usage).toContainText('96% preostalo');
     await expect(usage).not.toContainText('iskorišteno');
+    const usagePopper = page.locator('[data-suncokret-usage-popper]');
+    await expect(usagePopper).toHaveCSS('z-index', '70');
+    await expect
+        .poll(() =>
+            usage.evaluate((element) => {
+                const bounds = element.getBoundingClientRect();
+                const topElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+
+                return topElement === element || element.contains(topElement);
+            }),
+        )
+        .toBe(true);
     await expect(chat).not.toContainText('USD');
     await expect(chat).not.toContainText('token');
     await expect(chat).not.toContainText('AI vrtni pomoćnik');
@@ -397,6 +414,63 @@ test('raised-bed closeup uses the contextual trigger and anchored chat', async (
     await expect(
         page.locator('[data-suncokret-placement="anchored"]'),
     ).toBeVisible();
+});
+
+test('mobile chat stays above the field UI and can close independently', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mockSuncokretRoutes(page);
+    await mount(
+        <SuncokretChatHudStory
+            focusedRaisedBed
+            fieldUiTarget={{
+                conversationLabel: 'Rajčica mini red cherry',
+                gardenId: 1,
+                positionIndex: 6,
+                raisedBedId: 11,
+                uiContext: {
+                    surface: 'plant-details',
+                    tab: 'lifecycle',
+                },
+            }}
+        />,
+    );
+
+    const fieldUi = page.getByRole('dialog', { name: 'Kartica biljke' });
+    await expect(fieldUi).toBeVisible();
+    await page
+        .getByRole('button', {
+            name: 'Pitaj Suncokreta iz kartice biljke',
+        })
+        .click();
+
+    const placement = page.locator('[data-suncokret-placement="bottom-left"]');
+    const chat = page.getByRole('dialog', {
+        name: 'Razgovor sa Suncokretom',
+    });
+    const closeButton = chat.getByRole('button', { name: 'Zatvori' });
+
+    await expect(placement).toBeVisible();
+    await expect(placement).toHaveCSS('z-index', '60');
+    await expect
+        .poll(() =>
+            closeButton.evaluate((button) => {
+                const bounds = button.getBoundingClientRect();
+                const topElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+
+                return topElement === button || button.contains(topElement);
+            }),
+        )
+        .toBe(true);
+
+    await closeButton.click();
+    await expect(chat).toHaveCount(0);
+    await expect(fieldUi).toBeVisible();
 });
 
 test('context selected after chat initialization is sent with the request', async ({

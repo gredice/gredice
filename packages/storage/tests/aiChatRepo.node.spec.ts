@@ -404,7 +404,10 @@ test('replaceAiChatMessages records approved tool requests for audit', async () 
         ],
     });
 
-    const toolCall = await storage().query.aiChatToolCalls.findFirst();
+    const toolCalls = await storage().query.aiChatToolCalls.findMany();
+    const toolCall = toolCalls.find(
+        (candidate) => candidate.toolCallId === 'cart-call-1',
+    );
     assert.ok(toolCall);
     assert.strictEqual(toolCall.state, 'approval-responded');
     assert.strictEqual(toolCall.needsApproval, true);
@@ -456,6 +459,52 @@ test('lists and restores user-scoped AI conversations', async () => {
     assert.strictEqual(restored?.messages[0]?.role, 'user');
 });
 
+test('replaceAiChatMessages records MCP correlation and error category', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+        title: 'Suncokret MCP error test',
+    });
+
+    await replaceAiChatMessages({
+        conversationId,
+        messages: [
+            {
+                id: 'assistant-error',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'tool-listGardenOperations',
+                        toolCallId: 'operations-call-1',
+                        state: 'output-error',
+                        input: { gardenId: 1 },
+                        errorText:
+                            'Provjera podataka trajala je predugo. Pokušaj ponovno.',
+                        mcpCorrelationId: 'mcp-correlation-123',
+                        mcpErrorCategory: 'timeout',
+                    },
+                ],
+            },
+        ],
+    });
+
+    const toolCalls = await storage().query.aiChatToolCalls.findMany();
+    const toolCall = toolCalls.find(
+        (candidate) => candidate.toolCallId === 'operations-call-1',
+    );
+    assert.ok(toolCall);
+    assert.strictEqual(toolCall.mcpCorrelationId, 'mcp-correlation-123');
+    assert.strictEqual(
+        toolCall.error,
+        '[timeout] Provjera podataka trajala je predugo. Pokušaj ponovno.',
+    );
+});
+
 test('normalizeAiChatMessagesForStorage does not persist provider tool protocol text', () => {
     const [message] = normalizeAiChatMessagesForStorage([
         {
@@ -475,6 +524,29 @@ test('normalizeAiChatMessagesForStorage does not persist provider tool protocol 
         {
             type: 'text',
             text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
+        },
+    ]);
+});
+
+test('normalizeAiChatMessagesForStorage removes English model planning preambles', () => {
+    const [message] = normalizeAiChatMessagesForStorage([
+        {
+            id: 'assistant-message',
+            role: 'assistant',
+            parts: [
+                {
+                    type: 'text',
+                    text: "Confirmed: watering can be ordered. I'll answer briefly.Nažalost, prethodni odgovor nije bio točan.",
+                },
+            ],
+        },
+    ]);
+
+    assert.ok(message);
+    assert.deepStrictEqual(message.parts, [
+        {
+            type: 'text',
+            text: 'Nažalost, prethodni odgovor nije bio točan.',
         },
     ]);
 });

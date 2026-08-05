@@ -319,6 +319,12 @@ function extractToolCallRows(
             const approval = toolCallValue(part.approval);
             const approved =
                 approval?.approved === true || approval?.state === 'approved';
+            const errorText =
+                typeof part.errorText === 'string' ? part.errorText : null;
+            const mcpErrorCategory =
+                typeof part.mcpErrorCategory === 'string'
+                    ? part.mcpErrorCategory
+                    : null;
             rows.push({
                 id: randomUUID(),
                 conversationId,
@@ -339,11 +345,16 @@ function extractToolCallRows(
                 input: toolCallValue(part.input) ?? toolCallValue(part.args),
                 output:
                     toolCallValue(part.output) ?? toolCallValue(part.result),
-                error:
-                    typeof part.errorText === 'string' ? part.errorText : null,
+                error: mcpErrorCategory
+                    ? `[${mcpErrorCategory}]${errorText ? ` ${errorText}` : ''}`
+                    : errorText,
                 needsApproval: Boolean(approval),
                 approvedByUserId: approved ? approvedByUserId : undefined,
                 approvedAt: approved ? new Date() : undefined,
+                mcpCorrelationId:
+                    typeof part.mcpCorrelationId === 'string'
+                        ? part.mcpCorrelationId
+                        : null,
             });
         }
     }

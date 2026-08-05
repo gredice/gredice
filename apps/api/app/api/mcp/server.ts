@@ -559,17 +559,26 @@ export async function handleMcpRequest(request: NextRequest) {
             } catch (error) {
                 const isInvalidParams = error instanceof z.ZodError;
                 const isTimeout = error instanceof ToolExecutionTimeoutError;
+                const errorType = isInvalidParams
+                    ? 'invalid_params'
+                    : isTimeout
+                      ? 'timeout'
+                      : 'tool_failure';
                 logger.error('mcp.request.error', {
                     correlationId,
                     method,
                     toolName: name,
                     latencyMs: Math.round(performance.now() - requestStart),
                     status: 'error',
-                    errorType: isInvalidParams
-                        ? 'invalid_params'
-                        : isTimeout
-                          ? 'timeout'
-                          : 'tool_failure',
+                    errorType,
+                    error:
+                        error instanceof Error
+                            ? {
+                                  name: error.name,
+                                  message: error.message.slice(0, 1_000),
+                                  stack: error.stack?.slice(0, 4_000),
+                              }
+                            : String(error),
                 });
                 return NextResponse.json(
                     {
@@ -584,7 +593,9 @@ export async function handleMcpRequest(request: NextRequest) {
                                   : error instanceof Error
                                     ? error.message
                                     : 'Tool execution failed',
-                            data: isInvalidParams ? error.issues : undefined,
+                            data: isInvalidParams
+                                ? error.issues
+                                : { category: errorType },
                         },
                     },
                     {

@@ -95,19 +95,35 @@ export type SuncokretUiContext =
 
 const SUNCOKRET_TOOL_PROTOCOL_PATTERN =
     /<\s*(?:[|｜]\s*){1,2}DSML(?:\s*[|｜]){1,2}/iu;
+const SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN =
+    /^\s*(?:Confirmed\b|I(?:'|’)ll\b|I\s+(?:can|cannot|can't|found|must|need|should|will)\b|Let me\b|The user\b|We need\b)/iu;
+const SUNCOKRET_CROATIAN_ANSWER_START_PATTERN =
+    /\b(?:Da|Evo|Gotovo|Mogu|Možeš|Nažalost|Naravno|Ne|Nisam|Prema|Radnja|Razumijem|U Gredicama|Za ovu|Za tu|Zalijevanje)\b/iu;
 
 export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
     'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
 
 export function sanitizeSuncokretAssistantText(value: string) {
     const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
-    if (protocolStart === -1) {
-        return value;
+    const protocolSafeText =
+        protocolStart === -1
+            ? value
+            : (() => {
+                  const visibleText = value.slice(0, protocolStart).trimEnd();
+                  return visibleText
+                      ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+                      : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+              })();
+
+    if (!SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN.test(protocolSafeText)) {
+        return protocolSafeText;
     }
 
-    const visibleText = value.slice(0, protocolStart).trimEnd();
-    return visibleText
-        ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+    const answerStart =
+        SUNCOKRET_CROATIAN_ANSWER_START_PATTERN.exec(protocolSafeText);
+
+    return answerStart?.index !== undefined
+        ? protocolSafeText.slice(answerStart.index).trimStart()
         : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
 }
 

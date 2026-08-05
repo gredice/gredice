@@ -59,6 +59,10 @@ describe('MCP catalog contract scaffold', () => {
 
         assert.equal(exposures.get('commerce/add-to-cart'), 'auth-mutation');
         assert.equal(
+            exposures.get('commerce/add-operation-to-cart'),
+            'auth-mutation',
+        );
+        assert.equal(
             exposures.get('commerce/update-cart-item'),
             'auth-mutation',
         );
@@ -72,9 +76,11 @@ describe('MCP catalog contract scaffold', () => {
             assert.equal(tool.annotations.openWorldHint, false);
             assert.equal(
                 tool.annotations.readOnlyHint,
-                !['commerce/add-to-cart', 'commerce/update-cart-item'].includes(
-                    tool.name,
-                ),
+                ![
+                    'commerce/add-to-cart',
+                    'commerce/add-operation-to-cart',
+                    'commerce/update-cart-item',
+                ].includes(tool.name),
             );
             assert.equal(
                 tool.annotations.destructiveHint,
@@ -87,6 +93,7 @@ describe('MCP catalog contract scaffold', () => {
         for (const toolName of [
             'commerce/get-cart',
             'commerce/add-to-cart',
+            'commerce/add-operation-to-cart',
             'commerce/update-cart-item',
         ]) {
             const tool = getMcpTools().find(
