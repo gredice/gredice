@@ -9,6 +9,7 @@ import {
     type SuncokretChatTarget,
 } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import { SuncokretChatTrigger } from '../../../packages/game/src/hud/SuncokretChatTrigger';
+import { GameModal } from '../../../packages/game/src/shared-ui/game-modal';
 import {
     createGameState,
     GameStateContext,
@@ -89,11 +90,13 @@ function createQueryClient() {
 export function SuncokretChatHudStory({
     contextTarget,
     debug = false,
+    fieldUiTarget,
     focusedRaisedBed = false,
     settingsSection,
 }: {
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
+    fieldUiTarget?: SuncokretChatTarget;
     focusedRaisedBed?: boolean;
     settingsSection?: string;
 }) {
@@ -128,12 +131,19 @@ export function SuncokretChatHudStory({
                         }}
                     >
                         <SuncokretChatProvider>
-                            {contextTarget && (
+                            {fieldUiTarget ? (
+                                <GameModal open title="Kartica biljke">
+                                    <SuncokretChatTrigger
+                                        title="Pitaj Suncokreta iz kartice biljke"
+                                        target={fieldUiTarget}
+                                    />
+                                </GameModal>
+                            ) : contextTarget ? (
                                 <SuncokretChatTrigger
                                     title="Pitaj Suncokreta u kontekstu"
                                     target={contextTarget}
                                 />
-                            )}
+                            ) : null}
                             <SuncokretChatHud />
                         </SuncokretChatProvider>
                     </GameFlagsContext.Provider>
