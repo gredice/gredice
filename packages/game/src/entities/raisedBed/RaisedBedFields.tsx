@@ -709,6 +709,10 @@ export function RaisedBedFields({
                             harvestedVisual:
                                 harvestPositionSet.has(localPositionIndex),
                             positionIndex: localPositionIndex,
+                            supportedVisual:
+                                visibleSupportPositions.includes(
+                                    localPositionIndex,
+                                ),
                         }}
                         blockIndex={blockIndex}
                         orientation={orientation}

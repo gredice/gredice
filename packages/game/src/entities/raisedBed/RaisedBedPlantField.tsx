@@ -5,6 +5,7 @@ import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
 import {
     calculateInGamePlantGeneration,
+    getInGamePlantDefinition,
     getInGamePlantInstanceScale,
     getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
@@ -43,11 +44,18 @@ export function RaisedBedPlantField({
         plantSortId: number | null | undefined;
         plantStatus?: string | null;
         plantSowDate?: string | null;
+        supportedVisual?: boolean;
     };
     orientation: RaisedBedOrientation;
     blockIndex: number;
 }) {
-    const { harvestedVisual, positionIndex, plantSortId, plantSowDate } = field;
+    const {
+        harvestedVisual,
+        positionIndex,
+        plantSortId,
+        plantSowDate,
+        supportedVisual,
+    } = field;
     const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
     const isMock = useGameState((state) => state.isMock);
@@ -133,9 +141,14 @@ export function RaisedBedPlantField({
     const plantInstanceScale = resolvedPlantPreset
         ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;
-    const approximateFieldPlantHeight = resolvedPlantPreset
-        ? getApproximatePlantHeight(resolvedPlantPreset.definition) *
-          plantInstanceScale
+    const plantDefinition = resolvedPlantPreset
+        ? getInGamePlantDefinition(
+              resolvedPlantPreset,
+              supportedVisual === true,
+          )
+        : null;
+    const approximateFieldPlantHeight = plantDefinition
+        ? getApproximatePlantHeight(plantDefinition) * plantInstanceScale
         : 0.25;
     const fieldLod = usePlantLodState(
         fieldGroupRef,
@@ -195,7 +208,9 @@ export function RaisedBedPlantField({
             {fieldLod.visible ? (
                 shouldRenderGeneratedPlants && resolvedPlantPreset ? (
                     <RaisedBedGeneratedPlantBatch
-                        definition={resolvedPlantPreset.definition}
+                        definition={
+                            plantDefinition ?? resolvedPlantPreset.definition
+                        }
                         flowerGrowth={harvestedVisual ? 0.35 : 1}
                         fruitGrowth={harvestedVisual ? 0.1 : 1}
                         instances={generatedPlantInstances}

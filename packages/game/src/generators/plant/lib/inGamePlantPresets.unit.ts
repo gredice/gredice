@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     calculateInGamePlantGeneration,
+    getInGamePlantDefinition,
     getInGamePlantInstanceScale,
     getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
 } from './inGamePlantPresets';
+import { plantTypes } from './plant-definitions';
 import { getNominalMaturePlantHeight } from './plantLodSummary';
 
 test('height-calibrated crops preserve mature height and leaf size in game meters', () => {
@@ -36,6 +38,52 @@ test('height-calibrated crops preserve mature height and leaf size in game meter
             ) < 1e-12,
         );
     }
+});
+
+test('height-calibrated crops grow denser canopies', () => {
+    for (const [label, plantType, expectedLeafCount] of [
+        ['Rajčica', 'tomato', 20],
+        ['Malina', 'raspberry', 41],
+        ['Bamija', 'okra', 16],
+        ['Grah', 'bean', 21],
+        ['Mahuna', 'greenbean', 21],
+        ['Bob', 'broadbean', 19],
+        ['Grašak', 'pea', 21],
+    ] as const) {
+        const preset = resolveInGamePlantPreset([label]);
+
+        assert.ok(preset);
+        assert.equal(
+            preset.definition.development.foliage.count,
+            expectedLeafCount,
+        );
+        assert.ok(
+            expectedLeafCount > plantTypes[plantType].development.foliage.count,
+        );
+    }
+});
+
+test('supported climbing and upright crops use a straighter main stem', () => {
+    const tomato = resolveInGamePlantPreset(['Rajčica']);
+    const cucumber = resolveInGamePlantPreset(['Krastavac']);
+
+    assert.ok(tomato);
+    assert.ok(cucumber);
+    assert.equal(getInGamePlantDefinition(tomato, false), tomato.definition);
+    assert.equal(
+        getInGamePlantDefinition(tomato, true).development.axes
+            .mainStemHorizontalScale,
+        0.04,
+    );
+    assert.equal(
+        getInGamePlantDefinition(cucumber, true).development.axes
+            .mainStemHorizontalScale,
+        0.07,
+    );
+    assert.equal(
+        getInGamePlantDefinition(cucumber, true),
+        getInGamePlantDefinition(cucumber, true),
+    );
 });
 
 test('plants reach full generation at the end of germination and growth', () => {

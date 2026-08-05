@@ -43,10 +43,12 @@ function createHeightCalibratedRuntimeConfig(
     instanceScale: number,
     {
         aliases = [],
+        foliageCountMultiplier,
         leafSizeMeters,
         matureHeightMeters,
     }: {
         aliases?: string[];
+        foliageCountMultiplier: number;
         leafSizeMeters: number;
         matureHeightMeters: number;
     },
@@ -54,6 +56,16 @@ function createHeightCalibratedRuntimeConfig(
     const sourceDefinition = plantTypes[plantType];
     const definition = {
         ...sourceDefinition,
+        development: {
+            ...sourceDefinition.development,
+            foliage: {
+                ...sourceDefinition.development.foliage,
+                count: Math.round(
+                    sourceDefinition.development.foliage.count *
+                        foliageCountMultiplier,
+                ),
+            },
+        },
         leaf: {
             ...sourceDefinition.leaf,
             size: leafSizeMeters / instanceScale,
@@ -86,6 +98,7 @@ const inGamePlantRuntimeConfigs = {
     blueberry: createRuntimeConfig('blueberry', 0.92, 0.34, ['borovnica']),
     raspberry: createHeightCalibratedRuntimeConfig('raspberry', 0.98, 0.34, {
         aliases: ['malina'],
+        foliageCountMultiplier: 1.35,
         leafSizeMeters: 0.16,
         matureHeightMeters: 1.5,
     }),
@@ -97,6 +110,7 @@ const inGamePlantRuntimeConfigs = {
             'cherry tomato',
             'rajcica cherry',
         ],
+        foliageCountMultiplier: 1.55,
         leafSizeMeters: 0.2,
         matureHeightMeters: 1.5,
     }),
@@ -114,6 +128,7 @@ const inGamePlantRuntimeConfigs = {
     artichoke: createRuntimeConfig('artichoke', 0.88, 0.36, ['artičoka']),
     okra: createHeightCalibratedRuntimeConfig('okra', 0.92, 0.3, {
         aliases: ['bamija'],
+        foliageCountMultiplier: 1.45,
         leafSizeMeters: 0.22,
         matureHeightMeters: 1.5,
     }),
@@ -160,21 +175,25 @@ const inGamePlantRuntimeConfigs = {
     thyme: createRuntimeConfig('thyme', 0.92, 0.2, ['timijan']),
     broadbean: createHeightCalibratedRuntimeConfig('broadbean', 0.94, 0.32, {
         aliases: ['bob', 'fava bean'],
+        foliageCountMultiplier: 1.35,
         leafSizeMeters: 0.12,
         matureHeightMeters: 1.2,
     }),
     bean: createHeightCalibratedRuntimeConfig('bean', 0.98, 0.32, {
         aliases: ['grah'],
+        foliageCountMultiplier: 1.5,
         leafSizeMeters: 0.16,
         matureHeightMeters: 1.5,
     }),
     pea: createHeightCalibratedRuntimeConfig('pea', 1.02, 0.28, {
         aliases: ['grašak', 'grasak'],
+        foliageCountMultiplier: 1.4,
         leafSizeMeters: 0.1,
         matureHeightMeters: 1.2,
     }),
     greenbean: createHeightCalibratedRuntimeConfig('greenbean', 1, 0.3, {
         aliases: ['mahuna'],
+        foliageCountMultiplier: 1.5,
         leafSizeMeters: 0.16,
         matureHeightMeters: 1.5,
     }),
@@ -278,6 +297,43 @@ export function getInGamePlantInstanceScale(
         preset.instanceScale *
         (preset.matureHeightMeters === undefined ? densityScale : 1)
     );
+}
+
+const supportedPlantDefinitionCache = new WeakMap<
+    PlantDefinition,
+    PlantDefinition
+>();
+
+export function getInGamePlantDefinition(
+    preset: ResolvedInGamePlantPreset,
+    supported: boolean,
+) {
+    const { definition } = preset;
+    const { habit } = definition.development.axes;
+    if (
+        !supported ||
+        (habit !== 'climbing' && habit !== 'upright' && habit !== 'woody')
+    ) {
+        return definition;
+    }
+
+    const cachedDefinition = supportedPlantDefinitionCache.get(definition);
+    if (cachedDefinition) {
+        return cachedDefinition;
+    }
+
+    const supportedDefinition: PlantDefinition = {
+        ...definition,
+        development: {
+            ...definition.development,
+            axes: {
+                ...definition.development.axes,
+                mainStemHorizontalScale: habit === 'climbing' ? 0.07 : 0.04,
+            },
+        },
+    };
+    supportedPlantDefinitionCache.set(definition, supportedDefinition);
+    return supportedDefinition;
 }
 
 export function calculateInGamePlantGeneration({
