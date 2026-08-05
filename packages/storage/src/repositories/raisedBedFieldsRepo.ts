@@ -1110,13 +1110,30 @@ function summarizePlantCycles(
     positionIndex: number,
     plantEvents: RaisedBedFieldPlantCycleEvent[],
 ) {
-    return splitPlantCycleEvents(plantEvents)
+    const plantCycles = splitPlantCycleEvents(plantEvents)
         .map((plantCycleEvents) =>
             summarizePlantCycle(aggregateId, positionIndex, plantCycleEvents),
         )
         .filter((plantCycle): plantCycle is RaisedBedFieldPlantCycle =>
             Boolean(plantCycle),
         );
+
+    return plantCycles.map((plantCycle, index) => {
+        const nextPlantCycle = plantCycles[index + 1];
+        if (!nextPlantCycle || !plantCycle.active) {
+            return plantCycle;
+        }
+
+        // A later placement is an authoritative lifecycle boundary. Historical
+        // data can contain a missing terminal update before that boundary, but
+        // the superseded cycle must not remain active and block a field that the
+        // current field projection correctly reports as empty or replanted.
+        return {
+            ...plantCycle,
+            active: false,
+            stoppedDate: nextPlantCycle.startedAt,
+        };
+    });
 }
 
 function eventDataRecord(event: RaisedBedFieldPlantCycleEvent) {
