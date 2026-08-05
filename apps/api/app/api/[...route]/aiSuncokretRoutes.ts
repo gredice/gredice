@@ -43,8 +43,10 @@ import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenConte
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroUsd,
+    getSuncokretGatewayBilledCostMicroUsd,
     getSuncokretModel,
     getSuncokretModelRegistry,
+    getSuncokretPricedModel,
     resolveSuncokretMaxOutputTokens,
 } from '../../../lib/ai/suncokretModels';
 import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
@@ -201,6 +203,10 @@ function jsonError(
 function usageTokens(usage: LanguageModelUsage | undefined) {
     return {
         inputTokens: usage?.inputTokens ?? 0,
+        noCacheTokens: usage?.inputTokenDetails.noCacheTokens ?? undefined,
+        cacheReadTokens: usage?.inputTokenDetails.cacheReadTokens ?? undefined,
+        cacheWriteTokens:
+            usage?.inputTokenDetails.cacheWriteTokens ?? undefined,
         outputTokens: usage?.outputTokens ?? 0,
         totalTokens:
             usage?.totalTokens ??
@@ -783,7 +789,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const query = context.req.valid('query');
             const featureFlags = queryFeatureFlags(query);
             const { accountId } = context.get('authContext');
-            const model = getSuncokretModel(query.modelId);
+            const model = await getSuncokretPricedModel(query.modelId);
             const limitState = await getAiChatAccountLimitState(accountId);
 
             const budget = featureFlags.enableSuncokretDebugFlag
@@ -990,7 +996,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 body.debug && body.featureFlags.enableSuncokretDebugFlag,
             );
             const auth = context.get('authContext');
-            const model = getSuncokretModel(body.modelId);
+            const model = await getSuncokretPricedModel(body.modelId);
             if (!model) {
                 const error = jsonError(
                     'ai_model_unavailable',
@@ -1188,14 +1194,49 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             ],
                         },
                     },
-                    onFinish: async ({ totalUsage }) => {
+                    onFinish: async ({ steps, totalUsage }) => {
                         const usage = usageTokens(totalUsage);
+                        let billedTotalMicroUsd: number | null = null;
+                        try {
+                            billedTotalMicroUsd =
+                                await getSuncokretGatewayBilledCostMicroUsd(
+                                    steps,
+                                );
+                            if (billedTotalMicroUsd === null) {
+                                console.warn(
+                                    'Suncokret AI Gateway billed cost is unavailable; using token estimate',
+                                    {
+                                        accountId: auth.accountId,
+                                        conversationId,
+                                        modelId: model.id,
+                                        requestId,
+                                    },
+                                );
+                            }
+                        } catch (error) {
+                            console.warn(
+                                'Suncokret AI Gateway billed cost lookup failed; using token estimate',
+                                {
+                                    accountId: auth.accountId,
+                                    conversationId,
+                                    modelId: model.id,
+                                    requestId,
+                                    error,
+                                },
+                            );
+                        }
                         const cost = await finalizeAiChatUsage({
                             ledgerId: reservation.ledgerId,
                             inputTokens: usage.inputTokens,
+                            noCacheTokens: usage.noCacheTokens,
+                            cacheReadTokens: usage.cacheReadTokens,
+                            cacheWriteTokens: usage.cacheWriteTokens,
                             outputTokens: usage.outputTokens,
                             totalTokens: usage.totalTokens,
                             pricing: model,
+                            ...(billedTotalMicroUsd === null
+                                ? {}
+                                : { billedTotalMicroUsd }),
                         });
                         finalized = true;
                         finishMetadata = {
