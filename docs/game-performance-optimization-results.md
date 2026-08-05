@@ -710,14 +710,14 @@ contract, R8 pipeline, kernel bound, and pass alignment.
 
 ### Global generated-foliage detail budget
 
-Issue `#4322` reserves exact generated L-system geometry for the raised bed
-that the player explicitly opens in close-up. Normal High-quality garden view
-uses deterministic bed-level mid/far clusters instead of independently
-promoting every visible field to exact detail. The selected bed is pinned,
-admitted atomically, and may overflow the global 179-instance budget rather
-than rendering only part of a bed. Interaction priority, projected
-benefit-per-instance ranking, an 8% incumbent hysteresis bias, and stable
-raised-bed IDs keep future competing detail requests deterministic.
+Issue `#4322` introduced a global exact-plant budget for High quality. After the
+developmental plant renderer replaced L-systems, normal High-quality garden
+view may admit nearby raised beds to exact detail when their plants occupy at
+least 8% of the viewport. Admission remains atomic and capped at 179 plant
+instances, while the explicitly selected close-up bed stays pinned and may
+overflow the budget rather than rendering only part of a bed. Interaction
+priority, projected benefit-per-instance ranking, an 8% incumbent hysteresis
+bias, and stable raised-bed IDs keep competing detail requests deterministic.
 
 Mid clusters retain per-plant height, canopy width, dominant foliage and
 accent colors, Lambert scene lighting, and deterministic wind sway. Two
@@ -727,11 +727,13 @@ instance uploads. Front-facing foliage cards submit one transparent pass
 instead of Three's default two-pass double-sided path. Far clusters are
 unchanged. Non-High profiles retain their shared plant-type/LOD background
 batches and original normal-view exact policy. A profiler-only `legacy` query
-keeps that old High policy available for a same-commit comparison; production
-High always reserves exact work for selected close-up.
+bypasses the High detail budget for a same-commit comparison; production High
+admits at most one typical full raised bed in normal view and always preserves
+selected close-up detail.
 
-The three-repeat DPR-2 comparison passed every structural gate on Chromium 149
-using ANGLE/Metal on an Apple M4 Pro:
+The pre-rollout three-repeat DPR-2 comparison that established the budget
+passed every structural gate on Chromium 149 using ANGLE/Metal on an Apple M4
+Pro:
 
 | Normal-view median | Legacy exact | Budgeted clusters | Change |
 | --- | ---: | ---: | ---: |
@@ -743,12 +745,27 @@ using ANGLE/Metal on an Apple M4 Pro:
 | p95 frame | 26.6 ms | 26.2 ms | -1.5% |
 | GPU timer p95 | 19.59 ms | 20.16 ms | neutral/noisy |
 
-All three filled beds and all 537 plants remained visible in both variants.
-The budgeted runs used six bed/LOD cluster batches, reported zero exact or
-pending instances after camera zoom, and submitted 3,354 cluster primitive
-triangles. The hardware GPU p95 ranges overlapped (`19.01-20.61 ms` legacy and
-`19.66-20.35 ms` budgeted), so the measured claim is the large geometry and
-heap reduction rather than a GPU-time win on this machine.
+The 2026-08-05 rollout calibration repeated the same comparison after widening
+High detail to the 8% viewport threshold. All six runs passed on Chromium 149
+using ANGLE/Metal on an Apple M3 Pro:
+
+| Rollout median | Unbudgeted exact | 179-instance budget | Change |
+| --- | ---: | ---: | ---: |
+| Exact generated plants | 537 | 179 | -66.7% |
+| Clustered generated plants | 0 | 358 | remaining plants retained |
+| Draws/render, full scene | 88.1 | 92.0 | +4.4% |
+| Triangles/render, full scene | 250,298 | 89,980 | -64.1% |
+| Sampled JS heap | 77.6 MB | 64.8 MB | -16.5% |
+| p95 frame | 9.4 ms | 8.9 ms | -5.3% |
+| GPU timer p95 | 6.47 ms | 5.48 ms | -15.3% |
+
+All three filled beds and all 537 plants remained visible in both variants. In
+the pre-rollout comparison, the budgeted runs used six bed/LOD cluster batches,
+reported zero exact or pending instances after camera zoom, and submitted 3,354
+cluster primitive triangles. The hardware GPU p95 ranges overlapped
+(`19.01-20.61 ms` legacy and `19.66-20.35 ms` budgeted), so the measured claim
+is the large geometry and heap reduction rather than a GPU-time win on this
+machine.
 
 The selected-bed validation separately opened High-target bed `2`. It retained
 all 179 exact plants across 18 fields, reached fully detailed in `256 ms`,

@@ -67,6 +67,8 @@ import {
 import {
     buildGeneratedPlantRaisedBedBounds,
     getGeneratedPlantBatchKey,
+    HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+    HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
     isGeneratedPlantRaisedBedGroupVisible,
     resolveGeneratedPlantFieldLod,
 } from './generatedPlantFieldLod';
@@ -271,18 +273,20 @@ function resolveGeneratedFieldVisibility({
 }
 
 function useGeneratedPlantFieldLods({
-    allowNormalViewNear,
     detailInstanceBudget,
     focusActive,
     generatedFields,
     interactingRaisedBedId,
+    nearHysteresis,
+    nearThreshold,
     selectedRaisedBedId,
 }: {
-    allowNormalViewNear: boolean;
     detailInstanceBudget: number;
     focusActive: boolean;
     generatedFields: GeneratedPlantField[];
     interactingRaisedBedId: number | null;
+    nearHysteresis?: number;
+    nearThreshold?: number;
     selectedRaisedBedId: number | null;
 }) {
     const camera = useThree((state) => state.camera);
@@ -458,11 +462,12 @@ function useGeneratedPlantFieldLods({
                     lodByFieldKeyRef.current.get(field.fieldKey)
                         ?.requestedLevel ?? 'far';
                 const requestedLevel = resolveGeneratedPlantFieldLod({
-                    allowNormalViewNear,
                     cameraZoom: getOrthographicCameraZoom(camera),
                     currentLevel: previousLevel,
                     focusActive,
                     isSelectedRaisedBed,
+                    nearHysteresis,
+                    nearThreshold,
                     screenOccupancy,
                 });
 
@@ -585,13 +590,14 @@ function useGeneratedPlantFieldLods({
             return current;
         });
     }, [
-        allowNormalViewNear,
         camera,
         detailInstanceBudget,
         focusActive,
         frustum,
         generatedFields.length,
         interactingRaisedBedId,
+        nearHysteresis,
+        nearThreshold,
         projectedPosition,
         projectionViewMatrix,
         raisedBedGroups,
@@ -904,12 +910,18 @@ export function RaisedBedGeneratedPlantFieldBatches({
     const detailInstanceBudget = globalDetailBudgetActive
         ? HIGH_GENERATED_PLANT_DETAIL_INSTANCE_BUDGET
         : generatedPlantInstanceCount;
+    const expandedHighQualityDetail = quality.tier === 'high';
     const { detailBudget, lodByFieldKey: lods } = useGeneratedPlantFieldLods({
-        allowNormalViewNear: !globalDetailBudgetActive,
         detailInstanceBudget,
         focusActive,
         generatedFields,
         interactingRaisedBedId,
+        nearHysteresis: expandedHighQualityDetail
+            ? HIGH_QUALITY_PLANT_NEAR_HYSTERESIS
+            : undefined,
+        nearThreshold: expandedHighQualityDetail
+            ? HIGH_QUALITY_PLANT_NEAR_THRESHOLD
+            : undefined,
         selectedRaisedBedId,
     });
     const detailTransitionTotalsRef = useRef({

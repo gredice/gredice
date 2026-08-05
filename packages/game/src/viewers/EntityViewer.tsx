@@ -155,7 +155,6 @@ export function EntityViewer({
                 <GameFlagsContext.Provider
                     value={{
                         enableDebugHudFlag: debugHud,
-                        enableRainWetOverlayFlag: debugHud,
                     }}
                 >
                     <GameSceneDetailContext.Provider

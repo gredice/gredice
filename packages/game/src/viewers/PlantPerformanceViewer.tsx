@@ -9,7 +9,6 @@ export interface PlantPerformanceViewerProps {
 
 const plantDebugFlags = {
     enableDebugHudFlag: true,
-    enableRainWetOverlayFlag: true,
 };
 
 const plantDebugFreezeTime = new Date('2026-06-02T12:00:00+02:00');
@@ -27,11 +26,7 @@ export function PlantPerformanceViewer({
     className,
     debugHud,
 }: PlantPerformanceViewerProps) {
-    const flags = debugHud
-        ? plantDebugFlags
-        : {
-              enableRainWetOverlayFlag: true,
-          };
+    const flags = debugHud ? plantDebugFlags : undefined;
 
     return (
         <GameSceneDynamic

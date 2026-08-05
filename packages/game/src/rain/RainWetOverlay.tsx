@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, IUniform, Vector3Tuple } from 'three';
 import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
-import { useGameFlags } from '../GameFlagsContext';
 import {
     useRainSurfacePuddleStrengthUniform,
     useRainSurfaceWetnessState,
@@ -88,12 +87,6 @@ void main() {
 `;
 
 export function RainWetOverlay(props: RainWetOverlayProps) {
-    const flags = useGameFlags();
-
-    if (!flags.enableRainWetOverlayFlag) {
-        return null;
-    }
-
     return <RainWetOverlayEffect {...props} />;
 }
 
@@ -101,13 +94,9 @@ export function useRainWetOverlayVisible({
     intensityMultiplier = 1,
     minRain = 0.08,
 }: Pick<RainWetOverlayProps, 'intensityMultiplier' | 'minRain'> = {}) {
-    const flags = useGameFlags();
     const rainAmount = useGameState((state) => state.rainSurfaceIntensity);
 
-    return (
-        flags.enableRainWetOverlayFlag &&
-        rainAmount * intensityMultiplier >= minRain
-    );
+    return rainAmount * intensityMultiplier >= minRain;
 }
 
 export function useRainWetOverlayMaterial({
