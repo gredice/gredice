@@ -1,13 +1,11 @@
 import { directoriesClient } from '@gredice/client';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
-import { BlockGallery } from './BlockGallery';
-import { PlantBlockGallery } from './PlantBlockGallery';
+import { BlockPlantGalleries } from './BlockPlantGalleries';
 
 export const revalidate = 3600; // 1 hour
 export const metadata: Metadata = {
@@ -52,16 +50,8 @@ export default async function BlocksPage() {
                 </Suspense>
             </PageHeader>
             <Suspense>
-                <BlockGallery blocks={blocks} />
+                <BlockPlantGalleries blocks={blocks} plants={plants} />
             </Suspense>
-            <Stack spacing={4} className="mt-8">
-                <Typography level="h3" className="px-2">
-                    Biljke
-                </Typography>
-                <Suspense>
-                    <PlantBlockGallery plants={plants} />
-                </Suspense>
-            </Stack>
         </Stack>
     );
 }
