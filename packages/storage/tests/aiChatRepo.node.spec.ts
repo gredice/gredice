@@ -324,6 +324,7 @@ test('reserveAiChatUsage serializes concurrent reservations for the daily cap', 
         title: 'Suncokret test',
     });
     assert.ok(conversation);
+    const now = new Date('2026-06-21T10:00:00Z');
 
     const results = await Promise.all([
         reserveAiChatUsage({
@@ -331,6 +332,7 @@ test('reserveAiChatUsage serializes concurrent reservations for the daily cap', 
             conversationId,
             estimatedCostMicroEur: 200_000,
             model: 'openai/gpt-5.5',
+            now,
             requestId: randomUUID(),
             userId,
         }),
@@ -339,6 +341,7 @@ test('reserveAiChatUsage serializes concurrent reservations for the daily cap', 
             conversationId,
             estimatedCostMicroEur: 200_000,
             model: 'openai/gpt-5.5',
+            now,
             requestId: randomUUID(),
             userId,
         }),

@@ -589,7 +589,7 @@ export async function reserveAiChatUsage({
     conversationId,
     estimatedCostMicroEur,
     model,
-    now = new Date(),
+    now,
     requestId,
     userId,
 }: {
@@ -606,9 +606,10 @@ export async function reserveAiChatUsage({
             sql`select ${accounts.id} from ${accounts} where ${accounts.id} = ${accountId} for update;`,
         );
 
+        const limitNow = now ?? new Date();
         const limitState = await getAiChatAccountLimitState(
             accountId,
-            now,
+            limitNow,
             tx as DatabaseClient,
         );
         const dailyLimitExceeded =
@@ -644,6 +645,7 @@ export async function reserveAiChatUsage({
             usageDate: limitState.usageDate,
             status: 'reserved',
             reservedMicroEur: estimatedCostMicroEur,
+            createdAt: limitNow,
         });
 
         return {
