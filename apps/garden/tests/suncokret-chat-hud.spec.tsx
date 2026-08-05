@@ -179,6 +179,21 @@ test('production chat hides developer controls and shows visual usage', async ({
     await expect(usage).toContainText('87,5% preostalo');
     await expect(usage).toContainText('96% preostalo');
     await expect(usage).not.toContainText('iskorišteno');
+    const usagePopper = page.locator('[data-suncokret-usage-popper]');
+    await expect(usagePopper).toHaveCSS('z-index', '70');
+    await expect
+        .poll(() =>
+            usage.evaluate((element) => {
+                const bounds = element.getBoundingClientRect();
+                const topElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+
+                return topElement === element || element.contains(topElement);
+            }),
+        )
+        .toBe(true);
     await expect(chat).not.toContainText('USD');
     await expect(chat).not.toContainText('token');
     await expect(chat).not.toContainText('AI vrtni pomoćnik');

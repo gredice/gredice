@@ -35,7 +35,8 @@ export function SuncokretUsageButton({
             align="end"
             side="top"
             sideOffset={8}
-            className="w-72 p-3"
+            className="z-[70] w-72 p-3"
+            data-suncokret-usage-popper
             trigger={
                 <IconButton
                     aria-label={`Preostala AI upotreba: danas ${formatSuncokretUsagePercent(dayRemaining)}, ovaj tjedan ${formatSuncokretUsagePercent(weekRemaining)}`}
