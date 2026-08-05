@@ -19,7 +19,7 @@
         "@react-email/ui": "6.6.9",
         "@tailwindcss/postcss": "4.3.2",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
+        "@types/react": "19.2.18",
         "tailwindcss": "4.3.2",
         "tsx": "4.23.0",
         "typescript": "7.0.2"
@@ -27,7 +27,7 @@
     "dependencies": {
         "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
-        "react": "19.2.7",
+        "react": "19.2.8",
         "react-email": "6.6.9"
     }
 }

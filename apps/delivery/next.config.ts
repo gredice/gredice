@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
         turbopackRustReactCompiler: true,
         typedEnv: true,
         useTypeScriptCli: true,

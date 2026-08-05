@@ -19,7 +19,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
+        "@types/react": "19.2.18",
         "tsx": "4.23.0",
         "typescript": "7.0.2"
     },
@@ -29,7 +29,7 @@
         "@azure/core-lro": "3.3.1",
         "@azure/core-rest-pipeline": "1.22.2",
         "@gredice/storage": "workspace:*",
-        "react": "19.2.7",
+        "react": "19.2.8",
         "react-email": "6.6.9"
     }
 }

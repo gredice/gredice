@@ -19,6 +19,8 @@ import {
     gameProfileSnowSparseWeather,
 } from './profileWeather';
 
+export const instant = false;
+
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
 >;
