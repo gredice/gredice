@@ -1383,7 +1383,7 @@ export function SuncokretChatHud() {
                                         <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                                             {weeklyUsageExhausted
                                                 ? 'Tjedni limit je iskorišten.'
-                                                : 'Dnevni limit je iskorišten.'}{' '}
+                                                : 'Limit za zadnja 24 sata je iskorišten.'}{' '}
                                             Nastavak je moguć{' '}
                                             {formatRetryAt(limit?.retryAt)}.
                                         </div>

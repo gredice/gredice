@@ -27,7 +27,7 @@ export function SuncokretUsageButton({
     const exhaustedUsage = exhausted(day) || exhausted(week);
     const periods = [
         {
-            label: 'Danas',
+            label: 'Zadnja 24 sata',
             period: day,
             detail: 'Vanjski krug',
             tone: 'day',
@@ -49,7 +49,7 @@ export function SuncokretUsageButton({
             data-suncokret-usage-popper
             trigger={
                 <IconButton
-                    aria-label={`Preostala AI upotreba: danas ${formatSuncokretUsagePercent(dayRemaining)}, ovaj tjedan ${formatSuncokretUsagePercent(weekRemaining)}`}
+                    aria-label={`Preostala AI upotreba: zadnja 24 sata ${formatSuncokretUsagePercent(dayRemaining)}, ovaj tjedan ${formatSuncokretUsagePercent(weekRemaining)}`}
                     title="Prikaži preostalu AI upotrebu"
                     type="button"
                     variant="plain"

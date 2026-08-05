@@ -17,7 +17,7 @@ import {
 } from '@gredice/storage';
 import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
-import { sumAiAnalysisCostUsd } from '../../../src/ai/aiAnalyticsCost';
+import { sumAiAnalysisCostEur } from '../../../src/ai/aiAnalyticsCost';
 import {
     analyticsDateKey,
     analyticsTimeZone,
@@ -620,7 +620,7 @@ async function getAnalyticsDataUncached(
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
     );
-    const aiTotalCostUsd = sumAiAnalysisCostUsd(aiEvents);
+    const aiTotalCostEur = sumAiAnalysisCostEur(aiEvents);
 
     return {
         analytics: analyticsResult,
@@ -630,7 +630,7 @@ async function getAnalyticsDataUncached(
         ai: {
             count: aiTotals.count,
             totalTokens: aiTotalTokens,
-            totalCostUsd: aiTotalCostUsd,
+            totalCostEur: aiTotalCostEur,
         },
         sunflowers: sunflowersDailyTotals,
     };

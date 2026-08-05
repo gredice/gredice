@@ -12,7 +12,7 @@ const statusResponse = {
         retryAt: '2026-07-11T00:00:00.000Z',
         blockedReason: null,
         trialChatDaysUsed: 1,
-        trialChatDaysLimit: 5,
+        trialChatDaysLimit: 3,
     },
     usage: {
         day: { usedPercent: 12.5, remainingPercent: 87.5 },
@@ -174,7 +174,7 @@ test('production chat hides developer controls and shows visual usage', async ({
     await expect(chat).not.toContainText('12,5% iskorišteno');
     await page.getByRole('button', { name: /Preostala AI upotreba/ }).click();
     const usage = page.locator('[data-suncokret-usage]');
-    await expect(usage).toContainText('Danas');
+    await expect(usage).toContainText('Zadnja 24 sata');
     await expect(usage).toContainText('Ovaj tjedan');
     await expect(usage).toContainText('87,5% preostalo');
     await expect(usage).toContainText('96% preostalo');
@@ -248,7 +248,7 @@ test('exhausted daily and weekly usage is red and blocks sending', async ({
     await page.getByRole('button', { name: 'Suncokret AI' }).click();
 
     const usageButton = page.getByRole('button', {
-        name: /Preostala AI upotreba: danas 0%, ovaj tjedan 0%/,
+        name: /Preostala AI upotreba: zadnja 24 sata 0%, ovaj tjedan 0%/,
     });
     await expect(usageButton).toHaveClass(/text-red-700/);
     await usageButton.click();

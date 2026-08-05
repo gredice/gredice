@@ -1,6 +1,10 @@
 import {
+    AI_USD_TO_EUR_REFERENCE_RATE,
+    convertAiUsdToEur,
+} from '@gredice/js/ai';
+import {
     type AiChatPricing,
-    calculateAiChatUsageCostMicroUsd,
+    calculateAiChatUsageCostMicroEur,
 } from '@gredice/storage';
 import { gateway } from 'ai';
 
@@ -12,9 +16,19 @@ export type SuncokretModelConfig = AiChatPricing & {
 
 const DEFAULT_MODEL_ID = 'openai/gpt-5.6-luna';
 
+type SuncokretModelUsdConfig = {
+    id: string;
+    label: string;
+    enabled: boolean;
+    inputUsdPerMillionTokens: number;
+    outputUsdPerMillionTokens: number;
+    cachedInputUsdPerMillionTokens?: number;
+    cacheWriteInputUsdPerMillionTokens?: number;
+};
+
 // Used only when AI Gateway metadata cannot be loaded. Normal requests replace
 // these values with Gateway catalog pricing and persist the billed request cost.
-const MODEL_REGISTRY: SuncokretModelConfig[] = [
+const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
     {
         id: 'openai/gpt-5.6-luna',
         label: 'OpenAI GPT-5.6 Luna',
@@ -35,7 +49,7 @@ const MODEL_REGISTRY: SuncokretModelConfig[] = [
 ];
 
 const USD_PER_TOKEN_TO_USD_PER_MILLION = 1_000_000;
-const USD_TO_MICRO_USD = 1_000_000;
+const EUR_TO_MICRO_EUR = 1_000_000;
 
 type GatewayModelMetadata = Awaited<
     ReturnType<typeof gateway.getAvailableModels>
@@ -58,6 +72,45 @@ function usdPerTokenToUsdPerMillion(value: string | undefined) {
     return Number.isFinite(parsed) && parsed >= 0
         ? Number((parsed * USD_PER_TOKEN_TO_USD_PER_MILLION).toPrecision(12))
         : null;
+}
+
+export function getSuncokretUsdToEurRate() {
+    const configured = Number(process.env.SUNCOKRET_AI_USD_TO_EUR_RATE);
+    return Number.isFinite(configured) && configured > 0
+        ? configured
+        : AI_USD_TO_EUR_REFERENCE_RATE;
+}
+
+function usdToEur(value: number) {
+    return Number(
+        convertAiUsdToEur(value, getSuncokretUsdToEurRate()).toPrecision(12),
+    );
+}
+
+function usdModelPricingToEur(
+    model: SuncokretModelUsdConfig,
+): SuncokretModelConfig {
+    return {
+        id: model.id,
+        label: model.label,
+        enabled: model.enabled,
+        inputEurPerMillionTokens: usdToEur(model.inputUsdPerMillionTokens),
+        outputEurPerMillionTokens: usdToEur(model.outputUsdPerMillionTokens),
+        ...(model.cachedInputUsdPerMillionTokens == null
+            ? {}
+            : {
+                  cachedInputEurPerMillionTokens: usdToEur(
+                      model.cachedInputUsdPerMillionTokens,
+                  ),
+              }),
+        ...(model.cacheWriteInputUsdPerMillionTokens == null
+            ? {}
+            : {
+                  cacheWriteInputEurPerMillionTokens: usdToEur(
+                      model.cacheWriteInputUsdPerMillionTokens,
+                  ),
+              }),
+    };
 }
 
 function gatewayPricing(
@@ -90,14 +143,22 @@ function gatewayPricing(
         id: model.id,
         label: model.label,
         enabled: model.enabled,
-        inputUsdPerMillionTokens,
-        outputUsdPerMillionTokens,
+        inputEurPerMillionTokens: usdToEur(inputUsdPerMillionTokens),
+        outputEurPerMillionTokens: usdToEur(outputUsdPerMillionTokens),
         ...(cachedInputUsdPerMillionTokens === null
             ? {}
-            : { cachedInputUsdPerMillionTokens }),
+            : {
+                  cachedInputEurPerMillionTokens: usdToEur(
+                      cachedInputUsdPerMillionTokens,
+                  ),
+              }),
         ...(cacheWriteInputUsdPerMillionTokens === null
             ? {}
-            : { cacheWriteInputUsdPerMillionTokens }),
+            : {
+                  cacheWriteInputEurPerMillionTokens: usdToEur(
+                      cacheWriteInputUsdPerMillionTokens,
+                  ),
+              }),
     };
 }
 
@@ -109,13 +170,14 @@ function envModelAllowlist() {
 }
 
 export function getSuncokretModelRegistry() {
+    const registry = MODEL_REGISTRY_USD.map(usdModelPricingToEur);
     const allowlist = envModelAllowlist();
     if (allowlist.length === 0) {
-        return MODEL_REGISTRY;
+        return registry;
     }
 
     const allowed = new Set(allowlist);
-    return MODEL_REGISTRY.map((model) => ({
+    return registry.map((model) => ({
         ...model,
         enabled: model.enabled && allowed.has(model.id),
     }));
@@ -190,7 +252,7 @@ export function suncokretGatewayGenerationIds(
     );
 }
 
-export async function getSuncokretGatewayBilledCostMicroUsd(
+export async function getSuncokretGatewayBilledCostMicroEur(
     steps: readonly SuncokretGatewayStep[],
     loadGeneration: (id: string) => Promise<GatewayGenerationInfo> = (id) =>
         gateway.getGenerationInfo({ id }),
@@ -207,7 +269,7 @@ export async function getSuncokretGatewayBilledCostMicroUsd(
     );
 
     return Number.isFinite(totalCostUsd) && totalCostUsd >= 0
-        ? Math.round(totalCostUsd * USD_TO_MICRO_USD)
+        ? Math.round(usdToEur(totalCostUsd) * EUR_TO_MICRO_EUR)
         : null;
 }
 
@@ -215,7 +277,7 @@ export function estimateSuncokretPromptTokens(value: unknown) {
     return Math.max(1, Math.ceil(JSON.stringify(value).length / 4));
 }
 
-export function estimateSuncokretRequestCostMicroUsd({
+export function estimateSuncokretRequestCostMicroEur({
     inputTokens,
     maxOutputTokens,
     model,
@@ -224,28 +286,28 @@ export function estimateSuncokretRequestCostMicroUsd({
     maxOutputTokens: number;
     model: SuncokretModelConfig;
 }) {
-    return calculateAiChatUsageCostMicroUsd({
+    return calculateAiChatUsageCostMicroEur({
         inputTokens,
         outputTokens: maxOutputTokens,
         pricing: model,
-    }).totalMicroUsd;
+    }).totalMicroEur;
 }
 
 export function resolveSuncokretMaxOutputTokens({
     estimatedInputTokens,
     model,
-    remainingMicroUsd,
+    remainingMicroEur,
 }: {
     estimatedInputTokens: number;
     model: SuncokretModelConfig;
-    remainingMicroUsd: number;
+    remainingMicroEur: number;
 }) {
-    const inputCost = calculateAiChatUsageCostMicroUsd({
+    const inputCost = calculateAiChatUsageCostMicroEur({
         inputTokens: estimatedInputTokens,
         outputTokens: 0,
         pricing: model,
-    }).inputMicroUsd;
-    const remainingForOutput = remainingMicroUsd - inputCost;
+    }).inputMicroEur;
+    const remainingForOutput = remainingMicroEur - inputCost;
     if (remainingForOutput <= 0) {
         return 0;
     }
@@ -254,7 +316,7 @@ export function resolveSuncokretMaxOutputTokens({
         0,
         Math.min(
             2048,
-            Math.floor(remainingForOutput / model.outputUsdPerMillionTokens),
+            Math.floor(remainingForOutput / model.outputEurPerMillionTokens),
         ),
     );
 }

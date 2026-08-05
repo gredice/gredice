@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-    getSuncokretGatewayBilledCostMicroUsd,
+    getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretPricedModel,
     suncokretGatewayGenerationIds,
@@ -20,20 +20,24 @@ function withModelEnv(
     env: {
         defaultModel?: string;
         allowlist?: string;
+        usdToEurRate?: string;
     },
     callback: () => void,
 ) {
     const previousDefault = process.env.SUNCOKRET_AI_DEFAULT_MODEL;
     const previousAllowlist = process.env.SUNCOKRET_AI_MODEL_ALLOWLIST;
+    const previousUsdToEurRate = process.env.SUNCOKRET_AI_USD_TO_EUR_RATE;
 
     setEnvValue('SUNCOKRET_AI_DEFAULT_MODEL', env.defaultModel);
     setEnvValue('SUNCOKRET_AI_MODEL_ALLOWLIST', env.allowlist);
+    setEnvValue('SUNCOKRET_AI_USD_TO_EUR_RATE', env.usdToEurRate);
 
     try {
         callback();
     } finally {
         setEnvValue('SUNCOKRET_AI_DEFAULT_MODEL', previousDefault);
         setEnvValue('SUNCOKRET_AI_MODEL_ALLOWLIST', previousAllowlist);
+        setEnvValue('SUNCOKRET_AI_USD_TO_EUR_RATE', previousUsdToEurRate);
     }
 }
 
@@ -52,8 +56,24 @@ test('getSuncokretModel falls back to the first enabled model for automatic sele
             const model = getSuncokretModel();
 
             assert.equal(model?.id, 'openai/gpt-5.6-luna');
-            assert.equal(model?.inputUsdPerMillionTokens, 0.2);
-            assert.equal(model?.outputUsdPerMillionTokens, 1.2);
+            assert.equal(model?.inputEurPerMillionTokens, 0.176);
+            assert.equal(model?.outputEurPerMillionTokens, 1.056);
+        },
+    );
+});
+
+test('getSuncokretModel applies the configured USD to EUR rate', () => {
+    withModelEnv(
+        {
+            allowlist: 'openai/gpt-5.6-luna',
+            defaultModel: 'openai/gpt-5.6-luna',
+            usdToEurRate: '0.9',
+        },
+        () => {
+            const model = getSuncokretModel();
+
+            assert.equal(model?.inputEurPerMillionTokens, 0.18);
+            assert.equal(model?.outputEurPerMillionTokens, 1.08);
         },
     );
 });
@@ -99,10 +119,10 @@ test('getSuncokretPricedModel uses current AI Gateway catalog pricing', async ()
                 }),
             );
 
-            assert.equal(model?.inputUsdPerMillionTokens, 0.15);
-            assert.equal(model?.outputUsdPerMillionTokens, 0.9);
-            assert.equal(model?.cachedInputUsdPerMillionTokens, 0.015);
-            assert.equal(model?.cacheWriteInputUsdPerMillionTokens, 0.19);
+            assert.equal(model?.inputEurPerMillionTokens, 0.132);
+            assert.equal(model?.outputEurPerMillionTokens, 0.792);
+            assert.equal(model?.cachedInputEurPerMillionTokens, 0.0132);
+            assert.equal(model?.cacheWriteInputEurPerMillionTokens, 0.1672);
         },
     );
 });
@@ -131,7 +151,7 @@ test('Suncokret Gateway billed cost sums unique generation costs', async () => {
         'gen_two',
     ]);
     assert.equal(
-        await getSuncokretGatewayBilledCostMicroUsd(steps, async (id) => ({
+        await getSuncokretGatewayBilledCostMicroEur(steps, async (id) => ({
             id,
             totalCost: id === 'gen_one' ? 0.0123451 : 0.0000001,
             upstreamInferenceCost: 0,
@@ -151,7 +171,7 @@ test('Suncokret Gateway billed cost sums unique generation costs', async () => {
             cacheCreationTokens: 0,
             billableWebSearchCalls: 0,
         })),
-        12_345,
+        10_864,
     );
 });
 
@@ -159,19 +179,23 @@ async function withModelEnvAsync(
     env: {
         defaultModel?: string;
         allowlist?: string;
+        usdToEurRate?: string;
     },
     callback: () => Promise<void>,
 ) {
     const previousDefault = process.env.SUNCOKRET_AI_DEFAULT_MODEL;
     const previousAllowlist = process.env.SUNCOKRET_AI_MODEL_ALLOWLIST;
+    const previousUsdToEurRate = process.env.SUNCOKRET_AI_USD_TO_EUR_RATE;
 
     setEnvValue('SUNCOKRET_AI_DEFAULT_MODEL', env.defaultModel);
     setEnvValue('SUNCOKRET_AI_MODEL_ALLOWLIST', env.allowlist);
+    setEnvValue('SUNCOKRET_AI_USD_TO_EUR_RATE', env.usdToEurRate);
 
     try {
         await callback();
     } finally {
         setEnvValue('SUNCOKRET_AI_DEFAULT_MODEL', previousDefault);
         setEnvValue('SUNCOKRET_AI_MODEL_ALLOWLIST', previousAllowlist);
+        setEnvValue('SUNCOKRET_AI_USD_TO_EUR_RATE', previousUsdToEurRate);
     }
 }

@@ -1,5 +1,17 @@
 const MARKDOWN_LINK_DESTINATION_PATTERN = /\]\([^)]*\)/g;
 
+// ECB reference rates fluctuate daily. AI provider prices arrive in USD, so
+// this operational reference can be overridden at runtime where environment
+// configuration is available.
+export const AI_USD_TO_EUR_REFERENCE_RATE = 0.88;
+
+export function convertAiUsdToEur(
+    value: number,
+    rate = AI_USD_TO_EUR_REFERENCE_RATE,
+) {
+    return value * rate;
+}
+
 const RAW_OPERATION_URL_PATTERN =
     /\b(?:https?:\/\/)?(?:www\.)?gredice\.com\/radnje\/[^\s)\]]+/gi;
 
