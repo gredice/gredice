@@ -17,7 +17,8 @@ import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     type ResolvedInGamePlantPreset,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
@@ -787,7 +788,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 const plantGeneration = calculateInGamePlantGeneration({
                     currentTime,
                     sowDate: field.plantSowDate ?? '',
-                    lifecycleWindowDays: getPlantLifecycleWindowDays({
+                    lifecycleWindowDays: getPlantMaturityWindowDays({
                         germinationWindowMax:
                             highTargetAttributes?.germinationWindowMax ??
                             sort?.information.plant.attributes
@@ -795,19 +796,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         growthWindowMax:
                             highTargetAttributes?.growthWindowMax ??
                             sort?.information.plant.attributes?.growthWindowMax,
-                        harvestWindowMax:
-                            highTargetAttributes?.harvestWindowMax ??
-                            sort?.information.plant.attributes
-                                ?.harvestWindowMax,
                     }),
                     growthMultiplier: resolvedPlantPreset.growthMultiplier,
                 });
-                const plantInstanceScale =
-                    resolvedPlantPreset.instanceScale *
-                    Math.max(
-                        0.72,
-                        1 - Math.max(0, safePlantsPerRow - 2) * 0.12,
-                    );
+                const plantInstanceScale = getInGamePlantInstanceScale(
+                    resolvedPlantPreset,
+                    safePlantsPerRow,
+                );
                 const fieldPosition = getFieldPosition({
                     blockIndex,
                     blockPosition: block.position,

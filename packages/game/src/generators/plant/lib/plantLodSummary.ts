@@ -29,6 +29,33 @@ function getLifecycleGrowth(
     return THREE.MathUtils.smoothstep(generation, start, matureAt);
 }
 
+export function getNominalMaturePlantHeight(plantDefinition: PlantDefinition) {
+    const { development } = plantDefinition;
+    const isBasal =
+        development.architecture === 'rosette' ||
+        development.architecture === 'clump';
+    const isProstrate = development.axes.habit === 'prostrate';
+    const storageHeight = development.storage
+        ? plantDefinition.vegetable.baseSize *
+          development.storage.sizeScale *
+          Math.max(0.5, development.storage.aboveSoilFraction)
+        : 0;
+    const basalFoliageHeight =
+        plantDefinition.leaf.size *
+        (1.05 + development.foliage.petioleLengthScale * 0.5);
+    const axialFoliageHeight =
+        plantDefinition.height *
+            development.axes.internodeLengthScale *
+            (isProstrate ? 0.18 : 0.98) +
+        plantDefinition.leaf.size;
+
+    return Math.max(
+        isBasal ? basalFoliageHeight : axialFoliageHeight,
+        storageHeight,
+        0.16,
+    );
+}
+
 export function buildApproximatePlantLodSummary({
     flowerGrowth,
     fruitGrowth,
@@ -58,24 +85,7 @@ export function buildApproximatePlantLodSummary({
         development.architecture === 'rosette' ||
         development.architecture === 'clump';
     const isProstrate = development.axes.habit === 'prostrate';
-    const storageHeight = development.storage
-        ? plantDefinition.vegetable.baseSize *
-          development.storage.sizeScale *
-          Math.max(0.5, development.storage.aboveSoilFraction)
-        : 0;
-    const basalFoliageHeight =
-        plantDefinition.leaf.size *
-        (1.05 + development.foliage.petioleLengthScale * 0.5);
-    const axialFoliageHeight =
-        plantDefinition.height *
-            development.axes.internodeLengthScale *
-            (isProstrate ? 0.18 : 0.98) +
-        plantDefinition.leaf.size;
-    const matureHeight = Math.max(
-        isBasal ? basalFoliageHeight : axialFoliageHeight,
-        storageHeight,
-        0.16,
-    );
+    const matureHeight = getNominalMaturePlantHeight(plantDefinition);
     const minimumHeight = Math.max(
         plantDefinition.vegetable.baseSize * 1.2,
         plantDefinition.leaf.size * (isBasal ? 1.1 : 0.7),

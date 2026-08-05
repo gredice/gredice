@@ -5,7 +5,8 @@ import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
@@ -105,20 +106,18 @@ export function RaisedBedPlantField({
         sortData?.information.plant.information?.latinName,
         sortData?.information.plant.information?.name,
     ]);
-    const lifecycleWindowDays = getPlantLifecycleWindowDays({
+    const maturityWindowDays = getPlantMaturityWindowDays({
         germinationWindowMax:
             sortData?.information.plant.attributes?.germinationWindowMax,
         growthWindowMax:
             sortData?.information.plant.attributes?.growthWindowMax,
-        harvestWindowMax:
-            sortData?.information.plant.attributes?.harvestWindowMax,
     });
     const plantGeneration =
         plantSowDate && resolvedPlantPreset
             ? calculateInGamePlantGeneration({
                   currentTime,
                   sowDate: plantSowDate,
-                  lifecycleWindowDays,
+                  lifecycleWindowDays: maturityWindowDays,
                   growthMultiplier: resolvedPlantPreset.growthMultiplier,
               })
             : 0;
@@ -132,8 +131,7 @@ export function RaisedBedPlantField({
             field.plantStatus === 'ready' ||
             field.plantStatus === 'harvested');
     const plantInstanceScale = resolvedPlantPreset
-        ? resolvedPlantPreset.instanceScale *
-          Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
+        ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;
     const approximateFieldPlantHeight = resolvedPlantPreset
         ? getApproximatePlantHeight(resolvedPlantPreset.definition) *
