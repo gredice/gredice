@@ -1,6 +1,8 @@
 import { PlantCatalogPerformanceViewerDynamic } from './PlantCatalogPerformanceViewerDynamic';
 import { PlantPerformanceViewerDynamic } from './PlantPerformanceViewerDynamic';
 
+export const instant = false;
+
 type DebugPlantsSearchParams = Promise<{
     catalog?: string | string[];
     labels?: string | string[];

@@ -1,8 +1,10 @@
 import { SignedIn, SignedOut } from '@gredice/ui/auth';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
+import { Suspense } from 'react';
 import LoginModal from '../../components/auth/LoginModal';
 import { GardenOverview2DWithAnalytics } from '../../components/game/GardenOverview2DWithAnalytics';
+import { GardenRouteLoading } from '../../components/game/GardenRouteLoading';
 import { getGardenGameFlags } from '../getGardenGameFlags';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
@@ -22,7 +24,15 @@ export const viewport: Viewport = {
     width: 'device-width',
 };
 
-export default async function GardenOverviewPage() {
+export default function GardenOverviewPage() {
+    return (
+        <Suspense fallback={<GardenRouteLoading />}>
+            <GardenOverview />
+        </Suspense>
+    );
+}
+
+async function GardenOverview() {
     const cookieStore = await cookies();
     const suppressOpeningHud =
         cookieStore.get(impersonationFlagCookieName)?.value === '1';
