@@ -32,6 +32,7 @@ import dynamic from 'next/dynamic';
 import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
+import { PlantReferencePicker } from './PlantReferencePicker';
 
 const CommunityMarkdownInput = dynamic(
     () =>
@@ -1079,6 +1080,20 @@ function FieldInput({
     }
 
     if (field.controlType === 'reference' && field.multiple) {
+        if (field.dataType === 'ref:plant' && field.options) {
+            return (
+                <PlantReferencePicker
+                    id={id}
+                    label={field.publicLabel}
+                    onValueChange={(values) => onChange(values.join('\n'))}
+                    options={field.options}
+                    selectedValues={referenceListFromText(
+                        typeof value === 'string' ? value : '',
+                    )}
+                />
+            );
+        }
+
         return (
             <textarea
                 className={cx(textareaControlClassName, 'min-h-24')}

@@ -664,13 +664,24 @@ test('community editable registry resolves allowed plant and operation fields', 
         entityId: relationshipPlantId,
         sectionKey: 'relationships',
     });
+    const companionsField = relationshipFields.find(
+        (field) => field.fieldKey === 'plant.relationships.companions',
+    );
+    assert.ok(companionsField);
+    assert.equal(companionsField.controlType, 'reference');
+    assert.ok(companionsField.multiple);
+    assert.equal(
+        companionsField.currentValue,
+        JSON.stringify([String(companionId)]),
+    );
     assert.ok(
-        relationshipFields.some(
-            (field) =>
-                field.fieldKey === 'plant.relationships.companions' &&
-                field.controlType === 'reference' &&
-                field.multiple &&
-                field.currentValue === JSON.stringify([String(companionId)]),
+        companionsField.options?.some(
+            (option) => option.value === String(companionId),
+        ),
+    );
+    assert.ok(
+        !companionsField.options?.some(
+            (option) => option.value === String(relationshipPlantId),
         ),
     );
     assert.ok(

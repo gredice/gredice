@@ -470,18 +470,79 @@ async function operationSuggestionOptions(
         .sort((left, right) => left.label.localeCompare(right.label, 'hr'));
 }
 
+type CommunityEditableFieldOptions = NonNullable<
+    CommunityEditableFieldDefinition['options']
+>;
+
+function referenceEntityType(dataType: string) {
+    return dataType.startsWith('ref:') ? dataType.slice('ref:'.length) : null;
+}
+
+async function multipleReferenceOptions(
+    snapshot: CommunityEditableFieldSnapshot,
+    sourceEntity: EntityRaw,
+    optionsByEntityType: Map<string, Promise<CommunityEditableFieldOptions>>,
+) {
+    if (snapshot.controlType !== 'reference' || !snapshot.multiple) {
+        return snapshot.options;
+    }
+
+    const targetEntityType = referenceEntityType(snapshot.dataType);
+    if (!targetEntityType) {
+        return snapshot.options;
+    }
+
+    let options = optionsByEntityType.get(targetEntityType);
+    if (!options) {
+        options = getEntitiesRaw(targetEntityType, 'published').then(
+            (entities) =>
+                entities
+                    .filter(
+                        (entity) =>
+                            entity.entityTypeName === targetEntityType &&
+                            !(
+                                sourceEntity.entityTypeName ===
+                                    targetEntityType &&
+                                sourceEntity.id === entity.id
+                            ),
+                    )
+                    .map((entity) => ({
+                        value: String(entity.id),
+                        label: entityLabel(entity),
+                    }))
+                    .sort((left, right) =>
+                        left.label.localeCompare(right.label, 'hr'),
+                    ),
+        );
+        optionsByEntityType.set(targetEntityType, options);
+    }
+
+    return options;
+}
+
 async function resolveFieldSnapshotForResponse(
     entity: EntityRaw,
     field: CommunityEditableFieldDefinition,
-) {
+    referenceOptionsByEntityType: Map<
+        string,
+        Promise<CommunityEditableFieldOptions>
+    >,
+): Promise<CommunityEditableFieldSnapshot> {
     const snapshot = resolveFieldSnapshot(entity, field);
-    if (field.controlType !== 'operationSuggestion') {
-        return snapshot;
+    if (field.controlType === 'operationSuggestion') {
+        return {
+            ...snapshot,
+            options: await operationSuggestionOptions(field),
+        };
     }
 
     return {
         ...snapshot,
-        options: await operationSuggestionOptions(field),
+        options: await multipleReferenceOptions(
+            snapshot,
+            entity,
+            referenceOptionsByEntityType,
+        ),
     };
 }
 
@@ -494,6 +555,10 @@ export async function getCommunityEditableFieldsForEntity(input: {
         input.entityTypeName,
         input.entityId,
     );
+    const referenceOptionsByEntityType = new Map<
+        string,
+        Promise<CommunityEditableFieldOptions>
+    >();
 
     const fields = await Promise.all(
         getCommunityEditableFieldDefinitions(
@@ -501,7 +566,11 @@ export async function getCommunityEditableFieldsForEntity(input: {
             input.sectionKey,
         ).map(async (field) => {
             try {
-                return await resolveFieldSnapshotForResponse(entity, field);
+                return await resolveFieldSnapshotForResponse(
+                    entity,
+                    field,
+                    referenceOptionsByEntityType,
+                );
             } catch (error) {
                 if (error instanceof CommunityEditRequestError) {
                     return null;
