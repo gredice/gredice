@@ -21,6 +21,7 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
+import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
 
 export const mockPlantPresetLabelsBySortId: Record<number, string> = {
     219: 'pepper',
@@ -134,10 +135,10 @@ export function RaisedBedPlantField({
         : plantGeneration;
     const shouldRenderGeneratedPlants =
         Boolean(resolvedPlantPreset) &&
-        Boolean(plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested');
+        shouldRenderRaisedBedPlant({
+            plantSowDate,
+            plantStatus: field.plantStatus,
+        });
     const plantInstanceScale = resolvedPlantPreset
         ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;

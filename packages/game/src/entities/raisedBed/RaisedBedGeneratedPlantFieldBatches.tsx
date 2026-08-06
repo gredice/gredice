@@ -84,6 +84,7 @@ import {
 } from './RaisedBedGeneratedPlantClusterBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
+import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
@@ -202,15 +203,6 @@ function getGeneratedPlantInstanceSignature(
         instance.scale,
         ...instance.position,
     ].join(':');
-}
-
-function shouldRenderGeneratedPlantField(field: DisplayedRaisedBedField) {
-    return (
-        Boolean(field.plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested')
-    );
 }
 
 function getFieldPosition({
@@ -780,7 +772,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 if (
                     !plantSortId ||
                     !resolvedPlantPreset ||
-                    !shouldRenderGeneratedPlantField(field)
+                    !shouldRenderRaisedBedPlant(field)
                 ) {
                     continue;
                 }
