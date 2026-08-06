@@ -66,6 +66,19 @@ export function isRaisedBedPhotoOperationLabel(value?: string | null) {
     );
 }
 
+export function isRaisedBedPhotoOperationInformation(
+    information:
+        | { label?: string | null; name?: string | null }
+        | null
+        | undefined,
+    stableOperationName: string,
+) {
+    return (
+        information?.name === stableOperationName ||
+        isRaisedBedPhotoOperationLabel(information?.label)
+    );
+}
+
 function matchSelectionToTarget(
     item: BulkPhotoSelectionItem,
     targets: BulkPhotoOperationTarget[],

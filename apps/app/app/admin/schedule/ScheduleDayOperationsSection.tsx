@@ -1,13 +1,14 @@
 import {
     getAssignableFarmUsersByOperationIds,
     getFarms,
+    RAISED_BED_PHOTO_OPERATION_NAME,
 } from '@gredice/storage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import {
     type BulkPhotoOperationTarget,
-    isRaisedBedPhotoOperationLabel,
+    isRaisedBedPhotoOperationInformation,
 } from './bulkPhotoOperationImportModel';
 import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
@@ -83,14 +84,11 @@ export async function ScheduleDayOperationsSection({
 
     const photoOperationEntityIds = new Set(
         (operationsData ?? [])
-            .filter(
-                (operationData) =>
-                    isRaisedBedPhotoOperationLabel(
-                        operationData.information?.label,
-                    ) ||
-                    isRaisedBedPhotoOperationLabel(
-                        operationData.information?.name,
-                    ),
+            .filter((operationData) =>
+                isRaisedBedPhotoOperationInformation(
+                    operationData.information,
+                    RAISED_BED_PHOTO_OPERATION_NAME,
+                ),
             )
             .map((operationData) => operationData.id),
     );
