@@ -156,7 +156,16 @@ export function buildDevelopmentalPlantRenderData({
     let foliageSumY = 0;
     let accentSamples = 0;
     let accentSumY = 0;
-    let accentColor: string | undefined;
+    const accentColorSum = new THREE.Color(0, 0, 0);
+    let accentColorWeight = 0;
+
+    const trackAccentColor = (color: THREE.Color, radius: number) => {
+        const weight = Math.max(radius * radius, Number.EPSILON);
+        accentColorSum.r += color.r * weight;
+        accentColorSum.g += color.g * weight;
+        accentColorSum.b += color.b * weight;
+        accentColorWeight += weight;
+    };
 
     const trackPosition = (position: THREE.Vector3, radius = 0) => {
         maxHeight = Math.max(maxHeight, position.y + radius);
@@ -254,7 +263,10 @@ export function buildDevelopmentalPlantRenderData({
                     getTransformRadius(organ.transform) * flowerGrowth;
                 accentSamples += 1;
                 accentSumY += position.y;
-                accentColor = plantDefinition.flower.color;
+                trackAccentColor(
+                    new THREE.Color(plantDefinition.flower.color),
+                    radius,
+                );
                 trackPosition(position, radius);
                 if (renderDetailedGeometry) {
                     flowers.push(
@@ -278,16 +290,19 @@ export function buildDevelopmentalPlantRenderData({
 
                 const radius =
                     getTransformRadius(organ.transform) * visibleGrowth;
+                const color = new THREE.Color(
+                    resolveVegetableColor(
+                        organ.produceType,
+                        organ.developmentStage,
+                    ),
+                );
                 accentSamples += 1;
                 accentSumY += Math.max(0.04, position.y);
-                accentColor = resolveVegetableColor(
-                    organ.produceType,
-                    organ.developmentStage,
-                );
+                trackAccentColor(color, radius);
                 trackPosition(position, radius);
                 if (renderDetailedGeometry) {
                     vegetables.push({
-                        color: new THREE.Color(accentColor),
+                        color,
                         growth: visibleGrowth,
                         matrix: toMatrix(organ.transform, position),
                         type: organ.produceType,
@@ -325,6 +340,13 @@ export function buildDevelopmentalPlantRenderData({
             }
         }
     }
+
+    const accentColor =
+        accentColorWeight > 0
+            ? `#${accentColorSum
+                  .multiplyScalar(1 / accentColorWeight)
+                  .getHexString()}`
+            : undefined;
 
     dominantColor.lerp(baseLeafColor, showLeaves ? 0.68 : 0.2);
     if (accentColor) {

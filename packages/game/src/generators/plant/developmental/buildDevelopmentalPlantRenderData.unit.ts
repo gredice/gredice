@@ -288,6 +288,10 @@ test('gradually ripens tomato produce to deep red at maturity', () => {
 
     assert.ok(ripeningColors.size > 1);
     assert.ok([...ripeningColors].every((color) => color !== 'd62828'));
+    assert.notEqual(
+        ripeningTomato.lodSummary.accentColor,
+        `#${ripeningTomato.vegetables.at(-1)?.color.getHexString()}`,
+    );
     assert.deepEqual([...ripeColors], ['d62828']);
     assert.equal(ripeTomato.lodSummary.accentColor, '#d62828');
 });
