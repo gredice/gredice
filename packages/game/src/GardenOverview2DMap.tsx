@@ -1,10 +1,10 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { cx } from '@gredice/ui/utils';
 import { type CSSProperties, useMemo, useRef } from 'react';
 import { useHudPlacementPreview } from './controls/useHudPlacementPreview';
+import { GardenOverview2DBlockImage } from './GardenOverview2DBlockImage';
 import {
     createGardenOverview2DLayout,
     type GardenOverview2DGridArea,
@@ -228,7 +228,7 @@ export function GardenOverview2DMap({
                                 )}
                                 style={gridAreaStyle(item, previewTrackPadding)}
                             >
-                                <BlockImage
+                                <GardenOverview2DBlockImage
                                     blockName={item.block.name}
                                     alt={
                                         block?.information.label ??
@@ -287,7 +287,7 @@ export function GardenOverview2DMap({
                                 previewTrackPadding,
                             )}
                         >
-                            <BlockImage
+                            <GardenOverview2DBlockImage
                                 blockName={activeHudPlacementDrag.blockName}
                                 alt={activeHudPlacementDrag.blockName}
                                 draggable={false}

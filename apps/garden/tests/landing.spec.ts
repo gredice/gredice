@@ -517,6 +517,20 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     const overview = page.getByRole('region', {
         name: 'Tlocrt vrta Testni vrt',
     });
+    const topDownBlockImages = overview.locator('img[src*="top-down"]');
+    await expect(topDownBlockImages).toHaveCount(6);
+    await expect
+        .poll(() =>
+            topDownBlockImages.evaluateAll((images) =>
+                images.every(
+                    (image) =>
+                        image instanceof HTMLImageElement &&
+                        image.complete &&
+                        image.naturalWidth > 0,
+                ),
+            ),
+        )
+        .toBe(true);
     const overviewScrollport = page.locator('[data-garden-overview-2d]');
     await expect(overview).toHaveAttribute('data-preview-track-padding', '2');
     const initialScrollBounds = await overviewScrollport.boundingBox();
