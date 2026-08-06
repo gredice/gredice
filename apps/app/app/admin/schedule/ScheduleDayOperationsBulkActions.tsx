@@ -12,6 +12,8 @@ import {
     BulkCancelRaisedBedButton,
     buildOperationCancelFormData,
 } from './BulkCancelRaisedBedButton';
+import { BulkPhotoOperationImportModal } from './BulkPhotoOperationImportModal';
+import type { BulkPhotoOperationTarget } from './bulkPhotoOperationImportModel';
 import {
     createOperationAssignedUsers,
     isDayBulkOperationApprovalTargetVisible,
@@ -42,12 +44,14 @@ type OperationCancelTarget = {
 };
 
 interface ScheduleDayOperationsBulkActionsProps {
+    photoOperationTargets: BulkPhotoOperationTarget[];
     operationsToApprove: OperationApprovalTarget[];
     operationsToAssign: OperationAssignmentTarget[];
     operationsToCancel: OperationCancelTarget[];
 }
 
 export function ScheduleDayOperationsBulkActions({
+    photoOperationTargets,
     operationsToApprove,
     operationsToAssign,
     operationsToCancel,
@@ -70,6 +74,7 @@ export function ScheduleDayOperationsBulkActions({
 
     return (
         <>
+            <BulkPhotoOperationImportModal targets={photoOperationTargets} />
             <BulkApproveRaisedBedButton
                 physicalId="dan"
                 fields={[]}
