@@ -151,6 +151,10 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         publicPath: KnownPages.Plant(alias),
                     }}
                 />
+                <PlantSortsList
+                    basePlantName={plant.information.name}
+                    basePlantId={plant.id}
+                />
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (
@@ -181,10 +185,6 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         publicPath: KnownPages.Plant(alias),
                     }}
                     relationships={plant.relationships}
-                />
-                <PlantSortsList
-                    basePlantName={plant.information.name}
-                    basePlantId={plant.id}
                 />
                 {recipes.length > 0 && (
                     <Stack spacing={4}>
