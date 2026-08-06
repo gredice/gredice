@@ -570,6 +570,38 @@ test('community editable registry resolves allowed plant and operation fields', 
                 (field) => field.fieldKey === 'operation.application',
             ),
     );
+    for (const entityTypeName of ['plantDisease', 'plantPest']) {
+        const healthSections = getCommunityEditableSections(entityTypeName);
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'overview')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey ===
+                        `${entityTypeName}.short-description`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'symptoms')
+                ?.fields.some(
+                    (field) => field.fieldKey === `${entityTypeName}.symptoms`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'relationships')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey === `${entityTypeName}.affected-plants`,
+                ),
+        );
+        assert.equal(
+            healthSections.find((section) => section.key === 'operations')
+                ?.fields.length,
+            3,
+        );
+    }
 
     const plantId = await createPublishedPlant();
     const plantFields = await getCommunityEditableFieldsForEntity({
@@ -785,6 +817,104 @@ test('community editable registry resolves allowed plant and operation fields', 
     );
 });
 
+test('community editing resolves disease content, affected plants, and public operations', async () => {
+    await fixture();
+    await upsertEntityType({ name: 'plantDisease', label: 'Bolest' });
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        entityTypeName: 'plantDisease',
+        dataType: 'text',
+    });
+    const symptomsDefinitionId = await createAttributeDefinition({
+        category: 'symptoms',
+        name: 'symptoms',
+        label: 'Simptomi',
+        entityTypeName: 'plantDisease',
+        dataType: 'markdown',
+    });
+    const affectedPlantsDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'affectedPlants',
+        label: 'Pogođene biljke',
+        entityTypeName: 'plantDisease',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+    const preventionDefinitionId = await createAttributeDefinition({
+        category: 'operations',
+        name: 'prevention',
+        label: 'Prevencija',
+        entityTypeName: 'plantDisease',
+        dataType: 'ref:operation',
+        multiple: true,
+    });
+    const plantId = await createPublishedPlant();
+    const operationId = await createPublishedPlantOperation({
+        name: 'Preventivni pregled',
+    });
+    const diseaseId = await createEntity('plantDisease');
+    await updateEntity({ id: diseaseId, state: 'published' });
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        value: 'Probna bolest',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: symptomsDefinitionId,
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        value: 'Pjege na listu.',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: affectedPlantsDefinitionId,
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        value: String(plantId),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: preventionDefinitionId,
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        value: String(operationId),
+    });
+
+    const symptomFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        sectionKey: 'symptoms',
+    });
+    assert.equal(symptomFields[0]?.currentValue, 'Pjege na listu.');
+
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        sectionKey: 'relationships',
+    });
+    assert.equal(relationshipFields[0]?.currentValue, `["${plantId}"]`);
+    assert.ok(
+        relationshipFields[0]?.options?.some(
+            (option) => option.value === String(plantId),
+        ),
+    );
+
+    const operationFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: diseaseId,
+        sectionKey: 'operations',
+    });
+    assert.equal(operationFields[0]?.currentValue, `["${operationId}"]`);
+    assert.ok(
+        operationFields[0]?.options?.some(
+            (option) =>
+                option.value === String(operationId) &&
+                option.label === 'Preventivni pregled',
+        ),
+    );
+});
+
 test('community entity suggestions store a reviewable new plant sort proposal', async () => {
     const data = await fixture();
     const plantId = await createPublishedPlant();
@@ -871,6 +1001,55 @@ test('community entity suggestions store operation context and application', asy
         stageName: 'maintenance',
         stageLabel: 'Održavanje',
     });
+});
+
+test('community entity suggestions store disease and pest details against affected plant context', async () => {
+    const data = await fixture();
+    const firstPlantId = await createPublishedPlant();
+    const secondPlantId = await createPublishedPlant();
+
+    for (const kind of ['disease', 'pest'] as const) {
+        const request = await createCommunityEntitySuggestion({
+            kind,
+            affectedPlantIds: [firstPlantId, secondPlantId, firstPlantId],
+            name: kind === 'disease' ? 'Nova pjegavost' : 'Novi kukac',
+            description: 'Kratki javni opis problema.',
+            symptoms: 'Na listovima se pojavljuju vidljivi znakovi.',
+            favorableConditions: 'Problem se češće javlja za toplog vremena.',
+            severity: 'Srednje',
+            source: 'https://example.com/plant-health',
+            publicPath: kind === 'disease' ? '/bolesti' : '/stetnici',
+            submitter: { id: data.submitterId },
+        });
+
+        assert.equal(request.entityTypeName, 'plant');
+        assert.equal(request.entityId, firstPlantId);
+        assert.equal(request.sectionKey, `new-${kind}`);
+        assert.equal(request.changes.length, 0);
+
+        const suggestion = parseCommunityEntitySuggestionRequest(request);
+        assert.equal(suggestion?.kind, kind);
+        if (suggestion?.kind !== 'disease' && suggestion?.kind !== 'pest') {
+            assert.fail('Expected a plant health suggestion.');
+        }
+        assert.deepEqual(suggestion.affectedPlants, [
+            { id: firstPlantId, name: `Biljka ${firstPlantId}` },
+            { id: secondPlantId, name: `Biljka ${secondPlantId}` },
+        ]);
+        assert.equal(
+            suggestion.symptoms,
+            'Na listovima se pojavljuju vidljivi znakovi.',
+        );
+        assert.equal(suggestion.severity, 'Srednje');
+
+        assert.equal(
+            parseCommunityEntitySuggestionRequest({
+                ...request,
+                entityId: secondPlantId,
+            }),
+            null,
+        );
+    }
 });
 
 test('community edit requests submit storage content and operation suggestions together', async () => {

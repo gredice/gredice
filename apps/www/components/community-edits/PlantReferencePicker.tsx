@@ -11,18 +11,34 @@ type PlantReferenceOption = {
     label: string;
 };
 
+export type ReferencePickerNoun = {
+    nominative: string;
+    accusative: string;
+    accusativePlural: string;
+    genitivePlural: string;
+};
+
+const plantNoun: ReferencePickerNoun = {
+    nominative: 'Biljka',
+    accusative: 'biljku',
+    accusativePlural: 'biljke',
+    genitivePlural: 'biljaka',
+};
+
 export function PlantReferencePicker({
     id,
     label,
     onValueChange,
     options,
     selectedValues,
+    noun = plantNoun,
 }: {
     id: string;
     label: string;
     onValueChange: (values: string[]) => void;
     options: PlantReferenceOption[];
     selectedValues: string[];
+    noun?: ReferencePickerNoun;
 }) {
     const optionByValue = useMemo(
         () => new Map(options.map((option) => [option.value, option])),
@@ -39,7 +55,7 @@ export function PlantReferencePicker({
         (value) =>
             optionByValue.get(value) ?? {
                 value,
-                label: `Biljka ${value}`,
+                label: `${noun.nominative} ${value}`,
             },
     );
 
@@ -47,7 +63,7 @@ export function PlantReferencePicker({
         <div className="space-y-3">
             <SelectItems
                 disabled={availableOptions.length === 0}
-                emptySearchText="Nema biljaka za taj pojam."
+                emptySearchText={`Nema ${noun.genitivePlural} za taj pojam.`}
                 id={id}
                 items={availableOptions}
                 onValueChange={(value) => {
@@ -57,19 +73,21 @@ export function PlantReferencePicker({
                 }}
                 placeholder={
                     availableOptions.length > 0
-                        ? `Dodaj biljku — ${label}`
-                        : 'Nema više dostupnih biljaka'
+                        ? `Dodaj ${noun.accusative} — ${label}`
+                        : `Nema više dostupnih ${noun.genitivePlural}`
                 }
                 searchable
-                searchPlaceholder="Pretraži biljke..."
+                searchPlaceholder={`Pretraži ${noun.accusativePlural}...`}
                 value=""
             />
             <fieldset className="flex min-h-9 flex-wrap items-center gap-2">
-                <legend className="sr-only">Odabrane biljke — {label}</legend>
+                <legend className="sr-only">
+                    Odabrane {noun.accusativePlural} — {label}
+                </legend>
                 {selectedOptions.length > 0 ? (
                     selectedOptions.map((option) => (
                         <Chip
-                            aria-label={`Ukloni biljku ${option.label}`}
+                            aria-label={`Ukloni ${noun.accusative} ${option.label}`}
                             key={option.value}
                             onClick={() =>
                                 onValueChange(
@@ -89,7 +107,7 @@ export function PlantReferencePicker({
                     ))
                 ) : (
                     <Typography level="body3" className="text-muted-foreground">
-                        Nema odabranih biljaka.
+                        Nema odabranih {noun.genitivePlural}.
                     </Typography>
                 )}
             </fieldset>

@@ -103,6 +103,10 @@ function entityTypeLabel(entityTypeName: string) {
             return 'Biljka';
         case 'plantSort':
             return 'Sorta';
+        case 'plantDisease':
+            return 'Bolest';
+        case 'plantPest':
+            return 'Štetnik';
         case 'operation':
             return 'Radnja';
         case 'block':
@@ -362,6 +366,35 @@ function operationApplicationLabel(
     }
 }
 
+function entitySuggestionLabels(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return {
+                cardTitle: 'Nova sorta biljke',
+                pageTitle: 'Prijedlog nove sorte',
+                section: 'Nova sorta',
+            };
+        case 'operation':
+            return {
+                cardTitle: 'Nova radnja',
+                pageTitle: 'Prijedlog nove radnje',
+                section: 'Nova radnja',
+            };
+        case 'disease':
+            return {
+                cardTitle: 'Nova bolest biljke',
+                pageTitle: 'Prijedlog nove bolesti',
+                section: 'Nova bolest',
+            };
+        case 'pest':
+            return {
+                cardTitle: 'Novi štetnik biljke',
+                pageTitle: 'Prijedlog novog štetnika',
+                section: 'Novi štetnik',
+            };
+    }
+}
+
 function EntitySuggestionBlock({
     suggestion,
 }: {
@@ -371,9 +404,7 @@ function EntitySuggestionBlock({
         <Card>
             <CardHeader>
                 <CardTitle className="text-lg">
-                    {suggestion.kind === 'plantSort'
-                        ? 'Nova sorta biljke'
-                        : 'Nova radnja'}
+                    {entitySuggestionLabels(suggestion).cardTitle}
                 </CardTitle>
             </CardHeader>
             <CardContent>
@@ -389,7 +420,7 @@ function EntitySuggestionBlock({
                                     {suggestion.parentPlantId}
                                 </Typography>
                             </DetailItem>
-                        ) : (
+                        ) : suggestion.kind === 'operation' ? (
                             <>
                                 <DetailItem label="Stadij">
                                     <Typography>
@@ -405,13 +436,53 @@ function EntitySuggestionBlock({
                                     </Typography>
                                 </DetailItem>
                             </>
+                        ) : (
+                            <DetailItem label="Pogođene biljke">
+                                <Typography>
+                                    {suggestion.affectedPlants
+                                        .map(
+                                            (plant) =>
+                                                `${plant.name} #${plant.id}`,
+                                        )
+                                        .join(', ')}
+                                </Typography>
+                            </DetailItem>
                         )}
                     </div>
-                    <DetailItem label="Opis prijedloga">
+                    <DetailItem
+                        label={
+                            suggestion.kind === 'disease' ||
+                            suggestion.kind === 'pest'
+                                ? 'Kratki opis'
+                                : 'Opis prijedloga'
+                        }
+                    >
                         <Typography className="whitespace-pre-line break-words">
                             {suggestion.description}
                         </Typography>
                     </DetailItem>
+                    {suggestion.kind === 'disease' ||
+                    suggestion.kind === 'pest' ? (
+                        <>
+                            <DetailItem label="Simptomi">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.symptoms}
+                                </Typography>
+                            </DetailItem>
+                            <DetailItem label="Uvjeti pojave">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.favorableConditions}
+                                </Typography>
+                            </DetailItem>
+                            {suggestion.severity ? (
+                                <DetailItem label="Ozbiljnost">
+                                    <Typography className="whitespace-pre-line break-words">
+                                        {suggestion.severity}
+                                    </Typography>
+                                </DetailItem>
+                            ) : null}
+                        </>
+                    ) : null}
                     {suggestion.source ? (
                         <DetailItem label="Izvor">
                             <Typography className="whitespace-pre-line break-words">
@@ -614,7 +685,7 @@ export default async function CommunityEditDetailPage({
                 <CardHeader>
                     <CardTitle>
                         {entitySuggestion
-                            ? `Prijedlog nove ${entitySuggestion.kind === 'plantSort' ? 'sorte' : 'radnje'}`
+                            ? entitySuggestionLabels(entitySuggestion).pageTitle
                             : `${entityTypeLabel(request.entityTypeName)} #${request.entityId}`}
                     </CardTitle>
                 </CardHeader>
@@ -649,12 +720,10 @@ export default async function CommunityEditDetailPage({
                         </DetailItem>
                         <DetailItem label="Sekcija">
                             <Typography>
-                                {entitySuggestion?.kind === 'plantSort'
-                                    ? 'Nova sorta'
-                                    : entitySuggestion?.kind === 'operation'
-                                      ? 'Nova radnja'
-                                      : (request.sectionKey ??
-                                        'Cijela stranica')}
+                                {entitySuggestion
+                                    ? entitySuggestionLabels(entitySuggestion)
+                                          .section
+                                    : (request.sectionKey ?? 'Cijela stranica')}
                             </Typography>
                         </DetailItem>
                         <DetailItem label="Kreirano">

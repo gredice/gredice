@@ -156,6 +156,21 @@ export type CommunityEntitySuggestionValue =
           stageLabel: string;
           note?: string;
           source?: string;
+      }
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'disease' | 'pest';
+          name: string;
+          description: string;
+          symptoms: string;
+          favorableConditions: string;
+          severity?: string;
+          affectedPlants: {
+              id: number;
+              name: string;
+          }[];
+          note?: string;
+          source?: string;
       };
 
 export type CreateCommunityEntitySuggestionInput =
@@ -180,6 +195,19 @@ export type CreateCommunityEntitySuggestionInput =
               | 'raisedBedFull';
           name: string;
           description: string;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      }
+    | {
+          kind: 'disease' | 'pest';
+          affectedPlantIds: number[];
+          name: string;
+          description: string;
+          symptoms: string;
+          favorableConditions: string;
+          severity?: string | null;
           source?: string | null;
           note?: string | null;
           publicPath: string;
@@ -253,6 +281,27 @@ function isCommunitySuggestionApplication(
     );
 }
 
+function parseCommunitySuggestionAffectedPlants(value: unknown) {
+    if (!Array.isArray(value) || value.length === 0) {
+        return null;
+    }
+
+    const plants: { id: number; name: string }[] = [];
+    for (const entry of value) {
+        if (
+            !isRecord(entry) ||
+            typeof entry.id !== 'number' ||
+            !Number.isInteger(entry.id) ||
+            entry.id <= 0 ||
+            typeof entry.name !== 'string'
+        ) {
+            return null;
+        }
+        plants.push({ id: entry.id, name: entry.name });
+    }
+    return plants;
+}
+
 export function parseCommunityEntitySuggestion(
     value: string | null,
 ): CommunityEntitySuggestionValue | null {
@@ -294,6 +343,42 @@ export function parseCommunityEntitySuggestion(
                 parentPlantId: parsed.parentPlantId,
                 parentPlantName: parsed.parentPlantName,
             };
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+            return suggestion;
+        }
+
+        if (parsed.kind === 'disease' || parsed.kind === 'pest') {
+            const affectedPlants = parseCommunitySuggestionAffectedPlants(
+                parsed.affectedPlants,
+            );
+            if (
+                !affectedPlants ||
+                typeof parsed.symptoms !== 'string' ||
+                typeof parsed.favorableConditions !== 'string' ||
+                ('severity' in parsed &&
+                    typeof parsed.severity !== 'undefined' &&
+                    typeof parsed.severity !== 'string')
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityEntitySuggestionValue = {
+                format: parsed.format,
+                kind: parsed.kind,
+                name: parsed.name,
+                description: parsed.description,
+                symptoms: parsed.symptoms,
+                favorableConditions: parsed.favorableConditions,
+                affectedPlants,
+            };
+            if (typeof parsed.severity === 'string') {
+                suggestion.severity = parsed.severity;
+            }
             if (typeof parsed.note === 'string') {
                 suggestion.note = parsed.note;
             }
@@ -358,6 +443,20 @@ export function parseCommunityEntitySuggestionRequest(request: {
             request.entityId === suggestion.parentPlantId
             ? suggestion
             : null;
+    }
+
+    if (suggestion.kind === 'disease' || suggestion.kind === 'pest') {
+        const contextPlant = suggestion.affectedPlants[0];
+        return contextPlant &&
+            request.sectionKey === `new-${suggestion.kind}` &&
+            request.entityTypeName === 'plant' &&
+            request.entityId === contextPlant.id
+            ? suggestion
+            : null;
+    }
+
+    if (suggestion.kind !== 'operation') {
+        return null;
     }
 
     return request.sectionKey === 'new-operation' &&
@@ -686,6 +785,16 @@ async function multipleReferenceOptions(
                     .filter(
                         (entity) =>
                             entity.entityTypeName === targetEntityType &&
+                            !(
+                                targetEntityType === 'operation' &&
+                                booleanAttributeValue(
+                                    rawAttributeValue(
+                                        entity,
+                                        'attributes',
+                                        'internal',
+                                    ),
+                                )
+                            ) &&
                             !(
                                 sourceEntity.entityTypeName ===
                                     targetEntityType &&
@@ -1695,6 +1804,26 @@ async function getPublishedSuggestionContext(
     return entity;
 }
 
+async function getPublishedSuggestionPlants(plantIds: number[]) {
+    const uniquePlantIds = Array.from(new Set(plantIds));
+    if (uniquePlantIds.length === 0) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'At least one affected plant is required.',
+        );
+    }
+
+    return await Promise.all(
+        uniquePlantIds.map(async (plantId) => {
+            const plant = await getPublishedSuggestionContext('plant', plantId);
+            return {
+                id: plant.id,
+                name: entityLabel(plant),
+            };
+        }),
+    );
+}
+
 export async function createCommunityEntitySuggestion(
     input: CreateCommunityEntitySuggestionInput,
 ) {
@@ -1718,7 +1847,11 @@ export async function createCommunityEntitySuggestion(
 
     let contextEntityTypeName: 'plant' | 'plantStage';
     let contextEntityId: number;
-    let sectionKey: 'new-operation' | 'new-plant-sort';
+    let sectionKey:
+        | 'new-disease'
+        | 'new-operation'
+        | 'new-pest'
+        | 'new-plant-sort';
     let suggestion: CommunityEntitySuggestionValue;
 
     if (input.kind === 'plantSort') {
@@ -1737,7 +1870,7 @@ export async function createCommunityEntitySuggestion(
             parentPlantId: plant.id,
             parentPlantName: entityLabel(plant),
         };
-    } else {
+    } else if (input.kind === 'operation') {
         if (!isCommunitySuggestionApplication(input.application)) {
             throw new CommunityEditRequestError(
                 'invalid_value',
@@ -1763,6 +1896,48 @@ export async function createCommunityEntitySuggestion(
                 String(plantStage.id),
             stageLabel: entityLabel(plantStage),
         };
+    } else {
+        const affectedPlants = await getPublishedSuggestionPlants(
+            input.affectedPlantIds,
+        );
+        const symptoms = normalizeRequiredSuggestionText(
+            input.symptoms,
+            'Symptoms',
+            4000,
+        );
+        const favorableConditions = normalizeRequiredSuggestionText(
+            input.favorableConditions,
+            'Favorable conditions',
+            4000,
+        );
+        const severity = normalizeOptionalSuggestionText(
+            input.severity,
+            'Severity',
+            1000,
+        );
+        const contextPlant = affectedPlants[0];
+        if (!contextPlant) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'At least one affected plant is required.',
+            );
+        }
+
+        contextEntityTypeName = 'plant';
+        contextEntityId = contextPlant.id;
+        sectionKey = input.kind === 'disease' ? 'new-disease' : 'new-pest';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            symptoms,
+            favorableConditions,
+            affectedPlants,
+        };
+        if (severity) {
+            suggestion.severity = severity;
+        }
     }
 
     if (note) {

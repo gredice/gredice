@@ -32,7 +32,10 @@ import dynamic from 'next/dynamic';
 import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
-import { PlantReferencePicker } from './PlantReferencePicker';
+import {
+    PlantReferencePicker,
+    type ReferencePickerNoun,
+} from './PlantReferencePicker';
 
 const CommunityMarkdownInput = dynamic(
     () =>
@@ -134,7 +137,13 @@ type SubmitValue =
 type ButtonStyle = 'button' | 'icon';
 
 export type CommunityEditButtonProps = {
-    entityTypeName: 'block' | 'operation' | 'plant' | 'plantSort';
+    entityTypeName:
+        | 'block'
+        | 'operation'
+        | 'plant'
+        | 'plantDisease'
+        | 'plantPest'
+        | 'plantSort';
     entityId: number;
     publicPath: string;
     sectionKey?: string;
@@ -169,7 +178,10 @@ const communityEditFieldGroups = [
 function communityEditFieldGroup(
     field: CommunityEditableField,
 ): CommunityEditFieldGroup {
-    if (field.controlType === 'operationSuggestion') {
+    if (
+        field.controlType === 'operationSuggestion' ||
+        field.attributePath.startsWith('operations.')
+    ) {
         return 'operations';
     }
 
@@ -184,14 +196,20 @@ function communityEditFieldGroup(
     return 'content';
 }
 
-function communityEditFieldGroupLabel(group: CommunityEditFieldGroup) {
+function communityEditFieldGroupLabel(
+    group: CommunityEditFieldGroup,
+    entityTypeName: CommunityEditButtonProps['entityTypeName'],
+) {
     switch (group) {
         case 'attributes':
             return 'Svojstva';
         case 'operations':
             return 'Radnje';
         case 'relationships':
-            return 'Biljni susjedi';
+            return entityTypeName === 'plantDisease' ||
+                entityTypeName === 'plantPest'
+                ? 'Pogođene biljke'
+                : 'Biljni susjedi';
         case 'content':
             return 'Sadržaj';
     }
@@ -1080,11 +1098,12 @@ function FieldInput({
     }
 
     if (field.controlType === 'reference' && field.multiple) {
-        if (field.dataType === 'ref:plant' && field.options) {
+        if (field.options) {
             return (
                 <PlantReferencePicker
                     id={id}
                     label={field.publicLabel}
+                    noun={referencePickerNoun(field.dataType)}
                     onValueChange={(values) => onChange(values.join('\n'))}
                     options={field.options}
                     selectedValues={referenceListFromText(
@@ -1186,6 +1205,31 @@ function FieldInput({
             value={typeof value === 'string' ? value : ''}
         />
     );
+}
+
+function referencePickerNoun(dataType: string): ReferencePickerNoun {
+    if (dataType === 'ref:plant') {
+        return {
+            nominative: 'Biljka',
+            accusative: 'biljku',
+            accusativePlural: 'biljke',
+            genitivePlural: 'biljaka',
+        };
+    }
+    if (dataType === 'ref:operation') {
+        return {
+            nominative: 'Radnja',
+            accusative: 'radnju',
+            accusativePlural: 'radnje',
+            genitivePlural: 'radnji',
+        };
+    }
+    return {
+        nominative: 'Zapis',
+        accusative: 'zapis',
+        accusativePlural: 'zapise',
+        genitivePlural: 'zapisa',
+    };
 }
 
 export function CommunityEditButton({
@@ -1475,7 +1519,7 @@ export function CommunityEditButton({
                 key={group}
             >
                 <Typography id={headingId} level="body2" semiBold>
-                    {communityEditFieldGroupLabel(group)}
+                    {communityEditFieldGroupLabel(group, entityTypeName)}
                 </Typography>
                 <div
                     className={
