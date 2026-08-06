@@ -9,6 +9,7 @@ import {
     createAccount,
     createAttributeDefinition,
     createCommunityEditRequest,
+    createCommunityEntitySuggestion,
     createEntity,
     getAccountAchievements,
     getCommunityEditableFieldsForEntity,
@@ -17,6 +18,7 @@ import {
     getEntityFormatted,
     getEntityRaw,
     getEntityRevisions,
+    parseCommunityEntitySuggestion,
     rejectCommunityEditRequest,
     storage,
     updateEntity,
@@ -780,6 +782,77 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.options?.some((option) => option.value === 'garden'),
         ),
     );
+});
+
+test('community entity suggestions store a reviewable new plant sort proposal', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'plantSort',
+        parentPlantId: plantId,
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        source: 'https://example.com/blitva-rubin',
+        note: 'Provjeriti dostupnost sjemena.',
+        publicPath: '/biljke/blitva',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plant');
+    assert.equal(request.entityId, plantId);
+    assert.equal(request.sectionKey, 'new-plant-sort');
+    assert.equal(request.changes.length, 0);
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'plantSort',
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        parentPlantId: plantId,
+        parentPlantName: `Biljka ${plantId}`,
+        note: 'Provjeriti dostupnost sjemena.',
+        source: 'https://example.com/blitva-rubin',
+    });
+
+    const approved = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(approved.status, 'applied');
+});
+
+test('community entity suggestions store operation context and application', async () => {
+    const data = await fixture();
+    const plantStageId = await createPublishedPlantStage({
+        name: 'maintenance',
+        label: 'Održavanje',
+    });
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'operation',
+        plantStageId,
+        application: 'raisedBedFull',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        publicPath: '/radnje',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plantStage');
+    assert.equal(request.entityId, plantStageId);
+    assert.equal(request.sectionKey, 'new-operation');
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'operation',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        application: 'raisedBedFull',
+        plantStageId,
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+    });
 });
 
 test('community edit requests submit storage content and operation suggestions together', async () => {
