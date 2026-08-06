@@ -549,6 +549,21 @@ function buildTools({
                     options,
                 ),
         }),
+        getGardenComposition: tool({
+            description:
+                'Dohvati sve vrste trenutačno postavljenih blokova, entiteta i dekoracija u vrtu, njihove količine i opise te pravila posebnih nagrada poput suncokreta. Koristi za pitanja što se nalazi u vrtu i koliko često dekoracije daju nagrade.',
+            inputSchema: z.object({
+                gardenId: z.number().int().positive().optional(),
+            }),
+            execute: ({ gardenId }, options) =>
+                mcp(
+                    'gardens/get-garden-composition',
+                    {
+                        gardenId: gardenId ?? contextGardenId,
+                    },
+                    options,
+                ),
+        }),
         getRaisedBedFields: raisedBedDetailsTool,
         getRaisedBedDetails: raisedBedDetailsTool,
         getCurrentWeather: tool({
