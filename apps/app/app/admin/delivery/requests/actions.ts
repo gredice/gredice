@@ -1,6 +1,9 @@
 'use server';
 
-import { notifyDeliveryRequestEvent } from '@gredice/notifications';
+import {
+    notifyDeliveryRequestEvent,
+    notifyDeliveryRequestGroupEvent,
+} from '@gredice/notifications';
 import {
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
@@ -17,7 +20,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { notifyDeliveryCancelled } from '../../../../../api/lib/delivery/emailNotifications';
 import { auth } from '../../../../lib/auth/auth';
-import { getNextDeliveryRequestStatus } from './DeliveryRequestStatusFlow';
+import { progressDeliveryRequestGroup } from './progressDeliveryRequestGroup';
 
 async function applyDeliveryRequestStatus({
     requestId,
@@ -25,12 +28,14 @@ async function applyDeliveryRequestStatus({
     cancelReason,
     notes,
     actorUserId,
+    notifySlack = true,
 }: {
     requestId: string;
     status: string;
     cancelReason?: string;
     notes?: string;
     actorUserId: string;
+    notifySlack?: boolean;
 }) {
     const request = await getDeliveryRequest(requestId);
 
@@ -47,10 +52,12 @@ async function applyDeliveryRequestStatus({
         } else {
             await confirmDeliveryRequest(requestId);
         }
-        await notifyDeliveryRequestEvent(requestId, 'updated', {
-            status,
-            note: notes,
-        });
+        if (notifySlack) {
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
+        }
     } else if (status === DeliveryRequestStates.CANCELLED) {
         await cancelDeliveryRequest(
             requestId,
@@ -59,30 +66,38 @@ async function applyDeliveryRequestStatus({
             notes,
             actorUserId,
         );
-        await notifyDeliveryRequestEvent(requestId, 'cancelled', {
-            reason: cancelReason,
-            note: notes,
-            status,
-        });
+        if (notifySlack) {
+            await notifyDeliveryRequestEvent(requestId, 'cancelled', {
+                reason: cancelReason,
+                note: notes,
+                status,
+            });
+        }
         await notifyDeliveryCancelled(requestId);
     } else if (status === DeliveryRequestStates.PREPARING) {
         await prepareDeliveryRequest(requestId);
-        await notifyDeliveryRequestEvent(requestId, 'updated', {
-            status,
-            note: notes,
-        });
+        if (notifySlack) {
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
+        }
     } else if (status === DeliveryRequestStates.READY) {
         await readyDeliveryRequest(requestId);
-        await notifyDeliveryRequestEvent(requestId, 'updated', {
-            status,
-            note: notes,
-        });
+        if (notifySlack) {
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
+        }
     } else if (status === DeliveryRequestStates.FULFILLED) {
         await fulfillDeliveryRequest(requestId, notes);
-        await notifyDeliveryRequestEvent(requestId, 'updated', {
-            status,
-            note: notes,
-        });
+        if (notifySlack) {
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
+        }
     } else {
         throw new Error('Nepoznat status zahtjeva');
     }
@@ -162,26 +177,28 @@ export async function progressDeliveryRequestGroupStatusAction(
             };
         }
 
-        let updatedCount = 0;
-
-        for (const requestId of requestIds) {
-            const request = await getDeliveryRequest(requestId);
-            if (!request) {
-                continue;
-            }
-
-            const nextStatus = getNextDeliveryRequestStatus(request.state);
-            if (!nextStatus) {
-                continue;
-            }
-
-            await applyDeliveryRequestStatus({
-                requestId,
-                status: nextStatus,
-                actorUserId: userId,
-            });
-            updatedCount += 1;
-        }
+        const progressedRequestIds = await progressDeliveryRequestGroup({
+            requestIds,
+            actorUserId: userId,
+            dependencies: {
+                getRequest: getDeliveryRequest,
+                applyStatus: async ({ requestId, status, actorUserId }) => {
+                    await applyDeliveryRequestStatus({
+                        requestId,
+                        status,
+                        actorUserId,
+                        notifySlack: false,
+                    });
+                },
+                notifyGroup: async (progressedIds) => {
+                    await notifyDeliveryRequestGroupEvent(
+                        progressedIds,
+                        'updated',
+                    );
+                },
+            },
+        });
+        const updatedCount = progressedRequestIds.length;
 
         if (updatedCount === 0) {
             return {
