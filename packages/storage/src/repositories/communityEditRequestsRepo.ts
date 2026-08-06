@@ -129,6 +129,63 @@ export type CommunityOperationSuggestionValue =
           newOperationDescription: string;
       });
 
+export type CommunityEntitySuggestionValue =
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'plantSort';
+          name: string;
+          description: string;
+          parentPlantId: number;
+          parentPlantName: string;
+          note?: string;
+          source?: string;
+      }
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'operation';
+          name: string;
+          description: string;
+          application:
+              | 'farm'
+              | 'garden'
+              | 'plant'
+              | 'raisedBed1m'
+              | 'raisedBedFull';
+          plantStageId: number;
+          stageName: string;
+          stageLabel: string;
+          note?: string;
+          source?: string;
+      };
+
+export type CreateCommunityEntitySuggestionInput =
+    | {
+          kind: 'plantSort';
+          parentPlantId: number;
+          name: string;
+          description: string;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      }
+    | {
+          kind: 'operation';
+          plantStageId: number;
+          application:
+              | 'farm'
+              | 'garden'
+              | 'plant'
+              | 'raisedBed1m'
+              | 'raisedBedFull';
+          name: string;
+          description: string;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      };
+
 type ResolvedCommunityEditChange = {
     fieldKey: string;
     sectionKey: string;
@@ -179,6 +236,135 @@ function stableValueHash(value: string | null) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+}
+
+function isCommunitySuggestionApplication(
+    value: unknown,
+): value is Extract<
+    CommunityEntitySuggestionValue,
+    { kind: 'operation' }
+>['application'] {
+    return (
+        value === 'farm' ||
+        value === 'garden' ||
+        value === 'plant' ||
+        value === 'raisedBed1m' ||
+        value === 'raisedBedFull'
+    );
+}
+
+export function parseCommunityEntitySuggestion(
+    value: string | null,
+): CommunityEntitySuggestionValue | null {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (
+            !isRecord(parsed) ||
+            parsed.format !== 'community-entity-suggestion-v1' ||
+            typeof parsed.name !== 'string' ||
+            typeof parsed.description !== 'string' ||
+            ('note' in parsed &&
+                typeof parsed.note !== 'undefined' &&
+                typeof parsed.note !== 'string') ||
+            ('source' in parsed &&
+                typeof parsed.source !== 'undefined' &&
+                typeof parsed.source !== 'string')
+        ) {
+            return null;
+        }
+
+        if (parsed.kind === 'plantSort') {
+            if (
+                typeof parsed.parentPlantId !== 'number' ||
+                !Number.isInteger(parsed.parentPlantId) ||
+                typeof parsed.parentPlantName !== 'string'
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityEntitySuggestionValue = {
+                format: parsed.format,
+                kind: parsed.kind,
+                name: parsed.name,
+                description: parsed.description,
+                parentPlantId: parsed.parentPlantId,
+                parentPlantName: parsed.parentPlantName,
+            };
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+            return suggestion;
+        }
+
+        if (
+            parsed.kind !== 'operation' ||
+            !isCommunitySuggestionApplication(parsed.application) ||
+            typeof parsed.plantStageId !== 'number' ||
+            !Number.isInteger(parsed.plantStageId) ||
+            typeof parsed.stageName !== 'string' ||
+            typeof parsed.stageLabel !== 'string'
+        ) {
+            return null;
+        }
+
+        const suggestion: CommunityEntitySuggestionValue = {
+            format: parsed.format,
+            kind: parsed.kind,
+            name: parsed.name,
+            description: parsed.description,
+            application: parsed.application,
+            plantStageId: parsed.plantStageId,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+        };
+        if (typeof parsed.note === 'string') {
+            suggestion.note = parsed.note;
+        }
+        if (typeof parsed.source === 'string') {
+            suggestion.source = parsed.source;
+        }
+        return suggestion;
+    } catch {
+        return null;
+    }
+}
+
+export function parseCommunityEntitySuggestionRequest(request: {
+    submitterNote: string | null;
+    sectionKey: string | null;
+    entityTypeName: string;
+    entityId: number;
+    changes: readonly unknown[];
+}): CommunityEntitySuggestionValue | null {
+    if (request.changes.length !== 0) {
+        return null;
+    }
+
+    const suggestion = parseCommunityEntitySuggestion(request.submitterNote);
+    if (!suggestion) {
+        return null;
+    }
+
+    if (suggestion.kind === 'plantSort') {
+        return request.sectionKey === 'new-plant-sort' &&
+            request.entityTypeName === 'plant' &&
+            request.entityId === suggestion.parentPlantId
+            ? suggestion
+            : null;
+    }
+
+    return request.sectionKey === 'new-operation' &&
+        request.entityTypeName === 'plantStage' &&
+        request.entityId === suggestion.plantStageId
+        ? suggestion
+        : null;
 }
 
 function isPlantStageName(value: unknown): value is PlantStageName {
@@ -1490,6 +1676,122 @@ export async function createCommunityEditRequest(
         throw new CommunityEditRequestError(
             'not_found',
             'Community edit request was created but could not be loaded.',
+        );
+    }
+    return request;
+}
+
+async function getPublishedSuggestionContext(
+    entityTypeName: 'plant' | 'plantStage',
+    entityId: number,
+) {
+    const entity = await getCommunityEditableEntity(entityTypeName, entityId);
+    if (entity.state !== 'published') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Entity ${entityTypeName}#${entityId} is not published.`,
+        );
+    }
+    return entity;
+}
+
+export async function createCommunityEntitySuggestion(
+    input: CreateCommunityEntitySuggestionInput,
+) {
+    const name = normalizeRequiredSuggestionText(
+        input.name,
+        'Suggestion name',
+        200,
+    );
+    const description = normalizeRequiredSuggestionText(
+        input.description,
+        'Suggestion description',
+        2000,
+    );
+    const source = normalizeOptionalSuggestionText(input.source, 'Source', 500);
+    const note = normalizeOptionalSuggestionText(input.note, 'Note', 1000);
+    const publicPath = normalizeRequiredSuggestionText(
+        input.publicPath,
+        'Public path',
+        500,
+    );
+
+    let contextEntityTypeName: 'plant' | 'plantStage';
+    let contextEntityId: number;
+    let sectionKey: 'new-operation' | 'new-plant-sort';
+    let suggestion: CommunityEntitySuggestionValue;
+
+    if (input.kind === 'plantSort') {
+        const plant = await getPublishedSuggestionContext(
+            'plant',
+            input.parentPlantId,
+        );
+        contextEntityTypeName = 'plant';
+        contextEntityId = plant.id;
+        sectionKey = 'new-plant-sort';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            parentPlantId: plant.id,
+            parentPlantName: entityLabel(plant),
+        };
+    } else {
+        if (!isCommunitySuggestionApplication(input.application)) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'Operation suggestion has an unsupported application.',
+            );
+        }
+        const plantStage = await getPublishedSuggestionContext(
+            'plantStage',
+            input.plantStageId,
+        );
+        contextEntityTypeName = 'plantStage';
+        contextEntityId = plantStage.id;
+        sectionKey = 'new-operation';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            application: input.application,
+            plantStageId: plantStage.id,
+            stageName:
+                rawAttributeValue(plantStage, 'information', 'name') ??
+                String(plantStage.id),
+            stageLabel: entityLabel(plantStage),
+        };
+    }
+
+    if (note) {
+        suggestion.note = note;
+    }
+    if (source) {
+        suggestion.source = source;
+    }
+
+    const [createdRequest] = await storage()
+        .insert(communityEditRequests)
+        .values({
+            status: 'pending',
+            entityTypeName: contextEntityTypeName,
+            entityId: contextEntityId,
+            publicPath,
+            sectionKey,
+            submitterUserId: input.submitter.id,
+            submitterName: input.submitter.name,
+            submitterEmail: input.submitter.email,
+            submitterNote: JSON.stringify(suggestion),
+        })
+        .returning();
+
+    const request = await getCommunityEditRequest(createdRequest.id);
+    if (!request) {
+        throw new CommunityEditRequestError(
+            'not_found',
+            'Community entity suggestion was created but could not be loaded.',
         );
     }
     return request;
