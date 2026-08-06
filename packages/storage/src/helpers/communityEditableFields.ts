@@ -105,15 +105,13 @@ const communityEditablePlantRelationshipFields: CommunityEditableFieldDefinition
             fieldKey: 'plant.relationships.companions',
             name: plantRelationshipAttributeNames.companions,
             publicLabel: 'Dobri susjedi',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
         {
             fieldKey: 'plant.relationships.antagonists',
             name: plantRelationshipAttributeNames.antagonists,
             publicLabel: 'Izbjegavati blizinu',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
     ].map((field) => ({
         entityTypeName: 'plant',
@@ -131,15 +129,13 @@ const communityEditablePlantSortRelationshipFields: CommunityEditableFieldDefini
             fieldKey: 'plant-sort.relationships.companions',
             name: plantRelationshipAttributeNames.companions,
             publicLabel: 'Dobri susjedi sorte',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
         {
             fieldKey: 'plant-sort.relationships.antagonists',
             name: plantRelationshipAttributeNames.antagonists,
             publicLabel: 'Izbjegavati blizinu sorte',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
     ].map((field) => ({
         entityTypeName: 'plantSort',
