@@ -160,6 +160,19 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         },
     },
     {
+        name: 'gardens/get-garden-composition',
+        description:
+            'Summarize placed blocks, entities, decorations, and special reward mechanics for an authenticated account garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+            },
+        },
+    },
+    {
         name: 'gardens/get-raised-bed-fields',
         description: 'Get field and plant lifecycle state for one raised bed.',
         domain: 'gardens',

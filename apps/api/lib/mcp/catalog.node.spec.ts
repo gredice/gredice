@@ -19,6 +19,18 @@ describe('MCP catalog contract scaffold', () => {
         ]);
     });
 
+    test('exposes garden composition alongside raised-bed context tools', () => {
+        assert.deepEqual(getMcpToolNamesByDomain('gardens'), [
+            'gardens/list-gardens',
+            'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
+            'gardens/get-raised-bed-fields',
+            'gardens/list-operations',
+            'gardens/get-lifecycle-context',
+            'gardens/get-raised-bed-ai-history',
+        ]);
+    });
+
     test('keeps excluded tools out of the public catalog', () => {
         assert.equal(
             getMcpToolCatalog().some((tool) => tool.exposure === 'excluded'),
@@ -48,6 +60,7 @@ describe('MCP catalog contract scaffold', () => {
         for (const toolName of [
             'gardens/list-gardens',
             'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
             'gardens/get-raised-bed-fields',
             'gardens/list-operations',
             'gardens/get-lifecycle-context',

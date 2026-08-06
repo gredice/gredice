@@ -39,6 +39,8 @@ test('buildSuncokretSystemPrompt requires a friendly gender-neutral voice', () =
         /Za radnju cijele gredice navedi gredicu, ali nikada indeks polja/,
     );
     assert.match(prompt, /Gredice općenito ne podržavaju ili ne nude/);
+    assert.match(prompt, /pozovi getGardenComposition/);
+    assert.match(prompt, /točan izračun iz rezultata alata/);
 });
 
 test('buildSuncokretSystemPrompt requires structured actionable recommendations', () => {
