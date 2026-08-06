@@ -18,7 +18,8 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
 ];
-const webglTestPattern = /(garden-preview-capture|hover-outline)\.spec\.tsx/;
+const webglTestPattern =
+    /(garden-preview-capture|hover-outline|instanced-mesh-material-swap)\.spec\.tsx/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
