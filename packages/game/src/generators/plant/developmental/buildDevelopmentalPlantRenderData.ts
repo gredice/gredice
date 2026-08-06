@@ -6,7 +6,7 @@ import type {
     PlantStemSegment,
 } from '../lib/plantRenderData';
 import { SeededRNG } from '../lib/rng';
-import { vegetableMaterialProps } from '../lib/vegetableRenderMetadata';
+import { resolveVegetableColor } from '../lib/vegetableRenderMetadata';
 import type {
     DevelopmentalPlantGraph,
     PlantOrgan,
@@ -280,10 +280,14 @@ export function buildDevelopmentalPlantRenderData({
                     getTransformRadius(organ.transform) * visibleGrowth;
                 accentSamples += 1;
                 accentSumY += Math.max(0.04, position.y);
-                accentColor = vegetableMaterialProps[organ.produceType].color;
+                accentColor = resolveVegetableColor(
+                    organ.produceType,
+                    organ.developmentStage,
+                );
                 trackPosition(position, radius);
                 if (renderDetailedGeometry) {
                     vegetables.push({
+                        color: new THREE.Color(accentColor),
                         growth: visibleGrowth,
                         matrix: toMatrix(organ.transform, position),
                         type: organ.produceType,

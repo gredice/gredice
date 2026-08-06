@@ -128,6 +128,7 @@ export function RaisedBedPlantField({
                   sowDate: plantSowDate,
                   lifecycleWindowDays: maturityWindowDays,
                   growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                  plantStatus: field.plantStatus,
               })
             : 0;
     const visualPlantGeneration = harvestedVisual

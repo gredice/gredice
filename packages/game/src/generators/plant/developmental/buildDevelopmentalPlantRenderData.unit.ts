@@ -65,6 +65,9 @@ function assertValidRenderData(renderData: PlantRenderData) {
     }
 
     for (const vegetable of renderData.vegetables) {
+        assert.ok(Number.isFinite(vegetable.color.r));
+        assert.ok(Number.isFinite(vegetable.color.g));
+        assert.ok(Number.isFinite(vegetable.color.b));
         assert.ok(Number.isFinite(vegetable.growth));
         assert.ok(vegetable.growth > 0);
     }
@@ -267,6 +270,26 @@ test('renders tomato flowers before their sites transition to produce', () => {
     assertValidRenderData(floweringTomato);
     assert.ok(floweringTomato.flowers.length > 0);
     assert.equal(floweringTomato.vegetables.length, 0);
+});
+
+test('gradually ripens tomato produce to deep red at maturity', () => {
+    const ripeningTomato = renderPlant(plantTypes.tomato, 10);
+    const ripeTomato = renderPlant(plantTypes.tomato, 12);
+    const ripeningColors = new Set(
+        ripeningTomato.vegetables.map((vegetable) =>
+            vegetable.color.getHexString(),
+        ),
+    );
+    const ripeColors = new Set(
+        ripeTomato.vegetables.map((vegetable) =>
+            vegetable.color.getHexString(),
+        ),
+    );
+
+    assert.ok(ripeningColors.size > 1);
+    assert.ok([...ripeningColors].every((color) => color !== 'd62828'));
+    assert.deepEqual([...ripeColors], ['d62828']);
+    assert.equal(ripeTomato.lodSummary.accentColor, '#d62828');
 });
 
 test('keeps existing leaf colors stable as new leaves emerge', () => {
