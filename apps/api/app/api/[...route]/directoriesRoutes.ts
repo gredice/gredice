@@ -46,6 +46,17 @@ function cmsPagePreviewSecret(requestUrl: string) {
 }
 
 const communityEditSubmittedValueSchema = z.unknown();
+const communityPlantHealthSuggestionFields = {
+    affectedPlantIds: z.array(z.number().int().positive()).min(1).max(50),
+    name: z.string().trim().min(1).max(200),
+    description: z.string().trim().min(1).max(2000),
+    symptoms: z.string().trim().min(1).max(4000),
+    favorableConditions: z.string().trim().min(1).max(4000),
+    severity: z.string().max(1000).nullable().optional(),
+    source: z.string().max(500).nullable().optional(),
+    note: z.string().max(1000).nullable().optional(),
+    publicPath: z.string().min(1).max(500),
+};
 const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
     z.object({
         kind: z.literal('plantSort'),
@@ -71,6 +82,14 @@ const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
         source: z.string().max(500).nullable().optional(),
         note: z.string().max(1000).nullable().optional(),
         publicPath: z.string().min(1).max(500),
+    }),
+    z.object({
+        kind: z.literal('disease'),
+        ...communityPlantHealthSuggestionFields,
+    }),
+    z.object({
+        kind: z.literal('pest'),
+        ...communityPlantHealthSuggestionFields,
     }),
 ]);
 
@@ -343,7 +362,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/community-edits/entity-suggestions',
         describeRoute({
             description:
-                'Submit a pending suggestion for a new plant sort or operation. No directory entity is created or published by this endpoint.',
+                'Submit a pending suggestion for a new plant sort, operation, disease, or pest. No directory entity is created or published by this endpoint.',
             security: authSecurity,
         }),
         authValidator(['user', 'admin']),

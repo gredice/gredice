@@ -12,6 +12,7 @@ import { cx } from '@gredice/ui/utils';
 import { type FormEvent, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
+import { PlantReferencePicker } from './PlantReferencePicker';
 
 const communitySuggestionParam = 'communitySuggestion';
 const selectControlClassName =
@@ -31,6 +32,11 @@ export type CommunityOperationSuggestionStage = {
     label: string;
 };
 
+export type CommunitySuggestionPlantOption = {
+    value: string;
+    label: string;
+};
+
 type CommonProps = {
     className?: string;
     publicPath: string;
@@ -47,6 +53,10 @@ export type CommunityEntitySuggestionButtonProps = CommonProps &
               kind: 'operation';
               stages: CommunityOperationSuggestionStage[];
           }
+        | {
+              kind: 'disease' | 'pest';
+              plants: CommunitySuggestionPlantOption[];
+          }
     );
 
 const applicationOptions: {
@@ -62,6 +72,45 @@ const applicationOptions: {
 
 function isOperationApplication(value: string): value is OperationApplication {
     return applicationOptions.some((option) => option.value === value);
+}
+
+function isPlantHealthSuggestionKind(
+    kind: CommunityEntitySuggestionButtonProps['kind'],
+): kind is 'disease' | 'pest' {
+    return kind === 'disease' || kind === 'pest';
+}
+
+function suggestionLabels(kind: CommunityEntitySuggestionButtonProps['kind']) {
+    switch (kind) {
+        case 'plantSort':
+            return {
+                trigger: 'Predloži novu sortu',
+                title: 'Predloži novu sortu',
+                name: 'Naziv sorte',
+                description: 'Po čemu je sorta posebna?',
+            };
+        case 'operation':
+            return {
+                trigger: 'Predloži novu radnju',
+                title: 'Predloži novu radnju',
+                name: 'Naziv radnje',
+                description: 'Što se radnjom radi?',
+            };
+        case 'disease':
+            return {
+                trigger: 'Predloži novu bolest',
+                title: 'Predloži novu bolest',
+                name: 'Naziv bolesti',
+                description: 'Kratki opis bolesti',
+            };
+        case 'pest':
+            return {
+                trigger: 'Predloži novog štetnika',
+                title: 'Predloži novog štetnika',
+                name: 'Naziv štetnika',
+                description: 'Kratki opis štetnika',
+            };
+    }
 }
 
 function errorMessage(value: unknown) {
@@ -124,6 +173,10 @@ export function CommunityEntitySuggestionButton(
     const [source, setSource] = useState('');
     const [note, setNote] = useState('');
     const [plantStageId, setPlantStageId] = useState('');
+    const [affectedPlantIds, setAffectedPlantIds] = useState<string[]>([]);
+    const [symptoms, setSymptoms] = useState('');
+    const [favorableConditions, setFavorableConditions] = useState('');
+    const [severity, setSeverity] = useState('');
     const [application, setApplication] =
         useState<OperationApplication>('plant');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,26 +189,13 @@ export function CommunityEntitySuggestionButton(
     const contextKey =
         props.kind === 'plantSort'
             ? `plantSort:${props.parentPlantId}`
-            : 'operation';
+            : props.kind;
     const returnTo = useMemo(
         () => suggestionReturnPath(contextKey, props.publicPath),
         [contextKey, props.publicPath],
     );
 
-    const labels =
-        props.kind === 'plantSort'
-            ? {
-                  trigger: 'Predloži novu sortu',
-                  title: 'Predloži novu sortu',
-                  name: 'Naziv sorte',
-                  description: 'Po čemu je sorta posebna?',
-              }
-            : {
-                  trigger: 'Predloži novu radnju',
-                  title: 'Predloži novu radnju',
-                  name: 'Naziv radnje',
-                  description: 'Što se radnjom radi?',
-              };
+    const labels = suggestionLabels(props.kind);
 
     useEffect(() => {
         if (consumeSuggestionReturn(contextKey)) {
@@ -176,6 +216,10 @@ export function CommunityEntitySuggestionButton(
         setSource('');
         setNote('');
         setPlantStageId('');
+        setAffectedPlantIds([]);
+        setSymptoms('');
+        setFavorableConditions('');
+        setSeverity('');
         setApplication('plant');
         setError(null);
         setSuccessRequestId(null);
@@ -199,36 +243,70 @@ export function CommunityEntitySuggestionButton(
             if (!trimmedName || !trimmedDescription) {
                 throw new Error('Unesi naziv i opis prijedloga.');
             }
+            const trimmedSymptoms = symptoms.trim();
+            const trimmedFavorableConditions = favorableConditions.trim();
+            if (
+                isPlantHealthSuggestionKind(props.kind) &&
+                (!trimmedSymptoms || !trimmedFavorableConditions)
+            ) {
+                throw new Error('Unesi simptome i uvjete pojave.');
+            }
+            if (
+                isPlantHealthSuggestionKind(props.kind) &&
+                affectedPlantIds.length === 0
+            ) {
+                throw new Error('Odaberi barem jednu pogođenu biljku.');
+            }
 
             const suggestions =
                 clientAuthenticated().api.directories['community-edits'][
                     'entity-suggestions'
                 ];
-            const response =
-                props.kind === 'plantSort'
-                    ? await suggestions.$post({
-                          json: {
-                              kind: props.kind,
-                              parentPlantId: props.parentPlantId,
-                              name: trimmedName,
-                              description: trimmedDescription,
-                              source: source.trim() || null,
-                              note: note.trim() || null,
-                              publicPath: props.publicPath,
-                          },
-                      })
-                    : await suggestions.$post({
-                          json: {
-                              kind: props.kind,
-                              plantStageId: Number.parseInt(plantStageId, 10),
-                              application,
-                              name: trimmedName,
-                              description: trimmedDescription,
-                              source: source.trim() || null,
-                              note: note.trim() || null,
-                              publicPath: props.publicPath,
-                          },
-                      });
+            const response = await (async () => {
+                if (props.kind === 'plantSort') {
+                    return await suggestions.$post({
+                        json: {
+                            kind: props.kind,
+                            parentPlantId: props.parentPlantId,
+                            name: trimmedName,
+                            description: trimmedDescription,
+                            source: source.trim() || null,
+                            note: note.trim() || null,
+                            publicPath: props.publicPath,
+                        },
+                    });
+                }
+                if (props.kind === 'operation') {
+                    return await suggestions.$post({
+                        json: {
+                            kind: props.kind,
+                            plantStageId: Number.parseInt(plantStageId, 10),
+                            application,
+                            name: trimmedName,
+                            description: trimmedDescription,
+                            source: source.trim() || null,
+                            note: note.trim() || null,
+                            publicPath: props.publicPath,
+                        },
+                    });
+                }
+                return await suggestions.$post({
+                    json: {
+                        kind: props.kind,
+                        affectedPlantIds: affectedPlantIds.map((value) =>
+                            Number.parseInt(value, 10),
+                        ),
+                        name: trimmedName,
+                        description: trimmedDescription,
+                        symptoms: trimmedSymptoms,
+                        favorableConditions: trimmedFavorableConditions,
+                        severity: severity.trim() || null,
+                        source: source.trim() || null,
+                        note: note.trim() || null,
+                        publicPath: props.publicPath,
+                    },
+                });
+            })();
 
             if (!response.ok) {
                 const body: unknown = await response.json().catch(() => null);
@@ -337,7 +415,7 @@ export function CommunityEntitySuggestionButton(
                             >
                                 Biljka: {props.parentPlantName}
                             </Typography>
-                        ) : (
+                        ) : props.kind === 'operation' ? (
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <label
                                     className="space-y-1"
@@ -402,6 +480,30 @@ export function CommunityEntitySuggestionButton(
                                     </select>
                                 </label>
                             </div>
+                        ) : (
+                            <div className="space-y-1">
+                                <label
+                                    htmlFor={`${fieldIdPrefix}-affected-plants`}
+                                >
+                                    <Typography level="body2" semiBold>
+                                        Pogođene biljke
+                                    </Typography>
+                                </label>
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    Odaberi barem jednu biljku na kojoj se
+                                    problem pojavljuje.
+                                </Typography>
+                                <PlantReferencePicker
+                                    id={`${fieldIdPrefix}-affected-plants`}
+                                    label="Pogođene biljke"
+                                    onValueChange={setAffectedPlantIds}
+                                    options={props.plants}
+                                    selectedValues={affectedPlantIds}
+                                />
+                            </div>
                         )}
 
                         <Input
@@ -435,6 +537,65 @@ export function CommunityEntitySuggestionButton(
                                 value={description}
                             />
                         </label>
+                        {isPlantHealthSuggestionKind(props.kind) ? (
+                            <>
+                                <label
+                                    className="space-y-1"
+                                    htmlFor={`${fieldIdPrefix}-symptoms`}
+                                >
+                                    <Typography level="body2" semiBold>
+                                        Simptomi
+                                    </Typography>
+                                    <textarea
+                                        className={cx(
+                                            textareaControlClassName,
+                                            'min-h-28',
+                                        )}
+                                        id={`${fieldIdPrefix}-symptoms`}
+                                        maxLength={4000}
+                                        onChange={(event) =>
+                                            setSymptoms(
+                                                event.currentTarget.value,
+                                            )
+                                        }
+                                        required
+                                        value={symptoms}
+                                    />
+                                </label>
+                                <label
+                                    className="space-y-1"
+                                    htmlFor={`${fieldIdPrefix}-conditions`}
+                                >
+                                    <Typography level="body2" semiBold>
+                                        Uvjeti pojave
+                                    </Typography>
+                                    <textarea
+                                        className={cx(
+                                            textareaControlClassName,
+                                            'min-h-28',
+                                        )}
+                                        id={`${fieldIdPrefix}-conditions`}
+                                        maxLength={4000}
+                                        onChange={(event) =>
+                                            setFavorableConditions(
+                                                event.currentTarget.value,
+                                            )
+                                        }
+                                        required
+                                        value={favorableConditions}
+                                    />
+                                </label>
+                                <Input
+                                    fullWidth
+                                    label="Ozbiljnost (opcionalno)"
+                                    maxLength={1000}
+                                    onChange={(event) =>
+                                        setSeverity(event.currentTarget.value)
+                                    }
+                                    value={severity}
+                                />
+                            </>
+                        ) : null}
                         <Input
                             fullWidth
                             label="Izvor ili poveznica (opcionalno)"

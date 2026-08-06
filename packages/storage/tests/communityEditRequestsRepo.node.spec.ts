@@ -570,6 +570,38 @@ test('community editable registry resolves allowed plant and operation fields', 
                 (field) => field.fieldKey === 'operation.application',
             ),
     );
+    for (const entityTypeName of ['plantDisease', 'plantPest']) {
+        const healthSections = getCommunityEditableSections(entityTypeName);
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'overview')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey ===
+                        `${entityTypeName}.short-description`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'symptoms')
+                ?.fields.some(
+                    (field) => field.fieldKey === `${entityTypeName}.symptoms`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'relationships')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey === `${entityTypeName}.affected-plants`,
+                ),
+        );
+        assert.equal(
+            healthSections.find((section) => section.key === 'operations')
+                ?.fields.length,
+            3,
+        );
+    }
 
     const plantId = await createPublishedPlant();
     const plantFields = await getCommunityEditableFieldsForEntity({
@@ -873,6 +905,55 @@ test('community entity suggestions store operation context and application', asy
     });
 });
 
+test('community entity suggestions store disease and pest details against affected plant context', async () => {
+    const data = await fixture();
+    const firstPlantId = await createPublishedPlant();
+    const secondPlantId = await createPublishedPlant();
+
+    for (const kind of ['disease', 'pest'] as const) {
+        const request = await createCommunityEntitySuggestion({
+            kind,
+            affectedPlantIds: [firstPlantId, secondPlantId, firstPlantId],
+            name: kind === 'disease' ? 'Nova pjegavost' : 'Novi kukac',
+            description: 'Kratki javni opis problema.',
+            symptoms: 'Na listovima se pojavljuju vidljivi znakovi.',
+            favorableConditions: 'Problem se češće javlja za toplog vremena.',
+            severity: 'Srednje',
+            source: 'https://example.com/plant-health',
+            publicPath: kind === 'disease' ? '/bolesti' : '/stetnici',
+            submitter: { id: data.submitterId },
+        });
+
+        assert.equal(request.entityTypeName, 'plant');
+        assert.equal(request.entityId, firstPlantId);
+        assert.equal(request.sectionKey, `new-${kind}`);
+        assert.equal(request.changes.length, 0);
+
+        const suggestion = parseCommunityEntitySuggestionRequest(request);
+        assert.equal(suggestion?.kind, kind);
+        if (suggestion?.kind !== 'disease' && suggestion?.kind !== 'pest') {
+            assert.fail('Expected a plant health suggestion.');
+        }
+        assert.deepEqual(suggestion.affectedPlants, [
+            { id: firstPlantId, name: `Biljka ${firstPlantId}` },
+            { id: secondPlantId, name: `Biljka ${secondPlantId}` },
+        ]);
+        assert.equal(
+            suggestion.symptoms,
+            'Na listovima se pojavljuju vidljivi znakovi.',
+        );
+        assert.equal(suggestion.severity, 'Srednje');
+
+        assert.equal(
+            parseCommunityEntitySuggestionRequest({
+                ...request,
+                entityId: secondPlantId,
+            }),
+            null,
+        );
+    }
+});
+
 test('community edit requests submit storage content and operation suggestions together', async () => {
     const data = await fixture();
     const storageStageId = await createPublishedPlantStage({
@@ -1042,8 +1123,8 @@ test('community edit requests submit plant relationship references', async () =>
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);
     assert.deepEqual(
-        attributeValues(entity, data.plantCompanionsDefinitionId),
-        [String(basilId), String(calendulaId)],
+        attributeValues(entity, data.plantCompanionsDefinitionId).sort(),
+        [String(basilId), String(calendulaId)].sort(),
     );
     assert.deepEqual(
         attributeValues(entity, data.plantAntagonistsDefinitionId),

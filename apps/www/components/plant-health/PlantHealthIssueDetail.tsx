@@ -10,6 +10,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
+import { CommunityEditButton } from '../community-edits/CommunityEditButton';
 import { FeedbackModal } from '../shared/feedback/FeedbackModal';
 import { PlantHealthIssueOperations } from './PlantHealthIssueOperations';
 import {
@@ -26,8 +27,8 @@ type PlantHealthIssueData = PlantDiseaseData | PlantPestData;
 function issueIcon(kind: PlantHealthIssueKind) {
     const Icon = kind === 'disease' ? Shield : Bug;
     return (
-        <span className="flex size-24 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Icon className="size-10" />
+        <span className="inline-flex size-48 items-center justify-center overflow-hidden text-primary">
+            <Icon className="size-14" />
         </span>
     );
 }
@@ -44,6 +45,7 @@ export function PlantHealthIssueDetail({
     const title = plantHealthIssueTitle(issue);
     const affectedPlants = issue.relationships?.affectedPlants ?? [];
     const sources = issue.review?.sources ?? [];
+    const entityTypeName = kind === 'disease' ? 'plantDisease' : 'plantPest';
 
     return (
         <Stack spacing={8} className="py-8">
@@ -60,6 +62,14 @@ export function PlantHealthIssueDetail({
                 visual={issueIcon(kind)}
                 header={title}
                 subHeader={plantHealthIssueShortDescription(issue)}
+                headerChildren={
+                    <CommunityEditButton
+                        entityId={issue.id}
+                        entityTypeName={entityTypeName}
+                        publicPath={path}
+                        sectionKey="overview"
+                    />
+                }
             />
             {issue.information.description && (
                 <div className="max-w-2xl">
@@ -70,9 +80,22 @@ export function PlantHealthIssueDetail({
                 <Stack spacing={6}>
                     {issue.symptoms?.symptoms && (
                         <Stack spacing={2}>
-                            <Typography level="h2" className="text-2xl">
-                                Simptomi
-                            </Typography>
+                            <Row
+                                alignItems="center"
+                                justifyContent="between"
+                                spacing={3}
+                                className="flex-wrap"
+                            >
+                                <Typography level="h2" className="text-2xl">
+                                    Simptomi
+                                </Typography>
+                                <CommunityEditButton
+                                    entityId={issue.id}
+                                    entityTypeName={entityTypeName}
+                                    publicPath={path}
+                                    sectionKey="symptoms"
+                                />
+                            </Row>
                             <div className="max-w-2xl">
                                 <Markdown>{issue.symptoms.symptoms}</Markdown>
                             </div>
@@ -80,9 +103,22 @@ export function PlantHealthIssueDetail({
                     )}
                     {issue.conditions?.favorableConditions && (
                         <Stack spacing={2}>
-                            <Typography level="h2" className="text-2xl">
-                                Uvjeti
-                            </Typography>
+                            <Row
+                                alignItems="center"
+                                justifyContent="between"
+                                spacing={3}
+                                className="flex-wrap"
+                            >
+                                <Typography level="h2" className="text-2xl">
+                                    Uvjeti
+                                </Typography>
+                                <CommunityEditButton
+                                    entityId={issue.id}
+                                    entityTypeName={entityTypeName}
+                                    publicPath={path}
+                                    sectionKey="conditions"
+                                />
+                            </Row>
                             <div className="max-w-2xl">
                                 <Markdown>
                                     {issue.conditions.favorableConditions}
@@ -96,20 +132,46 @@ export function PlantHealthIssueDetail({
                         </Stack>
                     )}
                     <Stack spacing={3}>
-                        <Typography level="h2" className="text-2xl">
-                            Preporučene radnje
-                        </Typography>
+                        <Row
+                            alignItems="center"
+                            justifyContent="between"
+                            spacing={3}
+                            className="flex-wrap"
+                        >
+                            <Typography level="h2" className="text-2xl">
+                                Preporučene radnje
+                            </Typography>
+                            <CommunityEditButton
+                                entityId={issue.id}
+                                entityTypeName={entityTypeName}
+                                publicPath={path}
+                                sectionKey="operations"
+                            />
+                        </Row>
                         <PlantHealthIssueOperations
                             operations={issue.operations}
                         />
                     </Stack>
                 </Stack>
                 <Stack spacing={6}>
-                    {affectedPlants.length > 0 && (
-                        <Stack spacing={3}>
+                    <Stack spacing={3}>
+                        <Row
+                            alignItems="center"
+                            justifyContent="between"
+                            spacing={3}
+                            className="flex-wrap"
+                        >
                             <Typography level="h2" className="text-2xl">
                                 Pogođene biljke
                             </Typography>
+                            <CommunityEditButton
+                                entityId={issue.id}
+                                entityTypeName={entityTypeName}
+                                publicPath={path}
+                                sectionKey="relationships"
+                            />
+                        </Row>
+                        {affectedPlants.length > 0 ? (
                             <div className="grid grid-cols-1 gap-2">
                                 {affectedPlants.map((plant) => (
                                     <Link
@@ -152,8 +214,12 @@ export function PlantHealthIssueDetail({
                                     </Link>
                                 ))}
                             </div>
-                        </Stack>
-                    )}
+                        ) : (
+                            <Typography level="body2" secondary>
+                                Trenutno nema navedenih pogođenih biljaka.
+                            </Typography>
+                        )}
+                    </Stack>
                     {sources.length > 0 && (
                         <Stack spacing={2}>
                             <Typography level="h2" className="text-2xl">

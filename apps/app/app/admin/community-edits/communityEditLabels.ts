@@ -14,6 +14,8 @@ export const ENTITY_TYPE_OPTIONS = [
     'all',
     'plant',
     'plantSort',
+    'plantDisease',
+    'plantPest',
     'operation',
     'block',
 ] as const;
@@ -52,6 +54,10 @@ export function entityTypeLabel(entityTypeName: string) {
             return 'Biljka';
         case 'plantSort':
             return 'Sorta';
+        case 'plantDisease':
+            return 'Bolest';
+        case 'plantPest':
+            return 'Štetnik';
         case 'operation':
             return 'Radnja';
         case 'block':

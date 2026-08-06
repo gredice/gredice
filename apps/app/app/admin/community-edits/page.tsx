@@ -1,5 +1,6 @@
 import {
     type CommunityEditRequestStatus,
+    type CommunityEntitySuggestionValue,
     listCommunityEditRequests,
     parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
@@ -32,6 +33,33 @@ export const dynamic = 'force-dynamic';
 type CommunityEditRequestListItem = Awaited<
     ReturnType<typeof listCommunityEditRequests>
 >[number];
+
+function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return `Nova sorta: ${suggestion.name}`;
+        case 'operation':
+            return `Nova radnja: ${suggestion.name}`;
+        case 'disease':
+            return `Nova bolest: ${suggestion.name}`;
+        case 'pest':
+            return `Novi štetnik: ${suggestion.name}`;
+    }
+}
+
+function entitySuggestionContext(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return `Biljka: ${suggestion.parentPlantName}`;
+        case 'operation':
+            return `Stadij: ${suggestion.stageLabel}`;
+        case 'disease':
+        case 'pest':
+            return `Pogođene biljke: ${suggestion.affectedPlants
+                .map((plant) => plant.name)
+                .join(', ')}`;
+    }
+}
 
 const REQUEST_STATUS_VALUES: readonly string[] = [
     'applied',
@@ -247,21 +275,21 @@ export default async function CommunityEditsPage({
                                                             className="block min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
                                                         >
                                                             {entitySuggestion
-                                                                ? `Nova ${entitySuggestion.kind === 'plantSort' ? 'sorta' : 'radnja'}: ${entitySuggestion.name}`
+                                                                ? entitySuggestionTitle(
+                                                                      entitySuggestion,
+                                                                  )
                                                                 : `${entityTypeLabel(request.entityTypeName)} #${request.entityId}`}
                                                         </Link>
                                                         <Typography
                                                             level="body3"
                                                             className="text-muted-foreground"
                                                         >
-                                                            {entitySuggestion?.kind ===
-                                                            'plantSort'
-                                                                ? `Biljka: ${entitySuggestion.parentPlantName}`
-                                                                : entitySuggestion?.kind ===
-                                                                    'operation'
-                                                                  ? `Stadij: ${entitySuggestion.stageLabel}`
-                                                                  : (request.sectionKey ??
-                                                                    'Cijela stranica')}
+                                                            {entitySuggestion
+                                                                ? entitySuggestionContext(
+                                                                      entitySuggestion,
+                                                                  )
+                                                                : (request.sectionKey ??
+                                                                  'Cijela stranica')}
                                                         </Typography>
                                                     </Stack>
                                                     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
