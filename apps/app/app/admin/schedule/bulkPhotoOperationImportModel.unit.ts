@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     type BulkPhotoOperationTarget,
     buildBulkPhotoImportPreview,
+    isRaisedBedPhotoOperationInformation,
     isRaisedBedPhotoOperationLabel,
     MAX_BULK_PHOTO_OPERATION_COUNT,
     MAX_PHOTOS_PER_OPERATION,
@@ -30,6 +31,23 @@ test('recognizes the raised-bed photo operation label consistently', () => {
         true,
     );
     assert.equal(isRaisedBedPhotoOperationLabel('Zalijevanje gredice'), false);
+});
+
+test('recognizes the raised-bed photo operation by its stable name', () => {
+    assert.equal(
+        isRaisedBedPhotoOperationInformation(
+            { name: 'raisedBedFullPhoto' },
+            'raisedBedFullPhoto',
+        ),
+        true,
+    );
+    assert.equal(
+        isRaisedBedPhotoOperationInformation(
+            { name: 'renamedOperation' },
+            'raisedBedFullPhoto',
+        ),
+        false,
+    );
 });
 
 test('groups supported filename variants by the scheduled physical identifier', () => {
