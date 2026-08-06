@@ -1,7 +1,7 @@
 import {
     type CommunityEditRequestStatus,
     listCommunityEditRequests,
-    parseCommunityEntitySuggestion,
+    parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
@@ -155,7 +155,7 @@ function publicPageUrl(publicPath: string) {
 
 function requestTargetEntityType(request: CommunityEditRequestListItem) {
     return (
-        parseCommunityEntitySuggestion(request.submitterNote)?.kind ??
+        parseCommunityEntitySuggestionRequest(request)?.kind ??
         request.entityTypeName
     );
 }
@@ -222,8 +222,8 @@ export default async function CommunityEditsPage({
                                     const displayName =
                                         submitterDisplayName(request);
                                     const entitySuggestion =
-                                        parseCommunityEntitySuggestion(
-                                            request.submitterNote,
+                                        parseCommunityEntitySuggestionRequest(
+                                            request,
                                         );
 
                                     return (

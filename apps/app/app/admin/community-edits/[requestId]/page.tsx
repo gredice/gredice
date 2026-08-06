@@ -2,7 +2,7 @@ import {
     type CommunityEditRequestStatus,
     type CommunityEntitySuggestionValue,
     getCommunityEditRequest,
-    parseCommunityEntitySuggestion,
+    parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -591,9 +591,7 @@ export default async function CommunityEditDetailPage({
     if (!request) {
         notFound();
     }
-    const entitySuggestion = parseCommunityEntitySuggestion(
-        request.submitterNote,
-    );
+    const entitySuggestion = parseCommunityEntitySuggestionRequest(request);
 
     return (
         <Stack spacing={4}>

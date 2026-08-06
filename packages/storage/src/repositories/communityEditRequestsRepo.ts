@@ -336,6 +336,37 @@ export function parseCommunityEntitySuggestion(
     }
 }
 
+export function parseCommunityEntitySuggestionRequest(request: {
+    submitterNote: string | null;
+    sectionKey: string | null;
+    entityTypeName: string;
+    entityId: number;
+    changes: readonly unknown[];
+}): CommunityEntitySuggestionValue | null {
+    if (request.changes.length !== 0) {
+        return null;
+    }
+
+    const suggestion = parseCommunityEntitySuggestion(request.submitterNote);
+    if (!suggestion) {
+        return null;
+    }
+
+    if (suggestion.kind === 'plantSort') {
+        return request.sectionKey === 'new-plant-sort' &&
+            request.entityTypeName === 'plant' &&
+            request.entityId === suggestion.parentPlantId
+            ? suggestion
+            : null;
+    }
+
+    return request.sectionKey === 'new-operation' &&
+        request.entityTypeName === 'plantStage' &&
+        request.entityId === suggestion.plantStageId
+        ? suggestion
+        : null;
+}
+
 function isPlantStageName(value: unknown): value is PlantStageName {
     return typeof value === 'string' && value in PLANT_STAGE_LABELS;
 }

@@ -19,6 +19,7 @@ import {
     getEntityRaw,
     getEntityRevisions,
     parseCommunityEntitySuggestion,
+    parseCommunityEntitySuggestionRequest,
     rejectCommunityEditRequest,
     storage,
     updateEntity,
@@ -814,6 +815,23 @@ test('community entity suggestions store a reviewable new plant sort proposal', 
         note: 'Provjeriti dostupnost sjemena.',
         source: 'https://example.com/blitva-rubin',
     });
+    assert.equal(
+        parseCommunityEntitySuggestionRequest(request)?.kind,
+        'plantSort',
+    );
+
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            sectionKey: 'overview',
+            changes: [
+                {
+                    fieldKey: 'plant.description',
+                },
+            ],
+        }),
+        null,
+    );
 
     const approved = await approveCommunityEditRequest({
         id: request.id,
