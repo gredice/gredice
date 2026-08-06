@@ -238,7 +238,10 @@ export function GameHud({
                 </div>
             </div>
             {!isLocalSandbox && (
-                <RaisedBedFieldHud instantTransition={viewMode === '2d'} />
+                <RaisedBedFieldHud
+                    instantTransition={viewMode === '2d'}
+                    show2DPlaceholder={viewMode === '2d'}
+                />
             )}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
