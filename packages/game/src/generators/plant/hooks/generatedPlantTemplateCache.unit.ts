@@ -119,11 +119,18 @@ test('plant template keys include every render-affecting input', () => {
         showLeaves: true,
         showProduce: true,
         variant: 0,
-    };
+    } satisfies Parameters<typeof getGeneratedPlantTemplateKey>[0];
     const baseKey = getGeneratedPlantTemplateKey(base);
 
     assert.notEqual(
         getGeneratedPlantTemplateKey({ ...base, generation: 7 }),
+        baseKey,
+    );
+    assert.notEqual(
+        getGeneratedPlantTemplateKey({
+            ...base,
+            definition: plantTypes.carrot,
+        }),
         baseKey,
     );
     assert.notEqual(
@@ -145,15 +152,29 @@ test('plant template keys include every render-affecting input', () => {
 });
 
 test('plant template seeds are independent from physical instance seeds', () => {
+    const seed = getGeneratedPlantTemplateSeed({
+        definition: plantTypes.tomato,
+        variant: 2,
+    });
+
     assert.equal(
+        seed,
         getGeneratedPlantTemplateSeed({
             definition: plantTypes.tomato,
-            generation: 8,
             variant: 2,
         }),
+    );
+    assert.notEqual(
+        seed,
         getGeneratedPlantTemplateSeed({
             definition: plantTypes.tomato,
-            generation: 8,
+            variant: 3,
+        }),
+    );
+    assert.notEqual(
+        seed,
+        getGeneratedPlantTemplateSeed({
+            definition: plantTypes.carrot,
             variant: 2,
         }),
     );

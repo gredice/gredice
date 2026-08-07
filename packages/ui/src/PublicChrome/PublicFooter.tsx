@@ -142,6 +142,20 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Bolesti',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantDiseases,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Štetnici',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantPests,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljni susjedi',
                             href: publicChromeHref(
                                 PublicPagePaths.CompanionPlanting,

@@ -1,87 +1,11 @@
 import type { PlantDefinition } from '../plant-definition-types';
-import { createPlant } from './helpers';
+import { createDevelopmentProgram, createPlant } from './helpers';
 
-const berryShrubRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            rule: 'S(1.04,1)[+(24)L(1.02)][-(22)L(0.98)][^(16)P(0.78)]',
-            weight: 2,
-        },
-        {
-            rule: 'S(0.96,0.98)[+(18)L(1.04)][-(18)L(1.04)]',
-            weight: 2,
-        },
-        {
-            rule: 'S(0.92,0.96)[+(28)F(0.82,0.84)][-(24)F(0.78,0.82)]',
-            weight: 1,
-        },
-        {
-            rule: 'S(0.88,0.94)[P(0.84)]',
-            weight: 1,
-        },
-    ],
-    S: [
-        {
-            right: ['P'],
-            rule: 'F(0.76,0.86)[+(12)L(0.8)]',
-            weight: 3,
-        },
-        {
-            right: ['L'],
-            rule: 'F(0.92,0.9)S(0.82,0.84)[+(14)L(0.88)]',
-            weight: 2,
-        },
-        {
-            rule: 'F(0.94,0.9)S(0.86,0.86)',
-            weight: 1,
-        },
-    ],
-};
-
-const caneBerryRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            rule: 'S(1.08,1.02)T(1.05)[+(24)L(1.02)][-(22)L(0.98)][^(14)P(0.82)]',
-            weight: 2,
-        },
-        {
-            rule: 'S(0.98,1)T(0.96)[+(18)L(1.04)][-(18)L(1.04)]',
-            weight: 2,
-        },
-        {
-            rule: 'S(0.92,0.98)T(0.88)[+(30)F(0.84,0.86)][-(26)F(0.8,0.82)]',
-            weight: 1,
-        },
-    ],
-    S: [
-        {
-            right: ['P'],
-            rule: 'F(0.78,0.88)T(0.92)[+(12)L(0.82)]',
-            weight: 2,
-        },
-        {
-            right: ['L'],
-            rule: 'F(0.94,0.92)S(0.84,0.86)T(0.84)[+(14)L(0.88)]',
-            weight: 2,
-        },
-        {
-            rule: 'F(0.96,0.92)S(0.88,0.88)T(0.8)',
-            weight: 1,
-        },
-    ],
-};
-
-const berryShrubBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'F',
-    rules: berryShrubRules,
-    angle: 22,
+const berryShrubAppearance = {
     height: 0.74,
-    branching: 1.04,
-    directionVariability: 0.1,
     stem: {
         color: '#6f7d46',
         radius: 0.03,
-        length: 0.078,
         radiusDecay: 0.56,
         minRadius: 0.004,
     },
@@ -89,161 +13,181 @@ const berryShrubBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
         color: '#587b37',
         size: 0.18,
         type: 'oval',
-        density: 2,
-        hangAngle: 26,
-        hangAngleRandomness: 14,
-        sizeDecay: 0.4,
     },
     flower: {
         enabled: true,
-        ageStart: 6,
         color: '#fff8ef',
         size: 0.05,
     },
-};
+} satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
 
-const strawberryRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            rule: 'S(0.86,1)[+(24)L(1.18)][-(24)L(1.18)][P(0.76)]',
-            weight: 3,
-        },
-        {
-            rule: 'S(0.8,0.96)[+(18)L(1.14)][-(18)L(1.14)][+(12)F(0.72,0.78)]',
-            weight: 2,
-        },
-        {
-            rule: 'S(0.74,0.94)[L(1.24)]',
-            weight: 1,
-        },
-    ],
-    S: [
-        {
-            right: ['P'],
-            rule: 'F(0.62,0.82)[L(1.1)]',
-            weight: 2,
-        },
-        {
-            right: ['L'],
-            rule: 'F(0.7,0.84)S(0.64,0.8)[+(12)L(1.04)]',
-            weight: 2,
-        },
-        {
-            rule: 'F(0.74,0.86)S(0.68,0.82)',
-            weight: 1,
-        },
-    ],
-};
-
-const strawberryBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'F',
-    rules: strawberryRules,
-    angle: 18,
+const strawberryAppearance = {
     height: 0.34,
-    branching: 1.3,
-    directionVariability: 0.1,
     stem: {
         color: '#7a8f4c',
         radius: 0.018,
-        length: 0.052,
         radiusDecay: 0.7,
         minRadius: 0.003,
     },
     leaf: {
         color: '#5c8a3d',
-        size: 0.22,
-        type: 'heart',
-        density: 2,
-        hangAngle: 40,
-        hangAngleRandomness: 14,
-        sizeDecay: 0.52,
+        size: 0.24,
+        type: 'serrated',
     },
     flower: {
         enabled: true,
-        ageStart: 4,
-        color: '#fffdf7',
+        color: '#fff6de',
         size: 0.06,
     },
-};
+} satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
 
 export const berryPlants = {
-    strawberry: createPlant({
-        ...strawberryBase,
+    strawberry: createPlant('strawberry', {
+        ...strawberryAppearance,
         name: 'Jagoda',
-        leaf: {
-            ...strawberryBase.leaf,
-            type: 'serrated',
-            size: 0.24,
-        },
-        flower: {
-            ...strawberryBase.flower,
-            color: '#fff6de',
-        },
+        development: createDevelopmentProgram('rosette', {
+            axes: { spread: 0.82 },
+            foliage: {
+                count: 12,
+                emergenceInterval: 0.58,
+                maturityDuration: 1.8,
+                petioleLengthScale: 0.42,
+                pitchRangeDegrees: [32, 68],
+                sizeRange: [0.74, 1.08],
+            },
+            phenology: {
+                emergenceStart: 0.3,
+                maturityGeneration: 9.5,
+            },
+            reproduction: {
+                flowerStart: 4.5,
+                flowersPerSite: 1,
+                form: 'star',
+                fruitStart: 6.5,
+                produceCount: 6,
+                site: 'terminal',
+                siteCount: 2,
+            },
+            special: { runnerCount: 3 },
+            variability: 0.12,
+        }),
         vegetable: {
             enabled: true,
-            ageStart: 6,
             type: 'strawberry',
-            yield: 0.8,
             baseSize: 0.13,
         },
     }),
-    blueberry: createPlant({
-        ...berryShrubBase,
+    blueberry: createPlant('blueberry', {
+        ...berryShrubAppearance,
         name: 'Borovnica',
         height: 0.72,
+        development: createDevelopmentProgram('shrub', {
+            axes: {
+                axisCount: 4,
+                branchCount: 5,
+                branchLengthScale: 0.4,
+                branchNodeCount: 3,
+                spread: 0.38,
+            },
+            foliage: {
+                count: 36,
+                emergenceInterval: 0.24,
+                maturityDuration: 1.7,
+                petioleLengthScale: 0.25,
+                sizeRange: [0.74, 1.03],
+            },
+            phenology: {
+                emergenceStart: 0.35,
+                maturityGeneration: 10.5,
+            },
+            reproduction: {
+                flowerStart: 6.25,
+                flowersPerSite: 1,
+                form: 'cluster',
+                fruitStart: 8,
+                produceCount: 6,
+                site: 'axillary',
+                siteCount: 6,
+            },
+            variability: 0.1,
+        }),
         stem: {
-            ...berryShrubBase.stem,
+            ...berryShrubAppearance.stem,
             color: '#7f6e58',
             radius: 0.028,
         },
         leaf: {
-            ...berryShrubBase.leaf,
+            ...berryShrubAppearance.leaf,
             color: '#668743',
             size: 0.16,
         },
         flower: {
-            ...berryShrubBase.flower,
+            ...berryShrubAppearance.flower,
             color: '#f2efe8',
         },
         vegetable: {
             enabled: true,
-            ageStart: 7,
             type: 'blueberry',
-            yield: 0.82,
             baseSize: 0.14,
         },
     }),
-    raspberry: createPlant({
-        ...berryShrubBase,
+    raspberry: createPlant('raspberry', {
+        ...berryShrubAppearance,
         name: 'Malina',
-        rules: caneBerryRules,
         height: 0.94,
-        branching: 1.12,
-        directionVariability: 0.14,
+        development: createDevelopmentProgram('shrub', {
+            axes: {
+                axisCount: 5,
+                branchCount: 3,
+                branchLengthScale: 0.48,
+                branchNodeCount: 3,
+                branchPitchDegrees: 34,
+                branchingPattern: 'multi-stem',
+                nodeCount: 8,
+                spread: 0.28,
+            },
+            foliage: {
+                count: 30,
+                emergenceInterval: 0.28,
+                maturityDuration: 1.65,
+                petioleLengthScale: 0.34,
+                sizeRange: [0.7, 1.06],
+            },
+            phenology: {
+                emergenceStart: 0.35,
+                maturityGeneration: 10.5,
+            },
+            reproduction: {
+                flowerStart: 5.5,
+                flowersPerSite: 1,
+                form: 'cluster',
+                fruitStart: 7.5,
+                produceCount: 8,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { thornCount: 20 },
+            variability: 0.14,
+        }),
         stem: {
-            ...berryShrubBase.stem,
+            ...berryShrubAppearance.stem,
             color: '#7e684c',
             radius: 0.024,
-            length: 0.094,
             minRadius: 0.003,
         },
         leaf: {
-            ...berryShrubBase.leaf,
+            ...berryShrubAppearance.leaf,
             color: '#55762f',
             size: 0.22,
             type: 'serrated',
-            density: 2,
         },
         flower: {
-            ...berryShrubBase.flower,
-            ageStart: 5,
+            ...berryShrubAppearance.flower,
             size: 0.055,
         },
         vegetable: {
             enabled: true,
-            ageStart: 7,
             type: 'raspberry',
-            yield: 0.88,
             baseSize: 0.17,
         },
         thorn: {

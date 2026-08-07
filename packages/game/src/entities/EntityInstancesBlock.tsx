@@ -496,7 +496,6 @@ function IntegratedWeatherEntityInstancesGeometry({
     >[0];
     weatherSurfaceMode: WeatherSurfaceMode;
 } & EntityInstancesGeometryProps) {
-    const flags = useGameFlags();
     const {
         geometry,
         renderRainWetOverlay = false,
@@ -513,9 +512,7 @@ function IntegratedWeatherEntityInstancesGeometry({
     const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const rainOverlayVisible = useRainWetOverlayVisible();
     const rainSurfaceActive =
-        renderRainWetOverlay &&
-        Boolean(flags.enableRainWetOverlayFlag) &&
-        Boolean(rainOverlayVisible);
+        renderRainWetOverlay && Boolean(rainOverlayVisible);
     const snowOverlayVisible = useSnowOverlayVisible({
         coverageMultiplier: snow?.coverageMultiplier,
         minCoverage: snowOverlayMinCoverage,
@@ -650,7 +647,6 @@ function EntityInstancesGeometryRenderer(
         weatherSurfaceMode: WeatherSurfaceMode;
     },
 ) {
-    const flags = useGameFlags();
     const {
         instanceKey,
         instances: incomingInstances,
@@ -798,8 +794,7 @@ function EntityInstancesGeometryRenderer(
     );
     const weatherRegistryId = useId();
     const rainOverlayVisible = useRainWetOverlayVisible();
-    const rainOverlayEnabled =
-        renderRainWetOverlay && Boolean(flags.enableRainWetOverlayFlag);
+    const rainOverlayEnabled = renderRainWetOverlay;
     const rainWetnessActive = useRainSurfaceWetnessActive({
         drySpeed: 1.8,
         enabled: rainOverlayEnabled,
@@ -1127,7 +1122,7 @@ function EntityInstancesGeometryRenderer(
     );
 }
 
-const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
+export const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
     castShadow,
     chunk,
     debugName,
@@ -1161,7 +1156,10 @@ const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
     useLayoutEffect(() => {
         const startedAt = placementAnimationProfileNow();
         const mesh = meshRef.current;
-        if (mesh) {
+        const meshUsesCurrentConstructorArguments =
+            mesh?.geometry === geometry &&
+            (material === undefined || mesh.material === material);
+        if (mesh && meshUsesCurrentConstructorArguments) {
             chunk.instances.forEach((instance, index) => {
                 mesh.setMatrixAt(
                     index,
@@ -1191,7 +1189,14 @@ const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
                 transformedInstanceCount: chunk.instances.length,
             });
         }
-    }, [chunk.instances, localTransform, placementSignature, scale]);
+    }, [
+        chunk.instances,
+        geometry,
+        localTransform,
+        material,
+        placementSignature,
+        scale,
+    ]);
 
     if (chunk.instances.length === 0) {
         return null;

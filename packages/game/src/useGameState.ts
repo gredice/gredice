@@ -337,6 +337,7 @@ type BackgroundPaletteCycle = {
 
 export type GameState = {
     // General
+    authenticatedGardenQueriesEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     winterMode: WinterMode;
@@ -485,6 +486,7 @@ export type GameState = {
 
 export function createGameState({
     appBaseUrl,
+    authenticatedGardenQueriesEnabled = true,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -499,6 +501,7 @@ export function createGameState({
     winterMode,
 }: {
     appBaseUrl: string;
+    authenticatedGardenQueriesEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -533,6 +536,7 @@ export function createGameState({
     const { sunrise, sunset } = getGameSunriseSunset(timeLocation, now);
     let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
+        authenticatedGardenQueriesEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         winterMode: winterMode ?? 'summer',

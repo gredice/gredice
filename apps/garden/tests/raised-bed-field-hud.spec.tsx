@@ -1724,7 +1724,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedCloseupHudStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
             />,
         );
@@ -1751,7 +1750,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedInfoModalStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
             />,
         );
@@ -1776,7 +1774,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedFieldHudStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
                 positionIndex={0}
             />,

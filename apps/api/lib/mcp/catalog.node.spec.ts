@@ -19,10 +19,65 @@ describe('MCP catalog contract scaffold', () => {
         ]);
     });
 
+    test('exposes garden composition alongside raised-bed context tools', () => {
+        assert.deepEqual(getMcpToolNamesByDomain('gardens'), [
+            'gardens/list-gardens',
+            'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
+            'gardens/get-raised-bed-fields',
+            'gardens/list-operations',
+            'gardens/get-lifecycle-context',
+            'gardens/get-raised-bed-ai-history',
+        ]);
+    });
+
     test('keeps excluded tools out of the public catalog', () => {
         assert.equal(
             getMcpToolCatalog().some((tool) => tool.exposure === 'excluded'),
             false,
+        );
+    });
+
+    test('keeps public catalog data anonymous and user data authenticated', () => {
+        const exposures = new Map(
+            getMcpToolCatalog().map((tool) => [tool.name, tool.exposure]),
+        );
+
+        for (const toolName of [
+            'directories/get-plants',
+            'directories/get-plant',
+            'directories/get-plant-sorts',
+            'directories/search-entities',
+            'directories/get-operations',
+            'directories/get-seeds',
+            'commerce/get-products',
+            'commerce/search-products',
+            'commerce/get-product',
+        ]) {
+            assert.equal(exposures.get(toolName), 'public-read');
+        }
+
+        for (const toolName of [
+            'gardens/list-gardens',
+            'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
+            'gardens/get-raised-bed-fields',
+            'gardens/list-operations',
+            'gardens/get-lifecycle-context',
+            'gardens/get-raised-bed-ai-history',
+            'commerce/get-cart',
+        ]) {
+            assert.equal(exposures.get(toolName), 'auth-read');
+        }
+
+        assert.equal(exposures.get('commerce/add-to-cart'), 'auth-mutation');
+        assert.equal(
+            exposures.get('commerce/add-operation-to-cart'),
+            'auth-mutation',
+        );
+        assert.equal(
+            exposures.get('commerce/update-cart-item'),
+            'auth-mutation',
         );
     });
 
@@ -34,9 +89,11 @@ describe('MCP catalog contract scaffold', () => {
             assert.equal(tool.annotations.openWorldHint, false);
             assert.equal(
                 tool.annotations.readOnlyHint,
-                !['commerce/add-to-cart', 'commerce/update-cart-item'].includes(
-                    tool.name,
-                ),
+                ![
+                    'commerce/add-to-cart',
+                    'commerce/add-operation-to-cart',
+                    'commerce/update-cart-item',
+                ].includes(tool.name),
             );
             assert.equal(
                 tool.annotations.destructiveHint,
@@ -49,6 +106,7 @@ describe('MCP catalog contract scaffold', () => {
         for (const toolName of [
             'commerce/get-cart',
             'commerce/add-to-cart',
+            'commerce/add-operation-to-cart',
             'commerce/update-cart-item',
         ]) {
             const tool = getMcpTools().find(

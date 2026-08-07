@@ -166,14 +166,12 @@ function createScenarioQueryClient(
 }
 
 type ProvidersProps = PropsWithChildren<{
-    enableSuncokret?: boolean;
     favorites?: FavoriteItem[];
     scenario: RaisedBedScenario;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
-    enableSuncokret = false,
     scenario,
     favorites = [],
 }: ProvidersProps) {
@@ -196,11 +194,7 @@ function RaisedBedHudTestProviders({
         <NuqsTestingAdapter>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameFlagsContext.Provider
-                        value={{
-                            enableSuncokretChatFlag: enableSuncokret,
-                        }}
-                    >
+                    <GameFlagsContext.Provider value={{}}>
                         <SuncokretChatProvider>
                             <GameAnalyticsProvider
                                 capture={(eventName, properties) => {
@@ -232,24 +226,18 @@ export function RaisedBedFieldHudStory({
     positionIndex,
     favorites = [],
     cellSize = 80,
-    enableSuncokret = false,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     favorites?: FavoriteItem[];
     cellSize?: number;
-    enableSuncokret?: boolean;
 }) {
     const cartItem =
         scenario.cartItems?.find(
             (item) => item.positionIndex === positionIndex,
         ) ?? null;
     return (
-        <RaisedBedHudTestProviders
-            scenario={scenario}
-            favorites={favorites}
-            enableSuncokret={enableSuncokret}
-        >
+        <RaisedBedHudTestProviders scenario={scenario} favorites={favorites}>
             <div
                 data-testid="hud-cell"
                 className="relative"
@@ -272,34 +260,24 @@ export function RaisedBedFieldHudStory({
 }
 
 export function RaisedBedInfoModalStory({
-    enableSuncokret = false,
     scenario,
 }: {
-    enableSuncokret?: boolean;
     scenario: RaisedBedScenario;
 }) {
     return (
-        <RaisedBedHudTestProviders
-            scenario={scenario}
-            enableSuncokret={enableSuncokret}
-        >
+        <RaisedBedHudTestProviders scenario={scenario}>
             <RaisedBedInfoModalStoryContent />
         </RaisedBedHudTestProviders>
     );
 }
 
 export function RaisedBedCloseupHudStory({
-    enableSuncokret = false,
     scenario,
 }: {
-    enableSuncokret?: boolean;
     scenario: RaisedBedScenario;
 }) {
     return (
-        <RaisedBedHudTestProviders
-            scenario={scenario}
-            enableSuncokret={enableSuncokret}
-        >
+        <RaisedBedHudTestProviders scenario={scenario}>
             <RaisedBedCloseupHudStoryContent />
         </RaisedBedHudTestProviders>
     );

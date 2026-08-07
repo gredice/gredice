@@ -5,75 +5,131 @@ import { SelectItems } from '@gredice/ui/SelectItems';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantSlider } from './PlantSlider';
 
+const leafTypeOptions = [
+    { value: 'round', label: 'Okrugli' },
+    { value: 'oval', label: 'Ovalni' },
+    { value: 'heart', label: 'Srcoliki' },
+    { value: 'serrated', label: 'Nazubljeni' },
+    { value: 'compound', label: 'Složeni' },
+    { value: 'ruffled', label: 'Naborani' },
+    { value: 'lobed', label: 'Režnjasti' },
+    { value: 'strap', label: 'Trakasti' },
+    { value: 'tubular', label: 'Cjevasti' },
+    { value: 'lanceolate', label: 'Lancetasti' },
+    { value: 'trifoliate', label: 'Trolisni' },
+    { value: 'pinnate', label: 'Perasti' },
+    { value: 'feathery', label: 'Pahuljasti' },
+    { value: 'palmate', label: 'Dlanasti' },
+];
+
 export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
+    const foliage = state.definition.development.foliage;
+    const [minimumPitch, maximumPitch] = foliage.pitchRangeDegrees;
+    const [minimumSize, maximumSize] = foliage.sizeRange;
+
     return (
         <div className="space-y-4">
             <PlantSlider
-                label={`Max veličina: ${state.definition.leaf.size.toFixed(2)}`}
+                label={`Osnovna veličina: ${state.definition.leaf.size.toFixed(2)}`}
                 value={[state.definition.leaf.size]}
-                onValueChange={(v) => onDefinitionChange('leaf.size', v[0])}
-                min={0.05}
+                onValueChange={(value) =>
+                    onDefinitionChange('leaf.size', value[0])
+                }
+                min={0.02}
                 max={1}
                 step={0.01}
             />
             <PlantSlider
-                label={`Opadanje veličine: ${state.definition.leaf.sizeDecay.toFixed(2)}`}
-                value={[state.definition.leaf.sizeDecay]}
-                onValueChange={(v) =>
-                    onDefinitionChange('leaf.sizeDecay', v[0])
+                label={`Broj listova: ${foliage.count}`}
+                value={[foliage.count]}
+                onValueChange={(value) =>
+                    onDefinitionChange('development.foliage.count', value[0])
                 }
                 min={0}
-                max={2}
-                step={0.05}
-            />
-            <PlantSlider
-                label={`Gustoća: ${state.definition.leaf.density}`}
-                value={[state.definition.leaf.density]}
-                onValueChange={(v) => onDefinitionChange('leaf.density', v[0])}
-                min={1}
-                max={5}
+                max={80}
                 step={1}
             />
             <PlantSlider
-                label={`Kut visenja: ${state.definition.leaf.hangAngle}°`}
-                value={[state.definition.leaf.hangAngle]}
-                onValueChange={(v) =>
-                    onDefinitionChange('leaf.hangAngle', v[0])
+                label={`Dužina peteljke: ${foliage.petioleLengthScale.toFixed(2)}`}
+                value={[foliage.petioleLengthScale]}
+                onValueChange={(value) =>
+                    onDefinitionChange(
+                        'development.foliage.petioleLengthScale',
+                        value[0],
+                    )
+                }
+                min={0}
+                max={1.5}
+                step={0.05}
+            />
+            <PlantSlider
+                label={`Najmanji nagib: ${minimumPitch.toFixed(0)}°`}
+                value={[minimumPitch]}
+                onValueChange={(value) =>
+                    onDefinitionChange(
+                        'development.foliage.pitchRangeDegrees',
+                        [Math.min(value[0], maximumPitch), maximumPitch],
+                    )
                 }
                 min={0}
                 max={90}
                 step={1}
             />
             <PlantSlider
-                label={`Nasumičnost visenja: ${state.definition.leaf.hangAngleRandomness}°`}
-                value={[state.definition.leaf.hangAngleRandomness]}
-                onValueChange={(v) =>
-                    onDefinitionChange('leaf.hangAngleRandomness', v[0])
+                label={`Najveći nagib: ${maximumPitch.toFixed(0)}°`}
+                value={[maximumPitch]}
+                onValueChange={(value) =>
+                    onDefinitionChange(
+                        'development.foliage.pitchRangeDegrees',
+                        [minimumPitch, Math.max(value[0], minimumPitch)],
+                    )
                 }
                 min={0}
-                max={45}
+                max={90}
                 step={1}
+            />
+            <PlantSlider
+                label={`Najmanja relativna veličina: ${minimumSize.toFixed(2)}`}
+                value={[minimumSize]}
+                onValueChange={(value) =>
+                    onDefinitionChange('development.foliage.sizeRange', [
+                        Math.min(value[0], maximumSize),
+                        maximumSize,
+                    ])
+                }
+                min={0.1}
+                max={1.5}
+                step={0.05}
+            />
+            <PlantSlider
+                label={`Najveća relativna veličina: ${maximumSize.toFixed(2)}`}
+                value={[maximumSize]}
+                onValueChange={(value) =>
+                    onDefinitionChange('development.foliage.sizeRange', [
+                        minimumSize,
+                        Math.max(value[0], minimumSize),
+                    ])
+                }
+                min={0.1}
+                max={1.5}
+                step={0.05}
             />
             <SelectItems
                 label="Vrsta"
                 value={state.definition.leaf.type}
-                items={[
-                    { value: 'round', label: 'Round' },
-                    { value: 'oval', label: 'Oval' },
-                    { value: 'heart', label: 'Heart' },
-                    { value: 'serrated', label: 'Serrated' },
-                    { value: 'compound', label: 'Compound' },
-                ]}
-                onValueChange={(v) => onDefinitionChange('leaf.type', v)}
+                items={leafTypeOptions}
+                onValueChange={(value) =>
+                    onDefinitionChange('leaf.type', value)
+                }
             />
             <Input
                 label="Boja"
                 type="color"
                 value={state.definition.leaf.color}
-                onChange={(e) =>
-                    onDefinitionChange('leaf.color', e.target.value)
+                onChange={(event) =>
+                    onDefinitionChange('leaf.color', event.target.value)
                 }
-                className="w-full h-10"
+                className="h-10 w-full"
             />
         </div>
     );

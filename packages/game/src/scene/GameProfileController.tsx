@@ -6,7 +6,7 @@ import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { meshChunkSize } from '../entities/chunkedMeshGeometry';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { resetPlacementAnimationProfileMetrics } from '../entities/placementAnimationProfileMetrics';
-import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedLSystem';
+import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedPlantRenderData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import { useGameState } from '../useGameState';

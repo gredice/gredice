@@ -7,6 +7,7 @@ import {
     deleteAttributeValue,
     deleteEntity,
     generatedImageUrlDefaultValue,
+    getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityFormatted,
@@ -834,6 +835,35 @@ test('plant health read model derives diseases and pests from affected plant ref
             value: String(treatmentOperationId),
         }),
     ]);
+
+    const symptomFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'symptoms',
+    });
+    assert.equal(symptomFields[0]?.currentValue, `Disease ${suffix} symptoms`);
+
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'relationships',
+    });
+    assert.ok(
+        relationshipFields[0]?.options?.some(
+            (option) => option.value === String(tomatoId),
+        ),
+    );
+
+    const operationFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'operations',
+    });
+    assert.ok(
+        operationFields[0]?.options?.some(
+            (option) => option.value === String(preventionOperationId),
+        ),
+    );
 
     const formattedPlants =
         await getEntitiesFormatted<FormattedPlantWithHealth>('plant');

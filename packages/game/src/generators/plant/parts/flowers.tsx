@@ -9,6 +9,7 @@ import type {
     PackedPlantBounds,
     PackedPlantMatrixInstances,
 } from '../lib/packedPlantRenderData';
+import type { PlantFlowerForm } from '../lib/plant-definitions';
 import {
     applyPackedPlantBounds,
     copyPackedStaticInstancedAttribute,
@@ -27,23 +28,63 @@ interface FlowersProps {
     matrices?: THREE.Matrix4[];
     packed?: PackedPlantMatrixInstances;
     color: string;
+    form: PlantFlowerForm;
     animate?: boolean;
     castShadow?: boolean;
 }
 
-const flowerGeometry = (() => {
+function createFlowerShapeGeometry(points: readonly [number, number][]) {
+    const [firstPoint, ...remainingPoints] = points;
+    if (!firstPoint) {
+        throw new TypeError('Flower geometry requires at least one point');
+    }
+
     const shape = new THREE.Shape();
-    const petals = 5;
+    shape.moveTo(...firstPoint);
+    remainingPoints.forEach((point) => {
+        shape.lineTo(...point);
+    });
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+}
+
+function createPetalGeometry(petals: number, innerRadius: number) {
+    const shape = new THREE.Shape();
     for (let i = 0; i < petals * 2; i++) {
         const angle = (i / (petals * 2)) * Math.PI * 2;
-        const radius = i % 2 === 0 ? 0.4 : 1;
+        const radius = i % 2 === 0 ? innerRadius : 1;
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         if (i === 0) shape.moveTo(x, y);
         else shape.lineTo(x, y);
     }
     return new THREE.ShapeGeometry(shape);
-})();
+}
+
+const flowerGeometries: Record<PlantFlowerForm, THREE.BufferGeometry> = {
+    cluster: new THREE.CircleGeometry(1, 8),
+    pea: createFlowerShapeGeometry([
+        [0, -0.8],
+        [-0.42, -0.3],
+        [-0.86, 0.15],
+        [-0.62, 0.7],
+        [0, 0.48],
+        [0.62, 0.7],
+        [0.86, 0.15],
+        [0.42, -0.3],
+    ]),
+    'pom-pom': createPetalGeometry(10, 0.72),
+    spike: createFlowerShapeGeometry([
+        [0, -1.2],
+        [-0.34, -0.35],
+        [-0.28, 0.68],
+        [0, 1.2],
+        [0.28, 0.68],
+        [0.34, -0.35],
+    ]),
+    star: createPetalGeometry(5, 0.4),
+    umbel: createPetalGeometry(7, 0.55),
+};
 const EMPTY_FLOWER_MATRICES: THREE.Matrix4[] = [];
 
 export function Flowers({
@@ -52,6 +93,7 @@ export function Flowers({
     matrices = EMPTY_FLOWER_MATRICES,
     packed,
     color,
+    form,
     animate = true,
     castShadow,
 }: FlowersProps) {
@@ -59,9 +101,10 @@ export function Flowers({
     const instanceCount = packed?.count ?? matrices.length;
     const instanceCapacity = instanceCount;
     const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
+    const flowerGeometry = flowerGeometries[form];
     const geometry = useMemo(
         () => createPlantGeometryShell(flowerGeometry),
-        [],
+        [flowerGeometry],
     );
     const swayPhase = useMemo(
         () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
@@ -113,7 +156,7 @@ export function Flowers({
 
     useLayoutEffect(
         () => () => disposePlantGeometryShell(geometry, flowerGeometry),
-        [geometry],
+        [flowerGeometry, geometry],
     );
 
     if (instanceCount === 0) {

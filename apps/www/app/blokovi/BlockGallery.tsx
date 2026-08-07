@@ -8,7 +8,6 @@ import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
-import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -49,9 +48,15 @@ function BlockGalleryItem(
     );
 }
 
-export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
-    const [search] = useClientSearchParam('pretraga');
-    const normalizedSearch = normalizeSearchText(search);
+export function BlockGallery({
+    blocks,
+    hasMatchingPlant,
+    normalizedSearch,
+}: {
+    blocks: BlockData[] | undefined;
+    hasMatchingPlant: boolean;
+    normalizedSearch: string;
+}) {
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.label),
     )
@@ -66,9 +71,9 @@ export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
 
     return (
         <>
-            {filteredBlocks.length === 0 && (
+            {filteredBlocks.length === 0 && !hasMatchingPlant ? (
                 <Typography level="body2">Nema rezultata pretrage.</Typography>
-            )}
+            ) : null}
             <Gallery
                 gridHeader={''}
                 items={filteredBlocks}

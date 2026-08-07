@@ -2,13 +2,14 @@
 
 import { useMemo, useRef } from 'react';
 import type * as THREE from 'three';
-import { usePlantLod } from './hooks/usePlantLod';
+import { buildDevelopmentalPlantRenderData } from './developmental/buildDevelopmentalPlantRenderData';
 import {
-    buildPlantRenderData,
-    getApproximatePlantHeight,
-} from './lib/buildPlantRenderData';
-import type { LSystemSymbol } from './lib/l-system';
+    buildDevelopmentalPlantGraph,
+    type DevelopmentalPlantGraph,
+} from './developmental/developmentalPlantGraph';
+import { usePlantLod } from './hooks/usePlantLod';
 import type { PlantDefinition } from './lib/plant-definitions';
+import { getApproximatePlantHeight } from './lib/plantRenderData';
 import { Flowers } from './parts/flowers';
 import { Leaves } from './parts/leaves';
 import { PlantBillboard } from './parts/PlantBillboard';
@@ -18,9 +19,9 @@ import { Vegetables } from './parts/vegetables';
 
 interface PlantGeneratorProps {
     plantDefinition: PlantDefinition;
-    lSystemSymbols: LSystemSymbol[];
     generation: number;
     seed: string;
+    graph?: DevelopmentalPlantGraph;
     flowerGrowth: number;
     fruitGrowth: number;
     animate?: boolean;
@@ -31,9 +32,9 @@ interface PlantGeneratorProps {
 
 export function PlantGenerator({
     plantDefinition,
-    lSystemSymbols,
     generation,
     seed,
+    graph: suppliedGraph,
     flowerGrowth,
     fruitGrowth,
     animate = true,
@@ -44,17 +45,22 @@ export function PlantGenerator({
     const groupRef = useRef<THREE.Group | null>(null);
     const lodLevel = usePlantLod(
         groupRef,
-        getApproximatePlantHeight(plantDefinition, generation),
+        getApproximatePlantHeight(plantDefinition),
     );
     const renderData = useMemo(() => {
-        return buildPlantRenderData({
+        const graph =
+            suppliedGraph ??
+            buildDevelopmentalPlantGraph({
+                generation,
+                plantDefinition,
+                seed,
+            });
+        return buildDevelopmentalPlantRenderData({
             flowerGrowth,
             fruitGrowth,
-            generation,
-            lSystemSymbols,
+            graph,
             plantDefinition,
             renderDetailedGeometry: lodLevel === 'near',
-            seed,
             showFlowers,
             showLeaves,
             showProduce,
@@ -63,13 +69,13 @@ export function PlantGenerator({
         flowerGrowth,
         fruitGrowth,
         generation,
-        lSystemSymbols,
         lodLevel,
         plantDefinition,
         seed,
         showFlowers,
         showLeaves,
         showProduce,
+        suppliedGraph,
     ]);
 
     return (
@@ -98,6 +104,7 @@ export function PlantGenerator({
                             seed={seed}
                             matrices={renderData.flowers}
                             color={plantDefinition.flower.color}
+                            form={plantDefinition.development.reproduction.form}
                             animate={animate}
                         />
                     )}

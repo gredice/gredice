@@ -9,13 +9,11 @@ import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
 
 export function PublicGardenExplorer({
     className,
-    enableBlockGeometryMerging = false,
     framed = true,
     garden,
     size = 'default',
 }: {
     className?: string;
-    enableBlockGeometryMerging?: boolean;
     framed?: boolean;
     garden: PublicGardenViewerProps['garden'];
     size?: 'card' | 'default';
@@ -92,7 +90,6 @@ export function PublicGardenExplorer({
                 <PublicGardenViewerDynamic
                     className="size-full"
                     deferDetails={false}
-                    enableBlockGeometryMerging={enableBlockGeometryMerging}
                     garden={garden}
                 />
                 {supportsFullscreen ? (

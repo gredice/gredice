@@ -110,9 +110,11 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
+    adaptiveHighQuality?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     flags?: GameFeatureFlags;
+    staticOpaqueSceneCache?: boolean;
 };
 
 type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
@@ -300,9 +302,11 @@ export function GameScene({
     weather,
     deferDetails,
     renderDetails: renderDetailsOverride,
+    adaptiveHighQuality = true,
     enableGameProfileController,
     enableStaticOpaqueSceneCacheOcclusionFixture,
     fixedTimeSeconds,
+    staticOpaqueSceneCache = true,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -348,14 +352,13 @@ export function GameScene({
         quality,
     ]);
     const adaptiveHighEnabled = Boolean(
-        flags?.enableAdaptiveHighQualityFlag &&
+        adaptiveHighQuality &&
             qualityProfile.tier === 'high' &&
             (quality === 'high' ||
                 (quality === undefined && gameQualitySetting === 'high')),
     );
     const staticOpaqueCacheEnabled = Boolean(
-        flags?.enableStaticOpaqueSceneCacheFlag &&
-            qualityProfile.tier === 'high',
+        staticOpaqueSceneCache && qualityProfile.tier === 'high',
     );
     const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
         adaptiveHighEnabled || staticOpaqueCacheEnabled,
@@ -501,9 +504,6 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <EntityInstances
-                                    enableBlockGeometryMerging={Boolean(
-                                        flags?.enableBlockGeometryMergingFlag,
-                                    )}
                                     farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={

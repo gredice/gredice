@@ -63,6 +63,7 @@ import {
     type RaisedBedFieldVisualTransform,
     type RaisedBedFieldVisualVector3,
 } from './raisedBedFieldVisualLayout';
+import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 import { resolveRaisedBedFieldWeedLevel } from './raisedBedWeedState';
 
@@ -203,15 +204,6 @@ function addCoverPrimitives({
     }
 }
 
-function shouldRenderGeneratedPlantField(field: DisplayedField) {
-    return (
-        Boolean(field.plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested')
-    );
-}
-
 function addSeedInstances({
     batches,
     blockIndex,
@@ -255,7 +247,7 @@ function addSeedInstances({
             ? mockPlantPresetLabelsBySortId[plantSortId]
             : undefined,
     ]);
-    if (resolvedPlantPreset && shouldRenderGeneratedPlantField(field)) {
+    if (resolvedPlantPreset && shouldRenderRaisedBedPlant(field)) {
         return;
     }
 

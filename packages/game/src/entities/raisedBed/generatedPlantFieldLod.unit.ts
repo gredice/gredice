@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {
     buildGeneratedPlantRaisedBedBounds,
     getGeneratedPlantBatchKey,
+    HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+    HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
     isGeneratedPlantRaisedBedGroupVisible,
     resolveGeneratedPlantFieldLod,
 } from './generatedPlantFieldLod';
@@ -11,7 +13,6 @@ import {
 test('selected raised beds keep exact near detail throughout close-up', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
-            allowNormalViewNear: false,
             cameraZoom: 20,
             currentLevel: 'far',
             focusActive: true,
@@ -25,7 +26,6 @@ test('selected raised beds keep exact near detail throughout close-up', () => {
 test('close-up zoom cannot promote a background raised bed to near', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
-            allowNormalViewNear: false,
             cameraZoom: 300,
             currentLevel: 'near',
             focusActive: true,
@@ -36,21 +36,19 @@ test('close-up zoom cannot promote a background raised bed to near', () => {
     );
 });
 
-test('normal view reserves exact detail for an explicit close-up selection', () => {
+test('normal view can request exact detail within the global budget', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
-            allowNormalViewNear: false,
             cameraZoom: 180,
             currentLevel: 'far',
             focusActive: false,
             isSelectedRaisedBed: false,
             screenOccupancy: 0.001,
         }),
-        'mid',
+        'near',
     );
     assert.equal(
         resolveGeneratedPlantFieldLod({
-            allowNormalViewNear: false,
             cameraZoom: 0,
             currentLevel: 'far',
             focusActive: false,
@@ -61,15 +59,26 @@ test('normal view reserves exact detail for an explicit close-up selection', () 
     );
 });
 
-test('the profiler can opt into the legacy normal-view exact policy', () => {
+test('High quality requests detail from a wider normal-view range', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
-            allowNormalViewNear: true,
-            cameraZoom: 180,
+            cameraZoom: 0,
             currentLevel: 'far',
             focusActive: false,
             isSelectedRaisedBed: false,
-            screenOccupancy: 0.001,
+            screenOccupancy: 0.095,
+        }),
+        'mid',
+    );
+    assert.equal(
+        resolveGeneratedPlantFieldLod({
+            cameraZoom: 0,
+            currentLevel: 'far',
+            focusActive: false,
+            isSelectedRaisedBed: false,
+            nearHysteresis: HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+            nearThreshold: HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
+            screenOccupancy: 0.095,
         }),
         'near',
     );

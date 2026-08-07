@@ -182,6 +182,48 @@ test('provider uncertainty is fenced from normal claims and visible in health', 
     assert.equal(health.staleFencedCount, 1);
 });
 
+test('malformed purchase intents are failed before a Slack submission can start', async () => {
+    createTestDb();
+    const now = new Date('2026-08-03T09:00:00.000Z');
+    await storage()
+        .insert(emailMessages)
+        .values({
+            attachments: [],
+            fromAddress: 'suncokret@obavijesti.gredice.com',
+            messageType: 'checkout',
+            metadata: {
+                accountId: 'account-one',
+                amountTotal: 10.5,
+                attemptCount: 0,
+                checkoutSessionId: 'cs_invalid',
+                currency: 'eur',
+                customerEmail: 'buyer@example.test',
+                items: [{ name: 'Paket', quantity: 1 }],
+                maxAttempts: 3,
+                nextAttemptAt: null,
+                notificationKind: 'purchase_slack',
+                outboxKind: checkoutNotificationOutboxKind,
+                outboxVersion: 1,
+            },
+            provider: 'slack',
+            providerMessageId: randomUUID(),
+            providerStatus: 'outbox_ready',
+            queuedAt: now,
+            recipients: { to: [] },
+            status: 'queued',
+            subject: 'Checkout notification: purchase_slack',
+            templateName: 'checkout-notification',
+        });
+
+    const result = await claimCheckoutNotification({
+        claimExpiresAt: new Date(now.getTime() + 60_000),
+        claimId: 'malformed-purchase',
+        now,
+    });
+
+    assert.equal(result.status, 'invalid');
+});
+
 test('sent history is excluded from actionable outbox health', async () => {
     createTestDb();
     const now = new Date('2026-08-03T10:00:00.000Z');

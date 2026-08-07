@@ -7,6 +7,7 @@ import {
 import { ProfileGameScene } from './ProfileGameScene';
 import {
     highTargetOperationVisualHighlightTarget,
+    resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
@@ -18,6 +19,8 @@ import {
     gameProfileCloudyWeather,
     gameProfileSnowSparseWeather,
 } from './profileWeather';
+
+export const instant = false;
 
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
@@ -293,10 +296,7 @@ export default async function GameProfilePage({
         mockGardenProfile === 'high-target' &&
         resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
     const debugGameFlags = resolveGameProfileFlags(
-        firstValue(params.blockGeometryMerging),
-        firstValue(params.adaptiveHigh),
         firstValue(params.weatherSurface),
-        firstValue(params.staticSceneCache),
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
         firstValue(params.staticSceneCache),
@@ -309,8 +309,9 @@ export default async function GameProfilePage({
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(
         firstValue(params.weatherSurface),
     );
-    const adaptiveHigh = debugGameFlags.enableAdaptiveHighQualityFlag;
-    const blockGeometryMerging = debugGameFlags.enableBlockGeometryMergingFlag;
+    const adaptiveHigh = resolveGameProfileAdaptiveHigh(
+        firstValue(params.adaptiveHigh),
+    );
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -329,9 +330,6 @@ export default async function GameProfilePage({
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
-            data-game-profile-block-geometry-merging={
-                blockGeometryMerging ? '1' : '0'
-            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
@@ -360,6 +358,7 @@ export default async function GameProfilePage({
             }
         >
             <ProfileGameScene
+                adaptiveHighQuality={adaptiveHigh}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
@@ -384,6 +383,7 @@ export default async function GameProfilePage({
                 noControls={!enableControls}
                 noSound
                 renderDetails={renderDetails}
+                staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}

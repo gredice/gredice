@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { emailMessages, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
@@ -34,7 +34,7 @@ export type OrderConfirmationEmailItemPayload = {
 };
 
 export type OrderConfirmationEmailPayload = {
-    cartId: number;
+    cartId: number | null;
     currency: string | null;
     items: OrderConfirmationEmailItemPayload[];
     manageUrl: string;
@@ -390,19 +390,45 @@ function parseStoredItem(
 
 function parseStoredPayload({
     metadata,
+    providerMessageId,
     recipient,
 }: {
     metadata: OrderConfirmationOutboxMetadata;
+    providerMessageId: string | null;
     recipient: string | undefined;
 }): OrderConfirmationEmailPayload | null {
-    const cartId = readInteger(metadata.cartId);
+    const cartId =
+        metadata.cartId === null ? null : readInteger(metadata.cartId);
+    const stripePaymentId = metadata.stripePaymentId;
+    const expectedStripeOperationId =
+        typeof stripePaymentId === 'string'
+            ? (() => {
+                  const digest = createHash('sha256')
+                      .update(
+                          `stripe-payment-completion:${stripePaymentId}:order_confirmation`,
+                      )
+                      .digest('hex');
+                  return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+              })()
+            : null;
+    const isStripeCompletion =
+        metadata.completionOutputKind === 'order_confirmation' &&
+        metadata.completionOutputVersion === 1 &&
+        typeof stripePaymentId === 'string' &&
+        stripePaymentId.length > 0 &&
+        stripePaymentId.length <= 255 &&
+        typeof metadata.completionFingerprint === 'string' &&
+        /^[a-f0-9]{64}$/u.test(metadata.completionFingerprint) &&
+        providerMessageId === expectedStripeOperationId;
     const items = metadata.items;
     const manageUrl = metadata.manageUrl;
     const totalAmountCents = metadata.totalAmountCents;
     const currency = readNullableString(metadata.currency);
     const to = recipient?.trim();
     if (
-        !cartId ||
+        !('cartId' in metadata) ||
+        (cartId !== null && cartId <= 0) ||
+        (cartId === null && !isStripeCompletion) ||
         !to ||
         !Array.isArray(items) ||
         typeof manageUrl !== 'string' ||
@@ -907,6 +933,7 @@ export async function claimOrderConfirmationEmail({
 
         const payload = parseStoredPayload({
             metadata: candidate.metadata,
+            providerMessageId: candidate.providerMessageId,
             recipient: candidate.recipients.to[0]?.address,
         });
         const operationId = candidate.providerMessageId?.trim().toLowerCase();

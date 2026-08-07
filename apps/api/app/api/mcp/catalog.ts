@@ -66,7 +66,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-plant',
         description: 'Get one plant by name and optional sorts.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -80,7 +80,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'List plant sorts with optional plant filter and pagination.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -95,7 +95,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'Search directory entities by free text and optional type filters.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -109,7 +109,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-operations',
         description: 'List gardening operations with optional category filter.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -123,7 +123,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-seeds',
         description: 'List seeds with optional plant and variety filters.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -150,6 +150,19 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
     {
         name: 'gardens/list-raised-beds',
         description: 'List raised beds for an authenticated account garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+            },
+        },
+    },
+    {
+        name: 'gardens/get-garden-composition',
+        description:
+            'Summarize placed blocks, entities, decorations, and special reward mechanics for an authenticated account garden.',
         domain: 'gardens',
         exposure: 'auth-read',
         inputSchema: {
@@ -217,7 +230,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/get-products',
         description: 'List plant-sort products available for cart actions.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -231,7 +244,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/search-products',
         description: 'Search plant-sort products available for cart actions.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -245,7 +258,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'commerce/get-product',
         description: 'Get one plant-sort product by product id.',
         domain: 'commerce',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -272,6 +285,24 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
             type: 'object',
             properties: {
                 productId: { type: 'string' },
+                quantity: { type: 'number' },
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+                positionIndex: { type: 'number' },
+                scheduledDate: { type: 'string' },
+            },
+        },
+    },
+    {
+        name: 'commerce/add-operation-to-cart',
+        description:
+            'Add an applicable raised-bed or plant-field operation to the authenticated account cart.',
+        domain: 'commerce',
+        exposure: 'auth-mutation',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                operationId: { type: 'number' },
                 quantity: { type: 'number' },
                 gardenId: { type: 'number' },
                 raisedBedId: { type: 'number' },

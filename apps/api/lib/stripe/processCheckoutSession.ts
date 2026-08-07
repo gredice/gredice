@@ -7,10 +7,7 @@ import {
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import {
-    notifyCheckoutFulfillmentIncident,
-    notifyPurchase,
-} from '@gredice/notifications';
+import { notifyCheckoutFulfillmentIncident } from '@gredice/notifications';
 import {
     bindStripeCheckoutAttempt,
     type CheckoutPlantingRaisedBedActivation,
@@ -22,6 +19,7 @@ import {
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
     ensureInvoiceForTransaction,
+    ensureStripePaymentCompletionOutputs,
     fingerprintStripeCheckoutValue,
     getAccountUsers,
     getCheckoutFulfillmentStartedCartItemIds,
@@ -36,6 +34,7 @@ import {
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     getStripeCheckoutAttempt,
+    getStripePaymentCompletionOutputs,
     getSunflowerPackageByCode,
     getUser,
     hasMatchingCheckoutPlantingPurchase,
@@ -51,10 +50,18 @@ import {
     releaseStripeCheckoutAttempt,
     type StripeCheckoutAttempt,
     StripeCheckoutAttemptConflictError,
+    StripePaymentCompletionOutputConflictError,
+    type StripePaymentProcessingClaimControl,
+    StripePaymentProcessingClaimLostError,
+    StripePaymentProcessingDeferredError,
+    StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
+    StripeTransactionIdentityConflictError,
     SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
     spendSunflowersBatch,
     sunflowerPackageEntityTypeName,
+    sunflowerPackageRoles,
     topUpSunflowerPackage,
     upsertRaisedBedField,
     verifyStripeCheckoutAttemptLiveCart,
@@ -87,7 +94,7 @@ import {
 } from '../checkout/harvestCheckout';
 import {
     buildOrderConfirmationItems,
-    notifyOrderConfirmationEmail,
+    ORDER_CONFIRMATION_MANAGE_URL,
 } from '../checkout/orderConfirmationEmail';
 import {
     assertStripeSessionMatchesCheckoutAttempt,
@@ -106,7 +113,6 @@ import { getPostHogClient } from '../posthog-server';
 export type ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned: typeof isRaisedBedAbandoned;
     notifyCheckoutFulfillmentIncident: typeof notifyCheckoutFulfillmentIncident;
-    notifyPurchase: typeof notifyPurchase;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
     bindStripeCheckoutAttempt: typeof bindStripeCheckoutAttempt;
@@ -117,9 +123,11 @@ export type ProcessCheckoutSessionDependencies = {
     createTransaction: typeof createTransaction;
     deliverNotificationOperatorAlert: typeof deliverNotificationOperatorAlert;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
+    ensureStripePaymentCompletionOutputs: typeof ensureStripePaymentCompletionOutputs;
     ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
     getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
+    getStripePaymentCompletionOutputs: typeof getStripePaymentCompletionOutputs;
     getCheckoutFulfillmentStartedCartItemIds: typeof getCheckoutFulfillmentStartedCartItemIds;
     getCheckoutOperationMapping: typeof getCheckoutOperationMapping;
     getCheckoutOperationMappings: typeof getCheckoutOperationMappings;
@@ -160,7 +168,6 @@ export type ProcessCheckoutSessionDependencies = {
     getCartInfo: typeof getCartInfo;
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
     buildOrderConfirmationItems: typeof buildOrderConfirmationItems;
-    notifyOrderConfirmationEmail: typeof notifyOrderConfirmationEmail;
     getPostHogClient: typeof getPostHogClient;
     issueReceiptForPaidInvoice: typeof issueReceiptForPaidInvoice;
     fiscalizeReceipt: typeof fiscalizeReceipt;
@@ -170,7 +177,6 @@ export type ProcessCheckoutSessionDependencies = {
 const realDependencies: ProcessCheckoutSessionDependencies = {
     isRaisedBedAbandoned,
     notifyCheckoutFulfillmentIncident,
-    notifyPurchase,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
     bindStripeCheckoutAttempt,
@@ -181,9 +187,11 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     createTransaction,
     deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
+    ensureStripePaymentCompletionOutputs,
     ensureInvoiceForTransaction,
     getSunflowerPackageByCode,
     getCompletedTransactionByStripePaymentId,
+    getStripePaymentCompletionOutputs,
     getCheckoutFulfillmentStartedCartItemIds,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
@@ -224,7 +232,6 @@ const realDependencies: ProcessCheckoutSessionDependencies = {
     getCartInfo,
     calculateSunflowerAmount,
     buildOrderConfirmationItems,
-    notifyOrderConfirmationEmail,
     getPostHogClient,
     issueReceiptForPaidInvoice,
     fiscalizeReceipt,
@@ -473,6 +480,146 @@ function getSunflowerPackageCheckoutLineItems(session: PaidCheckoutSession) {
     };
 }
 
+function getSunflowerPackageSnapshotMismatches(
+    item: SunflowerPackageCheckoutLineItem,
+) {
+    return [
+        item.entityTypeName === sunflowerPackageEntityTypeName
+            ? null
+            : 'entity_type',
+        Number.isSafeInteger(item.entityId) && item.entityId > 0
+            ? null
+            : 'entity_id',
+        sunflowerPackageRoles.some((role) => role === item.packageRole)
+            ? null
+            : 'role',
+        item.currency === 'eur' ? null : 'currency',
+        Number.isSafeInteger(item.quantity) && item.quantity === 1
+            ? null
+            : 'quantity',
+        Number.isSafeInteger(item.priceCents) && item.priceCents > 0
+            ? null
+            : 'price_cents',
+        Number.isSafeInteger(item.amountTotal) &&
+        item.amountTotal > 0 &&
+        item.amountTotal <= item.priceCents
+            ? null
+            : 'line_amount',
+        Number.isSafeInteger(item.sunflowers) && item.sunflowers > 0
+            ? null
+            : 'sunflowers',
+        Number.isSafeInteger(item.baseSunflowers) && item.baseSunflowers > 0
+            ? null
+            : 'base_sunflowers',
+        Number.isSafeInteger(item.bonusSunflowers) && item.bonusSunflowers >= 0
+            ? null
+            : 'bonus_sunflowers',
+        item.sunflowers === item.baseSunflowers + item.bonusSunflowers
+            ? null
+            : 'sunflower_total',
+    ].filter((mismatch) => mismatch !== null);
+}
+
+type StripePaymentCompletionItem = {
+    amountSubtotal?: number | null;
+    currency?: string | null;
+    name?: string | null;
+    quantity?: number | null;
+};
+
+async function ensureCheckoutCompletionOutputs({
+    accountId,
+    cartId,
+    claimControl,
+    customerEmail,
+    dependencies,
+    items,
+    session,
+}: {
+    accountId: string | null;
+    cartId: number | null;
+    claimControl: StripePaymentProcessingClaimControl;
+    customerEmail?: string | null;
+    dependencies: ProcessCheckoutSessionDependencies;
+    items: StripePaymentCompletionItem[];
+    session: PaidCheckoutSession;
+}) {
+    const recipient = customerEmail?.trim();
+    if (!recipient?.includes('@')) {
+        throw new StripePaymentProcessingPermanentError(
+            'completion_recipient_missing',
+        );
+    }
+    await claimControl.assertOwned();
+    const result = await dependencies.ensureStripePaymentCompletionOutputs({
+        claimToken: claimControl.claimToken,
+        stripePaymentId: session.id,
+        orderConfirmation: {
+            cartId,
+            currency: 'eur',
+            items,
+            manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
+            to: recipient,
+            totalAmountCents: session.amountTotal ?? null,
+        },
+        purchaseNotification: {
+            accountId,
+            amountTotal: session.amountTotal ?? null,
+            checkoutSessionId: session.id,
+            currency: 'eur',
+            customerEmail: recipient,
+            items: items.map(({ amountSubtotal, name, quantity }) => ({
+                amountSubtotal,
+                name,
+                quantity,
+            })),
+        },
+    });
+    if (result.status === 'claim_lost') {
+        throw new StripePaymentProcessingClaimLostError(session.id);
+    }
+    return result;
+}
+
+function normalizeStripePaymentProcessingError(error: unknown) {
+    if (
+        error instanceof StripePaymentProcessingPermanentError ||
+        error instanceof StripePaymentProcessingClaimLostError
+    ) {
+        return error;
+    }
+    if (error instanceof StripeCheckoutAttemptConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            `checkout_attempt_${error.category}`,
+        );
+    }
+    if (error instanceof StripeTransactionIdentityConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            'transaction_identity_conflict',
+        );
+    }
+    if (error instanceof StripePaymentCompletionOutputConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            `completion_output_${error.outputKind}_conflict`,
+        );
+    }
+    return error;
+}
+
+function isStripeCheckoutSessionMissingError(error: unknown) {
+    if (!error || typeof error !== 'object') return false;
+    const value = error as {
+        code?: unknown;
+        status?: unknown;
+        statusCode?: unknown;
+    };
+    return (
+        value.code === 'resource_missing' ||
+        value.status === 404 ||
+        value.statusCode === 404
+    );
+}
+
 async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
@@ -480,6 +627,7 @@ async function processNonStripeCartItems(
     harvestDateByCartItemId = new Map<number, string>(),
     expectedNonStripeCartItemIds: ReadonlySet<number> | null = null,
     checkoutSessionId?: string | null,
+    claimControl?: StripePaymentProcessingClaimControl,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
     checkoutSnapshot?: {
         additionalDataByCartItemId: ReadonlyMap<number, unknown>;
@@ -492,6 +640,7 @@ async function processNonStripeCartItems(
     resolvedSunflowerAmountsByCartItemId: Map<number, number>;
     satisfiedExpectedItemIds: Set<number>;
 }> {
+    await claimControl?.assertOwned();
     let confirmationItems: ShoppingCartItemWithShopData[] = [];
     const processedItems: ShoppingCartItemWithShopData[] = [];
     const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
@@ -725,6 +874,7 @@ async function processNonStripeCartItems(
                                         ) === 'pending',
                                 );
                             try {
+                                await claimControl?.assertOwned(db);
                                 const spendResult =
                                     await dependencies.spendSunflowersBatch(
                                         accountId,
@@ -810,6 +960,7 @@ async function processNonStripeCartItems(
                     );
 
                 for (const item of pendingItems) {
+                    await claimControl?.assertOwned();
                     const sunflowerAmount = resolvedAmountsByItemId.get(
                         item.id,
                     );
@@ -850,8 +1001,10 @@ async function processNonStripeCartItems(
                                     : undefined,
                         },
                         dependencies,
+                        claimControl,
                     );
                     assertCheckoutItemFulfilled(fulfillment);
+                    await claimControl?.assertOwned();
                     await dependencies.setCartItemPaid(item.id);
                     processedItems.push(item);
                     if (expectedNonStripeCartItemIds?.has(item.id)) {
@@ -922,6 +1075,7 @@ async function processNonStripeCartItems(
                                 item,
                             );
                             if (lockedState === 'pending') {
+                                await claimControl?.assertOwned(db);
                                 await dependencies.withInventoryAccountTransaction(
                                     accountId,
                                     (inventoryDb) =>
@@ -958,6 +1112,7 @@ async function processNonStripeCartItems(
                     const additionalData =
                         checkoutAdditionalDataByCartItemId.get(item.id) ?? {};
 
+                    await claimControl?.assertOwned();
                     const fulfillment = await processItem(
                         {
                             accountId,
@@ -978,8 +1133,10 @@ async function processNonStripeCartItems(
                                     : undefined,
                         },
                         dependencies,
+                        claimControl,
                     );
                     assertCheckoutItemFulfilled(fulfillment);
+                    await claimControl?.assertOwned();
                     await dependencies.setCartItemPaid(item.id);
                     processedItems.push(item);
                     if (expectedNonStripeCartItemIds?.has(item.id)) {
@@ -1013,67 +1170,124 @@ export async function processCheckoutSession(
         console.warn(`No checkout session ID provided`);
         return;
     }
+    return dependencies.withStripePaymentProcessingLock(
+        checkoutSessionId,
+        async (claimControl) => {
+            try {
+                let session: PaidCheckoutSession | undefined;
+                try {
+                    session =
+                        await dependencies.getStripeCheckoutSession(
+                            checkoutSessionId,
+                        );
+                } catch (error) {
+                    if (isStripeCheckoutSessionMissingError(error)) {
+                        throw new StripePaymentProcessingPermanentError(
+                            'checkout_session_missing',
+                        );
+                    }
+                    throw error;
+                }
+                if (!session) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_missing',
+                    );
+                }
+                if (session.id !== checkoutSessionId) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_identity_mismatch',
+                    );
+                }
+                if (session.status !== 'complete') {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_not_complete',
+                    );
+                }
+                let isZeroTotalSnapshotCheckout = false;
+                if (
+                    session.paymentStatus === 'no_payment_required' &&
+                    session.amountTotal === 0
+                ) {
+                    try {
+                        isZeroTotalSnapshotCheckout =
+                            decodeStripeCheckoutAttemptMetadata(
+                                session.metadata,
+                            ) !== null;
+                    } catch {
+                        throw new StripePaymentProcessingPermanentError(
+                            'checkout_snapshot_metadata_invalid',
+                        );
+                    }
+                }
+                if (
+                    session.paymentStatus !== 'paid' &&
+                    !isZeroTotalSnapshotCheckout
+                ) {
+                    if (session.paymentStatus === 'unpaid') {
+                        throw new StripePaymentProcessingDeferredError(
+                            'checkout_session_payment_pending',
+                        );
+                    }
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_unpaid',
+                    );
+                }
 
-    const session =
-        await dependencies.getStripeCheckoutSession(checkoutSessionId);
-    if (!session) {
-        console.warn(`No session found for ID ${checkoutSessionId}`);
-        return;
-    }
-    if (session.status !== 'complete') {
-        console.warn(
-            `Session ${checkoutSessionId} is not complete, current status: ${session.status}`,
-        );
-        return;
-    }
-    let isZeroTotalSnapshotCheckout = false;
-    if (
-        session.paymentStatus === 'no_payment_required' &&
-        session.amountTotal === 0
-    ) {
-        try {
-            isZeroTotalSnapshotCheckout =
-                decodeStripeCheckoutAttemptMetadata(session.metadata) !== null;
-        } catch {
-            // Malformed snapshot metadata must not turn an unpaid session into
-            // a fulfillment candidate. Paid sessions retain the stricter
-            // reconciliation error below.
-        }
-    }
-    if (session.paymentStatus !== 'paid' && !isZeroTotalSnapshotCheckout) {
-        console.warn(
-            `Payment not completed for session ${checkoutSessionId} with status: ${session.paymentStatus}`,
-        );
-        return;
-    }
-
-    return dependencies.withStripePaymentProcessingLock(session.id, () =>
-        processPaidCheckoutSession(checkoutSessionId, session, dependencies),
+                return await processPaidCheckoutSession(
+                    checkoutSessionId,
+                    session,
+                    claimControl,
+                    dependencies,
+                );
+            } catch (error) {
+                throw normalizeStripePaymentProcessingError(error);
+            }
+        },
     );
 }
 
 export function processCheckoutSessionForReconciliation(
     checkoutSessionId: string,
-) {
-    return processCheckoutSession(checkoutSessionId, {
+    dependencies: ProcessCheckoutSessionDependencies = {
         ...realDependencies,
         getStripeCheckoutSession: getStripeCheckoutSessionForReconciliation,
-    });
+    },
+) {
+    return processCheckoutSession(checkoutSessionId, dependencies).catch(
+        (error: unknown) => {
+            if (error instanceof StripePaymentProcessingUnavailableError) {
+                console.info(
+                    'stripe_payment.reconciliation.claim_already_processing',
+                    {
+                        attempt: error.attempt,
+                        availableAt: error.availableAt?.toISOString() ?? null,
+                        claimStatus: error.claimStatus,
+                        stripePaymentId: error.stripePaymentId,
+                    },
+                );
+                return;
+            }
+            throw error;
+        },
+    );
 }
 
 async function recordSunflowerPackageFulfillmentFailure({
     accountId,
+    claimControl,
     checkoutSessionId,
     dependencies,
     packageCode,
     reason,
 }: {
     accountId?: string | null;
+    claimControl: StripePaymentProcessingClaimControl;
     checkoutSessionId: string;
     dependencies: ProcessCheckoutSessionDependencies;
     packageCode?: string | null;
     reason: string;
-}) {
+}): Promise<never> {
+    await claimControl.assertOwned();
     console.warn('Sunflower package fulfillment failed', {
         accountId,
         checkoutSessionId,
@@ -1081,37 +1295,42 @@ async function recordSunflowerPackageFulfillmentFailure({
         reason,
     });
 
-    if (!accountId) {
-        return;
+    if (accountId) {
+        (await dependencies.getPostHogClient()).capture({
+            distinctId: accountId,
+            event: 'sunflower_package_fulfillment_failed',
+            properties: {
+                checkout_session_id: checkoutSessionId,
+                package_code: packageCode ?? null,
+                reason,
+            },
+        });
     }
-
-    (await dependencies.getPostHogClient()).capture({
-        distinctId: accountId,
-        event: 'sunflower_package_fulfillment_failed',
-        properties: {
-            checkout_session_id: checkoutSessionId,
-            package_code: packageCode ?? null,
-            reason,
-        },
-    });
+    throw new StripePaymentProcessingPermanentError(
+        `sunflower_package_${reason.split(':', 1)[0] ?? 'invalid'}`,
+    );
 }
 
 async function processSunflowerPackageCheckoutSession({
+    claimControl,
     checkoutSessionId,
     dependencies,
     existingTransactionId,
     packageItem,
     session,
 }: {
+    claimControl: StripePaymentProcessingClaimControl;
     checkoutSessionId: string;
     dependencies: ProcessCheckoutSessionDependencies;
     existingTransactionId?: number;
     packageItem: SunflowerPackageCheckoutLineItem;
     session: PaidCheckoutSession;
 }) {
+    await claimControl.assertOwned();
     if (session.amountTotal !== packageItem.amountTotal) {
         await recordSunflowerPackageFulfillmentFailure({
             accountId: packageItem.accountId,
+            claimControl,
             checkoutSessionId,
             dependencies,
             packageCode: packageItem.packageCode,
@@ -1121,12 +1340,55 @@ async function processSunflowerPackageCheckoutSession({
     }
 
     const paidAmountCents = packageItem.amountTotal;
+    const snapshotMismatches =
+        getSunflowerPackageSnapshotMismatches(packageItem);
+    if (snapshotMismatches.length > 0) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: `metadata_mismatch:${snapshotMismatches.join(',')}`,
+        });
+        return;
+    }
+
+    const purchasedItems = [
+        {
+            name: packageItem.productName ?? packageItem.packageCode,
+            quantity: packageItem.quantity,
+            amountSubtotal: paidAmountCents,
+            currency: 'eur',
+        },
+    ];
+    if (existingTransactionId) {
+        const customer = await dependencies.getUser(packageItem.userId);
+        await ensureCheckoutCompletionOutputs({
+            accountId: packageItem.accountId,
+            cartId: null,
+            claimControl,
+            customerEmail: customer?.userName,
+            dependencies,
+            items: purchasedItems,
+            session,
+        });
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
+        console.info(
+            `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; completion outputs repaired without fulfillment replay.`,
+        );
+        return;
+    }
+
     const packageData = await dependencies.getSunflowerPackageByCode(
         packageItem.packageCode,
     );
     if (!packageData) {
         await recordSunflowerPackageFulfillmentFailure({
             accountId: packageItem.accountId,
+            claimControl,
             checkoutSessionId,
             dependencies,
             packageCode: packageItem.packageCode,
@@ -1160,6 +1422,7 @@ async function processSunflowerPackageCheckoutSession({
     if (mismatches.length > 0 || packageData.currency !== 'eur') {
         await recordSunflowerPackageFulfillmentFailure({
             accountId: packageItem.accountId,
+            claimControl,
             checkoutSessionId,
             dependencies,
             packageCode: packageItem.packageCode,
@@ -1167,6 +1430,8 @@ async function processSunflowerPackageCheckoutSession({
         });
         return;
     }
+
+    const customer = await dependencies.getUser(packageItem.userId);
 
     try {
         const oneTimeAccountPackage =
@@ -1188,6 +1453,7 @@ async function processSunflowerPackageCheckoutSession({
             >
         >;
         try {
+            await claimControl.assertOwned();
             topUpResult = await dependencies.topUpSunflowerPackage({
                 accountId: packageItem.accountId,
                 packageCode: packageData.code,
@@ -1212,6 +1478,7 @@ async function processSunflowerPackageCheckoutSession({
             if (packageData.baseSunflowers <= 0) {
                 await recordSunflowerPackageFulfillmentFailure({
                     accountId: packageItem.accountId,
+                    claimControl,
                     checkoutSessionId,
                     dependencies,
                     packageCode: packageItem.packageCode,
@@ -1231,6 +1498,7 @@ async function processSunflowerPackageCheckoutSession({
             duplicateOneTimePurchase = true;
             creditedSunflowers = packageData.baseSunflowers;
             creditedBonusSunflowers = 0;
+            await claimControl.assertOwned();
             topUpResult = await dependencies.topUpSunflowerPackage({
                 accountId: packageItem.accountId,
                 packageCode: packageData.code,
@@ -1252,6 +1520,7 @@ async function processSunflowerPackageCheckoutSession({
             });
         }
 
+        await claimControl.assertOwned();
         const transactionId =
             existingTransactionId ??
             (await dependencies.createTransaction({
@@ -1262,14 +1531,16 @@ async function processSunflowerPackageCheckoutSession({
                 currency: 'eur',
             }));
 
-        if (existingTransactionId) {
-            console.info(
-                `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; sunflower package ledger replayed idempotently.`,
-            );
-            return;
-        }
+        await ensureCheckoutCompletionOutputs({
+            accountId: packageItem.accountId,
+            cartId: null,
+            claimControl,
+            customerEmail: customer?.userName,
+            dependencies,
+            items: purchasedItems,
+            session,
+        });
 
-        const customer = await dependencies.getUser(packageItem.userId);
         const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
             amountTotalCents: packageItem.amountTotal,
             entityId: packageData.entityId.toString(),
@@ -1281,6 +1552,7 @@ async function processSunflowerPackageCheckoutSession({
 
         if (dependencies.isBillingAutomationEnabled() && invoiceLineItem) {
             try {
+                await claimControl.assertOwned();
                 const invoiceResult =
                     await dependencies.ensureInvoiceForTransaction({
                         transactionId,
@@ -1298,6 +1570,7 @@ async function processSunflowerPackageCheckoutSession({
                         transactionId,
                     });
                 } else {
+                    await claimControl.assertOwned();
                     const receiptResult =
                         await dependencies.issueReceiptForPaidInvoice({
                             invoiceId: invoiceResult.invoiceId,
@@ -1311,6 +1584,7 @@ async function processSunflowerPackageCheckoutSession({
                             transactionId,
                         });
                     } else {
+                        await claimControl.assertOwned();
                         const fiscalizationResult =
                             await dependencies.fiscalizeReceipt(
                                 receiptResult.receiptId,
@@ -1340,6 +1614,7 @@ async function processSunflowerPackageCheckoutSession({
                             );
                         }
 
+                        await claimControl.assertOwned();
                         await dependencies.notifyBillingDocumentsEmail({
                             to: customer?.userName,
                             checkoutSessionId: session.id,
@@ -1355,6 +1630,9 @@ async function processSunflowerPackageCheckoutSession({
                     }
                 }
             } catch (error) {
+                if (error instanceof StripePaymentProcessingClaimLostError) {
+                    throw error;
+                }
                 console.error(
                     'Sunflower package billing document automation failed',
                     {
@@ -1366,34 +1644,11 @@ async function processSunflowerPackageCheckoutSession({
             }
         }
 
-        const purchasedItems = [
-            {
-                name: packageData.name,
-                quantity: 1,
-                amountSubtotal: paidAmountCents,
-                currency: 'eur',
-            },
-        ];
-        await dependencies.notifyOrderConfirmationEmail({
-            to: customer?.userName,
-            cartId: null,
-            checkoutSessionId: session.id,
-            items: purchasedItems,
-            totalAmountCents: paidAmountCents,
-            currency: 'eur',
-        });
-        await dependencies.notifyPurchase({
-            accountId: packageItem.accountId,
-            amountTotal: paidAmountCents,
-            checkoutSessionId: session.id,
-            customerEmail: customer?.userName ?? null,
-            items: purchasedItems,
-        });
-
         const ledgerEntryIds = [
             topUpResult.topUp.entry.id,
             topUpResult.bonus?.entry.id,
         ].filter((id) => typeof id === 'number');
+        await claimControl.assertOwned();
         (await dependencies.getPostHogClient()).capture({
             distinctId: packageItem.accountId,
             event: 'sunflower_package_fulfilled',
@@ -1410,10 +1665,14 @@ async function processSunflowerPackageCheckoutSession({
                 ledger_entry_ids: ledgerEntryIds,
             },
         });
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
     } catch (error) {
         if (error instanceof SunflowerPackageAlreadyPurchasedError) {
             await recordSunflowerPackageFulfillmentFailure({
                 accountId: packageItem.accountId,
+                claimControl,
                 checkoutSessionId,
                 dependencies,
                 packageCode: packageItem.packageCode,
@@ -1626,13 +1885,72 @@ async function releaseCompletedStripeCheckoutAttempt(
     });
 }
 
+async function getStripeCheckoutAttemptForCompletedReplay(
+    session: PaidCheckoutSession,
+    dependencies: ProcessCheckoutSessionDependencies,
+) {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) return null;
+
+    let attempt = await dependencies.getStripeCheckoutAttempt(
+        metadata.cartId,
+        metadata.attemptId,
+    );
+    // Completed legacy transactions predate durable attempts in some cases.
+    // Their completion outputs can still be reconstructed from Stripe and the
+    // paid cart without fabricating attempt history.
+    if (!attempt) return null;
+    if (
+        attempt.snapshot.cartId !== metadata.cartId ||
+        attempt.snapshot.attemptId !== metadata.attemptId
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'snapshot_identity_changed',
+        );
+    }
+    if (attempt.sessionId && attempt.sessionId !== session.id) {
+        throw new StripeCheckoutAttemptConflictError('session_binding_changed');
+    }
+    if (
+        attempt.releaseReason &&
+        !(
+            attempt.releaseReason === 'completed' &&
+            attempt.sessionId === session.id
+        )
+    ) {
+        throw new StripeCheckoutAttemptConflictError('attempt_released');
+    }
+    if (!attempt.sessionId) {
+        attempt = await dependencies.bindStripeCheckoutAttempt({
+            ...metadata,
+            sessionId: session.id,
+        });
+    }
+    return attempt;
+}
+
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    claimControl: StripePaymentProcessingClaimControl,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ) {
+    await claimControl.assertOwned();
     const alreadyProcessed =
         await dependencies.getCompletedTransactionByStripePaymentId(session.id);
+    if (alreadyProcessed) {
+        const completionOutputs =
+            await dependencies.getStripePaymentCompletionOutputs(session.id);
+        if (completionOutputs) {
+            await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+                allowMissingAttempt: true,
+            });
+            console.info(
+                `Checkout session ${checkoutSessionId} already has its transaction and durable completion outputs; fulfillment replay suppressed.`,
+            );
+            return;
+        }
+    }
     let checkoutReconciliation:
         | Awaited<ReturnType<typeof reconcileStripeCheckoutAttempt>>
         | undefined;
@@ -1649,6 +1967,7 @@ async function processPaidCheckoutSession(
         getSunflowerPackageCheckoutLineItems(session);
     if (sunflowerPackageCheckout.malformedCount > 0) {
         await recordSunflowerPackageFulfillmentFailure({
+            claimControl,
             checkoutSessionId,
             dependencies,
             packageCode: null,
@@ -1659,6 +1978,7 @@ async function processPaidCheckoutSession(
     const sunflowerPackageLineItems = sunflowerPackageCheckout.items;
     if (sunflowerPackageLineItems.length > 1) {
         await recordSunflowerPackageFulfillmentFailure({
+            claimControl,
             checkoutSessionId,
             dependencies,
             packageCode: null,
@@ -1668,7 +1988,20 @@ async function processPaidCheckoutSession(
     }
     const sunflowerPackageLineItem = sunflowerPackageLineItems[0];
     if (sunflowerPackageLineItem) {
+        if (
+            alreadyProcessed &&
+            (alreadyProcessed.accountId !==
+                sunflowerPackageLineItem.accountId ||
+                alreadyProcessed.amount !==
+                    sunflowerPackageLineItem.amountTotal ||
+                alreadyProcessed.currency !== 'eur')
+        ) {
+            throw new StripePaymentProcessingPermanentError(
+                'transaction_identity_conflict',
+            );
+        }
         await processSunflowerPackageCheckoutSession({
+            claimControl,
             checkoutSessionId,
             dependencies,
             existingTransactionId: alreadyProcessed?.id,
@@ -1678,25 +2011,33 @@ async function processPaidCheckoutSession(
         return;
     }
 
-    if (alreadyProcessed) {
-        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
-            allowMissingAttempt: true,
-        });
-        console.info(
-            `Checkout session ${checkoutSessionId} already processed; skipping.`,
+    if (
+        !Number.isSafeInteger(session.amountTotal) ||
+        (session.amountTotal ?? -1) < 0
+    ) {
+        throw new StripePaymentProcessingPermanentError(
+            'checkout_session_amount_invalid',
         );
-        return;
     }
 
     console.debug(
-        `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
+        `${alreadyProcessed ? 'Repairing completion outputs for' : 'Processing'} checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
     );
 
-    checkoutReconciliation ??= await reconcileStripeCheckoutAttempt(
-        session,
-        dependencies,
-    );
+    if (!alreadyProcessed) {
+        checkoutReconciliation ??= await reconcileStripeCheckoutAttempt(
+            session,
+            dependencies,
+        );
+    }
     const checkoutAttempt = checkoutReconciliation?.attempt ?? null;
+    const completedReplayAttempt = alreadyProcessed
+        ? await getStripeCheckoutAttemptForCompletedReplay(
+              session,
+              dependencies,
+          )
+        : null;
+    const completionAttempt = checkoutAttempt ?? completedReplayAttempt;
 
     const affectedCartIds: number[] = [];
     const purchasedItems: {
@@ -1709,9 +2050,34 @@ async function processPaidCheckoutSession(
     let customerUserId = checkoutReconciliation?.userId;
     const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
     const fulfillmentErrors: unknown[] = [];
-    const expectedNonStripeCartItemIds = checkoutAttempt
-        ? new Set(checkoutAttempt.snapshot.expectedNonStripeCartItemIds)
+    const expectedNonStripeCartItemIds = completionAttempt
+        ? new Set(completionAttempt.snapshot.expectedNonStripeCartItemIds)
         : decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+    if (alreadyProcessed && completedReplayAttempt) {
+        const replayCart = await dependencies.getShoppingCart(
+            completedReplayAttempt.snapshot.cartId,
+        );
+        if (!replayCart?.accountId) {
+            throw new StripePaymentProcessingPermanentError(
+                'completion_paid_cart_missing',
+            );
+        }
+        const matchingUsers = (
+            await dependencies.getAccountUsers(replayCart.accountId)
+        ).filter(
+            (accountUser) =>
+                fingerprintStripeCheckoutValue(accountUser.userId) ===
+                completedReplayAttempt.snapshot.userFingerprint,
+        );
+        if (matchingUsers.length !== 1 || !matchingUsers[0]) {
+            throw new StripePaymentProcessingPermanentError(
+                'completion_recipient_missing',
+            );
+        }
+        accountId = replayCart.accountId;
+        customerUserId = matchingUsers[0].userId;
+        affectedCartIds.push(replayCart.id);
+    }
     if (expectedNonStripeCartItemIds?.size) {
         const candidateCartIds = new Set<number>();
         for (const lineItem of session.lineItems?.data ?? []) {
@@ -1945,6 +2311,7 @@ async function processPaidCheckoutSession(
                     const state = await dependencies.withCheckoutCartItemLock(
                         cartItem.id,
                         async (db) => {
+                            await claimControl.assertOwned(db);
                             const lockedCart =
                                 await dependencies.getShoppingCart(cart.id, db);
                             if (!lockedCart) {
@@ -1976,6 +2343,7 @@ async function processPaidCheckoutSession(
                                         },
                                         db,
                                     ));
+                                await claimControl.assertOwned(db);
                                 await dependencies.earnSunflowersForPayment(
                                     checkoutAccountId,
                                     item.amount_total / 100,
@@ -2020,6 +2388,7 @@ async function processPaidCheckoutSession(
                             );
                         }
 
+                        await claimControl.assertOwned();
                         const fulfillment = await processItem(
                             {
                                 ...itemData,
@@ -2030,8 +2399,10 @@ async function processPaidCheckoutSession(
                                 checkoutOperationMapping,
                             },
                             dependencies,
+                            claimControl,
                         );
                         assertCheckoutItemFulfilled(fulfillment);
+                        await claimControl.assertOwned();
                         await dependencies.setCartItemPaid(cartItem.id);
                     } catch (error) {
                         if (
@@ -2043,6 +2414,7 @@ async function processPaidCheckoutSession(
                                     {
                                         accountId: checkoutAccountId,
                                         cartItemId: cartItem.id,
+                                        claimControl,
                                         checkoutSessionId: session.id,
                                         dependencies,
                                         gardenId: itemData.gardenId,
@@ -2052,6 +2424,12 @@ async function processPaidCheckoutSession(
                                     },
                                 );
                             } catch (incidentError) {
+                                if (
+                                    incidentError instanceof
+                                    StripePaymentProcessingClaimLostError
+                                ) {
+                                    throw incidentError;
+                                }
                                 console.error(
                                     'Failed to record checkout planting incident',
                                     incidentError,
@@ -2063,6 +2441,9 @@ async function processPaidCheckoutSession(
                 },
             );
         } catch (error) {
+            if (error instanceof StripePaymentProcessingClaimLostError) {
+                throw error;
+            }
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
@@ -2121,13 +2502,101 @@ async function processPaidCheckoutSession(
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
-    const harvestDateByCartItemId = checkoutAttempt
-        ? getStripeCheckoutSnapshotHarvestDates(checkoutAttempt)
+    const harvestDateByCartItemId = completionAttempt
+        ? getStripeCheckoutSnapshotHarvestDates(completionAttempt)
         : decodeHarvestDatesMetadata(session.metadata);
     const satisfiedExpectedNonStripeItemIds = new Set<number>();
     const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
+            if (alreadyProcessed) {
+                const replayCart = await dependencies.getShoppingCart(cartId);
+                if (replayCart?.status !== 'paid') {
+                    throw new StripePaymentProcessingPermanentError(
+                        'completion_paid_cart_missing',
+                    );
+                }
+                if (replayCart.accountId !== accountId) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'transaction_identity_conflict',
+                    );
+                }
+                const replayCartInfo = await dependencies.getCartInfo(
+                    replayCart.items,
+                    accountId,
+                );
+                const paymentKinds = completionAttempt
+                    ? getStripeCheckoutSnapshotNonStripePaymentKinds(
+                          completionAttempt,
+                      )
+                    : null;
+                const snapshotAmounts = completionAttempt
+                    ? getStripeCheckoutSnapshotNonStripeAmounts(
+                          completionAttempt,
+                      )
+                    : null;
+                const replayItems = replayCartInfo.items.filter((item) => {
+                    if (
+                        expectedNonStripeCartItemIds !== null &&
+                        !expectedNonStripeCartItemIds.has(item.id)
+                    ) {
+                        return false;
+                    }
+                    const snapshotKind = paymentKinds?.get(item.id);
+                    return snapshotKind
+                        ? snapshotKind === 'sunflower' ||
+                              snapshotKind === 'inventory'
+                        : item.currency === 'sunflower' ||
+                              item.currency === 'inventory' ||
+                              item.usesInventory === true;
+                });
+                for (const item of replayItems) {
+                    if (item.status !== 'paid') {
+                        throw new StripePaymentProcessingPermanentError(
+                            'completion_paid_cart_missing',
+                        );
+                    }
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedNonStripeItemIds.add(item.id);
+                    }
+                    const snapshotKind = paymentKinds?.get(item.id);
+                    if (
+                        snapshotKind === 'sunflower' ||
+                        (!snapshotKind && item.currency === 'sunflower')
+                    ) {
+                        const amount =
+                            snapshotAmounts?.get(item.id) ??
+                            calculateSunflowerReplayAmount(item);
+                        if (!Number.isSafeInteger(amount) || amount <= 0) {
+                            throw new StripePaymentProcessingPermanentError(
+                                'completion_sunflower_amount_invalid',
+                            );
+                        }
+                        resolvedSunflowerAmountsByCartItemId.set(
+                            item.id,
+                            amount,
+                        );
+                    }
+                }
+                purchasedItems.push(
+                    ...dependencies.buildOrderConfirmationItems(
+                        replayItems,
+                        (item) => {
+                            const amount =
+                                resolvedSunflowerAmountsByCartItemId.get(
+                                    item.id,
+                                );
+                            if (amount === undefined) {
+                                throw new StripePaymentProcessingPermanentError(
+                                    'completion_sunflower_amount_invalid',
+                                );
+                            }
+                            return amount;
+                        },
+                    ),
+                );
+                continue;
+            }
             const nonStripeResult = await processNonStripeCartItems(
                 cartId,
                 accountId,
@@ -2135,18 +2604,19 @@ async function processPaidCheckoutSession(
                 harvestDateByCartItemId,
                 expectedNonStripeCartItemIds,
                 session.id,
+                claimControl,
                 dependencies,
-                checkoutReconciliation
+                completionAttempt && checkoutReconciliation
                     ? {
                           additionalDataByCartItemId:
                               checkoutReconciliation.additionalDataByCartItemId,
                           paymentKindByCartItemId:
                               getStripeCheckoutSnapshotNonStripePaymentKinds(
-                                  checkoutReconciliation.attempt,
+                                  completionAttempt,
                               ),
                           sunflowerAmountsByCartItemId:
                               getStripeCheckoutSnapshotNonStripeAmounts(
-                                  checkoutReconciliation.attempt,
+                                  completionAttempt,
                               ),
                       }
                     : undefined,
@@ -2192,13 +2662,34 @@ async function processPaidCheckoutSession(
         ? await dependencies.getUser(customerUserId)
         : null;
 
-    // Update all affected carts to mark them as paid if all items are paid
-    await Promise.all(
-        uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
-    );
+    if (!accountId) {
+        throw new StripePaymentProcessingPermanentError(
+            'checkout_account_missing',
+        );
+    }
+    if (
+        alreadyProcessed &&
+        (alreadyProcessed.accountId !== accountId ||
+            alreadyProcessed.amount !== session.amountTotal ||
+            alreadyProcessed.currency !== 'eur')
+    ) {
+        throw new StripePaymentProcessingPermanentError(
+            'transaction_identity_conflict',
+        );
+    }
 
+    // Update all affected carts to mark them as paid if all items are paid
+    if (!alreadyProcessed) {
+        await claimControl.assertOwned();
+        await Promise.all(
+            uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
+        );
+    }
+
+    await claimControl.assertOwned();
     const transactionId =
-        accountId && typeof session.amountTotal === 'number'
+        alreadyProcessed?.id ??
+        (typeof session.amountTotal === 'number'
             ? await dependencies.createTransaction({
                   accountId,
                   amount: session.amountTotal,
@@ -2206,10 +2697,39 @@ async function processPaidCheckoutSession(
                   status: 'completed',
                   currency: 'eur',
               })
-            : undefined;
+            : undefined);
 
-    if (transactionId && dependencies.isBillingAutomationEnabled()) {
+    const completedCartIds: number[] = [];
+    for (const cartId of uniqueAffectedCartIds) {
+        const completedCart = await dependencies.getShoppingCart(cartId);
+        if (completedCart?.status === 'paid') {
+            completedCartIds.push(completedCart.id);
+        }
+    }
+
+    if (completedCartIds.length === 0) {
+        throw new StripePaymentProcessingPermanentError(
+            'completion_paid_cart_missing',
+        );
+    }
+
+    await ensureCheckoutCompletionOutputs({
+        accountId,
+        cartId: completedCartIds.length === 1 ? completedCartIds[0] : null,
+        claimControl,
+        customerEmail: customer?.userName,
+        dependencies,
+        items: purchasedItems,
+        session,
+    });
+
+    if (
+        transactionId &&
+        !alreadyProcessed &&
+        dependencies.isBillingAutomationEnabled()
+    ) {
         try {
+            await claimControl.assertOwned();
             const invoiceResult =
                 await dependencies.ensureInvoiceForTransaction({
                     transactionId,
@@ -2227,6 +2747,7 @@ async function processPaidCheckoutSession(
                     transactionId,
                 });
             } else {
+                await claimControl.assertOwned();
                 const receiptResult =
                     await dependencies.issueReceiptForPaidInvoice({
                         invoiceId: invoiceResult.invoiceId,
@@ -2240,6 +2761,7 @@ async function processPaidCheckoutSession(
                         transactionId,
                     });
                 } else {
+                    await claimControl.assertOwned();
                     const fiscalizationResult =
                         await dependencies.fiscalizeReceipt(
                             receiptResult.receiptId,
@@ -2263,6 +2785,7 @@ async function processPaidCheckoutSession(
                         });
                     }
 
+                    await claimControl.assertOwned();
                     await dependencies.notifyBillingDocumentsEmail({
                         to: customer?.userName,
                         cartIds: uniqueAffectedCartIds,
@@ -2279,6 +2802,9 @@ async function processPaidCheckoutSession(
                 }
             }
         } catch (error) {
+            if (error instanceof StripePaymentProcessingClaimLostError) {
+                throw error;
+            }
             console.error('Checkout billing document automation failed', {
                 checkoutSessionId,
                 error,
@@ -2287,42 +2813,8 @@ async function processPaidCheckoutSession(
         }
     }
 
-    const completedCartIds: number[] = [];
-    for (const cartId of uniqueAffectedCartIds) {
-        const completedCart = await dependencies.getShoppingCart(cartId);
-        if (completedCart?.status === 'paid') {
-            completedCartIds.push(completedCart.id);
-        }
-    }
-
-    if (completedCartIds.length > 0) {
-        await dependencies.notifyOrderConfirmationEmail({
-            to: customer?.userName,
-            cartId: completedCartIds.length === 1 ? completedCartIds[0] : null,
-            checkoutSessionId: session.id,
-            items: purchasedItems,
-            totalAmountCents: session.amountTotal ?? null,
-            currency: 'eur',
-        });
-    } else {
-        console.warn(
-            'Skipping order confirmation email: no affected cart is paid',
-            {
-                checkoutSessionId: session.id,
-                affectedCartIds: uniqueAffectedCartIds,
-            },
-        );
-    }
-
-    await dependencies.notifyPurchase({
-        accountId,
-        amountTotal: session.amountTotal ?? null,
-        checkoutSessionId: session.id ?? null,
-        customerEmail: customer?.userName ?? null,
-        items: purchasedItems,
-    });
-
-    if (accountId) {
+    if (!alreadyProcessed) {
+        await claimControl.assertOwned();
         (await dependencies.getPostHogClient()).capture({
             distinctId: accountId,
             event: 'purchase_completed',
@@ -2337,6 +2829,10 @@ async function processPaidCheckoutSession(
 
     if (checkoutAttempt) {
         await releaseCompletedStripeCheckoutAttempt(session, dependencies);
+    } else if (alreadyProcessed) {
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
     }
 }
 
@@ -2363,6 +2859,7 @@ async function assertRaisedBedAllowsCheckoutItem(
 async function recordCheckoutPlantingRaisedBedUnavailable({
     accountId,
     cartItemId,
+    claimControl,
     checkoutSessionId,
     dependencies,
     gardenId,
@@ -2372,6 +2869,7 @@ async function recordCheckoutPlantingRaisedBedUnavailable({
 }: {
     accountId: string;
     cartItemId: number;
+    claimControl: StripePaymentProcessingClaimControl;
     checkoutSessionId: string;
     dependencies: ProcessCheckoutSessionDependencies;
     gardenId?: number | null;
@@ -2379,6 +2877,7 @@ async function recordCheckoutPlantingRaisedBedUnavailable({
     raisedBedId?: number | null;
     reason: CheckoutPlantingRaisedBedUnavailableReason;
 }) {
+    await claimControl.assertOwned();
     const incident = await dependencies.createNotificationWithStatus(
         {
             accountId,
@@ -2410,19 +2909,28 @@ async function recordCheckoutPlantingRaisedBedUnavailable({
     );
 
     if (typeof raisedBedId === 'number' && typeof positionIndex === 'number') {
+        await claimControl.assertOwned();
         const operatorAlert =
             await dependencies.deliverNotificationOperatorAlert(
                 incident.notificationId,
-                () =>
-                    dependencies.notifyCheckoutFulfillmentIncident({
+                async () => {
+                    await claimControl.assertOwned();
+                    await dependencies.notifyCheckoutFulfillmentIncident({
                         accountId,
                         cartItemId,
                         checkoutSessionId,
                         incidentId: incident.notificationId,
                         positionIndex,
                         raisedBedId,
-                    }),
+                    });
+                },
             );
+        if (
+            operatorAlert.status === 'failed' &&
+            operatorAlert.error instanceof StripePaymentProcessingClaimLostError
+        ) {
+            throw operatorAlert.error;
+        }
         if (operatorAlert.status === 'failed') {
             console.error(
                 'Checkout raised-bed fulfillment incident operator alert failed and will be retried',
@@ -2447,7 +2955,9 @@ async function recordCheckoutPlantingRaisedBedUnavailable({
         );
     }
 
-    (await dependencies.getPostHogClient()).capture({
+    const postHog = await dependencies.getPostHogClient();
+    await claimControl.assertOwned();
+    postHog.capture({
         distinctId: accountId,
         event: 'checkout_planting_raised_bed_unavailable',
         properties: {
@@ -2676,22 +3186,27 @@ export async function processItem(
         >;
     },
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+    claimControl?: StripePaymentProcessingClaimControl,
 ): Promise<ProcessItemFulfillmentResult> {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
 
-    const earnSunflowersFunc = () =>
-        itemData.accountId &&
-        itemData.cartItemId &&
-        itemData.currency === 'eur' &&
-        itemData.paymentRewardAlreadyEnsured !== true
-            ? dependencies.earnSunflowersForPayment(
-                  itemData.accountId,
-                  itemData.amount_total / 100,
-                  `shoppingCartItem:${itemData.cartItemId.toString()}`,
-              )
-            : Promise.resolve();
+    const earnSunflowersFunc = async () => {
+        if (
+            itemData.accountId &&
+            itemData.cartItemId &&
+            itemData.currency === 'eur' &&
+            itemData.paymentRewardAlreadyEnsured !== true
+        ) {
+            await claimControl?.assertOwned();
+            await dependencies.earnSunflowersForPayment(
+                itemData.accountId,
+                itemData.amount_total / 100,
+                `shoppingCartItem:${itemData.cartItemId.toString()}`,
+            );
+        }
+    };
 
     // TODO: Move this logic to a separate function
     if (itemData.entityTypeName === 'operation') {
@@ -2804,6 +3319,7 @@ export async function processItem(
         // Credit the captured-payment reward first. Its cart-item key makes a
         // replay a no-op if operation creation or later fulfillment fails.
         await earnSunflowersFunc();
+        await claimControl?.assertOwned();
         const { created, operationId } =
             await dependencies.getOrCreateCheckoutOperation(
                 itemData.cartItemId,
@@ -2838,6 +3354,7 @@ export async function processItem(
 
                 if (deliveryInfo) {
                     try {
+                        await claimControl?.assertOwned();
                         const deliveryRequest =
                             await dependencies.getOrCreateDeliveryRequest(
                                 {
@@ -2860,13 +3377,21 @@ export async function processItem(
                             `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );
                     } catch (error) {
+                        if (
+                            error instanceof
+                            StripePaymentProcessingClaimLostError
+                        ) {
+                            throw error;
+                        }
                         console.error(
                             `Failed to create delivery request for operation ${operationId}:`,
                             error,
                         );
                         // Payment already captured -- do not re-throw. Surface the failure so ops
                         // can reconcile the paid-but-undelivered order.
-                        (await dependencies.getPostHogClient()).capture({
+                        const postHog = await dependencies.getPostHogClient();
+                        await claimControl?.assertOwned();
+                        postHog.capture({
                             distinctId: itemData.accountId,
                             event: 'delivery_request_creation_failed',
                             properties: {
@@ -2921,6 +3446,7 @@ export async function processItem(
         const purchase = plantingPurchaseFromCheckoutItem(itemData);
 
         await earnSunflowersFunc();
+        await claimControl?.assertOwned();
         let placementResult: 'already-placed' | 'placed';
         try {
             placementResult =
@@ -2928,6 +3454,7 @@ export async function processItem(
                     raisedBedId,
                     positionIndex,
                     async (transaction) => {
+                        await claimControl?.assertOwned(transaction);
                         const raisedBedActivation =
                             await dependencies.lockAndActivateRaisedBedForCheckoutPlanting(
                                 raisedBedId,
@@ -2939,12 +3466,14 @@ export async function processItem(
                             );
                         }
                         if (raisedBedActivation.activatedAccountId) {
+                            await claimControl?.assertOwned(transaction);
                             await dependencies.processReferralRewardsForAccount(
                                 raisedBedActivation.activatedAccountId,
                                 transaction,
                             );
                         }
 
+                        await claimControl?.assertOwned(transaction);
                         await dependencies.upsertRaisedBedField(
                             {
                                 positionIndex,
@@ -2971,6 +3500,7 @@ export async function processItem(
                             );
                         if (existingCheckoutPlanting) {
                             if (outletCartItemId) {
+                                await claimControl?.assertOwned(transaction);
                                 await dependencies.convertOutletReservationForCartItem(
                                     outletCartItemId,
                                     new Date(),
@@ -2990,6 +3520,7 @@ export async function processItem(
                         }
 
                         if (outletCartItemId) {
+                            await claimControl?.assertOwned(transaction);
                             await dependencies.convertOutletReservationForCartItem(
                                 outletCartItemId,
                                 new Date(),
@@ -2997,6 +3528,7 @@ export async function processItem(
                             );
                         }
 
+                        await claimControl?.assertOwned(transaction);
                         await dependencies.createEvent(
                             dependencies.knownEvents.raisedBedFields.plantPlaceV1(
                                 aggregateId,
@@ -3019,6 +3551,7 @@ export async function processItem(
                             transaction,
                         );
                         if (outletReservation) {
+                            await claimControl?.assertOwned(transaction);
                             await dependencies.createEvent(
                                 dependencies.knownEvents.raisedBedFields.plantUpdateV1(
                                     aggregateId,
@@ -3035,6 +3568,7 @@ export async function processItem(
                                 outletReservation.heldInitialPlantStatus !==
                                 'sowed'
                             ) {
+                                await claimControl?.assertOwned(transaction);
                                 await dependencies.createEvent(
                                     dependencies.knownEvents.raisedBedFields.plantUpdateV1(
                                         aggregateId,
@@ -3067,6 +3601,7 @@ export async function processItem(
                     const accountId = itemData.accountId;
                     const cartItemId = itemData.cartItemId;
                     const checkoutSessionId = itemData.checkoutSessionId;
+                    await claimControl?.assertOwned();
                     const incident =
                         await dependencies.createNotificationWithStatus(
                             {
@@ -3097,19 +3632,31 @@ export async function processItem(
                                 routeDelivery: false,
                             },
                         );
+                    await claimControl?.assertOwned();
                     const operatorAlert =
                         await dependencies.deliverNotificationOperatorAlert(
                             incident.notificationId,
-                            () =>
-                                dependencies.notifyCheckoutFulfillmentIncident({
-                                    accountId,
-                                    cartItemId,
-                                    checkoutSessionId,
-                                    incidentId: incident.notificationId,
-                                    positionIndex,
-                                    raisedBedId,
-                                }),
+                            async () => {
+                                await claimControl?.assertOwned();
+                                await dependencies.notifyCheckoutFulfillmentIncident(
+                                    {
+                                        accountId,
+                                        cartItemId,
+                                        checkoutSessionId,
+                                        incidentId: incident.notificationId,
+                                        positionIndex,
+                                        raisedBedId,
+                                    },
+                                );
+                            },
                         );
+                    if (
+                        operatorAlert.status === 'failed' &&
+                        operatorAlert.error instanceof
+                            StripePaymentProcessingClaimLostError
+                    ) {
+                        throw operatorAlert.error;
+                    }
                     if (operatorAlert.status === 'failed') {
                         console.error(
                             'Checkout fulfillment incident operator alert failed and will be retried',
@@ -3123,7 +3670,9 @@ export async function processItem(
                     }
                 }
                 if (itemData.accountId) {
-                    (await dependencies.getPostHogClient()).capture({
+                    const postHog = await dependencies.getPostHogClient();
+                    await claimControl?.assertOwned();
+                    postHog.capture({
                         distinctId: itemData.accountId,
                         event: 'checkout_planting_target_conflict',
                         properties: {
@@ -3145,7 +3694,9 @@ export async function processItem(
                 : `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
         if (outletReservation && itemData.accountId) {
-            (await dependencies.getPostHogClient()).capture({
+            const postHog = await dependencies.getPostHogClient();
+            await claimControl?.assertOwned();
+            postHog.capture({
                 distinctId: itemData.accountId,
                 event: 'outlet_reservation_converted',
                 properties: {
