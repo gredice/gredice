@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    getMinimalGardenPlacement,
     getWallpaperCaptureSize,
     getWallpaperPreviewSize,
     resolveWallpaperPalette,
@@ -43,6 +44,19 @@ describe('wallpaper sizes', () => {
                 width: 5760,
             },
         );
+    });
+});
+
+describe('minimal wallpaper garden placement', () => {
+    it('keeps the default garden target horizontally centered and lowers it', () => {
+        const placement = getMinimalGardenPlacement({
+            height: 502,
+            width: 1200,
+        });
+
+        assert.equal(600 + placement.offsetX, 600);
+        assert.equal(251 + placement.offsetY, 502 * 0.62);
+        assert.ok(placement.offsetY > 0);
     });
 });
 

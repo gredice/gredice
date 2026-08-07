@@ -45,7 +45,7 @@ type PendingCapture = {
     resolve: (blob: Blob) => void;
 };
 
-type WallpaperActivity = 'download' | 'idle' | 'preview';
+type WallpaperActivity = 'download' | 'idle' | 'macos' | 'preview';
 
 const wallpaperTemplates: WallpaperTemplate[] = ['minimal', 'standard'];
 const wallpaperThemes: WallpaperTheme[] = ['water', 'grass', 'sand', 'dirt'];
@@ -62,6 +62,17 @@ function captureErrorMessage(error: unknown) {
         return error.message;
     }
     return 'Pozadina se nije mogla izraditi. Pokušaj ponovno.';
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function WallpaperStudio() {
@@ -183,10 +194,12 @@ export function WallpaperStudio() {
         ({
             garden,
             height,
+            phase: capturePhase,
             width,
         }: {
             garden: GardenResponse;
             height: number;
+            phase: WallpaperPhase;
             width: number;
         }) => {
             if (pendingCaptureRef.current) {
@@ -200,7 +213,7 @@ export function WallpaperStudio() {
                 garden.id.toString(),
                 template,
                 theme,
-                phase,
+                capturePhase,
                 width.toString(),
                 height.toString(),
                 captureSequenceRef.current.toString(),
@@ -212,13 +225,13 @@ export function WallpaperStudio() {
                     garden,
                     height,
                     key,
-                    phase,
+                    phase: capturePhase,
                     transparent: template === 'minimal',
                     width,
                 });
             });
         },
-        [phase, template, theme],
+        [template, theme],
     );
 
     const handleSceneCapture = useCallback((blob: Blob) => {
@@ -236,7 +249,15 @@ export function WallpaperStudio() {
     }, []);
 
     const createWallpaper = useCallback(
-        async ({ height, width }: { height: number; width: number }) => {
+        async ({
+            height,
+            phase: wallpaperPhase = phase,
+            width,
+        }: {
+            height: number;
+            phase?: WallpaperPhase;
+            width: number;
+        }) => {
             const garden = gardenQuery.data;
             if (!garden) {
                 throw new Error('Najprije odaberi vrt.');
@@ -246,11 +267,12 @@ export function WallpaperStudio() {
             const scene = await requestSceneCapture({
                 garden,
                 ...captureSize,
+                phase: wallpaperPhase,
             });
             return composeWallpaper({
                 branding,
                 height,
-                phase,
+                phase: wallpaperPhase,
                 scene,
                 template,
                 theme,
@@ -287,19 +309,52 @@ export function WallpaperStudio() {
         try {
             const size = wallpaperSizes[sizeKey];
             const blob = await createWallpaper(size);
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = wallpaperFileName({
-                branding,
-                phase,
-                size: sizeKey,
-                template,
-            });
-            document.body.append(anchor);
-            anchor.click();
-            anchor.remove();
-            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            downloadBlob(
+                blob,
+                wallpaperFileName({
+                    branding,
+                    phase,
+                    size: sizeKey,
+                    template,
+                }),
+            );
+        } catch (downloadError) {
+            setError(captureErrorMessage(downloadError));
+        } finally {
+            setActivity('idle');
+        }
+    }
+
+    async function handleMacOSDynamicDownload() {
+        setActivity('macos');
+        setError(null);
+        try {
+            const {
+                createMacOSDynamicWallpaperBundle,
+                macOSDynamicWallpaperFileName,
+            } = await import('./macOSDynamicWallpaper');
+            const size = wallpaperSizes[sizeKey];
+            const frames: Array<{ blob: Blob; phase: WallpaperPhase }> = [];
+
+            for (const wallpaperPhase of wallpaperPhases) {
+                frames.push({
+                    blob: await createWallpaper({
+                        ...size,
+                        phase: wallpaperPhase,
+                    }),
+                    phase: wallpaperPhase,
+                });
+            }
+
+            const bundle = await createMacOSDynamicWallpaperBundle({ frames });
+            downloadBlob(
+                bundle,
+                macOSDynamicWallpaperFileName({
+                    branding,
+                    size: sizeKey,
+                    template,
+                }),
+            );
         } catch (downloadError) {
             setError(captureErrorMessage(downloadError));
         } finally {
@@ -652,11 +707,11 @@ export function WallpaperStudio() {
                         startDecorator={<Info className="size-4" />}
                     >
                         Pozadina se izrađuje samo u tvom pregledniku. Za
-                        Windows, macOS i Linux preuzima se obična PNG datoteka;
-                        automatska promjena doba dana nije uključena u ovu
-                        besplatnu verziju.
+                        Windows, macOS i Linux možeš preuzeti obični PNG. Mac
+                        dinamički paket uključuje jutro, dan, večer i noć te
+                        upute za izradu nativne HEIC pozadine na Macu.
                     </Alert>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                         <Button
                             disabled={!gardenQuery.data || isBusy}
                             loading={activity === 'preview'}
@@ -664,6 +719,17 @@ export function WallpaperStudio() {
                             variant="outlined"
                         >
                             Izradi pregled
+                        </Button>
+                        <Button
+                            disabled={!gardenQuery.data || isBusy}
+                            loading={activity === 'macos'}
+                            onClick={handleMacOSDynamicDownload}
+                            startDecorator={
+                                <ArrowDownToLine className="size-4" />
+                            }
+                            variant="outlined"
+                        >
+                            Mac dinamički paket
                         </Button>
                         <Button
                             disabled={!gardenQuery.data || isBusy}
