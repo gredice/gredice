@@ -12,6 +12,7 @@ export const PublicPagePaths = {
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
     PublicGardens: '/vrtovi',
+    Wallpapers: '/pozadine',
     Sowing: '/sjetva',
     Operations: '/radnje',
     FAQ: '/cesta-pitanja',

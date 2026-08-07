@@ -1,13 +1,36 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { getGameTimeOfDay } from '../utils/timeOfDay';
 import { getPublicGardenRaisedBedInteractionTargets } from './PublicGardenRaisedBedInteractions';
 import {
+    getPublicGardenCaptureInitialView,
+    getPublicGardenCapturePhaseDate,
     getPublicGardenInitialView,
     getPublicGardenRaisedBedsWithBlocks,
     getPublicGardenStacksCenter,
     normalizePublicGardenStacks,
+    type PublicGardenCapturePhase,
     type PublicGardenStack,
 } from './PublicGardenViewer';
+
+describe('getPublicGardenCapturePhaseDate', () => {
+    it('resolves stable renderer times for every wallpaper phase', () => {
+        const location = { lat: 45.739, lon: 16.572 };
+        const phases: Array<readonly [PublicGardenCapturePhase, number]> = [
+            ['morning', 0.22],
+            ['day', 0.5],
+            ['evening', 0.79],
+            ['night', 0.94],
+        ];
+
+        for (const [phase, expectedTimeOfDay] of phases) {
+            const date = getPublicGardenCapturePhaseDate(phase, location);
+            const actualTimeOfDay = getGameTimeOfDay(location, date);
+
+            assert.ok(Math.abs(actualTimeOfDay - expectedTimeOfDay) < 0.002);
+        }
+    });
+});
 
 describe('getPublicGardenRaisedBedsWithBlocks', () => {
     it('excludes raised beds that cannot be selected in the rendered garden', () => {
@@ -119,6 +142,30 @@ describe('getPublicGardenInitialView', () => {
         assert.equal(view.cameraTarget.y, 0);
         assert.equal(view.cameraTarget.z, 7);
         assert.equal(view.cameraZoom, 90);
+    });
+});
+
+describe('getPublicGardenCaptureInitialView', () => {
+    it('fits compact and elongated gardens inside an ultrawide capture', () => {
+        const compact = getPublicGardenCaptureInitialView({
+            stacks: normalizePublicGardenStacks([{ x: 0, y: 0, blocks: [] }]),
+            viewport: { height: 1440, width: 3440 },
+        });
+        const elongated = getPublicGardenCaptureInitialView({
+            stacks: normalizePublicGardenStacks(
+                Array.from({ length: 24 }, (_, index) => ({
+                    x: index,
+                    y: 0,
+                    blocks: [],
+                })),
+            ),
+            viewport: { height: 1440, width: 3440 },
+        });
+
+        assert.ok(compact.cameraZoom > 150);
+        assert.ok(compact.cameraZoom <= 180);
+        assert.ok(elongated.cameraZoom < compact.cameraZoom);
+        assert.ok(elongated.cameraZoom >= 24);
     });
 });
 

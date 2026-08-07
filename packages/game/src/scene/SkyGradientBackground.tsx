@@ -100,6 +100,7 @@ type SkyGradientBackgroundProps = {
     hideCelestialGlow?: boolean;
     location: { lat: number; lon: number };
     moonlight: number;
+    screenOffsetMultiplier?: number;
     timeOfDay: number;
     weather?: SkyGradientWeather | null;
 };
@@ -164,6 +165,7 @@ export function SkyGradientBackground({
     hideCelestialGlow = false,
     location,
     moonlight,
+    screenOffsetMultiplier = 1,
     timeOfDay,
     weather,
 }: SkyGradientBackgroundProps) {
@@ -337,7 +339,8 @@ export function SkyGradientBackground({
                 {
                     horizontalOffsetMultiplier:
                         sunTuning.horizontalOffsetMultiplier,
-                    screenOffsetMultiplier: SUN_SCREEN_OFFSET_MULTIPLIER,
+                    screenOffsetMultiplier:
+                        SUN_SCREEN_OFFSET_MULTIPLIER * screenOffsetMultiplier,
                     verticalOffsetMultiplier:
                         sunTuning.verticalOffsetMultiplier,
                 },
@@ -346,7 +349,7 @@ export function SkyGradientBackground({
             projectSkyDirectionToScreen(
                 celestialState.moonDirection,
                 basis,
-                {},
+                { screenOffsetMultiplier },
                 moonScreenRef.current,
             );
             copyVectorUniform(material, 'uSunPosition', sunScreenRef.current);
@@ -376,6 +379,7 @@ export function SkyGradientBackground({
             hideCelestialGlow,
             invalidate,
             material,
+            screenOffsetMultiplier,
             sunTuning,
         ],
     );
