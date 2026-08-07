@@ -1,6 +1,6 @@
 'use client';
 
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
     Box3,
@@ -582,6 +582,7 @@ function GroundDecorationInstancedBatch({
         [batch.instances],
     );
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const gameWeather = useGameState((state) => state.weather);
     const weather = weatherOverride ?? gameWeather;
@@ -735,6 +736,12 @@ function GroundDecorationInstancedBatch({
 
         return gameCamera.subscribe(() => updateMatrices(camera.quaternion));
     }, [camera, gameCamera, updateMatrices]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateMatrices(camera.quaternion);
+        }
+    }, -90);
 
     useLayoutEffect(
         () => () => {

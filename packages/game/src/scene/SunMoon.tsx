@@ -252,28 +252,33 @@ export function SunMoon({
             basis,
         );
         if (sunOpacity > 0.001 && sunProjectionScale !== null) {
-            const sx = sunDir.dot(basis.right) * sunProjectionScale;
-            const sy = sunDir.dot(basis.viewUp) * sunProjectionScale;
-
-            sunMesh.current.position
-                .copy(camera.position)
-                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
-                .addScaledVector(
-                    basis.right,
-                    sx *
-                        basis.skyRadius *
-                        SUN_SCREEN_OFFSET_MULTIPLIER *
-                        screenOffsetMultiplier *
-                        sunViewportTuning.horizontalOffsetMultiplier,
-                )
-                .addScaledVector(
-                    basis.viewUp,
-                    sy *
-                        basis.skyRadius *
-                        SUN_SCREEN_OFFSET_MULTIPLIER *
-                        screenOffsetMultiplier *
-                        sunViewportTuning.verticalOffsetMultiplier,
-                );
+            if (gardenAvatarView === 'overview') {
+                const sx = sunDir.dot(basis.right) * sunProjectionScale;
+                const sy = sunDir.dot(basis.viewUp) * sunProjectionScale;
+                sunMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
+                    .addScaledVector(
+                        basis.right,
+                        sx *
+                            basis.skyRadius *
+                            SUN_SCREEN_OFFSET_MULTIPLIER *
+                            screenOffsetMultiplier *
+                            sunViewportTuning.horizontalOffsetMultiplier,
+                    )
+                    .addScaledVector(
+                        basis.viewUp,
+                        sy *
+                            basis.skyRadius *
+                            SUN_SCREEN_OFFSET_MULTIPLIER *
+                            screenOffsetMultiplier *
+                            sunViewportTuning.verticalOffsetMultiplier,
+                    );
+            } else {
+                sunMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(sunDir, SKY_FORWARD_DISTANCE);
+            }
             sunMesh.current.lookAt(camera.position);
 
             const sunRgb = sunColorScale(timeOfDay).rgb();
@@ -307,20 +312,25 @@ export function SunMoon({
             basis,
         );
         if (moonOpacity > 0.001 && moonProjectionScale !== null) {
-            const mx = moonDir.dot(basis.right) * moonProjectionScale;
-            const my = moonDir.dot(basis.viewUp) * moonProjectionScale;
-
-            moonMesh.current.position
-                .copy(camera.position)
-                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
-                .addScaledVector(
-                    basis.right,
-                    mx * basis.skyRadius * screenOffsetMultiplier,
-                )
-                .addScaledVector(
-                    basis.viewUp,
-                    my * basis.skyRadius * screenOffsetMultiplier,
-                );
+            if (gardenAvatarView === 'overview') {
+                const mx = moonDir.dot(basis.right) * moonProjectionScale;
+                const my = moonDir.dot(basis.viewUp) * moonProjectionScale;
+                moonMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
+                    .addScaledVector(
+                        basis.right,
+                        mx * basis.skyRadius * screenOffsetMultiplier,
+                    )
+                    .addScaledVector(
+                        basis.viewUp,
+                        my * basis.skyRadius * screenOffsetMultiplier,
+                    );
+            } else {
+                moonMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(moonDir, SKY_FORWARD_DISTANCE);
+            }
             moonMesh.current.lookAt(camera.position);
 
             moonMaterial.uniforms.uPhase.value = moonVisualPhase.phase;
@@ -344,6 +354,7 @@ export function SunMoon({
         camera,
         currentTime,
         dayNightCycleDisabled,
+        gardenAvatarView,
         lat,
         lon,
         moonMaterial,

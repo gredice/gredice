@@ -44,8 +44,8 @@ export function GardenAvatarHud() {
     return (
         <div className="pointer-events-none absolute inset-0 z-30 select-none">
             <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
-                WASD za hodanje · Shift za trčanje · Ctrl za čučanj · Space za
-                skok · klik za pogled mišem · Esc za izlaz
+                WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput
+                Space za dvostruki skok · desni klik za POV zum · Esc za izlaz
             </div>
 
             <div className="absolute bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-center gap-1 rounded-xl border border-border/50 bg-background/70 p-1 shadow-lg backdrop-blur-md">
