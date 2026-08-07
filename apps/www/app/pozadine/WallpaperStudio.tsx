@@ -12,10 +12,13 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InlineLoginDialog } from '../../components/auth/InlineLoginDialog';
-import { useCurrentUser } from '../../hooks/useCurrentUser';
+import {
+    currentUserQueryKey,
+    useCurrentUser,
+} from '../../hooks/useCurrentUser';
 import { KnownPages } from '../../src/KnownPages';
 import {
     WallpaperCaptureRenderer,
@@ -62,6 +65,7 @@ function captureErrorMessage(error: unknown) {
 }
 
 export function WallpaperStudio() {
+    const queryClient = useQueryClient();
     const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
     const [showLogin, setShowLogin] = useState(false);
     const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
@@ -89,11 +93,12 @@ export function WallpaperStudio() {
     ].join(':');
 
     const gardensQuery = useQuery({
-        queryKey: ['wallpapers', 'gardens'],
+        queryKey: ['wallpapers', 'gardens', currentUser?.id ?? null],
         queryFn: async () => {
             const response = await clientAuthenticated().api.gardens.$get();
             if (response.status === 401) {
-                return null;
+                queryClient.setQueryData(currentUserQueryKey, null);
+                throw new Error('Prijava je istekla. Prijavi se ponovno.');
             }
             if (!response.ok) {
                 throw new Error('Tvoji vrtovi trenutačno nisu dostupni.');
@@ -106,7 +111,12 @@ export function WallpaperStudio() {
     });
 
     const gardenQuery = useQuery({
-        queryKey: ['wallpapers', 'garden', selectedGardenId],
+        queryKey: [
+            'wallpapers',
+            'garden',
+            currentUser?.id ?? null,
+            selectedGardenId,
+        ],
         queryFn: async () => {
             if (selectedGardenId === null) {
                 return null;
@@ -116,6 +126,10 @@ export function WallpaperStudio() {
             ].$get({
                 param: { gardenId: selectedGardenId.toString() },
             });
+            if (response.status === 401) {
+                queryClient.setQueryData(currentUserQueryKey, null);
+                throw new Error('Prijava je istekla. Prijavi se ponovno.');
+            }
             if (!response.ok) {
                 throw new Error('Odabrani vrt nije moguće učitati.');
             }
