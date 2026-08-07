@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Divider } from '@gredice/ui/Divider';
-import { Input } from '@gredice/ui/Input';
 import {
     Calendar,
     Cloud,
@@ -651,11 +651,10 @@ export function SandboxEnvironmentHud() {
                                     )}
                                     {formatTime(currentTime)}
                                 </Typography>
-                                <Popper
+                                <CalendarDatePicker
                                     align="end"
-                                    className="w-56 p-3"
+                                    onValueChange={updateDate}
                                     side="bottom"
-                                    sideOffset={8}
                                     trigger={
                                         <Button
                                             aria-label={`Promijeni datum ${formatShortDate(currentTime)}`}
@@ -670,21 +669,8 @@ export function SandboxEnvironmentHud() {
                                             {formatShortDate(currentTime)}
                                         </Button>
                                     }
-                                >
-                                    <Input
-                                        fullWidth
-                                        label="Datum"
-                                        type="date"
-                                        value={formatDateInputValue(
-                                            currentTime,
-                                        )}
-                                        onChange={(event) =>
-                                            updateDate(
-                                                event.currentTarget.value,
-                                            )
-                                        }
-                                    />
-                                </Popper>
+                                    value={formatDateInputValue(currentTime)}
+                                />
                             </Row>
                         </Stack>
                     </Stack>

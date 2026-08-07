@@ -13,6 +13,7 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
+import { GardenAvatarHud } from './hud/GardenAvatarHud';
 import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
@@ -83,6 +84,7 @@ export function GameHud({
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: currentGarden } = useCurrentGarden();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -121,6 +123,10 @@ export function GameHud({
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
+
+    if (gardenAvatarView !== 'overview') {
+        return <GardenAvatarHud />;
+    }
 
     return (
         <SuncokretChatProvider>

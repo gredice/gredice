@@ -1,6 +1,11 @@
 import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
+import {
+    calendarMonthOffset,
+    formatTestCalendarDate,
+    selectCalendarDate,
+} from './calendarDatePickerTestUtils';
 import { PlantPickerTestStory } from './PlantPickerTestStory';
 
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
@@ -230,7 +235,7 @@ test('outlet sorts keep planned sowing selected by default', async ({
     await expect(sowingMode.getByText('Outlet sadnica')).toHaveCount(2);
     await expect(sowingMode.locator('svg').first()).toBeVisible();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toBeVisible();
     await expect(
         page.getByRole('switch', { name: 'Sijanje u stakleniku' }),
@@ -308,7 +313,7 @@ test('outlet sowing sends the selected outlet offer', async ({
     await sowingMode.getByText('Preostalo 3').click();
     await expect(laterOutletOffer).toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -342,7 +347,7 @@ test('outlet selection param opens the selected outlet offer', async ({
     });
     await expect(laterOutletOffer).toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -418,7 +423,7 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
+    const dateInput = page.getByRole('button', { name: /Datum sijanja/u });
     const greenhouseSwitch = page.getByRole('switch', {
         name: 'Sijanje u stakleniku',
     });
@@ -431,7 +436,17 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
     expect(switchBox).not.toBeNull();
     expect(Math.abs((dateBox?.y ?? 0) - (switchBox?.y ?? 0))).toBeLessThan(48);
 
-    await dateInput.fill('2026-07-01');
+    const initialDate = new Date();
+    initialDate.setDate(initialDate.getDate() + 1);
+    const selectedDate = new Date();
+    selectedDate.setDate(selectedDate.getDate() + 14);
+    const selectedDateKey = formatTestCalendarDate(selectedDate);
+    await selectCalendarDate({
+        date: selectedDateKey,
+        monthOffset: calendarMonthOffset(initialDate, selectedDate),
+        page,
+        trigger: dateInput,
+    });
     await greenhouseSwitch.click();
     await expect(greenhouseSwitch).toBeChecked();
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -453,7 +468,9 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
         return;
     }
     expect(additionalData.sowingLocation).toBe('greenhouse');
-    expect(additionalData.scheduledDate).toBe('2026-07-01T00:00:00.000Z');
+    expect(additionalData.scheduledDate).toBe(
+        `${selectedDateKey}T00:00:00.000Z`,
+    );
 });
 
 test('outlet refetch does not replace a missing selected offer', async ({
@@ -486,7 +503,7 @@ test('outlet refetch does not replace a missing selected offer', async ({
         sowingMode.getByRole('radio', { name: /Preostalo 2/ }),
     ).not.toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: 'Dodaj u košaru' }),
@@ -545,7 +562,7 @@ test('mobile sort step scrolls the sowing date clear of sticky actions', async (
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
+    const dateInput = page.getByRole('button', { name: /Datum sijanja/u });
     await dateInput.evaluate((element) => {
         let scrollParent = element.parentElement;
         while (scrollParent) {

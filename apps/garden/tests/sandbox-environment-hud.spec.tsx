@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { selectCalendarDate } from './calendarDatePickerTestUtils';
 import {
     SandboxEnvironmentHudStory,
     SandboxEnvironmentResetStory,
@@ -55,8 +56,12 @@ test('sandbox environment HUD can scrub time and change date', async ({
         .poll(() => page.getByTestId('sandbox-timeofday-value').textContent())
         .not.toBe(initialTimeOfDay);
 
-    await page.getByTitle('Promijeni datum').click();
-    await page.getByRole('textbox', { name: 'Datum' }).fill('2026-12-21');
+    await selectCalendarDate({
+        date: '2026-12-21',
+        monthOffset: 6,
+        page,
+        trigger: page.getByTitle('Promijeni datum'),
+    });
     await expect(page.getByTestId('sandbox-date-value')).toHaveText(
         '2026-12-21',
     );
