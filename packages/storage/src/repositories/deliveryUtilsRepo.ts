@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -11,6 +11,9 @@ import { storage } from '../storage';
 // Check if a shopping cart contains any deliverable items
 export async function cartContainsDeliverableItems(
     cartId: number,
+    {
+        excludeCartItemIds = [],
+    }: { excludeCartItemIds?: readonly number[] } = {},
 ): Promise<boolean> {
     const items = await storage().query.shoppingCartItems.findMany({
         where: and(
@@ -18,6 +21,9 @@ export async function cartContainsDeliverableItems(
             eq(shoppingCartItems.entityTypeName, 'operation'),
             eq(shoppingCartItems.isDeleted, false),
             eq(shoppingCartItems.status, 'new'), // Only check unpaid items
+            excludeCartItemIds.length > 0
+                ? notInArray(shoppingCartItems.id, [...excludeCartItemIds])
+                : undefined,
         ),
     });
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Vector3 } from 'three';
 import { animateSunflowerHudToPoint } from '../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
@@ -40,7 +41,11 @@ export function useFocusPlacedBlock() {
             stack.blocks.map((block) => ({
                 key: block.id,
                 block,
-                position: stack.position,
+                position: new Vector3(
+                    stack.position.x,
+                    stack.position.y,
+                    stack.position.z,
+                ),
             })),
         );
 

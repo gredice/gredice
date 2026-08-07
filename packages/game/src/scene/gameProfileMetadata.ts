@@ -55,8 +55,8 @@ export type GeneratedPlantProfilePipelineCounts = {
         renderDataBuildDurationTotalMs: number;
         rootBatchingDurationMaxMs: number;
         rootBatchingDurationTotalMs: number;
-        symbolGenerationDurationMaxMs: number;
-        symbolGenerationDurationTotalMs: number;
+        topologyGenerationDurationMaxMs: number;
+        topologyGenerationDurationTotalMs: number;
         totalDurationMaxMs: number;
         totalDurationTotalMs: number;
         transferByteLengthMax: number;
@@ -121,7 +121,7 @@ export type GeneratedPlantProfileSnapshot = {
     };
     error: string | null;
     instanceBuffers: PlantInstanceBufferMetricsSnapshot;
-    lSystem: {
+    generation: {
         cancelledTaskCount: number;
         completedTaskCount: number;
         requestedTaskCount: number;
@@ -166,6 +166,20 @@ export type GeneratedPlantProfileSnapshot = {
     selectedRaisedBedId: number;
     sessionId: number;
 };
+
+export type StaticOpaqueSceneCacheState =
+    | 'bypass'
+    | 'capturing'
+    | 'cold'
+    | 'disabled'
+    | 'ready'
+    | 'unsupported';
+
+export type StaticOpaqueSceneCacheOcclusionFixtureState =
+    | 'arming'
+    | 'failed'
+    | 'passed'
+    | 'verifying';
 
 export type GameProfileMetadata = {
     adaptiveHighAmbientFps?: number;
@@ -213,21 +227,58 @@ export type GameProfileMetadata = {
     groundDecorationCount?: number;
     groundDecorationDensity?: number;
     groundDecorationVisibleCount?: number;
-    generatedLSystemCacheEntryCount?: number;
-    generatedLSystemCacheEstimatedBytes?: number;
-    generatedLSystemCacheEvictionCount?: number;
-    generatedLSystemCacheHitCount?: number;
-    generatedLSystemCacheMaxEntryCount?: number;
-    generatedLSystemCacheMaxEstimatedBytes?: number;
-    generatedLSystemCacheMissCount?: number;
-    generatedLSystemCacheOversizeSkipCount?: number;
-    generatedLSystemCachePeakEstimatedBytes?: number;
-    generatedLSystemCacheWriteCount?: number;
+    hoverOutlineActiveTargetCount?: number;
+    hoverOutlineAllocatedHeight?: number;
+    hoverOutlineAllocatedPixelCount?: number;
+    hoverOutlineAllocatedWidth?: number;
+    hoverOutlineAllocationEstimatedBytes?: number;
+    hoverOutlineCompositePassCount?: number;
+    hoverOutlineCropClippedCount?: number;
+    hoverOutlineCropPixelCount?: number;
+    hoverOutlineDrawingBufferPixelCount?: number;
+    hoverOutlineFormat?: string;
+    hoverOutlineHorizontalPassCount?: number;
+    hoverOutlineKernelSampleCount?: number;
+    hoverOutlineMaskPassCount?: number;
+    hoverOutlineMaxKernelSampleCount?: number;
+    hoverOutlinePipeline?: string;
+    hoverOutlineProfileCommandAction?: 'hide' | 'show';
+    hoverOutlineProfileTargetBlockId?: string | null;
+    hoverOutlineProfileTargetRaisedBedId?: number | null;
+    hoverOutlineRenderTargetCount?: number;
+    hoverOutlineRoiRatio?: number;
+    hoverOutlineStyleGroupCount?: number;
+    hoverOutlineThickness?: number;
     generatedPlantBatchCount?: number;
+    generatedPlantClusterInstanceCount?: number;
+    generatedPlantClusterPrimitiveTriangleCount?: number;
+    generatedPlantDetailedInstanceCount?: number;
+    generatedPlantDetailedLeafTriangleCount?: number;
+    generatedPlantDetailAdmittedBedCount?: number;
+    generatedPlantDetailAdmittedInstanceCount?: number;
+    generatedPlantDetailBudgetInstanceCount?: number;
+    generatedPlantDetailDemotedBedCount?: number;
+    generatedPlantDetailEvictedBedCount?: number;
+    generatedPlantDetailOverflowInstanceCount?: number;
+    generatedPlantDetailPromotedBedCount?: number;
+    generatedPlantDetailRequestedBedCount?: number;
+    generatedPlantDetailRequestedInstanceCount?: number;
+    generatedPlantDetailRetainedBedCount?: number;
+    generatedPlantDetailTransitionCount?: number;
+    generatedPlantDetailUsedBudgetInstanceCount?: number;
+    generatedPlantFarFieldCount?: number;
+    generatedPlantFarInstanceCount?: number;
     generatedPlantExpectedInstanceCount?: number;
     generatedPlantFieldCount?: number;
     generatedPlantInstanceCount?: number;
+    generatedPlantMidFieldCount?: number;
+    generatedPlantMidInstanceCount?: number;
+    generatedPlantNearFieldCount?: number;
+    generatedPlantNearInstanceCount?: number;
+    generatedPlantPendingDetailInstanceCount?: number;
     generatedPlantProfile?: GeneratedPlantProfileSnapshot | null;
+    generatedPlantRenderBatchCount?: number;
+    generatedPlantRenderNearInstanceCount?: number;
     generatedPlantVisibleFieldCount?: number;
     generatedPlantVisibleInstanceCount?: number;
     instancedInteractionControllerCount?: number;
@@ -237,6 +288,11 @@ export type GameProfileMetadata = {
     instancedInteractionResolvedTargetCount?: number;
     instancedInteractionTargetCount?: number;
     instancedSnowOverlayCount?: number;
+    operationVisualHighlightProfileDispatched?: boolean;
+    operationVisualHighlightProfileTargetFieldId?: number;
+    operationVisualHighlightProfileTargetGardenId?: number;
+    operationVisualHighlightProfileTargetPositionIndex?: number;
+    operationVisualHighlightProfileTargetRaisedBedId?: number;
     placementChunkLogicalTouchedCount?: number;
     placementChunkLogicalUpdateCount?: number;
     placementChunkPhysicalRebuildCount?: number;
@@ -253,6 +309,16 @@ export type GameProfileMetadata = {
     rainParticleCount?: number;
     rainWetOverlayDistinctUniformCount?: number;
     rainWetOverlayMaterialConsumerCount?: number;
+    raisedBedFieldVisualBatchCount?: number;
+    raisedBedFieldVisualChunkCount?: number;
+    raisedBedFieldVisualInstanceCount?: number;
+    raisedBedFieldVisualMatrixUploadCount?: number;
+    raisedBedFieldVisualObjectCount?: number;
+    raisedBedFieldVisualUploadedInstanceCount?: number;
+    raisedBedMulchBatchCount?: number;
+    raisedBedMulchGroupCount?: number;
+    raisedBedMulchInstanceCount?: number;
+    raisedBedMulchObjectCount?: number;
     raisedBedMulchOverlayCount?: number;
     primaryShadowRefreshCount?: number;
     rendererGeometries?: number;
@@ -274,7 +340,57 @@ export type GameProfileMetadata = {
     snowParticleCapacity?: number;
     snowParticleCount?: number;
     snowParticleGeometryBuildCount?: number;
+    staticOpaqueSceneCacheBoundaryCount?: number;
+    staticOpaqueSceneCacheBypassFrameCount?: number;
+    staticOpaqueSceneCacheCaptureCount?: number;
+    staticOpaqueSceneCacheCaptureSubmissionCount?: number;
+    staticOpaqueSceneCacheCaptureTriangleCount?: number;
+    staticOpaqueSceneCacheCompositePassCount?: number;
+    staticOpaqueSceneCacheReplayEstimatedBytes?: number;
+    staticOpaqueSceneCacheReplayStatus?: string;
+    staticOpaqueSceneCacheReplaySubmissionCount?: number;
+    staticOpaqueSceneCacheReplayTriangleCount?: number;
+    staticOpaqueSceneCacheEnabled?: boolean;
+    staticOpaqueSceneCacheHitFrameCount?: number;
+    staticOpaqueSceneCacheIneligibleBoundaryCount?: number;
+    staticOpaqueSceneCacheInvalidationCount?: number;
+    staticOpaqueSceneCacheLastInvalidationReason?: string;
+    staticOpaqueSceneCacheLiveFrameCount?: number;
+    staticOpaqueSceneCacheMeshCount?: number;
+    staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionCaptureCountAtTransition?: number | null;
+    staticOpaqueSceneCacheOcclusionFixtureEnabled?: boolean;
+    staticOpaqueSceneCacheOcclusionFixturePass?: boolean;
+    staticOpaqueSceneCacheOcclusionFixtureState?: StaticOpaqueSceneCacheOcclusionFixtureState;
+    staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition?: number | null;
+    staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio?: number;
+    staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio?: number;
+    staticOpaqueSceneCacheOcclusionTransitionCount?: number;
+    staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount?: number;
+    staticOpaqueSceneCacheReason?: string;
+    staticOpaqueSceneCacheSavedSubmissionCount?: number;
+    staticOpaqueSceneCacheSavedTriangleCount?: number;
+    staticOpaqueSceneCacheState?: StaticOpaqueSceneCacheState;
+    staticOpaqueSceneCacheSupported?: boolean;
+    staticOpaqueSceneCacheTargetEstimatedBytes?: number;
+    staticOpaqueSceneCacheTargetHeight?: number;
+    staticOpaqueSceneCacheTargetSampleCount?: number;
+    staticOpaqueSceneCacheTargetWidth?: number;
+    staticOpaqueSceneCacheTriangleCount?: number;
+    staticOpaqueSceneCacheUnexpectedStaticSubmissionCount?: number;
     weatherDisabled?: boolean;
+    weatherSurfaceAvoidedOverlaySubmissionCount?: number;
+    weatherSurfaceAvoidedOverlayTriangleCount?: number;
+    weatherSurfaceFallbackOverlaySubmissionCount?: number;
+    weatherSurfaceFallbackOverlayTriangleCount?: number;
+    weatherSurfaceIntegratedInstanceCount?: number;
+    weatherSurfaceIntegratedMaterialCount?: number;
+    weatherSurfaceMode?: 'integrated' | 'legacy';
+    weatherSurfacePluginVariantCount?: number;
+    weatherSurfaceSnowIntegrationReadyCount?: number;
+    weatherSurfaceSnowIntegrationTrackedCount?: number;
+    weatherSurfaceSnowIntegrationTransitionCount?: number;
 };
 
 declare global {

@@ -2,10 +2,145 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     getAbandonedRaisedBedCartNote,
+    getEffectiveInventoryAvailability,
     getMinimumOrderNote,
     getNewRaisedBedPlantingNote,
+    getPendingInventoryCartItemIds,
     getTotalCartValueCents,
+    hasBlockingOpenItemsForRaisedBed,
+    hasEnoughInventoryForCartItem,
 } from './cartInfo';
+
+const pendingInventoryItem = {
+    id: 41,
+    amount: 2,
+    currency: 'inventory',
+    entityId: '7',
+    entityTypeName: 'plantSort',
+    status: 'new',
+};
+
+const pendingInventoryConsumption = {
+    cartItemId: 41,
+    source: 'shoppingCartItem:41',
+    entityId: '7',
+    entityTypeName: 'plantSort',
+    amount: 2,
+};
+
+describe('getEffectiveInventoryAvailability', () => {
+    it('credits a matching pending checkout consumption back to availability', () => {
+        const availability = getEffectiveInventoryAvailability(
+            [pendingInventoryItem],
+            [
+                {
+                    entityId: '7',
+                    entityTypeName: 'plantSort',
+                    amount: 1,
+                },
+            ],
+            [pendingInventoryConsumption],
+        );
+
+        assert.strictEqual(availability.get('plantSort-7'), 3);
+    });
+
+    it('does not credit a completed checkout consumption', () => {
+        const availability = getEffectiveInventoryAvailability(
+            [{ ...pendingInventoryItem, status: 'paid' }],
+            [
+                {
+                    entityId: '7',
+                    entityTypeName: 'plantSort',
+                    amount: 1,
+                },
+            ],
+            [pendingInventoryConsumption],
+        );
+
+        assert.strictEqual(availability.get('plantSort-7'), 1);
+    });
+
+    it('rejects a mismatched checkout source', () => {
+        assert.throws(
+            () =>
+                getEffectiveInventoryAvailability(
+                    [pendingInventoryItem],
+                    [],
+                    [
+                        {
+                            ...pendingInventoryConsumption,
+                            source: 'shoppingCartItem:42',
+                        },
+                    ],
+                ),
+            /source mismatch/,
+        );
+    });
+
+    it('rejects a consumption for a different inventory item', () => {
+        assert.throws(
+            () =>
+                getEffectiveInventoryAvailability(
+                    [pendingInventoryItem],
+                    [],
+                    [
+                        {
+                            ...pendingInventoryConsumption,
+                            entityId: '8',
+                        },
+                    ],
+                ),
+            /item mismatch/,
+        );
+    });
+
+    it('rejects a consumption with a different amount', () => {
+        assert.throws(
+            () =>
+                getEffectiveInventoryAvailability(
+                    [pendingInventoryItem],
+                    [],
+                    [{ ...pendingInventoryConsumption, amount: 1 }],
+                ),
+            /amount mismatch/,
+        );
+    });
+});
+
+describe('getPendingInventoryCartItemIds', () => {
+    it('skips inventory reads for sunflower-only and already-paid carts', () => {
+        assert.deepStrictEqual(
+            getPendingInventoryCartItemIds([
+                { id: 1, currency: 'sunflower', status: 'new' },
+                { id: 2, currency: 'inventory', status: 'paid' },
+            ]),
+            [],
+        );
+        assert.deepStrictEqual(
+            getPendingInventoryCartItemIds([
+                { id: 3, currency: 'inventory', status: 'new' },
+            ]),
+            [3],
+        );
+    });
+});
+
+describe('hasEnoughInventoryForCartItem', () => {
+    it('does not reject a paid inventory item based on the current balance', () => {
+        assert.strictEqual(
+            hasEnoughInventoryForCartItem(
+                { ...pendingInventoryItem, status: 'paid' },
+                0,
+            ),
+            true,
+        );
+        assert.strictEqual(
+            hasEnoughInventoryForCartItem(pendingInventoryItem, 1),
+            false,
+        );
+    });
+});
 
 describe('getNewRaisedBedPlantingNote', () => {
     it('uses singular raised-bed copy for two raised-bed blocks', () => {
@@ -28,6 +163,67 @@ describe('getAbandonedRaisedBedCartNote', () => {
         assert.strictEqual(
             getAbandonedRaisedBedCartNote('Gredica 12'),
             'Gredica 12 je napuštena zbog neaktivnosti. Nove sjetve i radnje više nisu dostupne za ovu gredicu.',
+        );
+    });
+});
+
+describe('hasBlockingOpenItemsForRaisedBed', () => {
+    const mappedOperation = {
+        id: 71,
+        entityTypeName: 'operation',
+        raisedBedId: 9,
+        status: 'new',
+    };
+
+    it('lets direct and mixed retries continue for a durably mapped operation', () => {
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [mappedOperation],
+                9,
+                new Set([mappedOperation.id]),
+            ),
+            false,
+        );
+    });
+
+    it('still blocks unmapped operations and planting items on an abandoned bed', () => {
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed([mappedOperation], 9, new Set()),
+            true,
+        );
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [
+                    mappedOperation,
+                    {
+                        id: 72,
+                        entityTypeName: 'plantSort',
+                        raisedBedId: 9,
+                        status: 'new',
+                    },
+                ],
+                9,
+                new Set([mappedOperation.id]),
+            ),
+            true,
+        );
+    });
+
+    it('lets a direct-currency item resume after its durable payment effect', () => {
+        const plantingItem = {
+            id: 72,
+            entityTypeName: 'plantSort',
+            raisedBedId: 9,
+            status: 'new',
+        };
+        assert.strictEqual(
+            hasBlockingOpenItemsForRaisedBed(
+                [plantingItem],
+                9,
+                new Set(),
+                new Set([plantingItem.id]),
+            ),
+            false,
         );
     });
 });

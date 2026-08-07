@@ -4,7 +4,7 @@ import React, { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import CSM from 'three-custom-shader-material';
-import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
+import { usePlantSway } from '../hooks/usePlantSway';
 import type {
     PackedPlantBounds,
     PackedPlantVegetableInstances,
@@ -23,6 +23,10 @@ import {
 } from '../lib/plantInstanceBuffers';
 import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
 import {
+    vegetableColorFragmentShader,
+    vegetableColorVertexShader,
+} from '../lib/plantVegetableMaterial';
+import {
     type VegetableData,
     vegetableMaterialProps,
 } from '../lib/vegetableRenderMetadata';
@@ -38,6 +42,7 @@ interface VegetablesProps {
 
 interface VegetableInstanceGroup {
     type: VegetableType;
+    color: THREE.InstancedBufferAttribute;
     count: number;
     data?: VegetableData[];
     geometry: THREE.BufferGeometry;
@@ -291,6 +296,7 @@ export function Vegetables({
         if (packed.length > 0) {
             return packed.map(
                 (data): VegetableInstanceGroup => ({
+                    color: createStaticInstancedBufferAttribute(data.count, 3),
                     count: data.count,
                     geometry: createPlantGeometryShell(
                         vegetableGeometries[data.type],
@@ -334,6 +340,7 @@ export function Vegetables({
             instanceMap.values(),
             (group): VegetableInstanceGroup => ({
                 ...group,
+                color: createStaticInstancedBufferAttribute(group.count, 3),
                 geometry: createPlantGeometryShell(
                     vegetableGeometries[group.type],
                 ),
@@ -363,6 +370,14 @@ export function Vegetables({
             }
 
             mesh.geometry.setAttribute('instanceSwayPhase', group.swayPhase);
+            mesh.geometry.setAttribute('vegetableInstanceColor', group.color);
+            if (group.packed) {
+                copyPackedStaticInstancedAttribute(
+                    group.color,
+                    group.packed.colors,
+                    group.packed.count,
+                );
+            }
             const packedGrowthIsBaked = group.packed?.growth.every(
                 (growth) => growth === 1,
             );
@@ -397,13 +412,15 @@ export function Vegetables({
                 );
             } else {
                 group.data?.forEach((veg, index) => {
-                    const { matrix, growth } = veg;
+                    const { color, matrix, growth } = veg;
                     matrix.decompose(tempPosition, tempQuaternion, tempScale);
                     tempScale.multiplyScalar(growth);
                     tempMatrix.compose(tempPosition, tempQuaternion, tempScale);
                     mesh.setMatrixAt(index, tempMatrix);
+                    group.color.setXYZ(index, color.r, color.g, color.b);
                 });
                 finalizeStaticInstanceMatrixUpload(mesh, group.count);
+                markStaticInstancedAttributeForUpload(group.color, group.count);
                 markStaticInstancedAttributeForUpload(
                     group.swayPhase,
                     group.count,
@@ -419,6 +436,7 @@ export function Vegetables({
                 generatedPlantInstanceBufferMetrics.register({
                     allocatedBytes:
                         mesh.instanceMatrix.array.byteLength +
+                        group.color.array.byteLength +
                         group.swayPhase.array.byteLength,
                     capacity: mesh.instanceMatrix.count,
                     kind: 'vegetable',
@@ -468,9 +486,10 @@ export function Vegetables({
                 >
                     <CSM
                         baseMaterial={THREE.MeshStandardMaterial}
-                        vertexShader={plantSwayVertexShader}
+                        fragmentShader={vegetableColorFragmentShader}
+                        vertexShader={vegetableColorVertexShader}
                         uniforms={swayUniforms}
-                        color={vegetableMaterialProps[group.type].color}
+                        color="#ffffff"
                         roughness={vegetableMaterialProps[group.type].roughness}
                     />
                 </instancedMesh>

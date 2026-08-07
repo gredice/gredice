@@ -4,12 +4,12 @@ import {
     activeDragPreviewTargetMatches,
 } from '../dragPreviewIdentity';
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
 import type { MovingSegment } from './PickupPlacementResolver';
 
 export type AttachedPickupSegment = {
-    sourceStack: Stack;
+    sourceStack: GardenStack;
     sourceStartIndex: number;
     blocks: Block[];
     baseHeight: number;
@@ -24,24 +24,27 @@ export type PickupSelectionMoveRequest = {
 
 type SelectedSegmentCandidate = {
     target: ActiveDragPreviewTarget;
-    sourceStack: Stack;
+    sourceStack: GardenStack;
     sourceStartIndex: number;
     block: Block;
 };
 
-function stackPositionMatches(stack: Stack, target: ActiveDragPreviewTarget) {
+function stackPositionMatches(
+    stack: GardenStack,
+    target: ActiveDragPreviewTarget,
+) {
     return (
         stack.position.x === target.stackPosition.x &&
         stack.position.z === target.stackPosition.z
     );
 }
 
-function stackKey(stack: Stack) {
+function stackKey(stack: GardenStack) {
     return `${stack.position.x}|${stack.position.z}`;
 }
 
 function findSelectedSegmentCandidate(
-    stacks: Stack[] | undefined,
+    stacks: GardenStack[] | undefined,
     target: ActiveDragPreviewTarget,
 ): SelectedSegmentCandidate | null {
     const sourceStack = stacks?.find((stack) =>
@@ -83,7 +86,7 @@ function getSelectedSegmentCandidates({
 }: {
     primaryTarget: ActiveDragPreviewTarget;
     selectedTargets: ActiveDragPreviewTarget[];
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }) {
     const targets = selectionTargetsInclude(selectedTargets, primaryTarget)
         ? selectedTargets
@@ -133,7 +136,7 @@ export function createPickupSelectionMovingSegments({
     canRecyclePrimarySegment: boolean;
     primaryTarget: ActiveDragPreviewTarget;
     selectedTargets: ActiveDragPreviewTarget[];
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }): MovingSegment[] {
     const selectedCandidates = getSelectedSegmentCandidates({
         primaryTarget,

@@ -137,7 +137,7 @@ function DisabledOperationChip({
     );
 }
 
-function RaisedBedAiOperationChip({
+export function RaisedBedAiOperationChip({
     gardenId,
     label,
     target,
@@ -183,7 +183,6 @@ function RaisedBedAiOperationChip({
                     additionalData: JSON.stringify({
                         scheduledDate: scheduledDate.toISOString(),
                     }),
-                    currency: 'eur',
                 });
             }}
             positionIndex={targetPositionIndex}

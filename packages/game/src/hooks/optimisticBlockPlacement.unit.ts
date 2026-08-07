@@ -123,9 +123,9 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(-1, 0, 1));
+        assert.deepStrictEqual(placement.position, { x: -1, y: 0, z: 1 });
         assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: new Vector3(-1, 0, 1),
+            position: { x: -1, y: 0, z: 1 },
             blocks: [
                 {
                     id: 'optimistic-bed',
@@ -158,9 +158,9 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(0, 0, -1));
+        assert.deepStrictEqual(placement.position, { x: 0, y: 0, z: -1 });
         assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: new Vector3(0, 0, -1),
+            position: { x: 0, y: 0, z: -1 },
             blocks: [
                 {
                     id: 'optimistic-shade',
@@ -191,7 +191,7 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(0, 0, 0));
+        assert.deepStrictEqual(placement.position, { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(placement.stacks[0], {
             position: new Vector3(0, 0, 0),
             blocks: [
@@ -225,10 +225,10 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(12, 0, -8));
+        assert.deepStrictEqual(placement.position, { x: 12, y: 0, z: -8 });
         assert.deepStrictEqual(placement.stacks, [
             {
-                position: new Vector3(12, 0, -8),
+                position: { x: 12, y: 0, z: -8 },
                 blocks: [
                     {
                         id: 'optimistic-shade',
@@ -254,10 +254,10 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(4, 0, -2));
+        assert.deepStrictEqual(placement.position, { x: 4, y: 0, z: -2 });
         assert.deepStrictEqual(placement.stacks, [
             {
-                position: new Vector3(4, 0, -2),
+                position: { x: 4, y: 0, z: -2 },
                 blocks: [
                     {
                         id: 'optimistic-shade',

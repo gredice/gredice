@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
@@ -195,7 +196,8 @@ export function GameCameraRig({
         (state) =>
             Boolean(state.pickupBlock) || Boolean(state.hudPlacementDrag),
     );
-    const { data: garden } = useCurrentGarden();
+    const { data: gardenData } = useCurrentGarden();
+    const garden = useSceneCurrentGarden(gardenData);
     useSceneTimeInvalidation(
         isAnimating || isDragging || isKeyboardPanning,
         sceneFrameRates.interactive,

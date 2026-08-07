@@ -8,6 +8,7 @@ import {
     type LabelPrinterSnapshot,
 } from '@gredice/label-printer';
 import { Button, type ButtonProps } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -128,6 +129,9 @@ export function FieldOperationPrintModal({
     const labels = Array.isArray(labelData) ? labelData : [labelData];
     const labelPreviewItems = getLabelPreviewItems(labels);
     const [isOpen, setIsOpen] = useState(false);
+    const [excludedLabelKeys, setExcludedLabelKeys] = useState<Set<string>>(
+        () => new Set(),
+    );
     const [snapshot, setSnapshot] = useState(() =>
         sharedLabelPrinter.getSnapshot(),
     );
@@ -135,6 +139,13 @@ export function FieldOperationPrintModal({
     const [isDisconnecting, setIsDisconnecting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const selectedLabelPreviewItems = labelPreviewItems.filter(
+        (item) => !excludedLabelKeys.has(item.key),
+    );
+    const selectedLabels = selectedLabelPreviewItems.map((item) => item.label);
+    const allLabelsSelected =
+        selectedLabels.length > 0 && selectedLabels.length === labels.length;
+    const someLabelsSelected = selectedLabels.length > 0 && !allLabelsSelected;
 
     useEffect(() => {
         return sharedLabelPrinter.subscribe(setSnapshot);
@@ -144,6 +155,10 @@ export function FieldOperationPrintModal({
         setIsOpen(open);
         setActionError(null);
         setSuccessMessage(null);
+
+        if (open) {
+            setExcludedLabelKeys(new Set());
+        }
 
         if (open && snapshot.isConnected) {
             void sharedLabelPrinter.refresh().catch(() => undefined);
@@ -189,18 +204,38 @@ export function FieldOperationPrintModal({
         }
     };
 
+    const handleToggleAllLabels = (checked: boolean) => {
+        setExcludedLabelKeys(
+            checked
+                ? new Set()
+                : new Set(labelPreviewItems.map((item) => item.key)),
+        );
+    };
+
+    const handleToggleLabel = (key: string, checked: boolean) => {
+        setExcludedLabelKeys((currentKeys) => {
+            const nextKeys = new Set(currentKeys);
+            if (checked) {
+                nextKeys.delete(key);
+            } else {
+                nextKeys.add(key);
+            }
+            return nextKeys;
+        });
+    };
+
     const handlePrint = async () => {
         setActionError(null);
         setSuccessMessage(null);
 
-        if (labels.length === 0) {
-            setActionError('Nema etiketa za ispis.');
+        if (selectedLabels.length === 0) {
+            setActionError('Odaberite barem jednu etiketu za ispis.');
             return;
         }
 
         try {
-            if (labels.length === 1) {
-                const firstLabel = labels.at(0);
+            if (selectedLabels.length === 1) {
+                const firstLabel = selectedLabels.at(0);
                 if (!firstLabel) {
                     setActionError('Nema etiketa za ispis.');
                     return;
@@ -210,12 +245,15 @@ export function FieldOperationPrintModal({
                     preset: DEFAULT_HARVEST_LABEL_PRESET,
                 });
             } else {
-                await sharedLabelPrinter.printFieldOperationLabels(labels, {
-                    preset: DEFAULT_HARVEST_LABEL_PRESET,
-                });
+                await sharedLabelPrinter.printFieldOperationLabels(
+                    selectedLabels,
+                    {
+                        preset: DEFAULT_HARVEST_LABEL_PRESET,
+                    },
+                );
             }
 
-            const traceLinkIds = getTraceLinkIds(labels);
+            const traceLinkIds = getTraceLinkIds(selectedLabels);
             if (traceLinkIds.length > 0 && onPrintSuccess) {
                 try {
                     await onPrintSuccess(traceLinkIds);
@@ -226,7 +264,7 @@ export function FieldOperationPrintModal({
                 }
             }
             setSuccessMessage(
-                labels.length === 1
+                selectedLabels.length === 1
                     ? 'Etiketa je poslana na pisač.'
                     : 'Etikete su poslane na pisač.',
             );
@@ -243,12 +281,16 @@ export function FieldOperationPrintModal({
         snapshot.isConnected &&
         !snapshot.isConnecting &&
         !snapshot.isPrinting &&
-        labels.length > 0 &&
+        selectedLabels.length > 0 &&
         snapshot.paperInserted !== false &&
         snapshot.lidClosed !== false;
     const resolvedPrintButtonLabel =
         printButtonLabel ??
-        (labels.length === 1 ? 'Ispiši etiketu' : 'Ispiši etikete');
+        (labels.length === 1 ? 'Ispiši etiketu' : 'Ispiši odabrane etikete');
+    const printButtonText =
+        labels.length > 1
+            ? `${resolvedPrintButtonLabel} (${selectedLabels.length})`
+            : resolvedPrintButtonLabel;
 
     return (
         <Modal
@@ -274,12 +316,33 @@ export function FieldOperationPrintModal({
                 <div className="rounded-lg border bg-muted/20 p-3">
                     <Stack spacing={2}>
                         {labels.length > 1 && (
-                            <Typography
-                                level="body2"
-                                className="text-muted-foreground"
-                            >
-                                Pregled: {labels.length} etiketa
-                            </Typography>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
+                                    Odabrano: {selectedLabels.length} od{' '}
+                                    {labels.length} etiketa
+                                </Typography>
+                                <Checkbox
+                                    checked={
+                                        allLabelsSelected
+                                            ? true
+                                            : someLabelsSelected
+                                              ? 'indeterminate'
+                                              : false
+                                    }
+                                    disabled={snapshot.isPrinting}
+                                    label={
+                                        allLabelsSelected
+                                            ? 'Poništi odabir svih'
+                                            : 'Odaberi sve'
+                                    }
+                                    onCheckedChange={(checked) =>
+                                        handleToggleAllLabels(checked === true)
+                                    }
+                                />
+                            </div>
                         )}
                         <div
                             className={
@@ -288,30 +351,59 @@ export function FieldOperationPrintModal({
                                     : ''
                             }
                         >
-                            {labelPreviewItems.map((item) => (
-                                <div key={item.key} className="min-w-0">
-                                    {labels.length > 1 && (
-                                        <Typography
-                                            level="body2"
-                                            className="mb-1 text-xs text-muted-foreground"
+                            {labelPreviewItems.map((item) => {
+                                const isSelected = !excludedLabelKeys.has(
+                                    item.key,
+                                );
+
+                                return (
+                                    <div key={item.key} className="min-w-0">
+                                        {labels.length > 1 && (
+                                            <div className="mb-2 flex min-h-11 items-center">
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    disabled={
+                                                        snapshot.isPrinting
+                                                    }
+                                                    label={`Uključi etiketu #${item.position}`}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        handleToggleLabel(
+                                                            item.key,
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                        <div
+                                            className={
+                                                isSelected
+                                                    ? undefined
+                                                    : 'opacity-45 grayscale'
+                                            }
                                         >
-                                            #{item.position}
-                                        </Typography>
-                                    )}
-                                    <FieldOperationLabelPreviewCanvas
-                                        labelData={item.label}
-                                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
-                                    />
-                                    {getTraceStatusLabel(item.label) && (
-                                        <Typography
-                                            level="body2"
-                                            className="mt-1 text-center text-xs text-muted-foreground"
-                                        >
-                                            {getTraceStatusLabel(item.label)}
-                                        </Typography>
-                                    )}
-                                </div>
-                            ))}
+                                            <FieldOperationLabelPreviewCanvas
+                                                labelData={item.label}
+                                                className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
+                                            />
+                                            {getTraceStatusLabel(
+                                                item.label,
+                                            ) && (
+                                                <Typography
+                                                    level="body2"
+                                                    className="mt-1 text-center text-xs text-muted-foreground"
+                                                >
+                                                    {getTraceStatusLabel(
+                                                        item.label,
+                                                    )}
+                                                </Typography>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </Stack>
                 </div>
@@ -497,7 +589,7 @@ export function FieldOperationPrintModal({
                                 loading={snapshot.isPrinting}
                                 disabled={!canPrint}
                             >
-                                {resolvedPrintButtonLabel}
+                                {printButtonText}
                             </Button>
                         </div>
                     </Stack>

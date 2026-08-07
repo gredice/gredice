@@ -3,9 +3,8 @@ import {
     type GameBackgroundPaletteKey,
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
-import { Vector3 } from 'three';
 import type { Block } from './types/Block';
-import type { Stack } from './types/Stack';
+import { createGardenPosition, type GardenStack } from './types/Stack';
 
 export const localSandboxGardenId = 0;
 export const defaultLocalSandboxStorageKey = 'gredice.debug.sandbox.garden.v1';
@@ -17,7 +16,7 @@ export type LocalSandboxGarden = {
     isPublic: false;
     backgroundPalette: GameBackgroundPaletteKey;
     homeCamera: null;
-    stacks: Stack[];
+    stacks: GardenStack[];
     location: {
         lat: number;
         lon: number;
@@ -39,16 +38,16 @@ type StoredLocalSandboxGarden = {
 type LocalSandboxGardenOptions = {
     backgroundPalette?: GameBackgroundPaletteKey;
     name?: string;
-    stacks?: Stack[];
+    stacks?: GardenStack[];
 };
 
-function createDefaultLocalSandboxStacks(): Stack[] {
-    const stacks: Stack[] = [];
+function createDefaultLocalSandboxStacks(): GardenStack[] {
+    const stacks: GardenStack[] = [];
 
     for (let x = -2; x <= 2; x += 1) {
         for (let z = -2; z <= 2; z += 1) {
             stacks.push({
-                position: new Vector3(x, 0, z),
+                position: createGardenPosition(x, 0, z),
                 blocks: [
                     {
                         id: `local-ground:${x}:${z}`,
@@ -63,14 +62,18 @@ function createDefaultLocalSandboxStacks(): Stack[] {
     return stacks;
 }
 
-function cloneSandboxStacks(stacks: Stack[]): Stack[] {
+function cloneSandboxStacks(stacks: GardenStack[]): GardenStack[] {
     return stacks.map((stack) => ({
-        position: stack.position.clone(),
+        position: createGardenPosition(
+            stack.position.x,
+            stack.position.y,
+            stack.position.z,
+        ),
         blocks: stack.blocks.map((block) => ({ ...block })),
     }));
 }
 
-function resolveDefaultLocalSandboxStacks(stacks: Stack[] | undefined) {
+function resolveDefaultLocalSandboxStacks(stacks: GardenStack[] | undefined) {
     return stacks?.length
         ? cloneSandboxStacks(stacks)
         : createDefaultLocalSandboxStacks();
@@ -146,7 +149,7 @@ function normalizeStoredGarden(
 
             return [
                 {
-                    position: new Vector3(x, 0, z),
+                    position: createGardenPosition(x, 0, z),
                     blocks: normalizeStoredBlocks(stack.blocks),
                 },
             ];

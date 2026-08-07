@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Vector3 } from 'three';
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import { createGardenPosition, type GardenStack } from '../types/Stack';
 import { shareCurrentGardenData } from './currentGardenStructuralSharing';
 import type { CurrentGarden } from './useCurrentGarden';
 
@@ -19,9 +18,9 @@ function createStack(
     x: number,
     z: number,
     blocks: Block[] = [createBlock()],
-): Stack {
+): GardenStack {
     return {
-        position: new Vector3(x, 0, z),
+        position: createGardenPosition(x, 0, z),
         blocks,
     };
 }

@@ -18,9 +18,17 @@ import {
     leafColorVertexShader,
 } from './plantLeafMaterial';
 import {
+    midBillboardFragmentShader,
+    midBillboardVertexShader,
+} from './plantMidBillboardMaterial';
+import {
     createPlantStemGeometryShell,
     disposePlantStemGeometryShell,
 } from './plantStemGeometry';
+import {
+    vegetableColorFragmentShader,
+    vegetableColorVertexShader,
+} from './plantVegetableMaterial';
 
 export const GENERATED_PLANT_SHADER_PREWARM_COMPILE_TIMEOUT_MS = 4_000;
 
@@ -29,7 +37,9 @@ export const generatedPlantShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
     'billboard',
+    'mid-billboard',
     'shadow-proxy',
 ] as const;
 
@@ -38,6 +48,8 @@ export const generatedPlantInstancedSwayShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
+    'mid-billboard',
 ] as const;
 
 export type GeneratedPlantShaderPrewarmCompletionStatus =
@@ -242,6 +254,28 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     );
     standardSway.name = 'GeneratedPlantShaderPrewarm:standard-sway';
 
+    const vegetableGeometry = new THREE.ConeGeometry(0.5, 1, 6);
+    vegetableGeometry.setAttribute(
+        'vegetableInstanceColor',
+        new THREE.InstancedBufferAttribute(
+            new Float32Array([0.84, 0.16, 0.16]),
+            3,
+        ),
+    );
+    const vegetableMaterial = new CustomShaderMaterial({
+        baseMaterial: THREE.MeshStandardMaterial,
+        fragmentShader: vegetableColorFragmentShader,
+        vertexShader: vegetableColorVertexShader,
+        uniforms: createSwayUniforms(),
+        color: '#ffffff',
+        roughness: 0.7,
+    });
+    const vegetable = initializeWarmupMesh(
+        new THREE.InstancedMesh(vegetableGeometry, vegetableMaterial, 1),
+        { usesSway: true },
+    );
+    vegetable.name = 'GeneratedPlantShaderPrewarm:vegetable';
+
     const billboardGeometry = new THREE.PlaneGeometry(1, 1);
     billboardGeometry.setAttribute(
         'instanceTint',
@@ -264,6 +298,37 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     );
     billboard.name = 'GeneratedPlantShaderPrewarm:billboard';
 
+    const midBillboardGeometry = new THREE.PlaneGeometry(2, 2);
+    midBillboardGeometry.setAttribute(
+        'instanceTint',
+        new THREE.InstancedBufferAttribute(
+            new Float32Array([0.3, 0.6, 0.2]),
+            3,
+        ),
+    );
+    midBillboardGeometry.setAttribute(
+        'instanceOpacity',
+        new THREE.InstancedBufferAttribute(new Float32Array([0.9]), 1),
+    );
+    const midBillboardMaterial = new CustomShaderMaterial({
+        baseMaterial: THREE.MeshLambertMaterial,
+        depthWrite: false,
+        fragmentShader: midBillboardFragmentShader,
+        side: THREE.FrontSide,
+        transparent: true,
+        uniforms: {
+            ...createSwayUniforms(),
+            uOpacity: { value: 0.9 },
+            uTint: { value: new THREE.Color('#ffffff') },
+        },
+        vertexShader: midBillboardVertexShader,
+    });
+    const midBillboard = initializeWarmupMesh(
+        new THREE.InstancedMesh(midBillboardGeometry, midBillboardMaterial, 1),
+        { usesSway: true },
+    );
+    midBillboard.name = 'GeneratedPlantShaderPrewarm:mid-billboard';
+
     const shadowProxyGeometry = createRaisedBedPlantShadowProxyGeometry();
     const shadowProxyColorMaterial = createRaisedBedPlantShadowProxyMaterial();
     const shadowProxyDepthMaterial = new THREE.MeshDepthMaterial({
@@ -279,7 +344,16 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     shadowProxy.castShadow = true;
     shadowProxy.name = 'GeneratedPlantShaderPrewarm:shadow-proxy';
 
-    root.add(stem, leaf, flower, standardSway, billboard, shadowProxy);
+    root.add(
+        stem,
+        leaf,
+        flower,
+        standardSway,
+        vegetable,
+        billboard,
+        midBillboard,
+        shadowProxy,
+    );
 
     let disposed = false;
     return {
@@ -295,13 +369,17 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             leafGeometry.dispose();
             flowerGeometry.dispose();
             standardSwayGeometry.dispose();
+            vegetableGeometry.dispose();
             billboardGeometry.dispose();
+            midBillboardGeometry.dispose();
             shadowProxyGeometry.dispose();
             stemMaterial.dispose();
             leafMaterial.dispose();
             flowerMaterial.dispose();
             standardSwayMaterial.dispose();
+            vegetableMaterial.dispose();
             billboardMaterial.dispose();
+            midBillboardMaterial.dispose();
             shadowProxyColorMaterial.dispose();
             shadowProxyDepthMaterial.dispose();
         },

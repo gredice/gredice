@@ -1,7 +1,10 @@
 import * as THREE from 'three';
+import {
+    createPlantGeometryShell,
+    disposePlantGeometryShell,
+} from './plantInstanceBuffers';
 
 const STEM_RADIAL_SEGMENTS = 5;
-const SHARED_TOPOLOGY_ATTRIBUTE_NAMES = ['position', 'normal'] as const;
 
 function createStemTopologyTemplate() {
     const vertices: number[] = [];
@@ -59,32 +62,9 @@ function createStemTopologyTemplate() {
 const stemTopologyTemplate = createStemTopologyTemplate();
 
 export function createPlantStemGeometryShell() {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setIndex(stemTopologyTemplate.index);
-
-    for (const attributeName of SHARED_TOPOLOGY_ATTRIBUTE_NAMES) {
-        geometry.setAttribute(
-            attributeName,
-            stemTopologyTemplate.getAttribute(attributeName),
-        );
-    }
-
-    return geometry;
+    return createPlantGeometryShell(stemTopologyTemplate);
 }
 
 export function disposePlantStemGeometryShell(geometry: THREE.BufferGeometry) {
-    if (geometry.index === stemTopologyTemplate.index) {
-        geometry.setIndex(null);
-    }
-
-    for (const attributeName of SHARED_TOPOLOGY_ATTRIBUTE_NAMES) {
-        if (
-            geometry.getAttribute(attributeName) ===
-            stemTopologyTemplate.getAttribute(attributeName)
-        ) {
-            geometry.deleteAttribute(attributeName);
-        }
-    }
-
-    geometry.dispose();
+    disposePlantGeometryShell(geometry, stemTopologyTemplate);
 }

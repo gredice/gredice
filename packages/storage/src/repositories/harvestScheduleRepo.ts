@@ -424,11 +424,13 @@ export async function getHarvestScheduleForCart({
     accountId,
     cartId,
     deliverySlotId,
+    excludeCartItemIds = [],
     now = new Date(),
 }: {
     accountId?: string;
     cartId: number;
     deliverySlotId: number;
+    excludeCartItemIds?: readonly number[];
     now?: Date;
 }): Promise<HarvestSchedule> {
     const [cart, deliverySlot, operations] = await Promise.all([
@@ -481,8 +483,12 @@ export async function getHarvestScheduleForCart({
             .filter(operationIsDeliverableHarvest)
             .map((operation) => [operation.id, operation]),
     );
+    const excludedCartItemIds = new Set(excludeCartItemIds);
     const harvestItems = cart.items.flatMap((item) => {
         if (item.status !== 'new' || item.entityTypeName !== 'operation') {
+            return [];
+        }
+        if (excludedCartItemIds.has(item.id)) {
             return [];
         }
         const operationId = parseEntityId(item.entityId);

@@ -1,4 +1,4 @@
-import type { PlantDefinition } from './plant-definitions';
+import type { PlantDefinition } from './plant-definition-types';
 
 export const generatedPlantTemplateVariantCount = 4;
 
@@ -46,14 +46,12 @@ export function resolveGeneratedPlantTemplateVariant(
 
 export function getGeneratedPlantTemplateSeed({
     definition,
-    generation,
     variant,
 }: {
     definition: PlantDefinition;
-    generation: number;
     variant: number;
 }) {
-    return `${definition.name}:generation:${generation}:template:${variant}`;
+    return `${definition.key}:developmental-template:${variant}`;
 }
 
 export function getGeneratedPlantTemplateKey({

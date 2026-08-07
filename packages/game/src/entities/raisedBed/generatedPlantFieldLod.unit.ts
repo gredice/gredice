@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {
     buildGeneratedPlantRaisedBedBounds,
     getGeneratedPlantBatchKey,
+    HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+    HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
     isGeneratedPlantRaisedBedGroupVisible,
     resolveGeneratedPlantFieldLod,
 } from './generatedPlantFieldLod';
@@ -34,7 +36,7 @@ test('close-up zoom cannot promote a background raised bed to near', () => {
     );
 });
 
-test('normal-view LOD policy remains unchanged', () => {
+test('normal view can request exact detail within the global budget', () => {
     assert.equal(
         resolveGeneratedPlantFieldLod({
             cameraZoom: 180,
@@ -54,6 +56,31 @@ test('normal-view LOD policy remains unchanged', () => {
             screenOccupancy: 0.06,
         }),
         'mid',
+    );
+});
+
+test('High quality requests detail from a wider normal-view range', () => {
+    assert.equal(
+        resolveGeneratedPlantFieldLod({
+            cameraZoom: 0,
+            currentLevel: 'far',
+            focusActive: false,
+            isSelectedRaisedBed: false,
+            screenOccupancy: 0.095,
+        }),
+        'mid',
+    );
+    assert.equal(
+        resolveGeneratedPlantFieldLod({
+            cameraZoom: 0,
+            currentLevel: 'far',
+            focusActive: false,
+            isSelectedRaisedBed: false,
+            nearHysteresis: HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+            nearThreshold: HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
+            screenOccupancy: 0.095,
+        }),
+        'near',
     );
 });
 
@@ -107,10 +134,24 @@ test('offscreen groups are rejected while the selected group bypasses culling', 
     );
 });
 
-test('focused and background fields cannot share a generated-plant batch', () => {
+test('selected exact batches are bed-local while background batches stay shared', () => {
     assert.notEqual(
         getGeneratedPlantBatchKey({
             focused: true,
+            lodLevel: 'near',
+            plantType: 'tomato',
+            raisedBedId: 29,
+        }),
+        getGeneratedPlantBatchKey({
+            focused: true,
+            lodLevel: 'near',
+            plantType: 'tomato',
+            raisedBedId: 1,
+        }),
+    );
+    assert.equal(
+        getGeneratedPlantBatchKey({
+            focused: false,
             lodLevel: 'near',
             plantType: 'tomato',
             raisedBedId: 29,

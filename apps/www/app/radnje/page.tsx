@@ -1,9 +1,11 @@
+import { PLANT_STAGES } from '@gredice/js/plants';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { CommunityEntitySuggestionButton } from '../../components/community-edits/CommunityEntitySuggestionButton';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
@@ -39,6 +41,21 @@ export default async function OperationsPage({
         (operation) => operation.attributes.internal !== true,
     );
     const availableStages = getAvailableOperationStages(publicOperations);
+    const suggestionStages = PLANT_STAGES.flatMap((stageDefinition) => {
+        const stage = operationsData.find(
+            (operation) =>
+                operation.attributes.stage?.information?.name ===
+                stageDefinition.name,
+        )?.attributes.stage;
+        return stage
+            ? [
+                  {
+                      id: stage.id,
+                      label: stage.information.label,
+                  },
+              ]
+            : [];
+    });
     const orderedOperations = availableStages.flatMap((stage) =>
         publicOperations
             .filter(
@@ -87,14 +104,21 @@ export default async function OperationsPage({
                 }}
             />
             <PageHeader header="Radnje" subHeader={pageDescription} padded>
-                <Suspense>
-                    <PageFilterInput
-                        searchParamName="pretraga"
-                        fieldName="operation-search"
-                        initialValue={search}
-                        className="lg:flex items-start justify-end w-full"
+                <div className="flex w-full flex-col items-start gap-3 md:items-end">
+                    <CommunityEntitySuggestionButton
+                        kind="operation"
+                        publicPath={KnownPages.Operations}
+                        stages={suggestionStages}
                     />
-                </Suspense>
+                    <Suspense>
+                        <PageFilterInput
+                            searchParamName="pretraga"
+                            fieldName="operation-search"
+                            initialValue={search}
+                            className="lg:flex items-start justify-end w-full"
+                        />
+                    </Suspense>
+                </div>
             </PageHeader>
             <OperationsList
                 operationsData={operationsData}

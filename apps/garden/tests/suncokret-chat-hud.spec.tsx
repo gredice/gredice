@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { SuncokretChatHudStory } from './SuncokretChatHudStory';
 
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
+
 const statusResponse = {
     enabled: true,
     debugEnabled: false,
@@ -10,7 +12,7 @@ const statusResponse = {
         retryAt: '2026-07-11T00:00:00.000Z',
         blockedReason: null,
         trialChatDaysUsed: 1,
-        trialChatDaysLimit: 5,
+        trialChatDaysLimit: 3,
     },
     usage: {
         day: { usedPercent: 12.5, remainingPercent: 87.5 },
@@ -23,7 +25,16 @@ function uiMessageStream(chunks: Record<string, unknown>[]) {
     return `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`;
 }
 
-async function mockSuncokretRoutes(page: Page) {
+function requestRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value))
+        : null;
+}
+
+async function mockSuncokretRoutes(
+    page: Page,
+    status: typeof statusResponse = statusResponse,
+) {
     page.on('pageerror', (error) => console.error(error));
     page.on('console', (message) => {
         if (message.type() === 'error') {
@@ -31,7 +42,7 @@ async function mockSuncokretRoutes(page: Page) {
         }
     });
     await page.route('**/api/ai/suncokret/status**', (route) =>
-        route.fulfill({ json: statusResponse }),
+        route.fulfill({ json: status }),
     );
     await page.route('**/api/ai/suncokret/models**', (route) =>
         route.fulfill({
@@ -42,6 +53,101 @@ async function mockSuncokretRoutes(page: Page) {
                 ],
             },
         }),
+    );
+    await page.route('**/api/ai/suncokret/conversations?*', (route) =>
+        route.fulfill({
+            json: {
+                conversations: [
+                    {
+                        id: 'conversation-1',
+                        title: 'Priprema vrta za kišu',
+                        model: 'openai/gpt-5.5',
+                        gardenId: 1,
+                        raisedBedId: null,
+                        createdAt: '2026-07-01T09:00:00.000Z',
+                        lastMessageAt: '2026-07-01T09:05:00.000Z',
+                    },
+                ],
+            },
+        }),
+    );
+    await page.route(
+        '**/api/ai/suncokret/conversations/conversation-1?*',
+        (route) =>
+            route.fulfill({
+                json: {
+                    conversation: {
+                        id: 'conversation-1',
+                        title: 'Priprema vrta za kišu',
+                        model: 'openai/gpt-5.5',
+                        gardenId: 1,
+                        raisedBedId: null,
+                        createdAt: '2026-07-01T09:00:00.000Z',
+                        lastMessageAt: '2026-07-01T09:05:00.000Z',
+                        messages: [
+                            {
+                                id: 'user-history-1',
+                                role: 'user',
+                                parts: [
+                                    {
+                                        type: 'text',
+                                        text: 'Kako pripremiti vrt za kišu?',
+                                    },
+                                ],
+                            },
+                            {
+                                id: 'assistant-history-1',
+                                role: 'assistant',
+                                parts: [
+                                    {
+                                        type: 'text',
+                                        text: 'Provjeri odvodnju i zaštiti osjetljive biljke. Predlažem i ove korake:',
+                                    },
+                                    {
+                                        type: 'tool-presentRecommendations',
+                                        toolCallId: 'recommendations-1',
+                                        state: 'output-available',
+                                        input: {
+                                            recommendations: [
+                                                {
+                                                    kind: 'operation',
+                                                    operationId: 77,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                },
+                                                {
+                                                    kind: 'sowing',
+                                                    plantSortId: 102,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    positionIndex: 0,
+                                                },
+                                            ],
+                                        },
+                                        output: {
+                                            recommendations: [
+                                                {
+                                                    kind: 'operation',
+                                                    operationId: 77,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                },
+                                                {
+                                                    kind: 'sowing',
+                                                    plantSortId: 102,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    positionIndex: 0,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            }),
     );
 }
 
@@ -65,10 +171,29 @@ test('production chat hides developer controls and shows visual usage', async ({
     });
     await expect(chat).toBeVisible();
     await expect(chat).toContainText('Razgovor za Aleksov vrt');
-    await expect(chat).toContainText('Danas');
-    await expect(chat).toContainText('Ovaj tjedan');
-    await expect(chat).toContainText('12,5% iskorišteno');
-    await expect(chat).toContainText('87,5% preostalo');
+    await expect(chat).not.toContainText('12,5% iskorišteno');
+    await page.getByRole('button', { name: /Preostala AI upotreba/ }).click();
+    const usage = page.locator('[data-suncokret-usage]');
+    await expect(usage).toContainText('Zadnja 24 sata');
+    await expect(usage).toContainText('Ovaj tjedan');
+    await expect(usage).toContainText('87,5% preostalo');
+    await expect(usage).toContainText('96% preostalo');
+    await expect(usage).not.toContainText('iskorišteno');
+    const usagePopper = page.locator('[data-suncokret-usage-popper]');
+    await expect(usagePopper).toHaveCSS('z-index', '70');
+    await expect
+        .poll(() =>
+            usage.evaluate((element) => {
+                const bounds = element.getBoundingClientRect();
+                const topElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+
+                return topElement === element || element.contains(topElement);
+            }),
+        )
+        .toBe(true);
     await expect(chat).not.toContainText('USD');
     await expect(chat).not.toContainText('token');
     await expect(chat).not.toContainText('AI vrtni pomoćnik');
@@ -85,11 +210,119 @@ test('production chat hides developer controls and shows visual usage', async ({
 
 test('debug chat exposes the model picker', async ({ mount, page }) => {
     await mockSuncokretRoutes(page);
+    let requestBody: Record<string, unknown> | null = null;
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        const payload: unknown = route.request().postDataJSON();
+        requestBody = requestRecord(payload);
+        await route.fulfill({
+            status: 500,
+            json: { error: 'Test request captured' },
+        });
+    });
     await mount(<SuncokretChatHudStory debug />);
     await page.getByRole('button', { name: 'Suncokret AI' }).click();
 
     await expect(page.getByLabel('AI model')).toBeVisible();
     await expect(page.getByLabel('AI model').locator('option')).toHaveCount(2);
+    await page.getByLabel('AI model').selectOption('anthropic/claude-4');
+    await page
+        .getByRole('textbox', { name: 'Pitaj Suncokret' })
+        .fill('Koji model odgovara?');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+    await expect.poll(() => requestBody?.modelId).toBe('anthropic/claude-4');
+});
+
+test('exhausted daily and weekly usage is red and blocks sending', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page, {
+        ...statusResponse,
+        usage: {
+            ...statusResponse.usage,
+            day: { usedPercent: 100, remainingPercent: 0 },
+            week: { usedPercent: 100, remainingPercent: 0 },
+        },
+    });
+    await mount(<SuncokretChatHudStory />);
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+
+    const usageButton = page.getByRole('button', {
+        name: /Preostala AI upotreba: zadnja 24 sata 0%, ovaj tjedan 0%/,
+    });
+    await expect(usageButton).toHaveClass(/text-red-700/);
+    await usageButton.click();
+    await expect(
+        page.locator('[data-suncokret-usage]').getByText('Iskorišteno'),
+    ).toHaveCount(2);
+    await expect(page.getByLabel('Pitaj Suncokret')).toBeDisabled();
+});
+
+test('chat lists, opens, and starts conversations', async ({ mount, page }) => {
+    await mockSuncokretRoutes(page);
+    await mount(<SuncokretChatHudStory />);
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+
+    await page.getByRole('button', { name: 'Prijašnji razgovori' }).click();
+    await expect(page.locator('[data-suncokret-conversations]')).toContainText(
+        'Priprema vrta za kišu',
+    );
+
+    await page.getByRole('button', { name: /Priprema vrta za kišu/ }).click();
+    const chat = page.getByRole('dialog', {
+        name: 'Razgovor sa Suncokretom',
+    });
+    await expect(chat).toContainText('Kako pripremiti vrt za kišu?');
+    await expect(chat).toContainText(
+        'Provjeri odvodnju i zaštiti osjetljive biljke.',
+    );
+    await expect(chat).toContainText('Priprema vrta za kišu');
+
+    await page.getByRole('button', { name: 'Novi razgovor' }).click();
+    await expect(chat).toContainText('Kako ti mogu pomoći?');
+    await expect(chat).not.toContainText('Kako pripremiti vrt za kišu?');
+});
+
+test('saved AI recommendations open manual operation and sowing flows', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    await page.route('**/api/outlet/offers**', (route) =>
+        route.fulfill({ json: { items: [] } }),
+    );
+    await mount(<SuncokretChatHudStory />);
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByRole('button', { name: 'Prijašnji razgovori' }).click();
+    await page.getByRole('button', { name: /Priprema vrta za kišu/ }).click();
+
+    const recommendations = page.getByRole('group', {
+        name: 'Preporučene radnje i sijanja',
+    });
+    await expect(recommendations).toBeVisible();
+    await recommendations
+        .getByRole('button', { name: 'Zalijevanje gredice' })
+        .click();
+    await expect(
+        page.getByRole('dialog', {
+            name: 'Zakaži radnju: Zalijevanje gredice',
+        }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Odustani' }).click();
+
+    await recommendations
+        .getByRole('button', { name: 'Klasični bosiljak - polje 1' })
+        .click();
+    const sowingDialog = page.getByRole('dialog', {
+        name: 'Sijanje biljke',
+    });
+    await expect(sowingDialog).toBeVisible();
+    await expect(
+        sowingDialog.getByText('Klasični bosiljak', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        sowingDialog.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeEnabled();
 });
 
 test('settings context replaces the raised-bed context in the header', async ({
@@ -183,6 +416,63 @@ test('raised-bed closeup uses the contextual trigger and anchored chat', async (
     ).toBeVisible();
 });
 
+test('mobile chat stays above the field UI and can close independently', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mockSuncokretRoutes(page);
+    await mount(
+        <SuncokretChatHudStory
+            focusedRaisedBed
+            fieldUiTarget={{
+                conversationLabel: 'Rajčica mini red cherry',
+                gardenId: 1,
+                positionIndex: 6,
+                raisedBedId: 11,
+                uiContext: {
+                    surface: 'plant-details',
+                    tab: 'lifecycle',
+                },
+            }}
+        />,
+    );
+
+    const fieldUi = page.getByRole('dialog', { name: 'Kartica biljke' });
+    await expect(fieldUi).toBeVisible();
+    await page
+        .getByRole('button', {
+            name: 'Pitaj Suncokreta iz kartice biljke',
+        })
+        .click();
+
+    const placement = page.locator('[data-suncokret-placement="bottom-left"]');
+    const chat = page.getByRole('dialog', {
+        name: 'Razgovor sa Suncokretom',
+    });
+    const closeButton = chat.getByRole('button', { name: 'Zatvori' });
+
+    await expect(placement).toBeVisible();
+    await expect(placement).toHaveCSS('z-index', '60');
+    await expect
+        .poll(() =>
+            closeButton.evaluate((button) => {
+                const bounds = button.getBoundingClientRect();
+                const topElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+
+                return topElement === button || button.contains(topElement);
+            }),
+        )
+        .toBe(true);
+
+    await closeButton.click();
+    await expect(chat).toHaveCount(0);
+    await expect(fieldUi).toBeVisible();
+});
+
 test('context selected after chat initialization is sent with the request', async ({
     mount,
     page,
@@ -190,11 +480,8 @@ test('context selected after chat initialization is sent with the request', asyn
     await mockSuncokretRoutes(page);
     let requestBody: Record<string, unknown> | null = null;
     await page.route('**/api/ai/suncokret/chat', async (route) => {
-        const payload = route.request().postDataJSON() as unknown;
-        requestBody =
-            payload && typeof payload === 'object' && !Array.isArray(payload)
-                ? (payload as Record<string, unknown>)
-                : null;
+        const payload: unknown = route.request().postDataJSON();
+        requestBody = requestRecord(payload);
         await route.fulfill({
             status: 500,
             json: { error: 'Test request captured' },

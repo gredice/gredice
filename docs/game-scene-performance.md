@@ -281,7 +281,7 @@ pending-near billboard fallback, first exact chunk, first detailed field, fully
 detailed field set, and settled camera milestones. Its raw JSON preserves the
 pending-or-first-detail and settled profile checkpoints. It also separates selected
 and non-selected field and plant counts by near/mid/far/invisible state;
-L-system requests, completions, consumer cancellations, worker duration,
+plant-generation requests, completions, consumer cancellations, worker duration,
 failures, and synchronous fallback task count; main-thread render-data builds;
 detailed stem, leaf, flower, produce, and thorn instances; billboard instances;
 detailed shadow-caster
@@ -309,7 +309,7 @@ The `generatedPlantProfile.pipeline` record accepts scheduler queue/current and
 peak depth, cancellation, stale-result, deduplication, and delivery counters;
 template-cache hit/miss/eviction/current and peak byte counters; and packed
 worker phase-duration and transfer-byte counters. Packed timings retain total
-and maximum values for symbol generation, render-data construction, packing,
+and maximum values for topology generation, render-data construction, packing,
 root batching, and the complete worker request. Scheduler and cache cumulative
 counters are rebased to each cold or warm profile session. Pass the scheduler
 snapshot as `schedulerBaseline` when starting a session. Worker cache response
@@ -323,7 +323,7 @@ The optimization acceptance gate requires both `workerFailureCount` and
 the compatibility fallback for gameplay, but a profile cannot call that
 main-thread path worker-clean.
 
-`PackedPlantRenderWorkerResponseV1` consumers should pass the complete worker
+`PackedPlantRenderWorkerResponse` protocol v3 consumers should pass the complete worker
 timing object rather than only its total:
 
 ```ts
@@ -333,6 +333,35 @@ recordGeneratedPlantProfilePackedWorkerResult({
     transferByteLength: response.transferByteLength,
 });
 ```
+
+### Developmental plant catalog benchmark (2026-08-04)
+
+`pnpm --dir packages/game benchmark:plants` measures every one of the 50 plant
+presets at generations 4, 8, and 12, with four deterministic archetype variants
+per preset. Each template receives six warmups and 24 measured samples. The
+legacy baseline was captured with the same matrix and Node 24 process
+immediately before the L-system implementation was removed.
+
+| Generation | Developmental instances | Legacy instances | Change | Developmental packed bytes | Legacy packed bytes | Change |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 3,572 | 8,777 | -59.3% | 276,912 | 675,720 | -59.0% |
+| 8 | 9,085 | 15,129 | -39.9% | 702,924 | 1,166,900 | -39.8% |
+| 12 | 11,220 | 21,258 | -47.2% | 865,472 | 1,640,616 | -47.2% |
+
+Mature generation timing across all 200 archetypes:
+
+| Phase | Developmental median | Legacy median | Change | Developmental p95 | Legacy p95 | Change |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Topology | 0.0263 ms | 0.0219 ms | +20.2% | 0.0661 ms | 0.0668 ms | -1.1% |
+| Render data | 0.0154 ms | 0.1513 ms | -89.8% | 0.0453 ms | 1.6204 ms | -97.2% |
+| Packing | 0.0064 ms | 0.0093 ms | -30.8% | 0.0167 ms | 0.0331 ms | -49.6% |
+| Total | 0.0494 ms | 0.1811 ms | -72.7% | 0.1270 ms | 1.7404 ms | -92.7% |
+
+The topology phase is roughly flat, while bounded organ counts and direct organ
+transforms remove most of the old turtle-rendering cost and nearly half of the
+mature worker payload. Browser frame-time and GPU behavior should still be
+validated with `/debug/plants?catalog=1`, which renders one mature instance of
+every preset in a single deterministic scene.
 
 The legacy `buildDurationMs` input remains accepted and maps to total worker
 duration, but it cannot populate the individual phase counters. Prewarm

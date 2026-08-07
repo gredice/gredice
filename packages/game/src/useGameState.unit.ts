@@ -298,6 +298,28 @@ test('placement animation keeps render and completion identity through confirmed
     }
 });
 
+test('renderer-free state does not retain visual placement effects', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+        visualPlacementEffectsEnabled: false,
+    });
+
+    try {
+        store.getState().queuePlacedBlockEffect('optimistic', {
+            kind: 'sunflowers',
+            amount: 25,
+        });
+        store.getState().queueBlockPlacementDropAnimation('optimistic');
+
+        assert.deepEqual(store.getState().placedBlockEffects, {});
+        assert.deepEqual(store.getState().blockPlacementDropAnimations, {});
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('placement animation waits for mutation confirmation after visual completion', () => {
     const store = createGameState({
         appBaseUrl: '',
@@ -539,6 +561,22 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
             sunrise.getTime(),
         );
         assert.equal(store.getState().sunsetTime?.getTime(), sunset.getTime());
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('environment can publish blended rain intensity for surface effects', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        assert.equal(store.getState().rainSurfaceIntensity, 0);
+        store.getState().setRainSurfaceIntensity(0.72);
+        assert.equal(store.getState().rainSurfaceIntensity, 0.72);
     } finally {
         store.getState().audio.dispose();
     }

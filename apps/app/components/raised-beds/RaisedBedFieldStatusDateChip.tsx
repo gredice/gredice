@@ -8,6 +8,7 @@ import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../app/(actions)/raisedBedFieldsActions';
 import { raisedBedFieldPlantStatusItems } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
@@ -21,6 +22,7 @@ type RaisedBedFieldStatusDateChipProps = {
     expectedPlantCycleEventId: number;
     expectedPlantCycleVersionEventId: number;
     expectedPlantSortId: number;
+    expectedPlantStatusEventId: number | null;
     date: string | null;
     dateItems?: RaisedBedFieldDateItem[];
     className?: string;
@@ -93,10 +95,12 @@ export function RaisedBedFieldStatusDateChip({
     expectedPlantCycleEventId,
     expectedPlantCycleVersionEventId,
     expectedPlantSortId,
+    expectedPlantStatusEventId,
     date,
     dateItems = [],
     className,
 }: RaisedBedFieldStatusDateChipProps) {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState(status);
     const [selectedDate, setSelectedDate] = useState(
@@ -143,13 +147,17 @@ export function RaisedBedFieldStatusDateChip({
                     expectedPlantCycleEventId,
                     expectedPlantCycleVersionEventId,
                     expectedPlantSortId,
+                    expectedPlantStatus: status,
+                    expectedPlantStatusEventId,
                     timestamp: selectedDate
                         ? dateInputToTimestamp(selectedDate)
                         : undefined,
                 });
+                router.refresh();
                 setOpen(false);
             } catch (error) {
                 console.error('Error updating plant status date:', error);
+                router.refresh();
                 alert(
                     error instanceof Error
                         ? error.message

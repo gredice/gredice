@@ -9,7 +9,7 @@ export const metadata: Metadata = {
         'generator',
         '3D',
         'modeliranje',
-        'lsystem',
+        'razvojni model biljke',
         'proceduralno generiranje',
     ],
 };

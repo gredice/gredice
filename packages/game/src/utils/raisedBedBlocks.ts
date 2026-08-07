@@ -1,5 +1,5 @@
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 
 type RaisedBedWithBlockId = {
     id: number;
@@ -10,18 +10,18 @@ type RaisedBedWithBlockId = {
 type GardenLike<
     TRaisedBed extends RaisedBedWithBlockId = RaisedBedWithBlockId,
 > = {
-    stacks: Stack[];
+    stacks: GardenStack[];
     raisedBeds: TRaisedBed[];
 };
 
 type BlockPlacement = {
     block: Block;
-    stack: Stack;
+    stack: GardenStack;
     index: number;
 };
 
 function getBlockPlacement(
-    stacks: Stack[],
+    stacks: GardenStack[],
     blockId: string,
 ): BlockPlacement | null {
     for (const stack of stacks) {
@@ -40,7 +40,7 @@ function getBlockPlacement(
 }
 
 function getAdjacentRaisedBedIds(
-    stacks: Stack[],
+    stacks: GardenStack[],
     blockId: string,
     placement: BlockPlacement,
 ): string[] {
@@ -73,7 +73,7 @@ function getAdjacentRaisedBedIds(
 }
 
 function sortBlockIdsByOrientation(
-    stacks: Stack[],
+    stacks: GardenStack[],
     blockIds: string[],
     orientation: 'vertical' | 'horizontal' = 'vertical',
 ): string[] {
@@ -95,7 +95,7 @@ function sortBlockIdsByOrientation(
 }
 
 export function getConnectedRaisedBedBlockIds(
-    stacks: Stack[],
+    stacks: GardenStack[],
     blockId: string,
 ): string[] {
     const startPlacement = getBlockPlacement(stacks, blockId);
@@ -135,7 +135,7 @@ export function getConnectedRaisedBedBlockIds(
 }
 
 export function findAttachedRaisedBedBlockId(
-    stacks: Stack[],
+    stacks: GardenStack[],
     blockId: string,
 ): string | null {
     const placement = getBlockPlacement(stacks, blockId);

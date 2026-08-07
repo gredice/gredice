@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPlantRenderData } from './buildPlantRenderData';
-import { generateLSystemStringWithGenerations } from './l-system';
+import {
+    buildGeneratedPlantRenderData,
+    generatePlantTopology,
+} from './generatedPlantRenderData';
 import { plantTypes } from './plant-definitions';
 import { buildApproximatePlantLodSummary } from './plantLodSummary';
-import { SeededRNG } from './rng';
 
 const summaryOptions = {
     flowerGrowth: 1,
@@ -16,11 +17,12 @@ function assertRatioWithin(
     expected: number,
     minimum: number,
     maximum: number,
+    context: string,
 ) {
     const ratio = actual / expected;
     assert.ok(
         ratio >= minimum && ratio <= maximum,
-        `Expected ratio ${ratio.toFixed(3)} to be within ${minimum}-${maximum}`,
+        `${context}: expected ratio ${ratio.toFixed(3)} to be within ${minimum}-${maximum}`,
     );
 }
 
@@ -65,7 +67,7 @@ test('approximate plant LOD summaries preserve lifecycle and produce state', () 
     });
     const immatureRoot = buildApproximatePlantLodSummary({
         ...summaryOptions,
-        generation: 4,
+        generation: 1,
         plantDefinition: plantTypes.carrot,
         seed: 'carrot',
     });
@@ -91,30 +93,20 @@ test('approximate plant LOD summaries preserve lifecycle and produce state', () 
     assert.equal(hiddenProduce.accentColor, undefined);
 });
 
-test('approximate billboard sizes stay close to representative exact summaries', () => {
-    const definitions = [
-        plantTypes.tomato,
-        plantTypes.carrot,
-        plantTypes.lettuce,
-        plantTypes.youngappletree,
-    ];
-
-    for (const definition of definitions) {
+test('approximate billboards stay bounded and preserve exact developmental state for every plant', () => {
+    for (const definition of Object.values(plantTypes)) {
         for (const generation of [2, 6, 12]) {
-            const seed = `${definition.name}:${generation}:fidelity`;
-            const symbols = generateLSystemStringWithGenerations(
-                definition.axiom,
-                definition.rules,
+            const seed = `${definition.key}:${generation}:fidelity`;
+            const topology = generatePlantTopology({
                 generation,
-                new SeededRNG(seed),
-            );
-            const exact = buildPlantRenderData({
+                plantDefinition: definition,
+                seed,
+            });
+            const exact = buildGeneratedPlantRenderData({
                 ...summaryOptions,
-                generation,
-                lSystemSymbols: symbols,
                 plantDefinition: definition,
                 renderDetailedGeometry: false,
-                seed,
+                topology,
             }).lodSummary;
             const approximate = buildApproximatePlantLodSummary({
                 ...summaryOptions,
@@ -123,15 +115,24 @@ test('approximate billboard sizes stay close to representative exact summaries',
                 seed,
             });
 
-            assertRatioWithin(approximate.height, exact.height, 0.65, 1.5);
+            assertRatioWithin(
+                approximate.height,
+                exact.height,
+                0.25,
+                4,
+                `${definition.key} generation ${generation} height`,
+            );
             assertRatioWithin(
                 approximate.canopyWidth,
                 exact.canopyWidth,
-                0.65,
-                1.5,
+                0.15,
+                1.6,
+                `${definition.key} generation ${generation} canopy width`,
             );
             assert.equal(approximate.stemColor, exact.stemColor);
             assert.equal(approximate.foliageColor, exact.foliageColor);
+            assert.equal(approximate.hasFoliage, exact.hasFoliage);
+            assert.equal(approximate.accentColor, exact.accentColor);
         }
     }
 });

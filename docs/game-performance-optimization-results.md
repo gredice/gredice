@@ -662,6 +662,126 @@ samples each time. The software renderer's absolute p95 and long-task budgets
 remain red because of its documented `ReadPixels` stalls; draw, triangle,
 workload-preservation, and controller-lifecycle gates pass independently.
 
+### Cropped separable hover outlines
+
+Issue `#4324` replaces the full-frame RGBA8 hover-outline dilation pass with a
+projected region of interest and a bounded separable squared-distance
+transform. Targets sharing color, opacity, priority, and thickness still form
+one union before expansion, so connected raised-bed blocks retain one
+continuous outside-only outline. The camera and scene are unchanged; only the
+render-target viewport and scissor are offset to the crop.
+
+The deterministic DPR-2 component fixture covers two touching same-style
+targets plus a higher-priority translucent target. Its optimized WebGL output
+matches the checked-in legacy 720x480 drawing-buffer golden with zero
+differing physical pixels. Exact CPU equivalence tests also cover isolated,
+diagonal, edge, connected-union, interior-hole, fractional-thickness, and
+deterministic sparse masks through the supported 12px radius.
+
+The three-repeat High target profile selected raised bed `2`, resolved its
+primary block as `profile-raised-bed:2:0`, and rendered both connected blocks
+as exactly two targets in one style group. All budget and acceptance checks
+passed:
+
+- the active crop was `127,500 / 3,686,400` physical pixels, or `3.46%` of the
+  DPR-2 drawing buffer;
+- the two bucketed R8 work targets allocated `448x320` pixels each, or
+  `286,720 bytes` total, compared with `14,745,600 bytes` for the former
+  full-frame RGBA8 target (`98.1%` less working allocation);
+- default 5px outlines perform at most 23 texture reads per output pixel
+  instead of the legacy circular kernel's 82 (`72.0%` fewer), while the
+  supported 12px maximum is bounded to 51 reads instead of 625 fixed
+  two-dimensional loop candidates;
+- mask, horizontal-distance, and composite pass counts stayed exactly aligned
+  in every run, with zero clipped target groups; and
+- hardware-backed ANGLE/Metal GPU timer p95 was `18.54 ms` median
+  (`18.34-18.56 ms`) on the Apple M4 Pro. This is an optimized absolute
+  measurement, not a before/after GPU-time claim.
+
+The profiler now selects ANGLE/Metal on macOS and rejects the hardware run
+unless Chromium reports an ANGLE/Metal renderer plus supported, complete,
+non-disjoint GPU timer samples. Chromium's default headless OpenGL path omitted
+the raised-bed/detail instance subtree while still reporting plant readiness,
+so it was not valid target-scene evidence. An explicit default-backend override
+keeps portable and software runs available without treating them as the
+hardware proof. The profile additionally gates the exact raised-bed/block
+command acknowledgment, active target count, style grouping, crop/allocation
+contract, R8 pipeline, kernel bound, and pass alignment.
+
+### Global generated-foliage detail budget
+
+Issue `#4322` introduced a global exact-plant budget for High quality. After the
+developmental plant renderer replaced L-systems, normal High-quality garden
+view may admit nearby raised beds to exact detail when their plants occupy at
+least 8% of the viewport. Admission remains atomic and capped at 179 plant
+instances, while the explicitly selected close-up bed stays pinned and may
+overflow the budget rather than rendering only part of a bed. Interaction
+priority, projected benefit-per-instance ranking, an 8% incumbent hysteresis
+bias, and stable raised-bed IDs keep competing detail requests deterministic.
+
+Mid clusters retain per-plant height, canopy width, dominant foliage and
+accent colors, Lambert scene lighting, and deterministic wind sway. Two
+analytic two-triangle cards replace each legacy 18-triangle canopy circle,
+while bed-level reconciliation preserves unchanged cluster objects and
+instance uploads. Front-facing foliage cards submit one transparent pass
+instead of Three's default two-pass double-sided path. Far clusters are
+unchanged. Non-High profiles retain their shared plant-type/LOD background
+batches and original normal-view exact policy. A profiler-only `legacy` query
+bypasses the High detail budget for a same-commit comparison; production High
+admits at most one typical full raised bed in normal view and always preserves
+selected close-up detail.
+
+The pre-rollout three-repeat DPR-2 comparison that established the budget
+passed every structural gate on Chromium 149 using ANGLE/Metal on an Apple M4
+Pro:
+
+| Normal-view median | Legacy exact | Budgeted clusters | Change |
+| --- | ---: | ---: | ---: |
+| Exact generated plants | 537 | 0 | -100% |
+| Clustered generated plants | 0 | 537 | all visible plants retained |
+| Draws/render, full scene | 114.7 | 110.4 | -3.7% |
+| Triangles/render, full scene | 1,508,262 | 16,827 | -98.9% |
+| Sampled JS heap | 132.6 MB | 98.2 MB | -25.9% |
+| p95 frame | 26.6 ms | 26.2 ms | -1.5% |
+| GPU timer p95 | 19.59 ms | 20.16 ms | neutral/noisy |
+
+The 2026-08-05 rollout calibration repeated the same comparison after widening
+High detail to the 8% viewport threshold. All six runs passed on Chromium 149
+using ANGLE/Metal on an Apple M3 Pro:
+
+| Rollout median | Unbudgeted exact | 179-instance budget | Change |
+| --- | ---: | ---: | ---: |
+| Exact generated plants | 537 | 179 | -66.7% |
+| Clustered generated plants | 0 | 358 | remaining plants retained |
+| Draws/render, full scene | 88.1 | 92.0 | +4.4% |
+| Triangles/render, full scene | 250,298 | 89,980 | -64.1% |
+| Sampled JS heap | 77.6 MB | 64.8 MB | -16.5% |
+| p95 frame | 9.4 ms | 8.9 ms | -5.3% |
+| GPU timer p95 | 6.47 ms | 5.48 ms | -15.3% |
+
+All three filled beds and all 537 plants remained visible in both variants. In
+the pre-rollout comparison, the budgeted runs used six bed/LOD cluster batches,
+reported zero exact or pending instances after camera zoom, and submitted 3,354
+cluster primitive triangles. The hardware GPU p95 ranges overlapped
+(`19.01-20.61 ms` legacy and `19.66-20.35 ms` budgeted), so the measured claim
+is the large geometry and heap reduction rather than a GPU-time win on this
+machine.
+
+The selected-bed validation separately opened High-target bed `2`. It retained
+all 179 exact plants across 18 fields, reached fully detailed in `256 ms`,
+kept 264 background plants clustered, and reported zero pending or failed
+scheduler work. Settled exact leaf and stem submissions persisted across every
+audited frame.
+
+That validation also exposed a development Strict Effects lifecycle bug in the
+existing exact renderer: cleanup detached shared index and vertex topology
+from a memoized geometry shell that React immediately reused. Geometry-shell
+disposal now detaches shared buffers only while Three releases batch-local GPU
+resources, then restores the topology for a safe setup-cleanup-setup cycle.
+Repeated-disposal regressions cover both the general plant shell and the
+separate stem topology. This is correctness work discovered by the profiler,
+not counted as part of the clustered performance delta.
+
 ## Raised-bed close-up profiling foundation
 
 Added 2026-07-23 for the L-system close-up optimization series.

@@ -3,9 +3,12 @@ import test from 'node:test';
 import {
     captureSunflowerReservation,
     correctSunflowerBalance,
+    deleteEventById,
     getSunflowerLedgerBalance,
     getSunflowerLedgerHistory,
     getSunflowerReservationEntries,
+    getSunflowers,
+    getSunflowersHistory,
     refundSunflowers,
     releaseSunflowerReservation,
     reserveSunflowers,
@@ -34,16 +37,49 @@ test('topUpSunflowerPackage credits purchased and bonus sunflowers idempotently'
         priceCents: 3999,
         idempotencyKey: 'checkout-session-ledger-topup',
     });
+    const initialPackageEvent = (
+        await getSunflowersHistory(accountId, 0, 100)
+    ).find((event) => event.reason === 'sunflowerPackage:vrtna_kosarica');
+    assert.ok(initialPackageEvent);
+    await deleteEventById(initialPackageEvent.id);
+    assert.equal(await getSunflowers(accountId), 1000);
+
+    const repairedReplay = await topUpSunflowerPackage({
+        accountId,
+        packageCode: 'vrtna_kosarica',
+        sunflowers: 42000,
+        bonusSunflowers: 2000,
+        priceCents: 3999,
+        idempotencyKey: 'checkout-session-ledger-topup',
+    });
+    const repeatedReplay = await topUpSunflowerPackage({
+        accountId,
+        packageCode: 'vrtna_kosarica',
+        sunflowers: 42000,
+        bonusSunflowers: 2000,
+        priceCents: 3999,
+        idempotencyKey: 'checkout-session-ledger-topup',
+    });
 
     assert.equal(first.topUp.status, 'created');
     assert.equal(first.bonus?.status, 'created');
     assert.equal(second.topUp.status, 'existing');
     assert.equal(second.bonus?.status, 'existing');
+    assert.equal(repairedReplay.topUp.status, 'existing');
+    assert.equal(repairedReplay.bonus?.status, 'existing');
+    assert.equal(repeatedReplay.topUp.status, 'existing');
+    assert.equal(repeatedReplay.bonus?.status, 'existing');
     assert.deepEqual(await getSunflowerLedgerBalance(accountId), {
         available: 42000,
         reserved: 0,
         total: 42000,
     });
+    assert.equal(await getSunflowers(accountId), 43000);
+    const packageEvents = (
+        await getSunflowersHistory(accountId, 0, 100)
+    ).filter((event) => event.reason === 'sunflowerPackage:vrtna_kosarica');
+    assert.equal(packageEvents.length, 1);
+    assert.equal(packageEvents[0]?.amount, 42000);
 });
 
 test('reserve, release, and capture move available and reserved balances safely', async () => {

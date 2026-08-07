@@ -23,9 +23,9 @@
     "dependencies": {
         "@googlemaps/js-api-loader": "2.1.1",
         "@vercel/firewall": "1.2.1",
-        "next": "16.3.0-preview.7",
-        "react": "19.2.7",
-        "react-dom": "19.2.7",
+        "next": "16.3.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
         "server-only": "0.0.1"
     },
     "devDependencies": {
@@ -43,8 +43,8 @@
         "@tanstack/react-query": "5.101.2",
         "@types/google.maps": "3.65.2",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
-        "@types/react-dom": "19.2.3",
+        "@types/react": "19.2.18",
+        "@types/react-dom": "19.2.4",
         "@vercel/analytics": "2.0.1",
         "@zxing/library": "0.23.0",
         "postcss": "8.5.16",

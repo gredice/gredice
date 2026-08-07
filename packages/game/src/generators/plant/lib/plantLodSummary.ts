@@ -1,13 +1,8 @@
 import * as THREE from 'three';
-import type { PlantLodSummary } from './buildPlantRenderData';
-import {
-    MAX_PLANT_GENERATION,
-    type PlantDefinition,
-} from './plant-definitions';
+import type { PlantDefinition } from './plant-definitions';
+import type { PlantLodSummary } from './plantRenderData';
 import { SeededRNG } from './rng';
-import { vegetableMaterialProps } from './vegetableRenderMetadata';
-
-const FLOWER_MATURITY_WINDOW = 2;
+import { resolveVegetableColor } from './vegetableRenderMetadata';
 
 interface BuildApproximatePlantLodSummaryOptions {
     flowerGrowth: number;
@@ -22,24 +17,43 @@ interface BuildApproximatePlantLodSummaryOptions {
 
 function getLifecycleGrowth(
     generation: number,
-    ageStart: number,
+    start: number,
     matureAt: number,
 ) {
-    if (generation < ageStart) {
+    if (generation < start) {
         return 0;
     }
-
-    if (matureAt <= ageStart) {
+    if (matureAt <= start) {
         return 1;
     }
+    return THREE.MathUtils.smoothstep(generation, start, matureAt);
+}
 
-    const linearProgress = THREE.MathUtils.clamp(
-        (generation - ageStart + 1) / (matureAt - ageStart + 1),
-        0,
-        1,
+export function getNominalMaturePlantHeight(plantDefinition: PlantDefinition) {
+    const { development } = plantDefinition;
+    const isBasal =
+        development.architecture === 'rosette' ||
+        development.architecture === 'clump';
+    const isProstrate = development.axes.habit === 'prostrate';
+    const storageHeight = development.storage
+        ? plantDefinition.vegetable.baseSize *
+          development.storage.sizeScale *
+          Math.max(0.5, development.storage.aboveSoilFraction)
+        : 0;
+    const basalFoliageHeight =
+        plantDefinition.leaf.size *
+        (1.05 + development.foliage.petioleLengthScale * 0.5);
+    const axialFoliageHeight =
+        plantDefinition.height *
+            development.axes.internodeLengthScale *
+            (isProstrate ? 0.18 : 0.98) +
+        plantDefinition.leaf.size;
+
+    return Math.max(
+        isBasal ? basalFoliageHeight : axialFoliageHeight,
+        storageHeight,
+        0.16,
     );
-
-    return THREE.MathUtils.smoothstep(linearProgress, 0, 1);
 }
 
 export function buildApproximatePlantLodSummary({
@@ -52,15 +66,11 @@ export function buildApproximatePlantLodSummary({
     showLeaves = true,
     showProduce = true,
 }: BuildApproximatePlantLodSummaryOptions): PlantLodSummary {
-    const clampedGeneration = THREE.MathUtils.clamp(
+    const { development } = plantDefinition;
+    const structureGrowth = getLifecycleGrowth(
         generation,
-        0,
-        MAX_PLANT_GENERATION,
-    );
-    const structureGrowth = THREE.MathUtils.smoothstep(
-        clampedGeneration,
-        0,
-        MAX_PLANT_GENERATION,
+        development.phenology.emergenceStart,
+        development.phenology.maturityGeneration,
     );
     const variation = new SeededRNG(`${seed}:lod-summary`);
     const heightVariation = variation.nextRange(0.94, 1.06);
@@ -68,17 +78,19 @@ export function buildApproximatePlantLodSummary({
     const stemVariation = variation.nextRange(0.95, 1.05);
     const hasFoliage =
         showLeaves &&
-        clampedGeneration > 0.01 &&
-        plantDefinition.leaf.density > 0 &&
+        generation >= development.phenology.emergenceStart &&
+        development.foliage.count > 0 &&
         plantDefinition.leaf.size > 0.01;
+    const isBasal =
+        development.architecture === 'rosette' ||
+        development.architecture === 'clump';
+    const isProstrate = development.axes.habit === 'prostrate';
+    const matureHeight = getNominalMaturePlantHeight(plantDefinition);
     const minimumHeight = Math.max(
-        plantDefinition.height * 0.55,
-        plantDefinition.vegetable.baseSize * 1.6,
-        0.24,
+        plantDefinition.vegetable.baseSize * 1.2,
+        plantDefinition.leaf.size * (isBasal ? 1.1 : 0.7),
+        0.16,
     );
-    const matureHeight = plantDefinition.axiom.includes('R')
-        ? minimumHeight
-        : Math.max(minimumHeight, plantDefinition.height);
     const height = Math.max(
         minimumHeight,
         THREE.MathUtils.lerp(minimumHeight, matureHeight, structureGrowth) *
@@ -89,60 +101,77 @@ export function buildApproximatePlantLodSummary({
         plantDefinition.stem.radius * structureGrowth,
     );
     const stemWidth = Math.max(stemRadius * 4.5 * stemVariation, 0.05);
-    const canopyGrowthMultiplier = THREE.MathUtils.lerp(
-        1,
-        plantDefinition.stem.surface === 'bark' ? 1.7 : 1,
+    const branchHorizontalReach =
+        plantDefinition.height *
+        development.axes.branchLengthScale *
+        Math.sin(THREE.MathUtils.degToRad(development.axes.branchPitchDegrees));
+    const architectureWidth = isBasal
+        ? plantDefinition.leaf.size *
+          2 *
+          (1 + development.foliage.petioleLengthScale)
+        : isProstrate
+          ? plantDefinition.height *
+                development.axes.internodeLengthScale *
+                1.9 +
+            plantDefinition.leaf.size * 2
+          : (branchHorizontalReach + plantDefinition.leaf.size) * 2;
+    const developedArchitectureWidth = THREE.MathUtils.lerp(
+        plantDefinition.leaf.size * 1.4,
+        architectureWidth,
         structureGrowth,
     );
     const canopyWidth = hasFoliage
         ? Math.max(
-              plantDefinition.leaf.size *
-                  1.6 *
-                  canopyVariation *
-                  canopyGrowthMultiplier,
+              developedArchitectureWidth * canopyVariation,
+              plantDefinition.leaf.size * 1.6,
               0.22,
           )
         : Math.max(stemRadius * 5 * canopyVariation, 0.12);
     const canopyCenterY = hasFoliage
-        ? Math.max(
-              height * THREE.MathUtils.lerp(0.38, 0.66, structureGrowth),
-              0.08,
-          )
+        ? Math.max(height * (isBasal ? 0.24 : 0.62), 0.08)
         : Math.max(height * 0.66, 0.16);
+    const reproduction = development.reproduction;
+    const storage = development.storage;
+    const fruitStart = storage?.birthGeneration ?? reproduction.fruitStart;
+    const produceMaturity =
+        fruitStart === undefined
+            ? 0
+            : getLifecycleGrowth(
+                  generation,
+                  fruitStart,
+                  storage?.matureGeneration ?? fruitStart + 2.2,
+              );
+    const produceGrowth = fruitGrowth * produceMaturity;
     const flowerStageGrowth =
         flowerGrowth *
         getLifecycleGrowth(
-            clampedGeneration,
-            plantDefinition.flower.ageStart,
-            Math.min(
-                MAX_PLANT_GENERATION,
-                plantDefinition.flower.ageStart + FLOWER_MATURITY_WINDOW,
-            ),
-        );
-    const vegetableStageGrowth =
-        fruitGrowth *
-        getLifecycleGrowth(
-            clampedGeneration,
-            plantDefinition.vegetable.ageStart,
-            MAX_PLANT_GENERATION,
+            generation,
+            reproduction.flowerStart +
+                ((development.architecture === 'vine' &&
+                    reproduction.flowerStart >= 5.7) ||
+                (development.architecture === 'upright' &&
+                    development.axes.nodeCount <= 5)
+                    ? 0.75
+                    : 0),
+            reproduction.flowerStart + 1.95,
         );
     let accentColor: string | undefined;
     let accentCenterY = Math.max(height * 0.7, 0.12);
 
     if (
+        showProduce &&
         plantDefinition.vegetable.enabled &&
-        clampedGeneration >= plantDefinition.vegetable.ageStart &&
-        vegetableStageGrowth > 0.01
+        produceGrowth > 0.01
     ) {
-        if (showProduce) {
-            accentColor =
-                vegetableMaterialProps[plantDefinition.vegetable.type].color;
-            if (plantDefinition.axiom.includes('R')) {
-                accentCenterY = Math.max(
-                    plantDefinition.vegetable.baseSize * 0.35,
-                    0.08,
-                );
-            }
+        accentColor = resolveVegetableColor(
+            plantDefinition.vegetable.type,
+            produceMaturity,
+        );
+        if (storage) {
+            accentCenterY = Math.max(
+                plantDefinition.vegetable.baseSize * storage.aboveSoilFraction,
+                0.06,
+            );
         }
     } else if (
         showFlowers &&

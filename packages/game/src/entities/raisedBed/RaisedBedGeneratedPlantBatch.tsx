@@ -2,15 +2,15 @@
 
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { GeneratedLSystemTaskPriority } from '../../generators/plant/hooks/generatedLSystemTaskScheduler';
+import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     type GeneratedPackedPlantRenderTask,
     useGeneratedPackedPlantRenderDataBatch,
-} from '../../generators/plant/hooks/useGeneratedLSystem';
-import { buildGeneratedPlantLodTasks } from '../../generators/plant/lib/generatedPlantLodTasks';
+} from '../../generators/plant/hooks/useGeneratedPlantRenderData';
 import {
     getGeneratedPlantInstanceVariation,
     getGeneratedPlantTemplateKey,
+    getGeneratedPlantTemplateSeed,
     resolveGeneratedPlantTemplateVariant,
 } from '../../generators/plant/lib/generatedPlantTemplates';
 import {
@@ -27,6 +27,7 @@ import {
 } from '../../generators/plant/lib/plantLeafGeometry';
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { buildApproximatePlantLodSummary } from '../../generators/plant/lib/plantLodSummary';
+import { getPlantBillboardPrimitiveTriangleCount } from '../../generators/plant/lib/plantMidBillboardMaterial';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
 import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
@@ -43,6 +44,7 @@ import {
     recordGeneratedPlantProfilePostSwapCompilation,
     removeGeneratedPlantProfileBatch,
 } from '../../scene/generatedPlantProfileMetrics';
+import { registerGeneratedPlantRenderBatch } from '../../scene/generatedPlantRenderRegistry';
 import { RaisedBedPlantShadowProxy } from './RaisedBedPlantShadowProxy';
 
 export interface RaisedBedGeneratedPlantBatchInstance {
@@ -62,7 +64,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     leafGeometryDetail?: PlantLeafGeometryDetail;
     lodLevel?: PlantLodLevel;
     showProduce?: boolean;
-    taskPriority?: GeneratedLSystemTaskPriority;
+    taskPriority?: GeneratedPlantTaskPriority;
 }
 
 type DetailedBatchBuildResult = {
@@ -150,6 +152,7 @@ function RaisedBedDetailedPlantBatch({
                     seed={swaySeed}
                     packed={batchedData.flowers}
                     color={definition.flower.color}
+                    form={definition.development.reproduction.form}
                     castShadow={false}
                 />
             )}
@@ -225,24 +228,23 @@ export function RaisedBedGeneratedPlantBatch({
             showProduce,
         ],
     );
-    const generationTasks = useMemo(
-        () => buildGeneratedPlantLodTasks(definition, instances, lodLevel),
-        [definition, instances, lodLevel],
-    );
     const renderChunks = useMemo<GeneratedPackedPlantRenderChunk[]>(() => {
+        if (!renderDetailedGeometry) {
+            return [];
+        }
+
         const chunks = new Map<string, GeneratedPackedPlantRenderChunk>();
 
-        generationTasks.forEach((generationTask, index) => {
-            const instance = instances[index];
-            if (!instance) {
-                return;
-            }
-
+        instances.forEach((instance, index) => {
             const generation = Math.min(
                 MAX_PLANT_GENERATION,
                 Math.max(0, instance.generation),
             );
             const variant = resolveGeneratedPlantTemplateVariant(instance.seed);
+            const seed = getGeneratedPlantTemplateSeed({
+                definition,
+                variant,
+            });
             const templateKey = getGeneratedPlantTemplateKey({
                 definition,
                 flowerGrowth,
@@ -275,9 +277,9 @@ export function RaisedBedGeneratedPlantBatch({
                     flowerGrowth,
                     fruitGrowth,
                     generation,
-                    generationTask,
                     plantDefinition: definition,
                     rootTransforms: [rootTransform],
+                    seed,
                     showProduce,
                     templateKey,
                 },
@@ -295,9 +297,9 @@ export function RaisedBedGeneratedPlantBatch({
         definition,
         flowerGrowth,
         fruitGrowth,
-        generationTasks,
         instances,
         instanceVariations,
+        renderDetailedGeometry,
         showProduce,
     ]);
     const renderChunkSignature = useMemo(
@@ -578,6 +580,51 @@ export function RaisedBedGeneratedPlantBatch({
         };
     }, [failedTaskKeys, renderChunkSignature, retryFailed, taskPriority]);
     const profileBatchId = `${batchSeed}:${lodLevel}`;
+    const detailedLeafTriangleCount = useMemo(
+        () =>
+            Array.from(batchBuild.partsByField.values()).reduce(
+                (total, parts) => total + parts.leafTriangles,
+                0,
+            ),
+        [batchBuild.partsByField],
+    );
+    const clusterPrimitiveTriangleCount = useMemo(
+        () =>
+            getPlantBillboardPrimitiveTriangleCount(
+                lodLevel === 'far' ? 'far' : 'mid',
+                pendingBillboards.map((billboard) => billboard.summary),
+            ),
+        [lodLevel, pendingBillboards],
+    );
+    useEffect(
+        () =>
+            registerGeneratedPlantRenderBatch(profileBatchId, {
+                clusterInstanceCount: pendingBillboards.length,
+                clusterPrimitiveTriangleCount,
+                detailedInstanceCount: renderDetailedGeometry
+                    ? batchBuild.resolvedInstanceCount
+                    : 0,
+                detailedLeafTriangleCount,
+                nearInstanceCount: renderDetailedGeometry
+                    ? instances.length
+                    : 0,
+                pendingDetailInstanceCount: renderDetailedGeometry
+                    ? Math.max(
+                          0,
+                          instances.length - batchBuild.resolvedInstanceCount,
+                      )
+                    : 0,
+            }),
+        [
+            batchBuild.resolvedInstanceCount,
+            clusterPrimitiveTriangleCount,
+            detailedLeafTriangleCount,
+            instances.length,
+            pendingBillboards.length,
+            profileBatchId,
+            renderDetailedGeometry,
+        ],
+    );
     useEffect(() => {
         const sessionId = getGeneratedPlantProfileSessionId();
         if (sessionId === null || profileFields.length === 0) {
