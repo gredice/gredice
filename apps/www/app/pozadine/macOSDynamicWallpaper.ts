@@ -15,25 +15,25 @@ const frameConfiguration = [
     {
         fileName: '01-gredice-jutro.png',
         phase: 'morning',
-        time: '06:00:00',
+        time: '2026-06-21T06:00:00',
     },
     {
         fileName: '02-gredice-dan.png',
         isForLight: true,
         isPrimary: true,
         phase: 'day',
-        time: '10:00:00',
+        time: '2026-06-21T10:00:00',
     },
     {
         fileName: '03-gredice-vecer.png',
         phase: 'evening',
-        time: '18:00:00',
+        time: '2026-06-21T18:00:00',
     },
     {
         fileName: '04-gredice-noc.png',
         isForDark: true,
         phase: 'night',
-        time: '21:00:00',
+        time: '2026-06-21T21:00:00',
     },
 ] satisfies ReadonlyArray<{
     fileName: string;

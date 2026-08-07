@@ -42,6 +42,15 @@ describe('macOS dynamic wallpaper bundle', () => {
             JSON.parse(strFromU8(manifest)),
             getMacOSDynamicWallpaperManifest(),
         );
+        assert.deepEqual(
+            getMacOSDynamicWallpaperManifest().map(({ time }) => time),
+            [
+                '2026-06-21T06:00:00',
+                '2026-06-21T10:00:00',
+                '2026-06-21T18:00:00',
+                '2026-06-21T21:00:00',
+            ],
+        );
 
         const instructions = files['UPUTE.txt'];
         assert.ok(instructions);
