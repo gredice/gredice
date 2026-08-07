@@ -2,6 +2,7 @@ import { Html, PerspectiveCamera } from '@react-three/drei';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import {
     type RefObject,
+    useCallback,
     useEffect,
     useLayoutEffect,
     useMemo,
@@ -44,6 +45,10 @@ import {
     getGardenAvatarSurfaceY,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
+import {
+    getGardenAvatarZoomReleaseView,
+    getGardenAvatarZoomStart,
+} from './gardenAvatarZoomView';
 import type { GardenAvatarPresenceState } from './gardenVisitorPresence';
 
 export const avatarModelScale = 0.697;
@@ -598,6 +603,11 @@ export function GardenAvatar({
     const crouchingRef = useRef(false);
     const crouchAmountRef = useRef(0);
     const mouseZoomingRef = useRef(false);
+    const mouseZoomReturnsToThirdPersonRef = useRef(false);
+    const touchZoomReturnsToThirdPersonRef = useRef(false);
+    const previousTouchZoomInputRef = useRef(touchZoomInput);
+    const touchZoomInputRef = useRef(touchZoomInput);
+    touchZoomInputRef.current = touchZoomInput;
     const zoomingRef = useRef(false);
     const presenceCallbackRef = useRef(onPresenceChange);
     presenceCallbackRef.current = onPresenceChange;
@@ -607,6 +617,26 @@ export function GardenAvatar({
         quaternion: camera.quaternion.clone(),
     });
     const initializedRef = useRef(false);
+    const finishTemporaryZoom = useCallback(() => {
+        if (mouseZoomingRef.current || touchZoomInputRef.current) {
+            return;
+        }
+
+        const restoreThirdPerson =
+            mouseZoomReturnsToThirdPersonRef.current ||
+            touchZoomReturnsToThirdPersonRef.current;
+        mouseZoomReturnsToThirdPersonRef.current = false;
+        touchZoomReturnsToThirdPersonRef.current = false;
+        const currentView = avatarViewRef.current;
+        const nextView = getGardenAvatarZoomReleaseView({
+            restoreThirdPerson,
+            view: currentView,
+        });
+        if (nextView !== currentView) {
+            avatarViewRef.current = nextView;
+            setView(nextView);
+        }
+    }, [setView]);
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
         return { ...prepareGardenAvatarModel(scene), scene };
@@ -717,6 +747,8 @@ export function GardenAvatar({
             jumpsUsedRef.current = 0;
             crouchingRef.current = false;
             mouseZoomingRef.current = false;
+            mouseZoomReturnsToThirdPersonRef.current = false;
+            touchZoomReturnsToThirdPersonRef.current = false;
             zoomingRef.current = false;
             if (document.pointerLockElement === gl.domElement) {
                 document.exitPointerLock();
@@ -765,6 +797,7 @@ export function GardenAvatar({
         const clearActiveInput = () => {
             clearKeyboardInput();
             mouseZoomingRef.current = false;
+            finishTemporaryZoom();
         };
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -784,10 +817,18 @@ export function GardenAvatar({
             if (event.pointerType === 'mouse') {
                 if (event.button === 2) {
                     event.preventDefault();
-                    mouseZoomingRef.current = true;
-                    if (avatarViewRef.current === 'third-person') {
-                        setView('first-person');
+                    if (!mouseZoomingRef.current) {
+                        const zoomStart = getGardenAvatarZoomStart(
+                            avatarViewRef.current,
+                        );
+                        mouseZoomReturnsToThirdPersonRef.current =
+                            zoomStart.restoreThirdPerson;
+                        if (zoomStart.view !== avatarViewRef.current) {
+                            avatarViewRef.current = zoomStart.view;
+                            setView(zoomStart.view);
+                        }
                     }
+                    mouseZoomingRef.current = true;
                     return;
                 }
                 if (
@@ -817,6 +858,7 @@ export function GardenAvatar({
         const handlePointerEnd = (event: PointerEvent) => {
             if (event.pointerType === 'mouse' && event.button === 2) {
                 mouseZoomingRef.current = false;
+                finishTemporaryZoom();
             }
             if (event.pointerId === dragPointerId) {
                 dragPointerId = null;
@@ -852,13 +894,23 @@ export function GardenAvatar({
             window.removeEventListener('pointercancel', handlePointerEnd);
             gl.domElement.removeEventListener('contextmenu', handleContextMenu);
         };
-    }, [avatarActive, gl.domElement, setView]);
+    }, [avatarActive, finishTemporaryZoom, gl.domElement, setView]);
 
     useEffect(() => {
-        if (touchZoomInput && view === 'third-person') {
-            setView('first-person');
+        const wasZooming = previousTouchZoomInputRef.current;
+        previousTouchZoomInputRef.current = touchZoomInput;
+        if (touchZoomInput && !wasZooming) {
+            const zoomStart = getGardenAvatarZoomStart(view);
+            touchZoomReturnsToThirdPersonRef.current =
+                zoomStart.restoreThirdPerson;
+            if (zoomStart.view !== view) {
+                avatarViewRef.current = zoomStart.view;
+                setView(zoomStart.view);
+            }
+        } else if (!touchZoomInput && wasZooming) {
+            finishTemporaryZoom();
         }
-    }, [setView, touchZoomInput, view]);
+    }, [finishTemporaryZoom, setView, touchZoomInput, view]);
 
     function activateAvatarView() {
         const actor = actorRef.current;
