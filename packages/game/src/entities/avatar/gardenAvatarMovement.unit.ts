@@ -190,6 +190,42 @@ test('follows angled terrain height continuously instead of flattening it', () =
     assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0 }, slope), 0.4);
 });
 
+test('walks smoothly from the base plane across a slope onto raised terrain', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'slope', name: 'Block_Grass_Angle', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [{ id: 'upper', name: 'Block_Grass', rotation: 0 }],
+                position: new Vector3(1, 0, 0),
+            },
+        ],
+    });
+    const halfway = resolveGardenAvatarHorizontalMovement({
+        deltaX: 0.5,
+        deltaZ: 0,
+        position: { x: -0.5, y: 0, z: 0 },
+        world,
+    });
+    const upper = resolveGardenAvatarHorizontalMovement({
+        deltaX: 1,
+        deltaZ: 0,
+        position: halfway.position,
+        world,
+    });
+
+    assert.equal(halfway.collided, false);
+    assert.ok(Math.abs(halfway.position.y - 0.2) < 0.000_001);
+    assert.equal(upper.collided, false);
+    assert.ok(Math.abs(upper.position.x - 1) < 0.000_001);
+    assert.equal(upper.position.y, 0.4);
+});
+
 test('matches the rendered orientation of a quarter-turned slope', () => {
     const world = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
@@ -305,6 +341,63 @@ test('uses narrow trunk collision instead of a tree canopy-sized box', () => {
     );
 });
 
+test('uses model-sized fence posts and leaves disconnected gaps walkable', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [{ id: 'fence-a', name: 'Fence', rotation: 0 }],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [{ id: 'fence-b', name: 'Fence', rotation: 0 }],
+                position: new Vector3(1, 0, 1),
+            },
+        ],
+    });
+    const result = resolveGardenAvatarHorizontalMovement({
+        deltaX: 0,
+        deltaZ: 2.5,
+        position: { x: 0.4, y: 0, z: -1 },
+        world,
+    });
+
+    assert.equal(world.surfaces.length, 2);
+    assert.ok(
+        world.surfaces.every(
+            (surface) =>
+                surface.halfWidth === 0.075 && surface.halfDepth === 0.075,
+        ),
+    );
+    assert.equal(result.collided, false);
+    assert.ok(Math.abs(result.position.z - 1.5) < 0.000_001);
+});
+
+test('adds narrow rails only between connected fence posts', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [{ id: 'fence-a', name: 'Fence', rotation: 0 }],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [{ id: 'fence-b', name: 'Fence', rotation: 0 }],
+                position: new Vector3(1, 0, 0),
+            },
+        ],
+    });
+
+    assert.equal(world.surfaces.length, 4);
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.2125 && surface.halfDepth === 0.075,
+        ).length,
+        2,
+    );
+});
+
 test('centers multi-cell collisions and blocks their complete roaming footprint', () => {
     const decorationWorld = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
@@ -319,8 +412,8 @@ test('centers multi-cell collisions and blocks their complete roaming footprint'
 
     assert.equal(cart?.x, 2);
     assert.equal(cart?.z, 0.5);
-    assert.equal(cart?.halfWidth, 1.5);
-    assert.equal(cart?.halfDepth, 1);
+    assert.equal(cart?.halfWidth, 1.44);
+    assert.equal(cart?.halfDepth, 0.94);
     assert.deepEqual(getGardenAvatarRoamBlockedCells(decorationWorld), [
         { x: 1, z: 0 },
         { x: 1, z: 1 },

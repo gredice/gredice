@@ -469,6 +469,8 @@ export type GameState = {
     // Debug (overrides)
     editHitboxDebugVisible: boolean;
     setEditHitboxDebugVisible: (visible: boolean) => void;
+    gardenAvatarCollisionDebugVisible: boolean;
+    setGardenAvatarCollisionDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
     wireframeDebugVisible: boolean;
@@ -1137,6 +1139,10 @@ export function createGameState({
         editHitboxDebugVisible: false,
         setEditHitboxDebugVisible: (editHitboxDebugVisible) =>
             set({ editHitboxDebugVisible }),
+        gardenAvatarCollisionDebugVisible: false,
+        setGardenAvatarCollisionDebugVisible: (
+            gardenAvatarCollisionDebugVisible,
+        ) => set({ gardenAvatarCollisionDebugVisible }),
         entityRenderModeDebugVisible: false,
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),

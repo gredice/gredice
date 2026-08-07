@@ -590,6 +590,10 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         assert.equal(store.getState().gardenAvatarSprintInput, true);
         assert.equal(store.getState().gardenAvatarCrouchInput, true);
         assert.equal(store.getState().gardenAvatarZoomInput, true);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, false);
+
+        store.getState().setGardenAvatarCollisionDebugVisible(true);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, true);
 
         store.getState().setGardenAvatarView('overview');
         assert.equal(store.getState().gardenAvatarView, 'overview');

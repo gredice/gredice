@@ -125,7 +125,12 @@ export function GameHud({
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
     if (gardenAvatarView !== 'overview') {
-        return <GardenAvatarHud />;
+        return (
+            <>
+                <GardenAvatarHud />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
     }
 
     return (

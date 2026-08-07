@@ -2,14 +2,17 @@
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { Camera, Close, LogOut, UserCircle } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import { type PointerEvent, useEffect } from 'react';
 import { useGameState } from '../useGameState';
 import { GardenAvatarJoystick } from './GardenAvatarJoystick';
+import { useGardenAvatarTouchControls } from './gardenAvatarTouchControls';
 
 const avatarHudButtonClassName =
     'pointer-events-auto border border-border/60 bg-background/85 shadow-lg backdrop-blur-md hover:bg-muted active:scale-95 touch-none';
 
 export function GardenAvatarHud() {
+    const showTouchControls = useGardenAvatarTouchControls();
     const view = useGameState((state) => state.gardenAvatarView);
     const setView = useGameState((state) => state.setGardenAvatarView);
     const setSprintInput = useGameState(
@@ -52,12 +55,22 @@ export function GardenAvatarHud() {
 
     return (
         <div className="pointer-events-none absolute inset-0 z-30 select-none">
-            <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
-                WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput
-                Space za dvostruki skok · desni klik za POV zum · Esc za izlaz
-            </div>
+            {!showTouchControls ? (
+                <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
+                    WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput
+                    Space za dvostruki skok · desni klik za POV zum · Esc za
+                    izlaz
+                </div>
+            ) : null}
 
-            <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-center gap-1 rounded-xl border border-border/50 bg-background/70 p-1 shadow-lg backdrop-blur-md md:top-auto md:bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)]">
+            <div
+                className={cx(
+                    'absolute left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-center gap-1 rounded-xl border border-border/50 bg-background/70 p-1 shadow-lg backdrop-blur-md',
+                    showTouchControls
+                        ? 'top-[calc(var(--game-safe-area-top,0px)+0.5rem)]'
+                        : 'top-[calc(var(--game-safe-area-top,0px)+0.5rem)] md:top-auto md:bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)]',
+                )}
+            >
                 <IconButton
                     title={
                         view === 'first-person'
@@ -91,57 +104,71 @@ export function GardenAvatarHud() {
                 </IconButton>
             </div>
 
-            <div className="absolute bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] left-[calc(var(--game-safe-area-left,0px)+0.75rem)] md:hidden">
-                <GardenAvatarJoystick />
-            </div>
+            {showTouchControls ? (
+                <>
+                    <div className="absolute bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] left-[calc(var(--game-safe-area-left,0px)+0.75rem)]">
+                        <GardenAvatarJoystick />
+                    </div>
 
-            <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2 md:hidden">
-                <button
-                    type="button"
-                    className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
-                    onPointerDown={(event) =>
-                        startAction(event, setCrouchInput)
-                    }
-                    onPointerUp={(event) => stopAction(event, setCrouchInput)}
-                    onPointerCancel={(event) =>
-                        stopAction(event, setCrouchInput)
-                    }
-                >
-                    Čučni
-                </button>
-                <button
-                    type="button"
-                    className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
-                    onPointerDown={(event) => startAction(event, setZoomInput)}
-                    onPointerUp={(event) => stopAction(event, setZoomInput)}
-                    onPointerCancel={(event) => stopAction(event, setZoomInput)}
-                >
-                    Zum
-                </button>
-                <button
-                    type="button"
-                    className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
-                    onPointerDown={(event) =>
-                        startAction(event, setSprintInput)
-                    }
-                    onPointerUp={(event) => stopAction(event, setSprintInput)}
-                    onPointerCancel={(event) =>
-                        stopAction(event, setSprintInput)
-                    }
-                >
-                    Trči
-                </button>
-                <button
-                    type="button"
-                    onPointerDown={(event) => {
-                        event.preventDefault();
-                        requestJump();
-                    }}
-                    className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/95 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
-                >
-                    Skoči
-                </button>
-            </div>
+                    <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            onPointerDown={(event) =>
+                                startAction(event, setCrouchInput)
+                            }
+                            onPointerUp={(event) =>
+                                stopAction(event, setCrouchInput)
+                            }
+                            onPointerCancel={(event) =>
+                                stopAction(event, setCrouchInput)
+                            }
+                        >
+                            Čučni
+                        </button>
+                        <button
+                            type="button"
+                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            onPointerDown={(event) =>
+                                startAction(event, setZoomInput)
+                            }
+                            onPointerUp={(event) =>
+                                stopAction(event, setZoomInput)
+                            }
+                            onPointerCancel={(event) =>
+                                stopAction(event, setZoomInput)
+                            }
+                        >
+                            Zum
+                        </button>
+                        <button
+                            type="button"
+                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            onPointerDown={(event) =>
+                                startAction(event, setSprintInput)
+                            }
+                            onPointerUp={(event) =>
+                                stopAction(event, setSprintInput)
+                            }
+                            onPointerCancel={(event) =>
+                                stopAction(event, setSprintInput)
+                            }
+                        >
+                            Trči
+                        </button>
+                        <button
+                            type="button"
+                            onPointerDown={(event) => {
+                                event.preventDefault();
+                                requestJump();
+                            }}
+                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/95 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                        >
+                            Skoči
+                        </button>
+                    </div>
+                </>
+            ) : null}
         </div>
     );
 }

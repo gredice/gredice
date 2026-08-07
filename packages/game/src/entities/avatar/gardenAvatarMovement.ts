@@ -25,6 +25,7 @@ export type GardenAvatarCollisionWorld = {
 };
 
 export type GardenAvatarMovementSurface = AnimalMovementSurface & {
+    debugLabel?: string;
     bottomY?: number;
     halfDepth?: number;
     halfWidth?: number;
@@ -228,7 +229,29 @@ export function getGardenAvatarGroundY({
         return null;
     }
 
-    return maxHeight;
+    const slopedCenterHeight = world.surfaces.reduce<number | null>(
+        (selectedY, surface) => {
+            if (
+                !surface.slopeBlockName ||
+                surface.roamable === false ||
+                !circleIntersectsSurface(position, surface) ||
+                (surface.bottomY !== undefined &&
+                    surface.bottomY > currentGroundY + collisionHeight)
+            ) {
+                return selectedY;
+            }
+
+            const surfaceY = getGardenAvatarSurfaceY(position, surface);
+            return selectedY === null
+                ? surfaceY
+                : Math.max(selectedY, surfaceY);
+        },
+        null,
+    );
+
+    return slopedCenterHeight === null
+        ? maxHeight
+        : Math.max(sampleHeights[0] ?? 0, slopedCenterHeight);
 }
 
 function tryMove(
@@ -317,7 +340,7 @@ export function resolveGardenAvatarHorizontalMovement({
 
 const narrowAvatarCollisionFootprints: Record<
     string,
-    { depth: number; width: number }
+    { depth: number; height?: number; width: number }
 > = {
     BirdHouse: { depth: 0.34, width: 0.34 },
     DeadTreeTall: { depth: 0.3, width: 0.42 },
@@ -328,6 +351,13 @@ const narrowAvatarCollisionFootprints: Record<
     Tree: { depth: 0.42, width: 0.42 },
 };
 
+const avatarCollisionSizeRelaxation = 0.12;
+const minimumAvatarCollisionSize = 0.12;
+const fencePostSize = 0.15;
+const fenceHeight = 0.55;
+const fenceRailHalfLength = 0.2125;
+const fenceRailCenterOffset = 0.2875;
+
 function positiveDimension(value: unknown, fallback: number) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
         ? value
@@ -335,22 +365,115 @@ function positiveDimension(value: unknown, fallback: number) {
 }
 
 function getAvatarCollisionFootprint(block: BlockData | undefined) {
-    const fallbackWidth = positiveDimension(block?.attributes.spanWidth, 0.68);
-    const fallbackDepth = positiveDimension(block?.attributes.spanDepth, 0.68);
+    const spanWidth = positiveDimension(block?.attributes.spanWidth, 0.8);
+    const spanDepth = positiveDimension(block?.attributes.spanDepth, 0.8);
+    const declaredWidth = positiveDimension(
+        block?.attributes.hitboxWidth,
+        spanWidth,
+    );
+    const declaredDepth = positiveDimension(
+        block?.attributes.hitboxDepth,
+        spanDepth,
+    );
     const narrow = block
         ? narrowAvatarCollisionFootprints[block.information.name]
         : undefined;
 
     return {
         depth: Math.min(
-            positiveDimension(block?.attributes.hitboxDepth, fallbackDepth),
+            Math.max(
+                minimumAvatarCollisionSize,
+                declaredDepth - avatarCollisionSizeRelaxation,
+            ),
             narrow?.depth ?? Number.POSITIVE_INFINITY,
         ),
+        height: Math.min(
+            positiveDimension(
+                block?.attributes.hitboxHeight,
+                positiveDimension(block?.attributes.height, 0.8),
+            ),
+            narrow?.height ?? Number.POSITIVE_INFINITY,
+        ),
         width: Math.min(
-            positiveDimension(block?.attributes.hitboxWidth, fallbackWidth),
+            Math.max(
+                minimumAvatarCollisionSize,
+                declaredWidth - avatarCollisionSizeRelaxation,
+            ),
             narrow?.width ?? Number.POSITIVE_INFINITY,
         ),
     };
+}
+
+function fenceLayerKey(
+    stack: { position: Pick<GardenAvatarPoint, 'x' | 'z'> },
+    blockIndex: number,
+) {
+    return `${stack.position.x}:${stack.position.z}:${blockIndex}`;
+}
+
+function createFenceCollisionSurfaces({
+    blockIndex,
+    bottomY,
+    fenceLayers,
+    stack,
+}: {
+    blockIndex: number;
+    bottomY: number;
+    fenceLayers: Set<string>;
+    stack: Stack;
+}) {
+    const roamBlockedCells = [{ x: stack.position.x, z: stack.position.z }];
+    const shared: Pick<
+        GardenAvatarMovementSurface,
+        'bottomY' | 'debugLabel' | 'kind' | 'roamable' | 'rotation' | 'y'
+    > = {
+        bottomY,
+        debugLabel: 'Fence',
+        kind: 'ground',
+        roamable: false,
+        rotation: 0,
+        y: bottomY + fenceHeight,
+    };
+    const surfaces: GardenAvatarMovementSurface[] = [
+        {
+            ...shared,
+            halfDepth: fencePostSize / 2,
+            halfWidth: fencePostSize / 2,
+            roamBlockedCells,
+            x: stack.position.x,
+            z: stack.position.z,
+        },
+    ];
+    const directions = [
+        { x: 1, z: 0 },
+        { x: -1, z: 0 },
+        { x: 0, z: 1 },
+        { x: 0, z: -1 },
+    ];
+
+    for (const direction of directions) {
+        const neighbor = {
+            position: {
+                x: stack.position.x + direction.x,
+                z: stack.position.z + direction.z,
+            },
+        };
+        if (!fenceLayers.has(fenceLayerKey(neighbor, blockIndex))) {
+            continue;
+        }
+
+        const alongX = direction.x !== 0;
+        surfaces.push({
+            ...shared,
+            halfDepth: alongX ? fencePostSize / 2 : fenceRailHalfLength,
+            halfWidth: alongX ? fenceRailHalfLength : fencePostSize / 2,
+            roamBlockedCells: [],
+            x: stack.position.x + direction.x * fenceRailCenterOffset,
+            z: stack.position.z + direction.z * fenceRailCenterOffset,
+        });
+    }
+
+    return surfaces;
 }
 
 function getAvatarCollisionPlacement({
@@ -392,6 +515,15 @@ export function createGardenAvatarCollisionWorld({
         blockData?.map((block) => [block.information.name, block]) ?? [],
     );
     const surfaces: GardenAvatarMovementSurface[] = [];
+    const fenceLayers = new Set(
+        (stacks ?? []).flatMap((stack) =>
+            stack.blocks.flatMap((block, blockIndex) =>
+                block.name === 'Fence'
+                    ? [fenceLayerKey(stack, blockIndex)]
+                    : [],
+            ),
+        ),
+    );
 
     for (const stack of stacks ?? []) {
         let stackHeight = 0;
@@ -426,10 +558,22 @@ export function createGardenAvatarCollisionWorld({
             }
 
             waterSupportY = null;
+            if (block.name === 'Fence') {
+                surfaces.push(
+                    ...createFenceCollisionSurfaces({
+                        blockIndex,
+                        bottomY,
+                        fenceLayers,
+                        stack,
+                    }),
+                );
+                continue;
+            }
+
             const isTerrain = isAnimalGroundBlockName(block.name);
             const blockDefinition = blockDataByName.get(block.name);
             const footprint = isTerrain
-                ? { depth: 1, width: 1 }
+                ? { depth: 1, height: stackHeight - bottomY, width: 1 }
                 : getAvatarCollisionFootprint(blockDefinition);
             const placement = isTerrain
                 ? {
@@ -444,6 +588,7 @@ export function createGardenAvatarCollisionWorld({
                   });
             surfaces.push({
                 bottomY,
+                debugLabel: block.name,
                 halfDepth: footprint.depth / 2,
                 halfWidth: footprint.width / 2,
                 kind: 'ground',
@@ -452,7 +597,7 @@ export function createGardenAvatarCollisionWorld({
                 rotation: block.rotation * (Math.PI / 2),
                 slopeBlockName: isTerrain ? block.name : undefined,
                 x: placement.x,
-                y: stackHeight,
+                y: bottomY + footprint.height,
                 z: placement.z,
             });
         }
