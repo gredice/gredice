@@ -301,59 +301,29 @@ async function loadLogo(color: string) {
     }
 }
 
-type ImageBounds = {
+export function getMinimalGardenPlacement({
+    height,
+    width,
+}: {
     height: number;
-    left: number;
-    top: number;
     width: number;
-};
-
-function findOpaqueBounds(
-    image: CanvasImageSource,
-    width: number,
-    height: number,
-): ImageBounds | null {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) {
-        return null;
-    }
-
-    context.drawImage(image, 0, 0, width, height);
-    const pixels = context.getImageData(0, 0, width, height).data;
-    let left = width;
-    let top = height;
-    let right = -1;
-    let bottom = -1;
-
-    for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-            if (pixels[(y * width + x) * 4 + 3] < 8) {
-                continue;
-            }
-            left = Math.min(left, x);
-            top = Math.min(top, y);
-            right = Math.max(right, x);
-            bottom = Math.max(bottom, y);
-        }
-    }
-
-    if (right < left || bottom < top) {
-        return null;
-    }
+}) {
+    // The capture camera targets the garden's world-space center. Keep that
+    // stable horizontal anchor instead of recentering from shadows or tall
+    // plants in the transparent pixels, then lower it to reserve more sky.
+    const captureCenter = {
+        x: width / 2,
+        y: height / 2,
+    };
+    const wallpaperTarget = {
+        x: width / 2,
+        y: height * 0.62,
+    };
 
     return {
-        height: bottom - top + 1,
-        left,
-        top,
-        width: right - left + 1,
+        offsetX: wallpaperTarget.x - captureCenter.x,
+        offsetY: wallpaperTarget.y - captureCenter.y,
     };
-}
-
-function clamp(value: number, minimum: number, maximum: number) {
-    return Math.max(minimum, Math.min(maximum, value));
 }
 
 function canvasToPng(canvas: HTMLCanvasElement) {
@@ -411,10 +381,10 @@ export async function composeWallpaper({
             context.fillStyle = palette.field;
             context.beginPath();
             context.ellipse(
-                width * 0.72,
-                height * 0.67,
+                width * 0.5,
+                height * 0.72,
                 width * 0.36,
-                height * 0.3,
+                height * 0.28,
                 0,
                 0,
                 Math.PI * 2,
@@ -425,10 +395,10 @@ export async function composeWallpaper({
             context.lineWidth = Math.max(1, width / 2400);
             context.beginPath();
             context.ellipse(
-                width * 0.72,
-                height * 0.67,
+                width * 0.5,
+                height * 0.72,
                 width * 0.31,
-                height * 0.245,
+                height * 0.225,
                 0,
                 0,
                 Math.PI * 2,
@@ -436,30 +406,11 @@ export async function composeWallpaper({
             context.stroke();
             context.restore();
 
-            const bounds = findOpaqueBounds(sceneImage, width, height);
-            if (bounds) {
-                const margin = Math.round(width * 0.035);
-                const gardenCenterX =
-                    width * (branding === 'gredice' ? 0.64 : 0.72);
-                const gardenBottom =
-                    height * (branding === 'gredice' ? 0.8 : 0.86);
-                const preferredX =
-                    gardenCenterX - (bounds.left + bounds.width / 2);
-                const preferredY = gardenBottom - (bounds.top + bounds.height);
-                const offsetX = clamp(
-                    preferredX,
-                    margin - bounds.left,
-                    width - margin - (bounds.left + bounds.width),
-                );
-                const offsetY = clamp(
-                    preferredY,
-                    margin - bounds.top,
-                    height - margin - (bounds.top + bounds.height),
-                );
-                context.drawImage(sceneImage, offsetX, offsetY, width, height);
-            } else {
-                context.drawImage(sceneImage, 0, 0, width, height);
-            }
+            const { offsetX, offsetY } = getMinimalGardenPlacement({
+                height,
+                width,
+            });
+            context.drawImage(sceneImage, offsetX, offsetY, width, height);
         } else {
             context.drawImage(sceneImage, 0, 0, width, height);
             applyDither(context, width, height);
