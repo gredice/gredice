@@ -517,6 +517,20 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     const overview = page.getByRole('region', {
         name: 'Tlocrt vrta Testni vrt',
     });
+    const topDownBlockImages = overview.locator('img[src*="top-down"]');
+    await expect(topDownBlockImages).toHaveCount(6);
+    await expect
+        .poll(() =>
+            topDownBlockImages.evaluateAll((images) =>
+                images.every(
+                    (image) =>
+                        image instanceof HTMLImageElement &&
+                        image.complete &&
+                        image.naturalWidth > 0,
+                ),
+            ),
+        )
+        .toBe(true);
     const overviewScrollport = page.locator('[data-garden-overview-2d]');
     await expect(overview).toHaveAttribute('data-preview-track-padding', '2');
     const initialScrollBounds = await overviewScrollport.boundingBox();
@@ -542,6 +556,58 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     ).toBeLessThanOrEqual(
         (finalScrollBounds?.x ?? 0) + (finalScrollBounds?.width ?? 0) + 1,
     );
+
+    const dragStartScrollLeft = await overviewScrollport.evaluate(
+        (element, scrollRange) => {
+            element.scrollLeft = scrollRange / 2;
+            return element.scrollLeft;
+        },
+        horizontalScrollRange,
+    );
+    const panBounds = await overviewScrollport.boundingBox();
+    expect(panBounds).not.toBeNull();
+    const panStartX = (panBounds?.x ?? 0) + (panBounds?.width ?? 0) * 0.7;
+    const panStartY = (panBounds?.y ?? 0) + (panBounds?.height ?? 0) * 0.7;
+    await page.mouse.move(panStartX, panStartY);
+    await page.mouse.down();
+    await page.mouse.move(panStartX - 100, panStartY, { steps: 5 });
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'true');
+    await page.mouse.up();
+    await expect
+        .poll(() =>
+            overviewScrollport.evaluate((element) => element.scrollLeft),
+        )
+        .toBeGreaterThan(dragStartScrollLeft + 60);
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'false');
+
+    const touchStartScrollLeft = await overviewScrollport.evaluate(
+        (element, scrollRange) => {
+            element.scrollLeft = scrollRange / 2;
+            return element.scrollLeft;
+        },
+        horizontalScrollRange,
+    );
+    const cdpSession = await page.context().newCDPSession(page);
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [{ x: panStartX, y: panStartY }],
+        type: 'touchStart',
+    });
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [{ x: panStartX - 100, y: panStartY }],
+        type: 'touchMove',
+    });
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'true');
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [],
+        type: 'touchEnd',
+    });
+    await cdpSession.detach();
+    await expect
+        .poll(() =>
+            overviewScrollport.evaluate((element) => element.scrollLeft),
+        )
+        .toBeGreaterThan(touchStartScrollLeft + 60);
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'false');
 
     await expect(overview).toHaveAttribute('data-world-rotation', '0');
     await expect(
@@ -576,6 +642,16 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
             name: 'Podignuta gredica Testna gredica',
         }),
     ).toBeVisible();
+    const raisedBedPlaceholder = page.locator(
+        '[data-raised-bed-2d-placeholder]',
+    );
+    await expect(raisedBedPlaceholder).toBeVisible();
+    await expect(
+        raisedBedPlaceholder.locator('[data-raised-bed-soil]'),
+    ).toBeVisible();
+    await expect(
+        raisedBedPlaceholder.locator('[data-raised-bed-plank]'),
+    ).toHaveCount(4);
     await expectNoImmediateRuntimeFailures(page, failures);
     await expect(page.locator('canvas')).toHaveCount(0);
     expect(modelRequests).toEqual([]);

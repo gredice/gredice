@@ -5,13 +5,6 @@ function isDevelopmentEnvironment() {
     return process.env.NODE_ENV === 'development';
 }
 
-export const proceduralPlantsFlag = flag<boolean>({
-    key: 'proceduralPlants',
-    description: 'Enable procedural plant content rendering.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
 export const recipesFlag = flag<boolean>({
     key: 'recipes',
     description: 'Enable recipes pages and recipe detail routes.',

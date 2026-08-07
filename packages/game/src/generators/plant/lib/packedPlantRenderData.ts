@@ -1,7 +1,7 @@
 import type { VegetableType } from './plant-definitions';
 import type { PlantLodSummary, PlantRenderData } from './plantRenderData';
 
-export const PACKED_PLANT_RENDER_DATA_VERSION = 1 as const;
+export const PACKED_PLANT_RENDER_DATA_VERSION = 2 as const;
 
 export interface PackedPlantMatrixInstances {
     count: number;
@@ -19,6 +19,7 @@ export interface PackedPlantLeafInstances extends PackedPlantMatrixInstances {
 
 export interface PackedPlantVegetableInstances
     extends PackedPlantMatrixInstances {
+    colors: Float32Array;
     growth: Float32Array;
     type: VegetableType;
 }
@@ -323,6 +324,11 @@ function assertPackedPlantRenderData(packed: PackedPlantRenderData) {
     for (const vegetable of packed.vegetables) {
         assertPackedMatrixInstances(vegetable, `${vegetable.type} vegetable`);
         assertMatchingCount({
+            actual: vegetable.colors.length,
+            expected: vegetable.count * 3,
+            label: `${vegetable.type} vegetable color component`,
+        });
+        assertMatchingCount({
             actual: vegetable.growth.length,
             expected: vegetable.count,
             label: `${vegetable.type} vegetable growth`,
@@ -467,6 +473,13 @@ export function packPlantRenderData(
     const vegetables = Array.from(
         vegetablesByType,
         ([type, groupedVegetables]) => ({
+            colors: Float32Array.from(
+                groupedVegetables.flatMap((vegetable) => [
+                    vegetable.color.r,
+                    vegetable.color.g,
+                    vegetable.color.b,
+                ]),
+            ),
             count: groupedVegetables.length,
             growth: Float32Array.from(
                 groupedVegetables,
@@ -665,6 +678,9 @@ export function mergePackedPlantRenderDataBatches(
             ),
         },
         vegetables: Array.from(vegetableBatches, ([type, grouped]) => ({
+            colors: concatenatePackedFloat32Arrays(
+                grouped.map((vegetable) => vegetable.colors),
+            ),
             count: grouped.reduce(
                 (total, vegetable) => total + vegetable.count,
                 0,
@@ -827,6 +843,7 @@ export function mergePackedPlantRenderDataInstances(
     for (const [type, count] of vegetableCounts) {
         vegetableTargets.set(type, {
             data: {
+                colors: new Float32Array(count * 3),
                 count,
                 growth: new Float32Array(count),
                 matrices: new Float32Array(count * 16),
@@ -933,6 +950,7 @@ export function mergePackedPlantRenderDataInstances(
                 targetMatrixOffset: target.matrixOffset,
                 transform,
             });
+            target.data.colors.set(vegetable.colors, target.matrixOffset * 3);
             target.data.growth.fill(
                 1,
                 target.matrixOffset,
@@ -983,6 +1001,7 @@ function getPackedPlantRenderDataViews(
         packed.thorns.swayPhases,
         ...packed.vegetables.flatMap((vegetable) => [
             vegetable.matrices,
+            vegetable.colors,
             vegetable.growth,
             vegetable.swayPhases,
         ]),

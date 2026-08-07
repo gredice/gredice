@@ -82,7 +82,8 @@ export function RecommendationSection({
                     if (
                         !open &&
                         event.currentTarget === event.target &&
-                        event.propertyName === 'opacity'
+                        (event.propertyName === 'opacity' ||
+                            event.propertyName === 'grid-template-rows')
                     ) {
                         setContentMounted(false);
                     }

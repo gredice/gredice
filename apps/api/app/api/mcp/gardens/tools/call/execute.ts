@@ -1,12 +1,15 @@
+import type { BlockData } from '@gredice/directory-types';
 import {
     getAccountGardens,
     getEntitiesFormatted,
     getGarden,
+    getGardenBlocks,
     getOperations,
     getRaisedBedAiHistoryEntries,
 } from '@gredice/storage';
 import { z } from 'zod';
 import {
+    buildGardenCompositionContext,
     visibleOperationsForGarden,
     visibleRaisedBedsForGarden,
 } from '../../../../../../lib/ai/suncokretGardenContext';
@@ -117,6 +120,28 @@ export async function executeGardenTool(
                         (field) => field.active,
                     ).length,
                 })),
+            };
+        }
+        case 'gardens/get-garden-composition': {
+            const input = GardenScopedSchema.parse(args);
+            const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
+            const [blocks, blockData] = await Promise.all([
+                getGardenBlocks(garden.id),
+                getEntitiesFormatted<BlockData>('block')
+                    .then((items) => items ?? [])
+                    .catch(() => []),
+            ]);
+
+            return {
+                gardenId: garden.id,
+                gardenName: garden.name,
+                isSandbox: garden.isSandbox,
+                ...buildGardenCompositionContext({
+                    blockData,
+                    blocks,
+                    isSandbox: garden.isSandbox,
+                    stacks: garden.stacks,
+                }),
             };
         }
         case 'gardens/get-raised-bed-fields': {

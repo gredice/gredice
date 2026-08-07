@@ -44,6 +44,11 @@ export type ImageUploadManagerState = {
     hasFailedUploads: boolean;
 };
 
+export type ImageUploadSelectionItem = {
+    id: string;
+    file: File;
+};
+
 export type ImageUploadManagerHandle = {
     hasFailedUploads: () => boolean;
     hasImages: () => boolean;
@@ -64,6 +69,7 @@ type ImageUploadManagerProps = {
     handleUploadUrl: string;
     maxItems?: number;
     multiple?: boolean;
+    onSelectionChange?: (items: ImageUploadSelectionItem[]) => void;
     onStateChange?: (state: ImageUploadManagerState) => void;
     pasteHint?: string;
     selectedLabel?: (count: number) => string;
@@ -176,6 +182,7 @@ export const ImageUploadManager = forwardRef<
         handleUploadUrl,
         maxItems,
         multiple = true,
+        onSelectionChange,
         onStateChange,
         pasteHint = 'Kliknite ovdje i zalijepite sliku iz međuspremnika.',
         selectedLabel = selectedImagesLabel,
@@ -192,6 +199,13 @@ export const ImageUploadManager = forwardRef<
     const hasFailedUploads = uploadItems.some(
         (uploadItem) => uploadItem.status === 'failed',
     );
+    const selectedItems = uploadItems.map((uploadItem) => ({
+        id: uploadItem.id,
+        file: uploadItem.file,
+    }));
+    const selectionKey = selectedItems.map((item) => item.id).join(':');
+    const selectionSnapshotRef = useRef({ selectionKey, selectedItems });
+    selectionSnapshotRef.current = { selectionKey, selectedItems };
 
     useEffect(() => {
         onStateChange?.({
@@ -199,6 +213,12 @@ export const ImageUploadManager = forwardRef<
             hasFailedUploads,
         });
     }, [hasFailedUploads, onStateChange, uploadItems.length]);
+
+    useEffect(() => {
+        if (selectionSnapshotRef.current.selectionKey === selectionKey) {
+            onSelectionChange?.(selectionSnapshotRef.current.selectedItems);
+        }
+    }, [onSelectionChange, selectionKey]);
 
     const updateUploadItem = useCallback(
         (

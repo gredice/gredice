@@ -1,6 +1,7 @@
 import {
     CommunityEditRequestError,
     createCommunityEditRequest,
+    createCommunityEntitySuggestion,
     type EntityStandardized,
     getCmsPageBySlug,
     getCmsPages,
@@ -45,6 +46,52 @@ function cmsPagePreviewSecret(requestUrl: string) {
 }
 
 const communityEditSubmittedValueSchema = z.unknown();
+const communityPlantHealthSuggestionFields = {
+    affectedPlantIds: z.array(z.number().int().positive()).min(1).max(50),
+    name: z.string().trim().min(1).max(200),
+    description: z.string().trim().min(1).max(2000),
+    symptoms: z.string().trim().min(1).max(4000),
+    favorableConditions: z.string().trim().min(1).max(4000),
+    severity: z.string().max(1000).nullable().optional(),
+    source: z.string().max(500).nullable().optional(),
+    note: z.string().max(1000).nullable().optional(),
+    publicPath: z.string().min(1).max(500),
+};
+const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
+    z.object({
+        kind: z.literal('plantSort'),
+        parentPlantId: z.number().int().positive(),
+        name: z.string().trim().min(1).max(200),
+        description: z.string().trim().min(1).max(2000),
+        source: z.string().max(500).nullable().optional(),
+        note: z.string().max(1000).nullable().optional(),
+        publicPath: z.string().min(1).max(500),
+    }),
+    z.object({
+        kind: z.literal('operation'),
+        plantStageId: z.number().int().positive(),
+        application: z.enum([
+            'farm',
+            'garden',
+            'plant',
+            'raisedBed1m',
+            'raisedBedFull',
+        ]),
+        name: z.string().trim().min(1).max(200),
+        description: z.string().trim().min(1).max(2000),
+        source: z.string().max(500).nullable().optional(),
+        note: z.string().max(1000).nullable().optional(),
+        publicPath: z.string().min(1).max(500),
+    }),
+    z.object({
+        kind: z.literal('disease'),
+        ...communityPlantHealthSuggestionFields,
+    }),
+    z.object({
+        kind: z.literal('pest'),
+        ...communityPlantHealthSuggestionFields,
+    }),
+]);
 
 function communityEditErrorResponse(error: CommunityEditRequestError) {
     const status: 400 | 409 = error.code === 'conflict' ? 409 : 400;
@@ -302,6 +349,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     sectionKey: sectionKey ?? null,
                     fields,
                 });
+            } catch (error) {
+                if (error instanceof CommunityEditRequestError) {
+                    const response = communityEditErrorResponse(error);
+                    return context.json(response.body, response.status);
+                }
+                throw error;
+            }
+        },
+    )
+    .post(
+        '/community-edits/entity-suggestions',
+        describeRoute({
+            description:
+                'Submit a pending suggestion for a new plant sort, operation, disease, or pest. No directory entity is created or published by this endpoint.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator('json', communityEntitySuggestionSchema),
+        async (context) => {
+            const authContext = context.get('authContext');
+            const user = await getUser(authContext.userId);
+            const body = context.req.valid('json');
+
+            try {
+                const request = await createCommunityEntitySuggestion({
+                    ...body,
+                    submitter: {
+                        id: authContext.userId,
+                        name:
+                            user?.displayName ??
+                            user?.userName ??
+                            authContext.userId,
+                    },
+                });
+
+                return context.json(
+                    {
+                        status: 'pending_admin_approval',
+                        requestId: request.id,
+                        requestStatus: request.status,
+                        suggestionKind: body.kind,
+                    },
+                    { status: 201 },
+                );
             } catch (error) {
                 if (error instanceof CommunityEditRequestError) {
                     const response = communityEditErrorResponse(error);

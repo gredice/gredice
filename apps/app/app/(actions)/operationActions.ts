@@ -990,17 +990,19 @@ async function verifyOperationCompletion(
     return { success: true };
 }
 
-export async function completeOperation(
+type OperationCompletionActor = {
+    role: 'admin' | 'farmer';
+    userId: string;
+};
+
+async function completeOperationForActor(
     operationId: number,
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
+    actor: OperationCompletionActor,
     imageUrls?: string[],
     notes?: string,
 ) {
-    const {
-        user: { role },
-        userId,
-    } = await auth(['admin', 'farmer']);
     const completionNotes = normalizeCompletionNotes(notes);
     const operation = await getOperationById(operationId);
     if (!operation) {
@@ -1011,10 +1013,7 @@ export async function completeOperation(
     }
 
     const result = await submitOperationTaskCompletion({
-        actor: {
-            role: role === 'admin' ? 'admin' : 'farmer',
-            userId,
-        },
+        actor,
         imageUrls,
         notes: completionNotes,
         operationId,
@@ -1035,6 +1034,31 @@ export async function completeOperation(
     return { success: true };
 }
 
+export async function completeOperation(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    imageUrls?: string[],
+    notes?: string,
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+
+    return completeOperationForActor(
+        operationId,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        {
+            role: role === 'admin' ? 'admin' : 'farmer',
+            userId,
+        },
+        imageUrls,
+        notes,
+    );
+}
+
 export async function completeOperationWithImageUrls(
     operationId: number,
     expectedEntityId: number,
@@ -1052,6 +1076,64 @@ export async function completeOperationWithImageUrls(
         imageUrls,
         notes,
     );
+}
+
+const MAX_BULK_PHOTO_OPERATION_COUNT = 200;
+
+type BulkPhotoOperationCompletion = {
+    operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
+    imageUrls: string[];
+};
+
+export async function completeOperationsWithImageUrls(
+    completions: BulkPhotoOperationCompletion[],
+) {
+    const { userId } = await auth(['admin']);
+    if (
+        !Array.isArray(completions) ||
+        completions.length === 0 ||
+        completions.length > MAX_BULK_PHOTO_OPERATION_COUNT
+    ) {
+        throw new Error('Popis radnji za skupni završetak nije ispravan.');
+    }
+
+    const actor: OperationCompletionActor = {
+        role: 'admin',
+        userId,
+    };
+    const results = await Promise.allSettled(
+        completions.map((completion) =>
+            completeOperationForActor(
+                completion.operationId,
+                completion.expectedEntityId,
+                completion.expectedTaskVersionEventId,
+                actor,
+                completion.imageUrls,
+            ),
+        ),
+    );
+    const failedCount = results.filter(
+        (result) => result.status === 'rejected',
+    ).length;
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error('Bulk photo operation completion failed:', {
+                operationId: completions[index]?.operationId,
+                error:
+                    result.reason instanceof Error
+                        ? result.reason.message
+                        : 'Unknown completion error',
+            });
+        }
+    });
+
+    return {
+        success: failedCount === 0,
+        completedCount: results.length - failedCount,
+        failedCount,
+    };
 }
 
 export async function updateOperationCompletionEvidenceAction(

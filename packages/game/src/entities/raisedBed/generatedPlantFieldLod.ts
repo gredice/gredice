@@ -6,6 +6,8 @@ import {
 
 const FIELD_HORIZONTAL_BOUNDS_MARGIN = 0.4;
 const MINIMUM_PLANT_HEIGHT = 0.25;
+export const HIGH_QUALITY_PLANT_NEAR_THRESHOLD = 0.08;
+export const HIGH_QUALITY_PLANT_NEAR_HYSTERESIS = 0.008;
 
 export type GeneratedPlantFieldBoundsInput = {
     approximatePlantHeight: number;
@@ -29,18 +31,20 @@ export function getGeneratedPlantBatchKey({
 }
 
 export function resolveGeneratedPlantFieldLod({
-    allowNormalViewNear,
     cameraZoom,
     currentLevel,
     focusActive,
     isSelectedRaisedBed,
+    nearHysteresis,
+    nearThreshold,
     screenOccupancy,
 }: {
-    allowNormalViewNear: boolean;
     cameraZoom: number;
     currentLevel: PlantLodLevel;
     focusActive: boolean;
     isSelectedRaisedBed: boolean;
+    nearHysteresis?: number;
+    nearThreshold?: number;
     screenOccupancy: number;
 }): PlantLodLevel {
     if (focusActive && isSelectedRaisedBed) {
@@ -50,10 +54,12 @@ export function resolveGeneratedPlantFieldLod({
     const resolvedLevel = resolvePlantLodLevelWithHysteresis({
         cameraZoom,
         currentLevel,
+        nearHysteresis,
+        nearThreshold,
         screenOccupancy,
     });
 
-    if (resolvedLevel === 'near' && (focusActive || !allowNormalViewNear)) {
+    if (resolvedLevel === 'near' && focusActive) {
         return 'mid';
     }
 

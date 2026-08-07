@@ -137,7 +137,7 @@ function DisabledOperationChip({
     );
 }
 
-function RaisedBedAiOperationChip({
+export function RaisedBedAiOperationChip({
     gardenId,
     label,
     target,

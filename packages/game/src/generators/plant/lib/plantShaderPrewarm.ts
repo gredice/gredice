@@ -25,6 +25,10 @@ import {
     createPlantStemGeometryShell,
     disposePlantStemGeometryShell,
 } from './plantStemGeometry';
+import {
+    vegetableColorFragmentShader,
+    vegetableColorVertexShader,
+} from './plantVegetableMaterial';
 
 export const GENERATED_PLANT_SHADER_PREWARM_COMPILE_TIMEOUT_MS = 4_000;
 
@@ -33,6 +37,7 @@ export const generatedPlantShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
     'billboard',
     'mid-billboard',
     'shadow-proxy',
@@ -43,6 +48,7 @@ export const generatedPlantInstancedSwayShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
     'mid-billboard',
 ] as const;
 
@@ -248,6 +254,28 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     );
     standardSway.name = 'GeneratedPlantShaderPrewarm:standard-sway';
 
+    const vegetableGeometry = new THREE.ConeGeometry(0.5, 1, 6);
+    vegetableGeometry.setAttribute(
+        'vegetableInstanceColor',
+        new THREE.InstancedBufferAttribute(
+            new Float32Array([0.84, 0.16, 0.16]),
+            3,
+        ),
+    );
+    const vegetableMaterial = new CustomShaderMaterial({
+        baseMaterial: THREE.MeshStandardMaterial,
+        fragmentShader: vegetableColorFragmentShader,
+        vertexShader: vegetableColorVertexShader,
+        uniforms: createSwayUniforms(),
+        color: '#ffffff',
+        roughness: 0.7,
+    });
+    const vegetable = initializeWarmupMesh(
+        new THREE.InstancedMesh(vegetableGeometry, vegetableMaterial, 1),
+        { usesSway: true },
+    );
+    vegetable.name = 'GeneratedPlantShaderPrewarm:vegetable';
+
     const billboardGeometry = new THREE.PlaneGeometry(1, 1);
     billboardGeometry.setAttribute(
         'instanceTint',
@@ -321,6 +349,7 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         leaf,
         flower,
         standardSway,
+        vegetable,
         billboard,
         midBillboard,
         shadowProxy,
@@ -340,6 +369,7 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             leafGeometry.dispose();
             flowerGeometry.dispose();
             standardSwayGeometry.dispose();
+            vegetableGeometry.dispose();
             billboardGeometry.dispose();
             midBillboardGeometry.dispose();
             shadowProxyGeometry.dispose();
@@ -347,6 +377,7 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             leafMaterial.dispose();
             flowerMaterial.dispose();
             standardSwayMaterial.dispose();
+            vegetableMaterial.dispose();
             billboardMaterial.dispose();
             midBillboardMaterial.dispose();
             shadowProxyColorMaterial.dispose();

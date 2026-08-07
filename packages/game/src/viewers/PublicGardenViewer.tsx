@@ -519,6 +519,7 @@ export function PublicGardenViewer({
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: resolvedAppBaseUrl,
+            authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
             freezeTime: capture ? getPublicGardenCaptureDate() : null,
             isMock: false,

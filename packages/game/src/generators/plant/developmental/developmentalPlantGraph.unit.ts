@@ -453,6 +453,23 @@ test('builds tomato phytomers and transitions flowers into fruit', () => {
     assert.ok(fruit.transform.position[1] < flower.transform.position[1]);
 });
 
+test('supported main stems keep their height while reducing horizontal lean', () => {
+    const supportedTomato = structuredClone(plantTypes.tomato);
+    supportedTomato.development.axes.mainStemHorizontalScale = 0.04;
+    const freeGraph = buildGraph(plantTypes.tomato, 12, 'supported-stem');
+    const supportedGraph = buildGraph(supportedTomato, 12, 'supported-stem');
+    const freeTop = getOrgan(freeGraph, 'internode:0:9');
+    const supportedTop = getOrgan(supportedGraph, 'internode:0:9');
+
+    assert.equal(freeTop.type, 'internode');
+    assert.equal(supportedTop.type, 'internode');
+    assert.equal(supportedTop.end[1], freeTop.end[1]);
+    assert.ok(
+        Math.hypot(supportedTop.end[0], supportedTop.end[2]) <
+            Math.hypot(freeTop.end[0], freeTop.end[2]) * 0.5,
+    );
+});
+
 test('builds carrot with one below-soil storage root and crown leaves', () => {
     const graph = buildGraph(plantTypes.carrot, 12, 'mature-carrot');
     const roots = graph.organs.filter((organ) => organ.type === 'root');

@@ -56,6 +56,11 @@ describe('generated plant shader prewarm', () => {
                 .get('leaf')
                 ?.geometry.hasAttribute('leafInstanceColor'),
         );
+        assert.ok(
+            meshesByVariant
+                .get('vegetable')
+                ?.geometry.hasAttribute('vegetableInstanceColor'),
+        );
         for (const variant of generatedPlantInstancedSwayShaderPrewarmVariants) {
             assert.ok(
                 meshesByVariant

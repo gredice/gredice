@@ -19,6 +19,7 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
+import { RaisedBed2DPlaceholder } from './raisedBed/RaisedBed2DPlaceholder';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
@@ -43,8 +44,10 @@ function centerOffset(offset: number) {
 
 export function RaisedBedFieldHud({
     instantTransition = false,
+    show2DPlaceholder = false,
 }: {
     instantTransition?: boolean;
+    show2DPlaceholder?: boolean;
 }) {
     const { data: currentGarden } = useCurrentGarden();
     const isSandbox = useIsSandboxGarden();
@@ -174,13 +177,21 @@ export function RaisedBedFieldHud({
                     </div>
                 </div>
             )}
-            <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
-                {view === 'closeup' && currentGarden && raisedBed && (
-                    <RaisedBedField
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                )}
+            <div
+                data-raised-bed-field-grid
+                className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]"
+            >
+                {view === 'closeup' && currentGarden && raisedBed ? (
+                    <>
+                        {show2DPlaceholder ? <RaisedBed2DPlaceholder /> : null}
+                        <div className="relative z-10 size-full">
+                            <RaisedBedField
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        </div>
+                    </>
+                ) : null}
             </div>
             <Stack
                 className="absolute z-40 md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"

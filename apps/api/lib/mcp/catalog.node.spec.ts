@@ -19,6 +19,18 @@ describe('MCP catalog contract scaffold', () => {
         ]);
     });
 
+    test('exposes garden composition alongside raised-bed context tools', () => {
+        assert.deepEqual(getMcpToolNamesByDomain('gardens'), [
+            'gardens/list-gardens',
+            'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
+            'gardens/get-raised-bed-fields',
+            'gardens/list-operations',
+            'gardens/get-lifecycle-context',
+            'gardens/get-raised-bed-ai-history',
+        ]);
+    });
+
     test('keeps excluded tools out of the public catalog', () => {
         assert.equal(
             getMcpToolCatalog().some((tool) => tool.exposure === 'excluded'),
@@ -48,6 +60,7 @@ describe('MCP catalog contract scaffold', () => {
         for (const toolName of [
             'gardens/list-gardens',
             'gardens/list-raised-beds',
+            'gardens/get-garden-composition',
             'gardens/get-raised-bed-fields',
             'gardens/list-operations',
             'gardens/get-lifecycle-context',
@@ -58,6 +71,10 @@ describe('MCP catalog contract scaffold', () => {
         }
 
         assert.equal(exposures.get('commerce/add-to-cart'), 'auth-mutation');
+        assert.equal(
+            exposures.get('commerce/add-operation-to-cart'),
+            'auth-mutation',
+        );
         assert.equal(
             exposures.get('commerce/update-cart-item'),
             'auth-mutation',
@@ -72,9 +89,11 @@ describe('MCP catalog contract scaffold', () => {
             assert.equal(tool.annotations.openWorldHint, false);
             assert.equal(
                 tool.annotations.readOnlyHint,
-                !['commerce/add-to-cart', 'commerce/update-cart-item'].includes(
-                    tool.name,
-                ),
+                ![
+                    'commerce/add-to-cart',
+                    'commerce/add-operation-to-cart',
+                    'commerce/update-cart-item',
+                ].includes(tool.name),
             );
             assert.equal(
                 tool.annotations.destructiveHint,
@@ -87,6 +106,7 @@ describe('MCP catalog contract scaffold', () => {
         for (const toolName of [
             'commerce/get-cart',
             'commerce/add-to-cart',
+            'commerce/add-operation-to-cart',
             'commerce/update-cart-item',
         ]) {
             const tool = getMcpTools().find(

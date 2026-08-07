@@ -35,22 +35,12 @@ export function resolveGameProfileWeatherSurface(
     return value === 'legacy' ? 'legacy' : 'integrated';
 }
 
-export function resolveGameProfileFlags(
-    adaptiveHigh: string | undefined,
-    weatherSurface: string | undefined,
-    staticSceneCache: string | undefined,
-) {
+export function resolveGameProfileFlags(weatherSurface: string | undefined) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
-    const staticSceneCacheMode =
-        resolveGameProfileStaticSceneCache(staticSceneCache);
 
     return {
-        enableAdaptiveHighQualityFlag:
-            resolveGameProfileAdaptiveHigh(adaptiveHigh),
         enableDebugHudFlag: true,
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
-        enableRainWetOverlayFlag: true,
-        enableStaticOpaqueSceneCacheFlag: staticSceneCacheMode === 'cache',
     } satisfies NonNullable<GameSceneProps['flags']>;
 }

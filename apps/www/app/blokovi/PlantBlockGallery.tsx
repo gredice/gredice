@@ -7,11 +7,10 @@ import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
-import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 import { PlantBlockImage } from './PlantBlockImage';
-import { plantNamesWithProceduralModels } from './plantNamesWithProceduralModels';
+import { plantMatchesBlockSearch } from './plantBlockSearch';
 
 function PlantBlockGalleryItem(props: Omit<PlantData, 'id'> & { id: string }) {
     return (
@@ -39,15 +38,26 @@ export function PlantBlockGallery({
 }) {
     const [search] = useClientSearchParam('pretraga');
     const normalizedSearch = normalizeSearchText(search);
+
+    return (
+        <PlantBlockGalleryResults
+            plants={plants}
+            normalizedSearch={normalizedSearch}
+        />
+    );
+}
+
+export function PlantBlockGalleryResults({
+    plants,
+    normalizedSearch,
+}: {
+    plants: PlantData[] | undefined;
+    normalizedSearch: string;
+}) {
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
-        .filter((plant) =>
-            plantNamesWithProceduralModels.has(
-                plant.information.name.toLowerCase(),
-            ),
-        )
-        .filter((plant) => plantMatchesSearch(plant, normalizedSearch))
+        .filter((plant) => plantMatchesBlockSearch(plant, normalizedSearch))
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 
     if (filteredPlants.length === 0) {

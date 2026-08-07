@@ -33,6 +33,7 @@ import {
     type WinterMode,
 } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
+import { getCurrentGardenQueryPolicy } from './currentGardenQueryPolicy';
 import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
 import { resolveCurrentAccountGardenId } from './gardenSelection';
 import {
@@ -1252,6 +1253,9 @@ function isHighTargetOperationVisualsProfile(profile: MockGardenProfile) {
 }
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
+    const authenticatedGardenQueriesEnabled = useGameState(
+        (state) => state.authenticatedGardenQueriesEnabled,
+    );
     const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
@@ -1262,11 +1266,18 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
+    const queryPolicy = getCurrentGardenQueryPolicy({
+        authenticatedGardenQueriesEnabled,
+        isLocalSandbox,
+        isMock,
+    });
     const highTargetOperationVisuals =
         isMock && isHighTargetOperationVisualsProfile(mockGardenProfile);
-    const { data: gardens } = useGardens(isMock || isLocalSandbox);
+    const { data: gardens } = useGardens(
+        !queryPolicy.accountGardenQueriesEnabled,
+    );
     const { data: accountGroups } = useGardenAccountGroups(
-        isMock || isLocalSandbox,
+        !queryPolicy.accountGardenQueriesEnabled,
     );
     let selectedGardenId: number | null = null;
     if (!isMock && !isLocalSandbox) {
@@ -1393,10 +1404,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         retry: false,
         staleTime: 1000 * 60, // 1m
         enabled:
-            isLocalSandbox ||
-            isMock ||
-            (gardens !== null &&
-                (currentGardenId !== null || gardens !== undefined)),
+            queryPolicy.currentGardenQueryEnabled &&
+            (isLocalSandbox ||
+                isMock ||
+                (gardens !== null &&
+                    (currentGardenId !== null || gardens !== undefined))),
     });
 }
 

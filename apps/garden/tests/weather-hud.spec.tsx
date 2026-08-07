@@ -80,7 +80,7 @@ test('weather and forecast surfaces expose contextual Suncokret triggers', async
     page,
 }) => {
     await page.setViewportSize(DESKTOP_VIEWPORT);
-    await mount(<WeatherHudStory enableSuncokret />);
+    await mount(<WeatherHudStory />);
 
     await page.getByTitle('Trenutno vrijeme').click();
     await expect(

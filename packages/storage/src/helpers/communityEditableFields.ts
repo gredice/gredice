@@ -3,6 +3,11 @@ import {
     PLANT_STAGES,
     type PlantStageName,
 } from '@gredice/js/plants';
+import {
+    plantHealthAffectedPlantsAttributeName,
+    plantHealthIssueTypeNames,
+    plantHealthOperationAttributeNames,
+} from './plantHealth';
 import { plantRelationshipAttributeNames } from './plantRelationships';
 
 export type CommunityEditControlType =
@@ -105,15 +110,13 @@ const communityEditablePlantRelationshipFields: CommunityEditableFieldDefinition
             fieldKey: 'plant.relationships.companions',
             name: plantRelationshipAttributeNames.companions,
             publicLabel: 'Dobri susjedi',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
         {
             fieldKey: 'plant.relationships.antagonists',
             name: plantRelationshipAttributeNames.antagonists,
             publicLabel: 'Izbjegavati blizinu',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
     ].map((field) => ({
         entityTypeName: 'plant',
@@ -131,15 +134,13 @@ const communityEditablePlantSortRelationshipFields: CommunityEditableFieldDefini
             fieldKey: 'plant-sort.relationships.companions',
             name: plantRelationshipAttributeNames.companions,
             publicLabel: 'Dobri susjedi sorte',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
         {
             fieldKey: 'plant-sort.relationships.antagonists',
             name: plantRelationshipAttributeNames.antagonists,
             publicLabel: 'Izbjegavati blizinu sorte',
-            helpText:
-                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+            helpText: 'Odaberi jednu ili više biljaka.',
         },
     ].map((field) => ({
         entityTypeName: 'plantSort',
@@ -150,6 +151,126 @@ const communityEditablePlantSortRelationshipFields: CommunityEditableFieldDefini
         inline: true,
         ...field,
     }));
+
+const communityEditablePlantHealthFields: CommunityEditableFieldDefinition[] =
+    Object.values(plantHealthIssueTypeNames).flatMap((entityTypeName) => [
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.name`,
+            sectionKey: 'overview',
+            category: 'information',
+            name: 'name',
+            publicLabel: 'Naziv',
+            controlType: 'text',
+            pageLevel: true,
+            inline: true,
+            maxLength: 200,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.label`,
+            sectionKey: 'overview',
+            category: 'information',
+            name: 'label',
+            publicLabel: 'Javni naziv',
+            helpText: 'Ako je prazno, prikazuje se naziv zapisa.',
+            controlType: 'text',
+            pageLevel: true,
+            inline: true,
+            maxLength: 200,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.short-description`,
+            sectionKey: 'overview',
+            category: 'information',
+            name: 'shortDescription',
+            publicLabel: 'Kratki opis',
+            controlType: 'text',
+            pageLevel: true,
+            inline: true,
+            maxLength: 500,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.description`,
+            sectionKey: 'overview',
+            category: 'information',
+            name: 'description',
+            publicLabel: 'Opis',
+            controlType: 'markdown',
+            pageLevel: true,
+            inline: true,
+            maxLength: 16000,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.symptoms`,
+            sectionKey: 'symptoms',
+            category: 'symptoms',
+            name: 'symptoms',
+            publicLabel: 'Simptomi',
+            controlType: 'markdown',
+            pageLevel: true,
+            inline: true,
+            maxLength: 16000,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.favorable-conditions`,
+            sectionKey: 'conditions',
+            category: 'conditions',
+            name: 'favorableConditions',
+            publicLabel: 'Povoljni uvjeti',
+            controlType: 'markdown',
+            pageLevel: true,
+            inline: true,
+            maxLength: 16000,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.severity`,
+            sectionKey: 'conditions',
+            category: 'conditions',
+            name: 'severity',
+            publicLabel: 'Ozbiljnost',
+            controlType: 'text',
+            pageLevel: true,
+            inline: true,
+            maxLength: 1000,
+        },
+        {
+            entityTypeName,
+            fieldKey: `${entityTypeName}.affected-plants`,
+            sectionKey: 'relationships',
+            category: 'relationships',
+            name: plantHealthAffectedPlantsAttributeName,
+            publicLabel: 'Pogođene biljke',
+            helpText: 'Odaberi jednu ili više biljaka.',
+            controlType: 'reference',
+            pageLevel: true,
+            inline: true,
+        },
+        ...Object.entries(plantHealthOperationAttributeNames).map(
+            ([intent, name]) => ({
+                entityTypeName,
+                fieldKey: `${entityTypeName}.operations.${intent}`,
+                sectionKey: 'operations',
+                category: 'operations',
+                name,
+                publicLabel:
+                    intent === 'prevention'
+                        ? 'Prevencija'
+                        : intent === 'reduction'
+                          ? 'Smanjenje pritiska'
+                          : 'Ublažavanje i oporavak',
+                helpText: 'Odaberi jednu ili više postojećih radnji.',
+                controlType: 'reference' as const,
+                pageLevel: true,
+                inline: true,
+            }),
+        ),
+    ]);
 
 const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
     {
@@ -515,6 +636,7 @@ const communityEditableFieldRegistry: CommunityEditableFieldDefinition[] = [
     },
     ...communityEditablePlantSortStageInformationFields,
     ...communityEditablePlantSortRelationshipFields,
+    ...communityEditablePlantHealthFields,
     {
         entityTypeName: 'operation',
         fieldKey: 'operation.label',
@@ -712,7 +834,7 @@ export function getCommunityEditableSections(entityTypeName: string) {
     return Array.from(sections.entries()).map(
         ([key, fields]): CommunityEditableSection => ({
             key,
-            label: communityEditableSectionLabel(key),
+            label: communityEditableSectionLabel(key, entityTypeName),
             fields,
         }),
     );
@@ -722,7 +844,10 @@ function isPlantStageName(sectionKey: string): sectionKey is PlantStageName {
     return sectionKey in PLANT_STAGE_LABELS;
 }
 
-export function communityEditableSectionLabel(sectionKey: string) {
+export function communityEditableSectionLabel(
+    sectionKey: string,
+    entityTypeName?: string,
+) {
     if (isPlantStageName(sectionKey)) {
         return PLANT_STAGE_LABELS[sectionKey];
     }
@@ -732,12 +857,21 @@ export function communityEditableSectionLabel(sectionKey: string) {
             return 'Svojstva';
         case 'description':
             return 'Opis';
+        case 'conditions':
+            return 'Uvjeti';
         case 'instructions':
             return 'Postupak';
+        case 'operations':
+            return 'Preporučene radnje';
         case 'overview':
             return 'Pregled';
         case 'relationships':
-            return 'Biljni susjedi';
+            return entityTypeName === 'plantDisease' ||
+                entityTypeName === 'plantPest'
+                ? 'Pogođene biljke'
+                : 'Biljni susjedi';
+        case 'symptoms':
+            return 'Simptomi';
         default:
             return sectionKey;
     }

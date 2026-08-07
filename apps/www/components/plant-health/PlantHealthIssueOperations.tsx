@@ -36,7 +36,11 @@ export function PlantHealthIssueOperations({
     );
 
     if (entries.length === 0) {
-        return null;
+        return (
+            <Typography level="body2" secondary>
+                Trenutno nema preporučenih radnji.
+            </Typography>
+        );
     }
 
     return (
