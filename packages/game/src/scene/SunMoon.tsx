@@ -1,6 +1,6 @@
 'use client';
 
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import * as SunCalc from 'suncalc';
@@ -17,6 +17,7 @@ import { useGameState } from '../useGameState';
 import { getMoonVisualPhase } from './moonPhase';
 import {
     createSkyViewBasis,
+    getSkyDirectionProjectionScale,
     getSunViewportTuning,
     SKY_FORWARD_DISTANCE,
     SUN_SCREEN_OFFSET_MULTIPLIER,
@@ -150,6 +151,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         (state) => state.dayNightCycleDisabled,
     );
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: garden } = useCurrentGarden();
     const camera = useThree((state) => state.camera);
     const { width: viewportWidth, height: viewportHeight } = useThree(
@@ -234,13 +236,17 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const sunOpacity =
             smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, sunAltitude) *
             visibility;
-        if (sunOpacity > 0.001) {
-            const sunDir = altAzToScenePosition(
-                sun.altitude,
-                sun.azimuth,
-            ).normalize();
-            const sx = sunDir.dot(basis.right);
-            const sy = sunDir.dot(basis.viewUp);
+        const sunDir = altAzToScenePosition(
+            sun.altitude,
+            sun.azimuth,
+        ).normalize();
+        const sunProjectionScale = getSkyDirectionProjectionScale(
+            sunDir,
+            basis,
+        );
+        if (sunOpacity > 0.001 && sunProjectionScale !== null) {
+            const sx = sunDir.dot(basis.right) * sunProjectionScale;
+            const sy = sunDir.dot(basis.viewUp) * sunProjectionScale;
 
             sunMesh.current.position
                 .copy(camera.position)
@@ -283,13 +289,17 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         // reads as a pale daytime moon rather than a competing sun.
         const moonDayFade = 1 - 0.85 * smoothstep(-0.05, 0.3, sunAltitude);
         const moonOpacity = moonHorizonOpacity * moonDayFade * visibility;
-        if (moonOpacity > 0.001) {
-            const moonDir = altAzToScenePosition(
-                moon.altitude,
-                moon.azimuth,
-            ).normalize();
-            const mx = moonDir.dot(basis.right);
-            const my = moonDir.dot(basis.viewUp);
+        const moonDir = altAzToScenePosition(
+            moon.altitude,
+            moon.azimuth,
+        ).normalize();
+        const moonProjectionScale = getSkyDirectionProjectionScale(
+            moonDir,
+            basis,
+        );
+        if (moonOpacity > 0.001 && moonProjectionScale !== null) {
+            const mx = moonDir.dot(basis.right) * moonProjectionScale;
+            const my = moonDir.dot(basis.viewUp) * moonProjectionScale;
 
             moonMesh.current.position
                 .copy(camera.position)
@@ -339,6 +349,12 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
 
         return gameCamera.subscribe(() => updateSunMoon());
     }, [gameCamera, updateSunMoon]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateSunMoon();
+        }
+    });
 
     return (
         <>
