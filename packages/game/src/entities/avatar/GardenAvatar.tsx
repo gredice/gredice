@@ -10,6 +10,8 @@ import {
 import {
     type Group,
     MathUtils,
+    Mesh,
+    MeshBasicMaterial,
     type Object3D,
     Quaternion,
     PerspectiveCamera as ThreePerspectiveCamera,
@@ -24,7 +26,6 @@ import type { Stack } from '../../types/Stack';
 import { type GardenAvatarView, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
-import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { getGardenAvatarPerspectiveEntryPosition } from './gardenAvatarCamera';
 import {
     createGardenAvatarCollisionWorld,
@@ -38,16 +39,18 @@ import {
     gardenAvatarStandingCollisionHeight,
     getGardenAvatarCeilingY,
     getGardenAvatarGroundY,
+    getGardenAvatarNextJumpCount,
     getGardenAvatarRoamBlockedCells,
+    getGardenAvatarSurfaceY,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
 
-const avatarModelScale = 0.82;
-const avatarEyeHeight = 1.42;
-const avatarCrouchEyeHeight = 0.86;
+const avatarModelScale = 0.697;
+const avatarEyeHeight = 1.2;
+const avatarCrouchEyeHeight = 0.9;
 const avatarWalkSpeed = 2.15;
-const avatarRunSpeed = 3.6;
-const avatarCrouchSpeed = 1.05;
+const avatarRunSpeed = 4.68;
+const avatarCrouchSpeed = 0.63;
 const avatarRoamSpeed = 0.55;
 const avatarAcceleration = 28;
 const avatarDeceleration = 22;
@@ -60,6 +63,11 @@ const avatarCameraTransitionSeconds = 0.58;
 const avatarThirdPersonCameraGroundClearance = 0.12;
 const avatarPitchLimit = Math.PI / 2;
 const avatarPerspectiveFov = 55;
+const avatarPerspectiveZoomFov = 34;
+const avatarZoomDamping = 9;
+const avatarHeadPitchLimit = 0.82;
+const avatarCrouchRigDrop = 0.34;
+const avatarCrouchLowerLegLength = 0.41;
 const pointerLookSensitivity = 0.0023;
 const touchLookSensitivity = 0.006;
 
@@ -74,6 +82,14 @@ type AvatarRig = {
     kneeRight: Object3D | undefined;
     legLeft: Object3D | undefined;
     legRight: Object3D | undefined;
+    restY: {
+        armLeft: number;
+        armRight: number;
+        body: number;
+        head: number;
+        legLeft: number;
+        legRight: number;
+    };
 };
 
 type AvatarRoamState = {
@@ -118,24 +134,53 @@ function dampAngle(
 }
 
 function prepareAvatarModel(root: Object3D) {
-    const { primaryCasterCount } = configureActorMeshShadows(root, (mesh) => {
-        mesh.receiveShadow = true;
-        mesh.frustumCulled = false;
+    const meshes: Mesh[] = [];
+    const materials = new Map<Mesh, Mesh['material']>();
+    root.traverse((object) => {
+        if (!(object instanceof Mesh)) {
+            return;
+        }
+        object.castShadow = false;
+        object.receiveShadow = true;
+        object.frustumCulled = false;
+        meshes.push(object);
+        materials.set(object, object.material);
     });
 
+    const armLeft = root.getObjectByName('FarmerAvatar_ArmPivot_L');
+    const armRight = root.getObjectByName('FarmerAvatar_ArmPivot_R');
+    const body = root.getObjectByName('FarmerAvatar_BodyPivot');
+    const head = root.getObjectByName('FarmerAvatar_HeadPivot');
+    const legLeft = root.getObjectByName('FarmerAvatar_LegPivot_L');
+    const legRight = root.getObjectByName('FarmerAvatar_LegPivot_R');
+
     return {
-        primaryCasterCount,
+        meshes,
+        materials,
+        primaryCasterCount: meshes.length,
+        shadowOnlyMaterial: new MeshBasicMaterial({
+            colorWrite: false,
+            depthWrite: false,
+        }),
         rig: {
-            armLeft: root.getObjectByName('FarmerAvatar_ArmPivot_L'),
-            armRight: root.getObjectByName('FarmerAvatar_ArmPivot_R'),
-            body: root.getObjectByName('FarmerAvatar_BodyPivot'),
+            armLeft,
+            armRight,
+            body,
             elbowLeft: root.getObjectByName('FarmerAvatar_ElbowPivot_L'),
             elbowRight: root.getObjectByName('FarmerAvatar_ElbowPivot_R'),
-            head: root.getObjectByName('FarmerAvatar_HeadPivot'),
+            head,
             kneeLeft: root.getObjectByName('FarmerAvatar_KneePivot_L'),
             kneeRight: root.getObjectByName('FarmerAvatar_KneePivot_R'),
-            legLeft: root.getObjectByName('FarmerAvatar_LegPivot_L'),
-            legRight: root.getObjectByName('FarmerAvatar_LegPivot_R'),
+            legLeft,
+            legRight,
+            restY: {
+                armLeft: armLeft?.position.y ?? 0,
+                armRight: armRight?.position.y ?? 0,
+                body: body?.position.y ?? 0,
+                head: head?.position.y ?? 0,
+                legLeft: legLeft?.position.y ?? 0,
+                legRight: legRight?.position.y ?? 0,
+            },
         } satisfies AvatarRig,
     };
 }
@@ -145,6 +190,7 @@ function animateAvatarRig({
     delta,
     distanceWalked,
     grounded,
+    headPitch,
     walkAmount,
     rig,
 }: {
@@ -152,6 +198,7 @@ function animateAvatarRig({
     delta: number;
     distanceWalked: number;
     grounded: boolean;
+    headPitch: number;
     walkAmount: number;
     rig: AvatarRig;
 }) {
@@ -160,14 +207,21 @@ function animateAvatarRig({
     const legSwing = grounded ? phaseSine * 0.44 * walkAmount : -0.2;
     const armSwing = grounded ? phaseSine * 0.34 * walkAmount : -0.48;
     const leftKneeBend = grounded
-        ? Math.max(0, -phaseSine) * 0.38 * walkAmount + crouchAmount * 0.68
+        ? Math.max(0, -phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
         : 0.42;
     const rightKneeBend = grounded
-        ? Math.max(0, phaseSine) * 0.38 * walkAmount + crouchAmount * 0.68
+        ? Math.max(0, phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
         : 0.42;
     const poseDamping = 1 - Math.exp(-12 * delta);
+    const crouchLegDrop =
+        avatarCrouchLowerLegLength * (1 - Math.cos(crouchAmount * 0.82));
 
     if (rig.legLeft) {
+        rig.legLeft.position.y = MathUtils.lerp(
+            rig.legLeft.position.y,
+            rig.restY.legLeft - crouchLegDrop,
+            poseDamping,
+        );
         rig.legLeft.rotation.x = MathUtils.lerp(
             rig.legLeft.rotation.x,
             legSwing,
@@ -175,6 +229,11 @@ function animateAvatarRig({
         );
     }
     if (rig.legRight) {
+        rig.legRight.position.y = MathUtils.lerp(
+            rig.legRight.position.y,
+            rig.restY.legRight - crouchLegDrop,
+            poseDamping,
+        );
         rig.legRight.rotation.x = MathUtils.lerp(
             rig.legRight.rotation.x,
             -legSwing,
@@ -182,6 +241,11 @@ function animateAvatarRig({
         );
     }
     if (rig.armLeft) {
+        rig.armLeft.position.y = MathUtils.lerp(
+            rig.armLeft.position.y,
+            rig.restY.armLeft - crouchAmount * avatarCrouchRigDrop,
+            poseDamping,
+        );
         rig.armLeft.rotation.x = MathUtils.lerp(
             rig.armLeft.rotation.x,
             -armSwing,
@@ -194,6 +258,11 @@ function animateAvatarRig({
         );
     }
     if (rig.armRight) {
+        rig.armRight.position.y = MathUtils.lerp(
+            rig.armRight.position.y,
+            rig.restY.armRight - crouchAmount * avatarCrouchRigDrop,
+            poseDamping,
+        );
         rig.armRight.rotation.x = MathUtils.lerp(
             rig.armRight.rotation.x,
             armSwing,
@@ -236,9 +305,11 @@ function animateAvatarRig({
     if (rig.body) {
         rig.body.position.y = MathUtils.lerp(
             rig.body.position.y,
-            grounded
-                ? Math.abs(phaseSine) * 0.015 * walkAmount - crouchAmount * 0.34
-                : 0.035,
+            rig.restY.body +
+                (grounded
+                    ? Math.abs(phaseSine) * 0.015 * walkAmount -
+                      crouchAmount * avatarCrouchRigDrop
+                    : 0.035),
             poseDamping,
         );
         rig.body.rotation.z = MathUtils.lerp(
@@ -248,6 +319,20 @@ function animateAvatarRig({
         );
     }
     if (rig.head) {
+        rig.head.position.y = MathUtils.lerp(
+            rig.head.position.y,
+            rig.restY.head - crouchAmount * avatarCrouchRigDrop,
+            poseDamping,
+        );
+        rig.head.rotation.x = MathUtils.lerp(
+            rig.head.rotation.x,
+            MathUtils.clamp(
+                headPitch,
+                -avatarHeadPitchLimit,
+                avatarHeadPitchLimit,
+            ),
+            poseDamping,
+        );
         rig.head.rotation.z = MathUtils.lerp(
             rig.head.rotation.z,
             grounded ? -Math.sin(walkPhase) * 0.012 * walkAmount : 0,
@@ -271,7 +356,11 @@ function createRoamTargetCandidates(world: GardenAvatarCollisionWorld) {
                     `${Math.round(surface.x)}:${Math.round(surface.z)}`,
                 ),
         )
-        .map((surface) => ({ x: surface.x, y: surface.y, z: surface.z }));
+        .map((surface) => ({
+            x: surface.x,
+            y: getGardenAvatarSurfaceY(surface, surface),
+            z: surface.z,
+        }));
 }
 
 function easeInOutCubic(value: number) {
@@ -293,6 +382,7 @@ function GardenAvatarCamera({
     pitchRef,
     view,
     yawRef,
+    zoomingRef,
 }: {
     actorRef: RefObject<Group | null>;
     crouchAmountRef: RefObject<number>;
@@ -301,6 +391,7 @@ function GardenAvatarCamera({
     pitchRef: RefObject<number>;
     view: Exclude<GardenAvatarView, 'overview'>;
     yawRef: RefObject<number>;
+    zoomingRef: RefObject<boolean>;
 }) {
     const cameraRef = useRef<ThreePerspectiveCamera>(null);
     const entryPositionRef = useRef(entryPose.position.clone());
@@ -376,7 +467,7 @@ function GardenAvatarCamera({
             );
             lookTargetRef.current.set(
                 actor.position.x,
-                actor.position.y + MathUtils.lerp(1.05, 0.7, crouchAmount),
+                actor.position.y + MathUtils.lerp(0.89, 0.64, crouchAmount),
                 actor.position.z,
             );
             desiredPositionRef.current
@@ -398,6 +489,20 @@ function GardenAvatarCamera({
         rotationHelper.position.copy(desiredPositionRef.current);
         rotationHelper.lookAt(lookTargetRef.current);
         desiredQuaternionRef.current.copy(rotationHelper.quaternion);
+
+        const targetFov = zoomingRef.current
+            ? avatarPerspectiveZoomFov
+            : avatarPerspectiveFov;
+        const nextFov = MathUtils.damp(
+            camera.fov,
+            targetFov,
+            avatarZoomDamping,
+            delta,
+        );
+        if (Math.abs(nextFov - camera.fov) > 0.000_1) {
+            camera.fov = nextFov;
+            camera.updateProjectionMatrix();
+        }
 
         transitionElapsedRef.current += delta;
         const transitionProgress = MathUtils.clamp(
@@ -446,7 +551,6 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     const jumpRequest = useGameState((state) => state.gardenAvatarJumpRequest);
     const { camera, gl } = useThree();
     const actorRef = useRef<Group>(null);
-    const visualRef = useRef<Group>(null);
     const yawRef = useRef(0);
     const pitchRef = useRef(-0.08);
     const velocityRef = useRef(new Vector3());
@@ -455,14 +559,19 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     const groundYRef = useRef(0);
     const keyboardRef = useRef(new Set<string>());
     const jumpQueuedRef = useRef(false);
+    const jumpsUsedRef = useRef(0);
     const previousJumpRequestRef = useRef(jumpRequest);
     const previousViewRef = useRef(view);
+    const avatarViewRef = useRef(view);
+    avatarViewRef.current = view;
+    const avatarActive = view !== 'overview';
     const randomRef = useRef(createRandom(0x47524544));
     const roamRef = useRef<AvatarRoamState>({ route: [], waitUntil: 4 });
     const distanceWalkedRef = useRef(0);
     const gaitAmountRef = useRef(0);
     const crouchingRef = useRef(false);
     const crouchAmountRef = useRef(0);
+    const zoomingRef = useRef(false);
     const cameraEntryPoseRef = useRef<AvatarCameraEntryPose>({
         position: camera.position.clone(),
         quaternion: camera.quaternion.clone(),
@@ -482,10 +591,29 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     );
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: 'garden-avatar',
-        primaryCasterCount: model.primaryCasterCount,
+        primaryCasterCount: view !== 'overview' ? model.primaryCasterCount : 0,
         species: 'avatar',
     });
     useSceneTimeInvalidation(true, sceneFrameRates.interactive);
+
+    useLayoutEffect(() => {
+        const castRealShadow = view !== 'overview';
+        for (const mesh of model.meshes) {
+            mesh.castShadow = castRealShadow;
+            mesh.material =
+                view === 'first-person'
+                    ? model.shadowOnlyMaterial
+                    : (model.materials.get(mesh) ?? mesh.material);
+        }
+        gl.shadowMap.needsUpdate = true;
+    }, [gl, model.materials, model.meshes, model.shadowOnlyMaterial, view]);
+
+    useEffect(
+        () => () => {
+            model.shadowOnlyMaterial.dispose();
+        },
+        [model.shadowOnlyMaterial],
+    );
 
     useEffect(
         () => () => {
@@ -527,11 +655,13 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     }, [jumpRequest]);
 
     useEffect(() => {
-        if (view === 'overview') {
+        if (!avatarActive) {
             keyboardRef.current.clear();
             velocityRef.current.set(0, 0, 0);
             verticalVelocityRef.current = 0;
+            jumpsUsedRef.current = 0;
             crouchingRef.current = false;
+            zoomingRef.current = false;
             if (document.pointerLockElement === gl.domElement) {
                 document.exitPointerLock();
             }
@@ -576,9 +706,13 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         const clearKeyboardInput = () => {
             keyboardRef.current.clear();
         };
+        const clearActiveInput = () => {
+            clearKeyboardInput();
+            zoomingRef.current = false;
+        };
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                clearKeyboardInput();
+                clearActiveInput();
             }
         };
         const handleMouseMove = (event: MouseEvent) => {
@@ -592,6 +726,14 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         };
         const handlePointerDown = (event: PointerEvent) => {
             if (event.pointerType === 'mouse') {
+                if (event.button === 2) {
+                    event.preventDefault();
+                    zoomingRef.current = true;
+                    if (avatarViewRef.current === 'third-person') {
+                        setView('first-person');
+                    }
+                    return;
+                }
                 if (
                     event.button === 0 &&
                     document.pointerLockElement !== gl.domElement
@@ -617,25 +759,32 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             lastPointerY = event.clientY;
         };
         const handlePointerEnd = (event: PointerEvent) => {
+            if (event.pointerType === 'mouse' && event.button === 2) {
+                zoomingRef.current = false;
+            }
             if (event.pointerId === dragPointerId) {
                 dragPointerId = null;
             }
         };
+        const handleContextMenu = (event: MouseEvent) => {
+            event.preventDefault();
+        };
 
         window.addEventListener('keydown', handleKeyDown, { passive: false });
         window.addEventListener('keyup', handleKeyUp);
-        window.addEventListener('blur', clearKeyboardInput);
+        window.addEventListener('blur', clearActiveInput);
         document.addEventListener('visibilitychange', handleVisibilityChange);
         document.addEventListener('mousemove', handleMouseMove);
         gl.domElement.addEventListener('pointerdown', handlePointerDown);
         gl.domElement.addEventListener('pointermove', handlePointerMove);
-        gl.domElement.addEventListener('pointerup', handlePointerEnd);
-        gl.domElement.addEventListener('pointercancel', handlePointerEnd);
+        window.addEventListener('pointerup', handlePointerEnd);
+        window.addEventListener('pointercancel', handlePointerEnd);
+        gl.domElement.addEventListener('contextmenu', handleContextMenu);
         return () => {
             clearKeyboardInput();
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
-            window.removeEventListener('blur', clearKeyboardInput);
+            window.removeEventListener('blur', clearActiveInput);
             document.removeEventListener(
                 'visibilitychange',
                 handleVisibilityChange,
@@ -643,13 +792,11 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             document.removeEventListener('mousemove', handleMouseMove);
             gl.domElement.removeEventListener('pointerdown', handlePointerDown);
             gl.domElement.removeEventListener('pointermove', handlePointerMove);
-            gl.domElement.removeEventListener('pointerup', handlePointerEnd);
-            gl.domElement.removeEventListener(
-                'pointercancel',
-                handlePointerEnd,
-            );
+            window.removeEventListener('pointerup', handlePointerEnd);
+            window.removeEventListener('pointercancel', handlePointerEnd);
+            gl.domElement.removeEventListener('contextmenu', handleContextMenu);
         };
-    }, [gl.domElement, setView, view]);
+    }, [avatarActive, gl.domElement, setView]);
 
     function activateAvatarView() {
         const actor = actorRef.current;
@@ -875,6 +1022,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                 previousGroundY - groundYRef.current > gardenAvatarMaxStepHeight
             ) {
                 groundedRef.current = false;
+                jumpsUsedRef.current = Math.max(jumpsUsedRef.current, 1);
                 verticalVelocityRef.current = 0;
             }
             if (movement.collided) {
@@ -894,9 +1042,16 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                 delta,
             );
 
-            if (jumpQueuedRef.current && groundedRef.current) {
-                verticalVelocityRef.current = avatarJumpVelocity;
-                groundedRef.current = false;
+            if (jumpQueuedRef.current) {
+                const nextJumpCount = getGardenAvatarNextJumpCount({
+                    grounded: groundedRef.current,
+                    jumpsUsed: jumpsUsedRef.current,
+                });
+                if (nextJumpCount !== null) {
+                    jumpsUsedRef.current = nextJumpCount;
+                    verticalVelocityRef.current = avatarJumpVelocity;
+                    groundedRef.current = false;
+                }
             }
             jumpQueuedRef.current = false;
             if (groundedRef.current) {
@@ -935,6 +1090,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                     actor.position.y = groundYRef.current;
                     verticalVelocityRef.current = 0;
                     groundedRef.current = true;
+                    jumpsUsedRef.current = 0;
                 }
             }
         }
@@ -956,16 +1112,17 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             delta,
             distanceWalked: distanceWalkedRef.current,
             grounded: groundedRef.current,
+            headPitch: view === 'overview' ? 0 : pitchRef.current,
             rig: model.rig,
             walkAmount: gaitAmountRef.current,
         });
-        if (visualRef.current) {
-            visualRef.current.visible = view !== 'first-person';
+        if (view !== 'overview') {
+            gl.shadowMap.needsUpdate = true;
         }
         updateActorGroundingShadow?.({
             actorY: actor.position.y,
             receiverY: groundYRef.current,
-            visible: actor.visible && view !== 'first-person',
+            visible: actor.visible && view === 'overview',
             x: actor.position.x,
             yaw: actor.rotation.y,
             z: actor.position.z,
@@ -984,8 +1141,8 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             >
                 <mesh
                     name="Interaction:GardenAvatar"
-                    position={[0, 0.7, 0]}
-                    scale={[0.9, 1.55, 0.9]}
+                    position={[0, 0.6, 0]}
+                    scale={[0.76, 1.32, 0.76]}
                 >
                     <boxGeometry />
                     <meshBasicMaterial
@@ -995,11 +1152,11 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                         opacity={0}
                     />
                 </mesh>
-                <group ref={visualRef} scale={avatarModelScale}>
+                <group scale={avatarModelScale}>
                     <primitive object={model.scene} />
                 </group>
                 {view === 'overview' ? (
-                    <Html center position={[0, 1.68, 0]} zIndexRange={[30, 20]}>
+                    <Html center position={[0, 1.43, 0]} zIndexRange={[30, 20]}>
                         <button
                             type="button"
                             className="whitespace-nowrap rounded-full border border-border/60 bg-background/85 px-2.5 py-1 text-xs font-medium shadow-md backdrop-blur-sm transition-transform hover:scale-105 hover:bg-muted"
@@ -1022,6 +1179,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                     pitchRef={pitchRef}
                     view={view}
                     yawRef={yawRef}
+                    zoomingRef={zoomingRef}
                 />
             ) : null}
         </>

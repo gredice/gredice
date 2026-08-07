@@ -4,6 +4,7 @@ import { SandboxDebugActions } from './SandboxDebugActions';
 
 const debugSandboxFlags = {
     enableDebugHudFlag: true,
+    enableGardenAvatarFlag: true,
 } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
 
 export default function DebugSandboxPage() {

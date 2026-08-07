@@ -1,6 +1,6 @@
 'use client';
 
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
     useCallback,
@@ -115,6 +115,7 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
     const groupRef = useRef<THREE.Group>(null);
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
 
     const updateCameraFacing = useCallback(() => {
         groupRef.current?.quaternion.copy(camera.quaternion);
@@ -129,6 +130,12 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
 
         return gameCamera.subscribe(() => updateCameraFacing());
     }, [gameCamera, updateCameraFacing]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateCameraFacing();
+        }
+    }, -90);
 
     return <group ref={groupRef}>{children}</group>;
 }

@@ -11,7 +11,9 @@ import {
     gardenAvatarCrouchingCollisionHeight,
     getGardenAvatarCeilingY,
     getGardenAvatarGroundY,
+    getGardenAvatarNextJumpCount,
     getGardenAvatarRoamBlockedCells,
+    getGardenAvatarSurfaceY,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
 
@@ -166,6 +168,90 @@ test('uses complete stack heights as walkable avatar terrain', () => {
 
     assert.equal(world.blockedCells.length, 0);
     assert.equal(Math.max(...world.surfaces.map((surface) => surface.y)), 0.8);
+});
+
+test('follows angled terrain height continuously instead of flattening it', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'slope', name: 'Block_Grass_Angle', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const slope = world.surfaces[0];
+
+    assert.ok(slope);
+    assert.equal(getGardenAvatarSurfaceY({ x: -0.5, z: 0 }, slope), 0);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: 0 }, slope), 0.2);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0 }, slope), 0.4);
+});
+
+test('matches the rendered orientation of a quarter-turned slope', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'slope', name: 'Block_Sand_Angle', rotation: 1 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const slope = world.surfaces[0];
+
+    assert.ok(slope);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: -0.5 }, slope), 0.4);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: 0.5 }, slope), 0);
+});
+
+test('matches corner and reverse-corner terrain silhouettes', () => {
+    const corner = {
+        bottomY: 0,
+        kind: 'ground',
+        slopeBlockName: 'Block_Grass_Corner',
+        x: 0,
+        y: 0.4,
+        z: 0,
+    } satisfies GardenAvatarCollisionWorld['surfaces'][number];
+    const reverseCorner = {
+        ...corner,
+        slopeBlockName: 'Block_Grass_Reverse_Corner',
+    };
+
+    assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0.5 }, corner), 0.4);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: -0.5 }, corner), 0);
+    assert.equal(
+        getGardenAvatarSurfaceY({ x: -0.5, z: -0.5 }, reverseCorner),
+        0,
+    );
+    assert.equal(
+        getGardenAvatarSurfaceY({ x: 0.5, z: -0.5 }, reverseCorner),
+        0.4,
+    );
+});
+
+test('allows one grounded jump and one airborne jump', () => {
+    assert.equal(
+        getGardenAvatarNextJumpCount({ grounded: true, jumpsUsed: 0 }),
+        1,
+    );
+    assert.equal(
+        getGardenAvatarNextJumpCount({ grounded: false, jumpsUsed: 1 }),
+        2,
+    );
+    assert.equal(
+        getGardenAvatarNextJumpCount({ grounded: false, jumpsUsed: 2 }),
+        null,
+    );
+    assert.equal(
+        getGardenAvatarNextJumpCount({ grounded: false, jumpsUsed: 0 }),
+        2,
+    );
 });
 
 test('walks on the support below water instead of the water surface', () => {
@@ -328,7 +414,8 @@ test('lets the shorter crouching collider pass under overhead geometry', () => {
                 collisionHeight: gardenAvatarCrouchingCollisionHeight,
                 position: { x: 0, y: 0, z: 0 },
                 world,
-            }) ?? 0) - 0.12,
+            }) ?? 0) -
+                (0.9 - gardenAvatarCrouchingCollisionHeight),
         ) < 0.000_001,
     );
 });

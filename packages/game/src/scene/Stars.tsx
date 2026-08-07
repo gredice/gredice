@@ -119,6 +119,9 @@ export function Stars({ visibility = 1 }: StarsProps) {
                 Math.sin(theta) * edgeRadius,
                 -forwardDot,
             );
+            const worldY = Math.random() * 2 - 1;
+            const worldRadius = Math.sqrt(Math.max(0, 1 - worldY * worldY));
+            const worldTheta = Math.random() * Math.PI * 2;
 
             const baseColor = {
                 r: tone,
@@ -154,6 +157,9 @@ export function Stars({ visibility = 1 }: StarsProps) {
                     STAR_TWINKLE.speedBase +
                     Math.random() * STAR_TWINKLE.speedRange,
                 twinkleStrength,
+                worldX: Math.cos(worldTheta) * worldRadius * radius,
+                worldY: worldY * radius,
+                worldZ: Math.sin(worldTheta) * worldRadius * radius,
             };
         }).sort((left, right) => right.brightness - left.brightness);
 
@@ -169,6 +175,9 @@ export function Stars({ visibility = 1 }: StarsProps) {
         const twinkleParams = new Float32Array(
             STAR_FIELD.count * STAR_RENDERING.positionStride,
         );
+        const worldPositions = new Float32Array(
+            STAR_FIELD.count * STAR_RENDERING.positionStride,
+        );
 
         for (let i = 0; i < STAR_FIELD.count; i += 1) {
             const star = stars[i];
@@ -177,6 +186,9 @@ export function Stars({ visibility = 1 }: StarsProps) {
             values[attributeOffset] = star.x;
             values[attributeOffset + 1] = star.y;
             values[attributeOffset + 2] = star.z;
+            worldPositions[attributeOffset] = star.worldX;
+            worldPositions[attributeOffset + 1] = star.worldY;
+            worldPositions[attributeOffset + 2] = star.worldZ;
             colors[attributeOffset] = star.baseColor.r;
             colors[attributeOffset + 1] = star.baseColor.g;
             colors[attributeOffset + 2] = star.baseColor.b;
@@ -193,6 +205,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
             positions: values,
             twinkleColors,
             twinkleParams,
+            worldPositions,
         };
     }, []);
 
@@ -207,14 +220,16 @@ export function Stars({ visibility = 1 }: StarsProps) {
         );
     }, [clampedVisibility]);
 
-    const visiblePositions = useMemo(
-        () =>
-            starField.positions.subarray(
-                0,
-                visibleCount * STAR_RENDERING.positionStride,
-            ),
-        [starField, visibleCount],
-    );
+    const visiblePositions = useMemo(() => {
+        const positions =
+            gardenAvatarView === 'overview'
+                ? starField.positions
+                : starField.worldPositions;
+        return positions.subarray(
+            0,
+            visibleCount * STAR_RENDERING.positionStride,
+        );
+    }, [gardenAvatarView, starField, visibleCount]);
     const visibleColors = useMemo(
         () =>
             starField.colors.subarray(
@@ -258,13 +273,19 @@ export function Stars({ visibility = 1 }: StarsProps) {
             return;
         }
 
+        if (gardenAvatarView !== 'overview') {
+            pointsRef.current.scale.setScalar(1);
+            pointsRef.current.position.copy(camera.position);
+            pointsRef.current.quaternion.identity();
+            return;
+        }
+
         const orthographic = camera as OrthographicCamera;
         pointsRef.current.scale.setScalar(
             orthographic.isOrthographicCamera
                 ? defaultGameCameraZoom / orthographic.zoom
                 : 1,
         );
-
         camera.getWorldDirection(cameraForwardRef.current);
         pointsRef.current.position
             .copy(camera.position)
@@ -273,7 +294,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
                 STAR_FIELD.radiusBase + STAR_FIELD.radiusRange,
             );
         pointsRef.current.quaternion.copy(camera.quaternion);
-    }, [camera]);
+    }, [camera, gardenAvatarView]);
 
     useLayoutEffect(() => {
         if (!gameCamera) {
