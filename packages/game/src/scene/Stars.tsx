@@ -1,4 +1,4 @@
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
     AdditiveBlending,
@@ -69,6 +69,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
     const pointsRef = useRef<Points>(null);
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const timeUniform = useSceneTimeUniform();
     const cameraForwardRef = useRef(new Vector3());
     const clampedVisibility = Math.min(
@@ -282,6 +283,12 @@ export function Stars({ visibility = 1 }: StarsProps) {
 
         return gameCamera.subscribe(() => updateCameraFacing());
     }, [gameCamera, updateCameraFacing]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateCameraFacing();
+        }
+    });
 
     return (
         <points

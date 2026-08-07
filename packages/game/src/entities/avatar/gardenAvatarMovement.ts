@@ -1,7 +1,16 @@
+import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
+import type { Stack } from '../../types/Stack';
+import { getStackBlockHeight } from '../../utils/stackHeightCore';
 import type {
     AnimalMovementCell,
     AnimalMovementSurface,
 } from '../animals/animalMovementTerrain';
+import {
+    isAnimalGroundBlockName,
+    isAnimalWaterBlockName,
+} from '../animals/animalMovementTerrain';
+import { findCatPath } from '../cats/catPathfinding';
 
 export type GardenAvatarPoint = {
     x: number;
@@ -11,11 +20,23 @@ export type GardenAvatarPoint = {
 
 export type GardenAvatarCollisionWorld = {
     blockedCells: AnimalMovementCell[];
-    surfaces: AnimalMovementSurface[];
+    surfaces: GardenAvatarMovementSurface[];
 };
 
-export const gardenAvatarRadius = 0.22;
+export type GardenAvatarMovementSurface = AnimalMovementSurface & {
+    bottomY?: number;
+    halfDepth?: number;
+    halfWidth?: number;
+    roamable?: boolean;
+    roamBlockedCells?: AnimalMovementCell[];
+    rotation?: number;
+};
+
+export const gardenAvatarRadius = 0.18;
+export const gardenAvatarStandingCollisionHeight = 1.32;
+export const gardenAvatarCrouchingCollisionHeight = 0.78;
 export const gardenAvatarMaxStepHeight = 0.42;
+export const gardenAvatarMaxJumpClimbHeight = 0.95;
 
 const terrainHalfSize = 0.5;
 const collisionEpsilon = 0.0001;
@@ -39,16 +60,32 @@ function cellKey(cell: Pick<AnimalMovementCell, 'x' | 'z'>) {
 
 function getHighestSurfaceAt(
     position: Pick<GardenAvatarPoint, 'x' | 'z'>,
-    surfaces: AnimalMovementSurface[],
+    surfaces: GardenAvatarMovementSurface[],
+    currentGroundY: number,
+    collisionHeight: number,
 ) {
-    let selected: AnimalMovementSurface | null = null;
+    let selected: GardenAvatarMovementSurface | null = null;
 
     for (const surface of surfaces) {
+        const rotation = surface.rotation ?? 0;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        const dx = position.x - surface.x;
+        const dz = position.z - surface.z;
+        const localX = dx * cos + dz * sin;
+        const localZ = -dx * sin + dz * cos;
+        const insideSurface =
+            Math.abs(localX) <=
+                (surface.halfWidth ?? terrainHalfSize) + collisionEpsilon &&
+            Math.abs(localZ) <=
+                (surface.halfDepth ?? terrainHalfSize) + collisionEpsilon;
+        const clearsOverhead =
+            surface.bottomY === undefined ||
+            surface.bottomY <= currentGroundY + collisionHeight;
+
         if (
-            Math.abs(position.x - surface.x) <=
-                terrainHalfSize + collisionEpsilon &&
-            Math.abs(position.z - surface.z) <=
-                terrainHalfSize + collisionEpsilon &&
+            insideSurface &&
+            clearsOverhead &&
             (!selected || surface.y > selected.y)
         ) {
             selected = surface;
@@ -70,12 +107,69 @@ function circleIntersectsCell(
     );
 }
 
-export function getGardenAvatarGroundY({
-    currentGroundY,
+function circleIntersectsSurface(
+    position: Pick<GardenAvatarPoint, 'x' | 'z'>,
+    surface: GardenAvatarMovementSurface,
+) {
+    const rotation = surface.rotation ?? 0;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    const dx = position.x - surface.x;
+    const dz = position.z - surface.z;
+    const localX = dx * cos + dz * sin;
+    const localZ = -dx * sin + dz * cos;
+    const halfWidth = surface.halfWidth ?? terrainHalfSize;
+    const halfDepth = surface.halfDepth ?? terrainHalfSize;
+    const closestX = Math.min(Math.max(localX, -halfWidth), halfWidth);
+    const closestZ = Math.min(Math.max(localZ, -halfDepth), halfDepth);
+    const distanceX = localX - closestX;
+    const distanceZ = localZ - closestZ;
+
+    return (
+        distanceX * distanceX + distanceZ * distanceZ <=
+        gardenAvatarRadius * gardenAvatarRadius + collisionEpsilon
+    );
+}
+
+export function getGardenAvatarCeilingY({
+    collisionHeight,
     position,
     world,
 }: {
+    collisionHeight: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}) {
+    let ceilingY: number | null = null;
+
+    for (const surface of world.surfaces) {
+        if (
+            surface.bottomY === undefined ||
+            surface.bottomY <=
+                position.y + collisionHeight + collisionEpsilon ||
+            !circleIntersectsSurface(position, surface)
+        ) {
+            continue;
+        }
+
+        const candidate = surface.bottomY - collisionHeight;
+        ceilingY =
+            ceilingY === null ? candidate : Math.min(ceilingY, candidate);
+    }
+
+    return ceilingY;
+}
+
+export function getGardenAvatarGroundY({
+    collisionHeight = gardenAvatarStandingCollisionHeight,
+    currentGroundY,
+    maxStepHeight = gardenAvatarMaxStepHeight,
+    position,
+    world,
+}: {
+    collisionHeight?: number;
     currentGroundY: number;
+    maxStepHeight?: number;
     position: Pick<GardenAvatarPoint, 'x' | 'z'>;
     world: GardenAvatarCollisionWorld;
 }) {
@@ -93,19 +187,14 @@ export function getGardenAvatarGroundY({
                 z: position.z + sample.z,
             },
             world.surfaces,
+            currentGroundY,
+            collisionHeight,
         );
-        if (surface?.kind !== 'ground') {
-            return null;
-        }
-        sampleHeights.push(surface.y);
+        sampleHeights.push(surface?.y ?? 0);
     }
 
-    const minHeight = Math.min(...sampleHeights);
     const maxHeight = Math.max(...sampleHeights);
-    if (
-        maxHeight - minHeight > gardenAvatarMaxStepHeight ||
-        Math.abs(maxHeight - currentGroundY) > gardenAvatarMaxStepHeight
-    ) {
+    if (maxHeight - currentGroundY > maxStepHeight) {
         return null;
     }
 
@@ -117,9 +206,13 @@ function tryMove(
     x: number,
     z: number,
     world: GardenAvatarCollisionWorld,
+    maxStepHeight: number,
+    collisionHeight: number,
 ) {
     const groundY = getGardenAvatarGroundY({
+        collisionHeight,
         currentGroundY: position.y,
+        maxStepHeight,
         position: { x, z },
         world,
     });
@@ -127,13 +220,17 @@ function tryMove(
 }
 
 export function resolveGardenAvatarHorizontalMovement({
+    collisionHeight = gardenAvatarStandingCollisionHeight,
     deltaX,
     deltaZ,
+    maxStepHeight = gardenAvatarMaxStepHeight,
     position,
     world,
 }: {
+    collisionHeight?: number;
     deltaX: number;
     deltaZ: number;
+    maxStepHeight?: number;
     position: GardenAvatarPoint;
     world: GardenAvatarCollisionWorld;
 }) {
@@ -150,6 +247,8 @@ export function resolveGardenAvatarHorizontalMovement({
             current.x + stepX,
             current.z + stepZ,
             world,
+            maxStepHeight,
+            collisionHeight,
         );
         if (combined) {
             current = combined;
@@ -157,8 +256,22 @@ export function resolveGardenAvatarHorizontalMovement({
         }
 
         collided = true;
-        const xOnly = tryMove(current, current.x + stepX, current.z, world);
-        const zOnly = tryMove(current, current.x, current.z + stepZ, world);
+        const xOnly = tryMove(
+            current,
+            current.x + stepX,
+            current.z,
+            world,
+            maxStepHeight,
+            collisionHeight,
+        );
+        const zOnly = tryMove(
+            current,
+            current.x,
+            current.z + stepZ,
+            world,
+            maxStepHeight,
+            collisionHeight,
+        );
 
         if (xOnly && zOnly) {
             current = Math.abs(stepX) >= Math.abs(stepZ) ? xOnly : zOnly;
@@ -172,14 +285,184 @@ export function resolveGardenAvatarHorizontalMovement({
     return { collided, position: current };
 }
 
+const narrowAvatarCollisionFootprints: Record<
+    string,
+    { depth: number; width: number }
+> = {
+    BirdHouse: { depth: 0.34, width: 0.34 },
+    DeadTreeTall: { depth: 0.3, width: 0.42 },
+    PalmTree: { depth: 0.34, width: 0.34 },
+    Pine: { depth: 0.42, width: 0.42 },
+    PineAdvent: { depth: 0.42, width: 0.42 },
+    ShovelSmall: { depth: 0.14, width: 0.24 },
+    Tree: { depth: 0.42, width: 0.42 },
+};
+
+function positiveDimension(value: unknown, fallback: number) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+        ? value
+        : fallback;
+}
+
+function getAvatarCollisionFootprint(block: BlockData | undefined) {
+    const fallbackWidth = positiveDimension(block?.attributes.spanWidth, 0.68);
+    const fallbackDepth = positiveDimension(block?.attributes.spanDepth, 0.68);
+    const narrow = block
+        ? narrowAvatarCollisionFootprints[block.information.name]
+        : undefined;
+
+    return {
+        depth: Math.min(
+            positiveDimension(block?.attributes.hitboxDepth, fallbackDepth),
+            narrow?.depth ?? Number.POSITIVE_INFINITY,
+        ),
+        width: Math.min(
+            positiveDimension(block?.attributes.hitboxWidth, fallbackWidth),
+            narrow?.width ?? Number.POSITIVE_INFINITY,
+        ),
+    };
+}
+
+function getAvatarCollisionPlacement({
+    block,
+    rotation,
+    stack,
+}: {
+    block: BlockData | undefined;
+    rotation: number;
+    stack: Stack;
+}) {
+    const offsets = getGardenBlockFootprintOffsets(block, rotation);
+    const center = offsets.reduce(
+        (sum, offset) => ({
+            x: sum.x + offset.x / offsets.length,
+            z: sum.z + offset.y / offsets.length,
+        }),
+        { x: 0, z: 0 },
+    );
+
+    return {
+        roamBlockedCells: offsets.map((offset) => ({
+            x: stack.position.x + offset.x,
+            z: stack.position.z + offset.y,
+        })),
+        x: stack.position.x + center.x,
+        z: stack.position.z + center.z,
+    };
+}
+
+export function createGardenAvatarCollisionWorld({
+    blockData,
+    stacks,
+}: {
+    blockData: BlockData[] | null | undefined;
+    stacks: Stack[] | undefined;
+}): GardenAvatarCollisionWorld {
+    const blockDataByName = new Map(
+        blockData?.map((block) => [block.information.name, block]) ?? [],
+    );
+    const surfaces: GardenAvatarMovementSurface[] = [];
+
+    for (const stack of stacks ?? []) {
+        let stackHeight = 0;
+        let waterSupportY: number | null = null;
+
+        for (const [blockIndex, block] of stack.blocks.entries()) {
+            const bottomY = stackHeight;
+            stackHeight += getStackBlockHeight(
+                blockData,
+                stack,
+                block,
+                blockIndex,
+            );
+
+            if (isAnimalWaterBlockName(block.name)) {
+                waterSupportY ??= bottomY;
+                surfaces.push({
+                    bottomY: waterSupportY,
+                    halfDepth: terrainHalfSize,
+                    halfWidth: terrainHalfSize,
+                    kind: 'water',
+                    roamable: false,
+                    roamBlockedCells: [
+                        { x: stack.position.x, z: stack.position.z },
+                    ],
+                    rotation: 0,
+                    x: stack.position.x,
+                    y: waterSupportY,
+                    z: stack.position.z,
+                });
+                continue;
+            }
+
+            waterSupportY = null;
+            const isTerrain = isAnimalGroundBlockName(block.name);
+            const blockDefinition = blockDataByName.get(block.name);
+            const footprint = isTerrain
+                ? { depth: 1, width: 1 }
+                : getAvatarCollisionFootprint(blockDefinition);
+            const placement = isTerrain
+                ? {
+                      roamBlockedCells: undefined,
+                      x: stack.position.x,
+                      z: stack.position.z,
+                  }
+                : getAvatarCollisionPlacement({
+                      block: blockDefinition,
+                      rotation: block.rotation,
+                      stack,
+                  });
+            surfaces.push({
+                bottomY,
+                halfDepth: footprint.depth / 2,
+                halfWidth: footprint.width / 2,
+                kind: 'ground',
+                roamable: isTerrain,
+                roamBlockedCells: placement.roamBlockedCells,
+                rotation: block.rotation * (Math.PI / 2),
+                x: placement.x,
+                y: stackHeight,
+                z: placement.z,
+            });
+        }
+    }
+
+    return {
+        blockedCells: [],
+        surfaces,
+    };
+}
+
+export function getGardenAvatarRoamBlockedCells(
+    world: GardenAvatarCollisionWorld,
+) {
+    const blocked = new Map<string, AnimalMovementCell>();
+    const cells = [
+        ...world.blockedCells,
+        ...world.surfaces
+            .filter((surface) => surface.roamable === false)
+            .flatMap((surface) => surface.roamBlockedCells ?? [surface]),
+    ];
+
+    for (const cell of cells) {
+        const rounded = { x: Math.round(cell.x), z: Math.round(cell.z) };
+        blocked.set(cellKey(rounded), rounded);
+    }
+
+    return [...blocked.values()];
+}
+
 function createWalkableSurfaceMap(world: GardenAvatarCollisionWorld) {
-    const blockedKeys = new Set(world.blockedCells.map(cellKey));
+    const blockedKeys = new Set(
+        getGardenAvatarRoamBlockedCells(world).map(cellKey),
+    );
     const surfaces = new Map<string, AnimalMovementSurface>();
 
     for (const surface of world.surfaces) {
         const key = cellKey(surface);
         if (
             surface.kind === 'ground' &&
+            surface.roamable !== false &&
             !blockedKeys.has(key) &&
             (!surfaces.has(key) ||
                 (surfaces.get(key)?.y ?? Number.NEGATIVE_INFINITY) < surface.y)
@@ -222,10 +505,52 @@ export function findGardenAvatarRoute({
     world: GardenAvatarCollisionWorld;
 }) {
     const surfaces = createWalkableSurfaceMap(world);
-    const startKey = cellKey(from);
+    let startKey = cellKey(from);
     const targetKey = cellKey(to);
-    const start = surfaces.get(startKey);
+    let start = surfaces.get(startKey);
     const target = surfaces.get(targetKey);
+    let reentryRoute: GardenAvatarPoint[] | null = null;
+
+    if (!start) {
+        const candidates = [...surfaces.values()]
+            .filter(
+                (surface) =>
+                    getGardenAvatarGroundY({
+                        currentGroundY: from.y,
+                        position: surface,
+                        world,
+                    }) !== null,
+            )
+            .sort(
+                (left, right) =>
+                    Math.hypot(left.x - from.x, left.z - from.z) -
+                    Math.hypot(right.x - from.x, right.z - from.z),
+            );
+        const blockedCells = getGardenAvatarRoamBlockedCells(world);
+
+        for (const candidate of candidates) {
+            const target = {
+                x: candidate.x,
+                y: candidate.y,
+                z: candidate.z,
+            };
+            const reentry = findCatPath({
+                blockedCells,
+                from,
+                surfaces: [target],
+                to: target,
+            });
+            if (reentry.status === 'unreachable') {
+                continue;
+            }
+
+            start = candidate;
+            startKey = cellKey(start);
+            reentryRoute = reentry.points;
+            break;
+        }
+    }
+
     if (!start || !target) {
         return [from];
     }
@@ -251,16 +576,24 @@ export function findGardenAvatarRoute({
                 routeKey = previousKey;
             }
 
-            return routeKeys.reverse().map((key, index) => {
+            const route = routeKeys.reverse().map((key, index) => {
                 const surface = surfaces.get(key);
-                if (!surface || index === 0) {
+                if (!surface) {
                     return { ...from };
+                }
+                if (index === 0) {
+                    return reentryRoute
+                        ? { x: surface.x, y: surface.y, z: surface.z }
+                        : { ...from };
                 }
                 if (index === routeKeys.length - 1) {
                     return { ...to, y: surface.y };
                 }
                 return { x: surface.x, y: surface.y, z: surface.z };
             });
+            return reentryRoute
+                ? [...reentryRoute.slice(0, -1), ...route]
+                : route;
         }
 
         const current = surfaces.get(currentKey);

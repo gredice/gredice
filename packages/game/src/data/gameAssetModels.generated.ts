@@ -35,7 +35,9 @@ export const gameAssetModels = {
     Bee: { url: '/assets/models/Bee.glb' },
     Cat: { url: '/assets/models/Cat.glb' },
     Dog: { url: '/assets/models/Dog.glb' },
-    FarmerAvatar: { url: '/assets/models/FarmerAvatar.glb' },
+    FarmerAvatar: {
+        url: '/assets/models/FarmerAvatar.glb?v=3f0cffd896c8',
+    },
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=8b128e30b990' },
     WaterSprayKit: { url: '/assets/models/WaterSprayKit.glb' },

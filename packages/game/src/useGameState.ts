@@ -1090,6 +1090,8 @@ export function createGameState({
                           gardenAvatarView,
                           view: 'normal',
                           closeupBlock: null,
+                          closeupCameraActive: false,
+                          closeupCameraSettled: false,
                       },
             );
         },
