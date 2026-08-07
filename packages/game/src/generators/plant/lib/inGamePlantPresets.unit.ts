@@ -104,6 +104,19 @@ test('plants reach full generation at the end of germination and growth', () => 
     );
 });
 
+test('ready plants render fully mature despite inconsistent sowing dates', () => {
+    assert.equal(
+        calculateInGamePlantGeneration({
+            currentTime: new Date('2026-05-02T00:00:00.000Z'),
+            sowDate: '2026-05-01T00:00:00.000Z',
+            lifecycleWindowDays: 84,
+            growthMultiplier: 1,
+            plantStatus: 'ready',
+        }),
+        12,
+    );
+});
+
 test('planting density does not shrink height-calibrated crops', () => {
     const tomato = resolveInGamePlantPreset(['Rajčica']);
     const lettuce = resolveInGamePlantPreset(['Salata']);

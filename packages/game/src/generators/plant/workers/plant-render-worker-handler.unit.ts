@@ -52,14 +52,14 @@ function createRequest(): PackedPlantRenderWorkerRequest {
     };
 }
 
-test('requires the graph-only packed plant protocol v3', () => {
+test('requires the graph-only packed plant protocol v4', () => {
     const request = createRequest();
     const unsupportedKind = { ...request };
     const unsupportedVersion = { ...request };
     Reflect.set(unsupportedKind, 'kind', 'unsupported-kind');
-    Reflect.set(unsupportedVersion, 'version', 2);
+    Reflect.set(unsupportedVersion, 'version', 3);
 
-    assert.equal(PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION, 3);
+    assert.equal(PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION, 4);
     assert.throws(
         () => handlePlantRenderWorkerRequest(unsupportedKind),
         /Unsupported packed plant worker protocol/,

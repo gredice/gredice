@@ -800,6 +800,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                             sort?.information.plant.attributes?.growthWindowMax,
                     }),
                     growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                    plantStatus: field.plantStatus,
                 });
                 const plantInstanceScale = getInGamePlantInstanceScale(
                     resolvedPlantPreset,

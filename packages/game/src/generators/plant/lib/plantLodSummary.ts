@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { PlantDefinition } from './plant-definitions';
 import type { PlantLodSummary } from './plantRenderData';
 import { SeededRNG } from './rng';
-import { vegetableMaterialProps } from './vegetableRenderMetadata';
+import { resolveVegetableColor } from './vegetableRenderMetadata';
 
 interface BuildApproximatePlantLodSummaryOptions {
     flowerGrowth: number;
@@ -133,15 +133,15 @@ export function buildApproximatePlantLodSummary({
     const reproduction = development.reproduction;
     const storage = development.storage;
     const fruitStart = storage?.birthGeneration ?? reproduction.fruitStart;
-    const produceGrowth =
+    const produceMaturity =
         fruitStart === undefined
             ? 0
-            : fruitGrowth *
-              getLifecycleGrowth(
+            : getLifecycleGrowth(
                   generation,
                   fruitStart,
                   storage?.matureGeneration ?? fruitStart + 2.2,
               );
+    const produceGrowth = fruitGrowth * produceMaturity;
     const flowerStageGrowth =
         flowerGrowth *
         getLifecycleGrowth(
@@ -163,8 +163,10 @@ export function buildApproximatePlantLodSummary({
         plantDefinition.vegetable.enabled &&
         produceGrowth > 0.01
     ) {
-        accentColor =
-            vegetableMaterialProps[plantDefinition.vegetable.type].color;
+        accentColor = resolveVegetableColor(
+            plantDefinition.vegetable.type,
+            produceMaturity,
+        );
         if (storage) {
             accentCenterY = Math.max(
                 plantDefinition.vegetable.baseSize * storage.aboveSoilFraction,

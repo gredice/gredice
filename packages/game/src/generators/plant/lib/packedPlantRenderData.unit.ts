@@ -228,6 +228,15 @@ function assertPackedRenderDataEqual(
             `${vegetableGroup.type} vegetable`,
         );
         assertPackedValuesEqual(
+            vegetableGroup.colors,
+            expected.flatMap((vegetable) => [
+                vegetable.color.r,
+                vegetable.color.g,
+                vegetable.color.b,
+            ]),
+            `${vegetableGroup.type} color`,
+        );
+        assertPackedValuesEqual(
             vegetableGroup.growth,
             expected.map((vegetable) => vegetable.growth),
             `${vegetableGroup.type} growth`,
@@ -252,6 +261,7 @@ function getExpectedTransferByteLength(packed: PackedPlantRenderData) {
             (total, vegetable) =>
                 total +
                 vegetable.matrices.byteLength +
+                vegetable.colors.byteLength +
                 vegetable.growth.byteLength +
                 vegetable.swayPhases.byteLength,
             0,
@@ -476,6 +486,10 @@ test('composes root transforms and bakes vegetable growth like the current rende
         Array.from(composedTomatoes.growth),
         Array.from({ length: composedTomatoes.count }, () => 1),
     );
+    assert.deepEqual(
+        Array.from(composedTomatoes.colors),
+        Array.from(packed.vegetables[0]?.colors ?? []),
+    );
     assert.ok(
         packed.vegetables.some((vegetable) =>
             Array.from(vegetable.growth).some((growth) => growth !== 1),
@@ -645,18 +659,30 @@ test('merges exact template instances while preserving channel and produce order
         ),
     );
 
-    const expectedVegetables = new Map<VegetableType, THREE.Matrix4[]>();
+    const expectedVegetables = new Map<
+        VegetableType,
+        { colors: number[]; matrices: THREE.Matrix4[] }
+    >();
     for (const source of sources) {
         for (const vegetable of source.exact.vegetables) {
-            const matrices = expectedVegetables.get(vegetable.type);
+            const expected = expectedVegetables.get(vegetable.type);
             const matrix = bakeReferenceVegetableGrowth(
                 vegetable,
                 source.transform,
             );
-            if (matrices) {
-                matrices.push(matrix);
+            const color = [
+                vegetable.color.r,
+                vegetable.color.g,
+                vegetable.color.b,
+            ];
+            if (expected) {
+                expected.matrices.push(matrix);
+                expected.colors.push(...color);
             } else {
-                expectedVegetables.set(vegetable.type, [matrix]);
+                expectedVegetables.set(vegetable.type, {
+                    colors: color,
+                    matrices: [matrix],
+                });
             }
         }
     }
@@ -667,11 +693,16 @@ test('merges exact template instances while preserving channel and produce order
     for (const vegetable of merged.vegetables) {
         const expected = expectedVegetables.get(vegetable.type);
         assert.ok(expected);
-        assert.equal(vegetable.count, expected.length);
+        assert.equal(vegetable.count, expected.matrices.length);
         assertPackedMatricesClose(
             vegetable.matrices,
-            expected,
+            expected.matrices,
             `merged ${vegetable.type}`,
+        );
+        assertPackedValuesEqual(
+            vegetable.colors,
+            expected.colors,
+            `merged ${vegetable.type} color`,
         );
         assert.ok(Array.from(vegetable.growth).every((growth) => growth === 1));
     }

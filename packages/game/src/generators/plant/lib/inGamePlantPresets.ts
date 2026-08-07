@@ -341,12 +341,18 @@ export function calculateInGamePlantGeneration({
     sowDate,
     lifecycleWindowDays,
     growthMultiplier,
+    plantStatus,
 }: {
     currentTime: Date;
     sowDate: string;
     lifecycleWindowDays: number;
     growthMultiplier: number;
+    plantStatus?: string | null;
 }) {
+    if (plantStatus === 'ready') {
+        return MAX_PLANT_GENERATION;
+    }
+
     const elapsedDays = Math.max(
         0,
         (currentTime.getTime() - new Date(sowDate).getTime()) /
