@@ -126,6 +126,13 @@ import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
 } from '../../../lib/garden/publicGardenSerialization';
+import {
+    publicGardenVisitorClientAddress,
+    publicGardenVisitorPresenceBodySchema,
+    publicGardenVisitorRateLimitAllows,
+    removePublicGardenVisitorPresence,
+    updatePublicGardenVisitorPresence,
+} from '../../../lib/garden/publicGardenVisitorPresence';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -1927,6 +1934,77 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     serializePublicGardenPreviewImage(ownerPreviewImage),
                 likeCount: likeCounts.get(garden.id) ?? 0,
                 queuedTasks,
+            });
+        },
+    )
+    .post(
+        '/:gardenId/public/visitors',
+        describeRoute({
+            description:
+                'Publish an anonymous visitor position and read other live visitors',
+            security: publicSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', publicGardenVisitorPresenceBodySchema),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const withinRateLimit = await publicGardenVisitorRateLimitAllows(
+                publicGardenVisitorClientAddress(context.req.raw.headers),
+            );
+            if (!withinRateLimit) {
+                context.header('Retry-After', '1');
+                return context.json(
+                    { error: 'Too many visitor presence requests' },
+                    429,
+                );
+            }
+
+            const body = context.req.valid('json');
+            if (body.action === 'leave') {
+                const result = await removePublicGardenVisitorPresence({
+                    gardenId: gardenIdNumber,
+                    visitorCapability: body.visitorCapability,
+                    visitorId: body.visitorId,
+                });
+                if (result.status === 'unauthorized') {
+                    return context.json(
+                        { error: 'Invalid visitor capability' },
+                        403,
+                    );
+                }
+                return context.json({
+                    live: result.status === 'removed',
+                    visitors: [],
+                });
+            }
+
+            const result = await updatePublicGardenVisitorPresence({
+                gardenId: gardenIdNumber,
+                presence: body,
+            });
+            if (result.status === 'unauthorized') {
+                return context.json(
+                    { error: 'Invalid visitor capability' },
+                    403,
+                );
+            }
+            if (result.status === 'unavailable') {
+                return context.json({ live: false, visitors: [] });
+            }
+            return context.json({
+                live: result.live,
+                visitorCapability: result.visitorCapability,
+                visitors: result.visitors,
             });
         },
     )

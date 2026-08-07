@@ -191,7 +191,8 @@ export default async function PublicGardenPage({
                 level="body3"
                 className="px-1 italic text-muted-foreground"
             >
-                Prikaz je samo za gledanje.
+                Tvoj vrtni lik slobodno šeće dok ne odabereš „Prošetaj vrtom”.
+                Tijekom posjeta možeš vidjeti i druge posjetitelje uživo.
             </Typography>
         </Stack>
     );

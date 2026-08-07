@@ -445,6 +445,9 @@ export type GameState = {
     view: 'normal' | 'closeup';
     gardenAvatarView: GardenAvatarView;
     gardenAvatarMoveInput: GardenAvatarMoveInput;
+    gardenAvatarSprintInput: boolean;
+    gardenAvatarCrouchInput: boolean;
+    gardenAvatarZoomInput: boolean;
     gardenAvatarJumpRequest: number;
     closeupBlock: Block | null;
     closeupCameraActive: boolean;
@@ -458,6 +461,9 @@ export type GameState = {
     ) => void;
     setGardenAvatarView: (view: GardenAvatarView) => void;
     setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
+    setGardenAvatarSprintInput: (active: boolean) => void;
+    setGardenAvatarCrouchInput: (active: boolean) => void;
+    setGardenAvatarZoomInput: (active: boolean) => void;
     requestGardenAvatarJump: () => void;
 
     // Debug (overrides)
@@ -1053,6 +1059,9 @@ export function createGameState({
         view: 'normal',
         gardenAvatarView: 'overview',
         gardenAvatarMoveInput: { forward: 0, right: 0 },
+        gardenAvatarSprintInput: false,
+        gardenAvatarCrouchInput: false,
+        gardenAvatarZoomInput: false,
         gardenAvatarJumpRequest: 0,
         closeupBlock: null,
         closeupCameraActive: false,
@@ -1085,6 +1094,9 @@ export function createGameState({
                     ? {
                           gardenAvatarView,
                           gardenAvatarMoveInput: { forward: 0, right: 0 },
+                          gardenAvatarSprintInput: false,
+                          gardenAvatarCrouchInput: false,
+                          gardenAvatarZoomInput: false,
                       }
                     : {
                           gardenAvatarView,
@@ -1097,6 +1109,12 @@ export function createGameState({
         },
         setGardenAvatarMoveInput: (gardenAvatarMoveInput) =>
             set({ gardenAvatarMoveInput }),
+        setGardenAvatarSprintInput: (gardenAvatarSprintInput) =>
+            set({ gardenAvatarSprintInput }),
+        setGardenAvatarCrouchInput: (gardenAvatarCrouchInput) =>
+            set({ gardenAvatarCrouchInput }),
+        setGardenAvatarZoomInput: (gardenAvatarZoomInput) =>
+            set({ gardenAvatarZoomInput }),
         requestGardenAvatarJump: () =>
             set((state) => ({
                 gardenAvatarJumpRequest: state.gardenAvatarJumpRequest + 1,

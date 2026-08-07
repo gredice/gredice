@@ -6,6 +6,7 @@ import { FullWidth, Minimize } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
+import { usePublicGardenVisitorPresence } from './usePublicGardenVisitorPresence';
 
 export function PublicGardenExplorer({
     className,
@@ -15,12 +16,13 @@ export function PublicGardenExplorer({
 }: {
     className?: string;
     framed?: boolean;
-    garden: PublicGardenViewerProps['garden'];
+    garden: NonNullable<PublicGardenViewerProps['garden']>;
     size?: 'card' | 'default';
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [supportsFullscreen, setSupportsFullscreen] = useState(false);
+    const visitorPresence = usePublicGardenVisitorPresence(garden.id);
 
     const openFullscreen = useCallback(() => {
         const element = containerRef.current;
@@ -91,9 +93,10 @@ export function PublicGardenExplorer({
                     className="size-full"
                     deferDetails={false}
                     garden={garden}
+                    visitorPresence={visitorPresence}
                 />
                 {supportsFullscreen ? (
-                    <div className="pointer-events-none absolute right-4 bottom-4 z-10 flex max-w-[calc(100%-2rem)] items-center gap-2 transition-[opacity,transform] duration-300 ease-out md:right-6 md:bottom-6">
+                    <div className="pointer-events-none absolute top-4 right-4 z-10 flex max-w-[calc(100%-2rem)] items-center gap-2 transition-[opacity,transform] duration-300 ease-out md:top-6 md:right-6">
                         <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-xs">
                             {isFullscreen ? (
                                 <IconButton

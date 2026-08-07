@@ -44,8 +44,9 @@ import {
     getGardenAvatarSurfaceY,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
+import type { GardenAvatarPresenceState } from './gardenVisitorPresence';
 
-const avatarModelScale = 0.697;
+export const avatarModelScale = 0.697;
 const avatarEyeHeight = 1.2;
 const avatarCrouchEyeHeight = 0.9;
 const avatarWalkSpeed = 2.15;
@@ -108,6 +109,15 @@ function createRandom(seed: number) {
     };
 }
 
+function hashAvatarSeed(value: string) {
+    let hash = 2_166_136_261;
+    for (const character of value) {
+        hash ^= character.codePointAt(0) ?? 0;
+        hash = Math.imul(hash, 16_777_619);
+    }
+    return hash >>> 0;
+}
+
 function isEditableTarget(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) {
         return false;
@@ -120,7 +130,7 @@ function isEditableTarget(target: EventTarget | null) {
     );
 }
 
-function dampAngle(
+export function dampGardenAvatarAngle(
     current: number,
     target: number,
     damping: number,
@@ -133,7 +143,7 @@ function dampAngle(
     return current + difference * (1 - Math.exp(-damping * delta));
 }
 
-function prepareAvatarModel(root: Object3D) {
+export function prepareGardenAvatarModel(root: Object3D) {
     const meshes: Mesh[] = [];
     const materials = new Map<Mesh, Mesh['material']>();
     root.traverse((object) => {
@@ -185,7 +195,7 @@ function prepareAvatarModel(root: Object3D) {
     };
 }
 
-function animateAvatarRig({
+export function animateGardenAvatarRig({
     crouchAmount,
     delta,
     distanceWalked,
@@ -542,12 +552,27 @@ function GardenAvatarCamera({
     );
 }
 
-export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
+export function GardenAvatar({
+    onPresenceChange,
+    roamSeed = 'garden-avatar',
+    stacks,
+}: {
+    onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
+    roamSeed?: string;
+    stacks: Stack[] | undefined;
+}) {
     const gltf = useGameGLTF('FarmerAvatar');
     const { data: blockData } = useBlockData();
     const view = useGameState((state) => state.gardenAvatarView);
     const setView = useGameState((state) => state.setGardenAvatarView);
     const touchMoveInput = useGameState((state) => state.gardenAvatarMoveInput);
+    const touchSprintInput = useGameState(
+        (state) => state.gardenAvatarSprintInput,
+    );
+    const touchCrouchInput = useGameState(
+        (state) => state.gardenAvatarCrouchInput,
+    );
+    const touchZoomInput = useGameState((state) => state.gardenAvatarZoomInput);
     const jumpRequest = useGameState((state) => state.gardenAvatarJumpRequest);
     const { camera, gl } = useThree();
     const actorRef = useRef<Group>(null);
@@ -565,13 +590,18 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     const avatarViewRef = useRef(view);
     avatarViewRef.current = view;
     const avatarActive = view !== 'overview';
-    const randomRef = useRef(createRandom(0x47524544));
+    const roamSeedRef = useRef(hashAvatarSeed(roamSeed));
+    const randomRef = useRef(createRandom(roamSeedRef.current));
     const roamRef = useRef<AvatarRoamState>({ route: [], waitUntil: 4 });
     const distanceWalkedRef = useRef(0);
     const gaitAmountRef = useRef(0);
     const crouchingRef = useRef(false);
     const crouchAmountRef = useRef(0);
+    const mouseZoomingRef = useRef(false);
     const zoomingRef = useRef(false);
+    const presenceCallbackRef = useRef(onPresenceChange);
+    presenceCallbackRef.current = onPresenceChange;
+    const lastPresenceReportAtRef = useRef(Number.NEGATIVE_INFINITY);
     const cameraEntryPoseRef = useRef<AvatarCameraEntryPose>({
         position: camera.position.clone(),
         quaternion: camera.quaternion.clone(),
@@ -579,7 +609,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     const initializedRef = useRef(false);
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
-        return { ...prepareAvatarModel(scene), scene };
+        return { ...prepareGardenAvatarModel(scene), scene };
     }, [gltf.scene]);
     const world = useMemo(
         () => createGardenAvatarCollisionWorld({ blockData, stacks }),
@@ -623,15 +653,40 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     );
 
     useEffect(() => {
+        if (!avatarActive) {
+            return;
+        }
+        const previousTouchAction = gl.domElement.style.touchAction;
+        gl.domElement.style.touchAction = 'none';
+        return () => {
+            gl.domElement.style.touchAction = previousTouchAction;
+        };
+    }, [avatarActive, gl.domElement]);
+
+    useEffect(() => {
         const actor = actorRef.current;
         if (!actor) {
             return;
         }
-        const spawn = findGardenAvatarSpawnPoint(world);
-        if (!spawn) {
+        const defaultSpawn = findGardenAvatarSpawnPoint(world);
+        if (!defaultSpawn) {
             actor.visible = false;
             return;
         }
+        const nearbySpawnCandidates = roamCandidates
+            .map((candidate) => ({
+                candidate,
+                distance: Math.hypot(
+                    candidate.x - defaultSpawn.x,
+                    candidate.z - defaultSpawn.z,
+                ),
+            }))
+            .sort((left, right) => left.distance - right.distance)
+            .slice(0, 12);
+        const spawn =
+            nearbySpawnCandidates[
+                roamSeedRef.current % Math.max(nearbySpawnCandidates.length, 1)
+            ]?.candidate ?? defaultSpawn;
         actor.visible = true;
         const currentGroundY = getGardenAvatarGroundY({
             currentGroundY: groundYRef.current,
@@ -645,7 +700,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         } else {
             groundYRef.current = currentGroundY;
         }
-    }, [world]);
+    }, [roamCandidates, world]);
 
     useEffect(() => {
         if (jumpRequest !== previousJumpRequestRef.current) {
@@ -661,6 +716,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             verticalVelocityRef.current = 0;
             jumpsUsedRef.current = 0;
             crouchingRef.current = false;
+            mouseZoomingRef.current = false;
             zoomingRef.current = false;
             if (document.pointerLockElement === gl.domElement) {
                 document.exitPointerLock();
@@ -708,7 +764,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         };
         const clearActiveInput = () => {
             clearKeyboardInput();
-            zoomingRef.current = false;
+            mouseZoomingRef.current = false;
         };
         const handleVisibilityChange = () => {
             if (document.hidden) {
@@ -728,7 +784,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             if (event.pointerType === 'mouse') {
                 if (event.button === 2) {
                     event.preventDefault();
-                    zoomingRef.current = true;
+                    mouseZoomingRef.current = true;
                     if (avatarViewRef.current === 'third-person') {
                         setView('first-person');
                     }
@@ -760,7 +816,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         };
         const handlePointerEnd = (event: PointerEvent) => {
             if (event.pointerType === 'mouse' && event.button === 2) {
-                zoomingRef.current = false;
+                mouseZoomingRef.current = false;
             }
             if (event.pointerId === dragPointerId) {
                 dragPointerId = null;
@@ -797,6 +853,12 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             gl.domElement.removeEventListener('contextmenu', handleContextMenu);
         };
     }, [avatarActive, gl.domElement, setView]);
+
+    useEffect(() => {
+        if (touchZoomInput && view === 'third-person') {
+            setView('first-person');
+        }
+    }, [setView, touchZoomInput, view]);
 
     function activateAvatarView() {
         const actor = actorRef.current;
@@ -903,7 +965,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
                     actor.position.x = movement.position.x;
                     actor.position.z = movement.position.z;
                     groundYRef.current = movement.position.y;
-                    actor.rotation.y = dampAngle(
+                    actor.rotation.y = dampGardenAvatarAngle(
                         actor.rotation.y,
                         -Math.atan2(dx, -dz),
                         avatarTurnDamping,
@@ -927,7 +989,9 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         } else {
             const keys = keyboardRef.current;
             const crouchRequested =
-                keys.has('ControlLeft') || keys.has('ControlRight');
+                touchCrouchInput ||
+                keys.has('ControlLeft') ||
+                keys.has('ControlRight');
             let crouching =
                 crouchRequested ||
                 (!groundedRef.current && crouchingRef.current);
@@ -964,7 +1028,9 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             const inputLength = Math.hypot(inputForward, inputRight);
             const targetSpeed = crouching
                 ? avatarCrouchSpeed
-                : keys.has('ShiftLeft') || keys.has('ShiftRight')
+                : touchSprintInput ||
+                    keys.has('ShiftLeft') ||
+                    keys.has('ShiftRight')
                   ? avatarRunSpeed
                   : avatarWalkSpeed;
             const forwardX = -Math.sin(yawRef.current);
@@ -1035,7 +1101,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             }
             movingSpeed = moved / Math.max(delta, 0.001);
             distanceWalkedRef.current += moved;
-            actor.rotation.y = dampAngle(
+            actor.rotation.y = dampGardenAvatarAngle(
                 actor.rotation.y,
                 yawRef.current,
                 avatarTurnDamping,
@@ -1107,7 +1173,8 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             18,
             delta,
         );
-        animateAvatarRig({
+        zoomingRef.current = mouseZoomingRef.current || touchZoomInput;
+        animateGardenAvatarRig({
             crouchAmount: crouchAmountRef.current,
             delta,
             distanceWalked: distanceWalkedRef.current,
@@ -1127,6 +1194,28 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
             yaw: actor.rotation.y,
             z: actor.position.z,
         });
+        if (
+            presenceCallbackRef.current &&
+            now - lastPresenceReportAtRef.current >= 0.1
+        ) {
+            lastPresenceReportAtRef.current = now;
+            presenceCallbackRef.current({
+                crouchAmount: crouchAmountRef.current,
+                grounded: groundedRef.current,
+                headPitch: view === 'overview' ? 0 : pitchRef.current,
+                movingSpeed,
+                position: [
+                    actor.position.x,
+                    actor.position.y,
+                    actor.position.z,
+                ],
+                view,
+                yaw: Math.atan2(
+                    Math.sin(actor.rotation.y),
+                    Math.cos(actor.rotation.y),
+                ),
+            });
+        }
     });
 
     return (
