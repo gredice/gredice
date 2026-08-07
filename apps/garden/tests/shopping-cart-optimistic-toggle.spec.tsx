@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import {
+    calendarMonthOffset,
+    selectCalendarDate,
+} from './calendarDatePickerTestUtils';
+import {
     ShoppingCartHudItemsPresenceStory,
     ShoppingCartItemsPresenceStory,
     ShoppingCartOptimisticToggleStory,
@@ -215,11 +219,16 @@ test('shopping cart date chip updates scheduled date metadata', async ({
 
     await mount(<ShoppingCartOptimisticToggleStory />);
 
-    const tomorrowLabel = formatCartDate(addDays(new Date(), 1));
-    await page.getByTitle(`Promijeni datum: ${tomorrowLabel}`).click();
-
-    const selectedDate = formatDateInput(addDays(new Date(), 7));
-    await page.getByLabel('Datum').fill(selectedDate);
+    const tomorrow = addDays(new Date(), 1);
+    const selected = addDays(new Date(), 7);
+    const tomorrowLabel = formatCartDate(tomorrow);
+    const selectedDate = formatDateInput(selected);
+    await selectCalendarDate({
+        date: selectedDate,
+        monthOffset: calendarMonthOffset(tomorrow, selected),
+        page,
+        trigger: page.getByTitle(`Promijeni datum: ${tomorrowLabel}`),
+    });
 
     const payload = await postedPayload;
     const additionalData =
