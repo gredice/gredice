@@ -5,7 +5,6 @@ import {
     suncokretWeatherViews,
 } from '@gredice/js/ai';
 import {
-    aiChatRetryAtIso,
     ensureAiChatConversation,
     finalizeAiChatUsage,
     getAiChatAccountLimitState,
@@ -42,8 +41,8 @@ import {
 import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenContext';
 import {
     estimateSuncokretPromptTokens,
-    estimateSuncokretRequestCostMicroUsd,
-    getSuncokretGatewayBilledCostMicroUsd,
+    estimateSuncokretRequestCostMicroEur,
+    getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretModelRegistry,
     getSuncokretPricedModel,
@@ -180,7 +179,7 @@ function queryFeatureFlags(query: z.infer<typeof StatusQuerySchema>) {
     };
 }
 
-function microUsdToUsd(value: number) {
+function microEurToEur(value: number) {
     return value / 1_000_000;
 }
 
@@ -816,12 +815,25 @@ const app = new Hono<{ Variables: ChatVariables }>()
 
             const budget = featureFlags.enableSuncokretDebugFlag
                 ? {
-                      dailyLimitUsd: microUsdToUsd(
-                          limitState.dailyLimitMicroUsd,
+                      dailyLimitEur: microEurToEur(
+                          limitState.dailyLimitMicroEur,
                       ),
-                      usedUsd: microUsdToUsd(limitState.usedMicroUsd),
-                      reservedUsd: microUsdToUsd(limitState.reservedMicroUsd),
-                      remainingUsd: microUsdToUsd(limitState.remainingMicroUsd),
+                      usedEur: microEurToEur(limitState.usedMicroEur),
+                      reservedEur: microEurToEur(limitState.reservedMicroEur),
+                      remainingEur: microEurToEur(limitState.remainingMicroEur),
+                      weeklyLimitEur: microEurToEur(
+                          limitState.weeklyLimitMicroEur,
+                      ),
+                      weeklyUsedEur: microEurToEur(
+                          limitState.weeklyUsedMicroEur,
+                      ),
+                      weeklyReservedEur: microEurToEur(
+                          limitState.weeklyReservedMicroEur,
+                      ),
+                      weeklyRemainingEur: microEurToEur(
+                          limitState.weeklyRemainingMicroEur,
+                      ),
+                      currency: 'EUR' as const,
                   }
                 : undefined;
 
@@ -841,14 +853,14 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     trialChatDaysLimit: limitState.trialChatDaysLimit,
                 },
                 usage: buildSuncokretUsageStatus({
-                    dailyLimit: limitState.dailyLimitMicroUsd,
-                    dailyReserved: limitState.reservedMicroUsd,
-                    dailyUsed: limitState.usedMicroUsd,
+                    dailyLimit: limitState.dailyLimitMicroEur,
+                    dailyReserved: limitState.reservedMicroEur,
+                    dailyUsed: limitState.usedMicroEur,
                     outputUsageUnitsPerToken:
-                        model?.outputUsdPerMillionTokens ?? 0,
-                    weeklyLimit: limitState.weeklyLimitMicroUsd,
-                    weeklyReserved: limitState.weeklyReservedMicroUsd,
-                    weeklyUsed: limitState.weeklyUsedMicroUsd,
+                        model?.outputEurPerMillionTokens ?? 0,
+                    weeklyLimit: limitState.weeklyLimitMicroEur,
+                    weeklyReserved: limitState.weeklyReservedMicroEur,
+                    weeklyUsed: limitState.weeklyUsedMicroEur,
                 }),
                 budget,
             });
@@ -1101,26 +1113,32 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const maxOutputTokens = resolveSuncokretMaxOutputTokens({
                 estimatedInputTokens,
                 model,
-                remainingMicroUsd: limitState.remainingMicroUsd,
+                remainingMicroEur: limitState.spendableMicroEur,
             });
 
             if (maxOutputTokens < MIN_OUTPUT_TOKENS) {
+                const weeklyLimitReached =
+                    limitState.weeklyRemainingMicroEur <=
+                    limitState.remainingMicroEur;
                 const error = jsonError(
-                    'ai_daily_limit_exceeded',
-                    'Dnevni limit za Suncokret chat je iskorišten. Možeš nastaviti sutra.',
+                    weeklyLimitReached
+                        ? 'ai_weekly_limit_exceeded'
+                        : 'ai_daily_limit_exceeded',
+                    weeklyLimitReached
+                        ? 'Tjedni limit za Suncokret chat je iskorišten. Možeš nastaviti sljedeći tjedan.'
+                        : 'Limit za posljednja 24 sata je iskorišten. Upotreba će se postupno osloboditi.',
                     429,
                     {
-                        retryAt: aiChatRetryAtIso(
-                            limitState.usageDate,
-                            limitState.timeZone,
-                        ),
+                        retryAt: weeklyLimitReached
+                            ? limitState.weeklyRetryAt
+                            : limitState.dailyRetryAt,
                         limit: limitState,
                     },
                 );
                 return context.json(error.body, error.status);
             }
 
-            const estimatedCostMicroUsd = estimateSuncokretRequestCostMicroUsd({
+            const estimatedCostMicroEur = estimateSuncokretRequestCostMicroEur({
                 inputTokens: estimatedInputTokens,
                 maxOutputTokens,
                 model,
@@ -1129,18 +1147,26 @@ const app = new Hono<{ Variables: ChatVariables }>()
             const reservation = await reserveAiChatUsage({
                 accountId: auth.accountId,
                 conversationId,
-                estimatedCostMicroUsd,
+                estimatedCostMicroEur,
                 model: model.id,
                 requestId,
                 userId: auth.userId,
             });
             if (!reservation.ok) {
+                const weeklyLimitReached =
+                    reservation.exceededPeriod === 'week';
                 const error = jsonError(
-                    'ai_daily_limit_exceeded',
-                    'Dnevni limit za Suncokret chat je iskorišten. Možeš nastaviti sutra.',
+                    weeklyLimitReached
+                        ? 'ai_weekly_limit_exceeded'
+                        : 'ai_daily_limit_exceeded',
+                    weeklyLimitReached
+                        ? 'Tjedni limit za Suncokret chat je iskorišten. Možeš nastaviti sljedeći tjedan.'
+                        : 'Limit za posljednja 24 sata je iskorišten. Upotreba će se postupno osloboditi.',
                     429,
                     {
-                        retryAt: reservation.limitState.retryAt,
+                        retryAt: weeklyLimitReached
+                            ? reservation.limitState.weeklyRetryAt
+                            : reservation.limitState.dailyRetryAt,
                         limit: reservation.limitState,
                     },
                 );
@@ -1218,13 +1244,13 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                     onFinish: async ({ steps, totalUsage }) => {
                         const usage = usageTokens(totalUsage);
-                        let billedTotalMicroUsd: number | null = null;
+                        let billedTotalMicroEur: number | null = null;
                         try {
-                            billedTotalMicroUsd =
-                                await getSuncokretGatewayBilledCostMicroUsd(
+                            billedTotalMicroEur =
+                                await getSuncokretGatewayBilledCostMicroEur(
                                     steps,
                                 );
-                            if (billedTotalMicroUsd === null) {
+                            if (billedTotalMicroEur === null) {
                                 console.warn(
                                     'Suncokret AI Gateway billed cost is unavailable; using token estimate',
                                     {
@@ -1256,9 +1282,9 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             outputTokens: usage.outputTokens,
                             totalTokens: usage.totalTokens,
                             pricing: model,
-                            ...(billedTotalMicroUsd === null
+                            ...(billedTotalMicroEur === null
                                 ? {}
-                                : { billedTotalMicroUsd }),
+                                : { billedTotalMicroEur }),
                         });
                         finalized = true;
                         finishMetadata = {
@@ -1311,8 +1337,8 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                                   inputTokens:
                                                       estimatedInputTokens,
                                                   maxOutputTokens,
-                                                  reservedMicroUsd:
-                                                      estimatedCostMicroUsd,
+                                                  reservedMicroEur:
+                                                      estimatedCostMicroEur,
                                               },
                                           }
                                         : {}),

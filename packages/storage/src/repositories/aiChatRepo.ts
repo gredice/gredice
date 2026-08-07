@@ -14,22 +14,25 @@ import { storage } from '../storage';
 import { accountHasActiveRaisedBed } from './gardensRepo';
 
 export const SUNCOKRET_AI_FEATURE = 'suncokret-chat';
-export const SUNCOKRET_ACTIVE_DAILY_LIMIT_MICRO_USD = 1_000_000;
-export const SUNCOKRET_TRIAL_DAILY_LIMIT_MICRO_USD = 100_000;
-export const SUNCOKRET_TRIAL_CHAT_DAYS = 5;
+export const SUNCOKRET_ACTIVE_DAILY_LIMIT_MICRO_EUR = 800_000;
+export const SUNCOKRET_ACTIVE_WEEKLY_LIMIT_MICRO_EUR = 3_000_000;
+export const SUNCOKRET_TRIAL_DAILY_LIMIT_MICRO_EUR = 300_000;
+export const SUNCOKRET_TRIAL_WEEKLY_LIMIT_MICRO_EUR = 800_000;
+export const SUNCOKRET_TRIAL_CHAT_DAYS = 3;
 export const SUNCOKRET_FALLBACK_TIME_ZONE = 'Europe/Zagreb';
+export const SUNCOKRET_DAILY_WINDOW_MS = 24 * 60 * 60 * 1_000;
 
 export type AiChatPricing = {
-    inputUsdPerMillionTokens: number;
-    outputUsdPerMillionTokens: number;
-    cachedInputUsdPerMillionTokens?: number;
-    cacheWriteInputUsdPerMillionTokens?: number;
+    inputEurPerMillionTokens: number;
+    outputEurPerMillionTokens: number;
+    cachedInputEurPerMillionTokens?: number;
+    cacheWriteInputEurPerMillionTokens?: number;
 };
 
 export type AiChatUsageCost = {
-    inputMicroUsd: number;
-    outputMicroUsd: number;
-    totalMicroUsd: number;
+    inputMicroEur: number;
+    outputMicroEur: number;
+    totalMicroEur: number;
 };
 
 export type AiChatLimitTier = 'active-raised-bed' | 'trial-no-active-bed';
@@ -41,15 +44,19 @@ export type AiChatLimitState = {
     timeZone: string;
     usageDate: string;
     retryAt: string;
-    dailyLimitMicroUsd: number;
-    usedMicroUsd: number;
-    reservedMicroUsd: number;
-    remainingMicroUsd: number;
+    dailyWindowStartedAt: string;
+    dailyRetryAt: string;
+    dailyLimitMicroEur: number;
+    usedMicroEur: number;
+    reservedMicroEur: number;
+    remainingMicroEur: number;
     weekStartUsageDate: string;
-    weeklyLimitMicroUsd: number;
-    weeklyUsedMicroUsd: number;
-    weeklyReservedMicroUsd: number;
-    weeklyRemainingMicroUsd: number;
+    weeklyRetryAt: string;
+    weeklyLimitMicroEur: number;
+    weeklyUsedMicroEur: number;
+    weeklyReservedMicroEur: number;
+    weeklyRemainingMicroEur: number;
+    spendableMicroEur: number;
     usedInputTokens: number;
     usedOutputTokens: number;
     usedTotalTokens: number;
@@ -159,10 +166,32 @@ function zonedLocalMidnightToUtc(dateKey: string, timeZone: string) {
     return new Date(utc);
 }
 
-export function aiChatRetryAtIso(usageDate: string, timeZone: string) {
+function isoWeekRetryAtIso(weekStartUsageDate: string, timeZone: string) {
     return zonedLocalMidnightToUtc(
-        addDaysToDateKey(usageDate, 1),
+        addDaysToDateKey(weekStartUsageDate, 7),
         validTimeZone(timeZone),
+    ).toISOString();
+}
+
+function rollingWindowRetryAtIso(
+    rows: Array<{ createdAt: Date; status: string }>,
+    now: Date,
+) {
+    const firstCountedAt = rows
+        .filter(
+            (row) =>
+                statusCountsAsFinalized(row.status) ||
+                statusCountsAsReserved(row.status),
+        )
+        .reduce<Date | null>(
+            (first, row) =>
+                !first || row.createdAt < first ? row.createdAt : first,
+            null,
+        );
+
+    return new Date(
+        (firstCountedAt?.getTime() ?? now.getTime()) +
+            SUNCOKRET_DAILY_WINDOW_MS,
     ).toISOString();
 }
 
@@ -170,7 +199,7 @@ function finiteNonNegativeInteger(value: number) {
     return Number.isFinite(value) ? Math.max(0, Math.ceil(value)) : 0;
 }
 
-export function calculateAiChatUsageCostMicroUsd({
+export function calculateAiChatUsageCostMicroEur({
     cacheReadTokens,
     cacheWriteTokens,
     inputTokens,
@@ -202,23 +231,23 @@ export function calculateAiChatUsageCostMicroUsd({
                       normalizedCacheWriteTokens,
               )
             : finiteNonNegativeInteger(noCacheTokens);
-    const inputMicroUsd = finiteNonNegativeInteger(
-        normalizedNoCacheTokens * pricing.inputUsdPerMillionTokens +
+    const inputMicroEur = finiteNonNegativeInteger(
+        normalizedNoCacheTokens * pricing.inputEurPerMillionTokens +
             normalizedCacheReadTokens *
-                (pricing.cachedInputUsdPerMillionTokens ??
-                    pricing.inputUsdPerMillionTokens) +
+                (pricing.cachedInputEurPerMillionTokens ??
+                    pricing.inputEurPerMillionTokens) +
             normalizedCacheWriteTokens *
-                (pricing.cacheWriteInputUsdPerMillionTokens ??
-                    pricing.inputUsdPerMillionTokens),
+                (pricing.cacheWriteInputEurPerMillionTokens ??
+                    pricing.inputEurPerMillionTokens),
     );
-    const outputMicroUsd = finiteNonNegativeInteger(
-        normalizedOutputTokens * pricing.outputUsdPerMillionTokens,
+    const outputMicroEur = finiteNonNegativeInteger(
+        normalizedOutputTokens * pricing.outputEurPerMillionTokens,
     );
 
     return {
-        inputMicroUsd,
-        outputMicroUsd,
-        totalMicroUsd: inputMicroUsd + outputMicroUsd,
+        inputMicroEur,
+        outputMicroEur,
+        totalMicroEur: inputMicroEur + outputMicroEur,
     };
 }
 
@@ -393,13 +422,14 @@ export async function getAiChatAccountLimitState(
     });
     const ledgerRows = await db.query.aiUsageLedger.findMany({
         columns: {
+            createdAt: true,
             usageDate: true,
             status: true,
             inputTokens: true,
             outputTokens: true,
-            reservedMicroUsd: true,
+            reservedMicroEur: true,
             totalTokens: true,
-            totalMicroUsd: true,
+            totalMicroEur: true,
         },
         where: and(
             eq(aiUsageLedger.accountId, accountId),
@@ -409,47 +439,52 @@ export async function getAiChatAccountLimitState(
 
     const timeZone = validTimeZone(account?.timeZone);
     const usageDate = aiChatUsageDateKey(now, timeZone);
-    const todayRows = ledgerRows.filter((row) => row.usageDate === usageDate);
+    const dailyWindowStartedAt = new Date(
+        now.getTime() - SUNCOKRET_DAILY_WINDOW_MS,
+    );
+    const dailyRows = ledgerRows.filter(
+        (row) => row.createdAt >= dailyWindowStartedAt && row.createdAt <= now,
+    );
     const weekStartUsageDate = startOfIsoWeekDateKey(usageDate);
     const weekRows = ledgerRows.filter(
         (row) =>
             row.usageDate >= weekStartUsageDate && row.usageDate <= usageDate,
     );
-    const usedMicroUsd = todayRows.reduce(
+    const usedMicroEur = dailyRows.reduce(
         (sum, row) =>
-            statusCountsAsFinalized(row.status) ? sum + row.totalMicroUsd : sum,
+            statusCountsAsFinalized(row.status) ? sum + row.totalMicroEur : sum,
         0,
     );
-    const reservedMicroUsd = todayRows.reduce(
+    const reservedMicroEur = dailyRows.reduce(
         (sum, row) =>
             statusCountsAsReserved(row.status)
-                ? sum + row.reservedMicroUsd
+                ? sum + row.reservedMicroEur
                 : sum,
         0,
     );
-    const weeklyUsedMicroUsd = weekRows.reduce(
+    const weeklyUsedMicroEur = weekRows.reduce(
         (sum, row) =>
-            statusCountsAsFinalized(row.status) ? sum + row.totalMicroUsd : sum,
+            statusCountsAsFinalized(row.status) ? sum + row.totalMicroEur : sum,
         0,
     );
-    const weeklyReservedMicroUsd = weekRows.reduce(
+    const weeklyReservedMicroEur = weekRows.reduce(
         (sum, row) =>
             statusCountsAsReserved(row.status)
-                ? sum + row.reservedMicroUsd
+                ? sum + row.reservedMicroEur
                 : sum,
         0,
     );
-    const usedInputTokens = todayRows.reduce(
+    const usedInputTokens = dailyRows.reduce(
         (sum, row) =>
             statusCountsAsFinalized(row.status) ? sum + row.inputTokens : sum,
         0,
     );
-    const usedOutputTokens = todayRows.reduce(
+    const usedOutputTokens = dailyRows.reduce(
         (sum, row) =>
             statusCountsAsFinalized(row.status) ? sum + row.outputTokens : sum,
         0,
     );
-    const usedTotalTokens = todayRows.reduce(
+    const usedTotalTokens = dailyRows.reduce(
         (sum, row) =>
             statusCountsAsFinalized(row.status) ? sum + row.totalTokens : sum,
         0,
@@ -469,22 +504,55 @@ export async function getAiChatAccountLimitState(
         ? 'active-raised-bed'
         : 'trial-no-active-bed';
     const defaultDailyLimit = activeRaisedBed
-        ? SUNCOKRET_ACTIVE_DAILY_LIMIT_MICRO_USD
-        : SUNCOKRET_TRIAL_DAILY_LIMIT_MICRO_USD;
-    const dailyLimitMicroUsd =
+        ? SUNCOKRET_ACTIVE_DAILY_LIMIT_MICRO_EUR
+        : SUNCOKRET_TRIAL_DAILY_LIMIT_MICRO_EUR;
+    const defaultWeeklyLimit = activeRaisedBed
+        ? SUNCOKRET_ACTIVE_WEEKLY_LIMIT_MICRO_EUR
+        : SUNCOKRET_TRIAL_WEEKLY_LIMIT_MICRO_EUR;
+    const dailyLimitMicroEur =
         (activeRaisedBed
-            ? override?.activeDailyLimitMicroUsd
-            : override?.trialDailyLimitMicroUsd) ?? defaultDailyLimit;
-    const weeklyLimitMicroUsd = dailyLimitMicroUsd * 7;
-    const spentOrReservedMicroUsd = usedMicroUsd + reservedMicroUsd;
-    const weeklySpentOrReservedMicroUsd =
-        weeklyUsedMicroUsd + weeklyReservedMicroUsd;
+            ? override?.activeDailyLimitMicroEur
+            : override?.trialDailyLimitMicroEur) ?? defaultDailyLimit;
+    const weeklyLimitMicroEur =
+        (activeRaisedBed
+            ? override?.activeWeeklyLimitMicroEur
+            : override?.trialWeeklyLimitMicroEur) ?? defaultWeeklyLimit;
+    const spentOrReservedMicroEur = usedMicroEur + reservedMicroEur;
+    const weeklySpentOrReservedMicroEur =
+        weeklyUsedMicroEur + weeklyReservedMicroEur;
     const disabled = Boolean(override?.disabled);
     const blockedReason = disabled
         ? 'disabled'
         : !activeRaisedBed && priorTrialChatDaysUsed >= trialChatDaysLimit
           ? 'trial_days_exhausted'
           : null;
+    const remainingMicroEur = Math.max(
+        0,
+        dailyLimitMicroEur - spentOrReservedMicroEur,
+    );
+    const weeklyRemainingMicroEur = Math.max(
+        0,
+        weeklyLimitMicroEur - weeklySpentOrReservedMicroEur,
+    );
+    const spendableMicroEur = Math.min(
+        remainingMicroEur,
+        weeklyRemainingMicroEur,
+    );
+    const dailyRetryAt = rollingWindowRetryAtIso(dailyRows, now);
+    const weeklyRetryAt = isoWeekRetryAtIso(weekStartUsageDate, timeZone);
+    const dailyExhausted = remainingMicroEur <= 0;
+    const weeklyExhausted = weeklyRemainingMicroEur <= 0;
+    const retryAt =
+        dailyExhausted && weeklyExhausted
+            ? new Date(
+                  Math.max(
+                      new Date(dailyRetryAt).getTime(),
+                      new Date(weeklyRetryAt).getTime(),
+                  ),
+              ).toISOString()
+            : weeklyExhausted || weeklyRemainingMicroEur < remainingMicroEur
+              ? weeklyRetryAt
+              : dailyRetryAt;
 
     return {
         accountId,
@@ -492,22 +560,20 @@ export async function getAiChatAccountLimitState(
         tier,
         timeZone,
         usageDate,
-        retryAt: aiChatRetryAtIso(usageDate, timeZone),
-        dailyLimitMicroUsd,
-        usedMicroUsd,
-        reservedMicroUsd,
-        remainingMicroUsd: Math.max(
-            0,
-            dailyLimitMicroUsd - spentOrReservedMicroUsd,
-        ),
+        retryAt,
+        dailyWindowStartedAt: dailyWindowStartedAt.toISOString(),
+        dailyRetryAt,
+        dailyLimitMicroEur,
+        usedMicroEur,
+        reservedMicroEur,
+        remainingMicroEur,
         weekStartUsageDate,
-        weeklyLimitMicroUsd,
-        weeklyUsedMicroUsd,
-        weeklyReservedMicroUsd,
-        weeklyRemainingMicroUsd: Math.max(
-            0,
-            weeklyLimitMicroUsd - weeklySpentOrReservedMicroUsd,
-        ),
+        weeklyRetryAt,
+        weeklyLimitMicroEur,
+        weeklyUsedMicroEur,
+        weeklyReservedMicroEur,
+        weeklyRemainingMicroEur,
+        spendableMicroEur,
         usedInputTokens,
         usedOutputTokens,
         usedTotalTokens,
@@ -521,35 +587,48 @@ export async function getAiChatAccountLimitState(
 export async function reserveAiChatUsage({
     accountId,
     conversationId,
-    estimatedCostMicroUsd,
+    estimatedCostMicroEur,
     model,
+    now,
     requestId,
     userId,
 }: {
     accountId: string;
     conversationId: string;
-    estimatedCostMicroUsd: number;
+    estimatedCostMicroEur: number;
     model: string;
+    now?: Date;
     requestId: string;
     userId: string;
 }) {
     return storage().transaction(async (tx) => {
         await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`ai-chat-usage:${accountId}`}));`,
+            sql`select ${accounts.id} from ${accounts} where ${accounts.id} = ${accountId} for update;`,
         );
 
+        const limitNow = now ?? new Date();
         const limitState = await getAiChatAccountLimitState(
             accountId,
-            new Date(),
+            limitNow,
             tx as DatabaseClient,
         );
+        const dailyLimitExceeded =
+            limitState.remainingMicroEur < estimatedCostMicroEur;
+        const weeklyLimitExceeded =
+            limitState.weeklyRemainingMicroEur < estimatedCostMicroEur;
         if (
             limitState.blockedReason ||
-            limitState.remainingMicroUsd < estimatedCostMicroUsd
+            dailyLimitExceeded ||
+            weeklyLimitExceeded
         ) {
             return {
                 ok: false as const,
                 limitState,
+                exceededPeriod: weeklyLimitExceeded
+                    ? ('week' as const)
+                    : dailyLimitExceeded
+                      ? ('day' as const)
+                      : null,
             };
         }
 
@@ -565,7 +644,8 @@ export async function reserveAiChatUsage({
             provider: model.split('/')[0] ?? null,
             usageDate: limitState.usageDate,
             status: 'reserved',
-            reservedMicroUsd: estimatedCostMicroUsd,
+            reservedMicroEur: estimatedCostMicroEur,
+            createdAt: limitNow,
         });
 
         return {
@@ -577,7 +657,7 @@ export async function reserveAiChatUsage({
 }
 
 export async function finalizeAiChatUsage({
-    billedTotalMicroUsd,
+    billedTotalMicroEur,
     cacheReadTokens,
     cacheWriteTokens,
     inputTokens,
@@ -587,7 +667,7 @@ export async function finalizeAiChatUsage({
     pricing,
     totalTokens,
 }: {
-    billedTotalMicroUsd?: number;
+    billedTotalMicroEur?: number;
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
     inputTokens: number;
@@ -597,7 +677,7 @@ export async function finalizeAiChatUsage({
     pricing: AiChatPricing;
     totalTokens?: number;
 }) {
-    const estimatedCost = calculateAiChatUsageCostMicroUsd({
+    const estimatedCost = calculateAiChatUsageCostMicroEur({
         cacheReadTokens,
         cacheWriteTokens,
         inputTokens,
@@ -609,10 +689,10 @@ export async function finalizeAiChatUsage({
         ...estimatedCost,
         // The component amounts remain useful diagnostics, while the total is
         // the authoritative Gateway charge when it is available.
-        totalMicroUsd:
-            billedTotalMicroUsd == null
-                ? estimatedCost.totalMicroUsd
-                : finiteNonNegativeInteger(billedTotalMicroUsd),
+        totalMicroEur:
+            billedTotalMicroEur == null
+                ? estimatedCost.totalMicroEur
+                : finiteNonNegativeInteger(billedTotalMicroEur),
     };
 
     await storage()
@@ -624,9 +704,9 @@ export async function finalizeAiChatUsage({
             totalTokens: finiteNonNegativeInteger(
                 totalTokens ?? inputTokens + outputTokens,
             ),
-            inputMicroUsd: cost.inputMicroUsd,
-            outputMicroUsd: cost.outputMicroUsd,
-            totalMicroUsd: cost.totalMicroUsd,
+            inputMicroEur: cost.inputMicroEur,
+            outputMicroEur: cost.outputMicroEur,
+            totalMicroEur: cost.totalMicroEur,
             finalizedAt: new Date(),
         })
         .where(eq(aiUsageLedger.id, ledgerId));
@@ -648,7 +728,7 @@ export async function releaseAiChatUsageReservation({
         .set({
             status,
             error,
-            reservedMicroUsd: 0,
+            reservedMicroEur: 0,
             finalizedAt: new Date(),
         })
         .where(eq(aiUsageLedger.id, ledgerId));
@@ -883,7 +963,7 @@ export async function getAiChatUsageTotals(filter?: { from?: Date }) {
         (totals, row) => {
             if (row.status !== 'finalized') {
                 if (row.status === 'reserved') {
-                    totals.reservedMicroUsd += row.reservedMicroUsd;
+                    totals.reservedMicroEur += row.reservedMicroEur;
                 }
                 return totals;
             }
@@ -892,7 +972,7 @@ export async function getAiChatUsageTotals(filter?: { from?: Date }) {
             totals.inputTokens += row.inputTokens;
             totals.outputTokens += row.outputTokens;
             totals.totalTokens += row.totalTokens;
-            totals.totalMicroUsd += row.totalMicroUsd;
+            totals.totalMicroEur += row.totalMicroEur;
             return totals;
         },
         {
@@ -900,8 +980,8 @@ export async function getAiChatUsageTotals(filter?: { from?: Date }) {
             inputTokens: 0,
             outputTokens: 0,
             totalTokens: 0,
-            totalMicroUsd: 0,
-            reservedMicroUsd: 0,
+            totalMicroEur: 0,
+            reservedMicroEur: 0,
         },
     );
 }
@@ -929,28 +1009,34 @@ export async function getAiChatAccountLimitSummaries(limit = 100) {
 
 export async function setAiAccountLimitOverride({
     accountId,
-    activeDailyLimitMicroUsd,
+    activeDailyLimitMicroEur,
+    activeWeeklyLimitMicroEur,
     disabled,
     notes,
     trialChatDays,
-    trialDailyLimitMicroUsd,
+    trialDailyLimitMicroEur,
+    trialWeeklyLimitMicroEur,
     updatedByUserId,
 }: {
     accountId: string;
-    activeDailyLimitMicroUsd?: number | null;
+    activeDailyLimitMicroEur?: number | null;
+    activeWeeklyLimitMicroEur?: number | null;
     disabled?: boolean;
     notes?: string | null;
     trialChatDays?: number | null;
-    trialDailyLimitMicroUsd?: number | null;
+    trialDailyLimitMicroEur?: number | null;
+    trialWeeklyLimitMicroEur?: number | null;
     updatedByUserId?: string | null;
 }) {
     const values = {
         accountId,
-        activeDailyLimitMicroUsd,
+        activeDailyLimitMicroEur,
+        activeWeeklyLimitMicroEur,
         disabled,
         notes,
         trialChatDays,
-        trialDailyLimitMicroUsd,
+        trialDailyLimitMicroEur,
+        trialWeeklyLimitMicroEur,
         updatedByUserId,
     };
 
@@ -960,11 +1046,13 @@ export async function setAiAccountLimitOverride({
         .onConflictDoUpdate({
             target: aiAccountLimitOverrides.accountId,
             set: {
-                activeDailyLimitMicroUsd,
+                activeDailyLimitMicroEur,
+                activeWeeklyLimitMicroEur,
                 disabled,
                 notes,
                 trialChatDays,
-                trialDailyLimitMicroUsd,
+                trialDailyLimitMicroEur,
+                trialWeeklyLimitMicroEur,
                 updatedByUserId,
                 updatedAt: sql`now()`,
             },
