@@ -293,9 +293,13 @@ export function RaisedBedHarvestBaskets() {
                 : [];
         });
     }, [garden, operationItems, operations]);
+    const deliveryRequestsRequired =
+        harvestCandidates.length > 0 && !isMock && !isLocalSandbox;
     const deliveryRequests = useDeliveryRequests({
-        enabled: harvestCandidates.length > 0 && !isMock && !isLocalSandbox,
+        enabled: deliveryRequestsRequired,
     });
+    const hiddenHarvestOperationIdsResolved =
+        !deliveryRequestsRequired || deliveryRequests.data !== undefined;
     const hiddenHarvestOperationIds = useMemo(
         () =>
             new Set(
@@ -315,13 +319,19 @@ export function RaisedBedHarvestBaskets() {
                 const state = resolveRaisedBedHarvestBasketState({
                     fields: candidate.raisedBed.fields,
                     hiddenOperationIds: hiddenHarvestOperationIds,
+                    hiddenOperationIdsResolved:
+                        hiddenHarvestOperationIdsResolved,
                     raisedBedId: candidate.raisedBed.id,
                     visualRewards: candidate.visualRewards,
                 });
 
                 return state ? [{ ...candidate, state }] : [];
             }),
-        [harvestCandidates, hiddenHarvestOperationIds],
+        [
+            harvestCandidates,
+            hiddenHarvestOperationIds,
+            hiddenHarvestOperationIdsResolved,
+        ],
     );
     const harvestBasketPlacements = useMemo(
         () =>
