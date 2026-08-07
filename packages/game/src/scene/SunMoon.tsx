@@ -16,11 +16,13 @@ import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { getMoonVisualPhase } from './moonPhase';
 import {
+    createSkyCameraProjectionSnapshot,
     createSkyViewBasis,
     getSkyDirectionProjectionScale,
     getSunViewportTuning,
     SKY_FORWARD_DISTANCE,
     SUN_SCREEN_OFFSET_MULTIPLIER,
+    updateSkyCameraProjectionSnapshot,
     updateSkyViewBasis,
 } from './skyProjection';
 import {
@@ -141,10 +143,14 @@ const moonFragment = /* glsl */ `
 `;
 
 type SunMoonProps = {
+    screenOffsetMultiplier?: number;
     visibility?: number;
 };
 
-export function SunMoon({ visibility = 1 }: SunMoonProps) {
+export function SunMoon({
+    screenOffsetMultiplier = 1,
+    visibility = 1,
+}: SunMoonProps) {
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const dayNightCycleDisabled = useGameState(
@@ -211,6 +217,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     );
 
     const skyBasisRef = useRef(createSkyViewBasis());
+    const projectionSnapshotRef = useRef(createSkyCameraProjectionSnapshot());
 
     const updateSunMoon = useCallback(() => {
         if (!sunMesh.current || !moonMesh.current) return;
@@ -256,6 +263,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                     sx *
                         basis.skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
+                        screenOffsetMultiplier *
                         sunViewportTuning.horizontalOffsetMultiplier,
                 )
                 .addScaledVector(
@@ -263,6 +271,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                     sy *
                         basis.skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
+                        screenOffsetMultiplier *
                         sunViewportTuning.verticalOffsetMultiplier,
                 );
             sunMesh.current.lookAt(camera.position);
@@ -304,8 +313,14 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             moonMesh.current.position
                 .copy(camera.position)
                 .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
-                .addScaledVector(basis.right, mx * basis.skyRadius)
-                .addScaledVector(basis.viewUp, my * basis.skyRadius);
+                .addScaledVector(
+                    basis.right,
+                    mx * basis.skyRadius * screenOffsetMultiplier,
+                )
+                .addScaledVector(
+                    basis.viewUp,
+                    my * basis.skyRadius * screenOffsetMultiplier,
+                );
             moonMesh.current.lookAt(camera.position);
 
             moonMaterial.uniforms.uPhase.value = moonVisualPhase.phase;
@@ -332,6 +347,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         lat,
         lon,
         moonMaterial,
+        screenOffsetMultiplier,
         sunMaterial,
         sunViewportTuning.horizontalOffsetMultiplier,
         sunViewportTuning.sizeMultiplier,
@@ -339,6 +355,18 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         timeOfDay,
         visibility,
     ]);
+
+    useFrame(() => {
+        if (
+            screenOffsetMultiplier !== 1 &&
+            updateSkyCameraProjectionSnapshot(
+                camera,
+                projectionSnapshotRef.current,
+            )
+        ) {
+            updateSunMoon();
+        }
+    });
 
     useLayoutEffect(() => {
         updateSunMoon();

@@ -74,6 +74,10 @@ test('public CMS catch-all keeps outlet route reserved', () => {
     assert.equal(hasReservedFirstSegment('outlet/sezonska-ponuda'), true);
 });
 
+test('public CMS catch-all keeps wallpaper studio route reserved', () => {
+    assert.equal(hasReservedFirstSegment('pozadine'), true);
+});
+
 test('quality harvest safety source CMS page has real content sections', () => {
     const components = qualityHarvestSafetyCmsPage.content.map(
         (section) => section.component,

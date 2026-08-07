@@ -253,6 +253,7 @@ export function environmentState(
 }
 
 export type EnvironmentProps = {
+    celestialOffsetMultiplier?: number;
     cloudShadowUpdateMs?: number;
     noBackground?: boolean;
     noSound?: boolean;
@@ -569,6 +570,7 @@ export function StaticEnvironment({
 }
 
 export function Environment({
+    celestialOffsetMultiplier,
     cloudShadowUpdateMs,
     noBackground,
     noSound,
@@ -1024,6 +1026,7 @@ export function Environment({
                         hideCelestialGlow={closeupCameraSettled}
                         location={location}
                         moonlight={sky.moonlight}
+                        screenOffsetMultiplier={celestialOffsetMultiplier}
                         timeOfDay={timeOfDay}
                         weather={blendedWeather}
                     />
@@ -1100,6 +1103,7 @@ export function Environment({
             )}
             {!noBackground && (
                 <SunMoon
+                    screenOffsetMultiplier={celestialOffsetMultiplier}
                     visibility={closeupCameraSettled ? 0 : bodyVisibility}
                 />
             )}

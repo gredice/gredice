@@ -58,8 +58,15 @@ import {
     useDisposeGameStateStore,
 } from '../useGameState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
-import type { GameLocation } from '../utils/timeOfDay';
-import { PublicGardenCaptureProbe } from './PublicGardenCaptureProbe';
+import {
+    createDateForGameTimeOfDay,
+    defaultGameLocation,
+    type GameLocation,
+} from '../utils/timeOfDay';
+import {
+    type PublicGardenCaptureOutput,
+    PublicGardenCaptureProbe,
+} from './PublicGardenCaptureProbe';
 import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
 import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
 import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
@@ -96,6 +103,24 @@ export type PublicGardenInitialView = {
     cameraZoom: number;
 };
 
+export type PublicGardenCaptureViewport = {
+    height: number;
+    width: number;
+};
+
+export type PublicGardenCapturePhase = 'morning' | 'day' | 'evening' | 'night';
+
+export type PublicGardenCapture = {
+    fitGarden?: boolean;
+    fitGardenPadding?: number;
+    key: string;
+    onCapture: (blob: Blob) => void;
+    onError: (error: Error) => void;
+    output?: PublicGardenCaptureOutput;
+    phase?: PublicGardenCapturePhase;
+    transparent?: boolean;
+};
+
 export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     garden?: PublicGardenDetail;
     stacks?: PublicGardenStack[];
@@ -103,11 +128,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     spriteBaseUrl?: string;
     deferDetails?: boolean;
     className?: string;
-    capture?: {
-        key: string;
-        onCapture: (blob: Blob) => void;
-        onError: (error: Error) => void;
-    };
+    capture?: PublicGardenCapture;
 };
 
 const publicGardenCaptureQuality = {
@@ -118,10 +139,36 @@ const publicGardenCaptureQuality = {
 } satisfies GameQualityProfile;
 const publicGardenCaptureSceneTimeSeconds = 2.5;
 
+const publicGardenWallpaperCaptureQuality = {
+    ...gameQualityProfiles.high,
+    dpr: 1,
+    shadowMapSize: 4096,
+    tier: 'custom',
+} satisfies GameQualityProfile;
+
+const publicGardenCaptureTimeOfDay = {
+    morning: 0.22,
+    day: 0.5,
+    evening: 0.79,
+    night: 0.94,
+} satisfies Record<PublicGardenCapturePhase, number>;
+
 function getPublicGardenCaptureDate() {
     const now = new Date();
     return new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10),
+    );
+}
+
+export function getPublicGardenCapturePhaseDate(
+    phase: PublicGardenCapturePhase,
+    location: GameLocation,
+) {
+    const referenceDate = new Date(2026, 5, 21, 12, 0, 0, 0);
+    return createDateForGameTimeOfDay(
+        referenceDate,
+        publicGardenCaptureTimeOfDay[phase],
+        location,
     );
 }
 
@@ -220,6 +267,52 @@ export function getPublicGardenInitialView({
     };
 }
 
+export function getPublicGardenCaptureInitialView({
+    stacks,
+    viewport,
+}: {
+    stacks: Stack[];
+    viewport: PublicGardenCaptureViewport;
+}): PublicGardenInitialView {
+    const initialView = getPublicGardenInitialView({ stacks });
+    if (stacks.length === 0 || viewport.width < 1 || viewport.height < 1) {
+        return initialView;
+    }
+
+    const bounds = stacks.reduce(
+        (acc, stack) => ({
+            maxX: Math.max(acc.maxX, stack.position.x),
+            maxZ: Math.max(acc.maxZ, stack.position.z),
+            minX: Math.min(acc.minX, stack.position.x),
+            minZ: Math.min(acc.minZ, stack.position.z),
+        }),
+        {
+            maxX: Number.NEGATIVE_INFINITY,
+            maxZ: Number.NEGATIVE_INFINITY,
+            minX: Number.POSITIVE_INFINITY,
+            minZ: Number.POSITIVE_INFINITY,
+        },
+    );
+    const spanX = bounds.maxX - bounds.minX + 1;
+    const spanZ = bounds.maxZ - bounds.minZ + 1;
+    const combinedSpan = spanX + spanZ;
+
+    // The camera views the ground plane at an isometric angle. These
+    // projected spans include room for block overhangs and tall plants so
+    // compact, elongated, and square gardens stay inside the wallpaper.
+    const projectedWidth = combinedSpan / Math.sqrt(2) + 4;
+    const projectedHeight = combinedSpan / Math.sqrt(6) + 8;
+    const fittedZoom = Math.min(
+        viewport.width / projectedWidth,
+        viewport.height / projectedHeight,
+    );
+
+    return {
+        ...initialView,
+        cameraZoom: Math.max(24, Math.min(180, fittedZoom)),
+    };
+}
+
 function normalizePublicGardenBackgroundPalette(value: unknown) {
     return isGameBackgroundPaletteKey(value)
         ? value
@@ -303,7 +396,11 @@ function PublicGardenScene({
     const fetchingQueryCount = useIsFetching();
     const qualityProfile = useMemo(
         () =>
-            capture ? publicGardenCaptureQuality : resolveGameQualityProfile(),
+            capture?.output
+                ? publicGardenWallpaperCaptureQuality
+                : capture
+                  ? publicGardenCaptureQuality
+                  : resolveGameQualityProfile(),
         [capture],
     );
     const renderLivingDetails = renderDetails && gardenCacheReady;
@@ -336,7 +433,15 @@ function PublicGardenScene({
                     position={initialView.cameraPosition}
                     quality={qualityProfile}
                     rendererOptions={
-                        capture ? { preserveDrawingBuffer: true } : undefined
+                        capture
+                            ? {
+                                  alpha: Boolean(capture.transparent),
+                                  antialias: true,
+                                  powerPreference: 'high-performance',
+                                  precision: 'highp',
+                                  preserveDrawingBuffer: true,
+                              }
+                            : undefined
                     }
                     suspendWhenOffscreen={!capture}
                     zoom={initialView.cameraZoom}
@@ -345,6 +450,12 @@ function PublicGardenScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <Environment
+                                celestialOffsetMultiplier={
+                                    capture && !capture.transparent
+                                        ? 0.72
+                                        : undefined
+                                }
+                                noBackground={Boolean(capture?.transparent)}
                                 noSound
                                 noWeather={Boolean(capture)}
                                 quality={qualityProfile}
@@ -449,8 +560,15 @@ function PublicGardenScene({
                                     enabled={
                                         renderLivingDetails && plantSortsLoaded
                                     }
+                                    fitSceneObjectName={
+                                        capture.fitGarden
+                                            ? 'PublicGardenScene:Entities'
+                                            : undefined
+                                    }
+                                    fitScenePadding={capture.fitGardenPadding}
                                     onCapture={capture.onCapture}
                                     onError={capture.onError}
+                                    output={capture.output}
                                     queriesIdle={fetchingQueryCount === 0}
                                 />
                             ) : null}
@@ -521,7 +639,15 @@ export function PublicGardenViewer({
             appBaseUrl: resolvedAppBaseUrl,
             authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            freezeTime: capture ? getPublicGardenCaptureDate() : null,
+            dayNightCycleDisabled: capture?.phase ? false : undefined,
+            freezeTime: capture
+                ? capture.phase
+                    ? getPublicGardenCapturePhaseDate(
+                          capture.phase,
+                          initialTimeLocation ?? defaultGameLocation,
+                      )
+                    : getPublicGardenCaptureDate()
+                : null,
             isMock: false,
             timeLocation: initialTimeLocation,
             winterMode: 'summer',
@@ -565,14 +691,32 @@ export function PublicGardenViewer({
                 : [],
         [gameGarden, normalizedStacks],
     );
-    const initialView = useMemo(
-        () =>
-            getPublicGardenInitialView({
-                homeCamera: garden?.homeCamera,
+    const initialView = useMemo(() => {
+        if (
+            capture?.fitGarden &&
+            capture.output?.width &&
+            capture.output.height
+        ) {
+            return getPublicGardenCaptureInitialView({
                 stacks: normalizedStacks,
-            }),
-        [garden?.homeCamera, normalizedStacks],
-    );
+                viewport: {
+                    height: capture.output.height,
+                    width: capture.output.width,
+                },
+            });
+        }
+
+        return getPublicGardenInitialView({
+            homeCamera: capture?.fitGarden ? null : garden?.homeCamera,
+            stacks: normalizedStacks,
+        });
+    }, [
+        capture?.fitGarden,
+        capture?.output?.height,
+        capture?.output?.width,
+        garden?.homeCamera,
+        normalizedStacks,
+    ]);
     const renderDetails = useDeferredSceneDetails(deferDetails);
     const cacheKey = getPublicGardenCacheKey(garden);
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<

@@ -73,6 +73,7 @@ const reservedFirstSegments = new Set([
     'o-nama',
     'outlet',
     'podignuta-gredica',
+    'pozadine',
     'pozdrav',
     'preporuke',
     'prijava',

@@ -135,6 +135,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Pozadine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Wallpapers,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljke',
                             href: publicChromeHref(
                                 PublicPagePaths.Plants,

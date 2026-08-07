@@ -105,6 +105,8 @@ export {
 } from './viewers/PlantViewer';
 export type {
     PublicGardenBlock,
+    PublicGardenCapture,
+    PublicGardenCapturePhase,
     PublicGardenDetail,
     PublicGardenStack,
     PublicGardenViewerProps,

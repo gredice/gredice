@@ -1,8 +1,9 @@
 'use client';
 
 import { useProgress } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
+import { Box3, OrthographicCamera, Vector3 } from 'three';
 import {
     gardenPreviewHeight,
     gardenPreviewMaxSizeBytes,
@@ -18,12 +19,79 @@ const encodeTimeoutMs = 30_000;
 const maximumCaptureWaitMs = 30_000;
 const webpQuality = 0.9;
 
+export type PublicGardenCaptureOutput = {
+    contentType?: 'image/png' | 'image/webp';
+    height?: number;
+    maxSizeBytes?: number;
+    quality?: number;
+    width?: number;
+};
+
 type PublicGardenCaptureProbeProps = {
     enabled: boolean;
+    fitSceneObjectName?: string;
+    fitScenePadding?: number;
     onCapture: (blob: Blob) => void;
     onError: (error: Error) => void;
+    output?: PublicGardenCaptureOutput;
     queriesIdle: boolean;
 };
+
+type CaptureViewBounds = {
+    bottom: number;
+    left: number;
+    right: number;
+    top: number;
+};
+
+export function resolveCaptureCameraZoom({
+    bounds,
+    cameraHeight,
+    cameraWidth,
+    padding,
+}: {
+    bounds: CaptureViewBounds;
+    cameraHeight: number;
+    cameraWidth: number;
+    padding: number;
+}) {
+    const halfWidth = Math.max(Math.abs(bounds.left), Math.abs(bounds.right));
+    const halfHeight = Math.max(Math.abs(bounds.bottom), Math.abs(bounds.top));
+    if (halfWidth <= 0 || halfHeight <= 0) {
+        return null;
+    }
+
+    return Math.min(
+        (cameraWidth * 0.5 * padding) / halfWidth,
+        (cameraHeight * 0.5 * padding) / halfHeight,
+    );
+}
+
+function viewBoundsSignature(bounds: CaptureViewBounds) {
+    return [bounds.bottom, bounds.left, bounds.right, bounds.top]
+        .map((value) => value.toFixed(3))
+        .join('|');
+}
+
+type ResolvedCaptureOutput = {
+    contentType: 'image/png' | 'image/webp';
+    height: number;
+    maxSizeBytes?: number;
+    quality: number;
+    width: number;
+};
+
+function resolveCaptureOutput(
+    output: PublicGardenCaptureOutput | undefined,
+): ResolvedCaptureOutput {
+    return {
+        contentType: output?.contentType ?? 'image/webp',
+        height: output?.height ?? gardenPreviewHeight,
+        maxSizeBytes: output ? output.maxSizeBytes : gardenPreviewMaxSizeBytes,
+        quality: output?.quality ?? webpQuality,
+        width: output?.width ?? gardenPreviewWidth,
+    };
+}
 
 function toError(error: unknown) {
     return error instanceof Error ? error : new Error(String(error));
@@ -45,26 +113,33 @@ function frameSignature({
     return `${calls}|${triangles}|${points}|${geometries}|${textures}`;
 }
 
-function validateSourceCanvas(sourceCanvas: HTMLCanvasElement) {
+function validateSourceCanvas(
+    sourceCanvas: HTMLCanvasElement,
+    output: ResolvedCaptureOutput,
+) {
     if (
-        sourceCanvas.width !== gardenPreviewWidth ||
-        sourceCanvas.height !== gardenPreviewHeight
+        sourceCanvas.width !== output.width ||
+        sourceCanvas.height !== output.height
     ) {
         throw new Error(
-            `Garden preview canvas has invalid dimensions ${sourceCanvas.width.toString()}x${sourceCanvas.height.toString()}.`,
+            `Garden capture canvas has invalid dimensions ${sourceCanvas.width.toString()}x${sourceCanvas.height.toString()}; expected ${output.width.toString()}x${output.height.toString()}.`,
         );
     }
 }
 
-function validateEncodedBlob(blob: Blob) {
-    if (blob.type !== 'image/webp') {
+function validateEncodedBlob(blob: Blob, output: ResolvedCaptureOutput) {
+    if (blob.type !== output.contentType) {
         throw new Error(
-            `Garden preview encoder returned unsupported content type ${blob.type || 'unknown'} for ${gardenPreviewRendererVersion}.`,
+            `Garden capture encoder returned unsupported content type ${blob.type || 'unknown'} for ${gardenPreviewRendererVersion}.`,
         );
     }
-    if (blob.size < 1 || blob.size > gardenPreviewMaxSizeBytes) {
+    if (
+        blob.size < 1 ||
+        (output.maxSizeBytes !== undefined && blob.size > output.maxSizeBytes)
+    ) {
+        const maximumLabel = output.maxSizeBytes?.toString() ?? 'unlimited';
         throw new Error(
-            `Garden preview size is outside the 1-${gardenPreviewMaxSizeBytes.toString()} byte upload range.`,
+            `Garden capture size is outside the 1-${maximumLabel} byte range.`,
         );
     }
     return blob;
@@ -93,7 +168,10 @@ function withTimeout<T>(
     });
 }
 
-function canvasElementToBlob(canvas: HTMLCanvasElement) {
+function canvasElementToBlob(
+    canvas: HTMLCanvasElement,
+    output: ResolvedCaptureOutput,
+) {
     return new Promise<Blob>((resolve, reject) => {
         try {
             canvas.toBlob(
@@ -103,11 +181,11 @@ function canvasElementToBlob(canvas: HTMLCanvasElement) {
                         return;
                     }
                     reject(
-                        new Error('Garden preview encoder returned no image.'),
+                        new Error('Garden capture encoder returned no image.'),
                     );
                 },
-                'image/webp',
-                webpQuality,
+                output.contentType,
+                output.quality,
             );
         } catch (error) {
             reject(toError(error));
@@ -117,12 +195,11 @@ function canvasElementToBlob(canvas: HTMLCanvasElement) {
 
 function encodeWithHtmlCanvas(
     source: CanvasImageSource,
-    width: number,
-    height: number,
+    output: ResolvedCaptureOutput,
 ) {
     const encodingCanvas = document.createElement('canvas');
-    encodingCanvas.width = width;
-    encodingCanvas.height = height;
+    encodingCanvas.width = output.width;
+    encodingCanvas.height = output.height;
     const context = encodingCanvas.getContext('2d');
     if (!context) {
         return Promise.reject(
@@ -130,8 +207,8 @@ function encodeWithHtmlCanvas(
         );
     }
 
-    context.drawImage(source, 0, 0, width, height);
-    return canvasElementToBlob(encodingCanvas);
+    context.drawImage(source, 0, 0, output.width, output.height);
+    return canvasElementToBlob(encodingCanvas, output);
 }
 
 class GardenPreviewSnapshotTimeoutError extends Error {}
@@ -169,16 +246,19 @@ function createSnapshot(sourceCanvas: HTMLCanvasElement) {
     });
 }
 
-async function canvasToWebp(sourceCanvas: HTMLCanvasElement) {
-    validateSourceCanvas(sourceCanvas);
+async function encodeCapture(
+    sourceCanvas: HTMLCanvasElement,
+    output: ResolvedCaptureOutput,
+) {
+    validateSourceCanvas(sourceCanvas, output);
 
     if (typeof window.createImageBitmap !== 'function') {
         const blob = await withTimeout(
-            canvasElementToBlob(sourceCanvas),
+            canvasElementToBlob(sourceCanvas, output),
             encodeTimeoutMs,
-            'Garden preview encoding timed out.',
+            'Garden capture encoding timed out.',
         );
-        return validateEncodedBlob(blob);
+        return validateEncodedBlob(blob, output);
     }
 
     let snapshot: ImageBitmap;
@@ -189,11 +269,11 @@ async function canvasToWebp(sourceCanvas: HTMLCanvasElement) {
             throw error;
         }
         const blob = await withTimeout(
-            canvasElementToBlob(sourceCanvas),
+            canvasElementToBlob(sourceCanvas, output),
             encodeTimeoutMs,
-            'Garden preview encoding timed out.',
+            'Garden capture encoding timed out.',
         );
-        return validateEncodedBlob(blob);
+        return validateEncodedBlob(blob, output);
     }
 
     try {
@@ -211,30 +291,26 @@ async function canvasToWebp(sourceCanvas: HTMLCanvasElement) {
                 try {
                     const blob = await withTimeout(
                         encodingCanvas.convertToBlob({
-                            quality: webpQuality,
-                            type: 'image/webp',
+                            quality: output.quality,
+                            type: output.contentType,
                         }),
                         encodeTimeoutMs,
-                        'Garden preview encoding timed out.',
+                        'Garden capture encoding timed out.',
                     );
-                    return validateEncodedBlob(blob);
+                    return validateEncodedBlob(blob, output);
                 } catch {
-                    // Some browsers expose OffscreenCanvas without WebP
-                    // encoding support. Fall through to HTML canvas encoding.
+                    // Some browsers expose OffscreenCanvas without support for
+                    // the requested encoder. Fall through to HTML canvas.
                 }
             }
         }
 
         const blob = await withTimeout(
-            encodeWithHtmlCanvas(
-                snapshot,
-                sourceCanvas.width,
-                sourceCanvas.height,
-            ),
+            encodeWithHtmlCanvas(snapshot, output),
             encodeTimeoutMs,
-            'Garden preview encoding timed out.',
+            'Garden capture encoding timed out.',
         );
-        return validateEncodedBlob(blob);
+        return validateEncodedBlob(blob, output);
     } finally {
         snapshot.close();
     }
@@ -242,12 +318,13 @@ async function canvasToWebp(sourceCanvas: HTMLCanvasElement) {
 
 export function PublicGardenCaptureProbe({
     enabled,
+    fitSceneObjectName,
+    fitScenePadding = 0.56,
     onCapture,
     onError,
+    output,
     queriesIdle,
 }: PublicGardenCaptureProbeProps) {
-    const gl = useThree((state) => state.gl);
-    const assetsLoading = useProgress((state) => state.active);
     const attemptedRef = useRef(false);
     const eligibleSinceRef = useRef<number | null>(null);
     const firstFrameRef = useRef<number | null>(null);
@@ -256,8 +333,12 @@ export function PublicGardenCaptureProbe({
     const stableFramesRef = useRef(0);
     const stableSinceRef = useRef<number | null>(null);
     const signatureRef = useRef<string | null>(null);
+    const fitBoundsSignatureRef = useRef<string | null>(null);
+    const fitBoxRef = useRef(new Box3());
+    const fitPointRef = useRef(new Vector3());
     const onCaptureRef = useRef(onCapture);
     const onErrorRef = useRef(onError);
+    const resolvedOutput = resolveCaptureOutput(output);
 
     useEffect(() => {
         onCaptureRef.current = onCapture;
@@ -286,11 +367,12 @@ export function PublicGardenCaptureProbe({
         };
     }, []);
 
-    useFrame(() => {
+    useFrame(({ camera, gl, scene }) => {
         if (attemptedRef.current) {
             return;
         }
 
+        const assetsLoading = useProgress.getState().active;
         const now = performance.now();
         if (!enabled || !queriesIdle || assetsLoading) {
             eligibleSinceRef.current = null;
@@ -298,6 +380,63 @@ export function PublicGardenCaptureProbe({
             stableSinceRef.current = null;
             signatureRef.current = null;
             return;
+        }
+
+        if (fitSceneObjectName && camera instanceof OrthographicCamera) {
+            const target = scene.getObjectByName(fitSceneObjectName);
+            if (!target) {
+                return;
+            }
+
+            const box = fitBoxRef.current.setFromObject(target, true);
+            if (box.isEmpty()) {
+                return;
+            }
+
+            camera.updateMatrixWorld(true);
+            const viewBounds = {
+                bottom: Number.POSITIVE_INFINITY,
+                left: Number.POSITIVE_INFINITY,
+                right: Number.NEGATIVE_INFINITY,
+                top: Number.NEGATIVE_INFINITY,
+            };
+            const point = fitPointRef.current;
+            for (const x of [box.min.x, box.max.x]) {
+                for (const y of [box.min.y, box.max.y]) {
+                    for (const z of [box.min.z, box.max.z]) {
+                        point
+                            .set(x, y, z)
+                            .applyMatrix4(camera.matrixWorldInverse);
+                        viewBounds.left = Math.min(viewBounds.left, point.x);
+                        viewBounds.right = Math.max(viewBounds.right, point.x);
+                        viewBounds.bottom = Math.min(
+                            viewBounds.bottom,
+                            point.y,
+                        );
+                        viewBounds.top = Math.max(viewBounds.top, point.y);
+                    }
+                }
+            }
+
+            const fitSignature = viewBoundsSignature(viewBounds);
+            if (fitBoundsSignatureRef.current !== fitSignature) {
+                fitBoundsSignatureRef.current = fitSignature;
+                const zoom = resolveCaptureCameraZoom({
+                    bounds: viewBounds,
+                    cameraHeight: camera.top - camera.bottom,
+                    cameraWidth: camera.right - camera.left,
+                    padding: fitScenePadding,
+                });
+                if (zoom !== null) {
+                    camera.zoom = Math.max(24, Math.min(500, zoom));
+                    camera.updateProjectionMatrix();
+                }
+                eligibleSinceRef.current = null;
+                stableFramesRef.current = 0;
+                stableSinceRef.current = null;
+                signatureRef.current = null;
+                return;
+            }
         }
 
         eligibleSinceRef.current ??= now;
@@ -346,7 +485,7 @@ export function PublicGardenCaptureProbe({
                 if (!mountedRef.current) {
                     return;
                 }
-                void canvasToWebp(gl.domElement)
+                void encodeCapture(gl.domElement, resolvedOutput)
                     .then((blob) => {
                         if (mountedRef.current) {
                             onCaptureRef.current(blob);
