@@ -566,6 +566,36 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
     }
 });
 
+test('garden avatar view enters play mode and resets touch input on exit', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setGardenAvatarView('third-person');
+        store.getState().setGardenAvatarMoveInput({ forward: 1, right: -1 });
+        store.getState().requestGardenAvatarJump();
+
+        assert.equal(store.getState().gardenAvatarView, 'third-person');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 1,
+            right: -1,
+        });
+        assert.equal(store.getState().gardenAvatarJumpRequest, 1);
+
+        store.getState().setGardenAvatarView('overview');
+        assert.equal(store.getState().gardenAvatarView, 'overview');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 0,
+            right: 0,
+        });
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('environment can publish blended rain intensity for surface effects', () => {
     const store = createGameState({
         appBaseUrl: '',

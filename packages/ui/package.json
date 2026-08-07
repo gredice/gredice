@@ -12,7 +12,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
-        "test": "node --import tsx --test src/cms/CmsOgImage.unit.ts",
+        "test": "node --import tsx --test src/cms/CmsOgImage.unit.ts src/CalendarDatePicker/calendarDateUtils.unit.ts",
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
