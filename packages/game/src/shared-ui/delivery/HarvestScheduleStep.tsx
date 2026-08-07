@@ -2,8 +2,8 @@
 
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
-import { Input } from '@gredice/ui/Input';
 import { Check, Edit, Info, Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -436,7 +436,7 @@ export function HarvestScheduleStep({
                                                         </Button>
                                                     </Row>
                                                 ) : null}
-                                                <Input
+                                                <CalendarDatePicker
                                                     aria-describedby={helpId}
                                                     aria-invalid={
                                                         !selectedDateValid
@@ -449,12 +449,11 @@ export function HarvestScheduleStep({
                                                     min={
                                                         allowedFrom ?? undefined
                                                     }
-                                                    type="date"
                                                     value={selectedDate}
-                                                    onChange={(event) =>
+                                                    onValueChange={(date) =>
                                                         handleDateChange(
                                                             item,
-                                                            event.target.value,
+                                                            date,
                                                         )
                                                     }
                                                 />

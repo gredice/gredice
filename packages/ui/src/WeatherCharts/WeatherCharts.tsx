@@ -37,7 +37,7 @@ import {
     ButtonGroup,
     buttonGroupItemClassName,
 } from '../ButtonGroup/ButtonGroup';
-import { Input } from '../Input/Input';
+import { CalendarDatePicker } from '../CalendarDatePicker/CalendarDatePicker';
 import { ArrowUp, Calendar, Droplets, ThermometerSun, Wind } from '../icons';
 import { Popper } from '../Popper/Popper';
 import { Row } from '../Row/Row';
@@ -942,25 +942,19 @@ export function WeatherCharts({
                         }
                     >
                         <Row spacing={1} className="items-end">
-                            <Input
-                                type="date"
+                            <CalendarDatePicker
                                 value={toDateInputValue(range.from)}
                                 min={minInput}
                                 max={maxInput}
-                                onChange={(event) =>
-                                    handleFromChange(event.target.value)
-                                }
+                                onValueChange={handleFromChange}
                                 label="Od"
                                 className="w-36"
                             />
-                            <Input
-                                type="date"
+                            <CalendarDatePicker
                                 value={toDateInputValue(range.to)}
                                 min={minInput}
                                 max={maxInput}
-                                onChange={(event) =>
-                                    handleToChange(event.target.value)
-                                }
+                                onValueChange={handleToChange}
                                 label="Do"
                                 className="w-36"
                             />

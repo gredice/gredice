@@ -1,4 +1,9 @@
-export type ActorGroundingShadowSpecies = 'bee' | 'bird' | 'cat' | 'dog';
+export type ActorGroundingShadowSpecies =
+    | 'avatar'
+    | 'bee'
+    | 'bird'
+    | 'cat'
+    | 'dog';
 
 export type ActorGroundingShadowState = {
     actorY: number;
@@ -65,6 +70,13 @@ export const actorGroundingShadowSurfaceLift = 0.006;
 export const actorGroundingShadowSnowLift = 0.012;
 
 export const actorGroundingShadowProfiles = {
+    avatar: {
+        baseHalfLength: 0.24,
+        baseHalfWidth: 0.18,
+        baseOpacity: 0.32,
+        cutoffHeight: 2,
+        maxFootprintScale: 1.7,
+    },
     bee: {
         baseHalfLength: 0.055,
         baseHalfWidth: 0.035,
