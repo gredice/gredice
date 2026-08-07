@@ -27,6 +27,7 @@ import type { Stack } from '../../types/Stack';
 import { type GardenAvatarView, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import { GardenAvatarCollisionDebug } from './GardenAvatarCollisionDebug';
 import { getGardenAvatarPerspectiveEntryPosition } from './gardenAvatarCamera';
 import {
     createGardenAvatarCollisionWorld,
@@ -569,6 +570,9 @@ export function GardenAvatar({
     const gltf = useGameGLTF('FarmerAvatar');
     const { data: blockData } = useBlockData();
     const view = useGameState((state) => state.gardenAvatarView);
+    const collisionDebugVisible = useGameState(
+        (state) => state.gardenAvatarCollisionDebugVisible,
+    );
     const setView = useGameState((state) => state.setGardenAvatarView);
     const touchMoveInput = useGameState((state) => state.gardenAvatarMoveInput);
     const touchSprintInput = useGameState(
@@ -1311,6 +1315,13 @@ export function GardenAvatar({
                     </Html>
                 ) : null}
             </group>
+            {collisionDebugVisible ? (
+                <GardenAvatarCollisionDebug
+                    actorRef={actorRef}
+                    crouchingRef={crouchingRef}
+                    world={world}
+                />
+            ) : null}
             {view !== 'overview' ? (
                 <GardenAvatarCamera
                     actorRef={actorRef}
