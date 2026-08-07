@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { selectCalendarDate } from './calendarDatePickerTestUtils';
 import { HarvestScheduleStepStory } from './HarvestScheduleStepStory';
 
 test('shows the summary and lets a valid flexible date be changed again', async ({
@@ -7,7 +8,9 @@ test('shows the summary and lets a valid flexible date be changed again', async 
 }) => {
     await mount(<HarvestScheduleStepStory />);
 
-    const carrotDate = page.getByLabel('Datum branja za Berba mrkve');
+    const carrotDate = page.getByRole('button', {
+        name: /^Datum branja za Berba mrkve:/u,
+    });
     const editDates = page.getByRole('button', { name: 'Uredi datume' });
 
     await expect(
@@ -20,11 +23,17 @@ test('shows the summary and lets a valid flexible date be changed again', async 
 
     await editDates.click();
 
-    await expect(carrotDate).toHaveValue('2026-07-22');
-    await expect(page.getByLabel('Datum branja za Berba salate')).toHaveCount(
-        0,
-    );
-    await carrotDate.fill('2026-07-23');
+    await expect(carrotDate).toContainText('22. 07. 2026.');
+    await expect(
+        page.getByRole('button', {
+            name: /^Datum branja za Berba salate:/u,
+        }),
+    ).toHaveCount(0);
+    await selectCalendarDate({
+        date: '2026-07-23',
+        page,
+        trigger: carrotDate,
+    });
     await page.getByRole('button', { name: 'Završi uređivanje' }).click();
 
     await expect(carrotDate).toHaveCount(0);
@@ -41,7 +50,9 @@ test('applies a suggested date and keeps it available for another manual edit', 
     await page.setViewportSize({ height: 844, width: 390 });
     await mount(<HarvestScheduleStepStory invalid />);
 
-    const carrotDate = page.getByLabel('Datum branja za Berba mrkve');
+    const carrotDate = page.getByRole('button', {
+        name: /^Datum branja za Berba mrkve:/u,
+    });
     const confirm = page.getByRole('button', { name: 'Potvrdi i plati' });
     const output = page.getByLabel('Odabrani datumi branja');
 
@@ -50,7 +61,7 @@ test('applies a suggested date and keeps it available for another manual edit', 
             exact: false,
         }),
     ).toBeVisible();
-    await expect(carrotDate).toHaveValue('2026-07-20');
+    await expect(carrotDate).toContainText('20. 07. 2026.');
     await expect(
         page.getByText('Predloženi datum branja: 21. srpnja 2026.'),
     ).toBeVisible();
@@ -61,9 +72,11 @@ test('applies a suggested date and keeps it available for another manual edit', 
     await expect(
         page.getByRole('button', { name: 'Uredi datume' }),
     ).toHaveCount(0);
-    await expect(page.getByLabel('Datum branja za Berba salate')).toHaveCount(
-        0,
-    );
+    await expect(
+        page.getByRole('button', {
+            name: /^Datum branja za Berba salate:/u,
+        }),
+    ).toHaveCount(0);
     await expect(output).toContainText(
         '"cartItemId":71,"scheduledDate":"2026-07-24"',
     );
@@ -87,18 +100,13 @@ test('applies a suggested date and keeps it available for another manual edit', 
 
     await page.getByRole('button', { name: 'Uredi datume' }).click();
 
-    await expect(carrotDate).toHaveValue('2026-07-21');
-    await carrotDate.fill('2026-07-20');
+    await expect(carrotDate).toContainText('21. 07. 2026.');
+    await carrotDate.click();
+    const calendar = page.getByRole('group', { name: 'Kalendar' });
     await expect(
-        page.getByRole('button', { name: 'Završi uređivanje' }),
+        calendar.locator('[data-calendar-date="2026-07-20"]'),
     ).toBeDisabled();
-    await page
-        .getByRole('button', {
-            name: 'Primijeni predloženi datum za Berba mrkve',
-        })
-        .click();
-    await expect(carrotDate).toHaveValue('2026-07-21');
-    await carrotDate.fill('2026-07-23');
+    await calendar.locator('[data-calendar-date="2026-07-23"]').click();
     await expect(output).toContainText(
         '"cartItemId":72,"scheduledDate":"2026-07-23"',
     );

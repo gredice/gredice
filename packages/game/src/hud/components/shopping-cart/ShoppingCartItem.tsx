@@ -1,11 +1,10 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Input } from '@gredice/ui/Input';
 import { Close, Delete, Navigate, Sprout, Timer } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
@@ -439,7 +438,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
     function renderScheduledDateControl() {
         return canChangeScheduledDate ? (
-            <Popper
+            <CalendarDatePicker
                 open={datePickerOpen}
                 onOpenChange={(open) => {
                     setDatePickerOpen(open);
@@ -447,10 +446,15 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         setDatePickerError(null);
                     }
                 }}
-                side="bottom"
                 align="start"
-                sideOffset={8}
-                className="w-72 p-3"
+                closeOnSelect={false}
+                disabled={changeScheduledDateShoppingCartItem.isPending}
+                min={formatDateInput(getTomorrowDate())}
+                name={`cartItemScheduledDate-${item.id}`}
+                onValueChange={(nextDate) => {
+                    void handleScheduledDateChange(nextDate);
+                }}
+                side="bottom"
                 trigger={
                     <Chip
                         startDecorator={<Timer className="size-4" />}
@@ -464,21 +468,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         {scheduledDateLabel}
                     </Chip>
                 }
+                value={formatDateInput(scheduledDate)}
             >
                 <Stack spacing={2}>
-                    <Input
-                        type="date"
-                        label="Datum"
-                        name={`cartItemScheduledDate-${item.id}`}
-                        className="w-full bg-card"
-                        value={formatDateInput(scheduledDate)}
-                        min={formatDateInput(getTomorrowDate())}
-                        disabled={changeScheduledDateShoppingCartItem.isPending}
-                        onChange={(event) => {
-                            void handleScheduledDateChange(event.target.value);
-                        }}
-                        required
-                    />
                     {datePickerError ? (
                         <Typography level="body3" className="text-red-600">
                             {datePickerError}
@@ -495,7 +487,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         />
                     ) : null}
                 </Stack>
-            </Popper>
+            </CalendarDatePicker>
         ) : (
             <Chip
                 startDecorator={<Timer className="size-4" />}

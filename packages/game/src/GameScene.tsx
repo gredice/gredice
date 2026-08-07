@@ -14,6 +14,7 @@ import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
 import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
+import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -318,6 +319,10 @@ export function GameScene({
         (state) => state.localSandboxStorageKey !== null,
     );
     const isMock = useGameState((state) => state.isMock);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const setGardenAvatarView = useGameState(
+        (state) => state.setGardenAvatarView,
+    );
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
@@ -326,6 +331,9 @@ export function GameScene({
         (state) => state.gameQualityCustomProfile,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const gardenAvatarEnabled = Boolean(flags?.enableGardenAvatarFlag);
+    const gardenAvatarActive =
+        gardenAvatarEnabled && gardenAvatarView !== 'overview';
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
     const isOperationRewardDebug =
@@ -358,7 +366,9 @@ export function GameScene({
                 (quality === undefined && gameQualitySetting === 'high')),
     );
     const staticOpaqueCacheEnabled = Boolean(
-        staticOpaqueSceneCache && qualityProfile.tier === 'high',
+        staticOpaqueSceneCache &&
+            qualityProfile.tier === 'high' &&
+            !gardenAvatarActive,
     );
     const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
         adaptiveHighEnabled || staticOpaqueCacheEnabled,
@@ -404,6 +414,11 @@ export function GameScene({
         !isLocalSandbox && !weatherDisabled && !weather && garden !== undefined,
         garden?.farmId,
     );
+    useEffect(() => {
+        if (!gardenAvatarEnabled && gardenAvatarView !== 'overview') {
+            setGardenAvatarView('overview');
+        }
+    }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
     const isLoading = gardenLoading;
 
     const loadingContext = useGameLoading();
@@ -525,7 +540,9 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <BlockInteractionLayer
-                                    controlsEnabled={!noControls}
+                                    controlsEnabled={
+                                        !noControls && !gardenAvatarActive
+                                    }
                                     sharedControllerEnabled
                                     stacks={garden?.stacks}
                                 />
@@ -554,6 +571,15 @@ export function GameScene({
                                         />
                                     </Suspense>
                                 )}
+                                {gardenAvatarEnabled &&
+                                    renderDetails &&
+                                    zoom !== 'far' && (
+                                        <Suspense fallback={null}>
+                                            <GardenAvatar
+                                                stacks={garden?.stacks}
+                                            />
+                                        </Suspense>
+                                    )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Bees
@@ -569,7 +595,9 @@ export function GameScene({
                                 )}
                             </group>
                             <GameCameraRig
-                                controlsEnabled={!noControls}
+                                controlsEnabled={
+                                    !noControls && !gardenAvatarActive
+                                }
                                 initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}
                                 initialTarget={sceneCameraTarget}

@@ -1,6 +1,6 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Input } from '@gredice/ui/Input';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Calendar } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -37,6 +37,7 @@ export function RaisedBedDiaryRescheduleAction({
         ? formatDiaryRescheduleDateInput(new Date(target.scheduledDate))
         : minimumDate;
     const currentValue = defaultDate >= minimumDate ? defaultDate : minimumDate;
+    const [scheduledDate, setScheduledDate] = useState(currentValue);
     const actionLabel =
         triggerLabel ?? (hasScheduledDate ? 'Prerasporedi' : 'Zakaži');
     const modalActionLabel = hasScheduledDate ? 'Prerasporedi' : 'Zakaži';
@@ -84,9 +85,7 @@ export function RaisedBedDiaryRescheduleAction({
         event.preventDefault();
         setErrorMessage(null);
 
-        const formData = new FormData(event.currentTarget);
-        const scheduledDate = formData.get('scheduledDate');
-        if (typeof scheduledDate !== 'string' || !scheduledDate) {
+        if (!scheduledDate) {
             setErrorMessage('Odaberi novi datum.');
             return;
         }
@@ -111,6 +110,9 @@ export function RaisedBedDiaryRescheduleAction({
             title={`${modalActionLabel} ${entryName}`}
             open={open}
             onOpenChange={(nextOpen) => {
+                if (nextOpen) {
+                    setScheduledDate(currentValue);
+                }
                 setOpen(nextOpen);
                 if (!nextOpen) {
                     setErrorMessage(null);
@@ -136,15 +138,15 @@ export function RaisedBedDiaryRescheduleAction({
                         </Alert>
                     ) : null}
 
-                    <Input
-                        type="date"
-                        label="Novi datum"
-                        name="scheduledDate"
-                        defaultValue={currentValue}
-                        min={minimumDate}
+                    <CalendarDatePicker
                         disabled={mutation.isPending}
                         fullWidth
+                        label="Novi datum"
+                        min={minimumDate}
+                        name="scheduledDate"
+                        onValueChange={setScheduledDate}
                         required
+                        value={scheduledDate}
                     />
 
                     <Row spacing={2} className="justify-end">
