@@ -4,7 +4,6 @@ import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import {
     type Group,
     MathUtils,
-    Mesh,
     type Object3D,
     Quaternion,
     PerspectiveCamera as ThreePerspectiveCamera,
@@ -19,6 +18,7 @@ import type { Stack } from '../../types/Stack';
 import { type GardenAvatarView, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import {
     createAnimalBlockedCells,
     createAnimalMovementSurfaces,
@@ -98,23 +98,22 @@ function dampAngle(
 }
 
 function prepareAvatarModel(root: Object3D) {
-    root.traverse((object) => {
-        if (!(object instanceof Mesh)) {
-            return;
-        }
-        object.castShadow = true;
-        object.receiveShadow = true;
-        object.frustumCulled = false;
+    const { primaryCasterCount } = configureActorMeshShadows(root, (mesh) => {
+        mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
     });
 
     return {
-        armLeft: root.getObjectByName('FarmerAvatar_ArmPivot_L'),
-        armRight: root.getObjectByName('FarmerAvatar_ArmPivot_R'),
-        body: root.getObjectByName('FarmerAvatar_BodyPivot'),
-        head: root.getObjectByName('FarmerAvatar_HeadPivot'),
-        legLeft: root.getObjectByName('FarmerAvatar_LegPivot_L'),
-        legRight: root.getObjectByName('FarmerAvatar_LegPivot_R'),
-    } satisfies AvatarRig;
+        primaryCasterCount,
+        rig: {
+            armLeft: root.getObjectByName('FarmerAvatar_ArmPivot_L'),
+            armRight: root.getObjectByName('FarmerAvatar_ArmPivot_R'),
+            body: root.getObjectByName('FarmerAvatar_BodyPivot'),
+            head: root.getObjectByName('FarmerAvatar_HeadPivot'),
+            legLeft: root.getObjectByName('FarmerAvatar_LegPivot_L'),
+            legRight: root.getObjectByName('FarmerAvatar_LegPivot_R'),
+        } satisfies AvatarRig,
+    };
 }
 
 function animateAvatarRig({
@@ -369,7 +368,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     const initializedRef = useRef(false);
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
-        return { rig: prepareAvatarModel(scene), scene };
+        return { ...prepareAvatarModel(scene), scene };
     }, [gltf.scene]);
     const world = useMemo(
         () => ({
@@ -389,7 +388,7 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
     );
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: 'garden-avatar',
-        primaryCasterCount: 1,
+        primaryCasterCount: model.primaryCasterCount,
         species: 'avatar',
     });
     useSceneTimeInvalidation(true, sceneFrameRates.interactive);
@@ -479,6 +478,14 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
         const handleKeyUp = (event: KeyboardEvent) => {
             keyboardRef.current.delete(event.code);
         };
+        const clearKeyboardInput = () => {
+            keyboardRef.current.clear();
+        };
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                clearKeyboardInput();
+            }
+        };
         const handleMouseMove = (event: MouseEvent) => {
             if (document.pointerLockElement === gl.domElement) {
                 updateLook(
@@ -522,15 +529,22 @@ export function GardenAvatar({ stacks }: { stacks: Stack[] | undefined }) {
 
         window.addEventListener('keydown', handleKeyDown, { passive: false });
         window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', clearKeyboardInput);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         document.addEventListener('mousemove', handleMouseMove);
         gl.domElement.addEventListener('pointerdown', handlePointerDown);
         gl.domElement.addEventListener('pointermove', handlePointerMove);
         gl.domElement.addEventListener('pointerup', handlePointerEnd);
         gl.domElement.addEventListener('pointercancel', handlePointerEnd);
         return () => {
-            keyboardRef.current.clear();
+            clearKeyboardInput();
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', clearKeyboardInput);
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
             document.removeEventListener('mousemove', handleMouseMove);
             gl.domElement.removeEventListener('pointerdown', handlePointerDown);
             gl.domElement.removeEventListener('pointermove', handlePointerMove);
