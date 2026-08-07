@@ -73,8 +73,8 @@ export function getGardenAvatarSurfaceY(
     const sin = Math.sin(rotation);
     const dx = position.x - surface.x;
     const dz = position.z - surface.z;
-    const localX = dx * cos + dz * sin;
-    const localZ = -dx * sin + dz * cos;
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
     const normalizedHeight = getSlopedGroundNormalizedHeight(
         surface.slopeBlockName,
         localX,

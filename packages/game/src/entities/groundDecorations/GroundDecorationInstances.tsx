@@ -81,6 +81,12 @@ type GroundDecorationProfileBatchStats = {
     visibleCount: number;
 };
 
+type GroundDecorationCameraSnapshot = {
+    position: Vector3;
+    projectionMatrix: Matrix4;
+    quaternion: Quaternion;
+};
+
 type RecordGroundDecorationProfileBatch = (
     key: string,
     stats: GroundDecorationProfileBatchStats | null,
@@ -566,6 +572,11 @@ function GroundDecorationInstancedBatch({
     weather?: GroundDecorationWeather;
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
+    const avatarCameraSnapshotRef =
+        useRef<GroundDecorationCameraSnapshot | null>(null);
+    const visibleInstancesRef = useRef<GroundDecorationBatchInstance[]>([]);
+    const staticAttributeGeometryRef = useRef<PlaneGeometry | null>(null);
+    const profileInitializedRef = useRef(false);
     const camera = useThree((state) => state.camera);
     const matrix = useMemo(() => new Matrix4(), []);
     const frustumMatrix = useMemo(() => new Matrix4(), []);
@@ -663,6 +674,11 @@ function GroundDecorationInstancedBatch({
             const uvTransformAttribute = geometry.getAttribute(
                 'instanceUvTransform',
             ) as InstancedBufferAttribute;
+            const previousVisibleInstances = visibleInstancesRef.current;
+            const initializeStaticAttributes =
+                staticAttributeGeometryRef.current !== geometry;
+            let staticAttributesChanged = false;
+            let visibleInstancesChanged = initializeStaticAttributes;
             let visibleIndex = 0;
 
             for (const chunk of chunks) {
@@ -681,34 +697,56 @@ function GroundDecorationInstancedBatch({
                     );
                     matrix.compose(position, quaternion, scale);
                     mesh.setMatrixAt(visibleIndex, matrix);
-                    wobbleAttribute.setXYZW(visibleIndex, ...instance.wobble);
-                    alphaOpacityAttribute.setXY(
-                        visibleIndex,
-                        instance.alphaTest,
-                        instance.opacity,
-                    );
-                    uvTransformAttribute.setXYZW(
-                        visibleIndex,
-                        ...instance.uvTransform,
-                    );
+                    if (
+                        initializeStaticAttributes ||
+                        previousVisibleInstances[visibleIndex] !== instance
+                    ) {
+                        wobbleAttribute.setXYZW(
+                            visibleIndex,
+                            ...instance.wobble,
+                        );
+                        alphaOpacityAttribute.setXY(
+                            visibleIndex,
+                            instance.alphaTest,
+                            instance.opacity,
+                        );
+                        uvTransformAttribute.setXYZW(
+                            visibleIndex,
+                            ...instance.uvTransform,
+                        );
+                        staticAttributesChanged = true;
+                        visibleInstancesChanged = true;
+                    }
+                    previousVisibleInstances[visibleIndex] = instance;
                     visibleIndex += 1;
                 }
             }
 
+            if (previousVisibleInstances.length !== visibleIndex) {
+                previousVisibleInstances.length = visibleIndex;
+                visibleInstancesChanged = true;
+            }
+            staticAttributeGeometryRef.current = geometry;
+
             mesh.count = visibleIndex;
             mesh.visible = visibleIndex > 0;
             mesh.instanceMatrix.needsUpdate = true;
-            wobbleAttribute.needsUpdate = true;
-            alphaOpacityAttribute.needsUpdate = true;
-            uvTransformAttribute.needsUpdate = true;
+            if (staticAttributesChanged) {
+                wobbleAttribute.needsUpdate = true;
+                alphaOpacityAttribute.needsUpdate = true;
+                uvTransformAttribute.needsUpdate = true;
+            }
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
-            recordProfileBatch(batch.key, {
-                atlasPageIndex: batch.atlasPageIndex,
-                chunkKeys: chunks.map((chunk) => chunk.key),
-                instanceCount: batch.instances.length,
-                visibleCount: visibleIndex,
-            });
+            if (!profileInitializedRef.current || visibleInstancesChanged) {
+                recordProfileBatch(batch.key, {
+                    atlasPageIndex: batch.atlasPageIndex,
+                    chunkKeys: chunks.map((chunk) => chunk.key),
+                    instanceCount: batch.instances.length,
+                    visibleCount: visibleIndex,
+                });
+                profileInitializedRef.current = true;
+            }
         },
         [
             batch.instances.length,
@@ -738,9 +776,32 @@ function GroundDecorationInstancedBatch({
     }, [camera, gameCamera, updateMatrices]);
 
     useFrame(() => {
-        if (gardenAvatarView !== 'overview') {
-            updateMatrices(camera.quaternion);
+        if (gardenAvatarView === 'overview') {
+            avatarCameraSnapshotRef.current = null;
+            return;
         }
+
+        const snapshot = avatarCameraSnapshotRef.current;
+        if (
+            snapshot?.position.equals(camera.position) &&
+            snapshot.quaternion.equals(camera.quaternion) &&
+            snapshot.projectionMatrix.equals(camera.projectionMatrix)
+        ) {
+            return;
+        }
+
+        if (snapshot) {
+            snapshot.position.copy(camera.position);
+            snapshot.quaternion.copy(camera.quaternion);
+            snapshot.projectionMatrix.copy(camera.projectionMatrix);
+        } else {
+            avatarCameraSnapshotRef.current = {
+                position: camera.position.clone(),
+                projectionMatrix: camera.projectionMatrix.clone(),
+                quaternion: camera.quaternion.clone(),
+            };
+        }
+        updateMatrices(camera.quaternion);
     }, -90);
 
     useLayoutEffect(

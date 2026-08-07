@@ -190,7 +190,7 @@ test('follows angled terrain height continuously instead of flattening it', () =
     assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0 }, slope), 0.4);
 });
 
-test('rotates slope height sampling with the terrain block', () => {
+test('matches the rendered orientation of a quarter-turned slope', () => {
     const world = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
         stacks: [
@@ -205,8 +205,8 @@ test('rotates slope height sampling with the terrain block', () => {
     const slope = world.surfaces[0];
 
     assert.ok(slope);
-    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: -0.5 }, slope), 0);
-    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: 0.5 }, slope), 0.4);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: -0.5 }, slope), 0.4);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: 0.5 }, slope), 0);
 });
 
 test('matches corner and reverse-corner terrain silhouettes', () => {
