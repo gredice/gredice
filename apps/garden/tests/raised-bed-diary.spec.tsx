@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
-import { getMinimumDiaryRescheduleDateInput } from '../../../packages/game/src/hooks/useRescheduleDiaryEntry';
 import { RaisedBedDiaryOverflowStory } from './RaisedBedDiaryStory';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
@@ -258,12 +257,14 @@ test('future planned diary entries expose the in-game reschedule action', async 
 
     await rescheduleButtons.first().click();
 
-    const dateInput = page.getByLabel('Novi datum');
-    await expect(dateInput).toBeVisible();
-    await expect(dateInput).toHaveAttribute(
-        'min',
-        getMinimumDiaryRescheduleDateInput(),
-    );
+    const dateButton = page.getByRole('button', { name: /Novi datum:/ });
+    await expect(dateButton).toBeVisible();
+    await dateButton.click();
+
+    const calendar = page.getByRole('group', { name: 'Kalendar' }).last();
+    await expect(
+        calendar.locator('[data-calendar-date][aria-pressed="true"]'),
+    ).toHaveCount(1);
 });
 
 test('future planned diary entries expose cancel confirmation', async ({
