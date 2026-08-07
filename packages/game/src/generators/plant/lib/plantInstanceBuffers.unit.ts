@@ -106,7 +106,11 @@ describe('generated plant instance buffers', () => {
         const source = new THREE.BoxGeometry(1, 1, 1);
         const shell = createPlantGeometryShell(source);
         const instanceAttribute = createStaticInstancedBufferAttribute(2, 1);
+        let disposeEventCount = 0;
         shell.setAttribute('instanceSwayPhase', instanceAttribute);
+        shell.addEventListener('dispose', () => {
+            disposeEventCount += 1;
+        });
 
         assert.equal(shell.index, source.index);
         assert.equal(
@@ -119,7 +123,19 @@ describe('generated plant instance buffers', () => {
         );
 
         disposePlantGeometryShell(shell, source);
+        disposePlantGeometryShell(shell, source);
 
+        assert.equal(shell.index, source.index);
+        assert.equal(
+            shell.getAttribute('position'),
+            source.getAttribute('position'),
+        );
+        assert.equal(
+            shell.getAttribute('instanceSwayPhase'),
+            instanceAttribute,
+        );
+        assert.equal(shell.groups.length, source.groups.length);
+        assert.equal(disposeEventCount, 2);
         assert.ok(source.index);
         assert.ok(source.getAttribute('position'));
         source.dispose();

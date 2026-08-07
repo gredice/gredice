@@ -504,6 +504,7 @@ function RaisedBedFieldTile({
                 expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
                 expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
                 expectedPlantSortId={field.plantSortId}
+                expectedPlantStatusEventId={field.plantStatusEventId ?? null}
                 date={dateItems.find((item) => item.current)?.value ?? null}
                 dateItems={dateItems}
                 className={raisedBedFieldCardButtonClassName}

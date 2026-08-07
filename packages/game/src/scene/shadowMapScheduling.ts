@@ -1,4 +1,4 @@
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 
 type ShadowLightPosition = {
     x: number;
@@ -30,7 +30,7 @@ function formatShadowSignatureValue(value: number) {
 }
 
 export function buildGardenShadowGeometrySignature(
-    stacks: Stack[] | undefined,
+    stacks: GardenStack[] | undefined,
 ) {
     return (stacks ?? [])
         .map((stack) => {

@@ -1,4 +1,3 @@
-import { blockGeometryMergingFlag } from '../../flags';
 import { ProfilePageClient } from './ProfilePageClient';
 
 type ProfilePageProps = {
@@ -8,15 +7,7 @@ type ProfilePageProps = {
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
-    const [{ publicId }, enableBlockGeometryMerging] = await Promise.all([
-        params,
-        blockGeometryMergingFlag(),
-    ]);
+    const { publicId } = await params;
 
-    return (
-        <ProfilePageClient
-            enableBlockGeometryMerging={enableBlockGeometryMerging}
-            publicId={publicId}
-        />
-    );
+    return <ProfilePageClient publicId={publicId} />;
 }

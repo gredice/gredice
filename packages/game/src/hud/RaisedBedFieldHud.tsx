@@ -19,6 +19,7 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
+import { RaisedBed2DPlaceholder } from './raisedBed/RaisedBed2DPlaceholder';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
@@ -41,7 +42,13 @@ function centerOffset(offset: number) {
     return `calc(50% ${operator} ${Math.abs(offset)}px)`;
 }
 
-export function RaisedBedFieldHud() {
+export function RaisedBedFieldHud({
+    instantTransition = false,
+    show2DPlaceholder = false,
+}: {
+    instantTransition?: boolean;
+    show2DPlaceholder?: boolean;
+}) {
     const { data: currentGarden } = useCurrentGarden();
     const isSandbox = useIsSandboxGarden();
     const { track } = useGameAnalytics();
@@ -84,7 +91,10 @@ export function RaisedBedFieldHud() {
             className={cx(
                 'opacity-0 transition-opacity pointer-events-none duration-300',
                 view === 'closeup' &&
-                    'opacity-100 [transition-delay:950ms] pointer-events-auto',
+                    cx(
+                        'opacity-100 pointer-events-auto',
+                        !instantTransition && '[transition-delay:950ms]',
+                    ),
             )}
             style={hudStyles}
         >
@@ -167,13 +177,21 @@ export function RaisedBedFieldHud() {
                     </div>
                 </div>
             )}
-            <div className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
-                {view === 'closeup' && currentGarden && raisedBed && (
-                    <RaisedBedField
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                )}
+            <div
+                data-raised-bed-field-grid
+                className="absolute z-0 top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]"
+            >
+                {view === 'closeup' && currentGarden && raisedBed ? (
+                    <>
+                        {show2DPlaceholder ? <RaisedBed2DPlaceholder /> : null}
+                        <div className="relative z-10 size-full">
+                            <RaisedBedField
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        </div>
+                    </>
+                ) : null}
             </div>
             <Stack
                 className="absolute z-40 md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"

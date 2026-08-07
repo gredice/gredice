@@ -1,9 +1,8 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
-import type { Stack } from '../types/Stack';
+import { createGardenPosition, type GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
@@ -42,7 +41,7 @@ function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
 }
 
 function moveBlockOptimistically(
-    stacks: Stack[],
+    stacks: GardenStack[],
     sourcePosition: { x: number; z: number },
     destinationPosition: { x: number; z: number },
     blockIndex: number,
@@ -80,7 +79,7 @@ function moveBlockOptimistically(
         : [
               ...stacks,
               {
-                  position: new Vector3(
+                  position: createGardenPosition(
                       destinationPosition.x,
                       0,
                       destinationPosition.z,

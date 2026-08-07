@@ -33,6 +33,7 @@ import {
     canSwitchPlantingTaskSort,
     canUpdatePlantingTaskStatus,
 } from '../admin/schedule/scheduleShared';
+import { hasCurrentRaisedBedFieldPlantUpdateVersion } from './raisedBedFieldPlantUpdateVersion';
 
 function assertPlantCycleVersionEventId(value: number) {
     if (!Number.isSafeInteger(value) || value <= 0) {
@@ -115,6 +116,8 @@ async function applyRaisedBedFieldPlantUpdate({
     expectedPlantCycleEventId,
     expectedPlantCycleVersionEventId,
     expectedPlantSortId,
+    expectedPlantStatus,
+    expectedPlantStatusEventId,
 }: {
     raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
     positionIndex: number;
@@ -124,6 +127,8 @@ async function applyRaisedBedFieldPlantUpdate({
     expectedPlantCycleEventId: number;
     expectedPlantCycleVersionEventId: number;
     expectedPlantSortId: number;
+    expectedPlantStatus?: string | null;
+    expectedPlantStatusEventId?: number | null;
 }) {
     const validExpectedPlantCycleVersionEventId =
         assertPlantCycleVersionEventId(expectedPlantCycleVersionEventId);
@@ -149,14 +154,18 @@ async function applyRaisedBedFieldPlantUpdate({
             );
             if (
                 !existingField ||
-                existingField.id !== expectedField?.id ||
-                activePlantCycleEventId(existingField) !==
-                    expectedPlantCycleEventId ||
-                activePlantCycleVersionEventId(existingField) !==
-                    validExpectedPlantCycleVersionEventId ||
-                existingField.plantSortId !== expectedPlantSortId ||
-                existingField?.plantStatusEventId !==
-                    expectedField?.plantStatusEventId
+                !hasCurrentRaisedBedFieldPlantUpdateVersion({
+                    existingField,
+                    expectedField,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId:
+                        validExpectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
+                    expectedPlantStatus,
+                    expectedPlantStatusEventId,
+                    nextPlantSortId: plantSortId,
+                    nextStatus: status,
+                })
             ) {
                 throw new Error(
                     'Biljka se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
@@ -379,6 +388,8 @@ export async function raisedBedFieldUpdatePlant({
     expectedPlantCycleEventId,
     expectedPlantCycleVersionEventId,
     expectedPlantSortId,
+    expectedPlantStatus,
+    expectedPlantStatusEventId,
 }: {
     raisedBedId: number;
     positionIndex: number;
@@ -388,6 +399,8 @@ export async function raisedBedFieldUpdatePlant({
     expectedPlantCycleEventId: number;
     expectedPlantCycleVersionEventId: number;
     expectedPlantSortId: number;
+    expectedPlantStatus?: string | null;
+    expectedPlantStatusEventId?: number | null;
 }) {
     await auth(['admin']);
 
@@ -405,6 +418,8 @@ export async function raisedBedFieldUpdatePlant({
         expectedPlantCycleEventId,
         expectedPlantCycleVersionEventId,
         expectedPlantSortId,
+        expectedPlantStatus,
+        expectedPlantStatusEventId,
     });
 
     await revalidateRaisedBedPaths(raisedBed);

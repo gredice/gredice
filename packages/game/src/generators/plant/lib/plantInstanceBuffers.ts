@@ -136,17 +136,33 @@ export function disposePlantGeometryShell(
     geometry: THREE.BufferGeometry,
     source: THREE.BufferGeometry,
 ) {
-    if (geometry.index === source.index) {
+    const sharesSourceIndex = geometry.index === source.index;
+    const sharedAttributeNames = Object.keys(geometry.attributes).filter(
+        (attributeName) =>
+            geometry.getAttribute(attributeName) ===
+            source.getAttribute(attributeName),
+    );
+
+    if (sharesSourceIndex) {
         geometry.setIndex(null);
     }
-    for (const attributeName of Object.keys(geometry.attributes)) {
-        if (
-            geometry.getAttribute(attributeName) ===
-            source.getAttribute(attributeName)
-        ) {
-            geometry.deleteAttribute(attributeName);
+    for (const attributeName of sharedAttributeNames) {
+        geometry.deleteAttribute(attributeName);
+    }
+
+    // BufferGeometry disposal is an immediate event consumed by Three's
+    // renderer. Keep shared topology detached while that event releases the
+    // shell's batch-local buffers, then restore it so React Strict Effects can
+    // safely run cleanup and setup again against the same memoized shell.
+    geometry.dispose();
+
+    if (sharesSourceIndex) {
+        geometry.setIndex(source.index);
+    }
+    for (const attributeName of sharedAttributeNames) {
+        const attribute = source.getAttribute(attributeName);
+        if (attribute) {
+            geometry.setAttribute(attributeName, attribute);
         }
     }
-    geometry.clearGroups();
-    geometry.dispose();
 }

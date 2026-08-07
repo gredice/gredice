@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import {
     CheckoutDeliverySelectionError,
     checkoutDeliverySelectionErrorCodes,
+    hasCheckoutDeliveryLookupCandidate,
+    resolveCheckoutRequiresDelivery,
     validateCheckoutDeliverySelection,
 } from './deliverySelection';
 
@@ -15,6 +17,105 @@ const deliverySlot = {
     effectiveClosesAt: new Date('2026-07-26T08:00:00.000Z'),
     locationId: 3,
 };
+
+describe('hasCheckoutDeliveryLookupCandidate', () => {
+    const operationItem = {
+        entityTypeName: 'operation',
+        id: 42,
+        isDeleted: false,
+        status: 'new',
+    };
+
+    it('skips lookup for non-operation items', () => {
+        assert.equal(
+            hasCheckoutDeliveryLookupCandidate(
+                [{ ...operationItem, entityTypeName: 'sunflowerPackage' }],
+                new Set(),
+            ),
+            false,
+        );
+    });
+
+    it('skips lookup for paid operation items', () => {
+        assert.equal(
+            hasCheckoutDeliveryLookupCandidate(
+                [{ ...operationItem, status: 'paid' }],
+                new Set(),
+            ),
+            false,
+        );
+    });
+
+    it('skips lookup for deleted operation items', () => {
+        assert.equal(
+            hasCheckoutDeliveryLookupCandidate(
+                [{ ...operationItem, isDeleted: true }],
+                new Set(),
+            ),
+            false,
+        );
+    });
+
+    it('skips lookup for mapped operation items', () => {
+        assert.equal(
+            hasCheckoutDeliveryLookupCandidate(
+                [operationItem],
+                new Set([operationItem.id]),
+            ),
+            false,
+        );
+    });
+
+    it('requires the authoritative lookup for an eligible operation', () => {
+        assert.equal(
+            hasCheckoutDeliveryLookupCandidate([operationItem], new Set()),
+            true,
+        );
+    });
+});
+
+describe('resolveCheckoutRequiresDelivery', () => {
+    const operationItem = {
+        entityTypeName: 'operation',
+        id: 42,
+        isDeleted: false,
+        status: 'new',
+    };
+
+    it('does not call the authoritative lookup for an ineligible cart', async () => {
+        let lookupCalls = 0;
+
+        const requiresDelivery = await resolveCheckoutRequiresDelivery(
+            [{ ...operationItem, entityTypeName: 'sunflowerPackage' }],
+            new Set(),
+            async () => {
+                lookupCalls += 1;
+                return true;
+            },
+        );
+
+        assert.equal(requiresDelivery, false);
+        assert.equal(lookupCalls, 0);
+    });
+
+    for (const authoritativeResult of [false, true]) {
+        it(`calls the authoritative lookup once and returns ${authoritativeResult.toString()}`, async () => {
+            let lookupCalls = 0;
+
+            const requiresDelivery = await resolveCheckoutRequiresDelivery(
+                [operationItem],
+                new Set(),
+                async () => {
+                    lookupCalls += 1;
+                    return authoritativeResult;
+                },
+            );
+
+            assert.equal(requiresDelivery, authoritativeResult);
+            assert.equal(lookupCalls, 1);
+        });
+    }
+});
 
 describe('validateCheckoutDeliverySelection', () => {
     it('requires a selection for a cart with deliverable items', () => {

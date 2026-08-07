@@ -5,11 +5,22 @@ import {
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
 import { ProfileGameScene } from './ProfileGameScene';
-import { resolveGameProfileFlags } from './profileFlags';
+import {
+    highTargetOperationVisualHighlightTarget,
+    resolveGameProfileAdaptiveHigh,
+    resolveGameProfileFlags,
+    resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticSceneCache,
+    resolveGameProfileStaticSceneCacheOcclusionFixture,
+    resolveGameProfileWeatherSurface,
+} from './profileFlags';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
+    gameProfileSnowSparseWeather,
 } from './profileWeather';
+
+export const instant = false;
 
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
@@ -21,6 +32,7 @@ type GameProfileMode =
     | 'details'
     | 'rain'
     | 'snow'
+    | 'snow-onset'
     | 'night'
     | 'storm'
     | 'autumn'
@@ -43,6 +55,15 @@ function resolvePositiveInteger(value: string | undefined) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function resolveNonNegativeNumber(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function resolveMode(value: string | undefined): GameProfileMode {
     if (value === 'autum') {
         return 'autumn';
@@ -54,6 +75,7 @@ function resolveMode(value: string | undefined): GameProfileMode {
         value === 'details' ||
         value === 'rain' ||
         value === 'snow' ||
+        value === 'snow-onset' ||
         value === 'night' ||
         value === 'storm' ||
         value === 'autumn' ||
@@ -124,6 +146,15 @@ function resolveWeather(
             windDirection: 45,
             snowAccumulation: 24,
         };
+    }
+
+    if (mode === 'snow-onset') {
+        // High quality starts rendering snow at 0.02 coverage (0.6 cm).
+        // Keep this fixture just above that edge so sparse coverage and
+        // skirt continuity remain easy to compare without snow particles.
+        // A particle-free breeze keeps bees out of the deterministic
+        // high-target actor count.
+        return gameProfileSnowSparseWeather;
     }
 
     if (mode === 'night') {
@@ -256,13 +287,31 @@ export default async function GameProfilePage({
     const closeupRaisedBedId = resolvePositiveInteger(
         firstValue(params.closeupRaisedBedId),
     );
+    const fixedTimeSeconds = resolveNonNegativeNumber(
+        firstValue(params.fixedTimeSeconds),
+    );
+    const outlineProfile = firstValue(params.outline) === '1';
     const placementProfile = firstValue(params.placement) === '1';
+    const operationVisuals =
+        mockGardenProfile === 'high-target' &&
+        resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
     const debugGameFlags = resolveGameProfileFlags(
-        firstValue(params.blockGeometryMerging),
+        firstValue(params.weatherSurface),
+    );
+    const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
+        firstValue(params.staticSceneCache),
+    );
+    const staticSceneCacheOcclusionFixture =
+        staticSceneCacheMode === 'cache' &&
+        resolveGameProfileStaticSceneCacheOcclusionFixture(
+            firstValue(params.staticSceneCacheOcclusionFixture),
+        );
+    const weatherSurfaceMode = resolveGameProfileWeatherSurface(
+        firstValue(params.weatherSurface),
+    );
+    const adaptiveHigh = resolveGameProfileAdaptiveHigh(
         firstValue(params.adaptiveHigh),
     );
-    const adaptiveHigh = debugGameFlags.enableAdaptiveHighQualityFlag;
-    const blockGeometryMerging = debugGameFlags.enableBlockGeometryMergingFlag;
     const isOperationRewardDebug =
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
@@ -275,24 +324,46 @@ export default async function GameProfilePage({
             data-game-profile-mode={mode}
             data-game-profile-controls={enableControls ? '1' : '0'}
             data-game-profile-details={renderDetails ? '1' : '0'}
+            data-game-profile-fixed-time-seconds={fixedTimeSeconds ?? undefined}
             data-game-profile-debug-hud={showDebugHud ? '1' : '0'}
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
-            data-game-profile-block-geometry-merging={
-                blockGeometryMerging ? '1' : '0'
-            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
+            data-game-profile-outline={outlineProfile ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
+            data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
+            data-game-profile-static-scene-cache={staticSceneCacheMode}
+            data-game-profile-static-scene-cache-occlusion-fixture={
+                staticSceneCacheOcclusionFixture ? '1' : '0'
+            }
+            data-game-profile-weather-surface={weatherSurfaceMode}
+            data-game-profile-operation-visual-highlight-raised-bed-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.raisedBedId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-field-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.fieldId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-position-index={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.positionIndex
+                    : undefined
+            }
         >
             <ProfileGameScene
+                adaptiveHighQuality={adaptiveHigh}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}
+                fixedTimeSeconds={fixedTimeSeconds ?? undefined}
                 freezeTime={freezeTime}
                 debugHud={showDebugHud}
                 hideHud={!showHud}
@@ -300,13 +371,19 @@ export default async function GameProfilePage({
                 enableGameProfileController={
                     adaptiveHigh ||
                     closeupRaisedBedId !== null ||
-                    placementProfile
+                    outlineProfile ||
+                    placementProfile ||
+                    operationVisuals
+                }
+                enableStaticOpaqueSceneCacheOcclusionFixture={
+                    staticSceneCacheOcclusionFixture
                 }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
                 noSound
                 renderDetails={renderDetails}
+                staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}

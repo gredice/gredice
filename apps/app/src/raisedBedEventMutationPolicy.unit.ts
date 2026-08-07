@@ -13,36 +13,29 @@ const raisedBedId = 42;
 const raisedBedAggregateId = raisedBedId.toString();
 const fieldAggregateId = `${raisedBedAggregateId}|0`;
 
-test('raised-bed history includes blockers but keeps task lifecycle events read-only', () => {
+test('raised-bed history events shown in admin are mutable for the owning bed', () => {
     assert.ok(
         raisedBedFieldHistoryEventTypes.includes(
             knownEventTypes.raisedBedFields.plantBlock,
         ),
     );
 
-    const protectedRaisedBedTypes = raisedBedHistoryEventTypes.filter(
-        (type) => type !== knownEventTypes.raisedBeds.aiAnalysis,
-    );
-    const protectedFieldTypes = raisedBedFieldHistoryEventTypes.filter(
-        (type) => type !== knownEventTypes.raisedBedFields.aiAnalysis,
-    );
-
-    for (const type of protectedRaisedBedTypes) {
+    for (const type of raisedBedHistoryEventTypes) {
         assert.deepStrictEqual(
             raisedBedEventMutationDecision(
                 { aggregateId: raisedBedAggregateId, type },
                 raisedBedId,
             ),
-            { allowed: false, reason: 'event_read_only' },
+            { allowed: true },
         );
     }
-    for (const type of protectedFieldTypes) {
+    for (const type of raisedBedFieldHistoryEventTypes) {
         assert.deepStrictEqual(
             raisedBedEventMutationDecision(
                 { aggregateId: fieldAggregateId, type },
                 raisedBedId,
             ),
-            { allowed: false, reason: 'event_read_only' },
+            { allowed: true },
         );
     }
 
@@ -58,51 +51,34 @@ test('raised-bed history includes blockers but keeps task lifecycle events read-
     );
 });
 
-test('only owned raised-bed and field analysis metadata can be mutated', () => {
-    assert.strictEqual(
-        canMutateRaisedBedHistoryEvent(
-            {
-                aggregateId: raisedBedAggregateId,
-                type: knownEventTypes.raisedBeds.aiAnalysis,
-            },
-            raisedBedId,
-        ),
-        true,
-    );
-    assert.strictEqual(
-        canMutateRaisedBedHistoryEvent(
-            {
-                aggregateId: fieldAggregateId,
-                type: knownEventTypes.raisedBedFields.aiAnalysis,
-            },
-            raisedBedId,
-        ),
-        true,
-    );
-
-    for (const aggregateId of ['41', '42|0', '42|00', '42|-1', '42|0|1']) {
-        assert.strictEqual(
-            canMutateRaisedBedHistoryEvent(
-                {
-                    aggregateId,
-                    type: knownEventTypes.raisedBeds.aiAnalysis,
-                },
-                raisedBedId,
-            ),
-            false,
-        );
+test('only owned raised-bed and field history events can be mutated', () => {
+    for (const type of raisedBedHistoryEventTypes) {
+        for (const aggregateId of ['41', '42|0', '42|00', '42|-1', '42|0|1']) {
+            assert.strictEqual(
+                canMutateRaisedBedHistoryEvent(
+                    {
+                        aggregateId,
+                        type,
+                    },
+                    raisedBedId,
+                ),
+                false,
+            );
+        }
     }
-    for (const aggregateId of ['41|0', '42', '42|00', '42|-1', '42|0|1']) {
-        assert.strictEqual(
-            canMutateRaisedBedHistoryEvent(
-                {
-                    aggregateId,
-                    type: knownEventTypes.raisedBedFields.aiAnalysis,
-                },
-                raisedBedId,
-            ),
-            false,
-        );
+    for (const type of raisedBedFieldHistoryEventTypes) {
+        for (const aggregateId of ['41|0', '42', '42|00', '42|-1', '42|0|1']) {
+            assert.strictEqual(
+                canMutateRaisedBedHistoryEvent(
+                    {
+                        aggregateId,
+                        type,
+                    },
+                    raisedBedId,
+                ),
+                false,
+            );
+        }
     }
 });
 
@@ -114,7 +90,7 @@ test('event mutation runner fails closed before invoking storage mutations', asy
     };
     const protectedEvent = {
         aggregateId: fieldAggregateId,
-        type: knownEventTypes.raisedBedFields.plantUpdate,
+        type: knownEventTypes.operations.complete,
     };
 
     const allowed = await runRaisedBedEventMutation({

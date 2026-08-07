@@ -3,6 +3,8 @@ import { SandboxDebugActions } from '../../sandbox/SandboxDebugActions';
 import { getEntitySandboxStorageKey } from '../entitySandboxStorage';
 import { EntityViewerDynamic } from './EntityViewerDynamic';
 
+export const instant = false;
+
 type EntityDebugParams = Promise<{ entityName: string }>;
 type EntityDebugSearchParams = Promise<
     Record<string, string | string[] | undefined>

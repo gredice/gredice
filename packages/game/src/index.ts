@@ -2,6 +2,7 @@ export {
     GameAnalyticsProvider,
     useGameAnalytics,
 } from './analytics/GameAnalyticsContext';
+export type { GameFeatureFlags } from './GameFlagsContext';
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export { PlantEditor } from './generators/plant/editor/PlantEditor';
@@ -92,6 +93,8 @@ export {
 } from './viewers/EntitySandboxViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
 export { EntityViewer } from './viewers/EntityViewer';
+export type { PlantCatalogPerformanceViewerProps } from './viewers/PlantCatalogPerformanceViewer';
+export { PlantCatalogPerformanceViewer } from './viewers/PlantCatalogPerformanceViewer';
 export type { PlantPerformanceViewerProps } from './viewers/PlantPerformanceViewer';
 export { PlantPerformanceViewer } from './viewers/PlantPerformanceViewer';
 export type { PlantViewerProps } from './viewers/PlantViewer';

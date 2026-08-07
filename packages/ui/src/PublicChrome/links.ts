@@ -6,6 +6,8 @@ export const PublicPagePaths = {
     Delivery: '/dostava',
     DeliverySlots: '/dostava/termini',
     Plants: '/biljke',
+    PlantDiseases: '/bolesti',
+    PlantPests: '/stetnici',
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
@@ -18,6 +20,7 @@ export const PublicPagePaths = {
     Contact: '/kontakt',
     Pricing: '/cjenik',
     AboutUs: '/o-nama',
+    MCP: '/mcp',
     News: '/novosti',
     WhatsNew: '/novosti/sto-je-novo',
 

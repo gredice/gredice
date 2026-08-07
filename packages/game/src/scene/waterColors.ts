@@ -1,23 +1,14 @@
 import { Color } from 'three';
 import { getNightAmount } from './moonlight';
+import { defaultWaterColors, type WaterColors } from './waterColorState';
+
+export { defaultWaterColors, type WaterColors } from './waterColorState';
 
 export type WaterEnvironmentWeather = {
     cloudy?: number;
     foggy?: number;
     rainy?: number;
     snowy?: number;
-};
-
-export type WaterColors = {
-    deep: string;
-    shallow: string;
-    foam: string;
-};
-
-export const defaultWaterColors: WaterColors = {
-    deep: '#1f6ea7',
-    shallow: '#8eddd3',
-    foam: '#fbfffb',
 };
 
 function clamp01(value: number) {

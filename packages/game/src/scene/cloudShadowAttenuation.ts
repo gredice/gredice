@@ -35,12 +35,16 @@ const cloudShadowVertex = /* glsl */ `
 #endif
 `;
 
-const cloudShadowFragmentPars = /* glsl */ `
+const cloudShadowFragmentUniformPars = /* glsl */ `
 uniform sampler2D grediceCloudShadowMap;
 uniform vec4 grediceCloudShadowBounds;
 uniform vec2 grediceCloudShadowProjection;
 uniform float grediceCloudShadowStrength;
 uniform float grediceCloudShadowHardness;
+`;
+
+const cloudShadowFragmentPars = /* glsl */ `
+${cloudShadowFragmentUniformPars}
 varying vec3 vGrediceCloudShadowWorldPosition;
 `;
 
@@ -143,6 +147,8 @@ const materialPatchStates = new WeakMap<
     Material,
     CloudShadowMaterialPatchState
 >();
+const registeredMaterialCandidateTokens = new Map<Material, Set<symbol>>();
+let registeredMaterialCandidateRevision = 0;
 // The production garden owns one active weather scene, so one stable uniform
 // set lets shared materials keep a single compiled program across transitions.
 // Concurrent weather scenes with different masks would contend for these
@@ -212,6 +218,61 @@ export function resolveCloudShadowAttenuationConfig({
 
 export function getCloudShadowAttenuationMaterialUniforms() {
     return sharedCloudShadowMaterialUniforms;
+}
+
+/**
+ * Dynamic materials can announce their lifecycle without owning the cloud
+ * shader decorator. The cloud layer observes the revision before rendering,
+ * patches new candidates with its current uniforms, and releases disappeared
+ * candidates on the same frame instead of waiting for the periodic scene
+ * traversal.
+ */
+export function registerCloudShadowAttenuationMaterialCandidate(
+    material: Material,
+) {
+    const token = Symbol(material.uuid);
+    const tokens =
+        registeredMaterialCandidateTokens.get(material) ?? new Set<symbol>();
+    tokens.add(token);
+    registeredMaterialCandidateTokens.set(material, tokens);
+    registeredMaterialCandidateRevision += 1;
+
+    let registered = true;
+    return () => {
+        if (!registered) {
+            return;
+        }
+        registered = false;
+        const activeTokens = registeredMaterialCandidateTokens.get(material);
+        activeTokens?.delete(token);
+        if (activeTokens?.size === 0) {
+            registeredMaterialCandidateTokens.delete(material);
+        }
+        registeredMaterialCandidateRevision += 1;
+    };
+}
+
+export function getCloudShadowAttenuationMaterialCandidateRevision() {
+    return registeredMaterialCandidateRevision;
+}
+
+/**
+ * Material clones do not carry compile callbacks automatically. Consumers
+ * that deliberately compose a new callback must also avoid copying this
+ * scene-owned decorator: the cloud layer will discover and decorate the clone
+ * itself. Returning the pre-cloud hooks prevents duplicate shader injection.
+ */
+export function getMaterialShaderHooksWithoutCloudShadowAttenuation(
+    material: Material,
+) {
+    const state = materialPatchStates.get(material);
+    return {
+        customProgramCacheKey:
+            state?.originalCustomProgramCacheKey ??
+            material.customProgramCacheKey,
+        onBeforeCompile:
+            state?.originalOnBeforeCompile ?? material.onBeforeCompile,
+    };
 }
 
 export function resolveCloudShadowAttenuationActivation({
@@ -363,18 +424,33 @@ function injectCloudShadowAttenuationShader(
     shader.uniforms.grediceCloudShadowStrength = uniforms.strength;
     shader.uniforms.grediceCloudShadowHardness = uniforms.hardness;
 
-    shader.vertexShader = shader.vertexShader
-        .replace(
-            '#include <common>',
-            `#include <common>\n${cloudShadowVertexPars}`,
-        )
-        .replace('#include <worldpos_vertex>', cloudShadowVertex);
+    const weatherWorldPositionAvailable =
+        shader.vertexShader.includes(
+            'varying vec3 vGrediceWeatherWorldPosition;',
+        ) &&
+        shader.fragmentShader.includes(
+            'varying vec3 vGrediceWeatherWorldPosition;',
+        );
+    if (!weatherWorldPositionAvailable) {
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                '#include <common>',
+                `#include <common>\n${cloudShadowVertexPars}`,
+            )
+            .replace('#include <worldpos_vertex>', cloudShadowVertex);
+    }
+    const fragmentPars = weatherWorldPositionAvailable
+        ? cloudShadowFragmentUniformPars
+        : cloudShadowFragmentPars;
+    const fragmentChunk = weatherWorldPositionAvailable
+        ? cloudShadowFragmentShaderChunk.replaceAll(
+              'vGrediceCloudShadowWorldPosition',
+              'vGrediceWeatherWorldPosition',
+          )
+        : cloudShadowFragmentShaderChunk;
     shader.fragmentShader = shader.fragmentShader
-        .replace(
-            '#include <common>',
-            `#include <common>\n${cloudShadowFragmentPars}`,
-        )
-        .replace('#include <aomap_fragment>', cloudShadowFragmentShaderChunk);
+        .replace('#include <common>', `#include <common>\n${fragmentPars}`)
+        .replace('#include <aomap_fragment>', fragmentChunk);
 }
 
 export function retainCloudShadowAttenuationMaterial(
@@ -469,22 +545,26 @@ export function syncCloudShadowAttenuationMaterials({
     const activeMaterialIds = new Set<string>();
 
     if (enabled) {
+        const activateMaterial = (material: Material) => {
+            if (!supportsCloudShadowAttenuation(material)) {
+                return;
+            }
+
+            activeMaterialIds.add(material.uuid);
+            if (!leases.has(material.uuid)) {
+                leases.set(
+                    material.uuid,
+                    retainCloudShadowAttenuationMaterial(material, uniforms),
+                );
+            }
+        };
+
+        for (const material of registeredMaterialCandidateTokens.keys()) {
+            activateMaterial(material);
+        }
         root.traverse((object) => {
             for (const material of getObjectMaterials(object)) {
-                if (!supportsCloudShadowAttenuation(material)) {
-                    continue;
-                }
-
-                activeMaterialIds.add(material.uuid);
-                if (!leases.has(material.uuid)) {
-                    leases.set(
-                        material.uuid,
-                        retainCloudShadowAttenuationMaterial(
-                            material,
-                            uniforms,
-                        ),
-                    );
-                }
+                activateMaterial(material);
             }
         });
     }

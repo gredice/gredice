@@ -1,40 +1,11 @@
 import type { PlantDefinition } from '../plant-definition-types';
-import { createPlant } from './helpers';
+import { createDevelopmentProgram, createPlant } from './helpers';
 
-const cucurbitRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            left: ['P'],
-            rule: 'F(0.78,0.82)[-(12)L(0.86)]',
-            weight: 2,
-        },
-        {
-            rule: 'F(1.18,1.02)[+(30)L(1.14)P(0.88)]F(1.04,0.96)',
-            weight: 3,
-        },
-        {
-            rule: 'F(1.18,1.02)[-(30)L(1.14)P(0.88)]F(1.04,0.96)',
-            weight: 3,
-        },
-        {
-            rule: 'F(1.08,1)[+(24)L(1.08)][-(24)L(1.08)]F(0.96,0.92)',
-            weight: 2,
-        },
-        { rule: '[&(18)F(0.92,0.9)]', weight: 1 },
-    ],
-};
-
-const cucurbitBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'F',
-    rules: cucurbitRules,
-    angle: 30,
+const cucurbitAppearance = {
     height: 0.74,
-    branching: 1,
-    directionVariability: 0.18,
     stem: {
         color: '#4f7028',
         radius: 0.028,
-        length: 0.12,
         radiusDecay: 0.42,
         minRadius: 0.004,
     },
@@ -42,81 +13,209 @@ const cucurbitBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
         color: '#567f2a',
         size: 0.38,
         type: 'heart',
-        density: 1,
-        hangAngle: 28,
-        hangAngleRandomness: 18,
-        sizeDecay: 0.5,
     },
     flower: {
         enabled: true,
-        ageStart: 4,
         color: '#f5e642',
         size: 0.09,
     },
-};
+} satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
 
 export const cucurbitPlants = {
-    cucumber: createPlant({
-        ...cucurbitBase,
+    cucumber: createPlant('cucumber', {
+        ...cucurbitAppearance,
         name: 'Krastavac',
         height: 0.82,
+        development: createDevelopmentProgram('vine', {
+            axes: {
+                branchCount: 4,
+                branchLengthScale: 0.4,
+                branchNodeCount: 2,
+                branchPitchDegrees: 22,
+                habit: 'climbing',
+                nodeCount: 11,
+                pitchDegrees: 68,
+                spread: 0.32,
+            },
+            foliage: {
+                count: 13,
+                emergenceInterval: 0.56,
+                maturityDuration: 1.7,
+                petioleLengthScale: 0.58,
+                pitchRangeDegrees: [38, 64],
+                sizeRange: [0.7, 1.08],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10,
+            },
+            reproduction: {
+                flowerStart: 5.75,
+                flowersPerSite: 1,
+                form: 'star',
+                fruitStart: 7.75,
+                produceCount: 5,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { tendrilCount: 10 },
+            variability: 0.14,
+        }),
         vegetable: {
             enabled: true,
-            ageStart: 6,
             type: 'cucumber',
-            yield: 0.5,
             baseSize: 0.3,
         },
     }),
-    zucchini: createPlant({
-        ...cucurbitBase,
+    zucchini: createPlant('zucchini', {
+        ...cucurbitAppearance,
         name: 'Tikvice',
         height: 0.68,
+        development: createDevelopmentProgram('upright', {
+            axes: {
+                axisCount: 3,
+                branchCount: 1,
+                branchLengthScale: 0.3,
+                branchNodeCount: 2,
+                branchPitchDegrees: 30,
+                branchingPattern: 'multi-stem',
+                habit: 'basal',
+                nodeCount: 5,
+                pitchDegrees: 18,
+                spread: 0.62,
+            },
+            foliage: {
+                arrangement: 'rosette',
+                count: 14,
+                emergenceInterval: 0.5,
+                maturityDuration: 1.9,
+                petioleLengthScale: 0.62,
+                pitchRangeDegrees: [32, 62],
+                sizeRange: [0.72, 1.1],
+            },
+            phenology: {
+                emergenceStart: 0.35,
+                maturityGeneration: 10,
+            },
+            reproduction: {
+                flowerStart: 5.75,
+                flowersPerSite: 1,
+                form: 'star',
+                fruitStart: 7.75,
+                produceCount: 4,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            variability: 0.11,
+        }),
         leaf: {
-            ...cucurbitBase.leaf,
+            ...cucurbitAppearance.leaf,
             size: 0.42,
             color: '#608a35',
         },
         vegetable: {
             enabled: true,
-            ageStart: 7,
             type: 'zucchini',
-            yield: 0.45,
             baseSize: 0.35,
         },
     }),
-    pumpkin: createPlant({
-        ...cucurbitBase,
+    pumpkin: createPlant('pumpkin', {
+        ...cucurbitAppearance,
         name: 'Tikva',
         height: 0.56,
-        branching: 0.92,
+        development: createDevelopmentProgram('vine', {
+            axes: {
+                branchCount: 5,
+                branchLengthScale: 0.46,
+                branchNodeCount: 3,
+                branchPitchDegrees: 16,
+                habit: 'prostrate',
+                nodeCount: 12,
+                pitchDegrees: 4,
+                spread: 0.68,
+            },
+            foliage: {
+                count: 15,
+                emergenceInterval: 0.52,
+                maturityDuration: 1.8,
+                petioleLengthScale: 0.62,
+                pitchRangeDegrees: [36, 60],
+                sizeRange: [0.7, 1.1],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10.5,
+            },
+            reproduction: {
+                flowerStart: 6,
+                flowersPerSite: 1,
+                form: 'star',
+                fruitStart: 8,
+                produceCount: 2,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { tendrilCount: 12 },
+            variability: 0.16,
+        }),
         leaf: {
-            ...cucurbitBase.leaf,
+            ...cucurbitAppearance.leaf,
             size: 0.44,
             color: '#648930',
         },
         vegetable: {
             enabled: true,
-            ageStart: 8,
             type: 'pumpkin',
-            yield: 0.25,
             baseSize: 0.44,
         },
     }),
-    melon: createPlant({
-        ...cucurbitBase,
+    melon: createPlant('melon', {
+        ...cucurbitAppearance,
         name: 'Dinja',
         height: 0.58,
+        development: createDevelopmentProgram('vine', {
+            axes: {
+                branchCount: 4,
+                branchLengthScale: 0.42,
+                branchNodeCount: 2,
+                branchPitchDegrees: 18,
+                habit: 'prostrate',
+                nodeCount: 11,
+                pitchDegrees: 4,
+                spread: 0.62,
+            },
+            foliage: {
+                count: 13,
+                emergenceInterval: 0.55,
+                maturityDuration: 1.75,
+                petioleLengthScale: 0.56,
+                pitchRangeDegrees: [36, 60],
+                sizeRange: [0.7, 1.06],
+            },
+            phenology: {
+                emergenceStart: 0.4,
+                maturityGeneration: 10.25,
+            },
+            reproduction: {
+                flowerStart: 6,
+                flowersPerSite: 1,
+                form: 'star',
+                fruitStart: 8,
+                produceCount: 3,
+                site: 'axillary',
+                siteCount: 2,
+            },
+            special: { tendrilCount: 10 },
+            variability: 0.14,
+        }),
         leaf: {
-            ...cucurbitBase.leaf,
+            ...cucurbitAppearance.leaf,
             size: 0.4,
             color: '#6c933e',
         },
         vegetable: {
             enabled: true,
-            ageStart: 8,
             type: 'melon',
-            yield: 0.3,
             baseSize: 0.4,
         },
     }),

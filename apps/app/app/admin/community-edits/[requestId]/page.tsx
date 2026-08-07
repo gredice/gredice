@@ -1,6 +1,8 @@
 import {
     type CommunityEditRequestStatus,
+    type CommunityEntitySuggestionValue,
     getCommunityEditRequest,
+    parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -101,6 +103,10 @@ function entityTypeLabel(entityTypeName: string) {
             return 'Biljka';
         case 'plantSort':
             return 'Sorta';
+        case 'plantDisease':
+            return 'Bolest';
+        case 'plantPest':
+            return 'Štetnik';
         case 'operation':
             return 'Radnja';
         case 'block':
@@ -340,6 +346,163 @@ function OperationSuggestionBlock({
     );
 }
 
+function operationApplicationLabel(
+    application: Extract<
+        CommunityEntitySuggestionValue,
+        { kind: 'operation' }
+    >['application'],
+) {
+    switch (application) {
+        case 'plant':
+            return 'Biljka';
+        case 'raisedBedFull':
+            return 'Cijela gredica';
+        case 'raisedBed1m':
+            return 'Gredica 1 m²';
+        case 'garden':
+            return 'Vrt';
+        case 'farm':
+            return 'Farma';
+    }
+}
+
+function entitySuggestionLabels(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return {
+                cardTitle: 'Nova sorta biljke',
+                pageTitle: 'Prijedlog nove sorte',
+                section: 'Nova sorta',
+            };
+        case 'operation':
+            return {
+                cardTitle: 'Nova radnja',
+                pageTitle: 'Prijedlog nove radnje',
+                section: 'Nova radnja',
+            };
+        case 'disease':
+            return {
+                cardTitle: 'Nova bolest biljke',
+                pageTitle: 'Prijedlog nove bolesti',
+                section: 'Nova bolest',
+            };
+        case 'pest':
+            return {
+                cardTitle: 'Novi štetnik biljke',
+                pageTitle: 'Prijedlog novog štetnika',
+                section: 'Novi štetnik',
+            };
+    }
+}
+
+function EntitySuggestionBlock({
+    suggestion,
+}: {
+    suggestion: CommunityEntitySuggestionValue;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">
+                    {entitySuggestionLabels(suggestion).cardTitle}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Stack spacing={4}>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <DetailItem label="Naziv">
+                            <Typography>{suggestion.name}</Typography>
+                        </DetailItem>
+                        {suggestion.kind === 'plantSort' ? (
+                            <DetailItem label="Biljka">
+                                <Typography>
+                                    {suggestion.parentPlantName} #
+                                    {suggestion.parentPlantId}
+                                </Typography>
+                            </DetailItem>
+                        ) : suggestion.kind === 'operation' ? (
+                            <>
+                                <DetailItem label="Stadij">
+                                    <Typography>
+                                        {suggestion.stageLabel} #
+                                        {suggestion.plantStageId}
+                                    </Typography>
+                                </DetailItem>
+                                <DetailItem label="Primjena">
+                                    <Typography>
+                                        {operationApplicationLabel(
+                                            suggestion.application,
+                                        )}
+                                    </Typography>
+                                </DetailItem>
+                            </>
+                        ) : (
+                            <DetailItem label="Pogođene biljke">
+                                <Typography>
+                                    {suggestion.affectedPlants
+                                        .map(
+                                            (plant) =>
+                                                `${plant.name} #${plant.id}`,
+                                        )
+                                        .join(', ')}
+                                </Typography>
+                            </DetailItem>
+                        )}
+                    </div>
+                    <DetailItem
+                        label={
+                            suggestion.kind === 'disease' ||
+                            suggestion.kind === 'pest'
+                                ? 'Kratki opis'
+                                : 'Opis prijedloga'
+                        }
+                    >
+                        <Typography className="whitespace-pre-line break-words">
+                            {suggestion.description}
+                        </Typography>
+                    </DetailItem>
+                    {suggestion.kind === 'disease' ||
+                    suggestion.kind === 'pest' ? (
+                        <>
+                            <DetailItem label="Simptomi">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.symptoms}
+                                </Typography>
+                            </DetailItem>
+                            <DetailItem label="Uvjeti pojave">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.favorableConditions}
+                                </Typography>
+                            </DetailItem>
+                            {suggestion.severity ? (
+                                <DetailItem label="Ozbiljnost">
+                                    <Typography className="whitespace-pre-line break-words">
+                                        {suggestion.severity}
+                                    </Typography>
+                                </DetailItem>
+                            ) : null}
+                        </>
+                    ) : null}
+                    {suggestion.source ? (
+                        <DetailItem label="Izvor">
+                            <Typography className="whitespace-pre-line break-words">
+                                {suggestion.source}
+                            </Typography>
+                        </DetailItem>
+                    ) : null}
+                    {suggestion.note ? (
+                        <DetailItem label="Napomena pošiljatelja">
+                            <Typography className="whitespace-pre-line break-words">
+                                {suggestion.note}
+                            </Typography>
+                        </DetailItem>
+                    ) : null}
+                </Stack>
+            </CardContent>
+        </Card>
+    );
+}
+
 function DiffBlock({ change }: { change: CommunityEditChange }) {
     const diff = parseCompactTextDiff(change.reviewDiff);
     if (!diff) {
@@ -426,7 +589,13 @@ function ReviewNote() {
     );
 }
 
-function ReviewActions({ request }: { request: CommunityEditRequest }) {
+function ReviewActions({
+    isEntitySuggestion,
+    request,
+}: {
+    isEntitySuggestion: boolean;
+    request: CommunityEditRequest;
+}) {
     const canReview =
         request.status === 'pending' || request.status === 'approved';
     if (!canReview) {
@@ -448,7 +617,9 @@ function ReviewActions({ request }: { request: CommunityEditRequest }) {
             >
                 <ReviewNote />
                 <Button color="success" type="submit">
-                    Odobri i primijeni
+                    {isEntitySuggestion
+                        ? 'Označi obrađenim'
+                        : 'Odobri i primijeni'}
                 </Button>
             </form>
             <form
@@ -491,6 +662,7 @@ export default async function CommunityEditDetailPage({
     if (!request) {
         notFound();
     }
+    const entitySuggestion = parseCommunityEntitySuggestionRequest(request);
 
     return (
         <Stack spacing={4}>
@@ -512,20 +684,27 @@ export default async function CommunityEditDetailPage({
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        {entityTypeLabel(request.entityTypeName)} #
-                        {request.entityId}
+                        {entitySuggestion
+                            ? entitySuggestionLabels(entitySuggestion).pageTitle
+                            : `${entityTypeLabel(request.entityTypeName)} #${request.entityId}`}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <DetailItem label="Admin zapis">
+                        <DetailItem
+                            label={
+                                entitySuggestion ? 'Kontekst' : 'Admin zapis'
+                            }
+                        >
                             <Link
                                 href={KnownPages.DirectoryEntity(
                                     request.entityTypeName,
                                     request.entityId,
                                 )}
                             >
-                                Otvori zapis
+                                {entitySuggestion
+                                    ? 'Otvori kontekst'
+                                    : 'Otvori zapis'}
                             </Link>
                         </DetailItem>
                         <DetailItem label="Javna stranica">
@@ -541,7 +720,10 @@ export default async function CommunityEditDetailPage({
                         </DetailItem>
                         <DetailItem label="Sekcija">
                             <Typography>
-                                {request.sectionKey ?? 'Cijela stranica'}
+                                {entitySuggestion
+                                    ? entitySuggestionLabels(entitySuggestion)
+                                          .section
+                                    : (request.sectionKey ?? 'Cijela stranica')}
                             </Typography>
                         </DetailItem>
                         <DetailItem label="Kreirano">
@@ -595,7 +777,7 @@ export default async function CommunityEditDetailPage({
                             )}
                         </DetailItem>
                     </div>
-                    {request.submitterNote ? (
+                    {request.submitterNote && !entitySuggestion ? (
                         <Stack spacing={1} className="mt-4">
                             <Typography
                                 level="body2"
@@ -630,37 +812,50 @@ export default async function CommunityEditDetailPage({
                 </CardContent>
             </Card>
 
-            <Stack spacing={3}>
-                <Typography level="h2" className="text-xl">
-                    Promjene
-                </Typography>
-                {request.changes.map((change) => (
-                    <Card key={change.id}>
-                        <CardHeader>
-                            <CardTitle className="text-lg">
-                                {change.attributeDefinition.label ??
-                                    change.fieldKey}
-                            </CardTitle>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {change.attributePath} · {change.dataType}
-                            </Typography>
-                        </CardHeader>
-                        <CardContent>
-                            <ChangeBody change={change} />
-                        </CardContent>
-                    </Card>
-                ))}
-            </Stack>
+            {entitySuggestion ? (
+                <Stack spacing={3}>
+                    <EntitySuggestionBlock suggestion={entitySuggestion} />
+                    <Typography level="body2" className="text-muted-foreground">
+                        Nakon provjere izradi novi zapis u katalogu, a zatim
+                        označi ovaj prijedlog obrađenim.
+                    </Typography>
+                </Stack>
+            ) : (
+                <Stack spacing={3}>
+                    <Typography level="h2" className="text-xl">
+                        Promjene
+                    </Typography>
+                    {request.changes.map((change) => (
+                        <Card key={change.id}>
+                            <CardHeader>
+                                <CardTitle className="text-lg">
+                                    {change.attributeDefinition.label ??
+                                        change.fieldKey}
+                                </CardTitle>
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    {change.attributePath} · {change.dataType}
+                                </Typography>
+                            </CardHeader>
+                            <CardContent>
+                                <ChangeBody change={change} />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </Stack>
+            )}
 
             <Card>
                 <CardHeader>
                     <CardTitle>Moderiranje</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReviewActions request={request} />
+                    <ReviewActions
+                        isEntitySuggestion={Boolean(entitySuggestion)}
+                        request={request}
+                    />
                 </CardContent>
             </Card>
         </Stack>

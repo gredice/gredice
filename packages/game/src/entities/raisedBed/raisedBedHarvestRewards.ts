@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import type { OperationVisualReward } from '../../operationVisualRewards';
-import type { Stack } from '../../types/Stack';
+import type { GardenStack } from '../../types/Stack';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getBlockDataByName,
@@ -32,7 +32,7 @@ type ResolveRaisedBedHarvestBasketPlacementInput = {
     blockData: BlockData[] | null | undefined;
     blockIds: string[];
     reservedPositionKeys?: ReadonlySet<string>;
-    stacks: Stack[];
+    stacks: GardenStack[];
 };
 
 type ResolveRaisedBedHarvestBasketPlacementsInput = {
@@ -41,7 +41,7 @@ type ResolveRaisedBedHarvestBasketPlacementsInput = {
         blockIds: string[];
         raisedBedId: number;
     }[];
-    stacks: Stack[];
+    stacks: GardenStack[];
 };
 
 export type RaisedBedHarvestBasketFillLevel = 'empty' | 'full' | 'partial';
@@ -176,7 +176,7 @@ function stackPositionKey(position: { x: number; z: number }) {
 }
 
 function findStackAtPosition(
-    stacks: Stack[],
+    stacks: GardenStack[],
     position: { x: number; z: number },
 ) {
     return stacks.find(
@@ -187,7 +187,7 @@ function findStackAtPosition(
 
 function isFreeStackableStack(
     blockData: BlockData[] | null | undefined,
-    stack: Stack | undefined,
+    stack: GardenStack | undefined,
 ) {
     const topBlock = stack?.blocks.at(-1);
     if (

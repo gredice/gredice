@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
@@ -14,10 +15,99 @@ const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+const gameProfileOutlineCommandEventName =
+    'gredice:game-profile-outline-command';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
+const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
+const highTargetOperationVisualExpectedGeneratedPlantInstanceCount = 286;
+const highTargetOperationVisualExpectedFieldInstanceCount = 396;
+const highTargetOperationVisualExpectedMulchInstanceCount = 54;
+const highTargetOperationVisualHighlightObjectCount = 2;
+const highTargetOperationVisualLegacyObjectCount = 452;
+const highTargetOperationVisualRenderedObjectLimit = 64;
+const highTargetGeneratedPlantDetailInstanceBudget = 179;
+const highTargetBudgetedGeneratedPlantClusterTriangleCount = 2_740;
+const highTargetWeatherSurfaceExpectations = {
+    rain: {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 2_556,
+        fallbackOverlaySubmissionCount: {
+            integrated: 29,
+            legacy: 45,
+        },
+        fallbackOverlayTriangleCount: {
+            integrated: 13_562,
+            legacy: 16_118,
+        },
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+    },
+    snow: {
+        avoidedOverlaySubmissionCount: 8,
+        avoidedOverlayTriangleCount: 11_880,
+        fallbackOverlaySubmissionCount: {
+            integrated: 48,
+            legacy: 56,
+        },
+        fallbackOverlayTriangleCount: {
+            integrated: 72_608,
+            legacy: 84_488,
+        },
+        integratedInstanceCount: 270,
+        integratedMaterialCount: 1,
+    },
+};
+const highTargetWeatherSurfaceMaximumGpuMedianRatio = 0.98;
+const highTargetWeatherSurfaceMaximumGpuRunRatio = 1.05;
+const highTargetWeatherSurfaceMaximumProgramIncrease = 1;
+const highTargetWeatherSurfacePairedRunCount = 5;
+const highTargetStaticSceneCacheMaximumCpuMedianRatio = 1.05;
+const highTargetStaticSceneCacheMaximumDrawCallRatio = 0.9;
+const highTargetStaticSceneCacheMaximumGpuMedianRatio = 0.95;
+const highTargetStaticSceneCacheMaximumGpuRunRatio = 1.05;
+const highTargetStaticSceneCacheMaximumProgramIncrease = 1;
+const highTargetStaticSceneCacheMaximumTextureIncrease = 4;
+const highTargetStaticSceneCacheMaximumTotalEstimatedBytes = 160 * 1024 * 1024;
+const highTargetStaticSceneCacheMaximumTriangleRatio = 0.9;
+const highTargetStaticSceneCacheMaximumVisualMismatchRatio = 0.01;
+const highTargetStaticSceneCacheMaximumVisualP99ByteError = 8;
+const highTargetStaticSceneCacheOcclusionMaximumLeakRatio = 0.04;
+const highTargetStaticSceneCacheOcclusionMinimumMatchRatio = 0.96;
+const highTargetStaticSceneCacheOcclusionVerifiedHitCount = 3;
+const highTargetStaticSceneCachePairedRunCount = 5;
+const highTargetStaticSceneCacheComparisonPairs = new Set([
+    'static-opaque-scene-cache',
+    'static-opaque-scene-cache-cloudy',
+]);
+const staticSceneCacheVisualComparisonUnavailableReason =
+    'The scenario has no deterministic scene-time screenshot contract';
+const highTargetWeatherSurfaceOnsetExpectation = {
+    avoidedOverlaySubmissionCount: 0,
+    avoidedOverlayTriangleCount: 0,
+    fallbackOverlaySubmissionCount: 51,
+    fallbackOverlayTriangleCount: 31_900,
+    integratedInstanceCount: 0,
+    integratedMaterialCount: 0,
+    pluginVariantCount: 0,
+    snowParticleCount: 0,
+};
+const highTargetWeatherSurfaceThresholdTransitionExpectation = {
+    exit: highTargetWeatherSurfaceOnsetExpectation,
+    peak: {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 9_372,
+        fallbackOverlaySubmissionCount: 56,
+        fallbackOverlayTriangleCount: 74_500,
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+        pluginVariantCount: 1,
+    },
+    trackedCount: 2,
+};
+const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
 
 const coreScenarios = [
     {
@@ -149,7 +239,7 @@ const denseScenarios = [
 const highTargetScenarios = [
     {
         name: 'game-high-target-clear-idle-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -158,7 +248,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -168,7 +258,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-hover-selection-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -178,7 +268,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-placement-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&placement=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -191,7 +281,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-rain-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -200,7 +290,7 @@ const highTargetScenarios = [
     },
     {
         name: 'game-high-target-snow-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -209,10 +299,213 @@ const highTargetScenarios = [
     },
 ];
 
+const highTargetOperationVisualScenarios = [
+    {
+        name: 'game-high-target-operation-visuals-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&operationVisuals=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 3,
+    },
+];
+
+const highTargetFoliageBudgetScenarios = [
+    {
+        name: 'game-high-target-foliage-unbudgeted-zoom-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&foliageBudget=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'foliage-detail-budget',
+        comparisonRole: 'legacy',
+        motion: 'foliage-detail-zoom',
+        motionWarmupMs: 7_000,
+        repeat: 3,
+    },
+    {
+        name: 'game-high-target-foliage-budget-zoom-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&foliageBudget=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'foliage-detail-budget',
+        comparisonRole: 'budgeted',
+        motion: 'foliage-detail-zoom',
+        motionWarmupMs: 7_000,
+        repeat: 3,
+    },
+];
+
+const highTargetWeatherMaterialScenarios = [
+    {
+        name: 'game-high-target-rain-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'rain-weather-surfaces',
+        comparisonRole: 'legacy',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-rain-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'rain-weather-surfaces',
+        comparisonRole: 'integrated',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-snow-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'snow-weather-surfaces',
+        comparisonRole: 'legacy',
+        repeat: 5,
+    },
+    {
+        name: 'game-high-target-snow-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'snow-weather-surfaces',
+        comparisonRole: 'integrated',
+        repeat: 5,
+    },
+];
+
+const highTargetStaticSceneCacheScenarios = [
+    {
+        name: 'game-high-target-static-scene-cache-legacy-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'static-opaque-scene-cache',
+        comparisonRole: 'legacy',
+        repeat: 5,
+        staticSceneCacheBenchmark: true,
+        staticSceneCacheVisualDeterministic: true,
+    },
+    {
+        name: 'game-high-target-static-scene-cache-cached-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'static-opaque-scene-cache',
+        comparisonRole: 'cache',
+        repeat: 5,
+        staticSceneCacheBenchmark: true,
+        staticSceneCacheVisualDeterministic: true,
+    },
+    {
+        name: 'game-high-target-static-scene-cache-cloudy-legacy-desktop',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=12',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'static-opaque-scene-cache-cloudy',
+        comparisonRole: 'legacy',
+        repeat: 5,
+        staticSceneCacheBenchmark: true,
+        staticSceneCacheVisualDeterministic: true,
+        fixedTimeSeconds: 12,
+    },
+    {
+        name: 'game-high-target-static-scene-cache-cloudy-cached-desktop',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache&fixedTimeSeconds=12',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        comparisonPair: 'static-opaque-scene-cache-cloudy',
+        comparisonRole: 'cache',
+        repeat: 5,
+        staticSceneCacheBenchmark: true,
+        staticSceneCacheVisualDeterministic: true,
+        fixedTimeSeconds: 12,
+    },
+    {
+        name: 'game-high-target-static-scene-cache-occlusion-fixture-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=cache&staticSceneCacheOcclusionFixture=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+        staticSceneCacheBenchmark: true,
+        staticSceneCacheOcclusionFixture: true,
+    },
+];
+
+const highTargetWeatherOnsetScenarios = [
+    {
+        name: 'game-high-target-snow-onset-legacy-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+    },
+    {
+        name: 'game-high-target-snow-onset-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+    },
+    {
+        name: 'game-high-target-snow-threshold-transition-integrated-weather-surfaces-desktop',
+        path: '/debug/profile/game?mode=snow-onset&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&weatherSurface=integrated',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        repeat: 1,
+        weatherSurfaceTransition: 'snow-integration-cycle',
+    },
+];
+
+const outlineScenarios = [
+    {
+        name: 'game-high-target-connected-raised-bed-outline-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&outline=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        outlineProfile: {
+            action: 'show',
+            raisedBedId: 2,
+        },
+        repeat: 3,
+    },
+];
+
 const adaptiveHighScenarios = [
     {
         name: 'game-high-target-adaptive-pair-fixed-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -224,7 +517,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-camera-motion-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -237,7 +530,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-motion-recovery-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -251,7 +544,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-runtime-gpu-source-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -262,7 +555,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-placement-desktop',
-        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&placement=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=details&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&placement=1&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -276,7 +569,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-rain-desktop',
-        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=rain&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -285,7 +578,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-snow-desktop',
-        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -294,7 +587,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-cloudy-desktop',
-        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=cloudy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -303,7 +596,7 @@ const adaptiveHighScenarios = [
     },
     {
         name: 'game-high-target-adaptive-windy-plants-desktop',
-        path: '/debug/profile/game?mode=windy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&blockGeometryMerging=1&adaptiveHigh=1',
+        path: '/debug/profile/game?mode=windy&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0&adaptiveHigh=1',
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -571,6 +864,12 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     'high-target': highTargetScenarios,
+    'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
+    'high-target-operation-visuals': highTargetOperationVisualScenarios,
+    'high-target-static-scene-cache': highTargetStaticSceneCacheScenarios,
+    'high-target-weather-materials': highTargetWeatherMaterialScenarios,
+    'high-target-weather-onset': highTargetWeatherOnsetScenarios,
+    outline: outlineScenarios,
     placement: placementScenarios,
     'plant-closeup': plantCloseupScenarios,
     rewards: rewardScenarios,
@@ -711,6 +1010,8 @@ const budgets = {
 
 function parseArgs(argv) {
     const options = {
+        allowLegacyOperationVisuals:
+            process.env.GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS === '1',
         baseUrl: process.env.GAME_PROFILE_BASE_URL ?? defaultBaseUrl,
         build: process.env.GAME_PROFILE_BUILD === '1',
         closeupRepeat: process.env.GAME_PROFILE_CLOSEUP_REPEAT
@@ -720,6 +1021,7 @@ function parseArgs(argv) {
             process.env.GAME_PROFILE_CLOSEUP_TIMEOUT_MS ?? 30000,
         ),
         failOnBudget: process.env.GAME_PROFILE_FAIL_ON_BUDGET === '1',
+        graphicsBackend: process.env.GAME_PROFILE_GRAPHICS_BACKEND ?? 'auto',
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
@@ -740,6 +1042,9 @@ function parseArgs(argv) {
         const next = argv[index + 1];
 
         switch (arg) {
+            case '--allow-legacy-operation-visuals':
+                options.allowLegacyOperationVisuals = true;
+                break;
             case '--':
                 break;
             case '--base-url':
@@ -759,6 +1064,10 @@ function parseArgs(argv) {
                 break;
             case '--fail-on-budget':
                 options.failOnBudget = true;
+                break;
+            case '--graphics-backend':
+                options.graphicsBackend = next;
+                index += 1;
                 break;
             case '--help':
                 options.help = true;
@@ -806,6 +1115,11 @@ function parseArgs(argv) {
     if (!Number.isFinite(options.sampleMs) || options.sampleMs <= 0) {
         throw new Error('Sample duration must be a positive number.');
     }
+    if (!chromiumGraphicsBackends.includes(options.graphicsBackend)) {
+        throw new Error(
+            `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
+        );
+    }
     if (
         !Number.isFinite(options.closeupTimeoutMs) ||
         options.closeupTimeoutMs <= 0
@@ -837,25 +1151,30 @@ function printHelp(options) {
             'Usage: pnpm run profile:game -- [options]',
             '',
             'Options:',
+            '  --allow-legacy-operation-visuals',
+            '                         Measure the pre-batching operation scene without waiting for batch telemetry.',
             `  --base-url <url>       Garden server URL. Current: ${options.baseUrl}`,
             '  --build                Run pnpm run build before profiling.',
             `  --closeup-repeat <n>   Override close-up scenario repeats. Current: ${options.closeupRepeat ?? 'scenario default'}`,
             `  --closeup-timeout-ms <ms> Maximum wait for close-up detail. Current: ${options.closeupTimeoutMs}`,
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
+            `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
             '  --help                 Show this help.',
             '',
             'Environment aliases:',
+            '  GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=1,',
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
+            '  GAME_PROFILE_GRAPHICS_BACKEND,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -874,6 +1193,12 @@ function allScenarios() {
         ...denseScenarios,
         ...denseMobileScenarios,
         ...highTargetScenarios,
+        ...highTargetFoliageBudgetScenarios,
+        ...highTargetOperationVisualScenarios,
+        ...highTargetStaticSceneCacheScenarios,
+        ...highTargetWeatherMaterialScenarios,
+        ...highTargetWeatherOnsetScenarios,
+        ...outlineScenarios,
         ...placementScenarios,
         ...plantCloseupScenarios,
         ...autoQualityScenarios,
@@ -906,7 +1231,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, adaptive-high, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -921,12 +1246,89 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
     return scenarios;
 }
 
+function buildScenarioRunQueue(scenarios, { closeupRepeat = null } = {}) {
+    const queue = [];
+    const scheduled = new Set();
+    const repeatFor = (scenario) =>
+        scenario.plantCloseup
+            ? (closeupRepeat ?? scenario.plantCloseup.repeat)
+            : (scenario.repeat ?? 1);
+    const enqueue = (scenario, runIndex, repeat) => {
+        queue.push({
+            baseScenario: scenario,
+            repeat,
+            runIndex,
+            runScenario:
+                repeat === 1
+                    ? scenario
+                    : {
+                          ...scenario,
+                          name: `${scenario.name}-run-${runIndex}`,
+                      },
+        });
+    };
+
+    for (const scenario of scenarios) {
+        if (scheduled.has(scenario.name)) {
+            continue;
+        }
+
+        const paired =
+            typeof scenario.comparisonPair === 'string'
+                ? scenarios.filter(
+                      (candidate) =>
+                          candidate.comparisonPair ===
+                              scenario.comparisonPair &&
+                          (candidate.comparisonRole === 'legacy' ||
+                              candidate.comparisonRole === 'integrated' ||
+                              candidate.comparisonRole === 'cache'),
+                  )
+                : [];
+        const legacy = paired.find(
+            (candidate) => candidate.comparisonRole === 'legacy',
+        );
+        const optimized = paired.find(
+            (candidate) =>
+                candidate.comparisonRole === 'integrated' ||
+                candidate.comparisonRole === 'cache',
+        );
+        if (legacy && optimized) {
+            const legacyRepeat = repeatFor(legacy);
+            const optimizedRepeat = repeatFor(optimized);
+            if (legacyRepeat === optimizedRepeat) {
+                for (
+                    let runIndex = 1;
+                    runIndex <= legacyRepeat;
+                    runIndex += 1
+                ) {
+                    const ordered =
+                        runIndex % 2 === 1
+                            ? [legacy, optimized]
+                            : [optimized, legacy];
+                    for (const candidate of ordered) {
+                        enqueue(candidate, runIndex, legacyRepeat);
+                    }
+                }
+                scheduled.add(legacy.name);
+                scheduled.add(optimized.name);
+                continue;
+            }
+        }
+
+        const repeat = repeatFor(scenario);
+        for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
+            enqueue(scenario, runIndex, repeat);
+        }
+        scheduled.add(scenario.name);
+    }
+
+    return queue;
+}
+
 function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
         adaptiveHigh: url.searchParams.get('adaptiveHigh') ?? '0',
-        blockGeometryMerging:
-            url.searchParams.get('blockGeometryMerging') ?? 'default',
         controls: url.searchParams.get('controls') ?? '0',
         closeupRaisedBedId:
             Number.parseInt(
@@ -935,11 +1337,26 @@ function getScenarioRequest(path) {
             ) || null,
         details: url.searchParams.get('details') ?? '1',
         debugHud: url.searchParams.get('debugHud') ?? '0',
+        foliageBudget: url.searchParams.get('foliageBudget') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
         mode: url.searchParams.get('mode') ?? 'baseline',
+        operationVisuals: url.searchParams.get('operationVisuals') ?? '0',
+        outline: url.searchParams.get('outline') ?? '0',
         placement: url.searchParams.get('placement') ?? '0',
         quality: url.searchParams.get('quality') ?? 'auto',
+        staticSceneCache:
+            url.searchParams.get('staticSceneCache') === 'legacy'
+                ? 'legacy'
+                : 'cache',
+        staticSceneCacheOcclusionFixture:
+            url.searchParams.get('staticSceneCacheOcclusionFixture') === '1'
+                ? '1'
+                : '0',
+        weatherSurface:
+            url.searchParams.get('weatherSurface') === 'legacy'
+                ? 'legacy'
+                : 'integrated',
     };
 }
 
@@ -966,6 +1383,8 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         instancedDrawCalls: 0,
         lastRenderedRafTick: -1,
         renderedFrames: 0,
+        rendererShaders: 0,
+        rendererTextures: 0,
         submittedTriangles: 0,
     };
     globalThis.__gameProfileLongTasks = [];
@@ -1259,6 +1678,76 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         };
         prototype[name].__gameProfilePatched = true;
     };
+    const livePrograms = new Set();
+    const liveTextures = new Set();
+    const updateRendererShaderCount = () => {
+        globalThis.__gameProfileMetrics.rendererShaders = livePrograms.size;
+    };
+    const updateRendererTextureCount = () => {
+        globalThis.__gameProfileMetrics.rendererTextures = liveTextures.size;
+    };
+    const patchProgramLifecycle = (Context) => {
+        const prototype = Context?.prototype;
+        if (
+            !prototype?.createProgram ||
+            prototype.createProgram.__gameProfilePatched
+        ) {
+            return;
+        }
+
+        const originalCreateProgram = prototype.createProgram;
+        prototype.createProgram = function patchedCreateProgram(...args) {
+            const program = originalCreateProgram.apply(this, args);
+            if (program) {
+                livePrograms.add(program);
+                updateRendererShaderCount();
+            }
+            return program;
+        };
+        prototype.createProgram.__gameProfilePatched = true;
+
+        const originalDeleteProgram = prototype.deleteProgram;
+        prototype.deleteProgram = function patchedDeleteProgram(...args) {
+            const result = originalDeleteProgram.apply(this, args);
+            if (args[0]) {
+                livePrograms.delete(args[0]);
+                updateRendererShaderCount();
+            }
+            return result;
+        };
+        prototype.deleteProgram.__gameProfilePatched = true;
+    };
+    const patchTextureLifecycle = (Context) => {
+        const prototype = Context?.prototype;
+        if (
+            !prototype?.createTexture ||
+            prototype.createTexture.__gameProfilePatched
+        ) {
+            return;
+        }
+
+        const originalCreateTexture = prototype.createTexture;
+        prototype.createTexture = function patchedCreateTexture(...args) {
+            const texture = originalCreateTexture.apply(this, args);
+            if (texture) {
+                liveTextures.add(texture);
+                updateRendererTextureCount();
+            }
+            return texture;
+        };
+        prototype.createTexture.__gameProfilePatched = true;
+
+        const originalDeleteTexture = prototype.deleteTexture;
+        prototype.deleteTexture = function patchedDeleteTexture(...args) {
+            const result = originalDeleteTexture.apply(this, args);
+            if (args[0]) {
+                liveTextures.delete(args[0]);
+                updateRendererTextureCount();
+            }
+            return result;
+        };
+        prototype.deleteTexture.__gameProfilePatched = true;
+    };
 
     const patchContext = (Context) => {
         if (!Context) {
@@ -1294,6 +1783,10 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         });
     };
 
+    patchProgramLifecycle(globalThis.WebGLRenderingContext);
+    patchProgramLifecycle(globalThis.WebGL2RenderingContext);
+    patchTextureLifecycle(globalThis.WebGLRenderingContext);
+    patchTextureLifecycle(globalThis.WebGL2RenderingContext);
     patchContext(globalThis.WebGLRenderingContext);
     patchContext(globalThis.WebGL2RenderingContext);
 }
@@ -1389,6 +1882,8 @@ async function finishInteractiveProfileSample() {
         p99FrameMs: percentile(0.99),
         renderedFps: renderedFrames / safeElapsedSeconds,
         renderedFrames,
+        rendererShaders: metrics?.rendererShaders ?? null,
+        rendererTextures: metrics?.rendererTextures ?? null,
         submittedTriangles,
         trianglesPerFrame: submittedTriangles / safeRafFrames,
         trianglesPerRafFrame: submittedTriangles / safeRafFrames,
@@ -1505,10 +2000,103 @@ async function startAdaptiveHighProfileControl(page) {
     return dispatched;
 }
 
+function isOutlineProfileTelemetryReady(
+    profile,
+    {
+        activeTargetCount = 2,
+        styleGroupCount = 1,
+        targetBlockId = 'profile-raised-bed:2:0',
+        targetRaisedBedId = 2,
+    } = {},
+) {
+    return (
+        profile?.hoverOutlineActiveTargetCount === activeTargetCount &&
+        profile.hoverOutlineStyleGroupCount === styleGroupCount &&
+        profile.hoverOutlineProfileTargetBlockId === targetBlockId &&
+        profile.hoverOutlineProfileTargetRaisedBedId === targetRaisedBedId
+    );
+}
+
+async function dispatchOutlineProfileCommand(page, command) {
+    const dispatched = await page.evaluate(
+        ({ detail, eventName }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail,
+                }),
+            ),
+        {
+            detail: command,
+            eventName: gameProfileOutlineCommandEventName,
+        },
+    );
+    const expected = {
+        activeTargetCount: 2,
+        styleGroupCount: 1,
+        targetBlockId: `profile-raised-bed:${command.raisedBedId.toString()}:0`,
+        targetRaisedBedId: command.raisedBedId,
+    };
+    await page.waitForFunction(
+        ({
+            activeTargetCount,
+            styleGroupCount,
+            targetBlockId,
+            targetRaisedBedId,
+        }) => {
+            const profile = globalThis.__grediceGameProfile;
+            return (
+                profile?.hoverOutlineActiveTargetCount === activeTargetCount &&
+                profile.hoverOutlineStyleGroupCount === styleGroupCount &&
+                profile.hoverOutlineProfileTargetBlockId === targetBlockId &&
+                profile.hoverOutlineProfileTargetRaisedBedId ===
+                    targetRaisedBedId
+            );
+        },
+        expected,
+        { timeout: 20_000 },
+    );
+
+    return {
+        dispatched,
+        telemetryAvailable: true,
+    };
+}
+
+function resolveChromiumGraphicsBackend(
+    platform = process.platform,
+    backend = 'auto',
+) {
+    if (!chromiumGraphicsBackends.includes(backend)) {
+        throw new Error(
+            `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
+        );
+    }
+    if (backend === 'auto') {
+        return platform === 'darwin' ? 'angle-metal' : 'default';
+    }
+    if (backend === 'angle-metal' && platform !== 'darwin') {
+        throw new Error('The angle-metal graphics backend requires macOS.');
+    }
+
+    return backend;
+}
+
+function resolveChromiumGraphicsArgs(
+    platform = process.platform,
+    backend = 'auto',
+) {
+    if (resolveChromiumGraphicsBackend(platform, backend) !== 'angle-metal') {
+        return [];
+    }
+
+    return ['--use-gl=angle', '--use-angle=metal'];
+}
+
 async function runScenarioMotion(page, scenario, sampleMs) {
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
+        scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
         await wait(sampleMs);
@@ -1524,6 +2112,13 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     const centerX = canvasBox.x + canvasBox.width * 0.52;
     const centerY = canvasBox.y + canvasBox.height * 0.52;
     const startedAt = Date.now();
+    if (scenario.motion === 'foliage-detail-zoom') {
+        await page.mouse.move(centerX, centerY);
+        await page.mouse.wheel(0, -920);
+        await wait(sampleMs);
+        return;
+    }
+
     if (scenario.interaction === 'hover-scan') {
         const points = [
             [-0.08, -0.04],
@@ -2046,7 +2641,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const request = getScenarioRequest(scenario.path);
     if (request.gardenProfile === 'high-target') {
         await page.waitForFunction(
-            ({ expectedFieldCount, expectedInstanceCount }) => {
+            ({
+                expectedFieldCount,
+                expectedFieldVisualInstanceCount,
+                expectedInstanceCount,
+                expectedMulchInstanceCount,
+                allowLegacyOperationVisuals,
+                operationVisuals,
+            }) => {
                 const profile = globalThis.__grediceGameProfile;
                 return Boolean(
                     profile?.qualityTier === 'high' &&
@@ -2059,13 +2661,31 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         profile.generatedPlantVisibleFieldCount ===
                             expectedFieldCount &&
                         profile.generatedPlantVisibleInstanceCount ===
-                            expectedInstanceCount,
+                            expectedInstanceCount &&
+                        (!operationVisuals ||
+                            allowLegacyOperationVisuals ||
+                            (profile.raisedBedFieldVisualInstanceCount ===
+                                expectedFieldVisualInstanceCount &&
+                                profile.raisedBedMulchInstanceCount ===
+                                    expectedMulchInstanceCount)),
                 );
             },
             {
-                expectedFieldCount: highTargetExpectedGeneratedPlantFieldCount,
+                expectedFieldCount:
+                    request.operationVisuals === '1'
+                        ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
+                        : highTargetExpectedGeneratedPlantFieldCount,
+                expectedFieldVisualInstanceCount:
+                    highTargetOperationVisualExpectedFieldInstanceCount,
                 expectedInstanceCount:
-                    highTargetExpectedGeneratedPlantInstanceCount,
+                    request.operationVisuals === '1'
+                        ? highTargetOperationVisualExpectedGeneratedPlantInstanceCount
+                        : highTargetExpectedGeneratedPlantInstanceCount,
+                expectedMulchInstanceCount:
+                    highTargetOperationVisualExpectedMulchInstanceCount,
+                allowLegacyOperationVisuals:
+                    options.allowLegacyOperationVisuals,
+                operationVisuals: request.operationVisuals === '1',
             },
             { timeout: 60000 },
         );
@@ -2076,12 +2696,126 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             new Promise((resolveWarmup) => setTimeout(resolveWarmup, warmupMs)),
         options.warmupMs,
     );
+    if (
+        scenario.staticSceneCacheBenchmark === true &&
+        request.staticSceneCache === 'cache'
+    ) {
+        await page.waitForFunction(
+            () => {
+                const profile = globalThis.__grediceGameProfile;
+                return (
+                    profile?.staticOpaqueSceneCacheSupported === true &&
+                    profile.staticOpaqueSceneCacheState === 'ready' &&
+                    profile.staticOpaqueSceneCacheReplayStatus === 'ready' &&
+                    (profile.staticOpaqueSceneCacheCaptureCount ?? 0) >= 1 &&
+                    (profile.staticOpaqueSceneCacheHitFrameCount ?? 0) >= 3
+                );
+            },
+            undefined,
+            { timeout: 60_000 },
+        );
+    }
+    if (request.staticSceneCacheOcclusionFixture === '1') {
+        await page.waitForFunction(
+            () => {
+                const state =
+                    globalThis.__grediceGameProfile
+                        ?.staticOpaqueSceneCacheOcclusionFixtureState;
+                return state === 'passed' || state === 'failed';
+            },
+            undefined,
+            { timeout: 60_000 },
+        );
+    }
     if (options.soakMs > 0) {
         await wait(options.soakMs);
+    }
+    const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
+    if (motionRunsBeforeSample) {
+        await runScenarioMotion(
+            page,
+            scenario,
+            scenario.motionWarmupMs ?? options.warmupMs,
+        );
+        if (request.foliageBudget === 'legacy') {
+            await page.waitForFunction(
+                (expected) => {
+                    const profile = globalThis.__grediceGameProfile;
+                    return (
+                        profile?.generatedPlantRenderNearInstanceCount ===
+                            expected &&
+                        profile.generatedPlantDetailedInstanceCount ===
+                            expected &&
+                        profile.generatedPlantPendingDetailInstanceCount === 0
+                    );
+                },
+                highTargetExpectedGeneratedPlantInstanceCount,
+                { timeout: 90_000 },
+            );
+        } else {
+            try {
+                await page.waitForFunction(
+                    ({ expectedClusterCount, expectedDetailCount }) => {
+                        const profile = globalThis.__grediceGameProfile;
+                        return (
+                            profile?.generatedPlantClusterInstanceCount ===
+                                expectedClusterCount &&
+                            profile.generatedPlantRenderNearInstanceCount ===
+                                expectedDetailCount &&
+                            profile.generatedPlantDetailedInstanceCount ===
+                                expectedDetailCount &&
+                            profile.generatedPlantPendingDetailInstanceCount ===
+                                0
+                        );
+                    },
+                    {
+                        expectedClusterCount:
+                            highTargetExpectedGeneratedPlantInstanceCount -
+                            highTargetGeneratedPlantDetailInstanceBudget,
+                        expectedDetailCount:
+                            highTargetGeneratedPlantDetailInstanceBudget,
+                    },
+                    { timeout: 90_000 },
+                );
+            } catch (error) {
+                const readiness = await page.evaluate(() => {
+                    const profile = globalThis.__grediceGameProfile;
+                    return {
+                        admittedBeds:
+                            profile?.generatedPlantDetailAdmittedBedCount,
+                        admittedInstances:
+                            profile?.generatedPlantDetailAdmittedInstanceCount,
+                        clusterInstances:
+                            profile?.generatedPlantClusterInstanceCount,
+                        detailedInstances:
+                            profile?.generatedPlantDetailedInstanceCount,
+                        nearInstances:
+                            profile?.generatedPlantRenderNearInstanceCount,
+                        pendingInstances:
+                            profile?.generatedPlantPendingDetailInstanceCount,
+                        requestedBeds:
+                            profile?.generatedPlantDetailRequestedBedCount,
+                        requestedInstances:
+                            profile?.generatedPlantDetailRequestedInstanceCount,
+                    };
+                });
+                throw new Error(
+                    `Budgeted foliage detail did not become ready: ${JSON.stringify(readiness)}`,
+                    { cause: error },
+                );
+            }
+        }
     }
     const adaptiveHighProfileControlStarted = scenario.profileControl
         ? await startAdaptiveHighProfileControl(page)
         : false;
+    const outlineProfileRequest = scenario.outlineProfile ?? null;
+    const outlineProfileState = outlineProfileRequest
+        ? await dispatchOutlineProfileCommand(page, outlineProfileRequest)
+        : {
+              dispatched: false,
+              telemetryAvailable: false,
+          };
     const profileMetadata = await page.evaluate(() => {
         const element = document.querySelector('[data-game-profile-mode]');
         if (!(element instanceof HTMLElement)) {
@@ -2101,8 +2835,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     typeof deviceMemory === 'number' ? deviceMemory : null,
                 narrowViewport: window.innerWidth <= 640,
             },
-            blockGeometryMerging:
-                element.dataset.gameProfileBlockGeometryMerging ?? null,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -2111,10 +2843,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 ) || null,
             details: element.dataset.gameProfileDetails ?? null,
             debugHud: element.dataset.gameProfileDebugHud ?? null,
+            fixedTimeSeconds: Number.isFinite(
+                Number.parseFloat(
+                    element.dataset.gameProfileFixedTimeSeconds ?? '',
+                ),
+            )
+                ? Number.parseFloat(
+                      element.dataset.gameProfileFixedTimeSeconds ?? '',
+                  )
+                : null,
             gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
             hud: element.dataset.gameProfileHud ?? null,
             mode: element.dataset.gameProfileMode ?? null,
+            operationVisuals:
+                element.dataset.gameProfileOperationVisuals ?? null,
+            outline: element.dataset.gameProfileOutline ?? null,
             quality: element.dataset.gameProfileQuality ?? null,
+            staticSceneCache:
+                element.dataset.gameProfileStaticSceneCache ?? null,
+            staticSceneCacheOcclusionFixture:
+                element.dataset.gameProfileStaticSceneCacheOcclusionFixture ??
+                null,
+            weatherSurface: element.dataset.gameProfileWeatherSurface ?? null,
         };
     });
     const environment = await page.evaluate(() => {
@@ -2170,9 +2920,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 autoQualityDeviceClass:
                     scenario.autoQualityDeviceClass ?? 'unspecified',
                 autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
-                blockGeometryMerging:
-                    profileMetadata?.blockGeometryMerging ??
-                    request.blockGeometryMerging,
                 closeupRaisedBedId:
                     profileMetadata?.closeupRaisedBedId ??
                     request.closeupRaisedBedId,
@@ -2180,13 +2927,22 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 details: profileMetadata?.details ?? request.details,
                 debugHud: profileMetadata?.debugHud ?? request.debugHud,
                 dpr: scenario.dpr,
+                foliageBudget: request.foliageBudget,
                 gardenProfile:
                     profileMetadata?.gardenProfile ?? request.gardenProfile,
                 hud: profileMetadata?.hud ?? request.hud,
                 isMobile: scenario.isMobile,
                 mode: profileMetadata?.mode ?? request.mode,
                 motion: 'raised-bed-closeup',
+                operationVisuals:
+                    profileMetadata?.operationVisuals ??
+                    request.operationVisuals,
+                outline: profileMetadata?.outline ?? request.outline,
+                outlineProfile: 'none',
                 quality: profileMetadata?.quality ?? request.quality,
+                staticSceneCache:
+                    profileMetadata?.staticSceneCache ??
+                    request.staticSceneCache,
                 viewport: scenario.viewport,
                 weatherTransition: 'none',
             },
@@ -2207,6 +2963,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     const sampleMs = scenario.sampleMs ?? options.sampleMs;
     const weatherTransitionRequest = scenario.weatherTransition ?? null;
+    const weatherSurfaceTransitionRequest =
+        scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
@@ -2214,11 +2972,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 adaptiveHighProfileControlEventName,
                 adaptiveHighProfileControlRecovery,
                 adaptiveHighProfileControlStarted,
+                outlineProfileDispatched,
+                outlineProfileTelemetryAvailable,
                 placementProfileEventName,
                 placementProfileRequest,
                 sampleMs,
                 weatherTransitionEventName,
                 weatherTransitionRequest,
+                weatherSurfaceTransitionRequest,
             } = sampleOptions;
             const canvas = document.querySelector('canvas');
             const metrics = globalThis.__gameProfileMetrics;
@@ -2245,6 +3006,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
             };
+            const readProfileBoolean = (field) => {
+                const value = globalThis.__grediceGameProfile?.[field];
+                return typeof value === 'boolean' ? value : null;
+            };
+            const readProfileString = (field) => {
+                const value = globalThis.__grediceGameProfile?.[field];
+                return typeof value === 'string' ? value : null;
+            };
+            const counterDelta = (startValue, endValue) =>
+                startValue === null || endValue === null
+                    ? null
+                    : endValue - startValue;
             const readEffectiveDpr = () => {
                 if (
                     !canvas ||
@@ -2317,6 +3090,32 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const cloudAttenuationUpdateCountAtStart = readProfileNumber(
                 'cloudAttenuationUpdateCount',
             );
+            const staticOpaqueSceneCacheBypassFrameCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
+            const staticOpaqueSceneCacheCaptureCountAtStart = readProfileNumber(
+                'staticOpaqueSceneCacheCaptureCount',
+            );
+            const staticOpaqueSceneCacheCompositePassCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheCompositePassCount');
+            const staticOpaqueSceneCacheHitFrameCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheHitFrameCount');
+            const staticOpaqueSceneCacheInvalidationCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheInvalidationCount');
+            const staticOpaqueSceneCacheLiveFrameCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheLiveFrameCount');
+            const staticOpaqueSceneCacheSavedSubmissionCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheSavedSubmissionCount');
+            const staticOpaqueSceneCacheSavedTriangleCountAtStart =
+                readProfileNumber('staticOpaqueSceneCacheSavedTriangleCount');
+            const staticOpaqueSceneCacheReplayStatusAtStart = readProfileString(
+                'staticOpaqueSceneCacheReplayStatus',
+            );
+            const staticOpaqueSceneCacheStateAtStart = readProfileString(
+                'staticOpaqueSceneCacheState',
+            );
+            const staticOpaqueSceneCacheSupportedAtStart = readProfileBoolean(
+                'staticOpaqueSceneCacheSupported',
+            );
             const interactionResolvedTargetCountAtStart =
                 typeof globalThis.__grediceGameProfile
                     ?.instancedInteractionResolvedTargetCount === 'number'
@@ -2374,6 +3173,168 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 : false;
 
             let profileRecoveryFinished = !adaptiveHighProfileControlRecovery;
+            let weatherSurfaceTransitionFinished =
+                weatherSurfaceTransitionRequest !== 'snow-integration-cycle';
+            let weatherSurfaceTransitionProfile = null;
+            const weatherSurfaceTransitionPromise =
+                weatherSurfaceTransitionRequest === 'snow-integration-cycle'
+                    ? (async () => {
+                          const profile = {
+                              dwell: null,
+                              enterDispatched: false,
+                              entered: null,
+                              error: null,
+                              exitDispatched: false,
+                              exited: null,
+                              initial: null,
+                              request: weatherSurfaceTransitionRequest,
+                          };
+                          const readSnapshot = () => {
+                              const metadata =
+                                  globalThis.__grediceGameProfile ?? {};
+                              const numberOrNull = (value) =>
+                                  typeof value === 'number' ? value : null;
+                              return {
+                                  avoidedOverlaySubmissionCount: numberOrNull(
+                                      metadata.weatherSurfaceAvoidedOverlaySubmissionCount,
+                                  ),
+                                  avoidedOverlayTriangleCount: numberOrNull(
+                                      metadata.weatherSurfaceAvoidedOverlayTriangleCount,
+                                  ),
+                                  fallbackOverlaySubmissionCount: numberOrNull(
+                                      metadata.weatherSurfaceFallbackOverlaySubmissionCount,
+                                  ),
+                                  fallbackOverlayTriangleCount: numberOrNull(
+                                      metadata.weatherSurfaceFallbackOverlayTriangleCount,
+                                  ),
+                                  integratedInstanceCount: numberOrNull(
+                                      metadata.weatherSurfaceIntegratedInstanceCount,
+                                  ),
+                                  integratedMaterialCount: numberOrNull(
+                                      metadata.weatherSurfaceIntegratedMaterialCount,
+                                  ),
+                                  pluginVariantCount: numberOrNull(
+                                      metadata.weatherSurfacePluginVariantCount,
+                                  ),
+                                  readyCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationReadyCount,
+                                  ),
+                                  trackedCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationTrackedCount,
+                                  ),
+                                  transitionCount: numberOrNull(
+                                      metadata.weatherSurfaceSnowIntegrationTransitionCount,
+                                  ),
+                                  snowParticleCount: numberOrNull(
+                                      metadata.snowParticleCount,
+                                  ),
+                              };
+                          };
+                          const hasSparseFallbackState = (snapshot) =>
+                              (snapshot.trackedCount ?? 0) > 0 &&
+                              snapshot.readyCount === 0 &&
+                              snapshot.integratedInstanceCount === 0 &&
+                              snapshot.integratedMaterialCount === 0 &&
+                              snapshot.pluginVariantCount === 0 &&
+                              snapshot.avoidedOverlaySubmissionCount === 0 &&
+                              snapshot.avoidedOverlayTriangleCount === 0 &&
+                              (snapshot.fallbackOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.fallbackOverlayTriangleCount ?? 0) >
+                                  0 &&
+                              snapshot.snowParticleCount === 0;
+                          const hasIntegratedState = (snapshot, initial) =>
+                              snapshot.trackedCount === initial.trackedCount &&
+                              snapshot.readyCount === initial.trackedCount &&
+                              snapshot.transitionCount ===
+                                  initial.transitionCount +
+                                      initial.trackedCount &&
+                              (snapshot.integratedInstanceCount ?? 0) > 0 &&
+                              (snapshot.integratedMaterialCount ?? 0) > 0 &&
+                              snapshot.pluginVariantCount === 1 &&
+                              (snapshot.avoidedOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.avoidedOverlayTriangleCount ?? 0) > 0 &&
+                              (snapshot.fallbackOverlaySubmissionCount ?? 0) >
+                                  0 &&
+                              (snapshot.fallbackOverlayTriangleCount ?? 0) >
+                                  0 &&
+                              snapshot.snowParticleCount === 0;
+                          const hasReturnedToSparseState = (
+                              snapshot,
+                              initial,
+                          ) =>
+                              hasSparseFallbackState(snapshot) &&
+                              snapshot.trackedCount === initial.trackedCount &&
+                              snapshot.transitionCount ===
+                                  initial.transitionCount +
+                                      initial.trackedCount * 2 &&
+                              snapshot.fallbackOverlaySubmissionCount ===
+                                  initial.fallbackOverlaySubmissionCount &&
+                              snapshot.fallbackOverlayTriangleCount ===
+                                  initial.fallbackOverlayTriangleCount;
+                          const waitForState = async (label, predicate) => {
+                              const deadline = performance.now() + 15_000;
+                              while (performance.now() < deadline) {
+                                  const snapshot = readSnapshot();
+                                  if (predicate(snapshot)) {
+                                      return snapshot;
+                                  }
+                                  await new Promise((resolveWait) =>
+                                      setTimeout(resolveWait, 25),
+                                  );
+                              }
+                              throw new Error(
+                                  `Timed out waiting for snow surface ${label}.`,
+                              );
+                          };
+                          const dispatchWeather = (request) =>
+                              globalThis.dispatchEvent(
+                                  new CustomEvent(weatherTransitionEventName, {
+                                      detail: { request },
+                                  }),
+                              );
+
+                          try {
+                              profile.initial = await waitForState(
+                                  'sparse initial state',
+                                  hasSparseFallbackState,
+                              );
+                              profile.enterDispatched = dispatchWeather(
+                                  'snow-sparse-to-integrated',
+                              );
+                              profile.entered = await waitForState(
+                                  'integrated state',
+                                  (snapshot) =>
+                                      hasIntegratedState(
+                                          snapshot,
+                                          profile.initial,
+                                      ),
+                              );
+                              await new Promise((resolveWait) =>
+                                  setTimeout(resolveWait, 750),
+                              );
+                              profile.dwell = readSnapshot();
+                              profile.exitDispatched = dispatchWeather(
+                                  'snow-integrated-to-sparse',
+                              );
+                              profile.exited = await waitForState(
+                                  'sparse fallback state',
+                                  (snapshot) =>
+                                      hasReturnedToSparseState(
+                                          snapshot,
+                                          profile.initial,
+                                      ),
+                              );
+                          } catch (error) {
+                              profile.error = String(error);
+                          }
+
+                          weatherSurfaceTransitionProfile = profile;
+                      })().finally(() => {
+                          weatherSurfaceTransitionFinished = true;
+                      })
+                    : Promise.resolve();
             const sampleWindowPromise = new Promise((resolveSample) => {
                 const step = (now) => {
                     intervals.push(now - last);
@@ -2389,7 +3350,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ) {
                         rainUnmountMs = now - start;
                     }
-                    if (now - start >= sampleMs && profileRecoveryFinished) {
+                    if (
+                        now - start >= sampleMs &&
+                        profileRecoveryFinished &&
+                        weatherSurfaceTransitionFinished
+                    ) {
                         resolveSample();
                         return;
                     }
@@ -2476,7 +3441,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                       profileRecoveryFinished = true;
                   })
                 : Promise.resolve();
-            await Promise.all([sampleWindowPromise, profileRecoveryPromise]);
+            await Promise.all([
+                sampleWindowPromise,
+                profileRecoveryPromise,
+                weatherSurfaceTransitionPromise,
+            ]);
 
             const sampleEndedAt = performance.now();
             const frameIntervals = intervals.slice(1);
@@ -2554,6 +3523,55 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             );
             const cloudAttenuationUpdateCountAtEnd = readProfileNumber(
                 'cloudAttenuationUpdateCount',
+            );
+            const staticOpaqueSceneCacheBypassFrameCountAtEnd =
+                readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
+            const staticOpaqueSceneCacheCaptureCountAtEnd = readProfileNumber(
+                'staticOpaqueSceneCacheCaptureCount',
+            );
+            const staticOpaqueSceneCacheCompositePassCountAtEnd =
+                readProfileNumber('staticOpaqueSceneCacheCompositePassCount');
+            const staticOpaqueSceneCacheHitFrameCountAtEnd = readProfileNumber(
+                'staticOpaqueSceneCacheHitFrameCount',
+            );
+            const staticOpaqueSceneCacheInvalidationCountAtEnd =
+                readProfileNumber('staticOpaqueSceneCacheInvalidationCount');
+            const staticOpaqueSceneCacheLiveFrameCountAtEnd = readProfileNumber(
+                'staticOpaqueSceneCacheLiveFrameCount',
+            );
+            const staticOpaqueSceneCacheSavedSubmissionCountAtEnd =
+                readProfileNumber('staticOpaqueSceneCacheSavedSubmissionCount');
+            const staticOpaqueSceneCacheSavedTriangleCountAtEnd =
+                readProfileNumber('staticOpaqueSceneCacheSavedTriangleCount');
+            const staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd =
+                readProfileNumber(
+                    'staticOpaqueSceneCacheUnexpectedStaticSubmissionCount',
+                );
+            const staticOpaqueSceneCacheHitFrameCountDelta = counterDelta(
+                staticOpaqueSceneCacheHitFrameCountAtStart,
+                staticOpaqueSceneCacheHitFrameCountAtEnd,
+            );
+            const staticOpaqueSceneCacheLiveFrameCountDelta = counterDelta(
+                staticOpaqueSceneCacheLiveFrameCountAtStart,
+                staticOpaqueSceneCacheLiveFrameCountAtEnd,
+            );
+            const staticOpaqueSceneCacheBypassFrameCountDelta = counterDelta(
+                staticOpaqueSceneCacheBypassFrameCountAtStart,
+                staticOpaqueSceneCacheBypassFrameCountAtEnd,
+            );
+            const staticOpaqueSceneCacheCaptureCountDelta = counterDelta(
+                staticOpaqueSceneCacheCaptureCountAtStart,
+                staticOpaqueSceneCacheCaptureCountAtEnd,
+            );
+            const staticOpaqueSceneCacheMeasuredFrameCount = [
+                staticOpaqueSceneCacheHitFrameCountDelta,
+                staticOpaqueSceneCacheLiveFrameCountDelta,
+                staticOpaqueSceneCacheBypassFrameCountDelta,
+                staticOpaqueSceneCacheCaptureCountDelta,
+            ].reduce(
+                (total, value) =>
+                    total + (typeof value === 'number' ? value : 0),
+                0,
             );
             const nonGpuSample = {
                 adaptiveHighDeclineCountDelta:
@@ -2652,6 +3670,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 p50FrameMs: percentile(0.5),
                 p95FrameMs: percentile(0.95),
                 p99FrameMs: percentile(0.99),
+                outlineProfileDispatched,
+                outlineProfileTelemetryAvailable,
                 placementProfileDispatched,
                 placementShadowDeferredChangeCountDelta:
                     placementShadowDeferredChangeCountAtStart === null ||
@@ -2683,6 +3703,40 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 reportedDpr: globalThis.devicePixelRatio,
                 renderedFps: renderedFrames / safeElapsedSeconds,
                 renderedFrames,
+                rendererShaders: metrics?.rendererShaders ?? null,
+                rendererTextures: metrics?.rendererTextures ?? null,
+                staticOpaqueSceneCacheBypassFrameCountDelta,
+                staticOpaqueSceneCacheCaptureCountAtStart,
+                staticOpaqueSceneCacheCaptureCountDelta,
+                staticOpaqueSceneCacheCompositePassCountDelta: counterDelta(
+                    staticOpaqueSceneCacheCompositePassCountAtStart,
+                    staticOpaqueSceneCacheCompositePassCountAtEnd,
+                ),
+                staticOpaqueSceneCacheHitFrameCountAtStart,
+                staticOpaqueSceneCacheHitFrameCountDelta,
+                staticOpaqueSceneCacheHitRatio:
+                    staticOpaqueSceneCacheMeasuredFrameCount > 0 &&
+                    staticOpaqueSceneCacheHitFrameCountDelta !== null
+                        ? staticOpaqueSceneCacheHitFrameCountDelta /
+                          staticOpaqueSceneCacheMeasuredFrameCount
+                        : null,
+                staticOpaqueSceneCacheInvalidationCountDelta: counterDelta(
+                    staticOpaqueSceneCacheInvalidationCountAtStart,
+                    staticOpaqueSceneCacheInvalidationCountAtEnd,
+                ),
+                staticOpaqueSceneCacheLiveFrameCountDelta,
+                staticOpaqueSceneCacheSavedSubmissionCountDelta: counterDelta(
+                    staticOpaqueSceneCacheSavedSubmissionCountAtStart,
+                    staticOpaqueSceneCacheSavedSubmissionCountAtEnd,
+                ),
+                staticOpaqueSceneCacheSavedTriangleCountDelta: counterDelta(
+                    staticOpaqueSceneCacheSavedTriangleCountAtStart,
+                    staticOpaqueSceneCacheSavedTriangleCountAtEnd,
+                ),
+                staticOpaqueSceneCacheReplayStatusAtStart,
+                staticOpaqueSceneCacheStateAtStart,
+                staticOpaqueSceneCacheSupportedAtStart,
+                staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd,
                 submittedTriangles,
                 trianglesPerFrame: submittedTriangles / safeRafFrames,
                 trianglesPerRafFrame: submittedTriangles / safeRafFrames,
@@ -2693,6 +3747,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
                 weatherTransitionDispatched,
                 weatherTransitionRequest,
+                weatherSurfaceTransitionProfile,
             };
             globalThis.__gameProfileGpuTimer?.stop();
 
@@ -2710,11 +3765,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             adaptiveHighProfileControlRecovery:
                 scenario.profileControlRecovery === true,
             adaptiveHighProfileControlStarted,
+            outlineProfileDispatched: outlineProfileState.dispatched,
+            outlineProfileTelemetryAvailable:
+                outlineProfileState.telemetryAvailable,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
             sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
+            weatherSurfaceTransitionRequest,
         },
     );
     const sampleCompletionPromise = samplePromise.then((sampleAtEndpoint) =>
@@ -2725,7 +3784,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }),
     );
     const motionPromise =
-        scenario.motion || scenario.interaction
+        (scenario.motion || scenario.interaction) && !motionRunsBeforeSample
             ? runScenarioMotion(page, scenario, sampleMs)
             : Promise.resolve();
     const [sampleCompletion] = await Promise.all([
@@ -2740,7 +3799,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         ]),
     );
 
-    const runtime = await page.evaluate(() => {
+    const instrumentedRendererResources = {
+        rendererShaders: sample.rendererShaders,
+        rendererTextures: sample.rendererTextures,
+    };
+    const runtime = await page.evaluate((resources) => {
         const metadata = globalThis.__grediceGameProfile;
         if (!metadata || typeof metadata !== 'object') {
             return null;
@@ -2894,53 +3957,122 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationVisibleCount === 'number'
                     ? metadata.groundDecorationVisibleCount
                     : null,
-            generatedLSystemCacheEntryCount:
-                typeof metadata.generatedLSystemCacheEntryCount === 'number'
-                    ? metadata.generatedLSystemCacheEntryCount
-                    : null,
-            generatedLSystemCacheEstimatedBytes:
-                typeof metadata.generatedLSystemCacheEstimatedBytes === 'number'
-                    ? metadata.generatedLSystemCacheEstimatedBytes
-                    : null,
-            generatedLSystemCacheEvictionCount:
-                typeof metadata.generatedLSystemCacheEvictionCount === 'number'
-                    ? metadata.generatedLSystemCacheEvictionCount
-                    : null,
-            generatedLSystemCacheHitCount:
-                typeof metadata.generatedLSystemCacheHitCount === 'number'
-                    ? metadata.generatedLSystemCacheHitCount
-                    : null,
-            generatedLSystemCacheMaxEntryCount:
-                typeof metadata.generatedLSystemCacheMaxEntryCount === 'number'
-                    ? metadata.generatedLSystemCacheMaxEntryCount
-                    : null,
-            generatedLSystemCacheMaxEstimatedBytes:
-                typeof metadata.generatedLSystemCacheMaxEstimatedBytes ===
-                'number'
-                    ? metadata.generatedLSystemCacheMaxEstimatedBytes
-                    : null,
-            generatedLSystemCacheMissCount:
-                typeof metadata.generatedLSystemCacheMissCount === 'number'
-                    ? metadata.generatedLSystemCacheMissCount
-                    : null,
-            generatedLSystemCacheOversizeSkipCount:
-                typeof metadata.generatedLSystemCacheOversizeSkipCount ===
-                'number'
-                    ? metadata.generatedLSystemCacheOversizeSkipCount
-                    : null,
-            generatedLSystemCachePeakEstimatedBytes:
-                typeof metadata.generatedLSystemCachePeakEstimatedBytes ===
-                'number'
-                    ? metadata.generatedLSystemCachePeakEstimatedBytes
-                    : null,
-            generatedLSystemCacheWriteCount:
-                typeof metadata.generatedLSystemCacheWriteCount === 'number'
-                    ? metadata.generatedLSystemCacheWriteCount
-                    : null,
+            hoverOutlineActiveTargetCount: numberOrNull(
+                metadata.hoverOutlineActiveTargetCount,
+            ),
+            hoverOutlineAllocatedHeight: numberOrNull(
+                metadata.hoverOutlineAllocatedHeight,
+            ),
+            hoverOutlineAllocatedPixelCount: numberOrNull(
+                metadata.hoverOutlineAllocatedPixelCount,
+            ),
+            hoverOutlineAllocatedWidth: numberOrNull(
+                metadata.hoverOutlineAllocatedWidth,
+            ),
+            hoverOutlineAllocationEstimatedBytes: numberOrNull(
+                metadata.hoverOutlineAllocationEstimatedBytes,
+            ),
+            hoverOutlineCompositePassCount: numberOrNull(
+                metadata.hoverOutlineCompositePassCount,
+            ),
+            hoverOutlineCropClippedCount: numberOrNull(
+                metadata.hoverOutlineCropClippedCount,
+            ),
+            hoverOutlineCropPixelCount: numberOrNull(
+                metadata.hoverOutlineCropPixelCount,
+            ),
+            hoverOutlineDrawingBufferPixelCount: numberOrNull(
+                metadata.hoverOutlineDrawingBufferPixelCount,
+            ),
+            hoverOutlineFormat: stringOrNull(metadata.hoverOutlineFormat),
+            hoverOutlineHorizontalPassCount: numberOrNull(
+                metadata.hoverOutlineHorizontalPassCount,
+            ),
+            hoverOutlineKernelSampleCount: numberOrNull(
+                metadata.hoverOutlineKernelSampleCount,
+            ),
+            hoverOutlineMaskPassCount: numberOrNull(
+                metadata.hoverOutlineMaskPassCount,
+            ),
+            hoverOutlineMaxKernelSampleCount: numberOrNull(
+                metadata.hoverOutlineMaxKernelSampleCount,
+            ),
+            hoverOutlinePipeline: stringOrNull(metadata.hoverOutlinePipeline),
+            hoverOutlineProfileCommandAction: stringOrNull(
+                metadata.hoverOutlineProfileCommandAction,
+            ),
+            hoverOutlineProfileTargetBlockId: stringOrNull(
+                metadata.hoverOutlineProfileTargetBlockId,
+            ),
+            hoverOutlineProfileTargetRaisedBedId: numberOrNull(
+                metadata.hoverOutlineProfileTargetRaisedBedId,
+            ),
+            hoverOutlineRenderTargetCount: numberOrNull(
+                metadata.hoverOutlineRenderTargetCount,
+            ),
+            hoverOutlineRoiRatio: numberOrNull(metadata.hoverOutlineRoiRatio),
+            hoverOutlineStyleGroupCount: numberOrNull(
+                metadata.hoverOutlineStyleGroupCount,
+            ),
+            hoverOutlineThickness: numberOrNull(metadata.hoverOutlineThickness),
             generatedPlantBatchCount:
                 typeof metadata.generatedPlantBatchCount === 'number'
                     ? metadata.generatedPlantBatchCount
                     : null,
+            generatedPlantClusterInstanceCount: numberOrNull(
+                metadata.generatedPlantClusterInstanceCount,
+            ),
+            generatedPlantClusterPrimitiveTriangleCount: numberOrNull(
+                metadata.generatedPlantClusterPrimitiveTriangleCount,
+            ),
+            generatedPlantDetailedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailedInstanceCount,
+            ),
+            generatedPlantDetailedLeafTriangleCount: numberOrNull(
+                metadata.generatedPlantDetailedLeafTriangleCount,
+            ),
+            generatedPlantDetailAdmittedBedCount: numberOrNull(
+                metadata.generatedPlantDetailAdmittedBedCount,
+            ),
+            generatedPlantDetailAdmittedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailAdmittedInstanceCount,
+            ),
+            generatedPlantDetailBudgetInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailBudgetInstanceCount,
+            ),
+            generatedPlantDetailDemotedBedCount: numberOrNull(
+                metadata.generatedPlantDetailDemotedBedCount,
+            ),
+            generatedPlantDetailEvictedBedCount: numberOrNull(
+                metadata.generatedPlantDetailEvictedBedCount,
+            ),
+            generatedPlantDetailOverflowInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailOverflowInstanceCount,
+            ),
+            generatedPlantDetailPromotedBedCount: numberOrNull(
+                metadata.generatedPlantDetailPromotedBedCount,
+            ),
+            generatedPlantDetailRequestedBedCount: numberOrNull(
+                metadata.generatedPlantDetailRequestedBedCount,
+            ),
+            generatedPlantDetailRequestedInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailRequestedInstanceCount,
+            ),
+            generatedPlantDetailRetainedBedCount: numberOrNull(
+                metadata.generatedPlantDetailRetainedBedCount,
+            ),
+            generatedPlantDetailTransitionCount: numberOrNull(
+                metadata.generatedPlantDetailTransitionCount,
+            ),
+            generatedPlantDetailUsedBudgetInstanceCount: numberOrNull(
+                metadata.generatedPlantDetailUsedBudgetInstanceCount,
+            ),
+            generatedPlantFarFieldCount: numberOrNull(
+                metadata.generatedPlantFarFieldCount,
+            ),
+            generatedPlantFarInstanceCount: numberOrNull(
+                metadata.generatedPlantFarInstanceCount,
+            ),
             generatedPlantFieldCount:
                 typeof metadata.generatedPlantFieldCount === 'number'
                     ? metadata.generatedPlantFieldCount
@@ -2953,6 +4085,27 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantInstanceCount === 'number'
                     ? metadata.generatedPlantInstanceCount
                     : null,
+            generatedPlantMidFieldCount: numberOrNull(
+                metadata.generatedPlantMidFieldCount,
+            ),
+            generatedPlantMidInstanceCount: numberOrNull(
+                metadata.generatedPlantMidInstanceCount,
+            ),
+            generatedPlantNearFieldCount: numberOrNull(
+                metadata.generatedPlantNearFieldCount,
+            ),
+            generatedPlantNearInstanceCount: numberOrNull(
+                metadata.generatedPlantNearInstanceCount,
+            ),
+            generatedPlantPendingDetailInstanceCount: numberOrNull(
+                metadata.generatedPlantPendingDetailInstanceCount,
+            ),
+            generatedPlantRenderBatchCount: numberOrNull(
+                metadata.generatedPlantRenderBatchCount,
+            ),
+            generatedPlantRenderNearInstanceCount: numberOrNull(
+                metadata.generatedPlantRenderNearInstanceCount,
+            ),
             generatedPlantVisibleFieldCount:
                 typeof metadata.generatedPlantVisibleFieldCount === 'number'
                     ? metadata.generatedPlantVisibleFieldCount
@@ -2961,6 +4114,21 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantVisibleInstanceCount === 'number'
                     ? metadata.generatedPlantVisibleInstanceCount
                     : null,
+            operationVisualHighlightProfileDispatched: booleanOrNull(
+                metadata.operationVisualHighlightProfileDispatched,
+            ),
+            operationVisualHighlightProfileTargetFieldId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetFieldId,
+            ),
+            operationVisualHighlightProfileTargetGardenId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetGardenId,
+            ),
+            operationVisualHighlightProfileTargetPositionIndex: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetPositionIndex,
+            ),
+            operationVisualHighlightProfileTargetRaisedBedId: numberOrNull(
+                metadata.operationVisualHighlightProfileTargetRaisedBedId,
+            ),
             instancedInteractionControllerCount:
                 typeof metadata.instancedInteractionControllerCount === 'number'
                     ? metadata.instancedInteractionControllerCount
@@ -3059,6 +4227,36 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.rainWetOverlayMaterialConsumerCount === 'number'
                     ? metadata.rainWetOverlayMaterialConsumerCount
                     : null,
+            raisedBedFieldVisualBatchCount: numberOrNull(
+                metadata.raisedBedFieldVisualBatchCount,
+            ),
+            raisedBedFieldVisualChunkCount: numberOrNull(
+                metadata.raisedBedFieldVisualChunkCount,
+            ),
+            raisedBedFieldVisualInstanceCount: numberOrNull(
+                metadata.raisedBedFieldVisualInstanceCount,
+            ),
+            raisedBedFieldVisualMatrixUploadCount: numberOrNull(
+                metadata.raisedBedFieldVisualMatrixUploadCount,
+            ),
+            raisedBedFieldVisualObjectCount: numberOrNull(
+                metadata.raisedBedFieldVisualObjectCount,
+            ),
+            raisedBedFieldVisualUploadedInstanceCount: numberOrNull(
+                metadata.raisedBedFieldVisualUploadedInstanceCount,
+            ),
+            raisedBedMulchBatchCount: numberOrNull(
+                metadata.raisedBedMulchBatchCount,
+            ),
+            raisedBedMulchGroupCount: numberOrNull(
+                metadata.raisedBedMulchGroupCount,
+            ),
+            raisedBedMulchInstanceCount: numberOrNull(
+                metadata.raisedBedMulchInstanceCount,
+            ),
+            raisedBedMulchObjectCount: numberOrNull(
+                metadata.raisedBedMulchObjectCount,
+            ),
             raisedBedMulchOverlayCount:
                 typeof metadata.raisedBedMulchOverlayCount === 'number'
                     ? metadata.raisedBedMulchOverlayCount
@@ -3067,6 +4265,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.primaryShadowRefreshCount === 'number'
                     ? metadata.primaryShadowRefreshCount
                     : null,
+            rendererShaders:
+                numberOrNull(metadata.rendererShaders) ??
+                numberOrNull(resources.rendererShaders),
+            rendererTextures:
+                numberOrNull(metadata.rendererTextures) ??
+                numberOrNull(resources.rendererTextures),
             shadowMapAutoUpdate:
                 typeof metadata.shadowMapAutoUpdate === 'boolean'
                     ? metadata.shadowMapAutoUpdate
@@ -3107,16 +4311,176 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.snowParticleGeometryBuildCount === 'number'
                     ? metadata.snowParticleGeometryBuildCount
                     : null,
+            staticOpaqueSceneCacheBoundaryCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheBoundaryCount,
+            ),
+            staticOpaqueSceneCacheBypassFrameCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheBypassFrameCount,
+            ),
+            staticOpaqueSceneCacheCaptureCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheCaptureCount,
+            ),
+            staticOpaqueSceneCacheCaptureSubmissionCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheCaptureSubmissionCount,
+            ),
+            staticOpaqueSceneCacheCaptureTriangleCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheCaptureTriangleCount,
+            ),
+            staticOpaqueSceneCacheCompositePassCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheCompositePassCount,
+            ),
+            staticOpaqueSceneCacheReplayEstimatedBytes: numberOrNull(
+                metadata.staticOpaqueSceneCacheReplayEstimatedBytes,
+            ),
+            staticOpaqueSceneCacheReplayStatus: stringOrNull(
+                metadata.staticOpaqueSceneCacheReplayStatus,
+            ),
+            staticOpaqueSceneCacheReplaySubmissionCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheReplaySubmissionCount,
+            ),
+            staticOpaqueSceneCacheReplayTriangleCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheReplayTriangleCount,
+            ),
+            staticOpaqueSceneCacheEnabled: booleanOrNull(
+                metadata.staticOpaqueSceneCacheEnabled,
+            ),
+            staticOpaqueSceneCacheHitFrameCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheHitFrameCount,
+            ),
+            staticOpaqueSceneCacheIneligibleBoundaryCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheIneligibleBoundaryCount,
+            ),
+            staticOpaqueSceneCacheInvalidationCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheInvalidationCount,
+            ),
+            staticOpaqueSceneCacheLastInvalidationReason: stringOrNull(
+                metadata.staticOpaqueSceneCacheLastInvalidationReason,
+            ),
+            staticOpaqueSceneCacheLiveFrameCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheLiveFrameCount,
+            ),
+            staticOpaqueSceneCacheMeshCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheMeshCount,
+            ),
+            staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio,
+                ),
+            staticOpaqueSceneCacheOcclusionCaptureCountAtTransition:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionCaptureCountAtTransition,
+                ),
+            staticOpaqueSceneCacheOcclusionFixtureEnabled: booleanOrNull(
+                metadata.staticOpaqueSceneCacheOcclusionFixtureEnabled,
+            ),
+            staticOpaqueSceneCacheOcclusionFixturePass: booleanOrNull(
+                metadata.staticOpaqueSceneCacheOcclusionFixturePass,
+            ),
+            staticOpaqueSceneCacheOcclusionFixtureState: stringOrNull(
+                metadata.staticOpaqueSceneCacheOcclusionFixtureState,
+            ),
+            staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio,
+                ),
+            staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition,
+                ),
+            staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio,
+                ),
+            staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio:
+                numberOrNull(
+                    metadata.staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio,
+                ),
+            staticOpaqueSceneCacheOcclusionTransitionCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheOcclusionTransitionCount,
+            ),
+            staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount,
+            ),
+            staticOpaqueSceneCacheReason: stringOrNull(
+                metadata.staticOpaqueSceneCacheReason,
+            ),
+            staticOpaqueSceneCacheSavedSubmissionCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheSavedSubmissionCount,
+            ),
+            staticOpaqueSceneCacheSavedTriangleCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheSavedTriangleCount,
+            ),
+            staticOpaqueSceneCacheState: stringOrNull(
+                metadata.staticOpaqueSceneCacheState,
+            ),
+            staticOpaqueSceneCacheSupported: booleanOrNull(
+                metadata.staticOpaqueSceneCacheSupported,
+            ),
+            staticOpaqueSceneCacheTargetEstimatedBytes: numberOrNull(
+                metadata.staticOpaqueSceneCacheTargetEstimatedBytes,
+            ),
+            staticOpaqueSceneCacheTotalEstimatedBytes: numberOrNull(
+                metadata.staticOpaqueSceneCacheTargetEstimatedBytes,
+            ),
+            staticOpaqueSceneCacheTargetHeight: numberOrNull(
+                metadata.staticOpaqueSceneCacheTargetHeight,
+            ),
+            staticOpaqueSceneCacheTargetSampleCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheTargetSampleCount,
+            ),
+            staticOpaqueSceneCacheTargetWidth: numberOrNull(
+                metadata.staticOpaqueSceneCacheTargetWidth,
+            ),
+            staticOpaqueSceneCacheTriangleCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheTriangleCount,
+            ),
+            staticOpaqueSceneCacheUnexpectedStaticSubmissionCount: numberOrNull(
+                metadata.staticOpaqueSceneCacheUnexpectedStaticSubmissionCount,
+            ),
+            weatherSurfaceAvoidedOverlaySubmissionCount: numberOrNull(
+                metadata.weatherSurfaceAvoidedOverlaySubmissionCount,
+            ),
+            weatherSurfaceAvoidedOverlayTriangleCount: numberOrNull(
+                metadata.weatherSurfaceAvoidedOverlayTriangleCount,
+            ),
+            weatherSurfaceFallbackOverlaySubmissionCount: numberOrNull(
+                metadata.weatherSurfaceFallbackOverlaySubmissionCount,
+            ),
+            weatherSurfaceFallbackOverlayTriangleCount: numberOrNull(
+                metadata.weatherSurfaceFallbackOverlayTriangleCount,
+            ),
+            weatherSurfaceIntegratedInstanceCount: numberOrNull(
+                metadata.weatherSurfaceIntegratedInstanceCount,
+            ),
+            weatherSurfaceIntegratedMaterialCount: numberOrNull(
+                metadata.weatherSurfaceIntegratedMaterialCount,
+            ),
+            weatherSurfaceMode: stringOrNull(metadata.weatherSurfaceMode),
+            weatherSurfacePluginVariantCount: numberOrNull(
+                metadata.weatherSurfacePluginVariantCount,
+            ),
+            weatherSurfaceSnowIntegrationReadyCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationReadyCount,
+            ),
+            weatherSurfaceSnowIntegrationTrackedCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationTrackedCount,
+            ),
+            weatherSurfaceSnowIntegrationTransitionCount: numberOrNull(
+                metadata.weatherSurfaceSnowIntegrationTransitionCount,
+            ),
             weatherDisabled:
                 typeof metadata.weatherDisabled === 'boolean'
                     ? metadata.weatherDisabled
                     : null,
         };
-    });
+    }, instrumentedRendererResources);
 
-    const screenshotPath = options.screenshots
-        ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
-        : null;
+    const screenshotPath =
+        options.screenshots ||
+        (scenario.staticSceneCacheBenchmark === true &&
+            scenario.staticSceneCacheVisualDeterministic !== false)
+            ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
+            : null;
     if (screenshotPath) {
         await mkdir(dirname(screenshotPath), { recursive: true });
         await page.screenshot({
@@ -3134,20 +4498,29 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
-        blockGeometryMerging:
-            profileMetadata?.blockGeometryMerging ??
-            request.blockGeometryMerging,
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
+        foliageBudget: request.foliageBudget,
+        fixedTimeSeconds:
+            profileMetadata?.fixedTimeSeconds ??
+            scenario.fixedTimeSeconds ??
+            null,
         gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
+        graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
         motion: scenario.motion ?? scenario.interaction ?? 'none',
+        operationVisuals:
+            profileMetadata?.operationVisuals ?? request.operationVisuals,
+        outline: profileMetadata?.outline ?? request.outline,
+        outlineProfile:
+            outlineProfileRequest === null ? 'none' : 'connected-raised-bed',
+        outlineRaisedBedId: outlineProfileRequest?.raisedBedId ?? null,
         scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
@@ -3156,12 +4529,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         quality: profileMetadata?.quality ?? request.quality,
         runtimeGpuSource: scenario.runtimeGpuSource === true,
         sampleMs,
+        staticSceneCache:
+            profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+        staticSceneCacheVisualDeterministic:
+            scenario.staticSceneCacheVisualDeterministic !== false,
+        staticSceneCacheOcclusionFixture:
+            profileMetadata?.staticSceneCacheOcclusionFixture ??
+            request.staticSceneCacheOcclusionFixture,
         viewport: scenario.viewport,
+        weatherSurface:
+            profileMetadata?.weatherSurface ?? request.weatherSurface,
+        weatherSurfaceTransition: weatherSurfaceTransitionRequest ?? 'none',
         weatherTransition: weatherTransitionRequest ?? 'none',
     };
     const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
+        consoleMessages,
+        environment,
         pageErrors,
         requested,
         runtime,
@@ -3267,6 +4652,10 @@ function roundSample(sample) {
         p99FrameMs: round(sample.p99FrameMs),
         rainUnmountMs: round(sample.rainUnmountMs),
         renderedFps: round(sample.renderedFps, 1),
+        staticOpaqueSceneCacheHitRatio: round(
+            sample.staticOpaqueSceneCacheHitRatio,
+            4,
+        ),
         trianglesPerFrame: Math.round(sample.trianglesPerFrame),
         trianglesPerRafFrame: Math.round(sample.trianglesPerRafFrame),
         trianglesPerRenderedFrame: Math.round(sample.trianglesPerRenderedFrame),
@@ -3320,8 +4709,32 @@ function evaluateBudget(sample, budget) {
     };
 }
 
+function isIgnoredLocalProfilerConsoleError(message) {
+    if (
+        message?.type !== 'error' ||
+        typeof message.text !== 'string' ||
+        typeof message.url !== 'string' ||
+        !message.text.startsWith('Failed to load resource:') ||
+        !message.text.includes('404')
+    ) {
+        return false;
+    }
+
+    try {
+        const url = new URL(message.url);
+        return (
+            ['localhost', '127.0.0.1', '::1'].includes(url.hostname) &&
+            url.pathname === '/_vercel/insights/script.js'
+        );
+    } catch {
+        return false;
+    }
+}
+
 function evaluateHighTargetAcceptance({
     apiErrors = [],
+    consoleMessages = [],
+    environment,
     pageErrors,
     requested,
     runtime,
@@ -3344,6 +4757,16 @@ function evaluateHighTargetAcceptance({
         limit,
         name,
         pass: typeof actual === 'number' && actual >= limit,
+    });
+    const finiteMinimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'finite-minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
     });
     const range = (name, actual, minimumValue, maximumValue) => ({
         actual,
@@ -3388,6 +4811,59 @@ function evaluateHighTargetAcceptance({
     const adaptiveHighDprCap = adaptiveHighRequested
         ? (sample.adaptiveHighDprCapAtEnd ?? runtime?.adaptiveHighDprCap)
         : null;
+    const operationVisualsRequested = requested.operationVisuals === '1';
+    const foliageBudgetRequested = requested.foliageBudget === '1';
+    const staticSceneCacheBenchmarkRequested =
+        highTargetStaticSceneCacheComparisonPairs.has(requested.comparisonPair);
+    const staticSceneCacheCloudyBenchmarkRequested =
+        staticSceneCacheBenchmarkRequested && requested.mode === 'cloudy';
+    const staticSceneCacheExpectedCloudAttenuationUpdates =
+        staticSceneCacheCloudyBenchmarkRequested &&
+        typeof sample.elapsedMs === 'number' &&
+        typeof runtime?.cloudAttenuationUpdateMs === 'number' &&
+        runtime.cloudAttenuationUpdateMs > 0
+            ? sample.elapsedMs / runtime.cloudAttenuationUpdateMs
+            : null;
+    const staticSceneCacheOcclusionFixtureRequested =
+        requested.staticSceneCacheOcclusionFixture === '1';
+    const staticSceneCacheCachedRunRequested =
+        (staticSceneCacheBenchmarkRequested &&
+            requested.comparisonRole === 'cache') ||
+        staticSceneCacheOcclusionFixtureRequested;
+    const staticSceneCacheOcclusionPostTransitionHitCount =
+        typeof runtime?.staticOpaqueSceneCacheHitFrameCount === 'number' &&
+        typeof runtime?.staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition ===
+            'number'
+            ? runtime.staticOpaqueSceneCacheHitFrameCount -
+              runtime.staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition
+            : null;
+    const weatherSurfaceRequested =
+        requested.weatherSurface === 'integrated' ||
+        requested.weatherSurface === 'legacy'
+            ? requested.weatherSurface
+            : null;
+    const weatherSurfaceExpectation =
+        requested.mode === 'rain' || requested.mode === 'snow'
+            ? highTargetWeatherSurfaceExpectations[requested.mode]
+            : null;
+    const weatherSurfaceOnsetSelfVerification =
+        requested.mode === 'snow-onset' &&
+        requested.weatherSurface === 'integrated';
+    const weatherSurfaceTransitionRequested =
+        requested.weatherSurfaceTransition === 'snow-integration-cycle';
+    const expectedGeneratedPlantFieldCount = operationVisualsRequested
+        ? highTargetOperationVisualExpectedGeneratedPlantFieldCount
+        : highTargetExpectedGeneratedPlantFieldCount;
+    const expectedGeneratedPlantInstanceCount = operationVisualsRequested
+        ? highTargetOperationVisualExpectedGeneratedPlantInstanceCount
+        : highTargetExpectedGeneratedPlantInstanceCount;
+    const operationVisualRenderedObjectCount =
+        typeof runtime?.raisedBedFieldVisualObjectCount === 'number' &&
+        typeof runtime?.raisedBedMulchObjectCount === 'number'
+            ? runtime.raisedBedFieldVisualObjectCount +
+              runtime.raisedBedMulchObjectCount +
+              highTargetOperationVisualHighlightObjectCount
+            : null;
     const effectiveDpr = adaptiveHighRequested
         ? (sample.effectiveDprAtEnd ?? adaptiveHighDprCap)
         : sample.reportedDpr;
@@ -3423,7 +4899,6 @@ function evaluateHighTargetAcceptance({
                   runtime?.groundDecorationVisibleCount,
                   500,
               ),
-        exact('highTargetGeometryMerging', requested.blockGeometryMerging, '1'),
         exact('highTargetCanvasClientWidth', sample.canvas?.clientWidth, 1280),
         exact('highTargetCanvasClientHeight', sample.canvas?.clientHeight, 720),
         ...(adaptiveHighRequested
@@ -3457,12 +4932,12 @@ function evaluateHighTargetAcceptance({
         exact(
             'highTargetGeneratedPlantFields',
             runtime?.generatedPlantFieldCount,
-            highTargetExpectedGeneratedPlantFieldCount,
+            expectedGeneratedPlantFieldCount,
         ),
         exact(
             'highTargetExpectedGeneratedPlantInstances',
             runtime?.generatedPlantExpectedInstanceCount,
-            highTargetExpectedGeneratedPlantInstanceCount,
+            expectedGeneratedPlantInstanceCount,
         ),
         exact(
             'highTargetGeneratedPlantInstances',
@@ -3472,13 +4947,107 @@ function evaluateHighTargetAcceptance({
         exact(
             'highTargetVisiblePlantFields',
             runtime?.generatedPlantVisibleFieldCount,
-            highTargetExpectedGeneratedPlantFieldCount,
+            expectedGeneratedPlantFieldCount,
         ),
         exact(
             'highTargetVisiblePlantInstances',
             runtime?.generatedPlantVisibleInstanceCount,
-            highTargetExpectedGeneratedPlantInstanceCount,
+            expectedGeneratedPlantInstanceCount,
         ),
+        ...(foliageBudgetRequested
+            ? [
+                  exact(
+                      'highTargetFoliageDetailBudget',
+                      runtime?.generatedPlantDetailBudgetInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageRequestedBeds',
+                      runtime?.generatedPlantDetailRequestedBedCount,
+                      3,
+                  ),
+                  exact(
+                      'highTargetFoliageRequestedInstances',
+                      runtime?.generatedPlantDetailRequestedInstanceCount,
+                      highTargetExpectedGeneratedPlantInstanceCount,
+                  ),
+                  exact(
+                      'highTargetFoliageAdmittedBeds',
+                      runtime?.generatedPlantDetailAdmittedBedCount,
+                      1,
+                  ),
+                  exact(
+                      'highTargetFoliageAdmittedInstances',
+                      runtime?.generatedPlantDetailAdmittedInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageUsedBudget',
+                      runtime?.generatedPlantDetailUsedBudgetInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageDemotedBeds',
+                      runtime?.generatedPlantDetailDemotedBedCount,
+                      2,
+                  ),
+                  exact(
+                      'highTargetFoliageSelectedOverflow',
+                      runtime?.generatedPlantDetailOverflowInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageNearFields',
+                      runtime?.generatedPlantNearFieldCount,
+                      18,
+                  ),
+                  exact(
+                      'highTargetFoliageNearInstances',
+                      runtime?.generatedPlantNearInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterFields',
+                      (runtime?.generatedPlantMidFieldCount ?? 0) +
+                          (runtime?.generatedPlantFarFieldCount ?? 0),
+                      highTargetExpectedGeneratedPlantFieldCount - 18,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterLodInstances',
+                      (runtime?.generatedPlantMidInstanceCount ?? 0) +
+                          (runtime?.generatedPlantFarInstanceCount ?? 0),
+                      highTargetExpectedGeneratedPlantInstanceCount -
+                          highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageDetailedRenderInstances',
+                      runtime?.generatedPlantDetailedInstanceCount,
+                      highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliagePendingDetailInstances',
+                      runtime?.generatedPlantPendingDetailInstanceCount,
+                      0,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterInstances',
+                      runtime?.generatedPlantClusterInstanceCount,
+                      highTargetExpectedGeneratedPlantInstanceCount -
+                          highTargetGeneratedPlantDetailInstanceBudget,
+                  ),
+                  exact(
+                      'highTargetFoliageClusterPrimitiveTriangles',
+                      runtime?.generatedPlantClusterPrimitiveTriangleCount,
+                      highTargetBudgetedGeneratedPlantClusterTriangleCount,
+                  ),
+                  range(
+                      'highTargetFoliageRenderBatches',
+                      runtime?.generatedPlantRenderBatchCount,
+                      3,
+                      12,
+                  ),
+              ]
+            : []),
         exact(
             'highTargetActorGroundingShadowCount',
             runtime?.actorGroundingShadowCount,
@@ -3528,8 +5097,400 @@ function evaluateHighTargetAcceptance({
         minimum('highTargetDrawCalls', sample.drawCalls, 1),
         minimum('highTargetSubmittedTriangles', sample.submittedTriangles, 1),
         exact('highTargetApiErrors', apiErrors.length, 0),
+        exact(
+            'highTargetConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
         exact('highTargetPageErrors', pageErrors.length, 0),
     ];
+    if (staticSceneCacheCachedRunRequested) {
+        checks.push(
+            exact(
+                'highTargetStaticSceneCacheRequestedMode',
+                requested.staticSceneCache,
+                'cache',
+            ),
+            exact(
+                'highTargetStaticSceneCacheEnabled',
+                runtime?.staticOpaqueSceneCacheEnabled,
+                true,
+            ),
+            exact(
+                'highTargetStaticSceneCacheSupported',
+                runtime?.staticOpaqueSceneCacheSupported,
+                true,
+            ),
+            exact(
+                'highTargetStaticSceneCacheWarmState',
+                sample.staticOpaqueSceneCacheStateAtStart,
+                'ready',
+            ),
+            exact(
+                'highTargetStaticSceneCacheWarmReplayStatus',
+                sample.staticOpaqueSceneCacheReplayStatusAtStart,
+                'ready',
+            ),
+            exact(
+                'highTargetStaticSceneCacheWarmSupported',
+                sample.staticOpaqueSceneCacheSupportedAtStart,
+                true,
+            ),
+            exact(
+                'highTargetStaticSceneCacheFinalState',
+                runtime?.staticOpaqueSceneCacheState,
+                'ready',
+            ),
+            exact(
+                'highTargetStaticSceneCacheFinalReplayStatus',
+                runtime?.staticOpaqueSceneCacheReplayStatus,
+                'ready',
+            ),
+            minimum(
+                'highTargetStaticSceneCacheWarmCaptures',
+                sample.staticOpaqueSceneCacheCaptureCountAtStart,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheWarmHits',
+                sample.staticOpaqueSceneCacheHitFrameCountAtStart,
+                3,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheBoundaries',
+                runtime?.staticOpaqueSceneCacheBoundaryCount,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheMeshes',
+                runtime?.staticOpaqueSceneCacheMeshCount,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheTriangles',
+                runtime?.staticOpaqueSceneCacheTriangleCount,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheCaptureSubmissions',
+                runtime?.staticOpaqueSceneCacheCaptureSubmissionCount,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheCaptureTriangles',
+                runtime?.staticOpaqueSceneCacheCaptureTriangleCount,
+                1,
+            ),
+            finiteMinimum(
+                'highTargetStaticSceneCacheReplayEstimatedBytes',
+                runtime?.staticOpaqueSceneCacheReplayEstimatedBytes,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheReplaySubmissions',
+                runtime?.staticOpaqueSceneCacheReplaySubmissionCount,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheReplayTriangles',
+                runtime?.staticOpaqueSceneCacheReplayTriangleCount,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTargetWidth',
+                runtime?.staticOpaqueSceneCacheTargetWidth,
+                sample.canvas?.width,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTargetHeight',
+                runtime?.staticOpaqueSceneCacheTargetHeight,
+                sample.canvas?.height,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTargetSampleCount',
+                runtime?.staticOpaqueSceneCacheTargetSampleCount,
+                4,
+            ),
+            range(
+                'highTargetStaticSceneCacheTotalEstimatedBytes',
+                runtime?.staticOpaqueSceneCacheTotalEstimatedBytes,
+                1,
+                highTargetStaticSceneCacheMaximumTotalEstimatedBytes,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedCaptures',
+                sample.staticOpaqueSceneCacheCaptureCountDelta,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedInvalidations',
+                sample.staticOpaqueSceneCacheInvalidationCountDelta,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedBypasses',
+                sample.staticOpaqueSceneCacheBypassFrameCountDelta,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedLiveFrames',
+                sample.staticOpaqueSceneCacheLiveFrameCountDelta,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedHitRatio',
+                sample.staticOpaqueSceneCacheHitRatio,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheTimedCompositePasses',
+                sample.staticOpaqueSceneCacheCompositePassCountDelta,
+                sample.staticOpaqueSceneCacheHitFrameCountDelta,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheSavedSubmissions',
+                sample.staticOpaqueSceneCacheSavedSubmissionCountDelta,
+                1,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheSavedTriangles',
+                sample.staticOpaqueSceneCacheSavedTriangleCountDelta,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheIneligibleBoundaries',
+                runtime?.staticOpaqueSceneCacheIneligibleBoundaryCount,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheUnexpectedSubmissions',
+                sample.staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd,
+                0,
+            ),
+        );
+    }
+    if (staticSceneCacheCloudyBenchmarkRequested) {
+        checks.push(
+            exact(
+                'highTargetStaticSceneCacheCloudFixedTimeSeconds',
+                requested.fixedTimeSeconds,
+                12,
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudVisuals',
+                runtime?.cloudVisualCount,
+                8,
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudProjectedShadows',
+                runtime?.cloudProjectedShadowCount,
+                8,
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudRealShadowCasters',
+                runtime?.cloudRealShadowCasterCount,
+                0,
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudAttenuationResolution',
+                runtime?.cloudAttenuationMaskResolution,
+                192,
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudAttenuationCadence',
+                runtime?.cloudAttenuationUpdateMs,
+                96,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheCloudAttenuationMaterials',
+                runtime?.cloudAttenuationMaterialCount,
+                1,
+            ),
+            range(
+                'highTargetStaticSceneCacheCloudAttenuationUpdates',
+                sample.cloudAttenuationUpdateCountDelta,
+                Math.max(
+                    2,
+                    Math.floor(
+                        (staticSceneCacheExpectedCloudAttenuationUpdates ?? 0) *
+                            0.65,
+                    ),
+                ),
+                Math.ceil(
+                    (staticSceneCacheExpectedCloudAttenuationUpdates ?? 0) *
+                        1.35,
+                ),
+            ),
+            exact(
+                'highTargetStaticSceneCacheCloudPrimaryShadowRefreshes',
+                sample.primaryShadowRefreshCountDelta,
+                0,
+            ),
+        );
+    }
+    if (staticSceneCacheOcclusionFixtureRequested) {
+        checks.push(
+            exact(
+                'highTargetStaticSceneCacheOcclusionFixtureEnabled',
+                runtime?.staticOpaqueSceneCacheOcclusionFixtureEnabled,
+                true,
+            ),
+            exact(
+                'highTargetStaticSceneCacheOcclusionFixtureState',
+                runtime?.staticOpaqueSceneCacheOcclusionFixtureState,
+                'passed',
+            ),
+            exact(
+                'highTargetStaticSceneCacheOcclusionFixturePass',
+                runtime?.staticOpaqueSceneCacheOcclusionFixturePass,
+                true,
+            ),
+            exact(
+                'highTargetStaticSceneCacheOcclusionTransitions',
+                runtime?.staticOpaqueSceneCacheOcclusionTransitionCount,
+                1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheOcclusionRecaptures',
+                runtime?.staticOpaqueSceneCacheCaptureCount,
+                runtime?.staticOpaqueSceneCacheOcclusionCaptureCountAtTransition,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheOcclusionPostTransitionHits',
+                staticSceneCacheOcclusionPostTransitionHitCount,
+                highTargetStaticSceneCacheOcclusionVerifiedHitCount + 1,
+            ),
+            exact(
+                'highTargetStaticSceneCacheOcclusionVerifiedHits',
+                runtime?.staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount,
+                highTargetStaticSceneCacheOcclusionVerifiedHitCount,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheOcclusionBackgroundWitness',
+                runtime?.staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio,
+                highTargetStaticSceneCacheOcclusionMinimumMatchRatio,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheOcclusionCachedOccluder',
+                runtime?.staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio,
+                highTargetStaticSceneCacheOcclusionMinimumMatchRatio,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheOcclusionLiveForeground',
+                runtime?.staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio,
+                highTargetStaticSceneCacheOcclusionMinimumMatchRatio,
+            ),
+            range(
+                'highTargetStaticSceneCacheOcclusionBackgroundLeak',
+                runtime?.staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio,
+                0,
+                highTargetStaticSceneCacheOcclusionMaximumLeakRatio,
+            ),
+        );
+    }
+    if (operationVisualsRequested) {
+        checks.push(
+            exact(
+                'highTargetOperationVisualHighlightDispatched',
+                runtime?.operationVisualHighlightProfileDispatched,
+                true,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightGarden',
+                runtime?.operationVisualHighlightProfileTargetGardenId,
+                99_996,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightRaisedBed',
+                runtime?.operationVisualHighlightProfileTargetRaisedBedId,
+                2,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightField',
+                runtime?.operationVisualHighlightProfileTargetFieldId,
+                201,
+            ),
+            exact(
+                'highTargetOperationVisualHighlightPosition',
+                runtime?.operationVisualHighlightProfileTargetPositionIndex,
+                0,
+            ),
+            range(
+                'highTargetOperationVisualFieldBatches',
+                runtime?.raisedBedFieldVisualBatchCount,
+                1,
+                16,
+            ),
+            range(
+                'highTargetOperationVisualFieldChunks',
+                runtime?.raisedBedFieldVisualChunkCount,
+                1,
+                3,
+            ),
+            exact(
+                'highTargetOperationVisualFieldInstances',
+                runtime?.raisedBedFieldVisualInstanceCount,
+                highTargetOperationVisualExpectedFieldInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualFieldObjects',
+                runtime?.raisedBedFieldVisualObjectCount,
+                1,
+                highTargetOperationVisualRenderedObjectLimit,
+            ),
+            exact(
+                'highTargetOperationVisualFieldMatrixUploads',
+                runtime?.raisedBedFieldVisualMatrixUploadCount,
+                runtime?.raisedBedFieldVisualBatchCount,
+            ),
+            exact(
+                'highTargetOperationVisualFieldUploadedInstances',
+                runtime?.raisedBedFieldVisualUploadedInstanceCount,
+                highTargetOperationVisualExpectedFieldInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualMulchBatches',
+                runtime?.raisedBedMulchBatchCount,
+                1,
+                32,
+            ),
+            range(
+                'highTargetOperationVisualMulchGroups',
+                runtime?.raisedBedMulchGroupCount,
+                1,
+                16,
+            ),
+            exact(
+                'highTargetOperationVisualMulchInstances',
+                runtime?.raisedBedMulchInstanceCount,
+                highTargetOperationVisualExpectedMulchInstanceCount,
+            ),
+            range(
+                'highTargetOperationVisualMulchObjects',
+                runtime?.raisedBedMulchObjectCount,
+                1,
+                highTargetOperationVisualRenderedObjectLimit,
+            ),
+            exact(
+                'highTargetOperationVisualMulchOverlays',
+                runtime?.raisedBedMulchOverlayCount,
+                highTargetOperationVisualExpectedMulchInstanceCount,
+            ),
+            {
+                ...range(
+                    'highTargetOperationVisualRenderedObjects',
+                    operationVisualRenderedObjectCount,
+                    4,
+                    highTargetOperationVisualRenderedObjectLimit,
+                ),
+                legacy: highTargetOperationVisualLegacyObjectCount,
+            },
+        );
+    }
     if (adaptiveHighRequested) {
         checks.push(
             exact(
@@ -3712,6 +5673,177 @@ function evaluateHighTargetAcceptance({
             ),
         );
     }
+    if (requested.outlineProfile === 'connected-raised-bed') {
+        checks.push(
+            exact('highTargetOutlineProfileFlag', requested.outline, '1'),
+            exact(
+                'highTargetOutlineRaisedBedId',
+                requested.outlineRaisedBedId,
+                2,
+            ),
+            exact(
+                'highTargetOutlineProfileDispatched',
+                sample.outlineProfileDispatched,
+                true,
+            ),
+            exact(
+                'highTargetOutlineTelemetryAvailable',
+                sample.outlineProfileTelemetryAvailable,
+                true,
+            ),
+        );
+        if (requested.graphicsBackend === 'angle-metal') {
+            const renderer = environment?.renderer ?? null;
+            checks.push(
+                {
+                    actual: renderer,
+                    comparison: 'contains',
+                    limit: ['ANGLE', 'Metal'],
+                    name: 'highTargetOutlineAngleMetalRenderer',
+                    pass:
+                        typeof renderer === 'string' &&
+                        /\bANGLE\b/i.test(renderer) &&
+                        /\bMetal\b/i.test(renderer),
+                },
+                exact(
+                    'highTargetOutlineGpuTimerSupported',
+                    sample.gpu?.supported,
+                    true,
+                ),
+                exact(
+                    'highTargetOutlineGpuTimerValid',
+                    sample.gpu?.valid,
+                    true,
+                ),
+                minimum(
+                    'highTargetOutlineGpuTimerSamples',
+                    sample.gpu?.sampleCount,
+                    1,
+                ),
+                finiteMinimum(
+                    'highTargetOutlineGpuElapsedP95Ms',
+                    sample.gpu?.elapsedP95Ms,
+                    0,
+                ),
+            );
+        }
+        const outlineTelemetryAvailable =
+            sample.outlineProfileTelemetryAvailable === true ||
+            (typeof runtime?.hoverOutlineActiveTargetCount === 'number' &&
+                typeof runtime.hoverOutlineStyleGroupCount === 'number');
+        if (outlineTelemetryAvailable) {
+            checks.push(
+                exact(
+                    'highTargetOutlineActiveTargets',
+                    runtime?.hoverOutlineActiveTargetCount,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlineStyleGroups',
+                    runtime?.hoverOutlineStyleGroupCount,
+                    1,
+                ),
+                exact(
+                    'highTargetOutlineProfileCommandAction',
+                    runtime?.hoverOutlineProfileCommandAction,
+                    'show',
+                ),
+                exact(
+                    'highTargetOutlineProfileTargetBlockId',
+                    runtime?.hoverOutlineProfileTargetBlockId,
+                    'profile-raised-bed:2:0',
+                ),
+                exact(
+                    'highTargetOutlineProfileTargetRaisedBedId',
+                    runtime?.hoverOutlineProfileTargetRaisedBedId,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlinePipeline',
+                    runtime?.hoverOutlinePipeline,
+                    'cropped-bounded-separable-r8',
+                ),
+                exact(
+                    'highTargetOutlineFormat',
+                    runtime?.hoverOutlineFormat,
+                    'r8',
+                ),
+                exact(
+                    'highTargetOutlineRenderTargets',
+                    runtime?.hoverOutlineRenderTargetCount,
+                    2,
+                ),
+                exact(
+                    'highTargetOutlineDrawingBufferPixels',
+                    runtime?.hoverOutlineDrawingBufferPixelCount,
+                    2_560 * 1_440,
+                ),
+                minimum(
+                    'highTargetOutlineCropPixels',
+                    runtime?.hoverOutlineCropPixelCount,
+                    1,
+                ),
+                minimum(
+                    'highTargetOutlineAllocatedWidth',
+                    runtime?.hoverOutlineAllocatedWidth,
+                    1,
+                ),
+                minimum(
+                    'highTargetOutlineAllocatedHeight',
+                    runtime?.hoverOutlineAllocatedHeight,
+                    1,
+                ),
+                range(
+                    'highTargetOutlineRoiRatio',
+                    runtime?.hoverOutlineRoiRatio,
+                    0,
+                    0.25,
+                ),
+                exact(
+                    'highTargetOutlineCropClipping',
+                    runtime?.hoverOutlineCropClippedCount,
+                    0,
+                ),
+                exact(
+                    'highTargetOutlineThickness',
+                    runtime?.hoverOutlineThickness,
+                    5,
+                ),
+                exact(
+                    'highTargetOutlineKernelSamples',
+                    runtime?.hoverOutlineKernelSampleCount,
+                    23,
+                ),
+                exact(
+                    'highTargetOutlineMaximumKernelSamples',
+                    runtime?.hoverOutlineMaxKernelSampleCount,
+                    51,
+                ),
+                minimum(
+                    'highTargetOutlineMaskPasses',
+                    runtime?.hoverOutlineMaskPassCount,
+                    1,
+                ),
+                exact(
+                    'highTargetOutlineHorizontalPassAlignment',
+                    runtime?.hoverOutlineHorizontalPassCount,
+                    runtime?.hoverOutlineMaskPassCount,
+                ),
+                exact(
+                    'highTargetOutlineCompositePassAlignment',
+                    runtime?.hoverOutlineCompositePassCount,
+                    runtime?.hoverOutlineMaskPassCount,
+                ),
+                exact(
+                    'highTargetOutlineAllocationBytes',
+                    runtime?.hoverOutlineAllocationEstimatedBytes,
+                    typeof runtime?.hoverOutlineAllocatedPixelCount === 'number'
+                        ? runtime.hoverOutlineAllocatedPixelCount * 2
+                        : null,
+                ),
+            );
+        }
+    }
     if (requested.placementProfile === 'placement-drop') {
         checks.push(
             exact(
@@ -3758,6 +5890,415 @@ function evaluateHighTargetAcceptance({
                 'highTargetPlacementPrimaryShadowRefreshes',
                 sample.primaryShadowRefreshCountDelta,
                 1,
+            ),
+        );
+    }
+    if (weatherSurfaceRequested && weatherSurfaceExpectation) {
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceMode',
+                runtime?.weatherSurfaceMode,
+                weatherSurfaceRequested,
+            ),
+            exact(
+                'highTargetWeatherSurfaceIntegratedInstances',
+                runtime?.weatherSurfaceIntegratedInstanceCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.integratedInstanceCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceIntegratedMaterials',
+                runtime?.weatherSurfaceIntegratedMaterialCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.integratedMaterialCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfacePluginVariants',
+                runtime?.weatherSurfacePluginVariantCount,
+                weatherSurfaceRequested === 'integrated' ? 1 : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+                runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.avoidedOverlaySubmissionCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+                runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+                weatherSurfaceRequested === 'integrated'
+                    ? weatherSurfaceExpectation.avoidedOverlayTriangleCount
+                    : 0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+                runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+                weatherSurfaceExpectation.fallbackOverlaySubmissionCount[
+                    weatherSurfaceRequested
+                ],
+            ),
+            exact(
+                'highTargetWeatherSurfaceFallbackOverlayTriangles',
+                runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+                weatherSurfaceExpectation.fallbackOverlayTriangleCount[
+                    weatherSurfaceRequested
+                ],
+            ),
+            minimum(
+                'highTargetWeatherSurfaceRendererPrograms',
+                runtime?.rendererShaders,
+                1,
+            ),
+        );
+    }
+    if (weatherSurfaceOnsetSelfVerification) {
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceOnsetRequestedMode',
+                requested.weatherSurface,
+                'integrated',
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetRuntimeMode',
+                runtime?.weatherSurfaceMode,
+                'integrated',
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetIntegratedInstances',
+                runtime?.weatherSurfaceIntegratedInstanceCount,
+                highTargetWeatherSurfaceOnsetExpectation.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetIntegratedMaterials',
+                runtime?.weatherSurfaceIntegratedMaterialCount,
+                highTargetWeatherSurfaceOnsetExpectation.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetPluginVariants',
+                runtime?.weatherSurfacePluginVariantCount,
+                highTargetWeatherSurfaceOnsetExpectation.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetAvoidedOverlaySubmissions',
+                runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceOnsetExpectation.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetAvoidedOverlayTriangles',
+                runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceOnsetExpectation.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetFallbackOverlaySubmissions',
+                runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceOnsetExpectation.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetFallbackOverlayTriangles',
+                runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceOnsetExpectation.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetRainParticles',
+                runtime?.rainParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceOnsetSnowParticles',
+                runtime?.snowParticleCount,
+                highTargetWeatherSurfaceOnsetExpectation.snowParticleCount,
+            ),
+        );
+    }
+    if (weatherSurfaceTransitionRequested) {
+        const transition = sample.weatherSurfaceTransitionProfile;
+        const trackedCount = transition?.initial?.trackedCount ?? null;
+        const transitionDelta = (after, before) =>
+            typeof after === 'number' && typeof before === 'number'
+                ? after - before
+                : null;
+        checks.push(
+            exact(
+                'highTargetWeatherSurfaceTransitionRequest',
+                transition?.request,
+                'snow-integration-cycle',
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionError',
+                transition?.error,
+                null,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnterDispatched',
+                transition?.enterDispatched,
+                true,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitDispatched',
+                transition?.exitDispatched,
+                true,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionTrackedUniforms',
+                trackedCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialReady',
+                transition?.initial?.readyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialHandoffs',
+                transition?.initial?.transitionCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialInstances',
+                transition?.initial?.integratedInstanceCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialMaterials',
+                transition?.initial?.integratedMaterialCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialPluginVariants',
+                transition?.initial?.pluginVariantCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialAvoidedSubmissions',
+                transition?.initial?.avoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialAvoidedTriangleProxy',
+                transition?.initial?.avoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialFallbackSubmissions',
+                transition?.initial?.fallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialFallbackTriangleProxy',
+                transition?.initial?.fallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionInitialParticles',
+                transition?.initial?.snowParticleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.exit
+                    .snowParticleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredTracked',
+                transition?.entered?.trackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredReady',
+                transition?.entered?.readyCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredInstances',
+                transition?.entered?.integratedInstanceCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredMaterials',
+                transition?.entered?.integratedMaterialCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredPluginVariants',
+                transition?.entered?.pluginVariantCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredAvoidedSubmissions',
+                transition?.entered?.avoidedOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredAvoidedTriangleProxy',
+                transition?.entered?.avoidedOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredFallbackSubmissions',
+                transition?.entered?.fallbackOverlaySubmissionCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnteredFallbackTriangleProxy',
+                transition?.entered?.fallbackOverlayTriangleCount,
+                highTargetWeatherSurfaceThresholdTransitionExpectation.peak
+                    .fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionEnterHandoffs',
+                transitionDelta(
+                    transition?.entered?.transitionCount,
+                    transition?.initial?.transitionCount,
+                ),
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellReady',
+                transition?.dwell?.readyCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellNoThrash',
+                transition?.dwell?.transitionCount,
+                transition?.entered?.transitionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellInstances',
+                transition?.dwell?.integratedInstanceCount,
+                transition?.entered?.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellMaterials',
+                transition?.dwell?.integratedMaterialCount,
+                transition?.entered?.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellPluginVariants',
+                transition?.dwell?.pluginVariantCount,
+                transition?.entered?.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellAvoidedSubmissions',
+                transition?.dwell?.avoidedOverlaySubmissionCount,
+                transition?.entered?.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellAvoidedTriangleProxy',
+                transition?.dwell?.avoidedOverlayTriangleCount,
+                transition?.entered?.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellFallbackSubmissions',
+                transition?.dwell?.fallbackOverlaySubmissionCount,
+                transition?.entered?.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellFallbackTriangleProxy',
+                transition?.dwell?.fallbackOverlayTriangleCount,
+                transition?.entered?.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionDwellParticles',
+                transition?.dwell?.snowParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedTracked',
+                transition?.exited?.trackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedReady',
+                transition?.exited?.readyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedInstances',
+                transition?.exited?.integratedInstanceCount,
+                transition?.initial?.integratedInstanceCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedMaterials',
+                transition?.exited?.integratedMaterialCount,
+                transition?.initial?.integratedMaterialCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedPluginVariants',
+                transition?.exited?.pluginVariantCount,
+                transition?.initial?.pluginVariantCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedAvoidedSubmissions',
+                transition?.exited?.avoidedOverlaySubmissionCount,
+                transition?.initial?.avoidedOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedAvoidedTriangleProxy',
+                transition?.exited?.avoidedOverlayTriangleCount,
+                transition?.initial?.avoidedOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedFallbackSubmissions',
+                transition?.exited?.fallbackOverlaySubmissionCount,
+                transition?.initial?.fallbackOverlaySubmissionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedFallbackTriangleProxy',
+                transition?.exited?.fallbackOverlayTriangleCount,
+                transition?.initial?.fallbackOverlayTriangleCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitHandoffs',
+                transitionDelta(
+                    transition?.exited?.transitionCount,
+                    transition?.entered?.transitionCount,
+                ),
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionTotalHandoffs',
+                transitionDelta(
+                    transition?.exited?.transitionCount,
+                    transition?.initial?.transitionCount,
+                ),
+                typeof trackedCount === 'number' ? trackedCount * 2 : null,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeReady',
+                runtime?.weatherSurfaceSnowIntegrationReadyCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeTracked',
+                runtime?.weatherSurfaceSnowIntegrationTrackedCount,
+                trackedCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionRuntimeTransitions',
+                runtime?.weatherSurfaceSnowIntegrationTransitionCount,
+                transition?.exited?.transitionCount,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionParticles',
+                transition?.entered?.snowParticleCount,
+                0,
+            ),
+            exact(
+                'highTargetWeatherSurfaceTransitionExitedParticles',
+                transition?.exited?.snowParticleCount,
+                0,
             ),
         );
     }
@@ -3861,6 +6402,20 @@ function buildHighTargetMedians(scenarios) {
             const gpuElapsedP95Ms = metric(runs, (run) =>
                 run.sample.gpu?.valid ? run.sample.gpu.elapsedP95Ms : null,
             );
+            const gpuElapsedP95MsRuns = runs.map((run, index) => {
+                const value = run.sample.gpu?.elapsedP95Ms ?? null;
+                const valid =
+                    run.sample.gpu?.valid === true &&
+                    Number.isFinite(value) &&
+                    value >= 0;
+                return {
+                    disjoint: run.sample.gpu?.disjoint === true,
+                    profileRun: run.profileRun ?? index + 1,
+                    reason: run.sample.gpu?.reason ?? null,
+                    valid,
+                    value: valid ? value : null,
+                };
+            });
             const jsHeapMb = metric(runs, (run) => run.sample.jsHeapMb);
             const longTaskCount = metric(
                 runs,
@@ -3869,6 +6424,82 @@ function buildHighTargetMedians(scenarios) {
             const maxFrameMs = metric(runs, (run) => run.sample.maxFrameMs);
             const p95FrameMs = metric(runs, (run) => run.sample.p95FrameMs);
             const renderedFps = metric(runs, (run) => run.sample.renderedFps);
+            const rendererShaders = metric(
+                runs,
+                (run) => run.runtime?.rendererShaders,
+            );
+            const rendererShadersRuns = runs.map((run, index) => {
+                const value = run.runtime?.rendererShaders ?? null;
+                const valid = Number.isFinite(value) && value >= 0;
+                return {
+                    profileRun: run.profileRun ?? index + 1,
+                    valid,
+                    value: valid ? value : null,
+                };
+            });
+            const rendererTextures = metric(
+                runs,
+                (run) => run.runtime?.rendererTextures,
+            );
+            const rendererTexturesRuns = runs.map((run, index) => {
+                const value = run.runtime?.rendererTextures ?? null;
+                const valid = Number.isFinite(value) && value >= 0;
+                return {
+                    profileRun: run.profileRun ?? index + 1,
+                    valid,
+                    value: valid ? value : null,
+                };
+            });
+            const staticOpaqueSceneCacheHitRatio = metric(
+                runs,
+                (run) => run.sample.staticOpaqueSceneCacheHitRatio,
+            );
+            const staticOpaqueSceneCacheCaptureSubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.staticOpaqueSceneCacheCaptureSubmissionCount,
+            );
+            const staticOpaqueSceneCacheCaptureTriangleCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.staticOpaqueSceneCacheCaptureTriangleCount,
+            );
+            const staticOpaqueSceneCacheReplayEstimatedBytes = metric(
+                runs,
+                (run) =>
+                    run.runtime?.staticOpaqueSceneCacheReplayEstimatedBytes,
+            );
+            const staticOpaqueSceneCacheReplayReadyRunCount = runs.filter(
+                (run) =>
+                    run.runtime?.staticOpaqueSceneCacheReplayStatus === 'ready',
+            ).length;
+            const staticOpaqueSceneCacheReplaySubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.staticOpaqueSceneCacheReplaySubmissionCount,
+            );
+            const staticOpaqueSceneCacheReplayTriangleCount = metric(
+                runs,
+                (run) => run.runtime?.staticOpaqueSceneCacheReplayTriangleCount,
+            );
+            const staticOpaqueSceneCacheSavedSubmissionCountDelta = metric(
+                runs,
+                (run) =>
+                    run.sample.staticOpaqueSceneCacheSavedSubmissionCountDelta,
+            );
+            const staticOpaqueSceneCacheSavedTriangleCountDelta = metric(
+                runs,
+                (run) =>
+                    run.sample.staticOpaqueSceneCacheSavedTriangleCountDelta,
+            );
+            const staticOpaqueSceneCacheTargetSampleCount = metric(
+                runs,
+                (run) => run.runtime?.staticOpaqueSceneCacheTargetSampleCount,
+            );
+            const staticOpaqueSceneCacheTotalEstimatedBytes = metric(
+                runs,
+                (run) => run.runtime?.staticOpaqueSceneCacheTotalEstimatedBytes,
+            );
             const trianglesPerFrame = metric(
                 runs,
                 (run) => run.sample.trianglesPerFrame,
@@ -3876,6 +6507,37 @@ function buildHighTargetMedians(scenarios) {
             const trianglesPerRenderedFrame = metric(
                 runs,
                 (run) => run.sample.trianglesPerRenderedFrame,
+            );
+            const weatherSurfaceAvoidedOverlaySubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceAvoidedOverlaySubmissionCount,
+            );
+            const weatherSurfaceAvoidedOverlayTriangleCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceAvoidedOverlayTriangleCount,
+            );
+            const weatherSurfaceFallbackOverlaySubmissionCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceFallbackOverlaySubmissionCount,
+            );
+            const weatherSurfaceFallbackOverlayTriangleCount = metric(
+                runs,
+                (run) =>
+                    run.runtime?.weatherSurfaceFallbackOverlayTriangleCount,
+            );
+            const weatherSurfaceIntegratedInstanceCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceIntegratedInstanceCount,
+            );
+            const weatherSurfaceIntegratedMaterialCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfaceIntegratedMaterialCount,
+            );
+            const weatherSurfacePluginVariantCount = metric(
+                runs,
+                (run) => run.runtime?.weatherSurfacePluginVariantCount,
             );
             const medianSample = {
                 drawCallsPerFrame: drawCallsPerFrame.median,
@@ -3912,6 +6574,7 @@ function buildHighTargetMedians(scenarios) {
                     drawCallsPerRenderedFrame,
                     failedAcceptanceRuns,
                     gpuElapsedP95Ms,
+                    gpuElapsedP95MsRuns,
                     jsHeapMb,
                     longTaskCount,
                     maxFrameMs,
@@ -3925,8 +6588,32 @@ function buildHighTargetMedians(scenarios) {
                         (run) => run.performanceBudget?.pass === true,
                     ).length,
                     renderedFps,
+                    rendererShaders,
+                    rendererShadersRuns,
+                    rendererTextures,
+                    rendererTexturesRuns,
                     runCount: runs.length,
+                    staticOpaqueSceneCacheCaptureSubmissionCount,
+                    staticOpaqueSceneCacheCaptureTriangleCount,
+                    staticOpaqueSceneCacheHitRatio,
+                    staticOpaqueSceneCacheReplayEstimatedBytes,
+                    staticOpaqueSceneCacheReplayReadyRunCount,
+                    staticOpaqueSceneCacheReplaySubmissionCount,
+                    staticOpaqueSceneCacheReplayTriangleCount,
+                    staticOpaqueSceneCacheSavedSubmissionCountDelta,
+                    staticOpaqueSceneCacheSavedTriangleCountDelta,
+                    staticOpaqueSceneCacheTargetSampleCount,
+                    staticOpaqueSceneCacheTotalEstimatedBytes,
                     trianglesPerRenderedFrame,
+                    weatherSurfaceAvoidedOverlaySubmissionCount,
+                    weatherSurfaceAvoidedOverlayTriangleCount,
+                    weatherSurfaceFallbackOverlaySubmissionCount,
+                    weatherSurfaceFallbackOverlayTriangleCount,
+                    weatherSurfaceIntegratedInstanceCount,
+                    weatherSurfaceIntegratedMaterialCount,
+                    weatherSurfaceMode:
+                        runs[0]?.runtime?.weatherSurfaceMode ?? null,
+                    weatherSurfacePluginVariantCount,
                 },
             ];
         }),
@@ -4077,7 +6764,893 @@ function buildAdaptiveHighComparisons(highTargetMedians) {
     );
 }
 
-function buildProfileSummary(scenarios, highTargetMedians) {
+function buildWeatherSurfaceComparisons(highTargetMedians) {
+    const pairedSummaries = Object.entries(highTargetMedians).filter(
+        ([, summary]) =>
+            typeof summary.comparisonPair === 'string' &&
+            (summary.comparisonRole === 'legacy' ||
+                summary.comparisonRole === 'integrated'),
+    );
+    const grouped = Map.groupBy(
+        pairedSummaries,
+        ([, summary]) => summary.comparisonPair,
+    );
+    const metricComparison = (legacy, integrated, metricName) => {
+        const legacyValue = legacy[metricName]?.median ?? null;
+        const integratedValue = integrated[metricName]?.median ?? null;
+        return {
+            delta:
+                Number.isFinite(legacyValue) && Number.isFinite(integratedValue)
+                    ? round(integratedValue - legacyValue)
+                    : null,
+            integrated: integratedValue,
+            legacy: legacyValue,
+            percentDelta:
+                Number.isFinite(legacyValue) &&
+                legacyValue !== 0 &&
+                Number.isFinite(integratedValue)
+                    ? round(
+                          ((integratedValue - legacyValue) / legacyValue) * 100,
+                          1,
+                      )
+                    : null,
+        };
+    };
+    const passRate = (summary, passedField) =>
+        summary.runCount > 0
+            ? round((summary[passedField] / summary.runCount) * 100, 1)
+            : null;
+
+    return Object.fromEntries(
+        Array.from(grouped, ([pairName, entries]) => {
+            const legacyEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'legacy',
+            );
+            const integratedEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'integrated',
+            );
+            if (!legacyEntry || !integratedEntry) {
+                return null;
+            }
+            const [legacyName, legacy] = legacyEntry;
+            const [integratedName, integrated] = integratedEntry;
+            const fallbackOverlaySubmissions = metricComparison(
+                legacy,
+                integrated,
+                'weatherSurfaceFallbackOverlaySubmissionCount',
+            );
+            const fallbackOverlayTriangles = metricComparison(
+                legacy,
+                integrated,
+                'weatherSurfaceFallbackOverlayTriangleCount',
+            );
+            const drawCallsPerRenderedFrame = metricComparison(
+                legacy,
+                integrated,
+                'drawCallsPerRenderedFrame',
+            );
+            const gpuElapsedP95Ms = metricComparison(
+                legacy,
+                integrated,
+                'gpuElapsedP95Ms',
+            );
+            const rendererShaders = metricComparison(
+                legacy,
+                integrated,
+                'rendererShaders',
+            );
+            const trianglesPerRenderedFrame = metricComparison(
+                legacy,
+                integrated,
+                'trianglesPerRenderedFrame',
+            );
+            const lessThanLegacy = (name, comparison) => ({
+                actual: comparison.integrated,
+                comparison: 'less-than',
+                limit: comparison.legacy,
+                name,
+                pass:
+                    Number.isFinite(comparison.integrated) &&
+                    Number.isFinite(comparison.legacy) &&
+                    comparison.integrated < comparison.legacy,
+            });
+            const structuralChecks = [
+                lessThanLegacy(
+                    'weatherSurfaceFallbackSubmissionReduction',
+                    fallbackOverlaySubmissions,
+                ),
+                lessThanLegacy(
+                    'weatherSurfaceFallbackTriangleReduction',
+                    fallbackOverlayTriangles,
+                ),
+            ];
+            const structuralPass = structuralChecks.every(
+                (check) => check.pass,
+            );
+            const legacyGpuRuns = new Map(
+                (legacy.gpuElapsedP95MsRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const integratedGpuRuns = new Map(
+                (integrated.gpuElapsedP95MsRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const pairedGpuRuns = Array.from(
+                { length: highTargetWeatherSurfacePairedRunCount },
+                (_, index) => {
+                    const profileRun = index + 1;
+                    const legacyRun = legacyGpuRuns.get(profileRun);
+                    const integratedRun = integratedGpuRuns.get(profileRun);
+                    const valid =
+                        legacyRun?.valid === true &&
+                        integratedRun?.valid === true &&
+                        Number.isFinite(legacyRun.value) &&
+                        legacyRun.value > 0 &&
+                        Number.isFinite(integratedRun.value);
+                    return {
+                        integratedMs: integratedRun?.value ?? null,
+                        integratedReason: integratedRun?.reason ?? null,
+                        legacyMs: legacyRun?.value ?? null,
+                        legacyReason: legacyRun?.reason ?? null,
+                        profileRun,
+                        ratio: valid
+                            ? round(integratedRun.value / legacyRun.value, 4)
+                            : null,
+                        valid,
+                    };
+                },
+            );
+            const validGpuRatios = pairedGpuRuns
+                .filter((run) => run.valid)
+                .map((run) => run.integratedMs / run.legacyMs);
+            const gpuTimingStatus =
+                legacy.runCount === highTargetWeatherSurfacePairedRunCount &&
+                integrated.runCount ===
+                    highTargetWeatherSurfacePairedRunCount &&
+                validGpuRatios.length === highTargetWeatherSurfacePairedRunCount
+                    ? 'valid'
+                    : 'inconclusive';
+            const rawGpuMedianRatio =
+                gpuTimingStatus === 'valid' ? median(validGpuRatios) : null;
+            const rawGpuMaximumRunRatio =
+                gpuTimingStatus === 'valid'
+                    ? Math.max(...validGpuRatios)
+                    : null;
+            const gpuMedianRatio = round(rawGpuMedianRatio, 4);
+            const gpuMaximumRunRatio = round(rawGpuMaximumRunRatio, 4);
+            const legacyRendererProgramRuns = new Map(
+                (legacy.rendererShadersRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const integratedRendererProgramRuns = new Map(
+                (integrated.rendererShadersRuns ?? []).map((run) => [
+                    run.profileRun,
+                    run,
+                ]),
+            );
+            const pairedRendererProgramRuns = Array.from(
+                { length: highTargetWeatherSurfacePairedRunCount },
+                (_, index) => {
+                    const profileRun = index + 1;
+                    const legacyRun = legacyRendererProgramRuns.get(profileRun);
+                    const integratedRun =
+                        integratedRendererProgramRuns.get(profileRun);
+                    const valid =
+                        legacyRun?.valid === true &&
+                        integratedRun?.valid === true &&
+                        Number.isFinite(legacyRun.value) &&
+                        Number.isFinite(integratedRun.value);
+                    return {
+                        increase: valid
+                            ? integratedRun.value - legacyRun.value
+                            : null,
+                        integrated: integratedRun?.value ?? null,
+                        legacy: legacyRun?.value ?? null,
+                        profileRun,
+                        valid,
+                    };
+                },
+            );
+            const validRendererProgramIncreases = pairedRendererProgramRuns
+                .filter((run) => run.valid)
+                .map((run) => run.increase);
+            const rendererProgramPairsComplete =
+                legacy.runCount === highTargetWeatherSurfacePairedRunCount &&
+                integrated.runCount ===
+                    highTargetWeatherSurfacePairedRunCount &&
+                validRendererProgramIncreases.length ===
+                    highTargetWeatherSurfacePairedRunCount;
+            const rendererProgramMaximumIncrease = rendererProgramPairsComplete
+                ? Math.max(...validRendererProgramIncreases)
+                : null;
+            const relativePerformanceChecks = [
+                {
+                    actual: {
+                        integrated: integrated.runCount,
+                        legacy: legacy.runCount,
+                    },
+                    comparison: 'paired-run-count',
+                    limit: highTargetWeatherSurfacePairedRunCount,
+                    name: 'weatherSurfacePairedRunCount',
+                    pass:
+                        legacy.runCount ===
+                            highTargetWeatherSurfacePairedRunCount &&
+                        integrated.runCount ===
+                            highTargetWeatherSurfacePairedRunCount,
+                },
+                lessThanLegacy(
+                    'weatherSurfaceDrawCallReduction',
+                    drawCallsPerRenderedFrame,
+                ),
+                lessThanLegacy(
+                    'weatherSurfaceTriangleReduction',
+                    trianglesPerRenderedFrame,
+                ),
+                {
+                    actual: validGpuRatios.length,
+                    comparison: 'equal',
+                    limit: highTargetWeatherSurfacePairedRunCount,
+                    name: 'weatherSurfaceGpuPairCompleteness',
+                    pass: gpuTimingStatus === 'valid',
+                },
+                {
+                    actual: gpuMedianRatio,
+                    comparison: 'maximum',
+                    limit: highTargetWeatherSurfaceMaximumGpuMedianRatio,
+                    name: 'weatherSurfaceGpuMedianRatio',
+                    pass:
+                        gpuTimingStatus === 'valid' &&
+                        rawGpuMedianRatio <=
+                            highTargetWeatherSurfaceMaximumGpuMedianRatio,
+                },
+                {
+                    actual: gpuMaximumRunRatio,
+                    comparison: 'maximum',
+                    limit: highTargetWeatherSurfaceMaximumGpuRunRatio,
+                    name: 'weatherSurfaceGpuMaximumRunRatio',
+                    pass:
+                        gpuTimingStatus === 'valid' &&
+                        rawGpuMaximumRunRatio <=
+                            highTargetWeatherSurfaceMaximumGpuRunRatio,
+                },
+                {
+                    actual: rendererProgramMaximumIncrease,
+                    comparison: 'maximum-increase',
+                    limit: highTargetWeatherSurfaceMaximumProgramIncrease,
+                    name: 'weatherSurfaceRendererProgramBound',
+                    pass:
+                        rendererProgramPairsComplete &&
+                        rendererProgramMaximumIncrease <=
+                            highTargetWeatherSurfaceMaximumProgramIncrease,
+                },
+            ];
+            const relativePerformancePass = relativePerformanceChecks.every(
+                (check) => check.pass,
+            );
+            const pairedPass = structuralPass && relativePerformancePass;
+
+            return [
+                pairName,
+                {
+                    acceptancePassRate: {
+                        integrated: passRate(integrated, 'acceptedRunCount'),
+                        legacy: passRate(legacy, 'acceptedRunCount'),
+                    },
+                    aggregatePass: {
+                        integrated: integrated.pass && pairedPass,
+                        legacy: legacy.pass,
+                    },
+                    avoidedOverlaySubmissions:
+                        integrated.weatherSurfaceAvoidedOverlaySubmissionCount,
+                    avoidedOverlayTriangles:
+                        integrated.weatherSurfaceAvoidedOverlayTriangleCount,
+                    drawCallsPerRenderedFrame,
+                    fallbackOverlaySubmissions,
+                    fallbackOverlayTriangles,
+                    gpuElapsedP95Ms,
+                    gpuMaximumRunRatio,
+                    gpuMedianRatio,
+                    gpuTimingStatus,
+                    integratedInstanceCount:
+                        integrated.weatherSurfaceIntegratedInstanceCount,
+                    integratedMaterialCount:
+                        integrated.weatherSurfaceIntegratedMaterialCount,
+                    integratedName,
+                    integratedPluginVariantCount:
+                        integrated.weatherSurfacePluginVariantCount,
+                    legacyName,
+                    p95FrameMs: metricComparison(
+                        legacy,
+                        integrated,
+                        'p95FrameMs',
+                    ),
+                    pairedPass,
+                    performancePassRate: {
+                        integrated: passRate(
+                            integrated,
+                            'performancePassedRunCount',
+                        ),
+                        legacy: passRate(legacy, 'performancePassedRunCount'),
+                    },
+                    pairedGpuRuns,
+                    pairedRendererProgramRuns,
+                    renderedFps: metricComparison(
+                        legacy,
+                        integrated,
+                        'renderedFps',
+                    ),
+                    rendererShaders,
+                    rendererProgramMaximumIncrease,
+                    relativePerformanceChecks,
+                    relativePerformancePass,
+                    structuralChecks,
+                    structuralPass,
+                    trianglesPerRenderedFrame,
+                },
+            ];
+        }).filter(Boolean),
+    );
+}
+
+function measureStaticSceneCacheImageParity(legacy, cached) {
+    if (
+        legacy.info.width !== cached.info.width ||
+        legacy.info.height !== cached.info.height ||
+        legacy.info.channels !== 4 ||
+        cached.info.channels !== 4
+    ) {
+        return {
+            reason: 'Screenshot dimensions or channels do not match',
+            valid: false,
+        };
+    }
+
+    const histogram = new Uint32Array(256);
+    const pixelCount = legacy.info.width * legacy.info.height;
+    let mismatchCount = 0;
+    let totalByteError = 0;
+    let maximumByteError = 0;
+    for (let offset = 0; offset < legacy.data.length; offset += 4) {
+        const byteError = Math.max(
+            Math.abs(legacy.data[offset] - cached.data[offset]),
+            Math.abs(legacy.data[offset + 1] - cached.data[offset + 1]),
+            Math.abs(legacy.data[offset + 2] - cached.data[offset + 2]),
+        );
+        histogram[byteError] += 1;
+        totalByteError += byteError;
+        maximumByteError = Math.max(maximumByteError, byteError);
+        if (byteError > highTargetStaticSceneCacheMaximumVisualP99ByteError) {
+            mismatchCount += 1;
+        }
+    }
+
+    const percentileTarget = Math.ceil(pixelCount * 0.99);
+    let cumulativePixels = 0;
+    let p99ByteError = 0;
+    for (; p99ByteError < histogram.length; p99ByteError += 1) {
+        cumulativePixels += histogram[p99ByteError];
+        if (cumulativePixels >= percentileTarget) {
+            break;
+        }
+    }
+
+    return {
+        height: legacy.info.height,
+        maximumByteError,
+        meanByteError: round(totalByteError / pixelCount, 4),
+        mismatchRatio: round(mismatchCount / pixelCount, 6),
+        p99ByteError,
+        valid: true,
+        width: legacy.info.width,
+    };
+}
+
+async function readStaticSceneCacheParityImage(path) {
+    const { data, info } = await sharp(await readFile(path))
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    return { data, info };
+}
+
+async function buildStaticSceneCacheVisualComparisons(scenarios) {
+    const candidates = scenarios.filter(
+        (scenario) =>
+            highTargetStaticSceneCacheComparisonPairs.has(
+                scenario.requested?.comparisonPair,
+            ) &&
+            (scenario.requested?.comparisonRole === 'legacy' ||
+                scenario.requested?.comparisonRole === 'cache'),
+    );
+    const grouped = Map.groupBy(
+        candidates,
+        (scenario) => scenario.requested.comparisonPair,
+    );
+    const entries = await Promise.all(
+        Array.from(grouped, async ([pairName, runs]) => {
+            if (
+                runs.some(
+                    (run) =>
+                        run.requested?.staticSceneCacheVisualDeterministic ===
+                        false,
+                )
+            ) {
+                return [
+                    pairName,
+                    {
+                        maximumMismatchRatio: null,
+                        maximumP99ByteError: null,
+                        pairedRuns: [],
+                        pass: false,
+                        reason: staticSceneCacheVisualComparisonUnavailableReason,
+                        status: 'unavailable',
+                        validRunCount: 0,
+                    },
+                ];
+            }
+
+            const pairedRuns = await Promise.all(
+                Array.from(
+                    { length: highTargetStaticSceneCachePairedRunCount },
+                    async (_, index) => {
+                        const profileRun = index + 1;
+                        const legacy = runs.find(
+                            (run) =>
+                                run.profileRun === profileRun &&
+                                run.requested.comparisonRole === 'legacy',
+                        );
+                        const cached = runs.find(
+                            (run) =>
+                                run.profileRun === profileRun &&
+                                run.requested.comparisonRole === 'cache',
+                        );
+                        if (
+                            !legacy?.screenshotPath ||
+                            !cached?.screenshotPath
+                        ) {
+                            return {
+                                profileRun,
+                                reason: 'Paired screenshots are unavailable',
+                                valid: false,
+                            };
+                        }
+
+                        try {
+                            const [legacyImage, cachedImage] =
+                                await Promise.all([
+                                    readStaticSceneCacheParityImage(
+                                        legacy.screenshotPath,
+                                    ),
+                                    readStaticSceneCacheParityImage(
+                                        cached.screenshotPath,
+                                    ),
+                                ]);
+                            return {
+                                profileRun,
+                                ...measureStaticSceneCacheImageParity(
+                                    legacyImage,
+                                    cachedImage,
+                                ),
+                            };
+                        } catch (error) {
+                            return {
+                                profileRun,
+                                reason: String(error),
+                                valid: false,
+                            };
+                        }
+                    },
+                ),
+            );
+            const validRuns = pairedRuns.filter((run) => run.valid);
+            const maximumMismatchRatio =
+                validRuns.length > 0
+                    ? Math.max(...validRuns.map((run) => run.mismatchRatio))
+                    : null;
+            const maximumP99ByteError =
+                validRuns.length > 0
+                    ? Math.max(...validRuns.map((run) => run.p99ByteError))
+                    : null;
+            return [
+                pairName,
+                {
+                    maximumMismatchRatio,
+                    maximumP99ByteError,
+                    pairedRuns,
+                    pass:
+                        validRuns.length ===
+                            highTargetStaticSceneCachePairedRunCount &&
+                        maximumMismatchRatio <=
+                            highTargetStaticSceneCacheMaximumVisualMismatchRatio &&
+                        maximumP99ByteError <=
+                            highTargetStaticSceneCacheMaximumVisualP99ByteError,
+                    reason: null,
+                    status: 'measured',
+                    validRunCount: validRuns.length,
+                },
+            ];
+        }),
+    );
+    return Object.fromEntries(entries);
+}
+
+function buildStaticSceneCacheComparisons(
+    highTargetMedians,
+    visualComparisons = {},
+) {
+    const pairedSummaries = Object.entries(highTargetMedians).filter(
+        ([, summary]) =>
+            highTargetStaticSceneCacheComparisonPairs.has(
+                summary.comparisonPair,
+            ) &&
+            (summary.comparisonRole === 'legacy' ||
+                summary.comparisonRole === 'cache'),
+    );
+    const grouped = Map.groupBy(
+        pairedSummaries,
+        ([, summary]) => summary.comparisonPair,
+    );
+    const metricComparison = (legacy, cached, metricName) => {
+        const legacyValue = legacy[metricName]?.median ?? null;
+        const cachedValue = cached[metricName]?.median ?? null;
+        return {
+            cached: cachedValue,
+            delta:
+                Number.isFinite(legacyValue) && Number.isFinite(cachedValue)
+                    ? round(cachedValue - legacyValue)
+                    : null,
+            legacy: legacyValue,
+            percentDelta:
+                Number.isFinite(legacyValue) &&
+                legacyValue !== 0 &&
+                Number.isFinite(cachedValue)
+                    ? round(
+                          ((cachedValue - legacyValue) / legacyValue) * 100,
+                          1,
+                      )
+                    : null,
+        };
+    };
+    const passRate = (summary, passedField) =>
+        summary.runCount > 0
+            ? round((summary[passedField] / summary.runCount) * 100, 1)
+            : null;
+
+    return Object.fromEntries(
+        Array.from(grouped, ([pairName, entries]) => {
+            const legacyEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'legacy',
+            );
+            const cachedEntry = entries.find(
+                ([, summary]) => summary.comparisonRole === 'cache',
+            );
+            if (!legacyEntry || !cachedEntry) {
+                return null;
+            }
+
+            const [legacyName, legacy] = legacyEntry;
+            const [cachedName, cached] = cachedEntry;
+            const drawCallsPerRenderedFrame = metricComparison(
+                legacy,
+                cached,
+                'drawCallsPerRenderedFrame',
+            );
+            const trianglesPerRenderedFrame = metricComparison(
+                legacy,
+                cached,
+                'trianglesPerRenderedFrame',
+            );
+            const p95FrameMs = metricComparison(legacy, cached, 'p95FrameMs');
+            const gpuElapsedP95Ms = metricComparison(
+                legacy,
+                cached,
+                'gpuElapsedP95Ms',
+            );
+            const rendererShaders = metricComparison(
+                legacy,
+                cached,
+                'rendererShaders',
+            );
+            const rendererTextures = metricComparison(
+                legacy,
+                cached,
+                'rendererTextures',
+            );
+            const ratio = (comparison) =>
+                Number.isFinite(comparison.legacy) &&
+                comparison.legacy > 0 &&
+                Number.isFinite(comparison.cached)
+                    ? comparison.cached / comparison.legacy
+                    : null;
+            const drawCallRatio = ratio(drawCallsPerRenderedFrame);
+            const triangleRatio = ratio(trianglesPerRenderedFrame);
+            const cpuMedianRatio = ratio(p95FrameMs);
+            const runsByIndex = (runs) =>
+                new Map((runs ?? []).map((run) => [run.profileRun, run]));
+            const legacyGpuRuns = runsByIndex(legacy.gpuElapsedP95MsRuns);
+            const cachedGpuRuns = runsByIndex(cached.gpuElapsedP95MsRuns);
+            const pairedGpuRuns = Array.from(
+                { length: highTargetStaticSceneCachePairedRunCount },
+                (_, index) => {
+                    const profileRun = index + 1;
+                    const legacyRun = legacyGpuRuns.get(profileRun);
+                    const cachedRun = cachedGpuRuns.get(profileRun);
+                    const valid =
+                        legacyRun?.valid === true &&
+                        cachedRun?.valid === true &&
+                        Number.isFinite(legacyRun.value) &&
+                        legacyRun.value > 0 &&
+                        Number.isFinite(cachedRun.value);
+                    return {
+                        cachedMs: cachedRun?.value ?? null,
+                        cachedReason: cachedRun?.reason ?? null,
+                        legacyMs: legacyRun?.value ?? null,
+                        legacyReason: legacyRun?.reason ?? null,
+                        profileRun,
+                        ratio: valid
+                            ? round(cachedRun.value / legacyRun.value, 4)
+                            : null,
+                        valid,
+                    };
+                },
+            );
+            const validGpuRatios = pairedGpuRuns
+                .filter((run) => run.valid)
+                .map((run) => run.cachedMs / run.legacyMs);
+            const gpuTimingStatus =
+                legacy.runCount === highTargetStaticSceneCachePairedRunCount &&
+                cached.runCount === highTargetStaticSceneCachePairedRunCount &&
+                validGpuRatios.length ===
+                    highTargetStaticSceneCachePairedRunCount
+                    ? 'valid'
+                    : 'inconclusive';
+            const rawGpuMedianRatio =
+                gpuTimingStatus === 'valid' ? median(validGpuRatios) : null;
+            const rawGpuMaximumRunRatio =
+                gpuTimingStatus === 'valid'
+                    ? Math.max(...validGpuRatios)
+                    : null;
+            const gpuMedianRatio = round(rawGpuMedianRatio, 4);
+            const gpuMaximumRunRatio = round(rawGpuMaximumRunRatio, 4);
+            const buildResourcePairs = (legacyRuns, cachedRuns) => {
+                const legacyByRun = runsByIndex(legacyRuns);
+                const cachedByRun = runsByIndex(cachedRuns);
+                return Array.from(
+                    { length: highTargetStaticSceneCachePairedRunCount },
+                    (_, index) => {
+                        const profileRun = index + 1;
+                        const legacyRun = legacyByRun.get(profileRun);
+                        const cachedRun = cachedByRun.get(profileRun);
+                        const valid =
+                            legacyRun?.valid === true &&
+                            cachedRun?.valid === true &&
+                            Number.isFinite(legacyRun.value) &&
+                            Number.isFinite(cachedRun.value);
+                        return {
+                            cached: cachedRun?.value ?? null,
+                            increase: valid
+                                ? cachedRun.value - legacyRun.value
+                                : null,
+                            legacy: legacyRun?.value ?? null,
+                            profileRun,
+                            valid,
+                        };
+                    },
+                );
+            };
+            const pairedRendererProgramRuns = buildResourcePairs(
+                legacy.rendererShadersRuns,
+                cached.rendererShadersRuns,
+            );
+            const pairedRendererTextureRuns = buildResourcePairs(
+                legacy.rendererTexturesRuns,
+                cached.rendererTexturesRuns,
+            );
+            const maximumIncrease = (pairs) => {
+                const increases = pairs
+                    .filter((run) => run.valid)
+                    .map((run) => run.increase);
+                return increases.length ===
+                    highTargetStaticSceneCachePairedRunCount
+                    ? Math.max(...increases)
+                    : null;
+            };
+            const rendererProgramMaximumIncrease = maximumIncrease(
+                pairedRendererProgramRuns,
+            );
+            const rendererTextureMaximumIncrease = maximumIncrease(
+                pairedRendererTextureRuns,
+            );
+            const visualComparison = visualComparisons[pairName] ?? {
+                maximumMismatchRatio: null,
+                maximumP99ByteError: null,
+                pairedRuns: [],
+                pass: false,
+                reason: 'Paired visual comparison is unavailable',
+                status: 'unavailable',
+                validRunCount: 0,
+            };
+            const maximumRatioCheck = (name, actual, limit) => ({
+                actual: round(actual, 4),
+                comparison: 'maximum-ratio',
+                limit,
+                name,
+                pass: Number.isFinite(actual) && actual <= limit,
+            });
+            const relativePerformanceChecks = [
+                {
+                    actual: {
+                        cached: cached.runCount,
+                        legacy: legacy.runCount,
+                    },
+                    comparison: 'paired-run-count',
+                    limit: highTargetStaticSceneCachePairedRunCount,
+                    name: 'staticSceneCachePairedRunCount',
+                    pass:
+                        legacy.runCount ===
+                            highTargetStaticSceneCachePairedRunCount &&
+                        cached.runCount ===
+                            highTargetStaticSceneCachePairedRunCount,
+                },
+                maximumRatioCheck(
+                    'staticSceneCacheDrawCallRatio',
+                    drawCallRatio,
+                    highTargetStaticSceneCacheMaximumDrawCallRatio,
+                ),
+                maximumRatioCheck(
+                    'staticSceneCacheTriangleRatio',
+                    triangleRatio,
+                    highTargetStaticSceneCacheMaximumTriangleRatio,
+                ),
+                maximumRatioCheck(
+                    'staticSceneCacheCpuMedianRatio',
+                    cpuMedianRatio,
+                    highTargetStaticSceneCacheMaximumCpuMedianRatio,
+                ),
+                {
+                    actual: validGpuRatios.length,
+                    comparison: 'equal',
+                    limit: highTargetStaticSceneCachePairedRunCount,
+                    name: 'staticSceneCacheGpuPairCompleteness',
+                    pass: gpuTimingStatus === 'valid',
+                },
+                maximumRatioCheck(
+                    'staticSceneCacheGpuMedianRatio',
+                    rawGpuMedianRatio,
+                    highTargetStaticSceneCacheMaximumGpuMedianRatio,
+                ),
+                maximumRatioCheck(
+                    'staticSceneCacheGpuMaximumRunRatio',
+                    rawGpuMaximumRunRatio,
+                    highTargetStaticSceneCacheMaximumGpuRunRatio,
+                ),
+                {
+                    actual: rendererProgramMaximumIncrease,
+                    comparison: 'maximum-increase',
+                    limit: highTargetStaticSceneCacheMaximumProgramIncrease,
+                    name: 'staticSceneCacheRendererProgramBound',
+                    pass:
+                        Number.isFinite(rendererProgramMaximumIncrease) &&
+                        rendererProgramMaximumIncrease <=
+                            highTargetStaticSceneCacheMaximumProgramIncrease,
+                },
+                {
+                    actual: rendererTextureMaximumIncrease,
+                    comparison: 'maximum-increase',
+                    limit: highTargetStaticSceneCacheMaximumTextureIncrease,
+                    name: 'staticSceneCacheRendererTextureBound',
+                    pass:
+                        Number.isFinite(rendererTextureMaximumIncrease) &&
+                        rendererTextureMaximumIncrease <=
+                            highTargetStaticSceneCacheMaximumTextureIncrease,
+                },
+                {
+                    actual: visualComparison.validRunCount,
+                    comparison: 'equal',
+                    limit: highTargetStaticSceneCachePairedRunCount,
+                    name: 'staticSceneCacheVisualPairCompleteness',
+                    pass:
+                        visualComparison.validRunCount ===
+                        highTargetStaticSceneCachePairedRunCount,
+                },
+                maximumRatioCheck(
+                    'staticSceneCacheVisualMismatchRatio',
+                    visualComparison.maximumMismatchRatio,
+                    highTargetStaticSceneCacheMaximumVisualMismatchRatio,
+                ),
+                {
+                    actual: visualComparison.maximumP99ByteError,
+                    comparison: 'maximum',
+                    limit: highTargetStaticSceneCacheMaximumVisualP99ByteError,
+                    name: 'staticSceneCacheVisualP99ByteError',
+                    pass:
+                        Number.isFinite(visualComparison.maximumP99ByteError) &&
+                        visualComparison.maximumP99ByteError <=
+                            highTargetStaticSceneCacheMaximumVisualP99ByteError,
+                },
+            ];
+            const relativePerformancePass = relativePerformanceChecks.every(
+                (check) => check.pass,
+            );
+
+            return [
+                pairName,
+                {
+                    acceptancePassRate: {
+                        cached: passRate(cached, 'acceptedRunCount'),
+                        legacy: passRate(legacy, 'acceptedRunCount'),
+                    },
+                    aggregatePass: {
+                        cached: cached.pass && relativePerformancePass,
+                        legacy: legacy.pass,
+                    },
+                    cachedName,
+                    cpuMedianRatio: round(cpuMedianRatio, 4),
+                    drawCallRatio: round(drawCallRatio, 4),
+                    drawCallsPerRenderedFrame,
+                    gpuElapsedP95Ms,
+                    gpuMaximumRunRatio,
+                    gpuMedianRatio,
+                    gpuTimingStatus,
+                    legacyName,
+                    p95FrameMs,
+                    pairedGpuRuns,
+                    pairedRendererProgramRuns,
+                    pairedRendererTextureRuns,
+                    performancePassRate: {
+                        cached: passRate(cached, 'performancePassedRunCount'),
+                        legacy: passRate(legacy, 'performancePassedRunCount'),
+                    },
+                    relativePerformanceChecks,
+                    relativePerformancePass,
+                    rendererProgramMaximumIncrease,
+                    rendererShaders,
+                    rendererTextureMaximumIncrease,
+                    rendererTextures,
+                    staticOpaqueSceneCacheCaptureSubmissionCount:
+                        cached.staticOpaqueSceneCacheCaptureSubmissionCount,
+                    staticOpaqueSceneCacheCaptureTriangleCount:
+                        cached.staticOpaqueSceneCacheCaptureTriangleCount,
+                    staticOpaqueSceneCacheHitRatio:
+                        cached.staticOpaqueSceneCacheHitRatio,
+                    staticOpaqueSceneCacheReplayEstimatedBytes:
+                        cached.staticOpaqueSceneCacheReplayEstimatedBytes,
+                    staticOpaqueSceneCacheReplayReadyRunCount:
+                        cached.staticOpaqueSceneCacheReplayReadyRunCount,
+                    staticOpaqueSceneCacheReplaySubmissionCount:
+                        cached.staticOpaqueSceneCacheReplaySubmissionCount,
+                    staticOpaqueSceneCacheReplayTriangleCount:
+                        cached.staticOpaqueSceneCacheReplayTriangleCount,
+                    staticOpaqueSceneCacheSavedSubmissionCountDelta:
+                        cached.staticOpaqueSceneCacheSavedSubmissionCountDelta,
+                    staticOpaqueSceneCacheSavedTriangleCountDelta:
+                        cached.staticOpaqueSceneCacheSavedTriangleCountDelta,
+                    staticOpaqueSceneCacheTargetSampleCount:
+                        cached.staticOpaqueSceneCacheTargetSampleCount,
+                    staticOpaqueSceneCacheTotalEstimatedBytes:
+                        cached.staticOpaqueSceneCacheTotalEstimatedBytes,
+                    triangleRatio: round(triangleRatio, 4),
+                    trianglesPerRenderedFrame,
+                    visualComparison,
+                },
+            ];
+        }).filter(Boolean),
+    );
+}
+
+function buildProfileSummary(
+    scenarios,
+    highTargetMedians,
+    staticSceneCacheComparisons = buildStaticSceneCacheComparisons(
+        highTargetMedians,
+    ),
+) {
     const nonHighTargetScenarios = scenarios.filter(
         (scenario) => scenario.requested?.gardenProfile !== 'high-target',
     );
@@ -4087,6 +7660,16 @@ function buildProfileSummary(scenarios, highTargetMedians) {
     )
         .filter((comparison) => !comparison.relativePerformancePass)
         .map((comparison) => comparison.adaptiveName);
+    const weatherSurfaceFailureNames = Object.values(
+        buildWeatherSurfaceComparisons(highTargetMedians),
+    )
+        .filter((comparison) => !comparison.pairedPass)
+        .map((comparison) => comparison.integratedName);
+    const staticSceneCacheFailureNames = Object.values(
+        staticSceneCacheComparisons,
+    )
+        .filter((comparison) => !comparison.relativePerformancePass)
+        .map((comparison) => comparison.cachedName);
     const failedScenarioNames = [
         ...new Set([
             ...nonHighTargetScenarios
@@ -4096,6 +7679,8 @@ function buildProfileSummary(scenarios, highTargetMedians) {
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
             ...comparativeFailureNames,
+            ...staticSceneCacheFailureNames,
+            ...weatherSurfaceFailureNames,
         ]),
     ];
     const totalScenarios =
@@ -4191,17 +7776,18 @@ function buildPlantPipelineMedians(runs, phase) {
                 ),
             ),
         ),
-        packedSymbolGenerationDurationMaxMs: round(
+        packedTopologyGenerationDurationMaxMs: round(
             median(
                 runs.map(
-                    (run) => packedWorker(run)?.symbolGenerationDurationMaxMs,
+                    (run) => packedWorker(run)?.topologyGenerationDurationMaxMs,
                 ),
             ),
         ),
-        packedSymbolGenerationDurationTotalMs: round(
+        packedTopologyGenerationDurationTotalMs: round(
             median(
                 runs.map(
-                    (run) => packedWorker(run)?.symbolGenerationDurationTotalMs,
+                    (run) =>
+                        packedWorker(run)?.topologyGenerationDurationTotalMs,
                 ),
             ),
         ),
@@ -4549,8 +8135,8 @@ function buildPlantCloseupAcceptance(runs) {
     );
     const workerFailureFreePhaseCount = count(
         ({ profile }) =>
-            profile?.lSystem?.workerFailureCount === 0 &&
-            profile.lSystem.syncFallbackTaskCount === 0,
+            profile?.generation?.workerFailureCount === 0 &&
+            profile.generation.syncFallbackTaskCount === 0,
     );
     const foliageCoveredPhaseCount = count(
         ({ profile }) => (profile?.selected?.parts?.leaves ?? 0) > 0,
@@ -4798,8 +8384,8 @@ function buildMarkdown(report) {
         '',
         `Budget status: ${report.summary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         '',
-        '| Scenario | Mode | Profile | Merged | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Draw/render | Triangles/frame | Triangles/render | Long tasks | Heap | Run diagnostic | Screenshot |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        '| Scenario | Mode | Profile | Details | Controls | HUD | Debug HUD | Motion | Quality | Canvas | Shadow | Rain/Snow | Rain off | Overlays/Decor | Browser FPS | Rendered FPS | p95 | Max | Draw/frame | Draw/render | Triangles/frame | Triangles/render | Long tasks | Heap | Run diagnostic | Screenshot |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
     ];
 
     for (const scenario of report.scenarios) {
@@ -4819,12 +8405,25 @@ function buildMarkdown(report) {
             scenario.sample.rainUnmountMs === null
                 ? 'n/a'
                 : `${scenario.sample.rainUnmountMs} ms`;
+        const operationVisualObjectCount =
+            scenario.requested.operationVisuals === '1' &&
+            typeof scenario.runtime?.raisedBedFieldVisualObjectCount ===
+                'number' &&
+            typeof scenario.runtime?.raisedBedMulchObjectCount === 'number'
+                ? scenario.runtime.raisedBedFieldVisualObjectCount +
+                  scenario.runtime.raisedBedMulchObjectCount +
+                  highTargetOperationVisualHighlightObjectCount
+                : null;
+        const operationVisualObjectDetail =
+            operationVisualObjectCount === null
+                ? ''
+                : `; operation objects ${operationVisualObjectCount}/${highTargetOperationVisualLegacyObjectCount} legacy`;
         const detailCounts = scenario.runtime
-            ? `${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0} decor, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}`
+            ? `field visuals ${scenario.runtime.raisedBedFieldVisualInstanceCount ?? 0} instances/${scenario.runtime.raisedBedFieldVisualObjectCount ?? 0} objects/${scenario.runtime.raisedBedFieldVisualBatchCount ?? 0} batches/${scenario.runtime.raisedBedFieldVisualChunkCount ?? 0} chunks, uploads ${scenario.runtime.raisedBedFieldVisualMatrixUploadCount ?? 0}/${scenario.runtime.raisedBedFieldVisualUploadedInstanceCount ?? 0}; mulch ${scenario.runtime.raisedBedMulchInstanceCount ?? scenario.runtime.raisedBedMulchOverlayCount ?? 0} instances/${scenario.runtime.raisedBedMulchObjectCount ?? 0} objects/${scenario.runtime.raisedBedMulchBatchCount ?? 0} batches/${scenario.runtime.raisedBedMulchGroupCount ?? 0} groups${operationVisualObjectDetail}; snow/decor ${scenario.runtime.instancedSnowOverlayCount ?? 0}+${scenario.runtime.raisedBedMulchOverlayCount ?? 0}/${scenario.runtime.groundDecorationCount ?? 0}, visible ${scenario.runtime.groundDecorationVisibleCount ?? 'n/a'}, pages ${scenario.runtime.groundDecorationAtlasPageCount ?? 'n/a'}, chunks ${scenario.runtime.groundDecorationChunkCount ?? 'n/a'}, surface materials/uniforms snow ${scenario.runtime.snowOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.snowOverlayDistinctUniformCount ?? 'n/a'}, rain ${scenario.runtime.rainWetOverlayMaterialConsumerCount ?? 'n/a'}/${scenario.runtime.rainWetOverlayDistinctUniformCount ?? 'n/a'}; weather surface ${scenario.runtime.weatherSurfaceMode ?? 'n/a'}, integrated ${scenario.runtime.weatherSurfaceIntegratedInstanceCount ?? 'n/a'} instances/${scenario.runtime.weatherSurfaceIntegratedMaterialCount ?? 'n/a'} materials/${scenario.runtime.weatherSurfacePluginVariantCount ?? 'n/a'} plugin variants, avoided ${scenario.runtime.weatherSurfaceAvoidedOverlaySubmissionCount ?? 'n/a'} submissions/${scenario.runtime.weatherSurfaceAvoidedOverlayTriangleCount ?? 'n/a'} overlay-triangle proxy, fallback ${scenario.runtime.weatherSurfaceFallbackOverlaySubmissionCount ?? 'n/a'} submissions/${scenario.runtime.weatherSurfaceFallbackOverlayTriangleCount ?? 'n/a'} overlay-triangle proxy`
             : 'n/a';
         const screenshot = scenario.screenshotPath ?? 'n/a';
         lines.push(
-            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.blockGeometryMerging} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
+            `| ${scenario.name} | ${scenario.requested.mode} | ${scenario.requested.gardenProfile} | ${scenario.requested.details} | ${scenario.requested.controls} | ${scenario.requested.hud} | ${scenario.requested.debugHud} | ${scenario.requested.motion} | ${quality} | ${canvas} | ${shadow} | ${weather} | ${rainUnmount} | ${detailCounts} | ${scenario.sample.fps} | ${scenario.sample.renderedFps} | ${scenario.sample.p95FrameMs} ms | ${scenario.sample.maxFrameMs} ms | ${scenario.sample.drawCallsPerFrame} | ${scenario.sample.drawCallsPerRenderedFrame} | ${scenario.sample.trianglesPerFrame} | ${scenario.sample.trianglesPerRenderedFrame} | ${scenario.sample.longTaskCount} | ${scenario.sample.jsHeapMb ?? 'n/a'} MB | ${scenario.budget.pass ? 'pass' : 'fail'} | ${screenshot} |`,
         );
     }
 
@@ -4846,6 +8445,66 @@ function buildMarkdown(report) {
         }
     }
 
+    const staticSceneCacheComparisons = Object.entries(
+        report.staticSceneCacheComparisons ??
+            buildStaticSceneCacheComparisons(report.highTargetMedians ?? {}),
+    );
+    if (staticSceneCacheComparisons.length > 0) {
+        lines.push(
+            '',
+            '## Static opaque scene-cache paired comparison',
+            '',
+            '| Pair | Legacy / Cached | Acceptance pass rate | Performance pass rate | Draw/render legacy → cached | Triangles/render legacy → cached | CPU p95 legacy → cached | GPU p95 legacy → cached | Draw/Triangle/CPU ratios | Paired GPU median/max | Programs legacy → cached (max increase) | Textures legacy → cached (max increase) | Visual parity status / pairs / max p99 / max >8 ratio | Cache hit ratio | Replay ready / capture→replay submissions / triangles | Cache total MiB median/max @ samples | Saved submissions/triangles | Relative gate | Aggregate |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        );
+        const formatComparison = (comparison, suffix = '') =>
+            `${comparison.legacy ?? 'n/a'} → ${comparison.cached ?? 'n/a'}${suffix} (${comparison.percentDelta ?? 'n/a'}%)`;
+        for (const [pairName, comparison] of staticSceneCacheComparisons) {
+            const visualComparison = comparison.visualComparison;
+            const visualSummary =
+                visualComparison.status === 'unavailable'
+                    ? `unavailable: ${visualComparison.reason ?? 'deterministic screenshots are unavailable'}`
+                    : `${visualComparison.status ?? 'measured'} / ${visualComparison.validRunCount}/${highTargetStaticSceneCachePairedRunCount} / ${visualComparison.maximumP99ByteError ?? 'n/a'} / ${visualComparison.maximumMismatchRatio ?? 'n/a'}`;
+            const totalMemory =
+                comparison.staticOpaqueSceneCacheTotalEstimatedBytes;
+            const formatMib = (value) =>
+                Number.isFinite(value)
+                    ? round(value / (1024 * 1024), 2)
+                    : 'n/a';
+            lines.push(
+                `| ${pairName} | ${comparison.legacyName} / ${comparison.cachedName} | ${comparison.acceptancePassRate.legacy ?? 'n/a'}% → ${comparison.acceptancePassRate.cached ?? 'n/a'}% | ${comparison.performancePassRate.legacy ?? 'n/a'}% → ${comparison.performancePassRate.cached ?? 'n/a'}% | ${formatComparison(comparison.drawCallsPerRenderedFrame)} | ${formatComparison(comparison.trianglesPerRenderedFrame)} | ${formatComparison(comparison.p95FrameMs, ' ms')} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${comparison.drawCallRatio ?? 'n/a'}/${comparison.triangleRatio ?? 'n/a'}/${comparison.cpuMedianRatio ?? 'n/a'} | ${comparison.gpuTimingStatus === 'valid' ? `${comparison.gpuMedianRatio}/${comparison.gpuMaximumRunRatio}` : 'inconclusive'} | ${formatComparison(comparison.rendererShaders)} (${comparison.rendererProgramMaximumIncrease ?? 'n/a'}) | ${formatComparison(comparison.rendererTextures)} (${comparison.rendererTextureMaximumIncrease ?? 'n/a'}) | ${visualSummary} | ${comparison.staticOpaqueSceneCacheHitRatio.median ?? 'n/a'} | ${comparison.staticOpaqueSceneCacheReplayReadyRunCount}/${highTargetStaticSceneCachePairedRunCount} / ${comparison.staticOpaqueSceneCacheCaptureSubmissionCount.median ?? 'n/a'}→${comparison.staticOpaqueSceneCacheReplaySubmissionCount.median ?? 'n/a'} / ${comparison.staticOpaqueSceneCacheCaptureTriangleCount.median ?? 'n/a'}→${comparison.staticOpaqueSceneCacheReplayTriangleCount.median ?? 'n/a'} | ${formatMib(totalMemory.median)}/${formatMib(totalMemory.max)} MiB @ ${comparison.staticOpaqueSceneCacheTargetSampleCount.median ?? 'n/a'}x | ${comparison.staticOpaqueSceneCacheSavedSubmissionCountDelta.median ?? 'n/a'}/${comparison.staticOpaqueSceneCacheSavedTriangleCountDelta.median ?? 'n/a'} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.legacy ? 'pass' : 'fail'} → ${comparison.aggregatePass.cached ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const staticSceneCacheOcclusionFixtures = report.scenarios.filter(
+        (scenario) =>
+            scenario.requested.staticSceneCacheOcclusionFixture === '1',
+    );
+    if (staticSceneCacheOcclusionFixtures.length > 0) {
+        lines.push(
+            '',
+            '## Static opaque scene-cache occlusion fixture',
+            '',
+            '| Scenario | State | Transition | Captures at transition/final | Hits after transition/verified | Background witness min | Cached occluder min | Live foreground min | Occluded background leak max | Result |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of staticSceneCacheOcclusionFixtures) {
+            const runtime = scenario.runtime;
+            const hitsAfterTransition =
+                typeof runtime?.staticOpaqueSceneCacheHitFrameCount ===
+                    'number' &&
+                typeof runtime?.staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition ===
+                    'number'
+                    ? runtime.staticOpaqueSceneCacheHitFrameCount -
+                      runtime.staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition
+                    : null;
+            lines.push(
+                `| ${scenario.name} | ${runtime?.staticOpaqueSceneCacheOcclusionFixtureState ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionTransitionCount ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionCaptureCountAtTransition ?? 'n/a'}/${runtime?.staticOpaqueSceneCacheCaptureCount ?? 'n/a'} | ${hitsAfterTransition ?? 'n/a'}/${runtime?.staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio ?? 'n/a'} | ${runtime?.staticOpaqueSceneCacheOcclusionFixturePass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const adaptiveHighComparisons = Object.entries(
         report.adaptiveHighComparisons ??
             buildAdaptiveHighComparisons(report.highTargetMedians ?? {}),
@@ -4863,6 +8522,55 @@ function buildMarkdown(report) {
         for (const [pairName, comparison] of adaptiveHighComparisons) {
             lines.push(
                 `| ${pairName} | ${comparison.fixedName} / ${comparison.adaptiveName} | ${comparison.acceptancePassRate.fixed ?? 'n/a'}% → ${comparison.acceptancePassRate.adaptive ?? 'n/a'}% | ${comparison.performancePassRate.fixed ?? 'n/a'}% → ${comparison.performancePassRate.adaptive ?? 'n/a'}% | ${formatComparison(comparison.p95FrameMs, ' ms')} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${formatComparison(comparison.renderedFps)} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.fixed ? 'pass' : 'fail'} → ${comparison.aggregatePass.adaptive ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const weatherSurfaceComparisons = Object.entries(
+        report.weatherSurfaceComparisons ??
+            buildWeatherSurfaceComparisons(report.highTargetMedians ?? {}),
+    );
+    if (weatherSurfaceComparisons.length > 0) {
+        lines.push(
+            '',
+            '## Integrated weather-surface paired comparison',
+            '',
+            '| Pair | Legacy / Integrated | Acceptance pass rate | Performance pass rate | Draw/render legacy → integrated | Triangles/render legacy → integrated | GPU p95 legacy → integrated | Paired GPU ratio median/max | Renderer programs legacy → integrated | Fallback submissions legacy → integrated | Fallback overlay-triangle proxy legacy → integrated | Integrated instances/materials/plugin variants | Avoided submissions/overlay-triangle proxy | Structural gate | Relative performance gate | Aggregate |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |',
+        );
+        const formatComparison = (comparison, suffix = '') =>
+            `${comparison.legacy ?? 'n/a'} → ${comparison.integrated ?? 'n/a'}${suffix} (${comparison.percentDelta ?? 'n/a'}%)`;
+        for (const [pairName, comparison] of weatherSurfaceComparisons) {
+            lines.push(
+                `| ${pairName} | ${comparison.legacyName} / ${comparison.integratedName} | ${comparison.acceptancePassRate.legacy ?? 'n/a'}% → ${comparison.acceptancePassRate.integrated ?? 'n/a'}% | ${comparison.performancePassRate.legacy ?? 'n/a'}% → ${comparison.performancePassRate.integrated ?? 'n/a'}% | ${formatComparison(comparison.drawCallsPerRenderedFrame)} | ${formatComparison(comparison.trianglesPerRenderedFrame)} | ${formatComparison(comparison.gpuElapsedP95Ms, ' ms')} | ${comparison.gpuTimingStatus === 'valid' ? `${comparison.gpuMedianRatio}/${comparison.gpuMaximumRunRatio}` : 'inconclusive'} | ${formatComparison(comparison.rendererShaders)} | ${formatComparison(comparison.fallbackOverlaySubmissions)} | ${formatComparison(comparison.fallbackOverlayTriangles)} | ${comparison.integratedInstanceCount.median ?? 'n/a'}/${comparison.integratedMaterialCount.median ?? 'n/a'}/${comparison.integratedPluginVariantCount.median ?? 'n/a'} | ${comparison.avoidedOverlaySubmissions.median ?? 'n/a'}/${comparison.avoidedOverlayTriangles.median ?? 'n/a'} | ${comparison.structuralPass ? 'pass' : 'fail'} | ${comparison.relativePerformancePass ? 'pass' : 'fail'} | ${comparison.aggregatePass.legacy ? 'pass' : 'fail'} → ${comparison.aggregatePass.integrated ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const weatherSurfaceTransitions = report.scenarios.filter(
+        (scenario) => scenario.sample.weatherSurfaceTransitionProfile,
+    );
+    if (weatherSurfaceTransitions.length > 0) {
+        lines.push(
+            '',
+            '## Weather-surface threshold transition',
+            '',
+            '| Scenario | Tracked | Ready initial → entered → dwell → exited | Transition count initial → entered → dwell → exited | Integrated instances entered → exited | Avoided submissions/overlay-triangle proxy entered | Fallback submissions/overlay-triangle proxy entered → exited | Result |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of weatherSurfaceTransitions) {
+            const transition = scenario.sample.weatherSurfaceTransitionProfile;
+            const formatPhaseValues = (field) =>
+                [
+                    transition.initial?.[field],
+                    transition.entered?.[field],
+                    transition.dwell?.[field],
+                    transition.exited?.[field],
+                ]
+                    .map((value) => value ?? 'n/a')
+                    .join(' → ');
+            lines.push(
+                `| ${scenario.name} | ${transition.initial?.trackedCount ?? 'n/a'} | ${formatPhaseValues('readyCount')} | ${formatPhaseValues('transitionCount')} | ${transition.entered?.integratedInstanceCount ?? 'n/a'} → ${transition.exited?.integratedInstanceCount ?? 'n/a'} | ${transition.entered?.avoidedOverlaySubmissionCount ?? 'n/a'}/${transition.entered?.avoidedOverlayTriangleCount ?? 'n/a'} | ${transition.entered?.fallbackOverlaySubmissionCount ?? 'n/a'}/${transition.entered?.fallbackOverlayTriangleCount ?? 'n/a'} → ${transition.exited?.fallbackOverlaySubmissionCount ?? 'n/a'}/${transition.exited?.fallbackOverlayTriangleCount ?? 'n/a'} | ${transition.error === null ? 'pass' : `fail: ${transition.error}`} |`,
             );
         }
     }
@@ -4914,6 +8622,31 @@ function buildMarkdown(report) {
                 .map(
                     (check) =>
                         `- ${pairName} relative: ${check.name} ${check.actual} missed ${check.limit}`,
+                ),
+        ),
+        ...staticSceneCacheComparisons.flatMap(([pairName, comparison]) =>
+            comparison.relativePerformanceChecks
+                .filter((check) => !check.pass)
+                .map(
+                    (check) =>
+                        `- ${pairName} relative: ${check.name} ${JSON.stringify(check.actual)} missed ${check.limit}`,
+                ),
+        ),
+        ...weatherSurfaceComparisons.flatMap(([pairName, comparison]) =>
+            [
+                ...comparison.structuralChecks.map((check) => ({
+                    ...check,
+                    group: 'structural',
+                })),
+                ...comparison.relativePerformanceChecks.map((check) => ({
+                    ...check,
+                    group: 'relative',
+                })),
+            ]
+                .filter((check) => !check.pass)
+                .map(
+                    (check) =>
+                        `- ${pairName} ${check.group}: ${check.name} ${check.actual} missed ${check.limit}`,
                 ),
         ),
     ];
@@ -5070,7 +8803,7 @@ function buildMarkdown(report) {
         }
         lines.push('', '### Packed worker phase timings', '');
         lines.push(
-            '| Scenario | Phase | Builds | Symbol max/total | Render-data max/total | Packing max/total | Root batching max/total | Worker max/total | Transfer count | Transfer max/total |',
+            '| Scenario | Phase | Builds | Topology max/total | Render-data max/total | Packing max/total | Root batching max/total | Worker max/total | Transfer count | Transfer max/total |',
             '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
         );
         for (const [name, summary] of Object.entries(
@@ -5079,7 +8812,7 @@ function buildMarkdown(report) {
             for (const phase of ['cold', 'warm']) {
                 const pipeline = summary[phase].pipeline;
                 lines.push(
-                    `| ${name} | ${phase} | ${pipeline.packedBuildCount ?? 'n/a'} | ${pipeline.packedSymbolGenerationDurationMaxMs ?? 'n/a'}/${pipeline.packedSymbolGenerationDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRenderDataBuildDurationMaxMs ?? 'n/a'}/${pipeline.packedRenderDataBuildDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedPackingDurationMaxMs ?? 'n/a'}/${pipeline.packedPackingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRootBatchingDurationMaxMs ?? 'n/a'}/${pipeline.packedRootBatchingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTotalDurationMaxMs ?? 'n/a'}/${pipeline.packedTotalDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTransferCount ?? 'n/a'} | ${pipeline.packedTransferByteLengthMax ?? 'n/a'}/${pipeline.packedTransferByteLengthTotal ?? 'n/a'} |`,
+                    `| ${name} | ${phase} | ${pipeline.packedBuildCount ?? 'n/a'} | ${pipeline.packedTopologyGenerationDurationMaxMs ?? 'n/a'}/${pipeline.packedTopologyGenerationDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRenderDataBuildDurationMaxMs ?? 'n/a'}/${pipeline.packedRenderDataBuildDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedPackingDurationMaxMs ?? 'n/a'}/${pipeline.packedPackingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedRootBatchingDurationMaxMs ?? 'n/a'}/${pipeline.packedRootBatchingDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTotalDurationMaxMs ?? 'n/a'}/${pipeline.packedTotalDurationTotalMs ?? 'n/a'} ms | ${pipeline.packedTransferCount ?? 'n/a'} | ${pipeline.packedTransferByteLengthMax ?? 'n/a'}/${pipeline.packedTransferByteLengthTotal ?? 'n/a'} |`,
                 );
             }
         }
@@ -5153,6 +8886,10 @@ async function main() {
         printHelp(options);
         return;
     }
+    options.graphicsBackend = resolveChromiumGraphicsBackend(
+        process.platform,
+        options.graphicsBackend,
+    );
 
     const profileScenarios = resolveScenarios(
         options.scenarioSet,
@@ -5200,6 +8937,10 @@ async function main() {
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
+                ...resolveChromiumGraphicsArgs(
+                    process.platform,
+                    options.graphicsBackend,
+                ),
             ],
             headless: true,
         });
@@ -5218,39 +8959,44 @@ async function main() {
 
     try {
         const scenarios = [];
-        for (const scenario of profileScenarios) {
-            const repeat = scenario.plantCloseup
-                ? (options.closeupRepeat ?? scenario.plantCloseup.repeat)
-                : (scenario.repeat ?? 1);
-            for (let runIndex = 1; runIndex <= repeat; runIndex += 1) {
-                const runScenario =
-                    repeat === 1
-                        ? scenario
-                        : {
-                              ...scenario,
-                              name: `${scenario.name}-run-${runIndex}`,
-                          };
-                console.log(
-                    `Profiling ${scenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
-                );
-                const result = await measureScenario(
-                    browser,
-                    options.baseUrl,
-                    runScenario,
-                    options,
-                );
-                result.baseName = scenario.name;
-                result.profileRun = runIndex;
-                scenarios.push(result);
-            }
+        const runQueue = buildScenarioRunQueue(profileScenarios, {
+            closeupRepeat: options.closeupRepeat,
+        });
+        for (const {
+            baseScenario,
+            repeat,
+            runIndex,
+            runScenario,
+        } of runQueue) {
+            console.log(
+                `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
+            );
+            const result = await measureScenario(
+                browser,
+                options.baseUrl,
+                runScenario,
+                options,
+            );
+            result.baseName = baseScenario.name;
+            result.profileRun = runIndex;
+            scenarios.push(result);
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
         const adaptiveHighComparisons =
             buildAdaptiveHighComparisons(highTargetMedians);
+        const staticSceneCacheVisualComparisons =
+            await buildStaticSceneCacheVisualComparisons(scenarios);
+        const staticSceneCacheComparisons = buildStaticSceneCacheComparisons(
+            highTargetMedians,
+            staticSceneCacheVisualComparisons,
+        );
+        const weatherSurfaceComparisons =
+            buildWeatherSurfaceComparisons(highTargetMedians);
         const profileSummary = buildProfileSummary(
             scenarios,
             highTargetMedians,
+            staticSceneCacheComparisons,
         );
         const report = {
             baseUrl: options.baseUrl,
@@ -5261,9 +9007,12 @@ async function main() {
                 process.env.GITHUB_SHA ??
                 null,
             options: {
+                allowLegacyOperationVisuals:
+                    options.allowLegacyOperationVisuals,
                 build: options.build,
                 closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,
+                graphicsBackend: options.graphicsBackend,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
@@ -5275,10 +9024,13 @@ async function main() {
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
+            staticSceneCacheComparisons,
+            staticSceneCacheVisualComparisons,
             summary: {
                 durationMs: Date.now() - startedAt,
                 ...profileSummary,
             },
+            weatherSurfaceComparisons,
         };
 
         await writeReports(report, options.outDir);
@@ -5306,6 +9058,10 @@ export {
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildScenarioRunQueue,
+    buildStaticSceneCacheComparisons,
+    buildStaticSceneCacheVisualComparisons,
+    buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
     evaluateHighTargetAcceptance,
@@ -5313,8 +9069,14 @@ export {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    isIgnoredLocalProfilerConsoleError,
+    isOutlineProfileTelemetryReady,
+    measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,
+    parseArgs,
+    resolveChromiumGraphicsArgs,
+    resolveChromiumGraphicsBackend,
     resolveScenarios,
 };
 

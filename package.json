@@ -19,6 +19,8 @@
     "lint:migrate": "turbo lint:migrate",
     "typecheck": "turbo typecheck",
     "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
+    "plugins:check": "node ./scripts/check-plugins.mjs",
+    "mcp:smoke:public": "pnpm --filter api mcp:smoke:public",
     "db-generate": "turbo db-generate",
     "db-push": "turbo db-push",
     "regenerate": "turbo regenerate",

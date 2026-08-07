@@ -1,3 +1,4 @@
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
@@ -14,6 +15,10 @@ import {
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
+import {
+    assertOperationCartTarget,
+    resolveOperationCartTarget,
+} from '../../../../../../lib/mcp/operationCartTarget';
 
 type McpAuthContext = {
     accountId: string;
@@ -24,6 +29,20 @@ type McpAuthContext = {
 type CommerceEntity = EntityStandardized & {
     description?: string;
     name?: string;
+};
+
+type PlantEntity = EntityStandardized & {
+    information?: EntityStandardized['information'] & {
+        operations?: Array<{
+            information?: { name?: string };
+        }>;
+    };
+};
+
+type PlantSortEntity = EntityStandardized & {
+    information?: EntityStandardized['information'] & {
+        plant?: PlantEntity | null;
+    };
 };
 
 const GetProductsSchema = z.object({
@@ -46,6 +65,16 @@ const AddToCartSchema = z.object({
     scheduledDate: z.string().optional(),
 });
 
+const AddOperationToCartSchema = z.object({
+    userId: z.string().optional(),
+    operationId: z.coerce.number().int().positive(),
+    quantity: z.number().positive().default(1),
+    gardenId: z.number().int().positive().optional(),
+    raisedBedId: z.number().int().positive().optional(),
+    positionIndex: z.number().int().min(0).optional(),
+    scheduledDate: z.string().optional(),
+});
+
 const UpdateCartItemSchema = z.object({
     userId: z.string().optional(),
     cartItemId: z.coerce.number().int().positive(),
@@ -56,6 +85,14 @@ function assertUser(inputUserId: string | undefined, auth: McpAuthContext) {
     if (inputUserId && inputUserId !== auth.userId) {
         throw new Error('Cart user does not match authenticated user');
     }
+}
+
+function requireCommerceAuth(auth: McpAuthContext | null) {
+    if (!auth) {
+        throw new Error('Cart tools require authentication');
+    }
+
+    return auth;
 }
 
 function productEntityId(productId: string) {
@@ -159,6 +196,7 @@ async function validateCartLocation({
     if (!raisedBedId) {
         return {
             gardenId: gardenId ?? undefined,
+            raisedBed: undefined,
             raisedBedId: undefined,
             positionIndex: positionIndex ?? undefined,
         };
@@ -200,15 +238,76 @@ async function validateCartLocation({
 
     return {
         gardenId: finalGardenId,
+        raisedBed,
         raisedBedId: raisedBed.id,
         positionIndex: positionIndex ?? undefined,
     };
 }
 
+function linkedOperationNames(plantSort: PlantSortEntity) {
+    return new Set(
+        plantSort.information?.plant?.information?.operations
+            ?.map((operation) => operation.information?.name)
+            .filter((name): name is string => Boolean(name)) ?? [],
+    );
+}
+
+async function validateOperationTarget({
+    operation,
+    positionIndex,
+    raisedBed,
+}: {
+    operation: CommerceEntity;
+    positionIndex?: number;
+    raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
+}) {
+    const application = operation.attributes?.application;
+    assertOperationCartTarget(application, {
+        raisedBedId: raisedBed.id,
+        positionIndex,
+    });
+
+    if (application !== 'plant') {
+        return;
+    }
+
+    const field = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === positionIndex,
+    );
+    if (!field?.plantSortId) {
+        throw new Error('Raised-bed field does not contain a plant');
+    }
+
+    const plantSort = await getEntityFormatted<PlantSortEntity>(
+        field.plantSortId,
+    );
+    const operationName = operation.information?.name;
+    if (!plantSort || !operationName) {
+        throw new Error('Plant operation applicability could not be verified');
+    }
+
+    const applicable = isOperationApplicableToPlant(
+        {
+            attributes: {
+                application,
+                appliesToAllTargets:
+                    operation.attributes?.appliesToAllTargets === true,
+            },
+            information: { name: operationName },
+        },
+        linkedOperationNames(plantSort),
+    );
+    if (!applicable) {
+        throw new Error(
+            'Operation is not applicable to the plant in this field',
+        );
+    }
+}
+
 export async function executeCommerceTool(
     name: string,
     args: unknown,
-    auth: McpAuthContext,
+    auth: McpAuthContext | null,
 ) {
     switch (name) {
         case 'commerce/get-products':
@@ -235,14 +334,16 @@ export async function executeCommerceTool(
             return formatProduct(product);
         }
         case 'commerce/get-cart': {
+            const authContext = requireCommerceAuth(auth);
             const input = GetCartSchema.parse(args ?? {});
-            assertUser(input.userId, auth);
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            assertUser(input.userId, authContext);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             return cart ? formatCart(cart) : null;
         }
         case 'commerce/add-to-cart': {
+            const authContext = requireCommerceAuth(auth);
             const input = AddToCartSchema.parse(args);
-            assertUser(input.userId, auth);
+            assertUser(input.userId, authContext);
             const entityId = productEntityId(input.productId);
             if (!entityId) {
                 throw new Error('Unsupported product id');
@@ -254,12 +355,12 @@ export async function executeCommerceTool(
             ) {
                 throw new Error('Product not found');
             }
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             if (!cart) {
                 throw new Error('Cart could not be created');
             }
             const location = await validateCartLocation({
-                accountId: auth.accountId,
+                accountId: authContext.accountId,
                 gardenId: input.gardenId,
                 raisedBedId: input.raisedBedId,
                 positionIndex: input.positionIndex,
@@ -278,7 +379,76 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 additionalData,
             );
-            const refreshedCart = await getOrCreateShoppingCart(auth.accountId);
+            const refreshedCart = await getOrCreateShoppingCart(
+                authContext.accountId,
+            );
+            if (!refreshedCart) {
+                throw new Error('Cart could not be loaded');
+            }
+            return {
+                cartItemId,
+                cart: formatCart(refreshedCart),
+            };
+        }
+        case 'commerce/add-operation-to-cart': {
+            const authContext = requireCommerceAuth(auth);
+            const input = AddOperationToCartSchema.parse(args);
+            assertUser(input.userId, authContext);
+            const operationRaw = await getEntityRaw(input.operationId);
+            if (
+                operationRaw?.state !== 'published' ||
+                operationRaw.entityType?.name !== 'operation'
+            ) {
+                throw new Error('Operation not found');
+            }
+            const operation = await getEntityFormatted<CommerceEntity>(
+                input.operationId,
+            );
+            if (!operation) {
+                throw new Error('Operation not found');
+            }
+            const operationTarget = resolveOperationCartTarget(
+                operation.attributes?.application,
+                {
+                    raisedBedId: input.raisedBedId,
+                    positionIndex: input.positionIndex,
+                },
+            );
+            const location = await validateCartLocation({
+                accountId: authContext.accountId,
+                gardenId: input.gardenId,
+                raisedBedId: operationTarget.raisedBedId,
+                positionIndex: operationTarget.positionIndex,
+            });
+            if (!location.raisedBedId || !location.raisedBed) {
+                throw new Error('Operation requires a raised bed');
+            }
+            await validateOperationTarget({
+                operation,
+                positionIndex: location.positionIndex,
+                raisedBed: location.raisedBed,
+            });
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
+            if (!cart) {
+                throw new Error('Cart could not be created');
+            }
+            const additionalData = input.scheduledDate
+                ? JSON.stringify({ scheduledDate: input.scheduledDate })
+                : null;
+            const cartItemId = await upsertOrRemoveCartItem(
+                null,
+                cart.id,
+                input.operationId.toString(),
+                'operation',
+                input.quantity,
+                location.gardenId,
+                location.raisedBedId,
+                location.positionIndex,
+                additionalData,
+            );
+            const refreshedCart = await getOrCreateShoppingCart(
+                authContext.accountId,
+            );
             if (!refreshedCart) {
                 throw new Error('Cart could not be loaded');
             }
@@ -288,9 +458,10 @@ export async function executeCommerceTool(
             };
         }
         case 'commerce/update-cart-item': {
+            const authContext = requireCommerceAuth(auth);
             const input = UpdateCartItemSchema.parse(args);
-            assertUser(input.userId, auth);
-            const cart = await getOrCreateShoppingCart(auth.accountId);
+            assertUser(input.userId, authContext);
+            const cart = await getOrCreateShoppingCart(authContext.accountId);
             if (!cart) {
                 throw new Error('Cart not found');
             }
@@ -303,7 +474,7 @@ export async function executeCommerceTool(
             const location =
                 input.quantity > 0
                     ? await validateCartLocation({
-                          accountId: auth.accountId,
+                          accountId: authContext.accountId,
                           gardenId: item.gardenId,
                           raisedBedId: item.raisedBedId,
                           positionIndex: item.positionIndex,
@@ -324,7 +495,9 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 item.additionalData,
             );
-            const refreshedCart = await getOrCreateShoppingCart(auth.accountId);
+            const refreshedCart = await getOrCreateShoppingCart(
+                authContext.accountId,
+            );
             if (!refreshedCart) {
                 throw new Error('Cart could not be loaded');
             }

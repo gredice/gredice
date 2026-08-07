@@ -2,7 +2,7 @@ import type { BlockData } from '@gredice/client';
 import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import { resolveBlockPlacement } from '../hooks/optimisticBlockPlacement';
 import type { Block } from '../types/Block';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
 
 export type HudPlacementGridPosition = {
@@ -19,11 +19,11 @@ export type HudPlacementPreview = {
 };
 
 type GardenWithStacks = {
-    stacks: Stack[];
+    stacks: GardenStack[];
 };
 
 function getStackAtPosition(
-    stacks: Stack[] | undefined,
+    stacks: GardenStack[] | undefined,
     position: HudPlacementGridPosition,
 ) {
     return stacks?.find(
@@ -41,7 +41,7 @@ function getHudPlacementSupport({
     blockData: BlockData[];
     blockName: string;
     position: HudPlacementGridPosition;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
 }) {
     const blockEntity = blockData.find(
         (block) => block.information.name === blockName,

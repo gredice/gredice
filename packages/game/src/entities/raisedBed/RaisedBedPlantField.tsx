@@ -3,12 +3,14 @@ import { animated, useSpring } from '@react-spring/three';
 import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
-import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantDefinition,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
 import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
@@ -19,6 +21,7 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
+import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
 
 export const mockPlantPresetLabelsBySortId: Record<number, string> = {
     219: 'pepper',
@@ -42,11 +45,18 @@ export function RaisedBedPlantField({
         plantSortId: number | null | undefined;
         plantStatus?: string | null;
         plantSowDate?: string | null;
+        supportedVisual?: boolean;
     };
     orientation: RaisedBedOrientation;
     blockIndex: number;
 }) {
-    const { harvestedVisual, positionIndex, plantSortId, plantSowDate } = field;
+    const {
+        harvestedVisual,
+        positionIndex,
+        plantSortId,
+        plantSowDate,
+        supportedVisual,
+    } = field;
     const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
     const isMock = useGameState((state) => state.isMock);
@@ -105,21 +115,20 @@ export function RaisedBedPlantField({
         sortData?.information.plant.information?.latinName,
         sortData?.information.plant.information?.name,
     ]);
-    const lifecycleWindowDays = getPlantLifecycleWindowDays({
+    const maturityWindowDays = getPlantMaturityWindowDays({
         germinationWindowMax:
             sortData?.information.plant.attributes?.germinationWindowMax,
         growthWindowMax:
             sortData?.information.plant.attributes?.growthWindowMax,
-        harvestWindowMax:
-            sortData?.information.plant.attributes?.harvestWindowMax,
     });
     const plantGeneration =
         plantSowDate && resolvedPlantPreset
             ? calculateInGamePlantGeneration({
                   currentTime,
                   sowDate: plantSowDate,
-                  lifecycleWindowDays,
+                  lifecycleWindowDays: maturityWindowDays,
                   growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                  plantStatus: field.plantStatus,
               })
             : 0;
     const visualPlantGeneration = harvestedVisual
@@ -127,19 +136,21 @@ export function RaisedBedPlantField({
         : plantGeneration;
     const shouldRenderGeneratedPlants =
         Boolean(resolvedPlantPreset) &&
-        Boolean(plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested');
+        shouldRenderRaisedBedPlant({
+            plantSowDate,
+            plantStatus: field.plantStatus,
+        });
     const plantInstanceScale = resolvedPlantPreset
-        ? resolvedPlantPreset.instanceScale *
-          Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
+        ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;
-    const approximateFieldPlantHeight = resolvedPlantPreset
-        ? getApproximatePlantHeight(
-              resolvedPlantPreset.definition,
-              visualPlantGeneration,
-          ) * plantInstanceScale
+    const plantDefinition = resolvedPlantPreset
+        ? getInGamePlantDefinition(
+              resolvedPlantPreset,
+              supportedVisual === true,
+          )
+        : null;
+    const approximateFieldPlantHeight = plantDefinition
+        ? getApproximatePlantHeight(plantDefinition) * plantInstanceScale
         : 0.25;
     const fieldLod = usePlantLodState(
         fieldGroupRef,
@@ -199,7 +210,9 @@ export function RaisedBedPlantField({
             {fieldLod.visible ? (
                 shouldRenderGeneratedPlants && resolvedPlantPreset ? (
                     <RaisedBedGeneratedPlantBatch
-                        definition={resolvedPlantPreset.definition}
+                        definition={
+                            plantDefinition ?? resolvedPlantPreset.definition
+                        }
                         flowerGrowth={harvestedVisual ? 0.35 : 1}
                         fruitGrowth={harvestedVisual ? 0.1 : 1}
                         instances={generatedPlantInstances}

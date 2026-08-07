@@ -1,3 +1,5 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { type APIRequestContext, expect, test } from '@playwright/test';
 
 const MCP_BASE_URL = '/api/mcp';
@@ -18,6 +20,21 @@ async function callMcp(
 }
 
 test.describe('MCP protocol surface', () => {
+    test('does not expose removed domain-specific endpoints', async ({
+        request,
+    }) => {
+        for (const path of [
+            '/api/mcp/.well-known/oauth-protected-resource',
+            '/api/mcp/core/health',
+            '/api/mcp/directories',
+            '/api/mcp/gardens',
+            '/api/mcp/commerce',
+        ]) {
+            const response = await request.get(path);
+            expect(response.status()).toBe(404);
+        }
+    });
+
     test('initializes and negotiates protocol version', async ({ request }) => {
         const response = await callMcp(request, {
             jsonrpc: '2.0',
@@ -63,6 +80,64 @@ test.describe('MCP protocol surface', () => {
         expect(response.headers()['mcp-protocol-version']).toBe('2025-03-26');
     });
 
+    test('accepts the initialized notification without a JSON-RPC response', async ({
+        request,
+    }) => {
+        const response = await callMcp(request, {
+            jsonrpc: '2.0',
+            method: 'notifications/initialized',
+        });
+
+        expect(response.status()).toBe(202);
+        await expect(response.text()).resolves.toBe('');
+    });
+
+    test('connects and reads model-visible output through the official MCP client', async ({
+        request: _request,
+    }, testInfo) => {
+        const baseURL = testInfo.project.use.baseURL;
+        if (typeof baseURL !== 'string') {
+            throw new Error('Playwright baseURL is required');
+        }
+
+        const client = new Client(
+            { name: 'gredice-playwright', version: '1.0.0' },
+            { capabilities: {} },
+        );
+        const transport = new StreamableHTTPClientTransport(
+            new URL(MCP_BASE_URL, baseURL),
+        );
+
+        try {
+            await client.connect(transport);
+            const tools = await client.listTools();
+            expect(tools.tools).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        name: 'directories/get-plants',
+                    }),
+                ]),
+            );
+
+            const result = await client.callTool({
+                name: 'directories/get-plants',
+                arguments: { limit: 1, offset: 0 },
+            });
+            expect(result.content).toEqual([
+                expect.objectContaining({
+                    type: 'text',
+                    text: expect.any(String),
+                }),
+            ]);
+            expect(result.structuredContent).toMatchObject({
+                plants: expect.any(Array),
+                total: expect.any(Number),
+            });
+        } finally {
+            await client.close();
+        }
+    });
+
     test('lists tools and resources', async ({ request }) => {
         const toolsResponse = await callMcp(request, {
             jsonrpc: '2.0',
@@ -78,6 +153,35 @@ test.describe('MCP protocol surface', () => {
                 expect.objectContaining({ name: 'directories/get-plant' }),
             ]),
         );
+        expect(
+            tools.result.tools.find(
+                (tool: { name: string }) =>
+                    tool.name === 'directories/get-plants',
+            ),
+        ).toMatchObject({
+            annotations: {
+                readOnlyHint: true,
+                openWorldHint: false,
+                destructiveHint: false,
+            },
+        });
+        expect(
+            tools.result.tools.find(
+                (tool: { name: string }) =>
+                    tool.name === 'commerce/update-cart-item',
+            ),
+        ).toMatchObject({
+            annotations: {
+                readOnlyHint: false,
+                openWorldHint: false,
+                destructiveHint: true,
+            },
+            inputSchema: {
+                properties: expect.not.objectContaining({
+                    userId: expect.anything(),
+                }),
+            },
+        });
 
         const resourcesResponse = await callMcp(request, {
             jsonrpc: '2.0',
@@ -106,13 +210,28 @@ test.describe('MCP protocol surface', () => {
         });
 
         expect(response.status()).toBe(200);
-        await expect(response.json()).resolves.toMatchObject({
+        const payload = await response.json();
+        expect(payload).toMatchObject({
             jsonrpc: '2.0',
             id: 'directories-list',
             result: {
                 plants: expect.any(Array),
                 total: expect.any(Number),
+                content: [
+                    {
+                        type: 'text',
+                        text: expect.any(String),
+                    },
+                ],
+                structuredContent: {
+                    plants: expect.any(Array),
+                    total: expect.any(Number),
+                },
             },
+        });
+        expect(JSON.parse(payload.result.content[0].text)).toMatchObject({
+            plants: expect.any(Array),
+            total: expect.any(Number),
         });
     });
 
@@ -144,8 +263,8 @@ test.describe('MCP auth and security', () => {
             id: 'auth-missing',
             method: 'tools/call',
             params: {
-                name: 'directories/get-plant',
-                arguments: { plantName: 'rajcica', includeSorts: true },
+                name: 'gardens/list-gardens',
+                arguments: { limit: 1, offset: 0 },
             },
         });
 
@@ -169,8 +288,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-invalid',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             { Authorization: 'Bearer not-a-valid-token' },
@@ -225,8 +344,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-account-ok',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             {
@@ -249,8 +368,8 @@ test.describe('MCP auth and security', () => {
                 id: 'auth-account-isolated',
                 method: 'tools/call',
                 params: {
-                    name: 'directories/get-plant',
-                    arguments: { plantName: 'rajcica', includeSorts: true },
+                    name: 'gardens/list-gardens',
+                    arguments: { limit: 1, offset: 0 },
                 },
             },
             {

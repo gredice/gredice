@@ -4,7 +4,6 @@ import { SandboxDebugActions } from './SandboxDebugActions';
 
 const debugSandboxFlags = {
     enableDebugHudFlag: true,
-    enableRainWetOverlayFlag: true,
 } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
 
 export default function DebugSandboxPage() {

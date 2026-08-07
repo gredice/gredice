@@ -224,6 +224,15 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
         };
     }
 
+    if (reasonPrefix === 'sunflowerPackage') {
+        return {
+            icon: iconFrame(<Wallet className="size-5" aria-hidden />, tone),
+            label: 'Kupnja paketa suncokreta',
+            description: 'Suncokreti dodijeljeni iz plaćenog paketa.',
+            reason,
+        };
+    }
+
     if (
         reasonPrefix === 'shoppingCart' ||
         reasonPrefix === 'shoppingCartItem'

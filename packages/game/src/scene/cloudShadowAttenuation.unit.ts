@@ -13,7 +13,9 @@ import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
     type CloudShadowMaterialLeaseMap,
     cloudShadowFragmentShaderChunk,
+    getCloudShadowAttenuationMaterialCandidateRevision,
     projectCloudShadowReceiverToGround,
+    registerCloudShadowAttenuationMaterialCandidate,
     releaseCloudShadowAttenuationMaterials,
     resolveCloudShadowAttenuationActivation,
     resolveCloudShadowAttenuationConfig,
@@ -393,5 +395,48 @@ describe('cloud shadow material integration', () => {
         assert.equal(material.onBeforeCompile, originalOnBeforeCompile);
 
         releaseCloudShadowAttenuationMaterials(leases);
+    });
+
+    it('patches explicitly registered dynamic materials without a scene scan gap', () => {
+        const root = new Object3D();
+        const material = new MeshStandardMaterial();
+        const leases: CloudShadowMaterialLeaseMap = new Map();
+        const originalOnBeforeCompile = material.onBeforeCompile;
+        const revisionBefore =
+            getCloudShadowAttenuationMaterialCandidateRevision();
+        const unregister =
+            registerCloudShadowAttenuationMaterialCandidate(material);
+
+        assert.equal(
+            getCloudShadowAttenuationMaterialCandidateRevision(),
+            revisionBefore + 1,
+        );
+        assert.equal(
+            syncCloudShadowAttenuationMaterials({
+                enabled: true,
+                leases,
+                root,
+                uniforms,
+            }),
+            1,
+        );
+        assert.notEqual(material.onBeforeCompile, originalOnBeforeCompile);
+
+        unregister();
+        unregister();
+        assert.equal(
+            getCloudShadowAttenuationMaterialCandidateRevision(),
+            revisionBefore + 2,
+        );
+        assert.equal(
+            syncCloudShadowAttenuationMaterials({
+                enabled: true,
+                leases,
+                root,
+                uniforms,
+            }),
+            0,
+        );
+        assert.equal(material.onBeforeCompile, originalOnBeforeCompile);
     });
 });

@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from 'react';
-import type { BufferGeometry, Vector3Tuple } from 'three';
+import type { BufferGeometry, IUniform, Vector3Tuple } from 'three';
 import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
-import { useGameFlags } from '../GameFlagsContext';
 import {
     useRainSurfacePuddleStrengthUniform,
+    useRainSurfaceWetnessState,
     useRainSurfaceWetnessUniform,
 } from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
@@ -87,12 +87,6 @@ void main() {
 `;
 
 export function RainWetOverlay(props: RainWetOverlayProps) {
-    const flags = useGameFlags();
-
-    if (!flags.enableRainWetOverlayFlag) {
-        return null;
-    }
-
     return <RainWetOverlayEffect {...props} />;
 }
 
@@ -100,13 +94,9 @@ export function useRainWetOverlayVisible({
     intensityMultiplier = 1,
     minRain = 0.08,
 }: Pick<RainWetOverlayProps, 'intensityMultiplier' | 'minRain'> = {}) {
-    const flags = useGameFlags();
-    const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
+    const rainAmount = useGameState((state) => state.rainSurfaceIntensity);
 
-    return (
-        flags.enableRainWetOverlayFlag &&
-        rainAmount * intensityMultiplier >= minRain
-    );
+    return rainAmount * intensityMultiplier >= minRain;
 }
 
 export function useRainWetOverlayMaterial({
@@ -134,6 +124,31 @@ export function useRainWetOverlayMaterial({
         intensityMultiplier,
         wetSpeed,
     });
+    return useRainWetOverlayMaterialWithWetnessUniform({
+        bounds,
+        darkness,
+        geometry,
+        glossiness,
+        topSurfaceBias,
+        wetnessUniform,
+    });
+}
+
+function useRainWetOverlayMaterialWithWetnessUniform({
+    bounds,
+    darkness,
+    geometry,
+    glossiness,
+    topSurfaceBias,
+    wetnessUniform,
+}: {
+    bounds: RainWetOverlayProps['bounds'];
+    darkness: number;
+    geometry: BufferGeometry;
+    glossiness: number;
+    topSurfaceBias: number;
+    wetnessUniform: IUniform<number>;
+}) {
     const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const resolvedBounds = useMemo(() => {
         if (bounds) return bounds;
@@ -218,18 +233,22 @@ function RainWetOverlayEffect({
         intensityMultiplier,
         minRain,
     });
-    const material = useRainWetOverlayMaterial({
-        bounds,
-        darkness,
+    const { active: dryingDown, wetnessUniform } = useRainSurfaceWetnessState({
         drySpeed,
-        geometry,
-        glossiness,
         intensityMultiplier,
-        topSurfaceBias,
+        minimumWetness: 0.01,
         wetSpeed,
     });
+    const material = useRainWetOverlayMaterialWithWetnessUniform({
+        bounds,
+        darkness,
+        geometry,
+        glossiness,
+        topSurfaceBias,
+        wetnessUniform,
+    });
 
-    if (!shouldRender && material.uniforms.uWetness.value < 0.01) {
+    if (!shouldRender && !dryingDown) {
         return null;
     }
 

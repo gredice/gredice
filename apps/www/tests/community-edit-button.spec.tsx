@@ -287,8 +287,13 @@ test('submits multiple reference edits for plant relationships', async ({
                             controlType: 'reference',
                             multiple: true,
                             publicLabel: 'Dobri susjedi',
-                            helpText:
-                                'ID-jeve biljaka unesi odvojene zarezom ili svaki u novi red.',
+                            helpText: 'Odaberi jednu ili više biljaka.',
+                            options: [
+                                { value: '12', label: 'Bosiljak' },
+                                { value: '34', label: 'Kadifica' },
+                                { value: '56', label: 'Mrkva' },
+                                { value: '78', label: 'Krumpir' },
+                            ],
                             currentValue: JSON.stringify(['12', '34']),
                             baseValueHash: 'hash-companions',
                         },
@@ -304,6 +309,13 @@ test('submits multiple reference edits for plant relationships', async ({
                             controlType: 'reference',
                             multiple: true,
                             publicLabel: 'Izbjegavati blizinu',
+                            helpText: 'Odaberi jednu ili više biljaka.',
+                            options: [
+                                { value: '12', label: 'Bosiljak' },
+                                { value: '34', label: 'Kadifica' },
+                                { value: '56', label: 'Mrkva' },
+                                { value: '78', label: 'Krumpir' },
+                            ],
                             currentValue: '[]',
                             baseValueHash: 'hash-antagonists',
                         },
@@ -356,10 +368,26 @@ test('submits multiple reference edits for plant relationships', async ({
     );
 
     await page.getByTitle('Predloži izmjenu').click();
-    await expect(page.getByLabel('Dobri susjedi')).toHaveValue('12\n34');
+    await expect(
+        page.getByRole('button', { name: 'Ukloni biljku Bosiljak' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Ukloni biljku Kadifica' }),
+    ).toBeVisible();
 
-    await page.getByLabel('Dobri susjedi').fill('12\n34\n56');
-    await page.getByLabel('Izbjegavati blizinu').fill('78');
+    await page
+        .getByRole('combobox', { name: 'Dodaj biljku — Dobri susjedi' })
+        .click();
+    await page.getByPlaceholder('Pretraži biljke...').fill('mrk');
+    await page.getByRole('option', { name: 'Mrkva' }).click();
+
+    await page
+        .getByRole('combobox', {
+            name: 'Dodaj biljku — Izbjegavati blizinu',
+        })
+        .click();
+    await page.getByPlaceholder('Pretraži biljke...').fill('krump');
+    await page.getByRole('option', { name: 'Krumpir' }).click();
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(

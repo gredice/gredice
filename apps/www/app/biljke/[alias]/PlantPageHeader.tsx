@@ -86,6 +86,12 @@ export function PlantPageHeader({
             href: `#${slug(section.header)}`,
             label: section.header,
         }));
+    if (!sort) {
+        contentLinks.unshift({
+            href: `#${slug('Sorte')}`,
+            label: 'Sorte',
+        });
+    }
     if ((plant.information.tip?.length ?? 0) > 0) {
         contentLinks.push({
             href: `#${slug('Savjeti')}`,
@@ -102,12 +108,6 @@ export function PlantPageHeader({
         contentLinks.push({
             href: `#${slug('Biljni susjedi')}`,
             label: 'Biljni susjedi',
-        });
-    }
-    if (!sort) {
-        contentLinks.push({
-            href: `#${slug('Sorte')}`,
-            label: 'Sorte',
         });
     }
 

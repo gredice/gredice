@@ -24,7 +24,6 @@ import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
-import { getGeneratedLSystemCacheSnapshot } from '../generators/plant/hooks/generatedLSystemCache';
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import {
@@ -37,6 +36,7 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { SceneTimeProvider, sceneFrameRates } from './SceneTime';
+import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
@@ -54,6 +54,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         position: FiberVector3;
         quality?: GameQualityProfile;
         rendererOptions?: WebGLRendererParameters;
+        staticOpaqueCacheEnabled?: boolean;
         suspendWhenOffscreen?: boolean;
         zoom: number;
     }>;
@@ -152,35 +153,6 @@ function RendererStatsReporter() {
     return null;
 }
 
-function GeneratedLSystemCacheStatsReporter() {
-    const lastUpdateRef = useRef(0);
-
-    useFrame(() => {
-        const now = performance.now();
-        if (now - lastUpdateRef.current < rendererStatsUpdateMs) {
-            return;
-        }
-
-        lastUpdateRef.current = now;
-        const snapshot = getGeneratedLSystemCacheSnapshot();
-        updateGameProfileMetadata({
-            generatedLSystemCacheEntryCount: snapshot.entryCount,
-            generatedLSystemCacheEstimatedBytes: snapshot.estimatedBytes,
-            generatedLSystemCacheEvictionCount: snapshot.evictionCount,
-            generatedLSystemCacheHitCount: snapshot.hitCount,
-            generatedLSystemCacheMaxEntryCount: snapshot.maxEntryCount,
-            generatedLSystemCacheMaxEstimatedBytes: snapshot.maxEstimatedBytes,
-            generatedLSystemCacheMissCount: snapshot.missCount,
-            generatedLSystemCacheOversizeSkipCount: snapshot.oversizeSkipCount,
-            generatedLSystemCachePeakEstimatedBytes:
-                snapshot.peakEstimatedBytes,
-            generatedLSystemCacheWriteCount: snapshot.writeCount,
-        });
-    });
-
-    return null;
-}
-
 function SceneWireframeMode({ enabled }: { enabled: boolean }) {
     const scene = useThree((state) => state.scene);
     const previousStatesRef = useRef(new Map<string, WireframeMaterialState>());
@@ -240,6 +212,7 @@ export function Scene({
     position,
     quality,
     rendererOptions,
+    staticOpaqueCacheEnabled = false,
     suspendWhenOffscreen,
     zoom,
     ...rest
@@ -257,6 +230,15 @@ export function Scene({
         (state) => state.wireframeDebugVisible,
         false,
     );
+    const staticOpaqueCacheActive =
+        staticOpaqueCacheEnabled && qualityProfile.tier === 'high';
+    const staticOpaqueCacheQualityKey = [
+        qualityProfile.cloudShadowMode,
+        qualityProfile.dpr,
+        qualityProfile.shadowMapSize,
+        qualityProfile.shadows ? 1 : 0,
+        qualityProfile.tier,
+    ].join('|');
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -308,22 +290,28 @@ export function Scene({
                     }
                 />
                 <WeatherSurfaceUniformProvider>
-                    <ActorGroundingShadowProvider
-                        enabled={qualityProfile.shadows}
+                    <StaticOpaqueSceneCacheProvider
+                        enabled={staticOpaqueCacheActive}
+                        interactionActive={adaptiveHighInteractionActive}
+                        qualityKey={staticOpaqueCacheQualityKey}
+                        wireframe={Boolean(debugStats && wireframeDebugVisible)}
                     >
-                        <HoverOutlineProvider>
-                            <SceneDebugName />
-                            <GeneratedLSystemCacheStatsReporter />
-                            {debugStats && <RendererStatsReporter />}
-                            <SceneWireframeMode
-                                enabled={Boolean(
-                                    debugStats && wireframeDebugVisible,
-                                )}
-                            />
-                            {children}
-                            <HoverOutlineEffect />
-                        </HoverOutlineProvider>
-                    </ActorGroundingShadowProvider>
+                        <ActorGroundingShadowProvider
+                            enabled={qualityProfile.shadows}
+                        >
+                            <HoverOutlineProvider>
+                                <SceneDebugName />
+                                {debugStats && <RendererStatsReporter />}
+                                <SceneWireframeMode
+                                    enabled={Boolean(
+                                        debugStats && wireframeDebugVisible,
+                                    )}
+                                />
+                                {children}
+                                <HoverOutlineEffect />
+                            </HoverOutlineProvider>
+                        </ActorGroundingShadowProvider>
+                    </StaticOpaqueSceneCacheProvider>
                 </WeatherSurfaceUniformProvider>
             </SceneTimeProvider>
         </Canvas>

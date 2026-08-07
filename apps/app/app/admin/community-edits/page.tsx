@@ -1,6 +1,8 @@
 import {
     type CommunityEditRequestStatus,
+    type CommunityEntitySuggestionValue,
     listCommunityEditRequests,
+    parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
@@ -31,6 +33,33 @@ export const dynamic = 'force-dynamic';
 type CommunityEditRequestListItem = Awaited<
     ReturnType<typeof listCommunityEditRequests>
 >[number];
+
+function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return `Nova sorta: ${suggestion.name}`;
+        case 'operation':
+            return `Nova radnja: ${suggestion.name}`;
+        case 'disease':
+            return `Nova bolest: ${suggestion.name}`;
+        case 'pest':
+            return `Novi štetnik: ${suggestion.name}`;
+    }
+}
+
+function entitySuggestionContext(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return `Biljka: ${suggestion.parentPlantName}`;
+        case 'operation':
+            return `Stadij: ${suggestion.stageLabel}`;
+        case 'disease':
+        case 'pest':
+            return `Pogođene biljke: ${suggestion.affectedPlants
+                .map((plant) => plant.name)
+                .join(', ')}`;
+    }
+}
 
 const REQUEST_STATUS_VALUES: readonly string[] = [
     'applied',
@@ -152,6 +181,13 @@ function publicPageUrl(publicPath: string) {
     return `https://www.gredice.com${publicPath.startsWith('/') ? '' : '/'}${publicPath}`;
 }
 
+function requestTargetEntityType(request: CommunityEditRequestListItem) {
+    return (
+        parseCommunityEntitySuggestionRequest(request)?.kind ??
+        request.entityTypeName
+    );
+}
+
 export default async function CommunityEditsPage({
     searchParams,
 }: {
@@ -180,7 +216,7 @@ export default async function CommunityEditsPage({
         (request) =>
             (selectedStatus === 'all' || request.status === selectedStatus) &&
             (selectedEntityType === 'all' ||
-                request.entityTypeName === selectedEntityType) &&
+                requestTargetEntityType(request) === selectedEntityType) &&
             requestMatchesAge(request, selectedAge) &&
             requestMatchesSubmitter(request, submitter, exactSubmitterIds),
     );
@@ -213,6 +249,10 @@ export default async function CommunityEditsPage({
                                             : null;
                                     const displayName =
                                         submitterDisplayName(request);
+                                    const entitySuggestion =
+                                        parseCommunityEntitySuggestionRequest(
+                                            request,
+                                        );
 
                                     return (
                                         <li
@@ -234,17 +274,22 @@ export default async function CommunityEditsPage({
                                                             )}
                                                             className="block min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
                                                         >
-                                                            {entityTypeLabel(
-                                                                request.entityTypeName,
-                                                            )}{' '}
-                                                            #{request.entityId}
+                                                            {entitySuggestion
+                                                                ? entitySuggestionTitle(
+                                                                      entitySuggestion,
+                                                                  )
+                                                                : `${entityTypeLabel(request.entityTypeName)} #${request.entityId}`}
                                                         </Link>
                                                         <Typography
                                                             level="body3"
                                                             className="text-muted-foreground"
                                                         >
-                                                            {request.sectionKey ??
-                                                                'Cijela stranica'}
+                                                            {entitySuggestion
+                                                                ? entitySuggestionContext(
+                                                                      entitySuggestion,
+                                                                  )
+                                                                : (request.sectionKey ??
+                                                                  'Cijela stranica')}
                                                         </Typography>
                                                     </Stack>
                                                     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -327,11 +372,9 @@ export default async function CommunityEditsPage({
                                                             size="sm"
                                                             variant="soft"
                                                         >
-                                                            {
-                                                                request.changes
-                                                                    .length
-                                                            }{' '}
-                                                            promjena
+                                                            {entitySuggestion
+                                                                ? 'Novi zapis'
+                                                                : `${request.changes.length} promjena`}
                                                         </Chip>
                                                     </div>
 
@@ -382,7 +425,9 @@ export default async function CommunityEditsPage({
                                                             size="xs"
                                                             variant="outlined"
                                                         >
-                                                            Admin zapis
+                                                            {entitySuggestion
+                                                                ? 'Kontekst'
+                                                                : 'Admin zapis'}
                                                         </Button>
                                                         <Button
                                                             endDecorator={

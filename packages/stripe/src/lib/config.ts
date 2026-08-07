@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 
 let stripe: Stripe | null = null;
 
+export const STRIPE_REQUEST_TIMEOUT_MS = 20_000;
+
 export function getPublishableKey() {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE;
     if (!key) {

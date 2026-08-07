@@ -9,6 +9,8 @@ import {
     Configuration,
     ExternalLink,
     Inbox,
+    Joystick,
+    LayoutGrid,
     LogOut,
     Sprout,
     User,
@@ -28,6 +30,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { type GardenViewMode, getGardenViewModeHref } from '../gardenViewMode';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
@@ -160,14 +163,20 @@ function NotificationsCard({
     );
 }
 
-function ProfileCard() {
+function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const openNotificationsOverview = useOpenNotificationsOverview();
     const { track } = useGameAnalytics();
+    const searchParams = useSearchParams();
     const { data: currentUser } = useCurrentUser();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
+    );
+    const nextViewMode = viewMode === '2d' ? '3d' : '2d';
+    const viewModeHref = getGardenViewModeHref(
+        viewMode,
+        searchParams.entries(),
     );
 
     return (
@@ -177,6 +186,24 @@ function ProfileCard() {
             <GardenAccountMenuItems
                 onGardenOverviewOpen={() => setProfileModalOpen('vrt')}
             />
+            <DropdownMenuItem
+                className="gap-3"
+                href={viewModeHref}
+                onClick={() =>
+                    track('game_view_mode_changed', {
+                        from: viewMode,
+                        source: 'profile_menu',
+                        to: nextViewMode,
+                    })
+                }
+            >
+                {nextViewMode === '2d' ? (
+                    <LayoutGrid className="size-4" />
+                ) : (
+                    <Joystick className="size-4" />
+                )}
+                <span>{nextViewMode.toUpperCase()} prikaz vrta</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem
                 className="gap-3"
@@ -244,7 +271,7 @@ function ProfileCard() {
     );
 }
 
-export function AccountHud() {
+export function AccountHud({ viewMode = '3d' }: { viewMode?: GardenViewMode }) {
     const { track } = useGameAnalytics();
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const { data: currentUser } = useCurrentUser();
@@ -268,7 +295,7 @@ export function AccountHud() {
                             <ProfileAvatar variant="transparentOnMobile" />
                         </IconButton>
                     </DropdownMenuTrigger>
-                    <ProfileCard />
+                    <ProfileCard viewMode={viewMode} />
                 </DropdownMenu>
                 <div className="hidden md:block md:order-1">
                     {isLoading ? (

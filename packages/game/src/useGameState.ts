@@ -30,7 +30,7 @@ import {
     setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
-import { defaultWaterColors, type WaterColors } from './scene/waterColors';
+import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -337,6 +337,7 @@ type BackgroundPaletteCycle = {
 
 export type GameState = {
     // General
+    authenticatedGardenQueriesEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     winterMode: WinterMode;
@@ -464,6 +465,8 @@ export type GameState = {
     clearEnvironmentOverrides: () => void;
 
     // Environment derived state
+    rainSurfaceIntensity: number;
+    setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
     setSnowCoverage: (snowCoverage: number) => void;
     waterColors: WaterColors;
@@ -483,6 +486,7 @@ export type GameState = {
 
 export function createGameState({
     appBaseUrl,
+    authenticatedGardenQueriesEnabled = true,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -493,9 +497,11 @@ export function createGameState({
     localSandboxInitialStacks,
     mockGardenProfile,
     timeLocation: initialTimeLocation,
+    visualPlacementEffectsEnabled = true,
     winterMode,
 }: {
     appBaseUrl: string;
+    authenticatedGardenQueriesEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -506,6 +512,7 @@ export function createGameState({
     localSandboxInitialStacks?: Stack[];
     mockGardenProfile?: MockGardenProfile;
     timeLocation?: GameLocation;
+    visualPlacementEffectsEnabled?: boolean;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -529,6 +536,7 @@ export function createGameState({
     const { sunrise, sunset } = getGameSunriseSunset(timeLocation, now);
     let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
+        authenticatedGardenQueriesEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         winterMode: winterMode ?? 'summer',
@@ -764,13 +772,18 @@ export function createGameState({
             })),
         clearGardenBoxTooltip: () => set({ gardenBoxTooltip: null }),
         placedBlockEffects: {},
-        queuePlacedBlockEffect: (blockId, effect) =>
+        queuePlacedBlockEffect: (blockId, effect) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
             set((state) => ({
                 placedBlockEffects: {
                     ...state.placedBlockEffects,
                     [blockId]: effect,
                 },
-            })),
+            }));
+        },
         consumePlacedBlockEffect: (blockId) => {
             const effect = get().placedBlockEffects[blockId] ?? null;
             if (!effect) {
@@ -785,7 +798,11 @@ export function createGameState({
             return effect;
         },
         blockPlacementDropAnimations: {},
-        queueBlockPlacementDropAnimation: (blockId, options) =>
+        queueBlockPlacementDropAnimation: (blockId, options) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
             set((state) => {
                 nextBlockPlacementDropAnimationRenderId += 1;
                 return {
@@ -806,7 +823,8 @@ export function createGameState({
                         },
                     },
                 };
-            }),
+            });
+        },
         confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
             set((state) => {
                 const animation = getBlockPlacementDropAnimationForBlockId(
@@ -1092,6 +1110,9 @@ export function createGameState({
                 sunsetTime: sunset,
             });
         },
+        rainSurfaceIntensity: 0,
+        setRainSurfaceIntensity: (rainSurfaceIntensity) =>
+            set({ rainSurfaceIntensity }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,

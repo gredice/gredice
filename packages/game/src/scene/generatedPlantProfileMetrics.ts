@@ -1,6 +1,6 @@
 'use client';
 
-import type { GeneratedLSystemTaskSchedulerSnapshot } from '../generators/plant/hooks/generatedLSystemTaskScheduler';
+import type { GeneratedPlantTaskSchedulerSnapshot } from '../generators/plant/hooks/generatedPlantTaskScheduler';
 import type { GeneratedPlantTemplateCacheSnapshot } from '../generators/plant/hooks/generatedPlantTemplateCache';
 import {
     getGeneratedPlantInstanceBufferMetricsSnapshot,
@@ -44,7 +44,7 @@ export type GeneratedPlantProfilePackedWorkerTimings = {
     packingDurationMs: number;
     renderDataBuildDurationMs: number;
     rootBatchingDurationMs: number;
-    symbolGenerationDurationMs: number;
+    topologyGenerationDurationMs: number;
     totalDurationMs: number;
 };
 
@@ -60,14 +60,14 @@ type ProfileState = {
     camera: GeneratedPlantProfileSnapshot['camera'];
     error: string | null;
     fields: Map<string, ProfileField>;
-    lSystem: GeneratedPlantProfileSnapshot['lSystem'];
+    generation: GeneratedPlantProfileSnapshot['generation'];
     lodEvaluation: GeneratedPlantProfileSnapshot['lodEvaluation'];
     milestonesAt: Record<
         keyof GeneratedPlantProfileSnapshot['milestonesMs'],
         number | null
     >;
     pipeline: GeneratedPlantProfilePipelineCounts;
-    schedulerBaseline: GeneratedLSystemTaskSchedulerSnapshot | null;
+    schedulerBaseline: GeneratedPlantTaskSchedulerSnapshot | null;
     selectedBlockId: string;
     selectedRaisedBedId: number;
     sessionId: number;
@@ -131,8 +131,8 @@ const emptyPipelineCounts = (): GeneratedPlantProfilePipelineCounts => ({
         renderDataBuildDurationTotalMs: 0,
         rootBatchingDurationMaxMs: 0,
         rootBatchingDurationTotalMs: 0,
-        symbolGenerationDurationMaxMs: 0,
-        symbolGenerationDurationTotalMs: 0,
+        topologyGenerationDurationMaxMs: 0,
+        topologyGenerationDurationTotalMs: 0,
         totalDurationMaxMs: 0,
         totalDurationTotalMs: 0,
         transferByteLengthMax: 0,
@@ -190,7 +190,7 @@ function createState(sessionId = 0): ProfileState {
         },
         error: null,
         fields: new Map(),
-        lSystem: {
+        generation: {
             cancelledTaskCount: 0,
             completedTaskCount: 0,
             requestedTaskCount: 0,
@@ -416,7 +416,7 @@ function createSnapshot(): GeneratedPlantProfileSnapshot {
         camera: { ...state.camera },
         error: state.error,
         instanceBuffers: getGeneratedPlantInstanceBufferMetricsSnapshot(),
-        lSystem: { ...state.lSystem },
+        generation: { ...state.generation },
         lodEvaluation: { ...state.lodEvaluation },
         milestonesMs: {
             cameraSettled: toRelativeMilliseconds(
@@ -529,7 +529,7 @@ export function startGeneratedPlantProfile({
     selectedRaisedBedId,
     templateCacheBaseline,
 }: {
-    schedulerBaseline?: GeneratedLSystemTaskSchedulerSnapshot;
+    schedulerBaseline?: GeneratedPlantTaskSchedulerSnapshot;
     selectedBlockId: string;
     selectedRaisedBedId: number;
     templateCacheBaseline?: GeneratedPlantTemplateCacheSnapshot;
@@ -672,7 +672,7 @@ export function recordGeneratedPlantProfileBuild({
     publish();
 }
 
-export function recordGeneratedPlantProfileLSystemRequest({
+export function recordGeneratedPlantProfileGenerationRequest({
     requestedTaskCount,
     sessionId,
     workerTaskCount,
@@ -684,15 +684,15 @@ export function recordGeneratedPlantProfileLSystemRequest({
     if (!acceptsSession(sessionId)) {
         return;
     }
-    state.lSystem.requestedTaskCount += requestedTaskCount;
+    state.generation.requestedTaskCount += requestedTaskCount;
     if (workerTaskCount > 0) {
-        state.lSystem.workerRequestCount += 1;
-        state.lSystem.workerTaskCount += workerTaskCount;
+        state.generation.workerRequestCount += 1;
+        state.generation.workerTaskCount += workerTaskCount;
     }
     publish();
 }
 
-export function recordGeneratedPlantProfileLSystemCompletion({
+export function recordGeneratedPlantProfileGenerationCompletion({
     completedTaskCount,
     durationMs,
     sessionId,
@@ -706,42 +706,42 @@ export function recordGeneratedPlantProfileLSystemCompletion({
     if (!acceptsSession(sessionId)) {
         return;
     }
-    state.lSystem.completedTaskCount += completedTaskCount;
-    state.lSystem.workerDurationTotalMs += durationMs;
-    state.lSystem.workerDurationMaxMs = Math.max(
-        state.lSystem.workerDurationMaxMs,
+    state.generation.completedTaskCount += completedTaskCount;
+    state.generation.workerDurationTotalMs += durationMs;
+    state.generation.workerDurationMaxMs = Math.max(
+        state.generation.workerDurationMaxMs,
         durationMs,
     );
     if (workerFailed) {
-        state.lSystem.workerFailureCount += 1;
+        state.generation.workerFailureCount += 1;
     }
     publish();
 }
 
-export function recordGeneratedPlantProfileLSystemSyncFallback(
+export function recordGeneratedPlantProfileGenerationSyncFallback(
     taskCount: number,
     sessionId?: number,
 ) {
     if (!acceptsSession(sessionId) || taskCount <= 0) {
         return;
     }
-    state.lSystem.syncFallbackTaskCount += taskCount;
+    state.generation.syncFallbackTaskCount += taskCount;
     publish();
 }
 
-export function recordGeneratedPlantProfileLSystemCancellation(
+export function recordGeneratedPlantProfileGenerationCancellation(
     cancelledTaskCount: number,
     sessionId?: number,
 ) {
     if (!acceptsSession(sessionId) || cancelledTaskCount <= 0) {
         return;
     }
-    state.lSystem.cancelledTaskCount += cancelledTaskCount;
+    state.generation.cancelledTaskCount += cancelledTaskCount;
     publish();
 }
 
 export function recordGeneratedPlantProfileSchedulerSnapshot(
-    snapshot: GeneratedLSystemTaskSchedulerSnapshot,
+    snapshot: GeneratedPlantTaskSchedulerSnapshot,
     sessionId?: number,
 ) {
     if (!acceptsSession(sessionId)) {
@@ -873,7 +873,7 @@ export function recordGeneratedPlantProfilePackedWorkerResult({
             packingDurationMs: 0,
             renderDataBuildDurationMs: 0,
             rootBatchingDurationMs: 0,
-            symbolGenerationDurationMs: 0,
+            topologyGenerationDurationMs: 0,
             totalDurationMs: buildDurationMs ?? Number.NaN,
         };
     const timingValues = Object.values(resolvedTimings);
@@ -913,12 +913,12 @@ export function recordGeneratedPlantProfilePackedWorkerResult({
     );
     packedWorker.rootBatchingDurationTotalMs +=
         resolvedTimings.rootBatchingDurationMs;
-    packedWorker.symbolGenerationDurationMaxMs = Math.max(
-        packedWorker.symbolGenerationDurationMaxMs,
-        resolvedTimings.symbolGenerationDurationMs,
+    packedWorker.topologyGenerationDurationMaxMs = Math.max(
+        packedWorker.topologyGenerationDurationMaxMs,
+        resolvedTimings.topologyGenerationDurationMs,
     );
-    packedWorker.symbolGenerationDurationTotalMs +=
-        resolvedTimings.symbolGenerationDurationMs;
+    packedWorker.topologyGenerationDurationTotalMs +=
+        resolvedTimings.topologyGenerationDurationMs;
     packedWorker.totalDurationMaxMs = Math.max(
         packedWorker.totalDurationMaxMs,
         resolvedTimings.totalDurationMs,

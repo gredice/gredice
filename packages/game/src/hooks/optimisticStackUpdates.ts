@@ -1,4 +1,4 @@
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 
 export function rotateBlocksInStacks({
     blockIds,
@@ -7,7 +7,7 @@ export function rotateBlocksInStacks({
 }: {
     blockIds: Iterable<string>;
     rotation: number;
-    stacks: Stack[];
+    stacks: GardenStack[];
 }) {
     const blockIdSet = new Set(blockIds);
     if (blockIdSet.size === 0) {

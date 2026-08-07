@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { invalidate } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { meshChunkSize } from '../entities/chunkedMeshGeometry';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { resetPlacementAnimationProfileMetrics } from '../entities/placementAnimationProfileMetrics';
-import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedLSystem';
+import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedPlantRenderData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import { useGameState } from '../useGameState';
@@ -12,6 +14,10 @@ import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
+import {
+    type GameProfileMetadata,
+    updateGameProfileMetadata,
+} from './gameProfileMetadata';
 import {
     failGeneratedPlantProfile,
     recordGeneratedPlantProfileCamera,
@@ -23,10 +29,18 @@ export const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
 export const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
+export const gameProfileOutlineCommandEventName =
+    'gredice:game-profile-outline-command';
 
 type ProfileGarden = {
+    id?: number;
     raisedBeds: Array<{
         blockId?: string | null;
+        fields?: Array<{
+            active: boolean;
+            id?: number | null;
+            positionIndex: number;
+        }>;
         id: number;
         name?: string | null;
     }>;
@@ -59,6 +73,121 @@ export type GameProfilePlacementCommand =
           action: 'run';
           staggerMs: number;
       };
+
+export type GameProfileOutlineCommand =
+    | {
+          action: 'hide';
+      }
+    | {
+          action: 'show';
+          raisedBedId: number;
+      };
+
+export type GameProfileOperationVisualHighlightRequest = {
+    fieldId: number;
+    positionIndex: number;
+    raisedBedId: number;
+};
+
+type OperationVisualHighlightProfileMetadataUpdate = Pick<
+    GameProfileMetadata,
+    | 'operationVisualHighlightProfileDispatched'
+    | 'operationVisualHighlightProfileTargetFieldId'
+    | 'operationVisualHighlightProfileTargetGardenId'
+    | 'operationVisualHighlightProfileTargetPositionIndex'
+    | 'operationVisualHighlightProfileTargetRaisedBedId'
+>;
+
+function readProfileInteger(value: string | null | undefined, minimum: number) {
+    if (typeof value !== 'string' || value.length === 0) {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= minimum ? parsed : null;
+}
+
+export function readGameProfileOperationVisualHighlightRequest({
+    enabled,
+    fieldId,
+    positionIndex,
+    raisedBedId,
+}: {
+    enabled?: string | null;
+    fieldId?: string | null;
+    positionIndex?: string | null;
+    raisedBedId?: string | null;
+}): GameProfileOperationVisualHighlightRequest | null {
+    if (enabled !== '1') {
+        return null;
+    }
+
+    const parsedFieldId = readProfileInteger(fieldId, 1);
+    const parsedPositionIndex = readProfileInteger(positionIndex, 0);
+    const parsedRaisedBedId = readProfileInteger(raisedBedId, 1);
+    if (
+        parsedFieldId === null ||
+        parsedPositionIndex === null ||
+        parsedRaisedBedId === null
+    ) {
+        return null;
+    }
+
+    return {
+        fieldId: parsedFieldId,
+        positionIndex: parsedPositionIndex,
+        raisedBedId: parsedRaisedBedId,
+    };
+}
+
+export function resolveGameProfileOperationVisualHighlight(
+    garden: ProfileGarden | null | undefined,
+    request: GameProfileOperationVisualHighlightRequest | null,
+) {
+    const gardenId = garden?.id;
+    if (
+        !garden ||
+        !request ||
+        typeof gardenId !== 'number' ||
+        !Number.isInteger(gardenId) ||
+        gardenId <= 0
+    ) {
+        return null;
+    }
+
+    const raisedBed = garden.raisedBeds.find(
+        (candidate) => candidate.id === request.raisedBedId,
+    );
+    if (!raisedBed) {
+        return null;
+    }
+
+    const field = raisedBed.fields?.find(
+        (candidate) =>
+            candidate.active &&
+            candidate.id === request.fieldId &&
+            candidate.positionIndex === request.positionIndex,
+    );
+    if (!field || typeof field.id !== 'number') {
+        return null;
+    }
+
+    const raisedBedName = raisedBed?.name?.trim() || null;
+    return {
+        fieldId: field.id,
+        gardenId,
+        label: `Polje ${field.positionIndex + 1}`,
+        message: 'Profil operacijskih vizuala',
+        positionIndex: field.positionIndex,
+        raisedBedId: raisedBed.id,
+        raisedBedName,
+    };
+}
+
+function updateOperationVisualHighlightProfileMetadata(
+    metadata: OperationVisualHighlightProfileMetadataUpdate,
+) {
+    updateGameProfileMetadata(metadata);
+}
 
 export function readGameProfileCloseupCommand(
     value: unknown,
@@ -113,6 +242,30 @@ export function readGameProfilePlacementCommand(
     }
 
     return { action, staggerMs };
+}
+
+export function readGameProfileOutlineCommand(
+    value: unknown,
+): GameProfileOutlineCommand | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const action = Reflect.get(value, 'action');
+    if (action === 'hide') {
+        return { action };
+    }
+    const raisedBedId = Reflect.get(value, 'raisedBedId');
+    if (
+        action === 'show' &&
+        typeof raisedBedId === 'number' &&
+        Number.isInteger(raisedBedId) &&
+        raisedBedId > 0
+    ) {
+        return { action, raisedBedId };
+    }
+
+    return null;
 }
 
 const instancedBlockNameSet: ReadonlySet<string> = new Set(instancedBlockNames);
@@ -193,6 +346,7 @@ export function resolveGameProfileRaisedBedTarget(
 
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
+    const operationVisualHighlightDispatchKeyRef = useRef<string | null>(null);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
         (current) => current.closeupCameraActive,
@@ -206,6 +360,12 @@ export function GameProfileController() {
     );
     const cancelBlockPlacementDropAnimation = useGameState(
         (current) => current.cancelBlockPlacementDropAnimation,
+    );
+    const setGardenVisitSummaryHighlight = useGameState(
+        (current) => current.setGardenVisitSummaryHighlight,
+    );
+    const clearGardenVisitSummaryHighlight = useGameState(
+        (current) => current.clearGardenVisitSummaryHighlight,
     );
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
@@ -231,6 +391,98 @@ export function GameProfileController() {
             recordGeneratedPlantProfileCamera({ zoom: snapshot.zoom });
         });
     }, [gameCamera]);
+
+    useEffect(() => {
+        const profileElement = document.querySelector(
+            '[data-game-profile-operation-visuals]',
+        );
+        if (!(profileElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const request = readGameProfileOperationVisualHighlightRequest({
+            enabled: profileElement.getAttribute(
+                'data-game-profile-operation-visuals',
+            ),
+            fieldId: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-field-id',
+            ),
+            positionIndex: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-position-index',
+            ),
+            raisedBedId: profileElement.getAttribute(
+                'data-game-profile-operation-visual-highlight-raised-bed-id',
+            ),
+        });
+        if (
+            !request ||
+            !garden ||
+            typeof garden.id !== 'number' ||
+            !Number.isInteger(garden.id) ||
+            garden.id <= 0
+        ) {
+            return;
+        }
+
+        const highlight = resolveGameProfileOperationVisualHighlight(
+            garden,
+            request,
+        );
+        if (!highlight) {
+            if (operationVisualHighlightDispatchKeyRef.current !== null) {
+                clearGardenVisitSummaryHighlight();
+                operationVisualHighlightDispatchKeyRef.current = null;
+            }
+            updateOperationVisualHighlightProfileMetadata({
+                operationVisualHighlightProfileDispatched: false,
+                operationVisualHighlightProfileTargetFieldId: request.fieldId,
+                operationVisualHighlightProfileTargetGardenId: garden.id,
+                operationVisualHighlightProfileTargetPositionIndex:
+                    request.positionIndex,
+                operationVisualHighlightProfileTargetRaisedBedId:
+                    request.raisedBedId,
+            });
+            return;
+        }
+
+        const dispatchKey = [
+            highlight.gardenId,
+            highlight.raisedBedId,
+            highlight.fieldId,
+            highlight.positionIndex,
+        ].join(':');
+        if (operationVisualHighlightDispatchKeyRef.current === dispatchKey) {
+            return;
+        }
+
+        setGardenVisitSummaryHighlight(highlight);
+        operationVisualHighlightDispatchKeyRef.current = dispatchKey;
+        invalidate(undefined, 2);
+        updateOperationVisualHighlightProfileMetadata({
+            operationVisualHighlightProfileDispatched: true,
+            operationVisualHighlightProfileTargetFieldId: highlight.fieldId,
+            operationVisualHighlightProfileTargetGardenId: highlight.gardenId,
+            operationVisualHighlightProfileTargetPositionIndex:
+                highlight.positionIndex,
+            operationVisualHighlightProfileTargetRaisedBedId:
+                highlight.raisedBedId,
+        });
+    }, [
+        clearGardenVisitSummaryHighlight,
+        garden,
+        setGardenVisitSummaryHighlight,
+    ]);
+
+    useEffect(
+        () => () => {
+            if (operationVisualHighlightDispatchKeyRef.current === null) {
+                return;
+            }
+            clearGardenVisitSummaryHighlight();
+            operationVisualHighlightDispatchKeyRef.current = null;
+        },
+        [clearGardenVisitSummaryHighlight],
+    );
 
     useEffect(() => {
         const handleCommand = (event: Event) => {
@@ -361,6 +613,53 @@ export function GameProfileController() {
         garden,
         queueBlockPlacementDropAnimation,
     ]);
+
+    useEffect(() => {
+        const setHoveredBlock = useHoveredBlockStore.getState().setHoveredBlock;
+        const handleCommand = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readGameProfileOutlineCommand(event.detail)
+                    : null;
+            if (!command || command.action === 'hide') {
+                if (command) {
+                    setHoveredBlock(null);
+                    invalidate(undefined, 2);
+                    updateGameProfileMetadata({
+                        hoverOutlineProfileCommandAction: command.action,
+                        hoverOutlineProfileTargetBlockId: null,
+                        hoverOutlineProfileTargetRaisedBedId: null,
+                    });
+                }
+                return;
+            }
+
+            const target = resolveGameProfileRaisedBedTarget(
+                garden,
+                command.raisedBedId,
+            );
+            setHoveredBlock(target?.block ?? null);
+            invalidate(undefined, 2);
+            updateGameProfileMetadata({
+                hoverOutlineProfileCommandAction: command.action,
+                hoverOutlineProfileTargetBlockId: target?.blockId ?? null,
+                hoverOutlineProfileTargetRaisedBedId:
+                    target?.raisedBedId ?? null,
+            });
+        };
+
+        window.addEventListener(
+            gameProfileOutlineCommandEventName,
+            handleCommand,
+        );
+        return () => {
+            window.removeEventListener(
+                gameProfileOutlineCommandEventName,
+                handleCommand,
+            );
+            setHoveredBlock(null);
+        };
+    }, [garden]);
 
     return null;
 }

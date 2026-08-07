@@ -317,10 +317,7 @@ export function ShoppingCart({
                     />
                 ) : null}
                 {checkout.isError ? (
-                    <Alert color="danger">
-                        Plaćanje nije pokrenuto. Provjeri termin i datume branja
-                        pa pokušaj ponovno.
-                    </Alert>
+                    <Alert color="danger">{checkout.error.message}</Alert>
                 ) : null}
             </ShoppingCartStepTransition>
         );
@@ -415,6 +412,11 @@ export function ShoppingCart({
                                     ))}
                                 </Stack>
                             )}
+                            {checkout.isError ? (
+                                <Alert color="danger">
+                                    {checkout.error.message}
+                                </Alert>
+                            ) : null}
                             <div className="flex flex-row gap-2 justify-between flex-wrap">
                                 {/* TODO: Localize */}
                                 <ModalConfirm
