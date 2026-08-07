@@ -34,7 +34,7 @@ overrides:
   'ip-address': '10.2.0'
   'minimatch@10>brace-expansion': '5.0.7'
   'openapi-typescript@7.13.0>typescript': '-'
-  'postcss': '8.5.16'
+  'postcss': '8.5.23'
   'qs': '6.15.2'
   'react-docgen-typescript@2.4.0>typescript': '-'
   'tsconfck@3.1.6>typescript': '-'
