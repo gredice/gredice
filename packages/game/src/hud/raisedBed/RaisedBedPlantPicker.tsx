@@ -1,5 +1,6 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
@@ -263,7 +264,6 @@ export function PlantPicker({
     const searchInputId = useId();
     const sowingModeName = useId();
     const plantDateInputId = useId();
-    const plantDateLabelId = useId();
     const greenhouseSowingSwitchId = useId();
     const greenhouseSowingLabelId = useId();
     const shouldRestoreSearchFocusRef = useRef(false);
@@ -998,32 +998,26 @@ export function PlantPicker({
                                     ) : selectedOutletOfferUnavailable ? null : (
                                         <div className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)] items-end gap-2 rounded-lg border border-green-200 bg-green-50/70 p-3 dark:border-green-900 dark:bg-green-950/30">
                                             <div className="min-w-0 space-y-1.5">
-                                                <label
-                                                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                                                    htmlFor={plantDateInputId}
-                                                    id={plantDateLabelId}
-                                                >
-                                                    <Calendar className="size-4 shrink-0 text-green-700 dark:text-green-300" />
-                                                    <span className="min-w-0">
-                                                        Datum sijanja
-                                                    </span>
-                                                </label>
-                                                <Input
-                                                    aria-labelledby={
-                                                        plantDateLabelId
-                                                    }
+                                                <CalendarDatePicker
                                                     className="w-full border-green-200 bg-card dark:border-green-900"
                                                     fullWidth
                                                     id={plantDateInputId}
+                                                    label={
+                                                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                            <Calendar className="size-4 shrink-0 text-green-700 dark:text-green-300" />
+                                                            <span className="min-w-0">
+                                                                Datum sijanja
+                                                            </span>
+                                                        </span>
+                                                    }
                                                     max={max}
                                                     min={min}
                                                     name="plantDate"
-                                                    onChange={(e) =>
+                                                    onValueChange={(date) =>
                                                         handlePlantDateChange(
-                                                            e.target.value,
+                                                            date,
                                                         )
                                                     }
-                                                    type="date"
                                                     value={plantDate}
                                                 />
                                             </div>

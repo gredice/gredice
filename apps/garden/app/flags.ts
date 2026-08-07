@@ -35,3 +35,11 @@ export const enableSuncokretDebugFlag = flag<boolean>({
     decide: () => false,
     options: booleanFlagOptions,
 });
+
+export const enableGardenAvatarFlag = flag<boolean>({
+    key: 'enableGardenAvatar',
+    description:
+        'Enable the experimental walkable gardener with POV and third-person cameras.',
+    decide: () => false,
+    options: booleanFlagOptions,
+});

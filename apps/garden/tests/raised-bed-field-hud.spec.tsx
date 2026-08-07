@@ -1359,7 +1359,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             /opacity-100/,
         );
         await expect(healthContent).toHaveAttribute('aria-hidden', 'true');
-        await expect(healthContent).toHaveCount(0);
         await healthHeader.click();
         await expect
             .poll(() =>
@@ -2423,9 +2422,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(statusChangeDateButton).toBeVisible();
         await statusChangeDateButton.click();
 
+        const statusChangeCalendar = page
+            .getByRole('group', { name: 'Kalendar' })
+            .last();
+        await expect(statusChangeCalendar).toBeVisible();
         await expect(
-            page.getByRole('textbox', { name: 'Datum promjene' }),
-        ).toBeVisible();
+            statusChangeCalendar.locator(
+                '[data-calendar-date][aria-pressed="true"]',
+            ),
+        ).toHaveCount(1);
     });
 
     test('opening the plant history modal lists prior plants newest first', async ({

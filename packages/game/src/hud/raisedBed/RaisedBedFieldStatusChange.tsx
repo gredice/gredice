@@ -2,7 +2,7 @@ import {
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
-import { Input } from '@gredice/ui/Input';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Calendar, Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
@@ -116,14 +116,15 @@ export function RaisedBedFieldStatusChange({
                             : 'Stanje biljke'}
                     </Typography>
                     {hasAllowedNextStatuses && (
-                        <Popper
+                        <CalendarDatePicker
                             open={datePickerOpen}
                             onOpenChange={setDatePickerOpen}
                             side="bottom"
                             align="end"
-                            sideOffset={8}
-                            container={datePickerContainer}
-                            className="w-72 p-3"
+                            max={formatLocalDate(new Date())}
+                            name="statusChangeDate"
+                            onValueChange={setSelectedDate}
+                            popoverContainer={datePickerContainer}
                             trigger={
                                 <button
                                     type="button"
@@ -138,21 +139,8 @@ export function RaisedBedFieldStatusChange({
                                     {formatStatusChangeDate(selectedDate)}
                                 </button>
                             }
-                        >
-                            <Input
-                                type="date"
-                                label="Datum promjene"
-                                name="statusChangeDate"
-                                className="w-full bg-card"
-                                value={selectedDate}
-                                onChange={(e) => {
-                                    setSelectedDate(e.target.value);
-                                    setDatePickerOpen(false);
-                                }}
-                                max={formatLocalDate(new Date())}
-                                required
-                            />
-                        </Popper>
+                            value={selectedDate}
+                        />
                     )}
                 </Row>
                 {hasAllowedNextStatuses ? (
