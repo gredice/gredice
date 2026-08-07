@@ -126,6 +126,11 @@ import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
 } from '../../../lib/garden/publicGardenSerialization';
+import {
+    publicGardenVisitorPresenceBodySchema,
+    removePublicGardenVisitorPresence,
+    updatePublicGardenVisitorPresence,
+} from '../../../lib/garden/publicGardenVisitorPresence';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -1928,6 +1933,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 likeCount: likeCounts.get(garden.id) ?? 0,
                 queuedTasks,
             });
+        },
+    )
+    .post(
+        '/:gardenId/public/visitors',
+        describeRoute({
+            description:
+                'Publish an anonymous visitor position and read other live visitors',
+            security: publicSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', publicGardenVisitorPresenceBodySchema),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const body = context.req.valid('json');
+            if (body.action === 'leave') {
+                await removePublicGardenVisitorPresence({
+                    gardenId: gardenIdNumber,
+                    visitorId: body.visitorId,
+                });
+                return context.json({ live: true, visitors: [] });
+            }
+
+            return context.json(
+                await updatePublicGardenVisitorPresence({
+                    gardenId: gardenIdNumber,
+                    presence: body,
+                }),
+            );
         },
     )
     .patch(

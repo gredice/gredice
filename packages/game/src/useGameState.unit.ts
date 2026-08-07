@@ -576,6 +576,9 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
     try {
         store.getState().setGardenAvatarView('third-person');
         store.getState().setGardenAvatarMoveInput({ forward: 1, right: -1 });
+        store.getState().setGardenAvatarSprintInput(true);
+        store.getState().setGardenAvatarCrouchInput(true);
+        store.getState().setGardenAvatarZoomInput(true);
         store.getState().requestGardenAvatarJump();
 
         assert.equal(store.getState().gardenAvatarView, 'third-person');
@@ -584,6 +587,9 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
             right: -1,
         });
         assert.equal(store.getState().gardenAvatarJumpRequest, 1);
+        assert.equal(store.getState().gardenAvatarSprintInput, true);
+        assert.equal(store.getState().gardenAvatarCrouchInput, true);
+        assert.equal(store.getState().gardenAvatarZoomInput, true);
 
         store.getState().setGardenAvatarView('overview');
         assert.equal(store.getState().gardenAvatarView, 'overview');
@@ -591,6 +597,9 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
             forward: 0,
             right: 0,
         });
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+        assert.equal(store.getState().gardenAvatarZoomInput, false);
     } finally {
         store.getState().audio.dispose();
     }

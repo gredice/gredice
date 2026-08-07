@@ -25,6 +25,9 @@ import { Vector3 } from 'three';
 import { BlockInteractionLayer } from '../controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from '../controls/BlockInteractionRegistry';
 import { GameCameraRig } from '../controls/GameCameraRig';
+import { GardenAvatar } from '../entities/avatar/GardenAvatar';
+import { GardenVisitorAvatar } from '../entities/avatar/GardenVisitorAvatar';
+import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
 import { Cats } from '../entities/cats/Cats';
@@ -41,6 +44,7 @@ import { currentGardenKeys } from '../hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from '../hooks/useDeferredSceneDetails';
 import { useGardensKeys } from '../hooks/useGardens';
 import { useAllSorts } from '../hooks/usePlantSorts';
+import { GardenAvatarHud } from '../hud/GardenAvatarHud';
 import { ParticleSystemProvider } from '../particles/ParticleSystem';
 import { Environment } from '../scene/Environment';
 import {
@@ -56,6 +60,7 @@ import {
     GameStateContext,
     type GameStateStore,
     useDisposeGameStateStore,
+    useGameState,
 } from '../useGameState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import {
@@ -70,6 +75,7 @@ import {
 import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
 import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
 import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
+import type { PublicGardenRaisedBed } from './publicGardenRaisedBedDetailsModel';
 
 export type PublicGardenBlock = Block;
 
@@ -129,6 +135,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     deferDetails?: boolean;
     className?: string;
     capture?: PublicGardenCapture;
+    visitorPresence?: GardenVisitorPresenceController;
 };
 
 const publicGardenCaptureQuality = {
@@ -379,6 +386,7 @@ function PublicGardenScene({
     normalizedStacks,
     onSelectRaisedBedBlock,
     renderDetails,
+    visitorPresence,
 }: {
     capture?: PublicGardenViewerProps['capture'];
     initialView: PublicGardenInitialView;
@@ -388,12 +396,16 @@ function PublicGardenScene({
     normalizedStacks: Stack[];
     onSelectRaisedBedBlock: (blockId: string) => void;
     renderDetails: boolean;
+    visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
     const blockDataLoaded = Boolean(blockDataQuery.data);
     const plantSortsQuery = useAllSorts();
     const plantSortsLoaded = Boolean(plantSortsQuery.data);
     const fetchingQueryCount = useIsFetching();
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const gardenAvatarActive =
+        Boolean(visitorPresence) && gardenAvatarView !== 'overview';
     const qualityProfile = useMemo(
         () =>
             capture?.output
@@ -496,7 +508,7 @@ function PublicGardenScene({
                                             />
                                         </Suspense>
                                     ) : null}
-                                    {!capture ? (
+                                    {!capture && !gardenAvatarActive ? (
                                         <>
                                             <PublicGardenRaisedBedInteractions
                                                 onSelect={
@@ -542,10 +554,36 @@ function PublicGardenScene({
                                             />
                                         </Suspense>
                                     )}
+                                    {visitorPresence ? (
+                                        <Suspense fallback={null}>
+                                            <GardenAvatar
+                                                key={
+                                                    visitorPresence.localVisitorId
+                                                }
+                                                onPresenceChange={
+                                                    visitorPresence.onLocalPresenceChange
+                                                }
+                                                roamSeed={
+                                                    visitorPresence.localVisitorId
+                                                }
+                                                stacks={normalizedStacks}
+                                            />
+                                            {visitorPresence.visitors.map(
+                                                (visitor) => (
+                                                    <GardenVisitorAvatar
+                                                        key={visitor.id}
+                                                        presence={visitor}
+                                                    />
+                                                ),
+                                            )}
+                                        </Suspense>
+                                    ) : null}
                                 </group>
                             </Suspense>
                             <GameCameraRig
-                                controlsEnabled={!capture}
+                                controlsEnabled={
+                                    !capture && !gardenAvatarActive
+                                }
                                 initialPosition={initialView.cameraPosition}
                                 initialSnapshot={
                                     garden?.homeCamera ?? undefined
@@ -579,6 +617,41 @@ function PublicGardenScene({
                 <div className="h-full w-full bg-[#d9f2dc]" />
             )}
         </div>
+    );
+}
+
+function PublicGardenInteractiveOverlays({
+    onCloseRaisedBed,
+    onSelectRaisedBed,
+    raisedBeds,
+    selectedRaisedBed,
+    visitorPresenceEnabled,
+}: {
+    onCloseRaisedBed: () => void;
+    onSelectRaisedBed: (raisedBedId: number) => void;
+    raisedBeds: PublicGardenRaisedBed[];
+    selectedRaisedBed: PublicGardenRaisedBed | undefined;
+    visitorPresenceEnabled: boolean;
+}) {
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    if (visitorPresenceEnabled && gardenAvatarView !== 'overview') {
+        return <GardenAvatarHud />;
+    }
+
+    return (
+        <>
+            <PublicGardenRaisedBedPicker
+                onSelect={onSelectRaisedBed}
+                raisedBeds={raisedBeds}
+            />
+            {selectedRaisedBed ? (
+                <PublicGardenRaisedBedDetails
+                    key={selectedRaisedBed.id}
+                    onClose={onCloseRaisedBed}
+                    raisedBed={selectedRaisedBed}
+                />
+            ) : null}
+        </>
     );
 }
 
@@ -629,6 +702,7 @@ export function PublicGardenViewer({
     garden,
     stacks,
     className,
+    visitorPresence,
 }: PublicGardenViewerProps) {
     const resolvedAppBaseUrl = appBaseUrl ?? 'https://vrt.gredice.com';
     const resolvedSpriteBaseUrl = spriteBaseUrl ?? resolvedAppBaseUrl;
@@ -780,11 +854,13 @@ export function PublicGardenViewer({
         if (gameGarden?.id === undefined) {
             setSelectedRaisedBedId(null);
             storeRef.current?.getState().setView({ view: 'normal' });
+            storeRef.current?.getState().setGardenAvatarView('overview');
             return;
         }
 
         setSelectedRaisedBedId(null);
         storeRef.current?.getState().setView({ view: 'normal' });
+        storeRef.current?.getState().setGardenAvatarView('overview');
     }, [gameGarden?.id]);
 
     return (
@@ -819,18 +895,17 @@ export function PublicGardenViewer({
                                         openRaisedBedByBlockId
                                     }
                                     renderDetails={renderDetails}
+                                    visitorPresence={visitorPresence}
                                 />
                                 {gameGarden && !capture ? (
-                                    <PublicGardenRaisedBedPicker
-                                        onSelect={openRaisedBed}
+                                    <PublicGardenInteractiveOverlays
+                                        onCloseRaisedBed={closeRaisedBed}
+                                        onSelectRaisedBed={openRaisedBed}
                                         raisedBeds={selectableRaisedBeds}
-                                    />
-                                ) : null}
-                                {selectedRaisedBed && !capture ? (
-                                    <PublicGardenRaisedBedDetails
-                                        key={selectedRaisedBed.id}
-                                        onClose={closeRaisedBed}
-                                        raisedBed={selectedRaisedBed}
+                                        selectedRaisedBed={selectedRaisedBed}
+                                        visitorPresenceEnabled={Boolean(
+                                            visitorPresence,
+                                        )}
                                     />
                                 ) : null}
                             </div>
