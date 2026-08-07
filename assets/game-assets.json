@@ -352,7 +352,7 @@
             "name": "FarmerAvatar",
             "source": "FarmerAvatar.blend",
             "output": "FarmerAvatar.glb",
-            "version": "3f0cffd896c8",
+            "version": "e59d91f50c94",
             "preload": "lazy",
             "objects": [
                 "FarmerAvatar_Root",
