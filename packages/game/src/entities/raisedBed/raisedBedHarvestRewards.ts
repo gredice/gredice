@@ -24,6 +24,7 @@ type ResolveRaisedBedHarvestPositionsInput = {
 type ResolveRaisedBedHarvestBasketStateInput = {
     fields: RaisedBedHarvestFieldInput[];
     hiddenOperationIds?: ReadonlySet<number>;
+    hiddenOperationIdsResolved?: boolean;
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
@@ -120,9 +121,14 @@ export function resolveRaisedBedHarvestPositions({
 export function resolveRaisedBedHarvestBasketState({
     fields,
     hiddenOperationIds,
+    hiddenOperationIdsResolved = true,
     raisedBedId,
     visualRewards,
 }: ResolveRaisedBedHarvestBasketStateInput): RaisedBedHarvestBasketState | null {
+    if (!hiddenOperationIdsResolved) {
+        return null;
+    }
+
     const harvestRewards = visualRewards.filter(
         (reward) =>
             isHarvestRewardForRaisedBed(reward, raisedBedId) &&
