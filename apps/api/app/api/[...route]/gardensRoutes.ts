@@ -127,7 +127,9 @@ import {
     serializePublicRaisedBedField,
 } from '../../../lib/garden/publicGardenSerialization';
 import {
+    publicGardenVisitorClientAddress,
     publicGardenVisitorPresenceBodySchema,
+    publicGardenVisitorRateLimitAllows,
     removePublicGardenVisitorPresence,
     updatePublicGardenVisitorPresence,
 } from '../../../lib/garden/publicGardenVisitorPresence';
@@ -1956,21 +1958,54 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            const body = context.req.valid('json');
-            if (body.action === 'leave') {
-                await removePublicGardenVisitorPresence({
-                    gardenId: gardenIdNumber,
-                    visitorId: body.visitorId,
-                });
-                return context.json({ live: true, visitors: [] });
+            const withinRateLimit = await publicGardenVisitorRateLimitAllows(
+                publicGardenVisitorClientAddress(context.req.raw.headers),
+            );
+            if (!withinRateLimit) {
+                context.header('Retry-After', '1');
+                return context.json(
+                    { error: 'Too many visitor presence requests' },
+                    429,
+                );
             }
 
-            return context.json(
-                await updatePublicGardenVisitorPresence({
+            const body = context.req.valid('json');
+            if (body.action === 'leave') {
+                const result = await removePublicGardenVisitorPresence({
                     gardenId: gardenIdNumber,
-                    presence: body,
-                }),
-            );
+                    visitorCapability: body.visitorCapability,
+                    visitorId: body.visitorId,
+                });
+                if (result.status === 'unauthorized') {
+                    return context.json(
+                        { error: 'Invalid visitor capability' },
+                        403,
+                    );
+                }
+                return context.json({
+                    live: result.status === 'removed',
+                    visitors: [],
+                });
+            }
+
+            const result = await updatePublicGardenVisitorPresence({
+                gardenId: gardenIdNumber,
+                presence: body,
+            });
+            if (result.status === 'unauthorized') {
+                return context.json(
+                    { error: 'Invalid visitor capability' },
+                    403,
+                );
+            }
+            if (result.status === 'unavailable') {
+                return context.json({ live: false, visitors: [] });
+            }
+            return context.json({
+                live: result.live,
+                visitorCapability: result.visitorCapability,
+                visitors: result.visitors,
+            });
         },
     )
     .patch(

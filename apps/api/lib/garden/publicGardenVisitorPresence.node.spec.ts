@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { selectActivePublicGardenVisitors } from './publicGardenVisitorPresence';
+import {
+    publicGardenVisitorClientAddress,
+    publicGardenVisitorPresenceBodySchema,
+    selectActivePublicGardenVisitors,
+} from './publicGardenVisitorPresence';
 
 const now = Date.parse('2026-08-07T12:00:00.000Z');
 
@@ -51,4 +55,31 @@ test('accepts Redis values returned as serialized JSON', () => {
 
     assert.deepEqual(result.visitors, [presence(peerId)]);
     assert.deepEqual(result.staleVisitorIds, []);
+});
+
+test('requires the private visitor capability before removing presence', () => {
+    const visitorId = '00000000-0000-4000-8000-000000000001';
+    assert.equal(
+        publicGardenVisitorPresenceBodySchema.safeParse({
+            action: 'leave',
+            visitorId,
+        }).success,
+        false,
+    );
+    assert.equal(
+        publicGardenVisitorPresenceBodySchema.safeParse({
+            action: 'leave',
+            visitorCapability: '00000000-0000-4000-8000-000000000002',
+            visitorId,
+        }).success,
+        true,
+    );
+});
+
+test('uses the platform client address instead of a prepended forwarded value', () => {
+    const headers = new Headers({
+        'x-forwarded-for': 'spoofed, trusted-proxy',
+        'x-vercel-forwarded-for': 'visitor-address, edge-proxy',
+    });
+    assert.equal(publicGardenVisitorClientAddress(headers), 'visitor-address');
 });

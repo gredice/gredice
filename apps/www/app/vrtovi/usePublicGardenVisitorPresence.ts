@@ -8,6 +8,8 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const visitorSessionStorageKey = 'gredice-public-garden-visitor-id';
+const visitorCapabilitySessionStorageKey =
+    'gredice-public-garden-visitor-capability';
 const presenceRefreshMs = 500;
 const visitorIdPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -51,20 +53,40 @@ function readVisitors(value: unknown) {
     return value.visitors.filter(isGardenVisitorPresence);
 }
 
-function getVisitorId() {
-    const existing = window.sessionStorage.getItem(visitorSessionStorageKey);
-    if (existing && visitorIdPattern.test(existing)) {
-        return existing;
+function readVisitorCapability(value: unknown) {
+    if (!isRecord(value)) {
+        return null;
     }
-    const visitorId = window.crypto.randomUUID();
+    return typeof value.visitorCapability === 'string' &&
+        visitorIdPattern.test(value.visitorCapability)
+        ? value.visitorCapability
+        : null;
+}
+
+function getVisitorIdentity() {
+    const existing = window.sessionStorage.getItem(visitorSessionStorageKey);
+    const visitorId =
+        existing && visitorIdPattern.test(existing)
+            ? existing
+            : window.crypto.randomUUID();
     window.sessionStorage.setItem(visitorSessionStorageKey, visitorId);
-    return visitorId;
+    const storedCapability = window.sessionStorage.getItem(
+        visitorCapabilitySessionStorageKey,
+    );
+    return {
+        visitorCapability:
+            storedCapability && visitorIdPattern.test(storedCapability)
+                ? storedCapability
+                : null,
+        visitorId,
+    };
 }
 
 export function usePublicGardenVisitorPresence(
     gardenId: number,
 ): GardenVisitorPresenceController {
     const latestPresenceRef = useRef<GardenAvatarPresenceState | null>(null);
+    const visitorCapabilityRef = useRef<string | null>(null);
     const [visitorId, setVisitorId] = useState<string | null>(null);
     const [visitors, setVisitors] = useState<GardenVisitorPresence[]>([]);
 
@@ -76,7 +98,9 @@ export function usePublicGardenVisitorPresence(
     );
 
     useEffect(() => {
-        setVisitorId(getVisitorId());
+        const identity = getVisitorIdentity();
+        visitorCapabilityRef.current = identity.visitorCapability;
+        setVisitorId(identity.visitorId);
     }, []);
 
     useEffect(() => {
@@ -88,6 +112,13 @@ export function usePublicGardenVisitorPresence(
         const abortController = new AbortController();
         let active = true;
         let timeout: ReturnType<typeof setTimeout> | undefined;
+
+        const expireStaleVisitors = () => {
+            const staleBefore = Date.now() - 15_000;
+            setVisitors((current) =>
+                current.filter((visitor) => visitor.updatedAt >= staleBefore),
+            );
+        };
 
         const schedule = (delay = presenceRefreshMs) => {
             timeout = setTimeout(() => void synchronize(), delay);
@@ -104,6 +135,8 @@ export function usePublicGardenVisitorPresence(
                     body: JSON.stringify({
                         action: 'presence',
                         ...presence,
+                        visitorCapability:
+                            visitorCapabilityRef.current ?? undefined,
                         visitorId,
                     }),
                     cache: 'no-store',
@@ -114,18 +147,23 @@ export function usePublicGardenVisitorPresence(
                 if (response.ok) {
                     const body: unknown = await response.json();
                     if (active) {
+                        const visitorCapability = readVisitorCapability(body);
+                        if (visitorCapability) {
+                            visitorCapabilityRef.current = visitorCapability;
+                            window.sessionStorage.setItem(
+                                visitorCapabilitySessionStorageKey,
+                                visitorCapability,
+                            );
+                        }
                         setVisitors(readVisitors(body));
                     }
+                } else if (active) {
+                    expireStaleVisitors();
                 }
             } catch {
                 // The local avatar stays playable when live presence is unavailable.
                 if (active) {
-                    const staleBefore = Date.now() - 15_000;
-                    setVisitors((current) =>
-                        current.filter(
-                            (visitor) => visitor.updatedAt >= staleBefore,
-                        ),
-                    );
+                    expireStaleVisitors();
                 }
             } finally {
                 if (active) {
@@ -134,11 +172,23 @@ export function usePublicGardenVisitorPresence(
             }
         };
 
-        const leaveBody = JSON.stringify({ action: 'leave', visitorId });
         const leave = () => {
+            const visitorCapability = visitorCapabilityRef.current;
+            if (!visitorCapability) {
+                return;
+            }
             navigator.sendBeacon(
                 endpoint,
-                new Blob([leaveBody], { type: 'application/json' }),
+                new Blob(
+                    [
+                        JSON.stringify({
+                            action: 'leave',
+                            visitorCapability,
+                            visitorId,
+                        }),
+                    ],
+                    { type: 'application/json' },
+                ),
             );
         };
 
