@@ -12,6 +12,10 @@ export function useShoppingCartOpenParam() {
     return useQueryState('kosarica', parseAsBoolean.withDefault(false));
 }
 
+export function usePaymentStatusParam() {
+    return useQueryState('placanje', parseAsString);
+}
+
 export function useOutletOpenParam() {
     return useQueryState('outlet', parseAsString);
 }
@@ -86,6 +90,7 @@ export function useOverviewSectionParam() {
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
+    placanje: parseAsString,
     outlet: parseAsString,
     'outlet-ponuda': parseAsInteger,
     ruksak: parseAsBoolean,

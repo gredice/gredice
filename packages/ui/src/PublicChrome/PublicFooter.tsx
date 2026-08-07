@@ -142,6 +142,20 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Bolesti',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantDiseases,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Štetnici',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantPests,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljni susjedi',
                             href: publicChromeHref(
                                 PublicPagePaths.CompanionPlanting,
@@ -225,6 +239,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             label: 'Natječaji',
                             href: publicChromeHref(
                                 PublicPagePaths.LegalOccasions,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'AI integracije',
+                            href: publicChromeHref(
+                                PublicPagePaths.MCP,
                                 linkMode,
                             ),
                         },

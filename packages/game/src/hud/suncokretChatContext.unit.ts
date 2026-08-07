@@ -122,3 +122,23 @@ test('provider tool protocol variants are replaced with a friendly retry message
         assert.match(sanitized, /Pokušaj ponovno/);
     }
 });
+
+test('english model planning preamble is not displayed before a Croatian answer', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        "Confirmed: watering is available. I'll explain briefly.Nažalost, prethodni odgovor nije bio točan. Zalijevanje se može naručiti.",
+    );
+
+    assert.strictEqual(
+        sanitized,
+        'Nažalost, prethodni odgovor nije bio točan. Zalijevanje se može naručiti.',
+    );
+});
+
+test('english model planning without a Croatian answer uses the retry fallback', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        'I should inspect the tool output before answering.',
+    );
+
+    assert.doesNotMatch(sanitized, /I should|tool output/);
+    assert.match(sanitized, /Pokušaj ponovno/);
+});

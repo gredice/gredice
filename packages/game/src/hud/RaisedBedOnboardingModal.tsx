@@ -958,7 +958,6 @@ export function RaisedBedOnboardingModal({
                     raisedBedId: targetRaisedBed.id,
                     positionIndex: placement.positionIndex,
                     additionalData: JSON.stringify({ scheduledDate }),
-                    currency: 'eur',
                 });
             }
 

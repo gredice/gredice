@@ -1,6 +1,6 @@
 import {
     type DeliveryLifecycleMilestone,
-    notifyDeliveryRequestEvent,
+    notifyDeliveryRequestGroupEvent,
 } from '@gredice/notifications';
 import {
     abandonDeliveryRun,
@@ -1685,13 +1685,13 @@ export async function deliverDeliveryStop({
     if (!recorded.replayed) {
         await isolateCustomerDeliveryPostCommitNotification(
             async () => {
-                await Promise.all(
-                    recorded.newlyFulfilledRequestIds.map((requestId) =>
-                        notifyDeliveryRequestEvent(requestId, 'updated', {
-                            status: DeliveryRequestStates.FULFILLED,
-                            note: notes,
-                        }),
-                    ),
+                await notifyDeliveryRequestGroupEvent(
+                    recorded.newlyFulfilledRequestIds,
+                    'updated',
+                    {
+                        status: DeliveryRequestStates.FULFILLED,
+                        note: notes,
+                    },
                 );
             },
             (error) => {

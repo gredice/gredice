@@ -16,6 +16,7 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 - [Delivery](https://www.gredice.com/dostava): Delivery options and service information.
 - [Pricing](https://www.gredice.com/cjenik): Current public pricing and plan information.
 - [Harvest quality and safety](https://www.gredice.com/kvaliteta-i-sigurnost-uroda): Public overview of harvest hygiene, traceability, and handling boundaries.
+- [MCP for AI assistants](https://www.gredice.com/mcp): Connect compatible AI assistants to Gredice public knowledge and authorized garden tools.
 
 ## Company and Support
 

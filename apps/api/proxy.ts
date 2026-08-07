@@ -103,5 +103,8 @@ const proxyHandler: NextProxy = async (
 export default proxyHandler;
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|assets|api).*)'],
+    matcher: [
+        '/api/mcp/:path*',
+        '/((?!_next/static|_next/image|favicon.ico|assets|api).*)',
+    ],
 };

@@ -42,16 +42,12 @@ export function EditorGrassContext() {
         });
     }, []);
 
-    return (
-        <group position={[0, -1, 0]}>
-            {tiles.map((tile) => (
-                <BlockGrass
-                    key={tile.block.id}
-                    stack={tile.stack}
-                    block={tile.block}
-                    rotation={0}
-                />
-            ))}
-        </group>
-    );
+    return tiles.map((tile) => (
+        <BlockGrass
+            key={tile.block.id}
+            stack={tile.stack}
+            block={tile.block}
+            rotation={0}
+        />
+    ));
 }

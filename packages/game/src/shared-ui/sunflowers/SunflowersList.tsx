@@ -113,6 +113,20 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Plaćanje',
         };
     }
+    if (reason.startsWith('sunflowerPackage:')) {
+        return {
+            icon: (
+                <Image
+                    src="https://cdn.gredice.com/sunflower-large.svg"
+                    alt="Suncokret"
+                    width={40}
+                    height={40}
+                    className="size-10"
+                />
+            ),
+            label: 'Kupnja paketa suncokreta',
+        };
+    }
     if (
         reason.startsWith('shoppingCart:') ||
         reason.startsWith('shoppingCartItem:')

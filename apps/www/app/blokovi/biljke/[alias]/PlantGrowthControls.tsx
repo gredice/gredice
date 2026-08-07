@@ -16,7 +16,7 @@ function SliderTickMarks({ totalWeeks }: { totalWeeks: number }) {
     }, [totalWeeks]);
 
     return (
-        <div className="flex justify-between px-0.5 mt-1">
+        <div className="mt-1 flex justify-between px-0.5">
             {ticks.map((week) => (
                 <Typography key={week} level="body3" secondary>
                     {week} tj.
@@ -42,24 +42,38 @@ export function PlantGrowthControls({
     return (
         <Stack spacing={2}>
             <Row justifyContent="space-between">
-                <Typography level="h5">Rast biljke</Typography>
+                <Typography component="h2" level="h5">
+                    Rast biljke
+                </Typography>
                 <Typography level="body2" secondary>
-                    {currentWeeks} / {totalWeeks} tjedana
+                    {currentWeeks}. tjedan od {totalWeeks}
                 </Typography>
             </Row>
             <Stack>
                 <Row justifyContent="space-between">
-                    <span className="text-lg shrink-0" title="Sjemenka">
+                    <span
+                        aria-label="Sjemenka"
+                        className="shrink-0 text-lg"
+                        role="img"
+                    >
                         🌱
                     </span>
-                    <span className="text-lg shrink-0" title="Rastuća biljka">
+                    <span
+                        aria-label="Rastuća biljka"
+                        className="shrink-0 text-lg"
+                        role="img"
+                    >
                         🌿
                     </span>
-                    <span className="text-lg shrink-0" title="Zrela biljka">
+                    <span
+                        aria-label="Zrela biljka"
+                        className="shrink-0 text-lg"
+                        role="img"
+                    >
                         🥬
                     </span>
                 </Row>
-                <div className="flex-1">
+                <label className="flex h-8 flex-1 cursor-pointer items-center">
                     <input
                         type="range"
                         min={0}
@@ -71,7 +85,7 @@ export function PlantGrowthControls({
                         aria-valuetext={`${currentWeeks} od ${totalWeeks} tjedana`}
                         className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-green-600 bg-gradient-to-r from-green-100 via-green-300 to-green-600"
                     />
-                </div>
+                </label>
                 <SliderTickMarks totalWeeks={totalWeeks} />
             </Stack>
         </Stack>

@@ -24,12 +24,10 @@ export const raisedBedFieldHistoryEventTypes = [
     knownEventTypes.raisedBedFields.aiAnalysis,
 ];
 
-const mutableRaisedBedEventTypes = new Set<string>([
-    knownEventTypes.raisedBeds.aiAnalysis,
-]);
-const mutableRaisedBedFieldEventTypes = new Set<string>([
-    knownEventTypes.raisedBedFields.aiAnalysis,
-]);
+const mutableRaisedBedEventTypes = new Set<string>(raisedBedHistoryEventTypes);
+const mutableRaisedBedFieldEventTypes = new Set<string>(
+    raisedBedFieldHistoryEventTypes,
+);
 
 function isValidId(value: number) {
     return Number.isSafeInteger(value) && value > 0;

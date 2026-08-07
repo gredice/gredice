@@ -33,6 +33,9 @@ export type HighTargetMockPlantRenderAttributes = {
     seedingDistance: number;
 };
 
+export const highTargetOperationVisualsQueryParam = 'operationVisuals';
+export const highTargetOperationVisualsQueryValue = '1';
+
 const demoPlantSortIds = {
     tomato: 337,
     carrot: 230,
@@ -223,6 +226,44 @@ export const highTargetMockGardenRaisedBedFixtures: readonly HighTargetMockGarde
     ];
 
 /**
+ * Opt-in operation-visual workload layered over the regular high-target
+ * garden. The default profile remains unchanged.
+ *
+ * The three beds deliberately own different dense visual families so they can
+ * coexist in one deterministic capture:
+ * - bed 1: 18 heavy-weed fields;
+ * - bed 2: 18 supported fields, including one pending and one newly sown seed
+ *   field;
+ * - bed 3: 18 field-scoped protective covers;
+ * - all beds: 54 field-scoped mulch patches.
+ *
+ * The highlight target is exposed to the profile page for a follow-up
+ * controller command. Highlights remain transient and outside the static
+ * operation batches.
+ */
+export const highTargetOperationVisualFixture = {
+    coverRaisedBedId: 3,
+    heavyWeedRaisedBedId: 1,
+    highlight: {
+        fieldId: 201,
+        gardenId: 99996,
+        positionIndex: 0,
+        raisedBedId: 2,
+    },
+    pendingSeed: {
+        fieldId: 201,
+        positionIndex: 0,
+        raisedBedId: 2,
+    },
+    sownSeed: {
+        fieldId: 202,
+        positionIndex: 1,
+        raisedBedId: 2,
+    },
+    supportRaisedBedId: 2,
+} as const;
+
+/**
  * Freeze the plant-density and lifecycle inputs used by the high-quality
  * benchmark. These intentionally span dense row crops and sparse large plants
  * so the 54 fields exercise a representative foliage workload without relying
@@ -333,26 +374,108 @@ export function getHighTargetMockGardenCardinality() {
     };
 }
 
-export function getHighTargetMockGardenPlantInstanceCount() {
-    const instancesPerRaisedBed = mockRaisedBedFieldFixtures.reduce(
-        (total, field) => {
-            const attributes =
-                highTargetMockPlantRenderAttributesBySortId[field.plantSortId];
-            if (!attributes) {
-                throw new Error(
-                    `Missing high-target plant attributes for sort ${field.plantSortId.toString()}.`,
-                );
-            }
-
-            return (
-                total +
-                calculatePlantsPerField(attributes.seedingDistance).totalPlants
+function getHighTargetMockGardenPlantInstancesPerRaisedBed() {
+    return mockRaisedBedFieldFixtures.reduce((total, field) => {
+        const attributes =
+            highTargetMockPlantRenderAttributesBySortId[field.plantSortId];
+        if (!attributes) {
+            throw new Error(
+                `Missing high-target plant attributes for sort ${field.plantSortId.toString()}.`,
             );
-        },
-        0,
-    );
+        }
 
-    return instancesPerRaisedBed * highTargetMockGardenRaisedBedFixtures.length;
+        return (
+            total +
+            calculatePlantsPerField(attributes.seedingDistance).totalPlants
+        );
+    }, 0);
+}
+
+export function getHighTargetMockGardenPlantInstanceCount() {
+    return (
+        getHighTargetMockGardenPlantInstancesPerRaisedBed() *
+        highTargetMockGardenRaisedBedFixtures.length
+    );
+}
+
+function getHighTargetFieldPlantInstanceCount(positionIndex: number) {
+    const field = mockRaisedBedFieldFixtures.find(
+        (candidate) => candidate.positionIndex === positionIndex,
+    );
+    if (!field) {
+        throw new Error(
+            `Missing high-target field fixture at position ${positionIndex.toString()}.`,
+        );
+    }
+
+    const attributes =
+        highTargetMockPlantRenderAttributesBySortId[field.plantSortId];
+    if (!attributes) {
+        throw new Error(
+            `Missing high-target plant attributes for sort ${field.plantSortId.toString()}.`,
+        );
+    }
+
+    return calculatePlantsPerField(attributes.seedingDistance).totalPlants;
+}
+
+export function getHighTargetOperationVisualFixtureCounts() {
+    const fieldCountPerRaisedBed = mockRaisedBedFieldFixtures.length;
+    const seedInstanceCount =
+        getHighTargetFieldPlantInstanceCount(
+            highTargetOperationVisualFixture.pendingSeed.positionIndex,
+        ) +
+        getHighTargetFieldPlantInstanceCount(
+            highTargetOperationVisualFixture.sownSeed.positionIndex,
+        );
+    const heavyWeedBladeCount = fieldCountPerRaisedBed * 10;
+    const supportCount = fieldCountPerRaisedBed;
+    const fieldCoverCount = fieldCountPerRaisedBed;
+    const fieldCoverMeshCount = fieldCoverCount * 7;
+    const fieldMulchCount =
+        fieldCountPerRaisedBed * highTargetMockGardenRaisedBedFixtures.length;
+    const transientHighlightMeshCount = 2;
+    const legacyClearMeshCount =
+        heavyWeedBladeCount +
+        supportCount +
+        fieldCoverMeshCount +
+        fieldMulchCount +
+        seedInstanceCount +
+        transientHighlightMeshCount;
+
+    return {
+        assignedFieldCount: fieldMulchCount,
+        fieldCoverCount,
+        fieldCoverMeshCount,
+        fieldMulchCount,
+        generatedPlantInstanceCount:
+            getHighTargetMockGardenPlantInstanceCount() -
+            getHighTargetMockGardenPlantInstancesPerRaisedBed() -
+            seedInstanceCount,
+        heavyWeedBladeCount,
+        heavyWeedFieldCount: fieldCountPerRaisedBed,
+        legacyClearMeshCount,
+        legacySnowMeshCount: legacyClearMeshCount + fieldMulchCount,
+        pendingSeedFieldCount: 1,
+        seedInstanceCount,
+        sownSeedFieldCount: 1,
+        supportCount,
+        transientHighlightMeshCount,
+    };
+}
+
+export function resolveHighTargetOperationVisualsEnabled(
+    search: string | undefined,
+) {
+    if (!search) {
+        return false;
+    }
+
+    const query = search.startsWith('?') ? search.slice(1) : search;
+    return (
+        new URLSearchParams(query).get(highTargetOperationVisualsQueryParam) ===
+        highTargetOperationVisualsQueryValue
+    );
 }
 
 export function resolveMockGardenProfileReferenceDate(

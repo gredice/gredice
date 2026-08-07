@@ -255,7 +255,6 @@ export function GardenPreviewCaptureStory() {
                     }}
                     className="size-full"
                     deferDetails={false}
-                    enableBlockGeometryMerging
                     garden={captureGarden}
                     spriteBaseUrl={assetBaseUrl}
                 />

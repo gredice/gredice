@@ -46,6 +46,8 @@ import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvi
 import { type CurrentGarden, useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
+import { useSceneCurrentGarden } from './hooks/useSceneCurrentGarden';
+import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundPalette';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
@@ -65,6 +67,7 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
@@ -86,6 +89,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Demo purposes only
     freezeTime?: Date;
+    fixedTimeSeconds?: number;
     dayNightCycleDisabled?: boolean;
     noBackground?: boolean;
     noControls?: boolean;
@@ -106,8 +110,11 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
+    adaptiveHighQuality?: boolean;
     enableGameProfileController?: boolean;
+    enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     flags?: GameFeatureFlags;
+    staticOpaqueSceneCache?: boolean;
 };
 
 type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
@@ -295,7 +302,11 @@ export function GameScene({
     weather,
     deferDetails,
     renderDetails: renderDetailsOverride,
+    adaptiveHighQuality = true,
     enableGameProfileController,
+    enableStaticOpaqueSceneCacheOcclusionFixture,
+    fixedTimeSeconds,
+    staticOpaqueSceneCache = true,
     ...rest
 }: GameSceneInnerProps) {
     useFocusPlacedBlock();
@@ -341,19 +352,24 @@ export function GameScene({
         quality,
     ]);
     const adaptiveHighEnabled = Boolean(
-        flags?.enableAdaptiveHighQualityFlag &&
+        adaptiveHighQuality &&
             qualityProfile.tier === 'high' &&
             (quality === 'high' ||
                 (quality === undefined && gameQualitySetting === 'high')),
     );
-    const adaptiveHighInteractionActive =
-        useAdaptiveHighInteractionActivity(adaptiveHighEnabled);
+    const staticOpaqueCacheEnabled = Boolean(
+        staticOpaqueSceneCache && qualityProfile.tier === 'high',
+    );
+    const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
+        adaptiveHighEnabled || staticOpaqueCacheEnabled,
+    );
     const [adaptiveHighProfile, setAdaptiveHighProfile] =
         useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
-    const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const garden = useSceneCurrentGarden(gardenData);
     const gardenInitialViewKey = garden?.id ?? 'default';
     const gardenInitialHomeCameraRef = useRef<{
         key: string | number;
@@ -381,24 +397,14 @@ export function GameScene({
     const sceneCameraZoom =
         gardenHomeCamera?.zoom ??
         (zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom);
-    const setBackgroundPaletteKey = useGameState(
-        (state) => state.setBackgroundPaletteKey,
-    );
     const gardenBackgroundPalette = garden?.backgroundPalette;
     useClearSandboxEnvironmentOverrides(garden);
+    useSyncGardenBackgroundPalette(gardenBackgroundPalette);
     useWeatherNow(
         !isLocalSandbox && !weatherDisabled && !weather && garden !== undefined,
         garden?.farmId,
     );
     const isLoading = gardenLoading;
-
-    useEffect(() => {
-        if (!gardenBackgroundPalette) {
-            return;
-        }
-
-        setBackgroundPaletteKey(gardenBackgroundPalette);
-    }, [gardenBackgroundPalette, setBackgroundPaletteKey]);
 
     const loadingContext = useGameLoading();
     useEffect(() => {
@@ -437,8 +443,10 @@ export function GameScene({
                     adaptiveHighProfile={adaptiveHighProfile}
                     onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
+                    fixedTimeSeconds={fixedTimeSeconds}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
+                    staticOpaqueCacheEnabled={staticOpaqueCacheEnabled}
                     zoom={sceneCameraZoom}
                     className="!absolute"
                 >
@@ -458,6 +466,10 @@ export function GameScene({
                                 quality={qualityProfile}
                                 weather={weather}
                             />
+                            {enableStaticOpaqueSceneCacheOcclusionFixture &&
+                            staticOpaqueCacheEnabled ? (
+                                <StaticOpaqueSceneCacheOcclusionFixture />
+                            ) : null}
                             <PlacementGroundingShadows
                                 stacks={garden?.stacks}
                             />
@@ -492,9 +504,6 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <EntityInstances
-                                    enableBlockGeometryMerging={Boolean(
-                                        flags?.enableBlockGeometryMergingFlag,
-                                    )}
                                     farmId={garden?.farmId}
                                     quality={qualityProfile}
                                     renderGroundDecorations={

@@ -40,3 +40,26 @@ test('plant LOD keeps close geometry through zoom hysteresis', () => {
         'far',
     );
 });
+
+test('plant LOD supports a wider High-quality detail range', () => {
+    assert.equal(
+        resolvePlantLodLevelWithHysteresis({
+            cameraZoom: 0,
+            currentLevel: 'far',
+            nearHysteresis: 0.01,
+            nearThreshold: 0.1,
+            screenOccupancy: 0.115,
+        }),
+        'near',
+    );
+    assert.equal(
+        resolvePlantLodLevelWithHysteresis({
+            cameraZoom: 0,
+            currentLevel: 'near',
+            nearHysteresis: 0.01,
+            nearThreshold: 0.1,
+            screenOccupancy: 0.091,
+        }),
+        'near',
+    );
+});

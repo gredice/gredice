@@ -9,6 +9,7 @@ import {
     useShoppingCartQueryKey,
 } from '../../../packages/game/src/hooks/useShoppingCart';
 import { ShoppingCartItem } from '../../../packages/game/src/hud/components/shopping-cart/ShoppingCartItem';
+import { PaymentSuccessfulMessage } from '../../../packages/game/src/hud/PaymentSuccessfulMessage';
 import {
     ShoppingCart,
     ShoppingCartHud,
@@ -17,6 +18,7 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { allSorts, testSorts } from './raisedBedFieldHudScenarios';
 
 const now = '2026-05-21T00:00:00.000Z';
 
@@ -98,6 +100,10 @@ const onePresenceItem = [cartItem];
 const twoPresenceItems = [cartItem, basilCartItem];
 const basilAndMintPresenceItems = [basilCartItem, mintCartItem];
 const noPresenceItems: ShoppingCartItemData[] = [];
+const sunflowerCartItem: ShoppingCartItemData = {
+    ...cartItem,
+    currency: 'sunflower',
+};
 
 function createOutletCartItem() {
     const plantSortItem = createPlantSortCartItem();
@@ -135,6 +141,15 @@ function createPaidCartItem() {
         }),
         status: 'paid',
     } as unknown as ShoppingCartItemData;
+}
+
+function createTargetedOperationCartItem() {
+    return {
+        ...cartItem,
+        gardenId: 1,
+        raisedBedId: 1,
+        positionIndex: 0,
+    } as ShoppingCartItemData;
 }
 
 function createPlantSortCartItem() {
@@ -191,7 +206,10 @@ function cartTotal(items: ShoppingCartItemData[]) {
     );
 }
 
-function createOptimisticToggleQueryClient(items = onePresenceItem) {
+function createOptimisticToggleQueryClient(
+    items = onePresenceItem,
+    totalSunflowers = 0,
+) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -218,9 +236,17 @@ function createOptimisticToggleQueryClient(items = onePresenceItem) {
                 id: 1,
                 name: 'Mock gredica',
                 physicalId: '1',
+                fields: [
+                    {
+                        id: 1,
+                        positionIndex: 0,
+                        plantSortId: testSorts.tomato.id,
+                    },
+                ],
             },
         ],
     });
+    queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(['shopping-cart'], {
         allowPurchase: true,
@@ -228,8 +254,10 @@ function createOptimisticToggleQueryClient(items = onePresenceItem) {
         id: 1,
         items,
         notes: [],
-        total: cartTotal(items),
-        totalSunflowers: 0,
+        total: items.some((item) => item.currency === 'eur')
+            ? cartTotal(items)
+            : 0,
+        totalSunflowers,
     });
 
     return queryClient;
@@ -240,18 +268,20 @@ function ShoppingCartOptimisticToggleProviders({
     hasMemory = false,
     item,
     items,
+    totalSunflowers,
 }: PropsWithChildren<{
     hasMemory?: boolean;
     item?: ShoppingCartItemData;
     items?: ShoppingCartItemData[];
+    totalSunflowers?: number;
 }>) {
     const initialItems = useMemo(
         () => items ?? (item ? [item] : onePresenceItem),
         [item, items],
     );
     const queryClient = useMemo(
-        () => createOptimisticToggleQueryClient(initialItems),
-        [initialItems],
+        () => createOptimisticToggleQueryClient(initialItems, totalSunflowers),
+        [initialItems, totalSunflowers],
     );
     const gameStore = useMemo(
         () =>
@@ -417,6 +447,16 @@ export function ShoppingCartPaidItemStory() {
     );
 }
 
+export function ShoppingCartTargetedOperationStory() {
+    const item = useMemo(() => createTargetedOperationCartItem(), []);
+
+    return (
+        <ShoppingCartOptimisticToggleProviders item={item}>
+            <ShoppingCartOptimisticTogglePanel />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
 export function ShoppingCartPlantSortStory() {
     const item = useMemo(() => createPlantSortCartItem(), []);
 
@@ -453,6 +493,19 @@ export function ShoppingCartHudItemsPresenceStory() {
             items={onePresenceItem}
         >
             <ShoppingCartItemsPresencePanel useProductionHud />
+        </ShoppingCartOptimisticToggleProviders>
+    );
+}
+
+export function ShoppingCartSunflowerCheckoutStory() {
+    return (
+        <ShoppingCartOptimisticToggleProviders
+            hasMemory
+            items={[sunflowerCartItem]}
+            totalSunflowers={2500}
+        >
+            <ShoppingCartItemsPresencePanel useProductionHud />
+            <PaymentSuccessfulMessage />
         </ShoppingCartOptimisticToggleProviders>
     );
 }

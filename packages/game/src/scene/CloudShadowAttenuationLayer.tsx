@@ -16,6 +16,7 @@ import {
     type CloudShadowMaterialLeaseMap,
     type CloudShadowProjection,
     type CloudShadowSample,
+    getCloudShadowAttenuationMaterialCandidateRevision,
     getCloudShadowAttenuationMaterialUniforms,
     releaseCloudShadowAttenuationMaterials,
     resolveCloudShadowAttenuationActivation,
@@ -145,6 +146,7 @@ export function CloudShadowAttenuation({
     const leasesRef = useRef<CloudShadowMaterialLeaseMap>(new Map());
     const attenuationActiveRef = useRef(false);
     const nextMaterialScanAtRef = useRef(0);
+    const materialCandidateRevisionRef = useRef(-1);
     const nextUpdateAtRef = useRef(0);
     const forceUpdateRef = useRef(true);
     const updateCountRef = useRef(0);
@@ -209,6 +211,8 @@ export function CloudShadowAttenuation({
         updateGameProfileMetadata({
             cloudAttenuationMaterialCount: materialCount,
         });
+        materialCandidateRevisionRef.current =
+            getCloudShadowAttenuationMaterialCandidateRevision();
 
         return () => {
             releaseCloudShadowAttenuationMaterials(leases);
@@ -256,7 +260,14 @@ export function CloudShadowAttenuation({
         uniforms.strength.value = attenuationActive ? strength : 0;
 
         const now = performance.now();
-        if (now >= nextMaterialScanAtRef.current) {
+        const materialCandidateRevision =
+            getCloudShadowAttenuationMaterialCandidateRevision();
+        if (
+            materialCandidateRevision !==
+                materialCandidateRevisionRef.current ||
+            now >= nextMaterialScanAtRef.current
+        ) {
+            materialCandidateRevisionRef.current = materialCandidateRevision;
             nextMaterialScanAtRef.current = now + materialScanMs;
             const materialCount = syncCloudShadowAttenuationMaterials({
                 enabled: materialIntegrationEnabled,

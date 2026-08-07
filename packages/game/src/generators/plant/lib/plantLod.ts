@@ -21,10 +21,14 @@ export function resolvePlantLodLevel(screenOccupancy: number): PlantLodLevel {
 export function resolvePlantLodLevelWithHysteresis({
     cameraZoom,
     currentLevel,
+    nearHysteresis = HYSTERESIS,
+    nearThreshold = NEAR_THRESHOLD,
     screenOccupancy,
 }: {
     cameraZoom: number;
     currentLevel: PlantLodLevel;
+    nearHysteresis?: number;
+    nearThreshold?: number;
     screenOccupancy: number;
 }): PlantLodLevel {
     if (
@@ -36,14 +40,14 @@ export function resolvePlantLodLevelWithHysteresis({
     }
 
     if (currentLevel === 'near') {
-        if (screenOccupancy >= NEAR_THRESHOLD - HYSTERESIS) {
+        if (screenOccupancy >= nearThreshold - nearHysteresis) {
             return 'near';
         }
         return screenOccupancy >= FAR_THRESHOLD - HYSTERESIS ? 'mid' : 'far';
     }
 
     if (currentLevel === 'mid') {
-        if (screenOccupancy >= NEAR_THRESHOLD + HYSTERESIS) {
+        if (screenOccupancy >= nearThreshold + nearHysteresis) {
             return 'near';
         }
         if (screenOccupancy < FAR_THRESHOLD - HYSTERESIS) {
@@ -52,7 +56,7 @@ export function resolvePlantLodLevelWithHysteresis({
         return 'mid';
     }
 
-    if (screenOccupancy >= NEAR_THRESHOLD + HYSTERESIS) {
+    if (screenOccupancy >= nearThreshold + nearHysteresis) {
         return 'near';
     }
 

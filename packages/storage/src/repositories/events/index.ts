@@ -54,6 +54,8 @@ export type {
     AdventCalendarOpenPayload,
     AdventGiftAward,
     AiRequestKind,
+    // Checkout
+    CheckoutOperationCreatedPayload,
     // Delivery
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,

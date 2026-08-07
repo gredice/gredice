@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {
-    buildPlantRenderData,
-    type PlantRenderData,
-} from './buildPlantRenderData';
-import { generateLSystemStringWithGenerations } from './l-system';
+import { buildDevelopmentalPlantRenderData } from '../developmental/buildDevelopmentalPlantRenderData';
+import { buildDevelopmentalPlantGraph } from '../developmental/developmentalPlantGraph';
 import {
     composePackedPlantRenderDataInstance,
     getPackedPlantRenderDataTransferables,
@@ -22,25 +19,32 @@ import {
     plantTypes,
     type VegetableType,
 } from './plant-definitions';
-import { SeededRNG } from './rng';
+import type { PlantRenderData } from './plantRenderData';
 
 const fixtures = [
-    { generation: 9, plantType: 'tomato' },
-    { generation: 6, plantType: 'carrot' },
-    { generation: 6, plantType: 'lettuce' },
-    { generation: 7, plantType: 'youngappletree' },
-    { generation: 8, plantType: 'raspberry' },
+    { generation: 10, plantType: 'tomato' },
+    { generation: 10, plantType: 'carrot' },
+    { generation: 10, plantType: 'lettuce' },
+    { generation: 10, plantType: 'youngappletree' },
+    { generation: 10, plantType: 'raspberry' },
 ] as const;
 
 const floweringDefinition: PlantDefinition = {
     ...plantTypes.tomato,
-    axiom: 'F[L][P]',
+    development: {
+        ...plantTypes.tomato.development,
+        reproduction: {
+            ...plantTypes.tomato.development.reproduction,
+            flowerStart: 0,
+            fruitStart: undefined,
+            produceCount: 0,
+            siteCount: 2,
+        },
+    },
     flower: {
         ...plantTypes.tomato.flower,
-        ageStart: 0,
         enabled: true,
     },
-    rules: {},
     vegetable: {
         ...plantTypes.tomato.vegetable,
         enabled: false,
@@ -56,21 +60,18 @@ function buildExactRenderData({
     generation: number;
     seed: string;
 }) {
-    const symbols = generateLSystemStringWithGenerations(
-        definition.axiom,
-        definition.rules,
+    const graph = buildDevelopmentalPlantGraph({
         generation,
-        new SeededRNG(seed),
-    );
+        plantDefinition: definition,
+        seed,
+    });
 
-    return buildPlantRenderData({
+    return buildDevelopmentalPlantRenderData({
         flowerGrowth: 1,
         fruitGrowth: 1,
-        generation,
-        lSystemSymbols: symbols,
+        graph,
         plantDefinition: definition,
         renderDetailedGeometry: true,
-        seed,
     });
 }
 
@@ -227,6 +228,15 @@ function assertPackedRenderDataEqual(
             `${vegetableGroup.type} vegetable`,
         );
         assertPackedValuesEqual(
+            vegetableGroup.colors,
+            expected.flatMap((vegetable) => [
+                vegetable.color.r,
+                vegetable.color.g,
+                vegetable.color.b,
+            ]),
+            `${vegetableGroup.type} color`,
+        );
+        assertPackedValuesEqual(
             vegetableGroup.growth,
             expected.map((vegetable) => vegetable.growth),
             `${vegetableGroup.type} growth`,
@@ -251,6 +261,7 @@ function getExpectedTransferByteLength(packed: PackedPlantRenderData) {
             (total, vegetable) =>
                 total +
                 vegetable.matrices.byteLength +
+                vegetable.colors.byteLength +
                 vegetable.growth.byteLength +
                 vegetable.swayPhases.byteLength,
             0,
@@ -286,7 +297,7 @@ test('packs representative exact plant render data without changing GPU-visible 
 
     const exactFlowers = buildExactRenderData({
         definition: floweringDefinition,
-        generation: 1,
+        generation: 6,
         seed: 'flower:packed-golden',
     });
     assertPackedRenderDataEqual(
@@ -475,6 +486,10 @@ test('composes root transforms and bakes vegetable growth like the current rende
         Array.from(composedTomatoes.growth),
         Array.from({ length: composedTomatoes.count }, () => 1),
     );
+    assert.deepEqual(
+        Array.from(composedTomatoes.colors),
+        Array.from(packed.vegetables[0]?.colors ?? []),
+    );
     assert.ok(
         packed.vegetables.some((vegetable) =>
             Array.from(vegetable.growth).some((growth) => growth !== 1),
@@ -502,7 +517,7 @@ test('merges exact template instances while preserving channel and produce order
     });
     const flowerExact = buildExactRenderData({
         definition: floweringDefinition,
-        generation: 1,
+        generation: 6,
         seed: 'flower:packed-golden',
     });
     const tomatoTemplate = packPlantRenderData(tomatoExact);
@@ -644,18 +659,30 @@ test('merges exact template instances while preserving channel and produce order
         ),
     );
 
-    const expectedVegetables = new Map<VegetableType, THREE.Matrix4[]>();
+    const expectedVegetables = new Map<
+        VegetableType,
+        { colors: number[]; matrices: THREE.Matrix4[] }
+    >();
     for (const source of sources) {
         for (const vegetable of source.exact.vegetables) {
-            const matrices = expectedVegetables.get(vegetable.type);
+            const expected = expectedVegetables.get(vegetable.type);
             const matrix = bakeReferenceVegetableGrowth(
                 vegetable,
                 source.transform,
             );
-            if (matrices) {
-                matrices.push(matrix);
+            const color = [
+                vegetable.color.r,
+                vegetable.color.g,
+                vegetable.color.b,
+            ];
+            if (expected) {
+                expected.matrices.push(matrix);
+                expected.colors.push(...color);
             } else {
-                expectedVegetables.set(vegetable.type, [matrix]);
+                expectedVegetables.set(vegetable.type, {
+                    colors: color,
+                    matrices: [matrix],
+                });
             }
         }
     }
@@ -666,11 +693,16 @@ test('merges exact template instances while preserving channel and produce order
     for (const vegetable of merged.vegetables) {
         const expected = expectedVegetables.get(vegetable.type);
         assert.ok(expected);
-        assert.equal(vegetable.count, expected.length);
+        assert.equal(vegetable.count, expected.matrices.length);
         assertPackedMatricesClose(
             vegetable.matrices,
-            expected,
+            expected.matrices,
             `merged ${vegetable.type}`,
+        );
+        assertPackedValuesEqual(
+            vegetable.colors,
+            expected.colors,
+            `merged ${vegetable.type} color`,
         );
         assert.ok(Array.from(vegetable.growth).every((growth) => growth === 1));
     }

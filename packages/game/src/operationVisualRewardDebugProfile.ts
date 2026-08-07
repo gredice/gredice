@@ -22,6 +22,10 @@ export const operationVisualRewardDebugOperationIds = {
     weeding: 9402,
 } satisfies Record<OperationVisualRewardKind, number>;
 
+export const highTargetOperationVisualOperationIds = {
+    fieldMulch: 9411,
+} as const;
+
 export type OperationVisualRewardDebugBedState = {
     label: 'Before' | 'After';
     raisedBedId: number;
@@ -318,6 +322,17 @@ export const operationVisualRewardDebugOperationDefinitions = [
         name: 'debugHarvestReward',
         label: 'Debug harvest reward',
         application: 'raisedBedFull',
+    }),
+] satisfies OperationVisualRewardDebugOperationData[];
+
+export const highTargetOperationVisualOperationDefinitions = [
+    ...operationVisualRewardDebugOperationDefinitions,
+    debugOperation({
+        id: highTargetOperationVisualOperationIds.fieldMulch,
+        kind: 'mulch',
+        name: 'debugPlantMulchReward',
+        label: 'Debug field mulch reward',
+        application: 'plant',
     }),
 ] satisfies OperationVisualRewardDebugOperationData[];
 

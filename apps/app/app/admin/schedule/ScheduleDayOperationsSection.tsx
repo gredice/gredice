@@ -1,10 +1,15 @@
 import {
     getAssignableFarmUsersByOperationIds,
     getFarms,
+    RAISED_BED_PHOTO_OPERATION_NAME,
 } from '@gredice/storage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import {
+    type BulkPhotoOperationTarget,
+    isRaisedBedPhotoOperationInformation,
+} from './bulkPhotoOperationImportModel';
 import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
 import { ScheduleDayOperationsBulkActions } from './ScheduleDayOperationsBulkActions';
@@ -77,6 +82,51 @@ export async function ScheduleDayOperationsSection({
         .filter((farm) => operationFarmIds.has(farm.id))
         .map((farm) => ({ id: farm.id, name: farm.name }));
 
+    const photoOperationEntityIds = new Set(
+        (operationsData ?? [])
+            .filter((operationData) =>
+                isRaisedBedPhotoOperationInformation(
+                    operationData.information,
+                    RAISED_BED_PHOTO_OPERATION_NAME,
+                ),
+            )
+            .map((operationData) => operationData.id),
+    );
+    const raisedBedPhysicalIdById = new Map<number, string>();
+    for (const raisedBed of raisedBeds) {
+        if (raisedBed.physicalId) {
+            raisedBedPhysicalIdById.set(raisedBed.id, raisedBed.physicalId);
+        }
+    }
+    const photoOperationTargets = scheduledOperations
+        .flatMap((operation): BulkPhotoOperationTarget[] => {
+            const physicalId = operation.raisedBedId
+                ? raisedBedPhysicalIdById.get(operation.raisedBedId)
+                : undefined;
+            if (
+                !physicalId ||
+                !photoOperationEntityIds.has(operation.entityId) ||
+                !operation.isAccepted ||
+                (operation.status !== 'new' && operation.status !== 'planned')
+            ) {
+                return [];
+            }
+
+            return [
+                {
+                    operationId: operation.id,
+                    expectedEntityId: operation.entityId,
+                    expectedTaskVersionEventId: operation.taskVersionEventId,
+                    physicalId,
+                },
+            ];
+        })
+        .sort((left, right) =>
+            left.physicalId.localeCompare(right.physicalId, undefined, {
+                numeric: true,
+            }),
+        );
+
     const dayOperationsToApprove = scheduledOperations
         .filter(
             (operation) =>
@@ -131,6 +181,7 @@ export async function ScheduleDayOperationsSection({
                     </Typography>
                     <Row spacing={1} className="ml-auto shrink-0">
                         <ScheduleDayOperationsBulkActions
+                            photoOperationTargets={photoOperationTargets}
                             operationsToApprove={dayOperationsToApprove}
                             operationsToAssign={dayOperationsToAssign}
                             operationsToCancel={dayOperationsToCancel}

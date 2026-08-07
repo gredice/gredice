@@ -458,7 +458,7 @@ export function PlantPicker({
                                   : {}),
                           }),
                 }),
-                currency: useInventoryItem ? 'inventory' : 'eur',
+                currency: useInventoryItem ? 'inventory' : undefined,
                 outletOfferId:
                     useOutletOffer && selectedOutletOffer
                         ? selectedOutletOffer.id

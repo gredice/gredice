@@ -198,10 +198,8 @@ function createWeatherHudQueryClient({
 function WeatherHudTestProviders({
     alerts,
     children,
-    enableSuncokret = false,
 }: PropsWithChildren<{
     alerts?: WeatherHudAlert[];
-    enableSuncokret?: boolean;
 }>) {
     const queryClient = useMemo(
         () => createWeatherHudQueryClient({ alerts }),
@@ -222,11 +220,7 @@ function WeatherHudTestProviders({
         <ReactQuery.QueryClientProvider client={queryClient}>
             <NuqsTestingAdapter>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameFlagsContext.Provider
-                        value={{
-                            enableSuncokretChatFlag: enableSuncokret,
-                        }}
-                    >
+                    <GameFlagsContext.Provider value={{}}>
                         <SuncokretChatProvider>
                             {children}
                         </SuncokretChatProvider>
@@ -238,16 +232,13 @@ function WeatherHudTestProviders({
 }
 
 export function WeatherHudStory({
-    enableSuncokret = false,
     withAlerts = false,
 }: {
-    enableSuncokret?: boolean;
     withAlerts?: boolean;
 } = {}) {
     return (
         <WeatherHudTestProviders
             alerts={withAlerts ? groupedWeatherAlerts : undefined}
-            enableSuncokret={enableSuncokret}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div className="absolute right-2 top-2">

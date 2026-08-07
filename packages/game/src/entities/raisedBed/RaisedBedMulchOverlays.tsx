@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import type { BufferGeometry } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { type BufferGeometry, Vector3 } from 'three';
 import {
     type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
@@ -14,10 +14,9 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from '../../scene/gameQuality';
-import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { Block } from '../../types/Block';
-import type { Stack } from '../../types/Stack';
+import type { GardenStack } from '../../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
@@ -27,6 +26,11 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { chunkMeshInstances } from '../chunkedMeshGeometry';
+import {
+    type EntityBlockInstance,
+    EntityInstancesGeometry,
+} from '../EntityInstancesBlock';
 import { MulchPatchMaterial, useMulchPatchGeometries } from './MulchPatch';
 import {
     fullMulchPatchConnectionMask,
@@ -36,6 +40,10 @@ import {
     resolveMulchPatchConnectionMask,
 } from './mulchPatchGeometry';
 import { appliedMulchOperationsOldestFirst } from './raisedBedMulchOperationOrder';
+import {
+    getRaisedBedMulchRenderGroups,
+    type RaisedBedMulchRenderPatch,
+} from './raisedBedMulchRenderGroups';
 import {
     isFieldMulchApplication,
     resolveActiveFieldMulchRewardsByFieldId,
@@ -72,16 +80,19 @@ type RaisedBedPlacement = {
     dirtGeometryName: RaisedBedDirtGeometryName;
     origin: [number, number, number];
     rotationQuarterTurns: number;
-    stack: Stack;
+    stack: GardenStack;
     stackBlockIndex: number;
 };
 
 type FieldMulchPatch = {
     blockName: MulchBlockName;
     key: string;
+    placement: RaisedBedPlacement;
     position: [number, number, number];
     scale: [number, number, number];
 };
+
+type MulchRenderPatch = RaisedBedMulchRenderPatch<EntityBlockInstance>;
 
 function timestampMs(value: Date | string | null | undefined) {
     if (!value) {
@@ -179,7 +190,7 @@ function activeDragPreviewTouchesRaisedBed(
 
 function getRaisedBedNeighbors(
     garden: CurrentGardenData,
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
 ) {
     function getStackAt(x: number, z: number) {
@@ -214,7 +225,7 @@ function getRaisedBedNeighbors(
 
 function getRaisedBedOrigin(
     blockData: ReturnType<typeof useBlockData>['data'],
-    stack: Stack,
+    stack: GardenStack,
     block: Block,
     neighbors: ReturnType<typeof getRaisedBedNeighbors>,
 ): [number, number, number] {
@@ -456,43 +467,81 @@ function getFieldMulchPatchTargets(
     }));
 }
 
-function MulchMesh({
-    blockName,
-    geometry,
-    minSnowCoverage,
+function createMulchRenderInstance({
+    cache,
+    key,
+    placement,
     position,
-    renderSnow,
-    scale,
 }: {
-    blockName: MulchBlockName;
-    geometry: BufferGeometry;
-    minSnowCoverage: number;
+    cache: Map<string, EntityBlockInstance>;
+    key: string;
+    placement: RaisedBedPlacement;
     position: [number, number, number];
-    renderSnow: boolean;
-    scale: [number, number, number];
-}) {
-    return (
-        <group position={position}>
-            <mesh castShadow receiveShadow scale={scale} geometry={geometry}>
-                <MulchPatchMaterial blockName={blockName} />
-                {renderSnow && (
-                    <SnowOverlay
-                        geometry={geometry}
-                        minCoverage={minSnowCoverage}
-                        {...snowPresets.mulch}
-                    />
-                )}
-            </mesh>
-        </group>
-    );
+}): EntityBlockInstance {
+    const cached = cache.get(key);
+    if (
+        cached &&
+        cached.blockIndex === placement.stackBlockIndex &&
+        cached.position[0] === position[0] &&
+        cached.position[1] === position[1] &&
+        cached.position[2] === position[2]
+    ) {
+        return cached;
+    }
+
+    const instance = {
+        block:
+            cached?.block ??
+            ({
+                ...placement.block,
+                id: key,
+                rotation: 0,
+            } satisfies Block),
+        blockIndex: placement.stackBlockIndex,
+        id: key,
+        pickupOutlineVisible: false,
+        position,
+        rotation: 0,
+        // The synthetic block ID intentionally opts mulch overlays out of block
+        // placement animations; retain a stable stack identity for comparisons.
+        stack: cached?.stack ?? {
+            ...placement.stack,
+            position: new Vector3(
+                placement.stack.position.x,
+                placement.stack.position.y,
+                placement.stack.position.z,
+            ),
+        },
+        stackHeight: position[1],
+    } satisfies EntityBlockInstance;
+    cache.set(key, instance);
+    return instance;
 }
 
-function RaisedBedMulchProfileMetadata({ count }: { count: number }) {
+// EntityInstancesGeometry treats zero as "use the default lift". A truthy value
+// below floating-point resolution preserves the legacy coincident snow overlay.
+const legacyMulchSnowLift = Number.MIN_VALUE;
+
+function RaisedBedMulchProfileMetadata({
+    batchCount,
+    count,
+    groupCount,
+    objectCount,
+}: {
+    batchCount: number;
+    count: number;
+    groupCount: number;
+    objectCount: number;
+}) {
     useEffect(() => {
         updateGameProfileMetadata({
+            raisedBedMulchBatchCount: batchCount,
+            raisedBedMulchGroupCount: groupCount,
+            raisedBedMulchInstanceCount: count,
+            raisedBedMulchObjectCount: objectCount,
             raisedBedMulchOverlayCount: count,
         });
-    }, [count]);
+    }, [batchCount, count, groupCount, objectCount]);
 
     return null;
 }
@@ -507,6 +556,7 @@ export function RaisedBedMulchOverlays({
     const { data: blockData } = useBlockData();
     const { nodes: raisedBedNodes } = useGameGLTF('RaisedBed');
     const mulchPatchGeometries = useMulchPatchGeometries();
+    const renderInstanceCache = useRef(new Map<string, EntityBlockInstance>());
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const activeDragPreview = useGameState((state) =>
         activeDragPreviewTouchesRaisedBed(
@@ -518,202 +568,282 @@ export function RaisedBedMulchOverlays({
     );
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
-
-    if (!currentGarden || !blockData || !operations) {
-        return <RaisedBedMulchProfileMetadata count={0} />;
-    }
-
-    const mulchVisualByOperationId = resolveMulchVisualByOperationId(
-        operations,
-        blockData,
-    );
-    if (mulchVisualByOperationId.size === 0) {
-        return <RaisedBedMulchProfileMetadata count={0} />;
-    }
-
-    const overlays = [];
-
-    for (const raisedBed of currentGarden.raisedBeds) {
-        const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-        const placements: RaisedBedPlacement[] = [];
-
-        for (const [blockIndex, blockId] of blockIds.entries()) {
-            const placement = getBlockPlacement(currentGarden, blockId);
-            if (!placement) {
-                continue;
-            }
-
-            const neighbors = getRaisedBedNeighbors(
-                currentGarden,
-                placement.stack,
-                placement.block,
-            );
-            const surfaceGeometry = getRaisedBedSurfaceGeometry(neighbors);
-            const origin = getRaisedBedOrigin(
-                blockData,
-                placement.stack,
-                placement.block,
-                neighbors,
-            );
-            const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
-                createActiveDragPreviewTarget({
-                    blockId: placement.block.id,
-                    blockIndex: placement.stackBlockIndex,
-                    stackPosition: placement.stack.position,
-                }),
-                activeDragPreview,
-            );
-
-            placements.push({
-                block: placement.block,
-                blockIndex,
-                blockOffset: Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
-                dirtGeometryName: surfaceGeometry.dirtGeometryName,
-                origin: [
-                    origin[0] + (dragPreviewOffset?.x ?? 0),
-                    origin[1] + (dragPreviewOffset?.y ?? 0),
-                    origin[2] + (dragPreviewOffset?.z ?? 0),
-                ],
-                rotationQuarterTurns: surfaceGeometry.rotationQuarterTurns,
-                stack: placement.stack,
-                stackBlockIndex: placement.stackBlockIndex,
-            });
+    const renderPatches = useMemo(() => {
+        if (!currentGarden || !blockData || !operations) {
+            return [];
         }
 
-        if (placements.length === 0) {
-            continue;
-        }
-        const activeRaisedBedMulchReward = resolveActiveRaisedBedMulchReward({
-            appliedOperations: raisedBed.appliedOperations ?? [],
+        const mulchVisualByOperationId = resolveMulchVisualByOperationId(
             operations,
-            raisedBedId: raisedBed.id,
-        });
-
-        const fullBedAppliedMulch =
-            activeRaisedBedMulchReward &&
-            mulchVisualByOperationId.get(activeRaisedBedMulchReward.entityId);
-
-        if (fullBedAppliedMulch) {
-            const visual = fullBedAppliedMulch;
-            const mulchGeometry = mulchPatchGeometries.get(
-                fullMulchPatchConnectionMask,
-            );
-            if (visual && isMulchBlockName(visual.blockName) && mulchGeometry) {
-                const surfaceBounds = getFullBedSurfaceBounds(
-                    placements,
-                    raisedBedNodes,
-                );
-                overlays.push(
-                    <MulchMesh
-                        key={`raised-bed-mulch-${raisedBed.id}-${visual.blockId}`}
-                        blockName={visual.blockName}
-                        geometry={mulchGeometry}
-                        minSnowCoverage={qualityProfile.snowOverlayMinCoverage}
-                        position={getFullBedPosition(
-                            surfaceBounds,
-                            getRaisedBedSurfaceY(placements[0].origin),
-                        )}
-                        renderSnow={renderSnow}
-                        scale={getFullBedScale(surfaceBounds)}
-                    />,
-                );
-            }
-            continue;
+            blockData,
+        );
+        if (mulchVisualByOperationId.size === 0) {
+            return [];
         }
 
-        const fieldMulchByPositionIndex = new Map<number, MulchBlockName>();
-        const appliedFieldMulchRewardsByFieldId =
-            resolveActiveFieldMulchRewardsByFieldId({
-                appliedOperations: raisedBed.appliedOperations ?? [],
-                operations,
-                raisedBedId: raisedBed.id,
-            });
+        const patches: MulchRenderPatch[] = [];
 
-        for (const reward of appliedMulchOperationsOldestFirst(
-            Array.from(appliedFieldMulchRewardsByFieldId.values()),
-        )) {
-            const visual = mulchVisualByOperationId.get(reward.entityId);
-            if (
-                !visual ||
-                !isMulchBlockName(visual.blockName) ||
-                !isFieldMulchApplication(visual.application)
-            ) {
+        for (const raisedBed of currentGarden.raisedBeds) {
+            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
+            const placements: RaisedBedPlacement[] = [];
+
+            for (const [blockIndex, blockId] of blockIds.entries()) {
+                const placement = getBlockPlacement(currentGarden, blockId);
+                if (!placement) {
+                    continue;
+                }
+
+                const neighbors = getRaisedBedNeighbors(
+                    currentGarden,
+                    placement.stack,
+                    placement.block,
+                );
+                const surfaceGeometry = getRaisedBedSurfaceGeometry(neighbors);
+                const origin = getRaisedBedOrigin(
+                    blockData,
+                    placement.stack,
+                    placement.block,
+                    neighbors,
+                );
+                const dragPreviewOffset =
+                    getActiveDragPreviewTargetPositionOffset(
+                        createActiveDragPreviewTarget({
+                            blockId: placement.block.id,
+                            blockIndex: placement.stackBlockIndex,
+                            stackPosition: placement.stack.position,
+                        }),
+                        activeDragPreview,
+                    );
+
+                placements.push({
+                    block: placement.block,
+                    blockIndex,
+                    blockOffset:
+                        Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
+                    dirtGeometryName: surfaceGeometry.dirtGeometryName,
+                    origin: [
+                        origin[0] + (dragPreviewOffset?.x ?? 0),
+                        origin[1] + (dragPreviewOffset?.y ?? 0),
+                        origin[2] + (dragPreviewOffset?.z ?? 0),
+                    ],
+                    rotationQuarterTurns: surfaceGeometry.rotationQuarterTurns,
+                    stack: placement.stack,
+                    stackBlockIndex: placement.stackBlockIndex,
+                });
+            }
+
+            if (placements.length === 0) {
+                continue;
+            }
+            const activeRaisedBedMulchReward =
+                resolveActiveRaisedBedMulchReward({
+                    appliedOperations: raisedBed.appliedOperations ?? [],
+                    operations,
+                    raisedBedId: raisedBed.id,
+                });
+
+            const fullBedAppliedMulch =
+                activeRaisedBedMulchReward &&
+                mulchVisualByOperationId.get(
+                    activeRaisedBedMulchReward.entityId,
+                );
+
+            if (fullBedAppliedMulch) {
+                const visual = fullBedAppliedMulch;
+                const ownerPlacement = placements[0];
+                const mulchGeometry = mulchPatchGeometries.get(
+                    fullMulchPatchConnectionMask,
+                );
+                if (
+                    visual &&
+                    ownerPlacement &&
+                    isMulchBlockName(visual.blockName) &&
+                    mulchGeometry
+                ) {
+                    const surfaceBounds = getFullBedSurfaceBounds(
+                        placements,
+                        raisedBedNodes,
+                    );
+                    const key = `raised-bed-mulch-${raisedBed.id}-${visual.blockId}`;
+                    const position = getFullBedPosition(
+                        surfaceBounds,
+                        getRaisedBedSurfaceY(ownerPlacement.origin),
+                    );
+                    patches.push({
+                        blockName: visual.blockName,
+                        instance: createMulchRenderInstance({
+                            cache: renderInstanceCache.current,
+                            key,
+                            placement: ownerPlacement,
+                            position,
+                        }),
+                        mask: fullMulchPatchConnectionMask,
+                        scale: getFullBedScale(surfaceBounds),
+                    });
+                }
                 continue;
             }
 
-            const field = raisedBed.fields.find(
-                (candidate) => candidate.id === reward.raisedBedFieldId,
-            );
-            if (!field || !isRaisedBedFieldOccupied(field)) {
-                continue;
+            const fieldMulchByPositionIndex = new Map<number, MulchBlockName>();
+            const appliedFieldMulchRewardsByFieldId =
+                resolveActiveFieldMulchRewardsByFieldId({
+                    appliedOperations: raisedBed.appliedOperations ?? [],
+                    operations,
+                    raisedBedId: raisedBed.id,
+                });
+
+            for (const reward of appliedMulchOperationsOldestFirst(
+                Array.from(appliedFieldMulchRewardsByFieldId.values()),
+            )) {
+                const visual = mulchVisualByOperationId.get(reward.entityId);
+                if (
+                    !visual ||
+                    !isMulchBlockName(visual.blockName) ||
+                    !isFieldMulchApplication(visual.application)
+                ) {
+                    continue;
+                }
+
+                const field = raisedBed.fields.find(
+                    (candidate) => candidate.id === reward.raisedBedFieldId,
+                );
+                if (!field || !isRaisedBedFieldOccupied(field)) {
+                    continue;
+                }
+
+                if (!isOperationAppliedToActivePlantCycle(reward, field)) {
+                    continue;
+                }
+
+                fieldMulchByPositionIndex.set(
+                    field.positionIndex,
+                    visual.blockName,
+                );
             }
 
-            if (!isOperationAppliedToActivePlantCycle(reward, field)) {
-                continue;
-            }
+            const orientation = raisedBed.orientation ?? 'vertical';
+            const fieldMulchPatches: FieldMulchPatch[] = [];
+            const fieldScale = getFieldMulchScale(orientation);
 
-            fieldMulchByPositionIndex.set(
-                field.positionIndex,
-                visual.blockName,
-            );
-        }
-
-        const orientation = raisedBed.orientation ?? 'vertical';
-        const fieldMulchPatches: FieldMulchPatch[] = [];
-        const fieldScale = getFieldMulchScale(orientation);
-
-        for (const [positionIndex, blockName] of fieldMulchByPositionIndex) {
-            const placement = getPlacementForPositionIndex(
-                placements,
+            for (const [
                 positionIndex,
-            );
-            if (!placement) {
-                continue;
-            }
-
-            fieldMulchPatches.push({
                 blockName,
-                key: `raised-bed-field-mulch-${raisedBed.id}-${positionIndex}-${blockName}`,
-                position: getFieldWorldPosition({
-                    blockIndex: placement.blockIndex,
-                    localPositionIndex: placement.localPositionIndex,
-                    orientation,
-                    origin: placement.origin,
-                }),
-                scale: fieldScale,
-            });
-        }
+            ] of fieldMulchByPositionIndex) {
+                const placement = getPlacementForPositionIndex(
+                    placements,
+                    positionIndex,
+                );
+                if (!placement) {
+                    continue;
+                }
 
-        const fieldTargets = getFieldMulchPatchTargets(fieldMulchPatches);
-        for (const [patchIndex, patch] of fieldMulchPatches.entries()) {
-            const target = fieldTargets[patchIndex];
-            const mask = target
-                ? resolveMulchPatchConnectionMask(target, fieldTargets)
-                : fullMulchPatchConnectionMask;
-            const geometry = mulchPatchGeometries.get(mask);
-
-            if (!geometry) {
-                continue;
+                fieldMulchPatches.push({
+                    blockName,
+                    key: `raised-bed-field-mulch-${raisedBed.id}-${positionIndex}-${blockName}`,
+                    placement,
+                    position: getFieldWorldPosition({
+                        blockIndex: placement.blockIndex,
+                        localPositionIndex: placement.localPositionIndex,
+                        orientation,
+                        origin: placement.origin,
+                    }),
+                    scale: fieldScale,
+                });
             }
 
-            overlays.push(
-                <MulchMesh
-                    key={patch.key}
-                    blockName={patch.blockName}
-                    geometry={geometry}
-                    minSnowCoverage={qualityProfile.snowOverlayMinCoverage}
-                    position={patch.position}
-                    renderSnow={renderSnow}
-                    scale={patch.scale}
-                />,
-            );
+            const fieldTargets = getFieldMulchPatchTargets(fieldMulchPatches);
+            for (const [patchIndex, patch] of fieldMulchPatches.entries()) {
+                const target = fieldTargets[patchIndex];
+                const mask = target
+                    ? resolveMulchPatchConnectionMask(target, fieldTargets)
+                    : fullMulchPatchConnectionMask;
+                const geometry = mulchPatchGeometries.get(mask);
+
+                if (!geometry) {
+                    continue;
+                }
+
+                patches.push({
+                    blockName: patch.blockName,
+                    instance: createMulchRenderInstance({
+                        cache: renderInstanceCache.current,
+                        key: patch.key,
+                        placement: patch.placement,
+                        position: patch.position,
+                    }),
+                    mask,
+                    scale: patch.scale,
+                });
+            }
         }
-    }
+
+        const activePatchKeys = new Set(
+            patches.map((patch) => patch.instance.id),
+        );
+        for (const key of renderInstanceCache.current.keys()) {
+            if (!activePatchKeys.has(key)) {
+                renderInstanceCache.current.delete(key);
+            }
+        }
+
+        return patches;
+    }, [
+        activeDragPreview,
+        blockData,
+        currentGarden,
+        mulchPatchGeometries,
+        operations,
+        raisedBedNodes,
+    ]);
+    const renderGroups = useMemo(
+        () => getRaisedBedMulchRenderGroups(renderPatches),
+        [renderPatches],
+    );
+    const renderBatchCount = useMemo(
+        () =>
+            renderGroups.reduce(
+                (total, group) =>
+                    total + chunkMeshInstances(group.instances).length,
+                0,
+            ),
+        [renderGroups],
+    );
 
     return (
         <>
-            <RaisedBedMulchProfileMetadata count={overlays.length} />
-            {overlays}
+            <RaisedBedMulchProfileMetadata
+                batchCount={renderBatchCount}
+                count={renderPatches.length}
+                groupCount={renderGroups.length}
+                objectCount={renderBatchCount * (renderSnow ? 2 : 1)}
+            />
+            {renderGroups.map((group) => {
+                const geometry = mulchPatchGeometries.get(group.mask);
+                if (!geometry) {
+                    return null;
+                }
+
+                return (
+                    <EntityInstancesGeometry
+                        key={group.key}
+                        castShadow
+                        geometry={geometry}
+                        instanceKey={`raised-bed-mulch:${group.key}`}
+                        instances={group.instances}
+                        materialNode={
+                            <MulchPatchMaterial blockName={group.blockName} />
+                        }
+                        receiveShadow
+                        renderSnow={renderSnow}
+                        scale={group.scale}
+                        snow={snowPresets.mulch}
+                        snowLift={legacyMulchSnowLift}
+                        snowOverlayMinCoverage={
+                            qualityProfile.snowOverlayMinCoverage
+                        }
+                    />
+                );
+            })}
         </>
     );
 }

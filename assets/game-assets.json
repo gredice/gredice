@@ -283,12 +283,7 @@
                 "Cat_Body",
                 "Cat_BellyPatch",
                 "Cat_ChestPatch",
-                "Cat_BodySpot_Top_Front",
-                "Cat_BodySpot_Top_Back",
-                "Cat_BodySpot_Side_L",
-                "Cat_BodySpot_Side_R",
                 "Cat_Head",
-                "Cat_FacePatch",
                 "Cat_Muzzle",
                 "Cat_Nose",
                 "Cat_Eye_L",
@@ -346,9 +341,11 @@
                 "Dog_Leg_RR",
                 "Dog_Paw_RR",
                 "Dog_Tail_Base",
+                "Dog_Tail_Mid",
                 "Dog_Tail_Tip",
                 "Dog_Collar",
-                "Dog_Tag"
+                "Dog_Tag",
+                "Dog_Tongue"
             ]
         },
         {

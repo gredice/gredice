@@ -189,14 +189,12 @@ Turbo build/test results are cached remotely through Vercel for the `gredice` te
 
 `pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
 
-### Next.js build cache canary
+### Next.js build cache
 
-`apps/app` enables the experimental Turbopack filesystem cache for production
-builds. Vercel persists `.next/cache` automatically, while the reusable
-GitHub Actions workflow persists it only when the caller sets
-`nextBuildCache: true`. Keep the rollout scoped to the admin app until cached
-CI and Vercel builds have proved artifact consistency; the other Next.js apps
-continue to use only the stable development filesystem cache.
+Next.js 16.3 enables the Turbopack filesystem cache for development and
+production builds by default. Vercel persists `.next/cache` automatically,
+while the reusable GitHub Actions workflow persists it only when the caller
+sets `nextBuildCache: true`.
 
 ### Public page revalidation
 

@@ -14,7 +14,7 @@ export type GroundPatchWetPatch = {
     strength?: number;
 };
 
-type GroundPatchOptions = {
+export type GroundPatchOptions = {
     wetColor?: string;
     wetPatches?: readonly GroundPatchWetPatch[];
     wetStrength?: number;
@@ -68,6 +68,20 @@ const groundPatchPresets = {
 
 const maxWetPatchCount = 48;
 const emptyWetPatches: readonly GroundPatchWetPatch[] = [];
+const staticGroundPatchShaderHookPairs = new WeakMap<
+    Material['onBeforeCompile'],
+    Material['customProgramCacheKey']
+>();
+
+export function hasStaticGroundPatchMaterialShaderHooks({
+    customProgramCacheKey,
+    onBeforeCompile,
+}: Pick<Material, 'customProgramCacheKey' | 'onBeforeCompile'>) {
+    return (
+        staticGroundPatchShaderHookPairs.get(onBeforeCompile) ===
+        customProgramCacheKey
+    );
+}
 
 const groundPatchVertexParameters = `
 varying vec3 vGroundPatchWorldPosition;
@@ -328,7 +342,7 @@ function createWetPatchUniforms(
     };
 }
 
-function applyGroundPatchMaterial(
+export function applyGroundPatchMaterial(
     material: MeshStandardMaterial,
     surface: GroundPatchSurface,
     options: GroundPatchOptions,
@@ -339,8 +353,33 @@ function applyGroundPatchMaterial(
     const originalCustomProgramCacheKey =
         material.customProgramCacheKey.bind(material);
 
-    material.onBeforeCompile = (shader, renderer) => {
+    const onBeforeCompile: Material['onBeforeCompile'] = (shader, renderer) => {
         originalOnBeforeCompile(shader, renderer);
+        const weatherWorldPositionAvailable =
+            shader.vertexShader.includes(
+                'varying vec3 vGrediceWeatherWorldPosition;',
+            ) &&
+            shader.fragmentShader.includes(
+                'varying vec3 vGrediceWeatherWorldPosition;',
+            );
+        const worldPositionVarying = weatherWorldPositionAvailable
+            ? 'vGrediceWeatherWorldPosition'
+            : 'vGroundPatchWorldPosition';
+        const resolvedFragmentParameters =
+            groundPatchFragmentParameters.replaceAll(
+                'vGroundPatchWorldPosition',
+                worldPositionVarying,
+            );
+        const fragmentParameters = weatherWorldPositionAvailable
+            ? resolvedFragmentParameters.replace(
+                  `varying vec3 ${worldPositionVarying};`,
+                  '',
+              )
+            : resolvedFragmentParameters;
+        const colorFragment = groundPatchColorFragment.replaceAll(
+            'vGroundPatchWorldPosition',
+            worldPositionVarying,
+        );
 
         shader.uniforms.uGroundPatchMode = { value: preset.mode };
         shader.uniforms.uGroundPatchLightColor = {
@@ -359,27 +398,40 @@ function applyGroundPatchMaterial(
             shader.uniforms,
             createWetPatchUniforms(wetPatches, options),
         );
-        shader.vertexShader = shader.vertexShader
-            .replace(
-                '#include <common>',
-                `#include <common>\n${groundPatchVertexParameters}`,
-            )
-            .replace(
-                '#include <worldpos_vertex>',
-                `#include <worldpos_vertex>\n${groundPatchWorldPosition}`,
-            );
-        shader.fragmentShader = shader.fragmentShader
-            .replace(
-                '#include <common>',
-                `#include <common>\n${groundPatchFragmentParameters}`,
-            )
-            .replace(
-                '#include <color_fragment>',
-                `#include <color_fragment>\n${groundPatchColorFragment}`,
-            );
+        if (!weatherWorldPositionAvailable) {
+            shader.vertexShader = shader.vertexShader
+                .replace(
+                    '#include <common>',
+                    `#include <common>\n${groundPatchVertexParameters}`,
+                )
+                .replace(
+                    '#include <worldpos_vertex>',
+                    `#include <worldpos_vertex>\n${groundPatchWorldPosition}`,
+                );
+        }
+        shader.fragmentShader = (
+            weatherWorldPositionAvailable
+                ? shader.fragmentShader.replace(
+                      'void main() {',
+                      `${fragmentParameters}\nvoid main() {`,
+                  )
+                : shader.fragmentShader.replace(
+                      '#include <common>',
+                      `#include <common>\n${fragmentParameters}`,
+                  )
+        ).replace(
+            '#include <color_fragment>',
+            `#include <color_fragment>\n${colorFragment}`,
+        );
     };
-    material.customProgramCacheKey = () =>
+    const customProgramCacheKey: Material['customProgramCacheKey'] = () =>
         `${originalCustomProgramCacheKey()}:ground-patch:${surface}`;
+    material.onBeforeCompile = onBeforeCompile;
+    material.customProgramCacheKey = customProgramCacheKey;
+    staticGroundPatchShaderHookPairs.set(
+        onBeforeCompile,
+        customProgramCacheKey,
+    );
     material.needsUpdate = true;
 
     return material;
