@@ -7,6 +7,7 @@ import {
     deleteAttributeValue,
     deleteEntity,
     generatedImageUrlDefaultValue,
+    getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityFormatted,
@@ -835,6 +836,35 @@ test('plant health read model derives diseases and pests from affected plant ref
         }),
     ]);
 
+    const symptomFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'symptoms',
+    });
+    assert.equal(symptomFields[0]?.currentValue, `Disease ${suffix} symptoms`);
+
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'relationships',
+    });
+    assert.ok(
+        relationshipFields[0]?.options?.some(
+            (option) => option.value === String(tomatoId),
+        ),
+    );
+
+    const operationFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'operations',
+    });
+    assert.ok(
+        operationFields[0]?.options?.some(
+            (option) => option.value === String(preventionOperationId),
+        ),
+    );
+
     const formattedPlants =
         await getEntitiesFormatted<FormattedPlantWithHealth>('plant');
     const tomato = formattedPlants.find((plant) => plant.id === tomatoId);
@@ -1136,6 +1166,66 @@ test('CMS generated image attributes are configured by attribute definitions', a
             url: 'https://cdn.example.test/assets/Parent%20Block.webp',
         }),
     );
+});
+
+test('CMS boolean defaults stay virtual until explicitly overridden', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `boolean-default-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Boolean Default ${suffix}`,
+    });
+
+    const appliesToAllTargetsDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'appliesToAllTargets',
+        label: 'Primjenjivo na sve ciljeve',
+        entityTypeName,
+        dataType: 'boolean',
+        defaultValue: 'false',
+        display: false,
+        required: false,
+    });
+    const entityId = await createEntity(entityTypeName);
+
+    let rawEntity = await getEntityRaw(entityId);
+    let appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.equal(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'false');
+
+    let formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, false);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: appliesToAllTargetsDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'true',
+    });
+
+    rawEntity = await getEntityRaw(entityId);
+    appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.notEqual(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'true');
+
+    formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, true);
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {

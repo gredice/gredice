@@ -4,18 +4,22 @@ import {
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
 import {
+    CheckoutCartItemFulfillmentStartedError,
     cartContainsDeliverableItems,
     deleteShoppingCart,
+    getHarvestScheduleForCart,
     getOrCreateShoppingCart,
     getOutletOffer,
     getRaisedBed,
     getShoppingCart,
     getSunflowers,
+    HarvestScheduleConflictError,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationForCartItem,
+    StripeCheckoutAttemptInProgressError,
     upsertOrRemoveCartItem,
     upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
@@ -23,6 +27,7 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import { getDefaultCartItemCurrency } from '../../../lib/checkout/sunflowerCalculations';
 import {
     type AuthVariables,
     authValidator,
@@ -30,6 +35,50 @@ import {
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/harvest-schedule',
+        describeRoute({
+            description:
+                'Preview allowed harvest dates for the current cart and delivery slot',
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'query',
+            z.object({
+                slotId: z.coerce.number().int().positive(),
+            }),
+        ),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { slotId } = context.req.valid('query');
+            const cart = await getOrCreateShoppingCart(accountId, 'new');
+            if (!cart) {
+                return context.json({ error: 'Cart not found' }, 404);
+            }
+
+            try {
+                const schedule = await getHarvestScheduleForCart({
+                    accountId,
+                    cartId: cart.id,
+                    deliverySlotId: slotId,
+                });
+                return context.json(schedule);
+            } catch (error) {
+                if (error instanceof HarvestScheduleConflictError) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: error.code,
+                            details: error.details,
+                        },
+                        error.statusCode,
+                    );
+                }
+
+                throw error;
+            }
+        },
+    )
     .get(
         '/',
         describeRoute({
@@ -117,7 +166,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/',
         describeRoute({
-            description: 'Add or update an item in the shopping cart',
+            description:
+                'Add or update an item in the shopping cart. New items without an explicit currency use sunflowers when the current balance covers all sunflower commitments in the cart.',
         }),
         authValidator(['user', 'admin']),
         zValidator(
@@ -221,25 +271,28 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
             }
+            let appliedCurrency = currency ?? undefined;
             try {
+                let cartItemId: number | null = null;
                 if (outletOfferId && amount > 0) {
-                    await upsertOrRemoveCartItemWithOutletReservation({
-                        id,
-                        cartId,
-                        entityId,
-                        entityTypeName,
-                        amount,
-                        gardenId,
-                        raisedBedId,
-                        positionIndex,
-                        additionalData,
-                        currency,
-                        forceCreate,
-                        outletOfferId,
-                        accountId,
-                    });
+                    cartItemId =
+                        await upsertOrRemoveCartItemWithOutletReservation({
+                            id,
+                            cartId,
+                            entityId,
+                            entityTypeName,
+                            amount,
+                            gardenId,
+                            raisedBedId,
+                            positionIndex,
+                            additionalData,
+                            currency,
+                            forceCreate,
+                            outletOfferId,
+                            accountId,
+                        });
                 } else {
-                    const cartItemId = await upsertOrRemoveCartItem(
+                    cartItemId = await upsertOrRemoveCartItem(
                         id,
                         cartId,
                         entityId,
@@ -254,6 +307,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                     if (amount > 0 && cartItemId) {
                         await releaseOutletReservationForCartItem(cartItemId);
+                    }
+                }
+
+                const isNewCartItem =
+                    cartItemId !== null &&
+                    !cart.items.some((item) => item.id === cartItemId);
+                if (
+                    amount > 0 &&
+                    cartItemId !== null &&
+                    currency == null &&
+                    isNewCartItem
+                ) {
+                    const updatedCart = await getShoppingCart(cartId);
+                    if (updatedCart) {
+                        const cartInfo = await getCartInfo(
+                            updatedCart.items,
+                            accountId,
+                        );
+                        appliedCurrency = getDefaultCartItemCurrency({
+                            availableSunflowers: await getSunflowers(accountId),
+                            items: cartInfo.items,
+                            newCartItemId: cartItemId,
+                        });
+
+                        if (appliedCurrency === 'sunflower') {
+                            await upsertOrRemoveCartItem(
+                                cartItemId,
+                                cartId,
+                                entityId,
+                                entityTypeName,
+                                amount,
+                                gardenId,
+                                raisedBedId,
+                                positionIndex,
+                                additionalData,
+                                appliedCurrency,
+                            );
+                        }
                     }
                 }
             } catch (error) {
@@ -276,6 +367,24 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         400,
                     );
                 }
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this item',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije izmjene košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
+                        },
+                        409,
+                    );
+                }
 
                 throw error;
             }
@@ -287,7 +396,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     entity_id: entityId,
                     entity_type: entityTypeName,
                     amount,
-                    currency: currency ?? undefined,
+                    currency: appliedCurrency,
                     outlet_offer_id: outletOfferId,
                 },
             });
@@ -302,7 +411,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            await deleteShoppingCart(accountId);
+            try {
+                await deleteShoppingCart(accountId);
+            } catch (error) {
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this cart',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije brisanja košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             return context.json({ success: true });
         },
     );

@@ -1,6 +1,6 @@
 ---
 name: gredice-changelog-publishing
-description: "Use for Gredice changelog publishing: auditing merged GitHub PRs, selecting user and farmer facing changes, drafting CMS changelog pages, validating metadata/content, and publishing through apps/app CMS and news surfaces."
+description: "Use for Gredice changelog publishing: auditing merged GitHub PRs, selecting user and farmer facing changes, drafting CMS changelog pages, creating and reviewing on-brand covers, validating metadata/content, and publishing through apps/app CMS and news surfaces."
 ---
 
 # Gredice Changelog Publishing
@@ -10,6 +10,11 @@ description: "Use for Gredice changelog publishing: auditing merged GitHub PRs, 
 Create and publish Gredice changelog entries from merged work while keeping public copy accurate, user-facing, and compatible with the CMS/news pipeline.
 
 Use this together with `github:github` when inspecting pull requests and `gredice-cms-page-authoring` when the CMS shape or section registry may have changed.
+
+Whenever the task creates, replaces, reviews, or attaches a cover, first read
+`.agents/skills/gredice-review-changelog-post/SKILL.md` in full and follow its
+cover workflow. That skill's visual contract is authoritative over automation
+memory, recent generated covers, or inferred changes in style.
 
 ## Scope
 
@@ -84,6 +89,46 @@ Use supported CMS sections from `packages/storage/src/cmsPageSections.ts`. The c
 
 Public changelog APIs and news pages order by `publishedAt`, so historical batches must preserve the release date there before publishing. Do not duplicate the release date in tags or visible content sections.
 
+## Cover Workflow
+
+Apply this workflow whenever a changelog entry needs a new or replacement
+cover:
+
+1. Open at least three accepted published covers that follow the canonical
+   Gredice editorial template, including one from the same product area when
+   possible. Do not treat recency or repeated automation output as evidence
+   that the template changed.
+2. Preserve the template's non-negotiable elements:
+   - a full-bleed warm ivory-to-pale-sage or pale-blue background with a
+     restrained oversized low-contrast arc;
+   - a left editorial column with a short green rule, uppercase Croatian
+     eyebrow, exact dark-forest Croatian headline, and a short muted-green
+     benefit sentence;
+   - one dominant white rounded product panel on the right with a soft shadow,
+     grounded in verified product components, supported UI states, or exact
+     assets;
+   - the same landscape split, hierarchy, spacing, radius, and shadow language
+     across the batch.
+3. Reject text-free editorial art, photography, miniature scenes,
+   free-floating objects, decorative garden scenery, standalone illustrations,
+   and fictional UI as default covers. They remain out of contract even when
+   several recent covers use them. The documented feature-specific full-frame
+   screenshot exception in `gredice-review-changelog-post` is the only default
+   exception unless the user explicitly requests another direction.
+4. Verify all product states and labels against the implementation. Use neutral
+   privacy-safe data. If generated text is not exact, compose the Croatian
+   eyebrow, headline, benefit sentence, and product labels deterministically;
+   never remove required copy to avoid fixing it.
+5. Compare every finished cover side by side with the three accepted
+   references and with the rest of the batch. Reject a cover that loses the
+   canonical series identity, exact Croatian text, product grounding,
+   full-bleed opaque bounds, or balanced left-right composition.
+
+Upload covers below `cms/pages/<pageId>/cover/`, set `metaImageUrl` through
+`updateCmsPage`, and preserve every other CMS field. Re-read the page and
+download the public image to verify the stored URL, dimensions, opacity, and
+checksum.
+
 ## Database Workflow
 
 Use storage repository helpers instead of raw SQL for writes:
@@ -120,15 +165,20 @@ Before applying:
 - Check `metaDescription.length <= 160`.
 - Confirm changelog tags contain only audience/topic labels, not date strings.
 - Confirm Markdown is free-form user/farmer-facing copy with no `Sto je novo`, `Kome je namijenjeno`, or `Datum izdanja` sections.
+- For every cover, confirm the canonical headline-and-product-panel template,
+  exact Croatian text, privacy-safe verified product state, opaque landscape
+  bounds, and side-by-side comparison against at least three accepted covers.
 - Dry-run the create/update script and review counts.
 
 After applying:
 
 - Query `cms_pages` by `contentKind`, `state`, and `slug` prefix to confirm expected rows.
 - Spot-check one content payload parses and uses supported section names.
+- Download every uploaded cover and confirm its natural dimensions, opacity,
+  and checksum match the reviewed local file.
 - For published entries, check `/novosti/sto-je-novo`, one detail page, and `/api/news/changelog` when a dev or deployed target is available.
 - For skill/docs-only edits, run `git diff --check`.
 
 ## Reporting
 
-Summarize what changed with counts and exact CMS IDs/slugs when pages were created or updated. If entries remain drafts, state that explicitly and point to the admin CMS edit pages when useful.
+Summarize what changed with counts and exact CMS IDs/slugs when pages were created or updated. Report replacement-cover dimensions and verification results. If entries remain drafts, state that explicitly and point to the admin CMS edit pages when useful.

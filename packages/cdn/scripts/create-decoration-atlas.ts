@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import sharp from 'sharp';
+import sharp, { type OverlayOptions } from 'sharp';
 
 type ParsedArgs = Map<string, string | boolean>;
 
@@ -559,7 +559,7 @@ async function createPaddingComposites(
     padding: number,
 ) {
     if (padding <= 0) {
-        return [] as sharp.OverlayOptions[];
+        return [] as OverlayOptions[];
     }
 
     const image = sharp(spriteBuffer);
@@ -634,7 +634,7 @@ async function createPaddingComposites(
         { input: topRightCorner, left: x + width, top: y - padding },
         { input: bottomLeftCorner, left: x - padding, top: y + height },
         { input: bottomRightCorner, left: x + width, top: y + height },
-    ] satisfies sharp.OverlayOptions[];
+    ] satisfies OverlayOptions[];
 }
 
 function getPreviousAssignment(
@@ -723,6 +723,46 @@ function createStableAssignments(options: {
     }
 
     return assignments;
+}
+
+function canReuseStableAssignments(
+    previousManifest: AtlasManifest | null,
+    gridLayout: GridLayout,
+) {
+    return (
+        previousManifest?.layout.columns === gridLayout.columns &&
+        previousManifest.layout.rows === gridLayout.rows &&
+        previousManifest.layout.pageCapacity === gridLayout.pageCapacity
+    );
+}
+
+function resolvePageAtlas(
+    pageIndex: number,
+    baseAtlas: AtlasGrid,
+    sprites: Record<string, SpriteFrame>,
+) {
+    const highestOccupiedRow = Object.values(sprites).reduce((row, sprite) => {
+        if (sprite.page !== pageIndex) {
+            return row;
+        }
+
+        return Math.max(row, sprite.cell.row);
+    }, -1);
+    const usedRows = Math.max(1, highestOccupiedRow + 1);
+    const usedBottom = baseAtlas.offsetY + usedRows * baseAtlas.cellSize;
+    const height =
+        usedRows >= baseAtlas.rows
+            ? baseAtlas.height
+            : Math.max(
+                  baseAtlas.cellSize,
+                  Math.min(baseAtlas.height, usedBottom),
+              );
+
+    return {
+        ...baseAtlas,
+        height,
+        rows: usedRows,
+    } satisfies AtlasGrid;
 }
 
 async function removeStalePageImages(options: {
@@ -825,9 +865,13 @@ async function main() {
     const spriteNames = spriteEntries
         .map((entry) => entry.spriteName)
         .sort((left, right) => left.localeCompare(right));
+    const canReuseAssignments = canReuseStableAssignments(
+        previousManifest,
+        gridLayout,
+    );
     const assignments = createStableAssignments({
         pageCapacity: gridLayout.pageCapacity,
-        previousManifest,
+        previousManifest: canReuseAssignments ? previousManifest : null,
         spriteNames,
     });
     const highestPageIndex = Math.max(
@@ -836,7 +880,7 @@ async function main() {
     const pageCount = highestPageIndex + 1;
     const pageComposites = Array.from(
         { length: pageCount },
-        () => [] as sharp.OverlayOptions[],
+        () => [] as OverlayOptions[],
     );
     const pageSpriteCounts = Array.from({ length: pageCount }, () => 0);
     const sprites: Record<string, SpriteFrame> = {};
@@ -915,8 +959,11 @@ async function main() {
         };
     }
 
+    const pageAtlases = Array.from({ length: pageCount }, (_, index) =>
+        resolvePageAtlas(index, pageAtlas, sprites),
+    );
     const manifest: AtlasManifest = {
-        atlas: pageAtlas,
+        atlas: pageAtlases[0] ?? pageAtlas,
         layout: {
             atlasSize: pageAtlas.width,
             columns: gridLayout.columns,
@@ -926,7 +973,7 @@ async function main() {
             version: 2,
         },
         pages: Array.from({ length: pageCount }, (_, index) => ({
-            atlas: pageAtlas,
+            atlas: pageAtlases[index] ?? pageAtlas,
             index,
             spriteCount: pageSpriteCounts[index] ?? 0,
         })),
@@ -948,8 +995,8 @@ async function main() {
                 create: {
                     background: { alpha: 0, b: 0, g: 0, r: 0 },
                     channels: 4,
-                    height: pageAtlas.height,
-                    width: pageAtlas.width,
+                    height: page.atlas.height,
+                    width: page.atlas.width,
                 },
             }).composite(pageComposites[page.index] ?? []);
 
@@ -969,10 +1016,12 @@ async function main() {
         pageCount,
         previousManifest,
     });
-    await writeFile(outputJsonPath, JSON.stringify(manifest, null, 4));
+    await writeFile(outputJsonPath, `${JSON.stringify(manifest, null, 4)}\n`);
 
     console.info(
-        `Created ${pageCount} atlas page(s) with ${inputFiles.length} sprites using stable slot assignment:`,
+        `Created ${pageCount} atlas page(s) with ${inputFiles.length} sprites using ${
+            canReuseAssignments ? 'stable' : 'fresh'
+        } slot assignment:`,
     );
     for (const page of manifest.pages) {
         console.info(

@@ -51,10 +51,10 @@ export function GardenVisitSummaryHighlightHud() {
             : highlight.label;
 
     return (
-        <div className="pointer-events-none absolute top-16 left-1/2 z-20 w-[min(calc(100vw-1rem),26rem)] -translate-x-1/2 px-2">
+        <div className="pointer-events-none absolute top-[calc(var(--game-safe-area-top,0px)+4rem)] left-[var(--game-safe-area-left,0px)] right-[var(--game-safe-area-right,0px)] z-20 flex justify-center px-2">
             <Row
                 alignItems="center"
-                className="pointer-events-auto rounded-lg border border-tertiary/50 bg-background/95 p-2 pr-1 shadow-lg backdrop-blur"
+                className="pointer-events-auto w-full max-w-[26rem] rounded-lg border border-tertiary/50 bg-background/95 p-2 pr-1 shadow-lg backdrop-blur"
                 spacing={2}
             >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-tertiary-foreground">

@@ -9,10 +9,12 @@ import {
     type SuncokretChatTarget,
 } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import { SuncokretChatTrigger } from '../../../packages/game/src/hud/SuncokretChatTrigger';
+import { GameModal } from '../../../packages/game/src/shared-ui/game-modal';
 import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { allSorts, buildOperation } from './raisedBedFieldHudScenarios';
 
 const gardenId = 1;
 const raisedBedId = 11;
@@ -54,6 +56,21 @@ const garden = {
     ],
 };
 
+const wateringOperationBase = buildOperation({
+    id: 77,
+    name: 'watering-raised-bed',
+    label: 'Zalijevanje gredice',
+    stageName: 'maintenance',
+    stageLabel: 'Održavanje',
+});
+const wateringOperation = {
+    ...wateringOperationBase,
+    attributes: {
+        ...wateringOperationBase.attributes,
+        application: 'raisedBedFull' as const,
+    },
+};
+
 function createQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -65,17 +82,21 @@ function createQueryClient() {
         [{ id: gardenId, name: garden.name, isSandbox: false }],
     );
     queryClient.setQueryData(currentGardenKeys('summer', gardenId), garden);
+    queryClient.setQueryData(['operations'], [wateringOperation]);
+    queryClient.setQueryData(['sorts'], allSorts);
     return queryClient;
 }
 
 export function SuncokretChatHudStory({
     contextTarget,
     debug = false,
+    fieldUiTarget,
     focusedRaisedBed = false,
     settingsSection,
 }: {
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
+    fieldUiTarget?: SuncokretChatTarget;
     focusedRaisedBed?: boolean;
     settingsSection?: string;
 }) {
@@ -106,17 +127,23 @@ export function SuncokretChatHudStory({
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider
                         value={{
-                            enableSuncokretChatFlag: true,
                             enableSuncokretDebugFlag: debug,
                         }}
                     >
                         <SuncokretChatProvider>
-                            {contextTarget && (
+                            {fieldUiTarget ? (
+                                <GameModal open title="Kartica biljke">
+                                    <SuncokretChatTrigger
+                                        title="Pitaj Suncokreta iz kartice biljke"
+                                        target={fieldUiTarget}
+                                    />
+                                </GameModal>
+                            ) : contextTarget ? (
                                 <SuncokretChatTrigger
                                     title="Pitaj Suncokreta u kontekstu"
                                     target={contextTarget}
                                 />
-                            )}
+                            ) : null}
                             <SuncokretChatHud />
                         </SuncokretChatProvider>
                     </GameFlagsContext.Provider>

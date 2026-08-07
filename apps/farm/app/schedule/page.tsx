@@ -37,10 +37,14 @@ async function getFarmAuth() {
 }
 
 async function FarmScheduleContent({
+    accountId,
     selectedDateKey,
+    sessionIncarnation,
     userId,
 }: {
+    accountId: string;
     selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }) {
     const userPromise = getUser(userId);
@@ -90,14 +94,17 @@ async function FarmScheduleContent({
         >
             <FarmScheduleDay
                 key={selectedDateKey}
+                accountId={accountId}
+                selectedDateKey={selectedDateKey}
                 dayDataPromise={dayDataPromise}
                 plantingsDayDataPromise={plantingsDayDataPromise}
                 operationsDayDataPromise={operationsDayDataPromise}
                 operationsDataPromise={operationsDataPromise}
                 plantSortsPromise={plantSortsPromise}
-                groupWateringOperations={
+                groupPriorityOperations={
                     user?.farmScheduleGroupedWateringEnabled ?? true
                 }
+                sessionIncarnation={sessionIncarnation}
                 userId={userId}
             />
         </FarmScheduleNavigationFrame>
@@ -117,7 +124,9 @@ export default async function FarmSchedulePage({
         <div className="min-h-[100dvh] w-full bg-background">
             {authContext ? (
                 <FarmScheduleContent
+                    accountId={authContext.accountId}
                     selectedDateKey={selectedDateKey}
+                    sessionIncarnation={authContext.sessionIncarnation}
                     userId={authContext.userId}
                 />
             ) : (

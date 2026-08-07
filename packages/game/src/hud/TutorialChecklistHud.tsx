@@ -12,7 +12,7 @@ import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useShoppingCart } from '../hooks/useShoppingCart';
@@ -553,10 +553,12 @@ function TutorialChecklistTaskRow({
 
 function TutorialChecklistContent({
     allTasksFinished,
+    animateCompletion,
     onDismissCompleted,
     onOpenChange,
 }: {
     allTasksFinished: boolean;
+    animateCompletion: boolean;
     onDismissCompleted: () => void;
     onOpenChange: (open: boolean) => void;
 }) {
@@ -649,7 +651,11 @@ function TutorialChecklistContent({
                         allTasksFinished
                             ? 'border-white/30 bg-white/15 text-white'
                             : 'bg-background text-foreground',
+                        animateCompletion && styles.completionBadge,
                     )}
+                    data-tutorial-checklist-complete-badge={
+                        allTasksFinished ? 'true' : 'false'
+                    }
                 >
                     {allTasksFinished ? (
                         <Check className="size-7" />
@@ -683,14 +689,20 @@ function TutorialChecklistContent({
                 {allTasksFinished ? (
                     <>
                         <Typography
-                            className="max-w-lg text-green-50"
+                            className={cx(
+                                'max-w-lg text-green-50',
+                                animateCompletion && styles.completionCopy,
+                            )}
                             data-tutorial-checklist-complete-text="true"
                             level="body2"
                         >
                             Svi zadaci su dovršeni.
                         </Typography>
                         <Button
-                            className="bg-white px-4 font-bold text-green-800 hover:bg-green-50 dark:bg-white dark:text-green-900 dark:hover:bg-green-50"
+                            className={cx(
+                                'bg-white px-4 font-bold text-green-800 hover:bg-green-50 dark:bg-white dark:text-green-900 dark:hover:bg-green-50',
+                                animateCompletion && styles.completionAction,
+                            )}
                             color="success"
                             data-tutorial-checklist-hide-completed="true"
                             onClick={onDismissCompleted}
@@ -818,6 +830,8 @@ function TutorialChecklistContent({
 
 export function TutorialChecklistHud() {
     const [isOpen, setIsOpen] = useState(false);
+    const [animateCompletion, setAnimateCompletion] = useState(false);
+    const previouslyObservedCompletion = useRef<boolean | null>(null);
     const queryClient = useQueryClient();
     const { data } = useTutorialChecklist();
     const { track } = useGameAnalytics();
@@ -828,6 +842,28 @@ export function TutorialChecklistHud() {
         dismiss: dismissCompletedChecklist,
         isDismissed,
     } = useCompletedChecklistDismissal(data);
+    const hasChecklist = Boolean(data);
+    const completionTransitionObserved =
+        hasChecklist &&
+        allTasksFinished &&
+        previouslyObservedCompletion.current === false;
+    const shouldAnimateCompletion =
+        animateCompletion || completionTransitionObserved;
+
+    useEffect(() => {
+        if (!hasChecklist) {
+            return;
+        }
+
+        if (completionTransitionObserved) {
+            setAnimateCompletion(true);
+        } else if (!allTasksFinished) {
+            setAnimateCompletion(false);
+        }
+
+        previouslyObservedCompletion.current = allTasksFinished;
+    }, [allTasksFinished, completionTransitionObserved, hasChecklist]);
+
     const progressLabel = useMemo(() => {
         if (!data || allTasksFinished) return null;
         const firstActiveGroup = data.groups.find(
@@ -838,6 +874,7 @@ export function TutorialChecklistHud() {
     }, [allTasksFinished, data]);
 
     const handleDismissCompleted = useCallback(() => {
+        setAnimateCompletion(false);
         dismissCompletedChecklist();
         setIsOpen(false);
         track('game_tutorial_checklist_completed_dismissed', {
@@ -858,6 +895,7 @@ export function TutorialChecklistHud() {
                 queryKey: tutorialChecklistKeys,
             });
         } else if (isOpen) {
+            setAnimateCompletion(false);
             track('game_tutorial_checklist_closed', {
                 ...checklistProgressProperties(data),
             });
@@ -939,6 +977,7 @@ export function TutorialChecklistHud() {
             >
                 <TutorialChecklistContent
                     allTasksFinished={allTasksFinished}
+                    animateCompletion={shouldAnimateCompletion}
                     onDismissCompleted={handleDismissCompleted}
                     onOpenChange={handleOpenChange}
                 />

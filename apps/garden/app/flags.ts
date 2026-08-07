@@ -17,20 +17,6 @@ export const addressDistanceVerificationFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
-export const rainWetOverlayFlag = flag<boolean>({
-    key: 'rainWetOverlay',
-    description: 'Enable rain wetness overlays on exposed garden entities.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
-export const blockGeometryMergingFlag = flag<boolean>({
-    key: 'blockGeometryMerging',
-    description: 'Enable merged geometry chunks for stable terrain blocks.',
-    decide: () => true,
-    options: booleanFlagOptions,
-});
-
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
@@ -39,13 +25,6 @@ export const enableDebugCloseupFlag = flag<boolean>({
 
 export const enableDebugHudFlag = flag<boolean>({
     key: 'enableDebugHud',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
-export const enableSuncokretChatFlag = flag<boolean>({
-    key: 'enableSuncokretChat',
-    description: 'Enable the in-game Suncokret AI chat HUD.',
     decide: () => false,
     options: booleanFlagOptions,
 });

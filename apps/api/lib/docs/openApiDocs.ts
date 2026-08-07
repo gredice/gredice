@@ -899,6 +899,16 @@ export async function openApiDocs(
                 metaTitle: { type: ['string', 'null'] },
                 metaDescription: { type: ['string', 'null'] },
                 metaImageUrl: { type: ['string', 'null'] },
+                metaImagePoiX: {
+                    type: ['integer', 'null'],
+                    minimum: 0,
+                    maximum: 100,
+                },
+                metaImagePoiY: {
+                    type: ['integer', 'null'],
+                    minimum: 0,
+                    maximum: 100,
+                },
                 seoImageUrl: { type: ['string', 'null'] },
                 updatedAt: { type: 'string', format: 'date-time' },
             },

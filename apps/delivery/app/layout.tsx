@@ -1,3 +1,4 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
@@ -28,7 +29,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <html lang="hr" translate="no">
             <body className="min-h-screen min-w-0 overflow-x-hidden bg-background antialiased">
                 <ClientAppProvider>
-                    <AuthAppProvider>{children}</AuthAppProvider>
+                    <AuthAppProvider>
+                        <ImpersonationBanner />
+                        {children}
+                    </AuthAppProvider>
                 </ClientAppProvider>
                 <Analytics />
             </body>

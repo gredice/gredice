@@ -11,6 +11,9 @@ import {
 
 const app = getAppByName('delivery');
 const deliveryRoot = fileURLToPath(new URL('.', import.meta.url));
+const zxingTestDouble = fileURLToPath(
+    new URL('./playwright/mocks/zxing.ts', import.meta.url),
+);
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -18,6 +21,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
 
 export const config: PlaywrightTestConfig = {
     testDir: './tests',
+    testIgnore: /e2e\//,
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
     fullyParallel: true,
@@ -33,6 +37,9 @@ export const config: PlaywrightTestConfig = {
                 postcss: deliveryRoot,
             },
             resolve: {
+                alias: {
+                    '@zxing/library': zxingTestDouble,
+                },
                 dedupe: ['react', 'react-dom'],
             },
         },

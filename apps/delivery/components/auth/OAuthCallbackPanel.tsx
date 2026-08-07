@@ -2,10 +2,17 @@ import { Card, CardContent } from '@gredice/ui/Card';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Suspense } from 'react';
 import { UrlAuthForward } from '../../app/prijava/UrlAuthForward';
 
-export function OAuthCallbackPanel({ provider }: { provider: string }) {
+export function OAuthCallbackPanel({
+    provider,
+    returnTarget,
+    hasError,
+}: {
+    provider: string;
+    returnTarget: string;
+    hasError: boolean;
+}) {
     return (
         <main className="flex min-h-[100dvh] w-full items-center justify-center bg-background p-4">
             <Card className="w-full max-w-sm">
@@ -21,9 +28,7 @@ export function OAuthCallbackPanel({ provider }: { provider: string }) {
                     </Stack>
                 </CardContent>
             </Card>
-            <Suspense>
-                <UrlAuthForward />
-            </Suspense>
+            <UrlAuthForward returnTarget={returnTarget} hasError={hasError} />
         </main>
     );
 }

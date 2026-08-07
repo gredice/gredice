@@ -30,7 +30,7 @@ import {
     setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
-import { defaultWaterColors, type WaterColors } from './scene/waterColors';
+import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -54,6 +54,7 @@ export type WinterMode = 'summer' | 'winter' | 'holiday';
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'high-target'
     | 'operation-rewards'
     | 'plant-heavy';
 
@@ -164,9 +165,81 @@ export type PlacedBlockEffect = {
 
 export type BlockPlacementDropAnimation = {
     createdAt: number;
+    mutationConfirmed: boolean;
     particlesSpawned: boolean;
+    renderId: number;
     sequence: number;
+    sourceBlockId: string;
+    visualComplete: boolean;
+    visualStarted: boolean;
 };
+
+function findBlockPlacementDropAnimationByRenderId(
+    animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
+    renderId: number,
+) {
+    for (const [blockId, animation] of Object.entries(animations)) {
+        if (animation.renderId === renderId) {
+            return { animation, blockId };
+        }
+    }
+
+    return null;
+}
+
+export function getBlockPlacementDropAnimationByRenderId(
+    animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
+    renderId: number,
+) {
+    return (
+        findBlockPlacementDropAnimationByRenderId(animations, renderId)
+            ?.animation ?? null
+    );
+}
+
+export function getBlockPlacementDropAnimationForBlockId(
+    animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
+    blockId: string,
+) {
+    const current = animations[blockId];
+    if (current) {
+        return current;
+    }
+
+    return (
+        Object.values(animations).find(
+            (animation) => animation.sourceBlockId === blockId,
+        ) ?? null
+    );
+}
+
+export function getBlockPlacementDropAnimationRenderIdForBlockId(
+    animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
+    blockId: string,
+) {
+    return getBlockPlacementDropAnimationForBlockId(animations, blockId)
+        ?.renderId;
+}
+
+export function resolveBlockPlacementDropAnimationRenderIdentity(
+    blockId: string,
+    animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
+) {
+    const renderId = getBlockPlacementDropAnimationRenderIdForBlockId(
+        animations,
+        blockId,
+    );
+    return formatBlockPlacementDropAnimationRenderIdentity(blockId, renderId);
+}
+
+export function formatBlockPlacementDropAnimationRenderIdentity(
+    blockId: string,
+    renderId: number | undefined,
+) {
+    return renderId === undefined
+        ? `block:${blockId}`
+        : `placement:${renderId}`;
+}
 
 export type GardenVisitSummaryHighlight = {
     createdAt: number;
@@ -264,6 +337,7 @@ type BackgroundPaletteCycle = {
 
 export type GameState = {
     // General
+    authenticatedGardenQueriesEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     winterMode: WinterMode;
@@ -330,9 +404,18 @@ export type GameState = {
     ) => void;
     consumePlacedBlockEffect: (blockId: string) => PlacedBlockEffect | null;
     blockPlacementDropAnimations: Record<string, BlockPlacementDropAnimation>;
-    queueBlockPlacementDropAnimation: (blockId: string) => void;
-    markBlockPlacementDropParticlesSpawned: (blockId: string) => boolean;
-    completeBlockPlacementDropAnimation: (blockId: string) => void;
+    queueBlockPlacementDropAnimation: (
+        blockId: string,
+        options?: { mutationConfirmed?: boolean },
+    ) => void;
+    confirmBlockPlacementDropAnimation: (
+        sourceBlockId: string,
+        targetBlockId: string,
+    ) => void;
+    cancelBlockPlacementDropAnimation: (blockId: string) => void;
+    markBlockPlacementDropParticlesSpawned: (renderId: number) => boolean;
+    markBlockPlacementDropVisualStarted: (renderId: number) => void;
+    markBlockPlacementDropVisualComplete: (renderId: number) => void;
     gardenVisitSummaryHighlight: GardenVisitSummaryHighlight | null;
     setGardenVisitSummaryHighlight: (
         highlight: Omit<GardenVisitSummaryHighlight, 'createdAt' | 'sequence'>,
@@ -382,6 +465,8 @@ export type GameState = {
     clearEnvironmentOverrides: () => void;
 
     // Environment derived state
+    rainSurfaceIntensity: number;
+    setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
     setSnowCoverage: (snowCoverage: number) => void;
     waterColors: WaterColors;
@@ -401,6 +486,7 @@ export type GameState = {
 
 export function createGameState({
     appBaseUrl,
+    authenticatedGardenQueriesEnabled = true,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -411,9 +497,11 @@ export function createGameState({
     localSandboxInitialStacks,
     mockGardenProfile,
     timeLocation: initialTimeLocation,
+    visualPlacementEffectsEnabled = true,
     winterMode,
 }: {
     appBaseUrl: string;
+    authenticatedGardenQueriesEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -424,6 +512,7 @@ export function createGameState({
     localSandboxInitialStacks?: Stack[];
     mockGardenProfile?: MockGardenProfile;
     timeLocation?: GameLocation;
+    visualPlacementEffectsEnabled?: boolean;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -445,7 +534,9 @@ export function createGameState({
         timeLocation,
     );
     const { sunrise, sunset } = getGameSunriseSunset(timeLocation, now);
+    let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
+        authenticatedGardenQueriesEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         winterMode: winterMode ?? 'summer',
@@ -681,13 +772,18 @@ export function createGameState({
             })),
         clearGardenBoxTooltip: () => set({ gardenBoxTooltip: null }),
         placedBlockEffects: {},
-        queuePlacedBlockEffect: (blockId, effect) =>
+        queuePlacedBlockEffect: (blockId, effect) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
             set((state) => ({
                 placedBlockEffects: {
                     ...state.placedBlockEffects,
                     [blockId]: effect,
                 },
-            })),
+            }));
+        },
         consumePlacedBlockEffect: (blockId) => {
             const effect = get().placedBlockEffects[blockId] ?? null;
             if (!effect) {
@@ -702,36 +798,110 @@ export function createGameState({
             return effect;
         },
         blockPlacementDropAnimations: {},
-        queueBlockPlacementDropAnimation: (blockId) =>
-            set((state) => ({
-                blockPlacementDropAnimations: {
-                    ...state.blockPlacementDropAnimations,
-                    [blockId]: {
-                        createdAt: Date.now(),
-                        particlesSpawned: false,
-                        sequence:
-                            (state.blockPlacementDropAnimations[blockId]
-                                ?.sequence ?? 0) + 1,
+        queueBlockPlacementDropAnimation: (blockId, options) => {
+            if (!visualPlacementEffectsEnabled) {
+                return;
+            }
+
+            set((state) => {
+                nextBlockPlacementDropAnimationRenderId += 1;
+                return {
+                    blockPlacementDropAnimations: {
+                        ...state.blockPlacementDropAnimations,
+                        [blockId]: {
+                            createdAt: Date.now(),
+                            mutationConfirmed:
+                                options?.mutationConfirmed === true,
+                            particlesSpawned: false,
+                            renderId: nextBlockPlacementDropAnimationRenderId,
+                            sequence:
+                                (state.blockPlacementDropAnimations[blockId]
+                                    ?.sequence ?? 0) + 1,
+                            sourceBlockId: blockId,
+                            visualComplete: false,
+                            visualStarted: false,
+                        },
                     },
-                },
-            })),
-        markBlockPlacementDropParticlesSpawned: (blockId) => {
-            const animation = get().blockPlacementDropAnimations[blockId];
-            if (!animation || animation.particlesSpawned) {
+                };
+            });
+        },
+        confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
+            set((state) => {
+                const animation = getBlockPlacementDropAnimationForBlockId(
+                    state.blockPlacementDropAnimations,
+                    sourceBlockId,
+                );
+                if (!animation) {
+                    return state;
+                }
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    animation.renderId,
+                );
+                if (!entry) {
+                    return state;
+                }
+
+                const blockPlacementDropAnimations = {
+                    ...state.blockPlacementDropAnimations,
+                };
+                delete blockPlacementDropAnimations[entry.blockId];
+                if (animation.visualStarted && !animation.visualComplete) {
+                    blockPlacementDropAnimations[targetBlockId] = {
+                        ...animation,
+                        mutationConfirmed: true,
+                    };
+                }
+
+                return { blockPlacementDropAnimations };
+            }),
+        cancelBlockPlacementDropAnimation: (blockId) =>
+            set((state) => {
+                const animation = getBlockPlacementDropAnimationForBlockId(
+                    state.blockPlacementDropAnimations,
+                    blockId,
+                );
+                if (!animation) {
+                    return state;
+                }
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    animation.renderId,
+                );
+                if (!entry) {
+                    return state;
+                }
+
+                const blockPlacementDropAnimations = {
+                    ...state.blockPlacementDropAnimations,
+                };
+                delete blockPlacementDropAnimations[entry.blockId];
+
+                return { blockPlacementDropAnimations };
+            }),
+        markBlockPlacementDropParticlesSpawned: (renderId) => {
+            const entry = findBlockPlacementDropAnimationByRenderId(
+                get().blockPlacementDropAnimations,
+                renderId,
+            );
+            if (!entry || entry.animation.particlesSpawned) {
                 return false;
             }
 
             set((state) => {
-                const current = state.blockPlacementDropAnimations[blockId];
-                if (!current || current.particlesSpawned) {
+                const currentEntry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    renderId,
+                );
+                if (!currentEntry || currentEntry.animation.particlesSpawned) {
                     return state;
                 }
 
                 return {
                     blockPlacementDropAnimations: {
                         ...state.blockPlacementDropAnimations,
-                        [blockId]: {
-                            ...current,
+                        [currentEntry.blockId]: {
+                            ...currentEntry.animation,
                             particlesSpawned: true,
                         },
                     },
@@ -739,16 +909,47 @@ export function createGameState({
             });
             return true;
         },
-        completeBlockPlacementDropAnimation: (blockId) =>
+        markBlockPlacementDropVisualStarted: (renderId) =>
             set((state) => {
-                if (!state.blockPlacementDropAnimations[blockId]) {
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    renderId,
+                );
+                if (!entry || entry.animation.visualStarted) {
+                    return state;
+                }
+
+                return {
+                    blockPlacementDropAnimations: {
+                        ...state.blockPlacementDropAnimations,
+                        [entry.blockId]: {
+                            ...entry.animation,
+                            visualStarted: true,
+                        },
+                    },
+                };
+            }),
+        markBlockPlacementDropVisualComplete: (renderId) =>
+            set((state) => {
+                const entry = findBlockPlacementDropAnimationByRenderId(
+                    state.blockPlacementDropAnimations,
+                    renderId,
+                );
+                if (!entry) {
                     return state;
                 }
 
                 const blockPlacementDropAnimations = {
                     ...state.blockPlacementDropAnimations,
                 };
-                delete blockPlacementDropAnimations[blockId];
+                if (entry.animation.mutationConfirmed) {
+                    delete blockPlacementDropAnimations[entry.blockId];
+                } else {
+                    blockPlacementDropAnimations[entry.blockId] = {
+                        ...entry.animation,
+                        visualComplete: true,
+                    };
+                }
 
                 return { blockPlacementDropAnimations };
             }),
@@ -909,6 +1110,9 @@ export function createGameState({
                 sunsetTime: sunset,
             });
         },
+        rainSurfaceIntensity: 0,
+        setRainSurfaceIntensity: (rainSurfaceIntensity) =>
+            set({ rainSurfaceIntensity }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,
@@ -962,6 +1166,14 @@ export function useGameState<T>(selector: (state: GameState) => T): T {
     if (!store)
         throw new Error('Missing GameStateContext.Provider in the tree');
     return useStore(store, selector);
+}
+
+export function useGameStateStore() {
+    const store = useContext(GameStateContext);
+    if (!store) {
+        throw new Error('Missing GameStateContext.Provider in the tree');
+    }
+    return store;
 }
 
 export function useOptionalGameState<T>(

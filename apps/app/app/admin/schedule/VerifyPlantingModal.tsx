@@ -11,6 +11,9 @@ import { verifyRaisedBedPlantingAction } from '../../(actions)/raisedBedFieldsAc
 interface VerifyPlantingModalProps {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -18,6 +21,9 @@ interface VerifyPlantingModalProps {
 export function VerifyPlantingModal({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
     onConfirm,
 }: VerifyPlantingModalProps) {
@@ -30,7 +36,13 @@ export function VerifyPlantingModal({
             if (onConfirm) {
                 await onConfirm();
             } else {
-                await verifyRaisedBedPlantingAction(raisedBedId, positionIndex);
+                await verifyRaisedBedPlantingAction(
+                    raisedBedId,
+                    positionIndex,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
+                );
             }
             setOpen(false);
         } catch (error) {

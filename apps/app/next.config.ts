@@ -15,7 +15,8 @@ const nextConfig: NextConfig = {
     experimental: {
         authInterrupts: true,
         typedEnv: true,
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
+        useTypeScriptCli: true,
         optimizePackageImports: [
             'three',
             '@react-three/drei',

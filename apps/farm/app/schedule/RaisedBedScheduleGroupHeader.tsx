@@ -1,5 +1,5 @@
+import { MapPin } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
-import { Typography } from '@gredice/ui/Typography';
 import { RaisedBedPhotoPreview } from './RaisedBedPhotoPreview';
 import type { FarmScheduleRaisedBedPhotoPreview } from './scheduleData';
 
@@ -22,9 +22,10 @@ export function RaisedBedScheduleGroupHeader({
                 label={label}
                 photoCount={preview.photoCount}
             />
-            <Typography semiBold className="truncate">
+            <span className="inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md bg-primary/10 px-2.5 text-base font-bold text-primary [overflow-wrap:anywhere]">
+                <MapPin aria-hidden className="size-4 shrink-0" />
                 {label}
-            </Typography>
+            </span>
         </Row>
     );
 }

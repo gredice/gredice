@@ -102,12 +102,12 @@ function expectBaseSchedulingPayload(
     expect(payload).toMatchObject({
         amount: 1,
         cartId: 1,
-        currency: 'eur',
         entityId,
         entityTypeName: 'operation',
         gardenId: TEST_GARDEN_ID,
         raisedBedId: TEST_RAISED_BED_ID,
     });
+    expect(payload.currency).toBeUndefined();
     expect(parseScheduledDate(payload)).toBe(
         new Date(selectedDate).toISOString(),
     );
@@ -129,6 +129,17 @@ function defaultScheduleDateInput() {
     const today = new Date();
     return formatDateInput(
         new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),
+    );
+}
+
+function futureScheduleDateInput(daysFromToday: number) {
+    const today = new Date();
+    return formatDateInput(
+        new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() + daysFromToday,
+        ),
     );
 }
 
@@ -314,7 +325,8 @@ test('saved AI operation links render as scheduling chips', async ({
         scheduleDialog.getByText('Malčiranje gredice', { exact: true }),
     ).toBeVisible();
 
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(2);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {
@@ -342,7 +354,8 @@ test('saved AI plant operation chip schedules the targeted field', async ({
     const scheduleDialog = page.getByRole('dialog', {
         name: 'Zakaži radnju: Zalijevanje biljke',
     });
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(3);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {
@@ -374,7 +387,8 @@ test('saved AI operation scheduling failures stay recoverable', async ({
     const scheduleDialog = page.getByRole('dialog', {
         name: 'Zakaži radnju: Malčiranje gredice',
     });
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(2);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {

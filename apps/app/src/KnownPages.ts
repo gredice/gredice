@@ -54,6 +54,11 @@ export const KnownPages = {
     Automation: (automationId: number) =>
         `/admin/automations/${automationId}` as Route,
     SowingStatistics: '/admin/statistics/sowing',
+    DeliveryRequestStatistics: '/admin/statistics/delivery-requests',
+    UsersStatistics: '/admin/statistics/users',
+    OperationsStatistics: '/admin/statistics/operations',
+    RecordsStatistics: '/admin/statistics/records',
+    SunflowersStatistics: '/admin/statistics/sunflowers',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
@@ -70,6 +75,28 @@ export const KnownPages = {
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
     Surveys: '/admin/surveys',
+    SurveyCreate: '/admin/surveys/create',
+    Survey: (surveyId: string) => `/admin/surveys/${surveyId}` as Route,
+    SurveyDesign: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/design` as Route,
+    SurveyDesignCopy: (surveyId: string, sourceVersionId: string) =>
+        `/admin/surveys/${surveyId}/design?sourceVersionId=${encodeURIComponent(sourceVersionId)}` as Route,
+    SurveyDesignEdit: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?editVersionId=${encodeURIComponent(versionId)}` as Route,
+    SurveyDesignPreview: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?previewVersionId=${encodeURIComponent(versionId)}` as Route,
+    SurveySends: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/sends` as Route,
+    SurveyResponses: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses` as Route,
+    SurveyResponsesExport: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses/export` as Route,
+    SurveyStatistics: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/statistics` as Route,
+    SurveyResponse: (surveyId: string, responseId: string) =>
+        `/admin/surveys/${surveyId}/responses/${responseId}` as Route,
+    SurveyResponsesForMonth: (surveyId: string, monthKey: string) =>
+        `/admin/surveys/${surveyId}/responses?monthKey=${encodeURIComponent(monthKey)}` as Route,
     Logout: '/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
@@ -145,6 +172,8 @@ export const KnownPages = {
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
+    DeliveryOperations: '/admin/delivery/operations',
+    DeliveryNotifications: '/admin/delivery/notifications',
 
     // External links
     StripePayment: (paymentId: string) =>

@@ -9,6 +9,7 @@ import {
     createAccount,
     createAttributeDefinition,
     createCommunityEditRequest,
+    createCommunityEntitySuggestion,
     createEntity,
     getAccountAchievements,
     getCommunityEditableFieldsForEntity,
@@ -17,6 +18,8 @@ import {
     getEntityFormatted,
     getEntityRaw,
     getEntityRevisions,
+    parseCommunityEntitySuggestion,
+    parseCommunityEntitySuggestionRequest,
     rejectCommunityEditRequest,
     storage,
     updateEntity,
@@ -567,6 +570,38 @@ test('community editable registry resolves allowed plant and operation fields', 
                 (field) => field.fieldKey === 'operation.application',
             ),
     );
+    for (const entityTypeName of ['plantDisease', 'plantPest']) {
+        const healthSections = getCommunityEditableSections(entityTypeName);
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'overview')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey ===
+                        `${entityTypeName}.short-description`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'symptoms')
+                ?.fields.some(
+                    (field) => field.fieldKey === `${entityTypeName}.symptoms`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'relationships')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey === `${entityTypeName}.affected-plants`,
+                ),
+        );
+        assert.equal(
+            healthSections.find((section) => section.key === 'operations')
+                ?.fields.length,
+            3,
+        );
+    }
 
     const plantId = await createPublishedPlant();
     const plantFields = await getCommunityEditableFieldsForEntity({
@@ -664,13 +699,24 @@ test('community editable registry resolves allowed plant and operation fields', 
         entityId: relationshipPlantId,
         sectionKey: 'relationships',
     });
+    const companionsField = relationshipFields.find(
+        (field) => field.fieldKey === 'plant.relationships.companions',
+    );
+    assert.ok(companionsField);
+    assert.equal(companionsField.controlType, 'reference');
+    assert.ok(companionsField.multiple);
+    assert.equal(
+        companionsField.currentValue,
+        JSON.stringify([String(companionId)]),
+    );
     assert.ok(
-        relationshipFields.some(
-            (field) =>
-                field.fieldKey === 'plant.relationships.companions' &&
-                field.controlType === 'reference' &&
-                field.multiple &&
-                field.currentValue === JSON.stringify([String(companionId)]),
+        companionsField.options?.some(
+            (option) => option.value === String(companionId),
+        ),
+    );
+    assert.ok(
+        !companionsField.options?.some(
+            (option) => option.value === String(relationshipPlantId),
         ),
     );
     assert.ok(
@@ -769,6 +815,143 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.options?.some((option) => option.value === 'garden'),
         ),
     );
+});
+
+test('community entity suggestions store a reviewable new plant sort proposal', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'plantSort',
+        parentPlantId: plantId,
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        source: 'https://example.com/blitva-rubin',
+        note: 'Provjeriti dostupnost sjemena.',
+        publicPath: '/biljke/blitva',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plant');
+    assert.equal(request.entityId, plantId);
+    assert.equal(request.sectionKey, 'new-plant-sort');
+    assert.equal(request.changes.length, 0);
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'plantSort',
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        parentPlantId: plantId,
+        parentPlantName: `Biljka ${plantId}`,
+        note: 'Provjeriti dostupnost sjemena.',
+        source: 'https://example.com/blitva-rubin',
+    });
+    assert.equal(
+        parseCommunityEntitySuggestionRequest(request)?.kind,
+        'plantSort',
+    );
+
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            sectionKey: 'overview',
+            changes: [
+                {
+                    fieldKey: 'plant.description',
+                },
+            ],
+        }),
+        null,
+    );
+
+    const approved = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(approved.status, 'applied');
+});
+
+test('community entity suggestions store operation context and application', async () => {
+    const data = await fixture();
+    const plantStageId = await createPublishedPlantStage({
+        name: 'maintenance',
+        label: 'Održavanje',
+    });
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'operation',
+        plantStageId,
+        application: 'raisedBedFull',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        publicPath: '/radnje',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plantStage');
+    assert.equal(request.entityId, plantStageId);
+    assert.equal(request.sectionKey, 'new-operation');
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'operation',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        application: 'raisedBedFull',
+        plantStageId,
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+    });
+});
+
+test('community entity suggestions store disease and pest details against affected plant context', async () => {
+    const data = await fixture();
+    const firstPlantId = await createPublishedPlant();
+    const secondPlantId = await createPublishedPlant();
+
+    for (const kind of ['disease', 'pest'] as const) {
+        const request = await createCommunityEntitySuggestion({
+            kind,
+            affectedPlantIds: [firstPlantId, secondPlantId, firstPlantId],
+            name: kind === 'disease' ? 'Nova pjegavost' : 'Novi kukac',
+            description: 'Kratki javni opis problema.',
+            symptoms: 'Na listovima se pojavljuju vidljivi znakovi.',
+            favorableConditions: 'Problem se češće javlja za toplog vremena.',
+            severity: 'Srednje',
+            source: 'https://example.com/plant-health',
+            publicPath: kind === 'disease' ? '/bolesti' : '/stetnici',
+            submitter: { id: data.submitterId },
+        });
+
+        assert.equal(request.entityTypeName, 'plant');
+        assert.equal(request.entityId, firstPlantId);
+        assert.equal(request.sectionKey, `new-${kind}`);
+        assert.equal(request.changes.length, 0);
+
+        const suggestion = parseCommunityEntitySuggestionRequest(request);
+        assert.equal(suggestion?.kind, kind);
+        if (suggestion?.kind !== 'disease' && suggestion?.kind !== 'pest') {
+            assert.fail('Expected a plant health suggestion.');
+        }
+        assert.deepEqual(suggestion.affectedPlants, [
+            { id: firstPlantId, name: `Biljka ${firstPlantId}` },
+            { id: secondPlantId, name: `Biljka ${secondPlantId}` },
+        ]);
+        assert.equal(
+            suggestion.symptoms,
+            'Na listovima se pojavljuju vidljivi znakovi.',
+        );
+        assert.equal(suggestion.severity, 'Srednje');
+
+        assert.equal(
+            parseCommunityEntitySuggestionRequest({
+                ...request,
+                entityId: secondPlantId,
+            }),
+            null,
+        );
+    }
 });
 
 test('community edit requests submit storage content and operation suggestions together', async () => {
@@ -940,8 +1123,8 @@ test('community edit requests submit plant relationship references', async () =>
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);
     assert.deepEqual(
-        attributeValues(entity, data.plantCompanionsDefinitionId),
-        [String(basilId), String(calendulaId)],
+        attributeValues(entity, data.plantCompanionsDefinitionId).sort(),
+        [String(basilId), String(calendulaId)].sort(),
     );
     assert.deepEqual(
         attributeValues(entity, data.plantAntagonistsDefinitionId),

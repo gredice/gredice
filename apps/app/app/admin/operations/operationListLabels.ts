@@ -9,6 +9,7 @@ const operationStatusLabels: Record<OperationsListStatus, string> = {
     planned: 'Planirano',
     pendingVerification: 'Čeka verifikaciju',
     completed: 'Završeno',
+    blocked: 'Blokirano',
     failed: 'Neuspješno',
     canceled: 'Otkazano',
 };

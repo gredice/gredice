@@ -18,6 +18,13 @@ import {
     type OperationCompletePayload,
     type OperationSchedulePayload,
 } from '@gredice/storage';
+import {
+    buildDeliverySlackNotificationMessage,
+    type DeliverySlackNotificationItem,
+} from './deliverySlackNotificationMessage';
+
+export * from './customerDeliveryNotifications';
+export * from './deliveryLifecycle';
 
 type OperationEventType =
     | 'scheduled'
@@ -34,7 +41,7 @@ interface DeliveryRequestEventOptions {
     status?: DeliveryRequestState | string | null;
 }
 
-interface PurchaseNotificationDetails {
+export interface PurchaseNotificationDetails {
     accountId?: string | null;
     amountTotal?: number | null;
     currency?: string | null;
@@ -46,6 +53,15 @@ interface PurchaseNotificationDetails {
         amountSubtotal?: number | null;
     }[];
 }
+
+export type CheckoutFulfillmentIncidentDetails = {
+    accountId: string;
+    cartItemId: number;
+    checkoutSessionId: string;
+    incidentId: string;
+    positionIndex: number;
+    raisedBedId: number;
+};
 
 interface OperationContext {
     operationName: string;
@@ -81,6 +97,7 @@ function formatCurrency(amountCents?: number | null, currency?: string | null) {
 
 async function buildOperationContext(
     operationId: number,
+    throwOnLookupError = false,
 ): Promise<OperationContext | null> {
     try {
         const operation = await getOperationById(operationId);
@@ -178,6 +195,7 @@ async function buildOperationContext(
             scheduledDate: operation.scheduledDate || undefined,
         };
     } catch (error) {
+        if (throwOnLookupError) throw error;
         console.error('Failed to build operation context', {
             operationId,
             error,
@@ -186,12 +204,27 @@ async function buildOperationContext(
     }
 }
 
-async function sendSlackMessage(channel: string | undefined, text: string) {
+export type SlackNotificationDeliveryOptions = {
+    abortSignal?: AbortSignal;
+    beforeProviderSubmission?: () => Promise<void>;
+    throwOnLookupError?: boolean;
+};
+
+async function sendSlackMessage(
+    channel: string | undefined,
+    text: string,
+    {
+        abortSignal,
+        beforeProviderSubmission,
+    }: SlackNotificationDeliveryOptions = {},
+) {
     const token = process.env.SLACK_BOT_TOKEN;
     const result = await postMessage({
         token,
         channel,
         text,
+        abortSignal,
+        beforeProviderSubmission,
     });
     if (!result.ok) {
         if (result.skipped) {
@@ -202,10 +235,12 @@ async function sendSlackMessage(channel: string | undefined, text: string) {
             console.error('Failed to send Slack notification', result);
         }
     }
+    return result;
 }
 
 async function getSlackChannelId(
     key: NotificationSettingKey,
+    throwOnLookupError = false,
 ): Promise<string | undefined> {
     try {
         const setting = await getNotificationSetting(key);
@@ -225,6 +260,7 @@ async function getSlackChannelId(
 
         return undefined;
     } catch (error) {
+        if (throwOnLookupError) throw error;
         console.error('Failed to load Slack notification setting', {
             key,
             error,
@@ -240,8 +276,24 @@ export async function notifyOperationUpdate(
         | OperationCompletePayload
         | OperationSchedulePayload
         | OperationCancelPayload,
+): Promise<void> {
+    await deliverOperationSlackNotification(operationId, type, options);
+}
+
+export async function deliverOperationSlackNotification(
+    operationId: number,
+    type: OperationEventType,
+    options:
+        | OperationCompletePayload
+        | OperationSchedulePayload
+        | OperationCancelPayload
+        | undefined,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
 ) {
-    const context = await buildOperationContext(operationId);
+    const context = await buildOperationContext(
+        operationId,
+        deliveryOptions.throwOnLookupError,
+    );
     if (!context) {
         return;
     }
@@ -308,75 +360,100 @@ export async function notifyOperationUpdate(
     }
     lines.push(`• ID radnje: ${operationId}`);
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
 }
 
 export async function notifyDeliveryRequestEvent(
     requestId: string,
     type: DeliveryRequestEventType,
-    options: DeliveryRequestEventOptions = {},
-) {
-    const request = await getDeliveryRequest(requestId);
-    if (!request) {
-        console.warn('Delivery request not found for Slack notification', {
-            requestId,
-        });
-        return;
-    }
+    options?: DeliveryRequestEventOptions,
+): Promise<void> {
+    await deliverDeliveryRequestSlackNotification(requestId, type, options);
+}
 
-    let operationContext: OperationContext | null = null;
-    if (request.operationId) {
-        operationContext = await buildOperationContext(request.operationId);
+export async function notifyDeliveryRequestGroupEvent(
+    requestIds: string[],
+    type: DeliveryRequestEventType,
+    options?: DeliveryRequestEventOptions,
+): Promise<void> {
+    await deliverDeliveryRequestGroupSlackNotification(
+        requestIds,
+        type,
+        options,
+    );
+}
+
+export async function deliverDeliveryRequestSlackNotification(
+    requestId: string,
+    type: DeliveryRequestEventType,
+    options: DeliveryRequestEventOptions = {},
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
+    return await deliverDeliveryRequestGroupSlackNotification(
+        [requestId],
+        type,
+        options,
+        deliveryOptions,
+    );
+}
+
+export async function deliverDeliveryRequestGroupSlackNotification(
+    requestIds: string[],
+    type: DeliveryRequestEventType,
+    options: DeliveryRequestEventOptions = {},
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
+    const uniqueRequestIds = Array.from(new Set(requestIds));
+    if (uniqueRequestIds.length === 0) {
+        return;
     }
 
     const channel = await getSlackChannelId(
         NotificationSettingKeys.SlackDeliveryChannel,
+        deliveryOptions.throwOnLookupError,
     );
     if (!channel) {
         console.debug('Skipping delivery Slack notification: missing channel', {
-            requestId,
+            requestIds: uniqueRequestIds,
         });
         return;
     }
 
-    const lines: (string | undefined)[] = [];
-    if (type === 'created') {
-        lines.push(':package: *Novi zahtjev za dostavu*');
-    } else if (type === 'cancelled') {
-        lines.push(':x: *Zahtjev za dostavu otkazan*');
-    } else {
-        lines.push(':package: *Ažuriran zahtjev za dostavu*');
+    const items: DeliverySlackNotificationItem[] = [];
+    for (const requestId of uniqueRequestIds) {
+        const request = await getDeliveryRequest(requestId);
+        if (!request) {
+            console.warn('Delivery request not found for Slack notification', {
+                requestId,
+            });
+            continue;
+        }
+
+        const operationContext = request.operationId
+            ? await buildOperationContext(
+                  request.operationId,
+                  deliveryOptions.throwOnLookupError,
+              )
+            : null;
+        items.push({
+            id: request.id,
+            operationName: operationContext?.operationName,
+            farmName: operationContext?.farmName,
+            locationDescription: operationContext?.locationDescription,
+            slotStartAt: request.slot?.startAt,
+            mode: request.mode,
+            status: request.state,
+        });
     }
 
-    lines.push(`• ID zahtjeva: ${request.id}`);
-    if (operationContext?.operationName) {
-        lines.push(`• Radnja: ${operationContext.operationName}`);
-    }
-    if (operationContext?.farmName) {
-        lines.push(`• Farma: ${operationContext.farmName}`);
-    }
-    if (operationContext?.locationDescription) {
-        lines.push(`• Lokacija: ${operationContext.locationDescription}`);
-    }
-    if (request.slot?.startAt) {
-        lines.push(`• Termin: ${formatDateTime(request.slot.startAt)}`);
-    }
-    if (request.mode) {
-        lines.push(
-            `• Način: ${request.mode === 'delivery' ? 'Dostava' : 'Preuzimanje'}`,
-        );
-    }
-    if (options.status ?? request.state) {
-        lines.push(`• Status: ${(options.status ?? request.state).toString()}`);
-    }
-    if (options.reason) {
-        lines.push(`• Razlog: ${options.reason}`);
-    }
-    if (options.note) {
-        lines.push(`• Napomena: ${options.note}`);
-    }
+    const message = buildDeliverySlackNotificationMessage(items, type, options);
+    if (!message) return;
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(channel, message, deliveryOptions);
 }
 
 export async function notifyNewUserRegistered(userId: string) {
@@ -468,8 +545,16 @@ export async function notifyOperationAssignedUsers(
 }
 
 export async function notifyPurchase(details: PurchaseNotificationDetails) {
+    await deliverPurchaseNotification(details);
+}
+
+export async function deliverPurchaseNotification(
+    details: PurchaseNotificationDetails,
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
     const channel = await getSlackChannelId(
         NotificationSettingKeys.SlackShoppingChannel,
+        deliveryOptions.throwOnLookupError,
     );
     if (!channel) {
         console.debug('Skipping shopping Slack notification: missing channel');
@@ -506,5 +591,40 @@ export async function notifyPurchase(details: PurchaseNotificationDetails) {
         }
     }
 
-    await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+    return await sendSlackMessage(
+        channel,
+        lines.filter(Boolean).join('\n'),
+        deliveryOptions,
+    );
+}
+
+export async function notifyCheckoutFulfillmentIncident(
+    details: CheckoutFulfillmentIncidentDetails,
+) {
+    const channel = await getSlackChannelId(
+        NotificationSettingKeys.SlackShoppingChannel,
+    );
+    if (!channel) {
+        throw new Error(
+            'Checkout fulfillment incident Slack notification requires the shopping channel.',
+        );
+    }
+
+    const result = await sendSlackMessage(
+        channel,
+        [
+            ':rotating_light: *Plaćena sadnja nije isporučena*',
+            '• Potrebna je ručna provjera, postavljanje ili povrat sredstava.',
+            `• Incident: ${details.incidentId}`,
+            `• Checkout ID: ${details.checkoutSessionId}`,
+            `• Stavka košarice: ${details.cartItemId.toString()}`,
+            `• Račun: ${details.accountId}`,
+            `• Gredica/polje: ${details.raisedBedId.toString()}/${(details.positionIndex + 1).toString()}`,
+        ].join('\n'),
+    );
+    if (!result.ok) {
+        throw new Error(
+            `Checkout fulfillment incident Slack notification failed: ${result.error ?? result.skipped ?? 'unknown_error'}`,
+        );
+    }
 }

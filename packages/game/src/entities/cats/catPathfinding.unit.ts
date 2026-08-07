@@ -86,7 +86,7 @@ test('allows the cat to start or finish on an occupied target cell', () => {
     assert.deepEqual(path.targetCell, { x: 2, z: 0 });
 });
 
-test('falls back to direct movement when no walkable passage exists', () => {
+test('routes through implicit open terrain when listed surfaces are sparse', () => {
     const path = findCatPath({
         blockedCells: [
             { x: -1, z: -1 },
@@ -100,10 +100,37 @@ test('falls back to direct movement when no walkable passage exists', () => {
             { x: 1, z: 1 },
         ],
         from: { x: -2, y: 0.42, z: 0 },
-        surfaces: createSurfaces({ minX: -2, maxX: 2, minZ: -1, maxZ: 1 }),
+        surfaces: [
+            { x: -2, y: 0.42, z: 0 },
+            { x: 2, y: 0.42, z: 0 },
+        ],
         to: { x: 2, y: 0.42, z: 0 },
     });
 
-    assert.equal(path.status, 'fallback');
-    assert.equal(path.points.length, 2);
+    assert.equal(path.status, 'path');
+    assert.ok(path.points.length > 2);
+    assert.ok(path.points.some((point) => Math.abs(point.z) >= 2));
+});
+
+test('reports an unreachable target without crossing its blocked enclosure', () => {
+    const from = { x: -3, y: 0.42, z: 0 };
+    const path = findCatPath({
+        blockedCells: [
+            { x: -1, z: -1 },
+            { x: -1, z: 0 },
+            { x: -1, z: 1 },
+            { x: 0, z: -1 },
+            { x: 0, z: 1 },
+            { x: 1, z: -1 },
+            { x: 1, z: 0 },
+            { x: 1, z: 1 },
+        ],
+        from,
+        surfaces: [from, { x: 0, y: 0.42, z: 0 }],
+        to: { x: 0, y: 0.42, z: 0 },
+    });
+
+    assert.equal(path.status, 'unreachable');
+    assert.deepEqual(path.points, [from]);
+    assert.equal(path.distance, 0);
 });

@@ -8,6 +8,7 @@ import {
 const app = getAppByName('news');
 const wwwApp = getAppByName('www');
 const newsBasePath = '/novosti';
+const productionNewsOrigin = 'https://novosti.gredice.com';
 
 function isDevelopmentEnv() {
     return (
@@ -37,6 +38,9 @@ function newsRootRedirectDestination() {
 }
 
 const nextConfig: NextConfig = {
+    assetPrefix: isProductionDeployment()
+        ? `${productionNewsOrigin}${newsBasePath}`
+        : undefined,
     basePath: newsBasePath,
     reactStrictMode: true,
     typedRoutes: true,
@@ -69,8 +73,9 @@ const nextConfig: NextConfig = {
         ];
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     expireTime: 10800,
     images: {

@@ -20,6 +20,10 @@ import {
 } from 'drizzle-orm';
 import 'server-only';
 import {
+    deliveryRunExactLocationTtlMs,
+    persistLegacyGoogleRoutePolyline,
+} from '../deliveryTrackingPolicy';
+import {
     accountUsers,
     DeliveryRequestStates,
     type DeliveryRunCompletionBypass,
@@ -89,7 +93,7 @@ import {
     getDeliveryRequest,
     getDeliveryRequestDispatchSnapshots,
 } from './deliveryRequestsRepo';
-import { createEvent, knownEvents } from './eventsRepo';
+import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { normalizeHarvestTraceToken } from './harvestTraceLinksRepo';
 
 type StorageClient = ReturnType<typeof storage>;
@@ -325,9 +329,6 @@ export class DeliveryRunExecutionError extends Error {
         super(message);
     }
 }
-
-export const deliveryRunTrackingLiveThresholdMs = 30 * 1000;
-export const deliveryRunExactLocationTtlMs = 2 * 60 * 1000;
 
 export type DeliveryRunExecutionStep =
     | {
@@ -1196,6 +1197,225 @@ export type DeliveryRunStopEstimate = {
     estimatedDistanceMeters: number;
 };
 
+export type PickupAwareDeliveryRunEstimateRefreshInput = {
+    runId: string;
+    driverUserId: string;
+    expectedRouteRevision: number;
+    expectedLocationRecordedAt: Date;
+    expectedLocationReceivedAt: Date;
+    estimatesUpdatedAt: Date;
+    encodedPolyline?: string;
+    estimateSource: PreparedDeliveryRunEstimateSource;
+    totalDistanceMeters: number;
+    totalDurationSeconds: number;
+    pickupEstimates: Array<{
+        pickupNodeId: string;
+        estimatedArrivalAt: Date;
+        incomingTravelSeconds: number;
+        incomingDistanceMeters: number;
+    }>;
+    stopEstimates: Array<{
+        stopIds: number[];
+        estimatedArrivalAt: Date;
+        estimatedTravelSeconds: number;
+        estimatedDistanceMeters: number;
+    }>;
+};
+
+export type DeliveryRunRouteProgressMilestone = {
+    deliveryRequestId: string;
+    milestone: 'near-arrival' | 'next-stop' | 'delayed';
+    occurredAt: Date;
+    retryAttempt: number;
+    sourceId: string;
+    stopId: number;
+};
+
+export const deliveryRunRouteProgressMilestoneBatchLimit = 200;
+const deliveryRunRouteProgressMilestones = new Set([
+    'near-arrival',
+    'next-stop',
+    'delayed',
+]);
+
+function deliveryRunRouteProgressSourceKey({
+    deliveryRequestId,
+    milestone,
+    retryAttempt,
+    stopId,
+}: {
+    deliveryRequestId: string;
+    milestone: string;
+    retryAttempt: number | string;
+    stopId: number | string;
+}) {
+    return JSON.stringify([
+        deliveryRequestId,
+        milestone,
+        String(retryAttempt),
+        String(stopId),
+    ]);
+}
+
+export async function recordDeliveryRunRouteProgressMilestones({
+    routeRevision,
+    runId,
+    milestones,
+}: {
+    routeRevision: number;
+    runId: string;
+    milestones: DeliveryRunRouteProgressMilestone[];
+}) {
+    if (milestones.length === 0) return [];
+    if (
+        milestones.length > deliveryRunRouteProgressMilestoneBatchLimit ||
+        !Number.isSafeInteger(routeRevision) ||
+        routeRevision < 0 ||
+        runId.trim().length === 0 ||
+        runId.length > 256
+    ) {
+        throw new Error('Invalid delivery route progress milestone batch');
+    }
+    for (const progress of milestones) {
+        if (
+            !deliveryRunRouteProgressMilestones.has(progress.milestone) ||
+            progress.deliveryRequestId.length === 0 ||
+            progress.deliveryRequestId.length > 128 ||
+            !/^[A-Za-z0-9][A-Za-z0-9._:~-]*$/u.test(
+                progress.deliveryRequestId,
+            ) ||
+            !Number.isSafeInteger(progress.stopId) ||
+            progress.stopId <= 0 ||
+            !Number.isSafeInteger(progress.retryAttempt) ||
+            progress.retryAttempt < 0 ||
+            progress.sourceId.trim().length === 0 ||
+            progress.sourceId.length > 128 ||
+            !/^[A-Za-z0-9][A-Za-z0-9._:~-]*$/u.test(progress.sourceId) ||
+            !(progress.occurredAt instanceof Date) ||
+            Number.isNaN(progress.occurredAt.getTime())
+        ) {
+            throw new Error('Invalid delivery route progress milestone');
+        }
+    }
+    const uniqueMilestones = Array.from(
+        new Map(
+            milestones.map((progress) => [
+                deliveryRunRouteProgressSourceKey(progress),
+                progress,
+            ]),
+        ).values(),
+    );
+    return await storage().transaction(async (tx) => {
+        const [currentRun] = await tx
+            .select({ id: deliveryRuns.id })
+            .from(deliveryRuns)
+            .where(
+                and(
+                    eq(deliveryRuns.id, runId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    eq(deliveryRuns.routeRevision, routeRevision),
+                    isNull(deliveryRuns.rerouteRequiredAt),
+                ),
+            )
+            .for('update')
+            .limit(1);
+        const stopIds = Array.from(
+            new Set(uniqueMilestones.map((milestone) => milestone.stopId)),
+        );
+        const currentStops = await tx
+            .select({
+                deliveryRequestId: deliveryRunStops.deliveryRequestId,
+                id: deliveryRunStops.id,
+                retryAttempt: deliveryRunStops.retryAttempt,
+            })
+            .from(deliveryRunStops)
+            .innerJoin(
+                deliveryRunSlots,
+                and(
+                    eq(deliveryRunSlots.id, deliveryRunStops.runSlotId),
+                    eq(deliveryRunSlots.runId, deliveryRunStops.runId),
+                ),
+            )
+            .where(
+                and(
+                    eq(deliveryRunStops.runId, runId),
+                    inArray(deliveryRunStops.id, stopIds),
+                    eq(deliveryRunStops.state, DeliveryRunStopStates.PENDING),
+                    eq(
+                        deliveryRunSlots.manifestState,
+                        DeliveryRunManifestStates.CONFIRMED,
+                    ),
+                ),
+            );
+        const currentStopById = new Map(
+            currentStops.map((stop) => [stop.id, stop]),
+        );
+        if (
+            !currentRun ||
+            uniqueMilestones.some((progress) => {
+                const stop = currentStopById.get(progress.stopId);
+                return (
+                    !stop ||
+                    stop.deliveryRequestId !== progress.deliveryRequestId ||
+                    stop.retryAttempt !== progress.retryAttempt
+                );
+            })
+        ) {
+            throw new Error('Delivery route progress source is stale');
+        }
+        const existingSources = await tx
+            .select({
+                deliveryRequestId: events.aggregateId,
+                milestone: sql<string>`${events.data}->>'milestone'`,
+                retryAttempt: sql<string>`${events.data}->>'retryAttempt'`,
+                stopId: sql<string>`${events.data}->>'stopId'`,
+            })
+            .from(events)
+            .where(
+                and(
+                    eq(
+                        events.type,
+                        knownEventTypes.delivery.requestRouteProgress,
+                    ),
+                    inArray(
+                        events.aggregateId,
+                        uniqueMilestones.map(
+                            (milestone) => milestone.deliveryRequestId,
+                        ),
+                    ),
+                    eq(sql<string>`${events.data}->>'runId'`, runId),
+                ),
+            );
+        const existingKeys = new Set(
+            existingSources.map((source) =>
+                deliveryRunRouteProgressSourceKey(source),
+            ),
+        );
+        const recorded = [];
+        for (const progress of uniqueMilestones) {
+            const sourceKey = deliveryRunRouteProgressSourceKey(progress);
+            if (existingKeys.has(sourceKey)) continue;
+            recorded.push(
+                await createEvent(
+                    knownEvents.delivery.requestRouteProgressV1(
+                        progress.deliveryRequestId,
+                        {
+                            milestone: progress.milestone,
+                            occurredAt: progress.occurredAt.toISOString(),
+                            retryAttempt: progress.retryAttempt,
+                            routeRevision,
+                            runId,
+                            stopId: progress.stopId,
+                        },
+                    ),
+                    tx,
+                ),
+            );
+        }
+        return recorded;
+    });
+}
+
 function ensureCoordinates(latitude: number, longitude: number) {
     if (
         !Number.isFinite(latitude) ||
@@ -1653,6 +1873,7 @@ function parsePreparationToken(preparationToken: string) {
 async function insertPreparedDeliveryRun(
     plan: DeliveryRunPreparationPlanPayload,
     preparationId: string,
+    estimatesCalculatedAt: Date,
     db: TransactionClient,
 ) {
     const runId = randomUUID();
@@ -1669,7 +1890,7 @@ async function insertPreparedDeliveryRun(
             plan.formatVersion === 1
                 ? DeliveryRunEstimateSources.LEGACY
                 : plan.createRunInput.estimateSource,
-        estimatesUpdatedAt: new Date(),
+        estimatesUpdatedAt: estimatesCalculatedAt,
     });
 
     const pickupNodeIdsByLocationId = new Map<number, string>();
@@ -1912,7 +2133,12 @@ export async function consumeDeliveryRunPreparation({
         await ensurePreparationCanCreateRun(plan, tx);
         await validatePreparationSnapshot(plan, tx);
         await validatePreparedBulkMembership(plan, tx);
-        return await insertPreparedDeliveryRun(plan, preparationId, tx);
+        return await insertPreparedDeliveryRun(
+            plan,
+            preparationId,
+            preparation.createdAt,
+            tx,
+        );
     });
 
     const run = await getDeliveryRun(runId);
@@ -2566,12 +2792,16 @@ async function applyPickupManifestConfirmation({
     runId,
     pickupNodeId,
     driverUserId,
+    clientOperationId,
+    occurredAt,
     manifestId,
     db,
 }: {
     runId: string;
     pickupNodeId: string;
     driverUserId: string;
+    clientOperationId: string;
+    occurredAt: Date;
     manifestId: string;
     db: TransactionClient;
 }): Promise<DeliveryRunPickupOperationStoredResult> {
@@ -2599,7 +2829,14 @@ async function applyPickupManifestConfirmation({
     }
 
     const items = await db.query.deliveryRunStops.findMany({
-        columns: { id: true, pickupItemState: true },
+        columns: {
+            id: true,
+            deliveryRequestId: true,
+            pickupItemState: true,
+            releasedAt: true,
+            retryAttempt: true,
+            state: true,
+        },
         where: and(
             eq(deliveryRunStops.runId, runId),
             eq(deliveryRunStops.runSlotId, slot.id),
@@ -2625,6 +2862,35 @@ async function applyPickupManifestConfirmation({
             confirmedByUserId: driverUserId,
         })
         .where(eq(deliveryRunSlots.id, slot.id));
+    const run = await db.query.deliveryRuns.findFirst({
+        columns: { routeRevision: true },
+        where: eq(deliveryRuns.id, runId),
+    });
+    if (!run) {
+        throw new DeliveryRunExecutionError(
+            DeliveryRunExecutionErrorCodes.ACTIVE_RUN_NOT_FOUND,
+            'Delivery run was not found after pickup confirmation',
+        );
+    }
+    for (const item of items) {
+        if (
+            item.state !== DeliveryRunStopStates.PENDING ||
+            item.releasedAt !== null
+        ) {
+            continue;
+        }
+        await createEvent(
+            knownEvents.delivery.requestRouteStartedV1(item.deliveryRequestId, {
+                runId,
+                stopId: item.id,
+                retryAttempt: item.retryAttempt,
+                clientOperationId,
+                occurredAt: occurredAt.toISOString(),
+                routeRevision: run.routeRevision,
+            }),
+            db,
+        );
+    }
     return {
         kind: DeliveryRunPickupOperationKinds.CONFIRM_MANIFEST,
         outcome: 'applied',
@@ -2759,6 +3025,8 @@ export async function applyDeliveryRunPickupMutations({
                             runId,
                             pickupNodeId,
                             driverUserId,
+                            clientOperationId: mutation.clientOperationId,
+                            occurredAt: mutation.occurredAt,
                             manifestId: mutation.manifestId,
                             db: tx,
                         });
@@ -3921,6 +4189,7 @@ async function recordDeliveryRunStopExceptionsInDatabase(
             deliveryRequestId: stop.deliveryRequestId,
             outcome: exception.outcome,
             reason: exception.reason,
+            retryAttempt: stop.retryAttempt,
         };
     });
     const result: DeliveryRunExceptionOperationStoredResult = {
@@ -3949,6 +4218,7 @@ async function recordDeliveryRunStopExceptionsInDatabase(
                     occurredAt: input.occurredAt.toISOString(),
                     recordedByUserId: input.driverUserId,
                     routeRevision: updatedRun.routeRevision,
+                    retryAttempt: stop.retryAttempt,
                 },
             ),
             db,
@@ -4195,6 +4465,7 @@ export async function retryDeliveryRunStop({
                         recoveredAt: occurredAt.toISOString(),
                         recoveredByUserId: driverUserId,
                         routeRevision: updatedRun.routeRevision,
+                        retryAttempt: stop.retryAttempt,
                     },
                 ),
                 tx,
@@ -4210,6 +4481,7 @@ export async function retryDeliveryRunStop({
 
 export type RecoverDeliveryRunStopResult = {
     requestId: string;
+    retryAttempt: number;
     routeRevision: number;
     resumedInRun: boolean;
     reroutePending: boolean;
@@ -4342,12 +4614,14 @@ export async function recoverDeliveryRunStop({
                     recoveredAt: occurredAt.toISOString(),
                     recoveredByUserId: adminUserId,
                     routeRevision: updatedRun.routeRevision,
+                    retryAttempt: stop.retryAttempt + 1,
                 },
             ),
             tx,
         );
         return {
             requestId: stop.deliveryRequestId,
+            retryAttempt: stop.retryAttempt + 1,
             routeRevision: updatedRun.routeRevision,
             resumedInRun,
             reroutePending: resumedInRun,
@@ -4586,6 +4860,7 @@ export async function abandonDeliveryRun({
                         recoveredAt: occurredAt.toISOString(),
                         recoveredByUserId: adminUserId,
                         routeRevision: updatedRun.routeRevision,
+                        retryAttempt: stop.retryAttempt + 1,
                     },
                 ),
                 tx,
@@ -4951,7 +5226,15 @@ export async function applyDeliveryRunReroute(
         const [updatedRun] = await tx
             .update(deliveryRuns)
             .set({
-                encodedPolyline: input.encodedPolyline ?? null,
+                encodedPolyline:
+                    run.routePlanVersion < 2
+                        ? input.estimateSource ===
+                          DeliveryRunEstimateSources.GOOGLE
+                            ? persistLegacyGoogleRoutePolyline(
+                                  input.encodedPolyline,
+                              )
+                            : null
+                        : (input.encodedPolyline ?? null),
                 totalDistanceMeters: input.totalDistanceMeters,
                 totalDurationSeconds: input.totalDurationSeconds,
                 estimateSource:
@@ -5321,6 +5604,234 @@ export async function clearExpiredDeliveryRunLocations(now = new Date()) {
         });
 }
 
+function invalidPickupAwareEstimateRefresh(message: string): never {
+    throw new DeliveryRunExecutionError(
+        DeliveryRunExecutionErrorCodes.RUN_MUTATION_INVALID,
+        message,
+    );
+}
+
+/**
+ * Persists refreshed metrics for a pickup-aware route without changing its
+ * accepted itinerary. The run row is locked and fenced by both itinerary and
+ * accepted-location versions so a slower calculation cannot win a race.
+ */
+export async function updatePickupAwareDeliveryRunEstimates(
+    input: PickupAwareDeliveryRunEstimateRefreshInput,
+) {
+    ensureRouteRevisionInput(input.expectedRouteRevision);
+    const validDate = (value: Date) =>
+        value instanceof Date && Number.isFinite(value.getTime());
+    const invalidPickupEstimate = input.pickupEstimates.some(
+        (estimate) =>
+            typeof estimate.pickupNodeId !== 'string' ||
+            estimate.pickupNodeId.length === 0 ||
+            !validDate(estimate.estimatedArrivalAt) ||
+            !isNonnegativeInteger(estimate.incomingTravelSeconds) ||
+            !isNonnegativeInteger(estimate.incomingDistanceMeters),
+    );
+    const invalidStopEstimate = input.stopEstimates.some(
+        (estimate) =>
+            estimate.stopIds.length === 0 ||
+            estimate.stopIds.some(
+                (stopId) => !Number.isInteger(stopId) || stopId <= 0,
+            ) ||
+            !validDate(estimate.estimatedArrivalAt) ||
+            !isNonnegativeInteger(estimate.estimatedTravelSeconds) ||
+            !isNonnegativeInteger(estimate.estimatedDistanceMeters),
+    );
+    if (
+        !validDate(input.expectedLocationRecordedAt) ||
+        !validDate(input.expectedLocationReceivedAt) ||
+        !validDate(input.estimatesUpdatedAt) ||
+        input.estimatesUpdatedAt.getTime() <
+            input.expectedLocationReceivedAt.getTime() ||
+        !isPreparedEstimateSource(input.estimateSource) ||
+        !isNonnegativeInteger(input.totalDistanceMeters) ||
+        !isNonnegativeInteger(input.totalDurationSeconds) ||
+        invalidPickupEstimate ||
+        invalidStopEstimate
+    ) {
+        invalidPickupAwareEstimateRefresh(
+            'Delivery live route estimates are invalid',
+        );
+    }
+
+    return await storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select ${deliveryRuns.id} from ${deliveryRuns} where ${deliveryRuns.id} = ${input.runId} for update`,
+        );
+        const run = await tx.query.deliveryRuns.findFirst({
+            where: eq(deliveryRuns.id, input.runId),
+        });
+        if (
+            !run ||
+            run.driverUserId !== input.driverUserId ||
+            run.state !== DeliveryRunStates.ACTIVE ||
+            run.routePlanVersion < 2 ||
+            run.routeRevision !== input.expectedRouteRevision ||
+            run.currentLocationRecordedAt?.getTime() !==
+                input.expectedLocationRecordedAt.getTime() ||
+            run.currentLocationReceivedAt?.getTime() !==
+                input.expectedLocationReceivedAt.getTime()
+        ) {
+            return false;
+        }
+
+        const progress = await getDeliveryRunExecutionProgressFromDb(
+            input.runId,
+            tx,
+        );
+        const allRunStops = await tx.query.deliveryRunStops.findMany({
+            columns: { id: true, state: true },
+            where: eq(deliveryRunStops.runId, input.runId),
+        });
+        const nonterminalStopIds = new Set(
+            allRunStops.flatMap((stop) =>
+                deliveryRunTerminalStopStates.includes(stop.state)
+                    ? []
+                    : [stop.id],
+            ),
+        );
+        const expectedPickupIds = new Set(
+            progress.flatMap((step) =>
+                step.kind === 'pickup' && step.state !== 'completed'
+                    ? [step.pickupNodeId]
+                    : [],
+            ),
+        );
+        const providedPickupIds = new Set(
+            input.pickupEstimates.map((estimate) => estimate.pickupNodeId),
+        );
+        if (
+            providedPickupIds.size !== input.pickupEstimates.length ||
+            providedPickupIds.size !== expectedPickupIds.size ||
+            [...providedPickupIds].some(
+                (pickupNodeId) => !expectedPickupIds.has(pickupNodeId),
+            )
+        ) {
+            invalidPickupAwareEstimateRefresh(
+                'Delivery live pickup checkpoints changed',
+            );
+        }
+
+        const canonicalStopGroup = (stopIds: readonly number[]) =>
+            [...stopIds].sort((first, second) => first - second).join(',');
+        const expectedStopGroups = new Set(
+            progress.flatMap((step) => {
+                if (step.kind !== 'delivery' || step.state === 'completed') {
+                    return [];
+                }
+                const stopIds = step.stopIds.filter((stopId) =>
+                    nonterminalStopIds.has(stopId),
+                );
+                return stopIds.length > 0 ? [canonicalStopGroup(stopIds)] : [];
+            }),
+        );
+        const providedStopIds = input.stopEstimates.flatMap(
+            (estimate) => estimate.stopIds,
+        );
+        const providedStopGroups = new Set(
+            input.stopEstimates.map((estimate) =>
+                canonicalStopGroup(estimate.stopIds),
+            ),
+        );
+        if (
+            input.stopEstimates.some(
+                (estimate) =>
+                    new Set(estimate.stopIds).size !== estimate.stopIds.length,
+            ) ||
+            new Set(providedStopIds).size !== providedStopIds.length ||
+            providedStopGroups.size !== input.stopEstimates.length ||
+            providedStopGroups.size !== expectedStopGroups.size ||
+            [...providedStopGroups].some(
+                (stopGroup) => !expectedStopGroups.has(stopGroup),
+            )
+        ) {
+            invalidPickupAwareEstimateRefresh(
+                'Delivery live stop checkpoints changed',
+            );
+        }
+
+        const [updatedRun] = await tx
+            .update(deliveryRuns)
+            .set({
+                encodedPolyline: input.encodedPolyline ?? null,
+                totalDistanceMeters: input.totalDistanceMeters,
+                totalDurationSeconds: input.totalDurationSeconds,
+                estimateSource: input.estimateSource,
+                estimatesUpdatedAt: input.estimatesUpdatedAt,
+            })
+            .where(
+                and(
+                    eq(deliveryRuns.id, input.runId),
+                    eq(deliveryRuns.driverUserId, input.driverUserId),
+                    eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    sql`${deliveryRuns.routePlanVersion} >= 2`,
+                    eq(deliveryRuns.routeRevision, input.expectedRouteRevision),
+                    eq(
+                        deliveryRuns.currentLocationRecordedAt,
+                        input.expectedLocationRecordedAt,
+                    ),
+                    eq(
+                        deliveryRuns.currentLocationReceivedAt,
+                        input.expectedLocationReceivedAt,
+                    ),
+                ),
+            )
+            .returning({ id: deliveryRuns.id });
+        if (!updatedRun) return false;
+
+        for (const estimate of input.pickupEstimates) {
+            const updated = await tx
+                .update(deliveryRunPickupNodes)
+                .set({
+                    estimatedArrivalAt: estimate.estimatedArrivalAt,
+                    incomingTravelSeconds: estimate.incomingTravelSeconds,
+                    incomingDistanceMeters: estimate.incomingDistanceMeters,
+                })
+                .where(
+                    and(
+                        eq(deliveryRunPickupNodes.runId, input.runId),
+                        eq(deliveryRunPickupNodes.id, estimate.pickupNodeId),
+                    ),
+                )
+                .returning({ id: deliveryRunPickupNodes.id });
+            if (updated.length !== 1) {
+                invalidPickupAwareEstimateRefresh(
+                    'Delivery live pickup checkpoint is invalid',
+                );
+            }
+        }
+        for (const estimate of input.stopEstimates) {
+            const updated = await tx
+                .update(deliveryRunStops)
+                .set({
+                    estimatedArrivalAt: estimate.estimatedArrivalAt,
+                    estimatedTravelSeconds: estimate.estimatedTravelSeconds,
+                    estimatedDistanceMeters: estimate.estimatedDistanceMeters,
+                })
+                .where(
+                    and(
+                        eq(deliveryRunStops.runId, input.runId),
+                        inArray(deliveryRunStops.id, estimate.stopIds),
+                        notInArray(
+                            deliveryRunStops.state,
+                            deliveryRunTerminalStopStates,
+                        ),
+                    ),
+                )
+                .returning({ id: deliveryRunStops.id });
+            if (updated.length !== estimate.stopIds.length) {
+                invalidPickupAwareEstimateRefresh(
+                    'Delivery live stop checkpoint is invalid',
+                );
+            }
+        }
+        return true;
+    });
+}
+
 export async function updateDeliveryRunEstimates({
     runId,
     driverUserId,
@@ -5331,6 +5842,7 @@ export async function updateDeliveryRunEstimates({
     totalDistanceMeters,
     totalDurationSeconds,
     estimates,
+    estimatesUpdatedAt = new Date(),
 }: {
     runId: string;
     driverUserId: string;
@@ -5341,21 +5853,24 @@ export async function updateDeliveryRunEstimates({
     totalDistanceMeters: number;
     totalDurationSeconds: number;
     estimates: DeliveryRunStopEstimate[];
+    estimatesUpdatedAt?: Date;
 }) {
     return await storage().transaction(async (tx) => {
         const [updatedRun] = await tx
             .update(deliveryRuns)
             .set({
-                encodedPolyline,
+                encodedPolyline:
+                    persistLegacyGoogleRoutePolyline(encodedPolyline),
                 totalDistanceMeters,
                 totalDurationSeconds,
-                estimatesUpdatedAt: new Date(),
+                estimatesUpdatedAt,
             })
             .where(
                 and(
                     eq(deliveryRuns.id, runId),
                     eq(deliveryRuns.driverUserId, driverUserId),
                     eq(deliveryRuns.state, DeliveryRunStates.ACTIVE),
+                    eq(deliveryRuns.routePlanVersion, 1),
                     eq(deliveryRuns.routeRevision, expectedRouteRevision),
                     eq(
                         deliveryRuns.currentLocationRecordedAt,
@@ -6146,6 +6661,12 @@ async function recordDeliveryRunStopOperationInDatabase(
     const newlyFulfilledRequestIds = newlyFulfilledStops.map(
         (stop) => stop.deliveryRequestId,
     );
+    const newlyArrivedStops =
+        input.kind === DeliveryRunStopOperationKinds.ARRIVE
+            ? stops.filter(
+                  (stop) => stop.state === DeliveryRunStopStates.PENDING,
+              )
+            : [];
     const handoff =
         input.kind === DeliveryRunStopOperationKinds.DELIVER
             ? deliveryRunHandoffSnapshot(stops)
@@ -6200,6 +6721,7 @@ async function recordDeliveryRunStopOperationInDatabase(
                                   : {}),
                           }
                         : undefined,
+                    input.occurredAt,
                 );
             } catch (error) {
                 if (error instanceof DeliveryRequestFulfillmentError) {
@@ -6260,6 +6782,21 @@ async function recordDeliveryRunStopOperationInDatabase(
               }
             : {}),
     };
+    if (input.kind === DeliveryRunStopOperationKinds.ARRIVE) {
+        for (const stop of newlyArrivedStops) {
+            await createEvent(
+                knownEvents.delivery.requestArrivedV1(stop.deliveryRequestId, {
+                    runId: input.runId,
+                    stopId: stop.id,
+                    retryAttempt: stop.retryAttempt,
+                    clientOperationId: input.clientOperationId,
+                    occurredAt: input.occurredAt.toISOString(),
+                    routeRevision: result.routeRevision,
+                }),
+                db,
+            );
+        }
+    }
     await db.insert(deliveryRunStopOperations).values({
         runId: input.runId,
         targetStopId: input.targetStopId,

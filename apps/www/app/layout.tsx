@@ -1,5 +1,6 @@
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { Analytics } from '@vercel/analytics/react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PublicFooter, PublicHeader } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
@@ -73,6 +74,13 @@ export function generateMetadata(): Metadata {
     };
 }
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#2e6f40',
+    viewportFit: 'cover',
+};
+
 export default async function RootLayout({
     children,
 }: Readonly<{
@@ -90,9 +98,10 @@ export default async function RootLayout({
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <ClientAppProvider>
-            <Stack>
+            <ImpersonationBanner />
+            <Stack className="[padding-bottom:env(safe-area-inset-bottom,0px)] [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)]">
                 <PublicHeader />
-                <main className="mt-16 relative">
+                <main className="relative mt-[calc(4rem+env(safe-area-inset-top,0px))]">
                     <LayoutContainer>{children}</LayoutContainer>
                 </main>
                 <PublicFooter />
@@ -108,7 +117,6 @@ export default async function RootLayout({
             <Head>
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
-                <meta name="theme-color" content="#2e6f40" />
                 <link rel="preconnect" href="https://vrt.gredice.com" />
                 {gardenModelPreloadUrls.map((href) => (
                     <link

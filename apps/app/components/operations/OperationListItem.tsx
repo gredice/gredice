@@ -46,6 +46,7 @@ function operationActionPayload(operation: OperationsListOperationRow) {
     return {
         id: operation.id,
         entityId: operation.entityId,
+        taskVersionEventId: operation.taskVersionEventId,
         scheduledDate: dateForAction(operation.scheduledDate),
         status: operation.status,
     };
@@ -194,6 +195,9 @@ export function OperationListItem({
                             {operation.status === 'pendingVerification' ? (
                                 <VerifyOperationModal
                                     operationId={operation.id}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
                                     label={operation.label}
                                     trigger={
                                         <IconButton

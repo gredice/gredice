@@ -138,6 +138,97 @@ test('farm-targeted operations are visible and assignable for farm users', async
     );
 });
 
+test('farm-user reads reject operations with inconsistent raised-bed locations', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `location-integrity-${userId}@example.com`,
+            displayName: 'Location Integrity User',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const firstFarmId = await createFarm({
+        name: 'First Operation Farm',
+        longitude: 0,
+        latitude: 0,
+    });
+    const secondFarmId = await createFarm({
+        name: 'Second Operation Farm',
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(firstFarmId, userId);
+
+    const firstAccountId = await createAccount();
+    const secondAccountId = await createAccount();
+    const firstGardenId = await createTestGarden({
+        accountId: firstAccountId,
+        farmId: firstFarmId,
+    });
+    const secondGardenId = await createTestGarden({
+        accountId: secondAccountId,
+        farmId: secondFarmId,
+    });
+    const firstBlockId = await createTestBlock(
+        firstGardenId,
+        'first-operation-location',
+    );
+    const secondBlockId = await createTestBlock(
+        secondGardenId,
+        'second-operation-location',
+    );
+    const firstRaisedBedId = await createTestRaisedBed(
+        firstGardenId,
+        firstAccountId,
+        firstBlockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        secondGardenId,
+        secondAccountId,
+        secondBlockId,
+    );
+
+    const validOperationId = await createOperation({
+        accountId: firstAccountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId: firstGardenId,
+        raisedBedId: firstRaisedBedId,
+    });
+    const mismatchedOperationId = await createOperation({
+        accountId: firstAccountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId: firstGardenId,
+        raisedBedId: secondRaisedBedId,
+    });
+    await acceptOperation(validOperationId);
+    await acceptOperation(mismatchedOperationId);
+
+    const acceptedOperations = await getFarmUserAcceptedOperations(userId, {
+        from: new Date('2000-01-01T00:00:00.000Z'),
+    });
+
+    assert.ok(
+        acceptedOperations.some(
+            (operation) => operation.id === validOperationId,
+        ),
+        'Expected the valid raised-bed operation to remain visible',
+    );
+    assert.ok(
+        acceptedOperations.every(
+            (operation) => operation.id !== mismatchedOperationId,
+        ),
+        'Expected the cross-farm raised-bed mismatch to stay hidden',
+    );
+});
+
 test('getOperationsPage uses completion dates for completed operation ordering', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =

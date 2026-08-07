@@ -957,6 +957,8 @@ export interface components {
             metaTitle?: string | null;
             metaDescription?: string | null;
             metaImageUrl?: string | null;
+            metaImagePoiX?: number | null;
+            metaImagePoiY?: number | null;
             seoImageUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
@@ -1003,7 +1005,7 @@ export interface components {
             attributePath: string;
             dataType: string;
             /** @enum {string} */
-            controlType: "boolean" | "json" | "markdown" | "number" | "range" | "reference" | "select" | "text";
+            controlType: "boolean" | "json" | "markdown" | "number" | "operationSuggestion" | "range" | "reference" | "select" | "text";
             multiple: boolean;
             publicLabel: string;
             helpText?: string;
@@ -1011,7 +1013,13 @@ export interface components {
                 value: string;
                 label: string;
                 helpText?: string;
+                description?: string;
+                iconKey?: string;
             }[];
+            operationSuggestionStage?: {
+                name: string;
+                label: string;
+            };
             currentValue: string | null;
             baseValueHash: string;
         };
@@ -1023,7 +1031,7 @@ export interface components {
         };
         "community-edit-change-submit": {
             fieldKey: string;
-            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. */
+            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for existing plant-stage operations and can also propose a new operation name and description. */
             proposedValue: unknown;
             /** @description Hash returned by the editable fields endpoint. A stale hash is rejected at submission time; accepted text and markdown requests can later replay their stored patch over unrelated approved edits. */
             baseValueHash?: string | null;
@@ -1160,6 +1168,8 @@ export interface components {
                                 productUrl?: string;
                             };
                         }[];
+                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                        appliesToAllTargets?: boolean;
                     };
                     information: {
                         /** @description (puni opis operacije) */
@@ -1399,6 +1409,8 @@ export interface components {
                                         productUrl?: string;
                                     };
                                 }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -1697,6 +1709,8 @@ export interface components {
                                         productUrl?: string;
                                     };
                                 }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -1922,6 +1936,8 @@ export interface components {
                                                 productUrl?: string;
                                             };
                                         }[];
+                                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                        appliesToAllTargets?: boolean;
                                     };
                                     information: {
                                         /** @description (puni opis operacije) */
@@ -2232,6 +2248,8 @@ export interface components {
                         productUrl?: string;
                     };
                 }[];
+                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                appliesToAllTargets?: boolean;
             };
             information: {
                 /** @description (puni opis operacije) */

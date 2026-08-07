@@ -11,8 +11,15 @@ import type {
     getFarmSchedulePlantSorts,
 } from './scheduleData';
 import { getFarmScheduleRaisedBedPhotoPreviewsForDay } from './scheduleData';
+import type { FarmScheduleOperationsMode } from './scheduleShared';
+
+const priorityOperationModes = [
+    'watering',
+    'harvest',
+] satisfies FarmScheduleOperationsMode[];
 
 interface FarmScheduleDayProps {
+    accountId: string;
     dayDataPromise: Promise<FarmScheduleDayData>;
     operationsDayDataPromise: Promise<FarmScheduleOperationsDayData>;
     plantingsDayDataPromise: Promise<FarmSchedulePlantingsDayData>;
@@ -20,17 +27,22 @@ interface FarmScheduleDayProps {
         typeof import('./scheduleData').getFarmScheduleOperationsData
     >;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
-    groupWateringOperations: boolean;
+    groupPriorityOperations: boolean;
+    selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }
 
 export function FarmScheduleDay({
+    accountId,
     dayDataPromise,
     operationsDayDataPromise,
     operationsDataPromise,
     plantingsDayDataPromise,
     plantSortsPromise,
-    groupWateringOperations,
+    groupPriorityOperations,
+    selectedDateKey,
+    sessionIncarnation,
     userId,
 }: FarmScheduleDayProps) {
     const raisedBedPhotoPreviewByIdPromise =
@@ -41,20 +53,27 @@ export function FarmScheduleDay({
             <Suspense fallback={null}>
                 <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
             </Suspense>
-            {groupWateringOperations && (
-                <Suspense fallback={<FarmScheduleSectionSkeleton />}>
-                    <FarmScheduleOperationsSectionContent
-                        dayDataPromise={operationsDayDataPromise}
-                        plantSortsPromise={plantSortsPromise}
-                        operationsDataPromise={operationsDataPromise}
-                        raisedBedPhotoPreviewByIdPromise={
-                            raisedBedPhotoPreviewByIdPromise
-                        }
-                        mode="watering"
-                        userId={userId}
-                    />
-                </Suspense>
-            )}
+            {groupPriorityOperations &&
+                priorityOperationModes.map((mode) => (
+                    <Suspense
+                        key={mode}
+                        fallback={<FarmScheduleSectionSkeleton />}
+                    >
+                        <FarmScheduleOperationsSectionContent
+                            accountId={accountId}
+                            dayDataPromise={operationsDayDataPromise}
+                            plantSortsPromise={plantSortsPromise}
+                            operationsDataPromise={operationsDataPromise}
+                            raisedBedPhotoPreviewByIdPromise={
+                                raisedBedPhotoPreviewByIdPromise
+                            }
+                            mode={mode}
+                            selectedDateKey={selectedDateKey}
+                            sessionIncarnation={sessionIncarnation}
+                            userId={userId}
+                        />
+                    </Suspense>
+                ))}
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmSchedulePlantingsSectionContent
                     dayDataPromise={plantingsDayDataPromise}
@@ -62,18 +81,26 @@ export function FarmScheduleDay({
                     raisedBedPhotoPreviewByIdPromise={
                         raisedBedPhotoPreviewByIdPromise
                     }
+                    selectedDateKey={selectedDateKey}
                     userId={userId}
                 />
             </Suspense>
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmScheduleOperationsSectionContent
+                    accountId={accountId}
                     dayDataPromise={operationsDayDataPromise}
                     plantSortsPromise={plantSortsPromise}
                     operationsDataPromise={operationsDataPromise}
                     raisedBedPhotoPreviewByIdPromise={
                         raisedBedPhotoPreviewByIdPromise
                     }
-                    mode={groupWateringOperations ? 'withoutWatering' : 'all'}
+                    mode={
+                        groupPriorityOperations
+                            ? 'withoutGroupedOperations'
+                            : 'all'
+                    }
+                    selectedDateKey={selectedDateKey}
+                    sessionIncarnation={sessionIncarnation}
                     userId={userId}
                 />
             </Suspense>

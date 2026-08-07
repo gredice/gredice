@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    cacheComponents: true,
+    partialPrefetching: true,
     logging: {
         browserToTerminal: true,
     },
@@ -77,8 +79,9 @@ const nextConfig: NextConfig = {
         ];
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
         optimizePackageImports: [
             'three',
             '@react-three/drei',

@@ -22,14 +22,16 @@ export async function createTestGarden(opts: {
 
 export async function ensureFarmId() {
     const farms = await getFarms();
-    if (farms.length === 0) {
-        return await createFarm({
-            name: 'Default Farm',
-            longitude: 0,
-            latitude: 0,
-        });
+    const activeFarm = farms.find((farm) => !farm.isDeleted);
+    if (activeFarm) {
+        return activeFarm.id;
     }
-    return farms[0].id;
+
+    return await createFarm({
+        name: 'Default Farm',
+        longitude: 0,
+        latitude: 0,
+    });
 }
 
 /**

@@ -303,7 +303,89 @@ test('tutorial checklist modal uses readable dark mode surfaces', async ({
     expect(titleColor).toBe(tokenColors.foreground);
 });
 
-test('tutorial checklist completed state shows a green checkmark and can be hidden', async ({
+test('tutorial checklist animates only a newly completed cluster', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const component = await mount(<TutorialChecklistHudStory />);
+
+    await page.locator('[data-tutorial-checklist-trigger="true"]').click();
+    const dialog = page.getByRole('dialog', { name: 'Zadaci za novi vrt' });
+    await expect(dialog).toBeVisible();
+
+    await component.update(<TutorialChecklistHudStory variant="completed" />);
+
+    const completeBanner = dialog.locator(
+        '[data-tutorial-checklist-complete-banner="true"]',
+    );
+    const badge = completeBanner.locator(
+        '[data-tutorial-checklist-complete-badge="true"]',
+    );
+    const completionCopy = completeBanner.locator(
+        '[data-tutorial-checklist-complete-text="true"]',
+    );
+    const dismissAction = completeBanner.getByRole('button', {
+        name: 'Sakrij popis',
+    });
+
+    await expect(completeBanner).toBeVisible();
+    await expect(badge).toBeVisible();
+    await expect(completionCopy).toBeVisible();
+    await expect(dismissAction).toBeEnabled();
+
+    const badgeAnimation = await badge.evaluate((node) => {
+        const animation = node.getAnimations()[0];
+        const effect = animation?.effect;
+        if (!(effect instanceof KeyframeEffect)) {
+            return null;
+        }
+
+        return {
+            delay: effect.getTiming().delay,
+            duration: effect.getTiming().duration,
+            frames: effect.getKeyframes().map((frame) => ({
+                opacity: frame.opacity,
+                transform: frame.transform,
+            })),
+            timingFunction:
+                window.getComputedStyle(node).animationTimingFunction,
+        };
+    });
+    expect(badgeAnimation).toMatchObject({
+        delay: 0,
+        duration: 260,
+        frames: [
+            { opacity: '0', transform: 'scale(0.95)' },
+            { opacity: '1', transform: 'scale(1)' },
+        ],
+        timingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    });
+
+    const staggerDelays = await Promise.all(
+        [completionCopy, dismissAction].map((part) =>
+            part.evaluate((node) => {
+                const effect = node.getAnimations()[0]?.effect;
+                return effect instanceof KeyframeEffect
+                    ? effect.getTiming().delay
+                    : null;
+            }),
+        ),
+    );
+    expect(staggerDelays).toEqual([40, 80]);
+
+    const staticRegionAnimationCounts = await Promise.all([
+        completeBanner.evaluate((node) => node.getAnimations().length),
+        dialog
+            .locator('[data-tutorial-checklist-group]')
+            .first()
+            .evaluate((node) => node.getAnimations().length),
+    ]);
+    expect(staticRegionAnimationCounts).toEqual([0, 0]);
+});
+
+test('tutorial checklist already completed state renders settled', async ({
     mount,
     page,
 }) => {
@@ -345,11 +427,99 @@ test('tutorial checklist completed state shows a green checkmark and can be hidd
     );
     expect(completeBannerClassName).toContain('bg-green-600');
 
-    await completeBanner.getByRole('button', { name: 'Sakrij popis' }).click();
+    const completionAnimationCounts = await Promise.all([
+        completeBanner
+            .locator('[data-tutorial-checklist-complete-badge="true"]')
+            .evaluate((node) => node.getAnimations().length),
+        completeBanner
+            .locator('[data-tutorial-checklist-complete-text="true"]')
+            .evaluate((node) => node.getAnimations().length),
+        completeBanner
+            .getByRole('button', { name: 'Sakrij popis' })
+            .evaluate((node) => node.getAnimations().length),
+    ]);
+    expect(completionAnimationCounts).toEqual([0, 0, 0]);
+});
+
+test('tutorial checklist completion dismissal is immediately actionable and persists', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const component = await mount(<TutorialChecklistHudStory />);
+
+    await page.locator('[data-tutorial-checklist-trigger="true"]').click();
+    await component.update(<TutorialChecklistHudStory variant="completed" />);
+
+    const dismissAction = page
+        .getByRole('dialog', { name: 'Zadaci za novi vrt' })
+        .getByRole('button', { name: 'Sakrij popis' });
+    await expect(dismissAction).toBeEnabled();
+    await dismissAction.click({ force: true });
 
     await expect(
         page.locator('[data-tutorial-checklist-trigger="true"]'),
     ).toHaveCount(0);
+    await expect
+        .poll(() =>
+            page.evaluate(() =>
+                window.localStorage.getItem(
+                    'game:tutorial-checklist:completed-dismissed-v1',
+                ),
+            ),
+        )
+        .not.toBeNull();
+});
+
+test('tutorial checklist completion uses an opacity-only reduced-motion entrance', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const component = await mount(<TutorialChecklistHudStory />);
+
+    await page.locator('[data-tutorial-checklist-trigger="true"]').click();
+    await component.update(<TutorialChecklistHudStory variant="completed" />);
+
+    const completeBanner = page.locator(
+        '[data-tutorial-checklist-complete-banner="true"]',
+    );
+    const completionParts = [
+        completeBanner.locator(
+            '[data-tutorial-checklist-complete-badge="true"]',
+        ),
+        completeBanner.locator(
+            '[data-tutorial-checklist-complete-text="true"]',
+        ),
+        completeBanner.getByRole('button', { name: 'Sakrij popis' }),
+    ];
+    const animations = await Promise.all(
+        completionParts.map((part) =>
+            part.evaluate((node) => {
+                const animation = node.getAnimations()[0];
+                const effect = animation?.effect;
+                if (!(effect instanceof KeyframeEffect)) {
+                    return null;
+                }
+
+                return {
+                    delay: effect.getTiming().delay,
+                    duration: effect.getTiming().duration,
+                    framesHaveTransform: effect
+                        .getKeyframes()
+                        .some((frame) => frame.transform !== undefined),
+                };
+            }),
+        ),
+    );
+
+    expect(animations).toEqual([
+        { delay: 0, duration: 120, framesHaveTransform: false },
+        { delay: 40, duration: 120, framesHaveTransform: false },
+        { delay: 80, duration: 120, framesHaveTransform: false },
+    ]);
 });
 
 test('tutorial checklist completed dismissal returns when the task set changes', async ({

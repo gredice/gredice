@@ -214,11 +214,49 @@ export type RaisedBedScenario = {
 };
 
 export function buildField(config: FieldConfig, id: number) {
+    const active = config.active ?? true;
+    const defaultPlantCycles =
+        typeof config.plantSortId === 'number'
+            ? [
+                  {
+                      active,
+                      aggregateId: `${TEST_RAISED_BED_ID}|${config.positionIndex.toString()}`,
+                      cancellationReason: config.cancellationReason,
+                      cancelReason: config.cancelReason,
+                      endedAt: active
+                          ? undefined
+                          : (config.stoppedDate ??
+                            config.plantRemovedDate ??
+                            config.plantHarvestedDate),
+                      endedEventId: id * 100 + 2,
+                      eventIds: [id * 100 + 1, id * 100 + 2],
+                      plantDeadDate: config.plantDeadDate,
+                      plantGrowthDate: config.plantGrowthDate,
+                      plantHarvestedDate: config.plantHarvestedDate,
+                      plantPlaceEventId: id * 100 + 1,
+                      plantReadyDate: config.plantReadyDate,
+                      plantRemovedDate: config.plantRemovedDate,
+                      plantScheduledDate: config.plantScheduledDate,
+                      plantSortId: config.plantSortId,
+                      plantSowDate: config.plantSowDate,
+                      plantStatus: config.plantStatus,
+                      positionIndex: config.positionIndex,
+                      sowingLocation: config.sowingLocation ?? 'direct',
+                      startedAt:
+                          config.plantSowDate ??
+                          config.plantScheduledDate ??
+                          now,
+                      stoppedDate: config.stoppedDate,
+                      toBeRemoved: config.toBeRemoved ?? false,
+                  },
+              ]
+            : [];
+
     return {
         id,
         raisedBedId: TEST_RAISED_BED_ID,
         isDeleted: false,
-        active: config.active ?? true,
+        active,
         toBeRemoved: config.toBeRemoved ?? false,
         stoppedDate: config.stoppedDate,
         positionIndex: config.positionIndex,
@@ -234,7 +272,7 @@ export function buildField(config: FieldConfig, id: number) {
         cancellationReason: config.cancellationReason,
         cancelReason: config.cancelReason,
         sowingLocation: config.sowingLocation ?? 'direct',
-        plantCycles: config.plantCycles ?? [],
+        plantCycles: config.plantCycles ?? defaultPlantCycles,
         assignedUserId: null,
         assignedUserIds: [],
         assignedBy: null,
@@ -289,6 +327,7 @@ export function buildCartItem({
 }
 
 export function buildOperation({
+    appliesToAllTargets = false,
     id,
     name,
     label,
@@ -296,6 +335,7 @@ export function buildOperation({
     stageLabel,
     relativeDays,
 }: {
+    appliesToAllTargets?: boolean;
     id: number;
     name: string;
     label: string;
@@ -308,6 +348,7 @@ export function buildOperation({
         entityType: { id: 10, name: 'operation', label: 'Radnje' },
         slug: `mock-${name}`,
         attributes: {
+            appliesToAllTargets,
             frequency: 'once',
             stage: {
                 id,

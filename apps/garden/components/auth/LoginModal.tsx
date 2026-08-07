@@ -21,6 +21,13 @@ import LoginBanner from './LoginBanner';
 
 type AuthTab = 'login' | 'register';
 
+const authContentTransitionClassName =
+    'w-full animate-in fade-in-0 duration-200 ease-out motion-reduce:duration-[120ms]';
+const authContentDirectionClassNames = {
+    email: 'motion-safe:slide-in-from-bottom-2',
+    providers: 'motion-safe:slide-in-from-top-2',
+};
+
 export default function LoginModal() {
     const posthog = usePostHog();
     const router = useRouter();
@@ -28,6 +35,8 @@ export default function LoginModal() {
     const [error, setError] = useState<string>();
     const [activeTab, setActiveTab] = useState<AuthTab>('login');
     const [emailExpanded, setEmailExpanded] = useState(false);
+    const [shouldAnimateAuthContent, setShouldAnimateAuthContent] =
+        useState(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
@@ -152,13 +161,20 @@ export default function LoginModal() {
 
     const handleTabChange = (value: string) => {
         if (value === 'login' || value === 'register') {
+            setShouldAnimateAuthContent(emailExpanded);
             setActiveTab(value);
             setEmailExpanded(false);
             setError(undefined);
         }
     };
 
+    const handleEmailExpand = () => {
+        setShouldAnimateAuthContent(true);
+        setEmailExpanded(true);
+    };
+
     const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
+    const authContent = emailExpanded ? 'email' : 'providers';
 
     return (
         <>
@@ -183,69 +199,99 @@ export default function LoginModal() {
                         </TabsList>
                     </div>
                     <Stack spacing={4} className="mt-4">
-                        {!emailExpanded && (
-                            <Stack spacing={2}>
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                    lastUsed={lastLoginProvider === 'google'}
-                                >
-                                    Google {authActionLabel}
-                                </GoogleLoginButton>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                    lastUsed={lastLoginProvider === 'facebook'}
-                                >
-                                    Facebook {authActionLabel}
-                                </FacebookLoginButton>
-                                <Button
-                                    type="button"
-                                    variant="outlined"
-                                    color="neutral"
-                                    fullWidth
-                                    startDecorator={
-                                        <Mail className="h-4 w-4 shrink-0" />
-                                    }
-                                    onClick={() => setEmailExpanded(true)}
-                                >
-                                    Email {authActionLabel}
-                                </Button>
-                            </Stack>
-                        )}
-                        {emailExpanded && (
-                            <>
-                                <TabsContent value="login" className="mt-0">
-                                    <div className="px-1">
-                                        <Stack spacing={4}>
-                                            <EmailPasswordForm
-                                                onSubmit={handleLogin}
-                                                submitText="Prijava"
-                                            />
-                                            {error && (
-                                                <Alert color="danger">
-                                                    {error}
-                                                </Alert>
-                                            )}
-                                        </Stack>
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="register" className="mt-0">
-                                    <div className="px-1">
-                                        <Stack spacing={4}>
-                                            <EmailPasswordForm
-                                                onSubmit={handleRegister}
-                                                submitText="Registriraj se"
-                                                registration
-                                            />
-                                            {error && (
-                                                <Alert color="danger">
-                                                    {error}
-                                                </Alert>
-                                            )}
-                                        </Stack>
-                                    </div>
-                                </TabsContent>
-                            </>
-                        )}
+                        <div className="w-full">
+                            <div
+                                key={authContent}
+                                className={
+                                    shouldAnimateAuthContent
+                                        ? `${authContentTransitionClassName} ${authContentDirectionClassNames[authContent]}`
+                                        : 'w-full'
+                                }
+                                data-auth-content={authContent}
+                                data-testid="auth-content-transition"
+                            >
+                                {!emailExpanded ? (
+                                    <Stack spacing={2}>
+                                        <GoogleLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('google')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'google'
+                                            }
+                                        >
+                                            Google {authActionLabel}
+                                        </GoogleLoginButton>
+                                        <FacebookLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('facebook')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'facebook'
+                                            }
+                                        >
+                                            Facebook {authActionLabel}
+                                        </FacebookLoginButton>
+                                        <Button
+                                            type="button"
+                                            variant="outlined"
+                                            color="neutral"
+                                            fullWidth
+                                            startDecorator={
+                                                <Mail className="h-4 w-4 shrink-0" />
+                                            }
+                                            onClick={handleEmailExpand}
+                                        >
+                                            Email {authActionLabel}
+                                        </Button>
+                                    </Stack>
+                                ) : (
+                                    <>
+                                        <TabsContent
+                                            value="login"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={handleLogin}
+                                                        submitText="Prijava"
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                        <TabsContent
+                                            value="register"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={
+                                                            handleRegister
+                                                        }
+                                                        submitText="Registriraj se"
+                                                        registration
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     </Stack>
                 </Tabs>
             </Modal>

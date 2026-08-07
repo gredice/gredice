@@ -13,6 +13,7 @@ import {
     type SwitchOperationEntityActionState,
     switchOperationEntityAction,
 } from '../../app/(actions)/operationActions';
+import { canSwitchOperationTaskEntity } from '../../app/admin/schedule/scheduleShared';
 
 export type OperationSwitchOption = {
     id: number;
@@ -22,6 +23,8 @@ export type OperationSwitchOption = {
 interface OperationSwitchButtonProps {
     operationId: number;
     currentEntityId: number;
+    taskVersionEventId: number;
+    operationStatus: string;
     operationLabel: string;
     operationOptions: OperationSwitchOption[];
 }
@@ -29,6 +32,8 @@ interface OperationSwitchButtonProps {
 export function OperationSwitchButton({
     operationId,
     currentEntityId,
+    taskVersionEventId,
+    operationStatus,
     operationLabel,
     operationOptions,
 }: OperationSwitchButtonProps) {
@@ -74,7 +79,10 @@ export function OperationSwitchButton({
         }
     }
 
-    if (!hasReplacementOptions) {
+    if (
+        !hasReplacementOptions ||
+        !canSwitchOperationTaskEntity(operationStatus)
+    ) {
         return null;
     }
 
@@ -103,6 +111,16 @@ export function OperationSwitchButton({
                         type="hidden"
                         name="operationId"
                         value={operationId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedEntityId"
+                        value={currentEntityId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedTaskVersionEventId"
+                        value={taskVersionEventId}
                     />
                     <input
                         type="hidden"

@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
+import { getOperationsData } from '../../../../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -119,9 +120,10 @@ export default async function PlantSortPage(
         notFound();
     }
 
-    const [plants, sorts] = await Promise.all([
+    const [plants, sorts, operations] = await Promise.all([
         getPlantsData(),
         getPlantSortsData(),
+        getOperationsData(),
     ]);
     const basePlantData = plants?.find((p) =>
         matchesPageAlias(p.information.name, alias),
@@ -142,6 +144,7 @@ export default async function PlantSortPage(
     const informationSections = getPlantInforationSections(
         basePlantData,
         sortData,
+        operations,
     );
 
     // Map section IDs to their corresponding attribute cards
@@ -266,6 +269,7 @@ export default async function PlantSortPage(
                     ]}
                 />
                 <PlantPageHeader
+                    operations={operations}
                     plant={basePlantData}
                     sort={sortData}
                     overviewEditTarget={{

@@ -357,14 +357,39 @@ test('renders every customer recovery state with only customer-safe actions', as
     mount,
     page,
 }) => {
+    const requestContext = {
+        requestReference: 'customer-recovery-request-4137',
+        harvest: {
+            plantName: 'Rajčica za oporavak',
+            operationName: 'Berba',
+            raisedBedName: 'Gredica 4',
+            fieldName: 'Polje 2',
+            tracePath: '/trag/customer-recovery-4137',
+        },
+    } as const;
     const component = await mount(
-        <DeliveryCustomerRecovery recovery={{ kind: 'retry-planned' }} />,
+        <DeliveryCustomerRecovery
+            {...requestContext}
+            recovery={{ kind: 'retry-planned' }}
+        />,
     );
     await expect(page.getByText('Ponovni pokušaj je planiran')).toBeVisible();
     await expect(page.getByText(/vratit će se kasnije/)).toBeVisible();
+    const retrySupportHref = await page
+        .getByRole('link', {
+            name: 'Prijavi problem za dostavu: Rajčica za oporavak',
+        })
+        .getAttribute('href');
+    if (!retrySupportHref) {
+        throw new Error('Recovery support link is missing.');
+    }
+    expect(new URL(retrySupportHref).searchParams.get('body')).toContain(
+        'customer-recovery-request-4137',
+    );
 
     await component.update(
         <DeliveryCustomerRecovery
+            {...requestContext}
             recovery={{
                 kind: 'hq-pickup',
                 pickupAddress: 'Konfigurirani HQ, Testna 42, Zagreb',
@@ -380,41 +405,114 @@ test('renders every customer recovery state with only customer-safe actions', as
     ).toBeVisible();
     await expect(page.getByText(/najkasnije/)).toBeVisible();
     await expect(
-        page.getByRole('link', { name: 'Potvrdi preuzimanje' }),
+        page.getByRole('link', {
+            name: 'Potvrdi preuzimanje za dostavu: Rajčica za oporavak',
+        }),
     ).toBeVisible();
     await expect(
-        page.getByRole('link', { name: 'Otvori lokaciju HQ' }),
+        page.getByRole('link', {
+            name: 'Otvori lokaciju HQ za dostavu: Rajčica za oporavak',
+        }),
     ).toHaveAttribute('href', /google\.com\/maps\/dir/);
 
     await component.update(
-        <DeliveryCustomerRecovery recovery={{ kind: 'support' }} />,
+        <DeliveryCustomerRecovery
+            {...requestContext}
+            recovery={{ kind: 'support' }}
+        />,
     );
     await expect(
         page.getByText('Podrška će dogovoriti sljedeći korak'),
     ).toBeVisible();
     await expect(
-        page.getByRole('link', { name: 'Kontaktiraj podršku' }),
+        page.getByRole('link', {
+            name: 'Kontaktiraj podršku za dostavu: Rajčica za oporavak',
+        }),
     ).toBeVisible();
     await expect(
         page.getByText(/harvest-missing|operational-other/),
     ).toHaveCount(0);
 
     await component.update(
-        <DeliveryCustomerRecovery recovery={{ kind: 'hq-pickup-expired' }} />,
+        <DeliveryCustomerRecovery
+            {...requestContext}
+            recovery={{ kind: 'hq-pickup-expired' }}
+        />,
     );
     await expect(
         page.getByText('Rok za osobno preuzimanje je istekao'),
     ).toBeVisible();
     await expect(page.getByText(/više nije aktivan/)).toBeVisible();
     await expect(
-        page.getByRole('link', { name: 'Kontaktiraj podršku' }),
+        page.getByRole('link', {
+            name: 'Kontaktiraj podršku za dostavu: Rajčica za oporavak',
+        }),
     ).toBeVisible();
 
     await component.update(
-        <DeliveryCustomerRecovery recovery={{ kind: 'cancelled' }} />,
+        <DeliveryCustomerRecovery
+            {...requestContext}
+            recovery={{ kind: 'cancelled' }}
+        />,
     );
     await expect(page.getByText('Dostava je otkazana')).toBeVisible();
     await expect(page.getByText(/otkazivanje nisi očekivao/)).toBeVisible();
+});
+
+test('names simultaneous recovery actions by harvest and keeps their request targets separate', async ({
+    mount,
+    page,
+}) => {
+    const firstHarvest = {
+        plantName: 'Rajčica prve dostave',
+        operationName: 'Berba',
+        raisedBedName: 'Gredica 1',
+        fieldName: 'Polje 1',
+        tracePath: '/trag/recovery-first-4137',
+    };
+    const secondHarvest = {
+        ...firstHarvest,
+        plantName: 'Paprika druge dostave',
+        raisedBedName: 'Gredica 2',
+        tracePath: '/trag/recovery-second-4137',
+    };
+    await mount(
+        <div>
+            <DeliveryCustomerRecovery
+                recovery={{ kind: 'support' }}
+                requestReference="recovery-first-request-4137"
+                harvest={firstHarvest}
+            />
+            <DeliveryCustomerRecovery
+                recovery={{ kind: 'cancelled' }}
+                requestReference="recovery-second-request-4137"
+                harvest={secondHarvest}
+            />
+        </div>,
+    );
+
+    const firstLink = page.getByRole('link', {
+        name: 'Kontaktiraj podršku za dostavu: Rajčica prve dostave',
+    });
+    const secondLink = page.getByRole('link', {
+        name: 'Kontaktiraj podršku za dostavu: Paprika druge dostave',
+    });
+    await expect(firstLink).toBeVisible();
+    await expect(secondLink).toBeVisible();
+    const firstHref = await firstLink.getAttribute('href');
+    const secondHref = await secondLink.getAttribute('href');
+    if (!firstHref || !secondHref) {
+        throw new Error('Request-specific recovery links are missing.');
+    }
+    expect(new URL(firstHref).searchParams.get('body')).toContain(
+        'recovery-first-request-4137',
+    );
+    expect(new URL(firstHref).searchParams.get('body')).not.toContain(
+        'recovery-second-request-4137',
+    );
+    expect(new URL(secondHref).searchParams.get('body')).toContain(
+        'recovery-second-request-4137',
+    );
 });
 
 test('keeps terminal siblings as history but excludes them from current delivery work', async ({

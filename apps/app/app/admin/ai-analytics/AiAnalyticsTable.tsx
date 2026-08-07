@@ -13,8 +13,8 @@ import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import {
-    estimateAiAnalysisCostUsd,
-    formatAiCostUsd,
+    estimateAiAnalysisCostEur,
+    formatAiCostEur,
 } from '../../../src/ai/aiAnalyticsCost';
 import type { AiAnalyticsOperationType } from './aiAnalyticsPresentation';
 
@@ -130,7 +130,7 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                 <Stack spacing={0}>
                     <Typography level="body3">Trošak</Typography>
                     <Typography level="body2">
-                        {formatAiCostUsd(estimateAiAnalysisCostUsd(row.data))}
+                        {formatAiCostEur(estimateAiAnalysisCostEur(row.data))}
                     </Typography>
                 </Stack>
                 <Stack spacing={0}>
@@ -282,8 +282,8 @@ export function AiAnalyticsTable({ rows }: { rows: AiAnalyticsRow[] }) {
                                                     <Typography level="body3">
                                                         Trošak:{' '}
                                                         <span className="font-medium text-foreground tabular-nums">
-                                                            {formatAiCostUsd(
-                                                                estimateAiAnalysisCostUsd(
+                                                            {formatAiCostEur(
+                                                                estimateAiAnalysisCostEur(
                                                                     row.data,
                                                                 ),
                                                             )}

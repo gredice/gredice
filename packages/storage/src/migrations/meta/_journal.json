@@ -533,6 +533,34 @@
       "when": 1784163861364,
       "tag": "0075_whole_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1784294413079,
+      "tag": "0076_open_morgan_stark",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1784915842968,
+      "tag": "0077_certain_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1785795248211,
+      "tag": "0078_silly_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1785934714255,
+      "tag": "0079_young_wild_pack",
+      "breakpoints": true
     }
   ]
 }

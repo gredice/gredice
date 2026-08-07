@@ -4,6 +4,10 @@ import {
     DeliveryMutationRequestError,
     parseDeliveryExceptionMutation,
 } from '../../../../../../lib/deliveryMutationRequest';
+import {
+    deliveryOperationalOpaqueId,
+    deliveryOperationFailureLogContext,
+} from '../../../../../../lib/deliveryOperationalLogging';
 import { deliveryRunExecutionErrorDetails } from '../../../../../../lib/deliveryRunExecutionError';
 
 const privateNoStore = { 'Cache-Control': 'private, no-store' };
@@ -41,10 +45,11 @@ export async function POST(
             const executionError = deliveryRunExecutionErrorDetails(error);
             if (!executionError) {
                 console.error('Failed to record delivery exceptions', {
-                    runId,
-                    userId,
-                    errorType:
-                        error instanceof Error ? error.name : typeof error,
+                    ...deliveryOperationFailureLogContext({
+                        error,
+                        mutationCount: mutation.exceptions.length,
+                    }),
+                    runId: deliveryOperationalOpaqueId(runId),
                 });
             }
             return Response.json(

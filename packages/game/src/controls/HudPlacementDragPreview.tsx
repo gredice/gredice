@@ -2,23 +2,16 @@
 
 import { Shadow } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useMemo, useRef } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { EntityFactory } from '../entities/EntityFactory';
 import { blockPickupOutlineStyle } from '../entities/helpers/blockPickupOutlineStyle';
 import { HoverOutline } from '../entities/helpers/HoverOutline';
-import { useBlockData } from '../hooks/useBlockData';
-import { useBlockPlace } from '../hooks/useBlockPlace';
-import { useCurrentAccount } from '../hooks/useCurrentAccount';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
-import { getHudEntityPlacementAvailability } from '../hud/itemPlacementAvailability';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import {
-    type HudPlacementGridPosition,
-    resolveHudPlacementPreview,
-} from './hudPlacement';
+import type { HudPlacementGridPosition } from './hudPlacement';
+import { useHudPlacementPreview } from './useHudPlacementPreview';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 const previewLift = 0.1;
@@ -53,15 +46,7 @@ export function HudPlacementDragPreview() {
     const raycaster = useRef(new Raycaster());
     const pointerVector = useRef(new Vector2());
     const intersectionPoint = useRef(new Vector3());
-    const { data: blockData } = useBlockData();
-    const { data: garden } = useCurrentGarden();
-    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
-    const { mutate: placeBlock } = useBlockPlace();
     const hudPlacementDrag = useGameState((state) => state.hudPlacementDrag);
-    const clearHudPlacementDrag = useGameState(
-        (state) => state.clearHudPlacementDrag,
-    );
-    const timeOfDay = useGameState((state) => state.timeOfDay);
 
     const pointerPosition = useMemo<HudPlacementGridPosition | null>(() => {
         if (!hudPlacementDrag) {
@@ -105,31 +90,23 @@ export function HudPlacementDragPreview() {
             z: Math.round(intersectionPoint.current.z),
         };
     }, [camera, domElement, hudPlacementDrag]);
-
-    const placementPreview = useMemo(() => {
-        if (!hudPlacementDrag || !pointerPosition) {
-            return null;
-        }
-
-        return resolveHudPlacementPreview({
-            blockData,
-            blockName: hudPlacementDrag.blockName,
-            garden,
-            position: pointerPosition,
-        });
-    }, [blockData, garden, hudPlacementDrag, pointerPosition]);
+    const {
+        hudPlacementDrag: activeHudPlacementDrag,
+        isBlocked,
+        placementPreview,
+    } = useHudPlacementPreview(pointerPosition);
 
     const block = useMemo<Block | null>(() => {
-        if (!hudPlacementDrag || !placementPreview) {
+        if (!activeHudPlacementDrag || !placementPreview) {
             return null;
         }
 
         return {
-            id: `hud-placement-preview:${hudPlacementDrag.blockName}`,
-            name: hudPlacementDrag.blockName,
+            id: `hud-placement-preview:${activeHudPlacementDrag.blockName}`,
+            name: activeHudPlacementDrag.blockName,
             rotation: 0,
         };
-    }, [hudPlacementDrag, placementPreview]);
+    }, [activeHudPlacementDrag, placementPreview]);
 
     const stack = useMemo<Stack | null>(() => {
         if (!block || !placementPreview) {
@@ -146,53 +123,7 @@ export function HudPlacementDragPreview() {
         };
     }, [block, placementPreview]);
 
-    const blockEntity = blockData?.find(
-        (candidate) =>
-            candidate.information.name === hudPlacementDrag?.blockName,
-    );
-    const availability =
-        blockEntity && garden
-            ? getHudEntityPlacementAvailability({
-                  accountSunflowers: account?.sunflowers.amount,
-                  block: blockEntity,
-                  isAccountLoading,
-                  isSandbox: garden.isSandbox,
-                  timeOfDay,
-              })
-            : null;
-    const isBlocked =
-        !availability?.canPlace || (placementPreview?.isBlocked ?? true);
-    const dropRequestSequence = hudPlacementDrag?.dropRequest?.sequence ?? null;
-
-    useEffect(() => {
-        if (!hudPlacementDrag?.dropRequest || dropRequestSequence === null) {
-            return;
-        }
-
-        if (!placementPreview || isBlocked || !availability?.canPlace) {
-            clearHudPlacementDrag();
-            return;
-        }
-
-        placeBlock({
-            blockName: hudPlacementDrag.blockName,
-            position: {
-                x: placementPreview.position.x,
-                y: placementPreview.position.z,
-            },
-        });
-        clearHudPlacementDrag();
-    }, [
-        availability?.canPlace,
-        clearHudPlacementDrag,
-        dropRequestSequence,
-        hudPlacementDrag,
-        isBlocked,
-        placeBlock,
-        placementPreview,
-    ]);
-
-    if (!hudPlacementDrag || !placementPreview || !block || !stack) {
+    if (!activeHudPlacementDrag || !placementPreview || !block || !stack) {
         return null;
     }
 

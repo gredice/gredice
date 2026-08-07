@@ -28,11 +28,16 @@ type AssignableUser = Pick<
 
 type FieldAssignmentTarget = {
     id: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     farmUsers: AssignableUser[];
 };
 
 type OperationAssignmentTarget = {
     id: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     farmUsers: AssignableUser[];
 };
 
@@ -135,10 +140,21 @@ export function BulkAssignRaisedBedButton({
         setOpen(false);
         void Promise.all([
             ...fields.map((field) =>
-                assignRaisedBedFieldUserAction(field.id, assignedUserIds),
+                assignRaisedBedFieldUserAction(
+                    field.id,
+                    field.expectedPlantCycleEventId,
+                    field.expectedPlantSortId,
+                    field.expectedPlantCycleVersionEventId,
+                    assignedUserIds,
+                ),
             ),
             ...operations.map((operation) =>
-                assignOperationUserAction(operation.id, assignedUserIds),
+                assignOperationUserAction(
+                    operation.id,
+                    operation.expectedEntityId,
+                    operation.expectedTaskVersionEventId,
+                    assignedUserIds,
+                ),
             ),
         ])
             .catch((error: unknown) => {

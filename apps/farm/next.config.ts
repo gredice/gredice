@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {

@@ -1,0 +1,4555 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+    buildAdaptiveHighComparisons,
+    buildHighTargetMedians,
+    buildMarkdown,
+    buildPlantCloseupAcceptance,
+    buildPlantCloseupMedians,
+    buildProfileSummary,
+    buildScenarioRunQueue,
+    buildStaticSceneCacheComparisons,
+    buildStaticSceneCacheVisualComparisons,
+    buildWeatherSurfaceComparisons,
+    drainProfileSample,
+    evaluateBudget,
+    evaluateHighTargetAcceptance,
+    finalizeProfileSampleAtEndpoint,
+    finishInteractiveProfileSample,
+    getScenarioRequest,
+    installBrowserMetrics,
+    isIgnoredLocalProfilerConsoleError,
+    isOutlineProfileTelemetryReady,
+    measureStaticSceneCacheImageParity,
+    mergeProfileSampleDrain,
+    normalizeRenderWork,
+    parseArgs,
+    resolveChromiumGraphicsArgs,
+    resolveChromiumGraphicsBackend,
+    resolveScenarios,
+} from './profile-game-scene.mjs';
+
+test('closeup acceptance rejects synchronous worker fallback', () => {
+    const phase = (syncFallbackTaskCount) => ({
+        detailOutcome: 'ready',
+        profile: {
+            generation: {
+                syncFallbackTaskCount,
+                workerFailureCount: 0,
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(0),
+                warm: phase(0),
+            },
+        },
+    ];
+
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).workerFailureFreePhaseCount,
+        2,
+    );
+    runs[0].closeup.warm = phase(1);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).workerFailureFreePhaseCount,
+        1,
+    );
+});
+
+test('closeup acceptance requires the selected bed to exercise foliage', () => {
+    const phase = (leaves) => ({
+        detailOutcome: 'ready',
+        profile: {
+            selected: {
+                parts: {
+                    leaves,
+                },
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(120),
+                warm: phase(120),
+            },
+        },
+    ];
+
+    assert.equal(buildPlantCloseupAcceptance(runs).foliageCoveredPhaseCount, 2);
+    runs[0].closeup.warm = phase(0);
+    assert.equal(buildPlantCloseupAcceptance(runs).foliageCoveredPhaseCount, 1);
+});
+
+test('closeup acceptance bounds archetypes for the grown foliage fixture', () => {
+    const phase = (maxArchetypeCountPerBatch) => ({
+        profile: {
+            renderData: {
+                maxArchetypeCountPerBatch,
+            },
+        },
+    });
+    const runs = [
+        {
+            closeup: {
+                cold: phase(12),
+                warm: phase(12),
+            },
+        },
+    ];
+
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        2,
+    );
+    runs[0].closeup.warm = phase(13);
+    assert.equal(
+        buildPlantCloseupAcceptance(runs).archetypeBoundedPhaseCount,
+        1,
+    );
+});
+
+test('plant closeup scenario set resolves deterministic desktop and mobile runs', () => {
+    const scenarios = resolveScenarios('plant-closeup');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        ['game-plant-heavy-closeup-desktop', 'game-plant-heavy-closeup-mobile'],
+    );
+    for (const scenario of scenarios) {
+        assert.equal(scenario.plantCloseup.raisedBedId, 29);
+        assert.equal(scenario.plantCloseup.repeat, 5);
+        assert.match(scenario.path, /closeupRaisedBedId=29/);
+        assert.match(scenario.path, /profile=plant-heavy/);
+    }
+});
+
+test('profile request reads the deterministic closeup target', () => {
+    const request = getScenarioRequest(
+        '/debug/profile/game?profile=plant-heavy&quality=medium&closeupRaisedBedId=29',
+    );
+
+    assert.equal(request.closeupRaisedBedId, 29);
+    assert.equal(request.gardenProfile, 'plant-heavy');
+    assert.equal(request.quality, 'medium');
+});
+
+test('high target scenario set covers representative High DPR 2 phases', () => {
+    const scenarios = resolveScenarios('high-target');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-clear-idle-desktop',
+            'game-high-target-camera-motion-desktop',
+            'game-high-target-hover-selection-desktop',
+            'game-high-target-placement-desktop',
+            'game-high-target-rain-desktop',
+            'game-high-target-snow-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['details', 'details', 'details', 'details', 'rain', 'snow'],
+    );
+    for (const scenario of scenarios) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(request.controls, '1');
+        assert.equal(request.debugHud, '0');
+        assert.equal(request.details, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.hud, '0');
+        assert.equal(request.operationVisuals, '0');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.repeat, 3);
+    }
+    assert.equal(scenarios[0].motion, undefined);
+    assert.equal(scenarios[1].motion, 'pan-zoom-rotate');
+    assert.equal(scenarios[2].interaction, 'hover-scan');
+    assert.equal(scenarios[3].placementProfile.action, 'run');
+    assert.equal(getScenarioRequest(scenarios[3].path).placement, '1');
+});
+
+test('operation-visual High scenario is isolated behind its own opt-in set', () => {
+    const scenarios = resolveScenarios('high-target-operation-visuals');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    assert.equal(scenario.name, 'game-high-target-operation-visuals-desktop');
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.repeat, 3);
+    assert.deepEqual(getScenarioRequest(scenario.path), {
+        adaptiveHigh: '0',
+        closeupRaisedBedId: null,
+        controls: '1',
+        debugHud: '0',
+        details: '1',
+        foliageBudget: '0',
+        gardenProfile: 'high-target',
+        hud: '0',
+        mode: 'details',
+        operationVisuals: '1',
+        outline: '0',
+        placement: '0',
+        quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '0',
+        weatherSurface: 'integrated',
+    });
+    assert.equal(
+        resolveScenarios('high-target').some(
+            (candidate) =>
+                getScenarioRequest(candidate.path).operationVisuals === '1',
+        ),
+        false,
+    );
+});
+
+test('foliage-budget High scenario reserves exact detail for explicit close-up', () => {
+    const scenarios = resolveScenarios('high-target-foliage-budget');
+
+    assert.equal(scenarios.length, 2);
+    const [legacy, scenario] = scenarios;
+    assert.equal(
+        legacy.name,
+        'game-high-target-foliage-unbudgeted-zoom-desktop',
+    );
+    assert.equal(getScenarioRequest(legacy.path).foliageBudget, 'legacy');
+    assert.equal(legacy.comparisonPair, 'foliage-detail-budget');
+    assert.equal(legacy.comparisonRole, 'legacy');
+    assert.equal(scenario.name, 'game-high-target-foliage-budget-zoom-desktop');
+    assert.equal(scenario.motion, 'foliage-detail-zoom');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.comparisonPair, 'foliage-detail-budget');
+    assert.equal(scenario.comparisonRole, 'budgeted');
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(request.foliageBudget, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.quality, 'high');
+});
+
+test('weather-material High scenarios pair legacy and integrated rain and snow', () => {
+    const scenarios = resolveScenarios('high-target-weather-materials');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-rain-legacy-weather-surfaces-desktop',
+            'game-high-target-rain-integrated-weather-surfaces-desktop',
+            'game-high-target-snow-legacy-weather-surfaces-desktop',
+            'game-high-target-snow-integrated-weather-surfaces-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonPair),
+        [
+            'rain-weather-surfaces',
+            'rain-weather-surfaces',
+            'snow-weather-surfaces',
+            'snow-weather-surfaces',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        ['legacy', 'integrated', 'legacy', 'integrated'],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['rain', 'rain', 'snow', 'snow'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).weatherSurface,
+        ),
+        ['legacy', 'integrated', 'legacy', 'integrated'],
+    );
+    for (const scenario of scenarios) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 5);
+    }
+});
+
+test('weather-material runs interleave five legacy and integrated samples per pair', () => {
+    const queue = buildScenarioRunQueue(
+        resolveScenarios('high-target-weather-materials'),
+    );
+    const expectedPairOrder = [
+        'legacy:1',
+        'integrated:1',
+        'integrated:2',
+        'legacy:2',
+        'legacy:3',
+        'integrated:3',
+        'integrated:4',
+        'legacy:4',
+        'legacy:5',
+        'integrated:5',
+    ];
+
+    assert.equal(queue.length, 20);
+    for (const [pairIndex, pairName] of [
+        [0, 'rain-weather-surfaces'],
+        [1, 'snow-weather-surfaces'],
+    ]) {
+        assert.deepEqual(
+            queue
+                .slice(pairIndex * 10, pairIndex * 10 + 10)
+                .map(
+                    ({ baseScenario, runIndex }) =>
+                        `${baseScenario.comparisonRole}:${runIndex}`,
+                ),
+            expectedPairOrder,
+            `${pairName} should use an ABBA-balanced order`,
+        );
+    }
+
+    const unpairedQueue = buildScenarioRunQueue(
+        resolveScenarios('high-target-operation-visuals'),
+    );
+    assert.deepEqual(
+        unpairedQueue.map(({ runIndex }) => runIndex),
+        [1, 2, 3],
+    );
+});
+
+test('static scene-cache High scenarios use deterministic five-run ABBA pairs', () => {
+    const scenarios = resolveScenarios('high-target-static-scene-cache');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-static-scene-cache-legacy-desktop',
+            'game-high-target-static-scene-cache-cached-desktop',
+            'game-high-target-static-scene-cache-cloudy-legacy-desktop',
+            'game-high-target-static-scene-cache-cloudy-cached-desktop',
+            'game-high-target-static-scene-cache-occlusion-fixture-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        ['legacy', 'cache', 'legacy', 'cache', undefined],
+    );
+    for (const scenario of scenarios.slice(0, 4)) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(
+            scenario.comparisonPair,
+            request.mode === 'cloudy'
+                ? 'static-opaque-scene-cache-cloudy'
+                : 'static-opaque-scene-cache',
+        );
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 5);
+        assert.equal(scenario.staticSceneCacheBenchmark, true);
+        assert.equal(request.controls, '0');
+        assert.equal(request.details, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(scenario.staticSceneCacheVisualDeterministic, true);
+        assert.equal(
+            new URL(scenario.path, 'http://profile.local').searchParams.get(
+                'fixedTimeSeconds',
+            ),
+            request.mode === 'cloudy' ? '12' : null,
+        );
+        assert.equal(
+            scenario.fixedTimeSeconds,
+            request.mode === 'cloudy' ? 12 : undefined,
+        );
+        assert.equal(request.quality, 'high');
+    }
+    assert.deepEqual(
+        scenarios.slice(0, 4).map((scenario) => {
+            return getScenarioRequest(scenario.path).mode;
+        }),
+        ['details', 'details', 'cloudy', 'cloudy'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).staticSceneCache,
+        ),
+        ['legacy', 'cache', 'legacy', 'cache', 'cache'],
+    );
+    const fixture = scenarios[4];
+    assert.equal(fixture.repeat, 1);
+    assert.equal(fixture.staticSceneCacheBenchmark, true);
+    assert.equal(fixture.staticSceneCacheOcclusionFixture, true);
+    assert.equal(fixture.comparisonPair, undefined);
+    assert.equal(
+        getScenarioRequest(fixture.path).staticSceneCacheOcclusionFixture,
+        '1',
+    );
+
+    const queue = buildScenarioRunQueue(scenarios);
+    assert.deepEqual(
+        queue.map(
+            ({ baseScenario, runIndex }) =>
+                `${
+                    baseScenario.staticSceneCacheOcclusionFixture
+                        ? 'fixture'
+                        : `${baseScenario.comparisonPair}:${baseScenario.comparisonRole}`
+                }:${runIndex}`,
+        ),
+        [
+            'static-opaque-scene-cache:legacy:1',
+            'static-opaque-scene-cache:cache:1',
+            'static-opaque-scene-cache:cache:2',
+            'static-opaque-scene-cache:legacy:2',
+            'static-opaque-scene-cache:legacy:3',
+            'static-opaque-scene-cache:cache:3',
+            'static-opaque-scene-cache:cache:4',
+            'static-opaque-scene-cache:legacy:4',
+            'static-opaque-scene-cache:legacy:5',
+            'static-opaque-scene-cache:cache:5',
+            'static-opaque-scene-cache-cloudy:legacy:1',
+            'static-opaque-scene-cache-cloudy:cache:1',
+            'static-opaque-scene-cache-cloudy:cache:2',
+            'static-opaque-scene-cache-cloudy:legacy:2',
+            'static-opaque-scene-cache-cloudy:legacy:3',
+            'static-opaque-scene-cache-cloudy:cache:3',
+            'static-opaque-scene-cache-cloudy:cache:4',
+            'static-opaque-scene-cache-cloudy:legacy:4',
+            'static-opaque-scene-cache-cloudy:legacy:5',
+            'static-opaque-scene-cache-cloudy:cache:5',
+            'fixture:1',
+        ],
+    );
+});
+
+test('snow-onset High scenarios provide deterministic visual legacy and integrated cases', () => {
+    const scenarios = resolveScenarios('high-target-weather-onset');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-snow-onset-legacy-weather-surfaces-desktop',
+            'game-high-target-snow-onset-integrated-weather-surfaces-desktop',
+            'game-high-target-snow-threshold-transition-integrated-weather-surfaces-desktop',
+        ],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonPair),
+        [undefined, undefined, undefined],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.comparisonRole),
+        [undefined, undefined, undefined],
+    );
+    assert.deepEqual(
+        scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['snow-onset', 'snow-onset', 'snow-onset'],
+    );
+    assert.deepEqual(
+        scenarios.map(
+            (scenario) => getScenarioRequest(scenario.path).weatherSurface,
+        ),
+        ['legacy', 'integrated', 'integrated'],
+    );
+    for (const scenario of scenarios) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.budget, 'gameHighTarget');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.isMobile, false);
+        assert.equal(scenario.repeat, 1);
+    }
+    assert.equal(
+        scenarios[2].weatherSurfaceTransition,
+        'snow-integration-cycle',
+    );
+});
+
+test('profile request defaults invalid weather-surface values to integrated', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game').weatherSurface,
+        'integrated',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?weatherSurface=unexpected')
+            .weatherSurface,
+        'integrated',
+    );
+});
+
+test('profile request defaults invalid static scene-cache values to cache', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game').staticSceneCache,
+        'cache',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?staticSceneCache=unexpected')
+            .staticSceneCache,
+        'cache',
+    );
+    assert.equal(
+        getScenarioRequest('/debug/profile/game?staticSceneCache=legacy')
+            .staticSceneCache,
+        'legacy',
+    );
+});
+
+test('profile request enables the static scene-cache occlusion fixture only for an exact opt-in', () => {
+    assert.equal(
+        getScenarioRequest('/debug/profile/game')
+            .staticSceneCacheOcclusionFixture,
+        '0',
+    );
+    assert.equal(
+        getScenarioRequest(
+            '/debug/profile/game?staticSceneCacheOcclusionFixture=unexpected',
+        ).staticSceneCacheOcclusionFixture,
+        '0',
+    );
+    assert.equal(
+        getScenarioRequest(
+            '/debug/profile/game?staticSceneCacheOcclusionFixture=1',
+        ).staticSceneCacheOcclusionFixture,
+        '1',
+    );
+});
+
+test('outline scenario deterministically targets the connected raised bed after warmup', () => {
+    const scenarios = resolveScenarios('outline');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    assert.equal(
+        scenario.name,
+        'game-high-target-connected-raised-bed-outline-desktop',
+    );
+    assert.deepEqual(scenario.outlineProfile, {
+        action: 'show',
+        raisedBedId: 2,
+    });
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.repeat, 3);
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+});
+
+test('outline telemetry readiness requires the connected target and one style group', () => {
+    assert.equal(isOutlineProfileTelemetryReady(null), false);
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 1,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        false,
+    );
+    assert.equal(
+        isOutlineProfileTelemetryReady({
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineProfileTargetRaisedBedId: 2,
+            hoverOutlineStyleGroupCount: 1,
+        }),
+        true,
+    );
+});
+
+test('graphics backend auto-selects macOS Metal with an explicit portable override', () => {
+    assert.equal(resolveChromiumGraphicsBackend('darwin'), 'angle-metal');
+    assert.equal(resolveChromiumGraphicsBackend('linux'), 'default');
+    assert.equal(
+        resolveChromiumGraphicsBackend('darwin', 'default'),
+        'default',
+    );
+    assert.equal(
+        resolveChromiumGraphicsBackend('darwin', 'angle-metal'),
+        'angle-metal',
+    );
+    assert.deepEqual(resolveChromiumGraphicsArgs('darwin', 'auto'), [
+        '--use-gl=angle',
+        '--use-angle=metal',
+    ]);
+    assert.deepEqual(resolveChromiumGraphicsArgs('darwin', 'default'), []);
+    assert.deepEqual(resolveChromiumGraphicsArgs('linux', 'auto'), []);
+    assert.deepEqual(resolveChromiumGraphicsArgs('win32', 'default'), []);
+    assert.throws(
+        () => resolveChromiumGraphicsBackend('linux', 'angle-metal'),
+        /requires macOS/,
+    );
+});
+
+test('graphics backend CLI overrides the portable auto default explicitly', () => {
+    assert.equal(
+        parseArgs(['--graphics-backend', 'default']).graphicsBackend,
+        'default',
+    );
+    assert.equal(
+        parseArgs(['--graphics-backend', 'angle-metal']).graphicsBackend,
+        'angle-metal',
+    );
+    assert.throws(
+        () => parseArgs(['--graphics-backend', 'unsupported']),
+        /Graphics backend must be one of/,
+    );
+});
+
+test('legacy operation visual profiling bypass is explicit', () => {
+    assert.equal(parseArgs([]).allowLegacyOperationVisuals, false);
+    assert.equal(
+        parseArgs(['--allow-legacy-operation-visuals'])
+            .allowLegacyOperationVisuals,
+        true,
+    );
+});
+
+test('adaptive High scenario set pairs fixed and adaptive motion and preserves runtime features', () => {
+    const scenarios = resolveScenarios('adaptive-high');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-high-target-adaptive-pair-fixed-camera-motion-desktop',
+            'game-high-target-adaptive-camera-motion-desktop',
+            'game-high-target-adaptive-motion-recovery-desktop',
+            'game-high-target-adaptive-runtime-gpu-source-desktop',
+            'game-high-target-adaptive-placement-desktop',
+            'game-high-target-adaptive-rain-desktop',
+            'game-high-target-adaptive-snow-desktop',
+            'game-high-target-adaptive-cloudy-desktop',
+            'game-high-target-adaptive-windy-plants-desktop',
+        ],
+    );
+    assert.equal(scenarios[0].motion, 'pan-zoom-rotate');
+    assert.equal(scenarios[0].comparisonRole, 'fixed');
+    assert.equal(scenarios[1].comparisonRole, 'adaptive');
+    assert.equal(scenarios[1].profileControl, true);
+    assert.equal(scenarios[2].motion, 'pan-zoom-rotate-then-idle');
+    assert.equal(scenarios[2].motionMs, 650);
+    assert.equal(scenarios[2].profileControl, true);
+    assert.equal(scenarios[2].profileControlRecovery, true);
+    assert.equal(scenarios[2].sampleMs, 7_500);
+    assert.equal(scenarios[3].externalGpuTimer, false);
+    assert.equal(scenarios[3].runtimeGpuSource, true);
+    assert.equal(scenarios[4].placementProfile.action, 'run');
+    assert.equal(scenarios[4].profileControl, true);
+    assert.equal(getScenarioRequest(scenarios[4].path).placement, '1');
+    assert.deepEqual(
+        scenarios
+            .slice(5)
+            .map((scenario) => getScenarioRequest(scenario.path).mode),
+        ['rain', 'snow', 'cloudy', 'windy'],
+    );
+    assert.equal(getScenarioRequest(scenarios[0].path).adaptiveHigh, '0');
+    for (const scenario of scenarios.slice(1)) {
+        const request = getScenarioRequest(scenario.path);
+        assert.equal(request.adaptiveHigh, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.quality, 'high');
+        assert.equal(scenario.dpr, 2);
+        assert.equal(scenario.repeat, 3);
+    }
+    assert.equal(scenarios[0].repeat, 3);
+});
+
+test('historical dense High stays at DPR 1 while high-target uses DPR 2', () => {
+    const denseHigh = resolveScenarios('dense').find(
+        (scenario) => scenario.name === 'game-dense-25x25-high-desktop',
+    );
+
+    assert.equal(denseHigh?.dpr, 1);
+    assert.equal(
+        resolveScenarios('high-target').every((scenario) => scenario.dpr === 2),
+        true,
+    );
+});
+
+test('profile request parses the High target fixture contract', () => {
+    const request = getScenarioRequest(
+        '/debug/profile/game?mode=snow&profile=high-target&quality=high&controls=1&details=1&hud=0&debugHud=0',
+    );
+
+    assert.deepEqual(request, {
+        adaptiveHigh: '0',
+        closeupRaisedBedId: null,
+        controls: '1',
+        debugHud: '0',
+        details: '1',
+        foliageBudget: '0',
+        gardenProfile: 'high-target',
+        hud: '0',
+        mode: 'snow',
+        operationVisuals: '0',
+        outline: '0',
+        placement: '0',
+        quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '0',
+        weatherSurface: 'integrated',
+    });
+});
+
+test('injected GPU timing yields to an existing elapsed-time query', () => {
+    assert.match(
+        installBrowserMetrics.toString(),
+        /getQuery\([\s\S]*TIME_ELAPSED_EXT[\s\S]*CURRENT_QUERY/,
+    );
+});
+
+test('runtime GPU-source scenario disables only the external profiler timer', () => {
+    const source = installBrowserMetrics.toString();
+
+    assert.match(source, /externalGpuTimer = true/);
+    assert.match(
+        source,
+        /if \(externalGpuTimer\) \{[\s\S]*__gameProfileGpuTimer/,
+    );
+    assert.match(source, /__gameProfileMetrics =/);
+    assert.match(source, /patchedCreateProgram/);
+    assert.match(source, /patchedDeleteProgram/);
+    assert.match(source, /patchedCreateTexture/);
+    assert.match(source, /patchedDeleteTexture/);
+    assert.match(source, /rendererShaders: 0/);
+    assert.match(source, /rendererTextures: 0/);
+});
+
+test('render budgets gate calls and triangles per rendered frame', () => {
+    const sample = {
+        drawCallsPerFrame: 1,
+        drawCallsPerRenderedFrame: 601,
+        gpu: { elapsedP95Ms: null, supported: false },
+        jsHeapMb: 200,
+        longTaskCount: 0,
+        maxFrameMs: 20,
+        p95FrameMs: 16,
+        trianglesPerFrame: 1,
+        trianglesPerRenderedFrame: 2_500_000,
+    };
+    const budget = {
+        drawCallsPerRenderedFrame: 600,
+        gpuElapsedP95Ms: 33.3,
+        jsHeapMb: 320,
+        longTaskCount: 2,
+        maxFrameMs: 180,
+        p95FrameMs: 33.3,
+        trianglesPerRenderedFrame: 3_000_000,
+    };
+
+    const result = evaluateBudget(sample, budget);
+    const callsCheck = result.checks.find(
+        (check) => check.name === 'drawCallsPerRenderedFrame',
+    );
+    const trianglesCheck = result.checks.find(
+        (check) => check.name === 'trianglesPerRenderedFrame',
+    );
+    const gpuCheck = result.checks.find(
+        (check) => check.name === 'gpuElapsedP95Ms',
+    );
+
+    assert.equal(result.pass, false);
+    assert.equal(callsCheck?.pass, false);
+    assert.equal(trianglesCheck?.pass, true);
+    assert.deepEqual(gpuCheck, {
+        actual: null,
+        limit: 33.3,
+        name: 'gpuElapsedP95Ms',
+        pass: true,
+        skipped: true,
+    });
+});
+
+test('render work normalization separates rendered work from rAF responsiveness', () => {
+    const sample = normalizeRenderWork({
+        drawCalls: 120,
+        frames: 60,
+        renderedFrames: 3,
+        submittedTriangles: 900_000,
+    });
+
+    assert.equal(sample.drawCallsPerFrame, 2);
+    assert.equal(sample.drawCallsPerRafFrame, 2);
+    assert.equal(sample.drawCallsPerRenderedFrame, 40);
+    assert.equal(sample.trianglesPerFrame, 15_000);
+    assert.equal(sample.trianglesPerRafFrame, 15_000);
+    assert.equal(sample.trianglesPerRenderedFrame, 300_000);
+});
+
+test('markdown reports per-rAF and per-render work in separate columns', () => {
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-26T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'core',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'work-columns',
+                pageErrors: [],
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '1',
+                    gardenProfile: 'default',
+                    hud: '0',
+                    mode: 'baseline',
+                    motion: 'none',
+                },
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 40,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 3,
+                    trianglesPerFrame: 15_000,
+                    trianglesPerRenderedFrame: 300_000,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(
+        markdown,
+        /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
+    );
+    assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown distinguishes controlled governor evidence and formats range failures', () => {
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-26T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'adaptive-high',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: {
+                    checks: [
+                        {
+                            actual: 2,
+                            comparison: 'range',
+                            limit: { maximum: 1.75, minimum: 1.5 },
+                            name: 'adaptiveDpr',
+                            pass: false,
+                        },
+                    ],
+                    pass: false,
+                },
+                consoleMessages: [],
+                environment: null,
+                name: 'controlled-adaptive',
+                pageErrors: [],
+                requested: {
+                    adaptiveHigh: '1',
+                    controls: '1',
+                    debugHud: '0',
+                    details: '1',
+                    gardenProfile: 'high-target',
+                    hud: '0',
+                    mode: 'details',
+                    motion: 'pan-zoom-rotate',
+                    profileControl: true,
+                    sampleMs: 5_000,
+                },
+                runtime: {
+                    adaptiveHighAmbientFps: 30,
+                    adaptiveHighCloudUpdateMs: 96,
+                    adaptiveHighGpuTimerSupported: false,
+                    adaptiveHighSampleSource: 'frame',
+                },
+                sample: {
+                    adaptiveHighDeclineCountDelta: 1,
+                    adaptiveHighDprCapAtEnd: 1.75,
+                    adaptiveHighDprCapAtStart: 2,
+                    adaptiveHighDprCapMin: 1.75,
+                    adaptiveHighInteractionObserved: true,
+                    adaptiveHighLevelAtEnd: 1,
+                    adaptiveHighLevelAtStart: 0,
+                    adaptiveHighLevelMax: 1,
+                    adaptiveHighProfileControlSampleCountDelta: 22,
+                    adaptiveHighRecoveryCountDelta: 0,
+                    adaptiveHighTransitionCountDelta: 1,
+                    canvas: null,
+                    drawCallsPerFrame: 1,
+                    drawCallsPerRenderedFrame: 1,
+                    fps: 30,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 30,
+                    trianglesPerFrame: 1,
+                    trianglesPerRenderedFrame: 1,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        summary: { failedScenarios: 1 },
+    });
+
+    assert.match(markdown, /controlled \(22 synthetic samples\)/);
+    assert.match(markdown, /frame \(profile control\)/);
+    assert.match(markdown, /adaptiveDpr 2 outside \[1\.5, 1\.75\]/);
+});
+
+test('interactive sampling stops at the endpoint and drains bounded long tasks later', async () => {
+    const keys = [
+        'document',
+        '__gameProfileGpuTimer',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+        '__gameProfileReadLongTasks',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const canvas = {
+        clientHeight: 720,
+        clientWidth: 1280,
+        height: 1440,
+        width: 2560,
+    };
+    const metrics = {
+        drawCalls: 120,
+        instancedDrawCalls: 30,
+        renderedFrames: 12,
+        rendererShaders: 18,
+        rendererTextures: 27,
+        submittedTriangles: 900_000,
+    };
+    const startedAt = performance.now() - 1_000;
+    const interactiveSample = {
+        intervals: [0, 16, 20],
+        lastFrameAt: performance.now(),
+        running: true,
+        startedAt,
+    };
+    let longTaskRange = null;
+    let gpuDrained = false;
+    const events = [];
+
+    try {
+        setGlobal('document', {
+            querySelector: () => canvas,
+        });
+        setGlobal('__gameProfileInteractiveSample', interactiveSample);
+        setGlobal('__gameProfileLongTasks', []);
+        setGlobal('__gameProfileMetrics', metrics);
+        setGlobal('__gameProfileReadLongTasks', (start, end) => {
+            events.push('read-long-tasks');
+            longTaskRange = { end, start };
+            return gpuDrained ? [55] : [];
+        });
+        setGlobal('__gameProfileGpuTimer', {
+            async finish() {
+                events.push('finish-gpu');
+                gpuDrained = true;
+                canvas.width = 1;
+                interactiveSample.intervals.push(2_000);
+                metrics.drawCalls = 9_999;
+                metrics.instancedDrawCalls = 9_999;
+                metrics.renderedFrames = 9_999;
+                metrics.submittedTriangles = 9_999;
+                globalThis.__gameProfileLongTasks.push(2_000);
+            },
+            snapshot() {
+                return {
+                    elapsedP95Ms: 7,
+                    supported: true,
+                    valid: true,
+                };
+            },
+            stop() {
+                events.push('stop-gpu');
+            },
+        });
+
+        const sampleAtEndpoint = await finishInteractiveProfileSample();
+
+        assert.deepEqual(events, ['stop-gpu']);
+        assert.equal(sampleAtEndpoint.canvas.width, 2560);
+        assert.equal(sampleAtEndpoint.drawCalls, 120);
+        assert.equal(sampleAtEndpoint.frames, 2);
+        assert.equal(sampleAtEndpoint.instancedDrawCalls, 30);
+        assert.equal(sampleAtEndpoint.renderedFrames, 12);
+        assert.equal(sampleAtEndpoint.rendererShaders, 18);
+        assert.equal(sampleAtEndpoint.rendererTextures, 27);
+        assert.equal(sampleAtEndpoint.submittedTriangles, 900_000);
+
+        const drainedSample = await drainProfileSample(
+            sampleAtEndpoint.sampleWindow,
+        );
+        const result = mergeProfileSampleDrain(sampleAtEndpoint, drainedSample);
+
+        assert.equal(result.canvas.width, 2560);
+        assert.equal(result.drawCalls, 120);
+        assert.equal(result.frames, 2);
+        assert.equal(result.instancedDrawCalls, 30);
+        assert.equal(result.longTaskCount, 1);
+        assert.equal(result.longTaskMaxMs, 55);
+        assert.equal(result.renderedFrames, 12);
+        assert.equal(result.rendererShaders, 18);
+        assert.equal(result.rendererTextures, 27);
+        assert.equal(result.submittedTriangles, 900_000);
+        assert.deepEqual(result.gpu, {
+            elapsedP95Ms: 7,
+            supported: true,
+            valid: true,
+        });
+        assert.deepEqual(events, ['stop-gpu', 'finish-gpu', 'read-long-tasks']);
+        assert.equal(longTaskRange?.start, startedAt);
+        assert.equal(longTaskRange?.end, sampleAtEndpoint.sampleWindow.endedAt);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('profile finalization captures CDP before draining GPU queries', async () => {
+    const calls = [];
+    const sampleAtEndpoint = {
+        drawCalls: 12,
+        sampleWindow: {
+            endedAt: 200,
+            startedAt: 100,
+        },
+    };
+    const result = await finalizeProfileSampleAtEndpoint({
+        cdp: {
+            async send(command) {
+                calls.push(`cdp:${command}`);
+                return { metrics: [{ name: 'TaskDuration', value: 1 }] };
+            },
+        },
+        page: {
+            async evaluate(callback, sampleWindow) {
+                calls.push('drain');
+                assert.equal(callback, drainProfileSample);
+                assert.deepEqual(sampleWindow, sampleAtEndpoint.sampleWindow);
+                return {
+                    gpu: { supported: false, valid: false },
+                    longTasks: [60],
+                };
+            },
+        },
+        sampleAtEndpoint,
+    });
+
+    assert.deepEqual(calls, ['cdp:Performance.getMetrics', 'drain']);
+    assert.deepEqual(result.endpointMetrics, {
+        metrics: [{ name: 'TaskDuration', value: 1 }],
+    });
+    assert.equal(result.sample.drawCalls, 12);
+    assert.equal(result.sample.longTaskCount, 1);
+    assert.equal(result.sample.sampleWindow, undefined);
+});
+
+test('render budgets enforce GPU p95 when timer queries are supported', () => {
+    const result = evaluateBudget(
+        {
+            drawCallsPerRenderedFrame: 100,
+            gpu: { elapsedP95Ms: 34, supported: true, valid: true },
+            jsHeapMb: 200,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            trianglesPerRenderedFrame: 1_000_000,
+        },
+        {
+            drawCallsPerRenderedFrame: 600,
+            gpuElapsedP95Ms: 33.3,
+            jsHeapMb: 320,
+            longTaskCount: 2,
+            maxFrameMs: 180,
+            p95FrameMs: 33.3,
+            trianglesPerRenderedFrame: 3_000_000,
+        },
+    );
+    const gpuCheck = result.checks.find(
+        (check) => check.name === 'gpuElapsedP95Ms',
+    );
+
+    assert.equal(result.pass, false);
+    assert.deepEqual(gpuCheck, {
+        actual: 34,
+        limit: 33.3,
+        name: 'gpuElapsedP95Ms',
+        pass: false,
+        skipped: false,
+    });
+});
+
+test('render budgets skip incomplete or disjoint GPU timer results', () => {
+    for (const gpu of [
+        {
+            complete: false,
+            disjoint: false,
+            elapsedP95Ms: 100,
+            supported: true,
+            valid: false,
+        },
+        {
+            complete: true,
+            disjoint: true,
+            elapsedP95Ms: 100,
+            supported: true,
+            valid: false,
+        },
+    ]) {
+        const result = evaluateBudget(
+            {
+                drawCallsPerRenderedFrame: 100,
+                gpu,
+                jsHeapMb: 200,
+                longTaskCount: 0,
+                maxFrameMs: 20,
+                p95FrameMs: 16,
+                trianglesPerRenderedFrame: 1_000_000,
+            },
+            {
+                drawCallsPerRenderedFrame: 600,
+                gpuElapsedP95Ms: 33.3,
+                jsHeapMb: 320,
+                longTaskCount: 2,
+                maxFrameMs: 180,
+                p95FrameMs: 33.3,
+                trianglesPerRenderedFrame: 3_000_000,
+            },
+        );
+
+        assert.equal(result.pass, true);
+        assert.equal(
+            result.checks.find((check) => check.name === 'gpuElapsedP95Ms')
+                ?.skipped,
+            true,
+        );
+    }
+});
+
+test('high target acceptance proves the intended workload rendered', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'rain',
+            motion: 'hover-scan',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 4,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 4,
+            animatedCasterShadowRefreshCount: 0,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            generatedPlantFieldCount: 54,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            instancedInteractionResolutionCount: 1,
+            instancedInteractionResolvedTargetCount: 1,
+            qualityTier: 'high',
+            rainParticleCount: 2_000,
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            instancedInteractionResolvedTargetCountDelta: 1,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateHighTargetAcceptance(input);
+
+    assert.equal(result.pass, true);
+    assert.equal(
+        result.checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        result.checks.find(
+            (check) =>
+                check.name ===
+                'highTargetInteractionResolvedTargetsDuringSample',
+        )?.pass,
+        true,
+    );
+
+    const missingDecorations = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            groundDecorationCount: 0,
+        },
+    });
+    assert.equal(missingDecorations.pass, false);
+    assert.equal(
+        missingDecorations.checks.find(
+            (check) => check.name === 'highTargetGroundDecorationCount',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...input,
+            runtime: {
+                ...input.runtime,
+                groundDecorationVisibleCount: 0,
+            },
+        }).pass,
+        false,
+    );
+
+    const casterResult = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            actorGroundingShadowPrimaryCasterCount: 1,
+        },
+    });
+    assert.equal(casterResult.pass, false);
+    assert.equal(
+        casterResult.checks.find(
+            (check) =>
+                check.name === 'highTargetActorGroundingShadowPrimaryCasters',
+        )?.pass,
+        false,
+    );
+
+    const shaderErrorResult = evaluateHighTargetAcceptance({
+        ...input,
+        consoleMessages: [
+            {
+                type: 'error',
+                text: 'THREE.WebGLProgram: Shader Error',
+            },
+        ],
+    });
+    assert.equal(shaderErrorResult.pass, false);
+    assert.equal(
+        shaderErrorResult.checks.find(
+            (check) => check.name === 'highTargetConsoleErrors',
+        )?.pass,
+        false,
+    );
+
+    const localInsightsAssetResult = evaluateHighTargetAcceptance({
+        ...input,
+        consoleMessages: [
+            {
+                type: 'error',
+                text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+                url: 'http://localhost:3101/_vercel/insights/script.js',
+            },
+        ],
+    });
+    assert.equal(localInsightsAssetResult.pass, true);
+    assert.equal(
+        localInsightsAssetResult.checks.find(
+            (check) => check.name === 'highTargetConsoleErrors',
+        )?.actual,
+        0,
+    );
+});
+
+test('local profiler console filtering only ignores the known missing analytics asset', () => {
+    const knownLocalAnalyticsError = {
+        type: 'error',
+        text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+        url: 'http://127.0.0.1:3101/_vercel/insights/script.js',
+    };
+
+    assert.equal(
+        isIgnoredLocalProfilerConsoleError(knownLocalAnalyticsError),
+        true,
+    );
+    for (const message of [
+        { ...knownLocalAnalyticsError, text: 'application crashed' },
+        {
+            ...knownLocalAnalyticsError,
+            url: 'http://localhost:3101/_vercel/speed-insights/script.js',
+        },
+        {
+            ...knownLocalAnalyticsError,
+            url: 'https://garden.example.com/_vercel/insights/script.js',
+        },
+    ]) {
+        assert.equal(isIgnoredLocalProfilerConsoleError(message), false);
+    }
+});
+
+test('operation-visual High acceptance gates batching, uploads, mulch, and highlight identity', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'details',
+            motion: 'none',
+            operationVisuals: '1',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 5,
+            animatedCasterShadowRefreshCount: 0,
+            generatedPlantExpectedInstanceCount: 286,
+            generatedPlantFieldCount: 34,
+            generatedPlantInstanceCount: 286,
+            generatedPlantVisibleFieldCount: 34,
+            generatedPlantVisibleInstanceCount: 286,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            operationVisualHighlightProfileDispatched: true,
+            operationVisualHighlightProfileTargetFieldId: 201,
+            operationVisualHighlightProfileTargetGardenId: 99_996,
+            operationVisualHighlightProfileTargetPositionIndex: 0,
+            operationVisualHighlightProfileTargetRaisedBedId: 2,
+            qualityTier: 'high',
+            raisedBedFieldVisualBatchCount: 7,
+            raisedBedFieldVisualChunkCount: 2,
+            raisedBedFieldVisualInstanceCount: 396,
+            raisedBedFieldVisualMatrixUploadCount: 7,
+            raisedBedFieldVisualObjectCount: 7,
+            raisedBedFieldVisualUploadedInstanceCount: 396,
+            raisedBedMulchBatchCount: 12,
+            raisedBedMulchGroupCount: 12,
+            raisedBedMulchInstanceCount: 54,
+            raisedBedMulchObjectCount: 12,
+            raisedBedMulchOverlayCount: 54,
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateHighTargetAcceptance(input);
+
+    assert.equal(result.pass, true);
+    assert.deepEqual(
+        result.checks.find(
+            (check) =>
+                check.name === 'highTargetOperationVisualRenderedObjects',
+        ),
+        {
+            actual: 21,
+            comparison: 'range',
+            legacy: 452,
+            limit: {
+                maximum: 64,
+                minimum: 4,
+            },
+            name: 'highTargetOperationVisualRenderedObjects',
+            pass: true,
+        },
+    );
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-27T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'high-target-operation-visuals',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks: result.checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-high-target-operation-visuals-desktop',
+                pageErrors: [],
+                requested: {
+                    controls: '1',
+                    debugHud: '0',
+                    details: '1',
+                    hud: '0',
+                    ...input.requested,
+                },
+                runtime: input.runtime,
+                sample: {
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 20,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 15_000,
+                    trianglesPerRenderedFrame: 300_000,
+                    ...input.sample,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        summary: { failedScenarios: 0 },
+    });
+    assert.match(
+        markdown,
+        /field visuals 396 instances\/7 objects\/7 batches\/2 chunks, uploads 7\/396; mulch 54 instances\/12 objects\/12 batches\/12 groups; operation objects 21\/452 legacy/,
+    );
+
+    for (const [field, value, checkName] of [
+        [
+            'generatedPlantExpectedInstanceCount',
+            287,
+            'highTargetExpectedGeneratedPlantInstances',
+        ],
+        [
+            'operationVisualHighlightProfileDispatched',
+            false,
+            'highTargetOperationVisualHighlightDispatched',
+        ],
+        [
+            'raisedBedFieldVisualInstanceCount',
+            395,
+            'highTargetOperationVisualFieldInstances',
+        ],
+        [
+            'raisedBedFieldVisualMatrixUploadCount',
+            8,
+            'highTargetOperationVisualFieldMatrixUploads',
+        ],
+        [
+            'raisedBedFieldVisualUploadedInstanceCount',
+            395,
+            'highTargetOperationVisualFieldUploadedInstances',
+        ],
+        [
+            'raisedBedMulchInstanceCount',
+            53,
+            'highTargetOperationVisualMulchInstances',
+        ],
+        [
+            'raisedBedMulchOverlayCount',
+            53,
+            'highTargetOperationVisualMulchOverlays',
+        ],
+    ]) {
+        const invalid = evaluateHighTargetAcceptance({
+            ...input,
+            runtime: {
+                ...input.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            invalid.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    const tooManyObjects = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            raisedBedFieldVisualObjectCount: 32,
+            raisedBedMulchObjectCount: 33,
+        },
+    });
+    assert.equal(
+        tooManyObjects.checks.find(
+            (check) =>
+                check.name === 'highTargetOperationVisualRenderedObjects',
+        )?.pass,
+        false,
+    );
+});
+
+test('foliage-budget High acceptance admits one normal-view detail bed', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            foliageBudget: '1',
+            gardenProfile: 'high-target',
+            mode: 'details',
+            motion: 'foliage-detail-zoom',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 5,
+            animatedCasterShadowRefreshCount: 0,
+            generatedPlantClusterInstanceCount: 358,
+            generatedPlantClusterPrimitiveTriangleCount: 2_740,
+            generatedPlantDetailedInstanceCount: 179,
+            generatedPlantDetailAdmittedBedCount: 1,
+            generatedPlantDetailAdmittedInstanceCount: 179,
+            generatedPlantDetailBudgetInstanceCount: 179,
+            generatedPlantDetailDemotedBedCount: 2,
+            generatedPlantDetailOverflowInstanceCount: 0,
+            generatedPlantDetailRequestedBedCount: 3,
+            generatedPlantDetailRequestedInstanceCount: 537,
+            generatedPlantDetailTransitionCount: 0,
+            generatedPlantDetailUsedBudgetInstanceCount: 179,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFarFieldCount: 9,
+            generatedPlantFarInstanceCount: 81,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantMidFieldCount: 27,
+            generatedPlantMidInstanceCount: 277,
+            generatedPlantNearFieldCount: 18,
+            generatedPlantNearInstanceCount: 179,
+            generatedPlantPendingDetailInstanceCount: 0,
+            generatedPlantRenderBatchCount: 6,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+
+    assert.equal(evaluateHighTargetAcceptance(input).pass, true);
+    const missingDetail = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            generatedPlantDetailedInstanceCount: 0,
+        },
+    });
+    assert.equal(missingDetail.pass, false);
+    assert.equal(
+        missingDetail.checks.find(
+            (check) =>
+                check.name === 'highTargetFoliageDetailedRenderInstances',
+        )?.pass,
+        false,
+    );
+
+    const expensiveClusters = evaluateHighTargetAcceptance({
+        ...input,
+        runtime: {
+            ...input.runtime,
+            generatedPlantClusterPrimitiveTriangleCount: 10_000,
+        },
+    });
+    assert.equal(expensiveClusters.pass, false);
+    assert.equal(
+        expensiveClusters.checks.find(
+            (check) =>
+                check.name === 'highTargetFoliageClusterPrimitiveTriangles',
+        )?.pass,
+        false,
+    );
+});
+
+test('weather-surface High acceptance proves integrated work without hiding fallbacks', () => {
+    const input = ({ mode, weatherSurface }) => {
+        const integrated = weatherSurface === 'integrated';
+        const rain = mode === 'rain';
+        return {
+            apiErrors: [],
+            pageErrors: [],
+            requested: {
+                gardenProfile: 'high-target',
+                mode,
+                motion: 'none',
+                quality: 'high',
+                weatherSurface,
+            },
+            runtime: {
+                actorGroundingShadowBatchCount: 1,
+                actorGroundingShadowCount: 4,
+                actorGroundingShadowDroppedCount: 0,
+                actorGroundingShadowPrimaryCasterCount: 0,
+                actorGroundingShadowVisibleCount: 4,
+                animatedCasterShadowRefreshCount: 0,
+                generatedPlantExpectedInstanceCount: 537,
+                generatedPlantFieldCount: 54,
+                generatedPlantInstanceCount: 537,
+                generatedPlantVisibleFieldCount: 54,
+                generatedPlantVisibleInstanceCount: 537,
+                groundDecorationCount: rain ? 596 : 0,
+                groundDecorationDensity: 1,
+                groundDecorationVisibleCount: rain ? 571 : null,
+                qualityTier: 'high',
+                rainParticleCount: rain ? 2_000 : 0,
+                rendererShaders: rain
+                    ? integrated
+                        ? 38
+                        : 39
+                    : integrated
+                      ? 42
+                      : 43,
+                shadowMapSize: 4_096,
+                shadowsEnabled: true,
+                snowParticleCapacity: rain ? 0 : 5_000,
+                snowParticleCount: rain ? 0 : 3_500,
+                weatherSurfaceAvoidedOverlaySubmissionCount: integrated
+                    ? rain
+                        ? 16
+                        : 8
+                    : 0,
+                weatherSurfaceAvoidedOverlayTriangleCount: integrated
+                    ? rain
+                        ? 2_556
+                        : 11_880
+                    : 0,
+                weatherSurfaceFallbackOverlaySubmissionCount: integrated
+                    ? rain
+                        ? 29
+                        : 48
+                    : rain
+                      ? 45
+                      : 56,
+                weatherSurfaceFallbackOverlayTriangleCount: integrated
+                    ? rain
+                        ? 13_562
+                        : 72_608
+                    : rain
+                      ? 16_118
+                      : 84_488,
+                weatherSurfaceIntegratedInstanceCount: integrated
+                    ? rain
+                        ? 213
+                        : 270
+                    : 0,
+                weatherSurfaceIntegratedMaterialCount: integrated
+                    ? rain
+                        ? 2
+                        : 1
+                    : 0,
+                weatherSurfaceMode: weatherSurface,
+                weatherSurfacePluginVariantCount: integrated ? 1 : 0,
+            },
+            sample: {
+                actorGroundingShadowUpdateCountDelta: 60,
+                animatedCasterShadowRefreshCountDelta: 0,
+                canvas: {
+                    clientHeight: 720,
+                    clientWidth: 1280,
+                    height: 1440,
+                    width: 2560,
+                },
+                drawCalls: 100,
+                elapsedMs: 5_000,
+                renderedFps: 12,
+                renderedFrames: 60,
+                reportedDpr: 2,
+                submittedTriangles: 1_000_000,
+            },
+        };
+    };
+
+    for (const mode of ['rain', 'snow']) {
+        assert.equal(
+            evaluateHighTargetAcceptance(
+                input({ mode, weatherSurface: 'legacy' }),
+            ).pass,
+            true,
+        );
+        assert.equal(
+            evaluateHighTargetAcceptance(
+                input({ mode, weatherSurface: 'integrated' }),
+            ).pass,
+            true,
+        );
+    }
+
+    const snowIntegrated = input({
+        mode: 'snow',
+        weatherSurface: 'integrated',
+    });
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            213,
+            'highTargetWeatherSurfaceIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            2,
+            'highTargetWeatherSurfaceIntegratedMaterials',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            16,
+            'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            9_372,
+            'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            56,
+            'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            74_500,
+            'highTargetWeatherSurfaceFallbackOverlayTriangles',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...snowIntegrated,
+            runtime: {
+                ...snowIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should keep steady snow separate from the threshold transition fixture`,
+        );
+    }
+
+    const rainIntegrated = input({
+        mode: 'rain',
+        weatherSurface: 'integrated',
+    });
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            212,
+            'highTargetWeatherSurfaceIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            0,
+            'highTargetWeatherSurfaceIntegratedMaterials',
+        ],
+        [
+            'weatherSurfacePluginVariantCount',
+            2,
+            'highTargetWeatherSurfacePluginVariants',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            15,
+            'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            2_555,
+            'highTargetWeatherSurfaceAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            28,
+            'highTargetWeatherSurfaceFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            13_561,
+            'highTargetWeatherSurfaceFallbackOverlayTriangles',
+        ],
+        ['rendererShaders', 0, 'highTargetWeatherSurfaceRendererPrograms'],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...rainIntegrated,
+            runtime: {
+                ...rainIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...rainIntegrated,
+            runtime: {
+                ...rainIntegrated.runtime,
+                rainParticleCount: 1_999,
+            },
+        }).pass,
+        false,
+    );
+
+    const onsetIntegrated = {
+        ...input({ mode: 'rain', weatherSurface: 'integrated' }),
+        requested: {
+            ...rainIntegrated.requested,
+            mode: 'snow-onset',
+        },
+        runtime: {
+            ...rainIntegrated.runtime,
+            rainParticleCount: 0,
+            snowParticleCount: 0,
+            weatherSurfaceAvoidedOverlaySubmissionCount: 0,
+            weatherSurfaceAvoidedOverlayTriangleCount: 0,
+            weatherSurfaceFallbackOverlaySubmissionCount: 51,
+            weatherSurfaceFallbackOverlayTriangleCount: 31_900,
+            weatherSurfaceIntegratedInstanceCount: 0,
+            weatherSurfaceIntegratedMaterialCount: 0,
+            weatherSurfacePluginVariantCount: 0,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(onsetIntegrated).pass, true);
+    for (const [field, value, checkName] of [
+        [
+            'weatherSurfaceMode',
+            'legacy',
+            'highTargetWeatherSurfaceOnsetRuntimeMode',
+        ],
+        [
+            'weatherSurfaceIntegratedInstanceCount',
+            1,
+            'highTargetWeatherSurfaceOnsetIntegratedInstances',
+        ],
+        [
+            'weatherSurfaceIntegratedMaterialCount',
+            1,
+            'highTargetWeatherSurfaceOnsetIntegratedMaterials',
+        ],
+        [
+            'weatherSurfacePluginVariantCount',
+            1,
+            'highTargetWeatherSurfaceOnsetPluginVariants',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlaySubmissionCount',
+            1,
+            'highTargetWeatherSurfaceOnsetAvoidedOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceAvoidedOverlayTriangleCount',
+            1,
+            'highTargetWeatherSurfaceOnsetAvoidedOverlayTriangles',
+        ],
+        [
+            'weatherSurfaceFallbackOverlaySubmissionCount',
+            50,
+            'highTargetWeatherSurfaceOnsetFallbackOverlaySubmissions',
+        ],
+        [
+            'weatherSurfaceFallbackOverlayTriangleCount',
+            31_899,
+            'highTargetWeatherSurfaceOnsetFallbackOverlayTriangles',
+        ],
+        ['snowParticleCount', 1, 'highTargetWeatherSurfaceOnsetSnowParticles'],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            ...onsetIntegrated,
+            runtime: {
+                ...onsetIntegrated.runtime,
+                [field]: value,
+            },
+        });
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${value}`,
+        );
+    }
+
+    const sparseSnapshot = {
+        avoidedOverlaySubmissionCount: 0,
+        avoidedOverlayTriangleCount: 0,
+        fallbackOverlaySubmissionCount: 51,
+        fallbackOverlayTriangleCount: 31_900,
+        integratedInstanceCount: 0,
+        integratedMaterialCount: 0,
+        pluginVariantCount: 0,
+        readyCount: 0,
+        snowParticleCount: 0,
+        trackedCount: 2,
+        transitionCount: 0,
+    };
+    const integratedSnapshot = {
+        avoidedOverlaySubmissionCount: 16,
+        avoidedOverlayTriangleCount: 9_372,
+        fallbackOverlaySubmissionCount: 56,
+        fallbackOverlayTriangleCount: 74_500,
+        integratedInstanceCount: 213,
+        integratedMaterialCount: 2,
+        pluginVariantCount: 1,
+        readyCount: 2,
+        snowParticleCount: 0,
+        trackedCount: 2,
+        transitionCount: 2,
+    };
+    const transitionRun = {
+        ...onsetIntegrated,
+        requested: {
+            ...onsetIntegrated.requested,
+            weatherSurfaceTransition: 'snow-integration-cycle',
+        },
+        runtime: {
+            ...onsetIntegrated.runtime,
+            weatherSurfaceSnowIntegrationReadyCount: 0,
+            weatherSurfaceSnowIntegrationTrackedCount: 2,
+            weatherSurfaceSnowIntegrationTransitionCount: 4,
+        },
+        sample: {
+            ...onsetIntegrated.sample,
+            weatherSurfaceTransitionProfile: {
+                dwell: integratedSnapshot,
+                enterDispatched: true,
+                entered: integratedSnapshot,
+                error: null,
+                exitDispatched: true,
+                exited: {
+                    ...sparseSnapshot,
+                    transitionCount: 4,
+                },
+                initial: sparseSnapshot,
+                request: 'snow-integration-cycle',
+            },
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(transitionRun).pass, true);
+
+    const thrashedTransition = {
+        ...transitionRun,
+        sample: {
+            ...transitionRun.sample,
+            weatherSurfaceTransitionProfile: {
+                ...transitionRun.sample.weatherSurfaceTransitionProfile,
+                dwell: {
+                    ...integratedSnapshot,
+                    transitionCount: 4,
+                },
+            },
+        },
+    };
+    const thrashedResult = evaluateHighTargetAcceptance(thrashedTransition);
+    assert.equal(thrashedResult.pass, false);
+    assert.equal(
+        thrashedResult.checks.find(
+            (check) =>
+                check.name ===
+                'highTargetWeatherSurfaceTransitionDwellNoThrash',
+        )?.pass,
+        false,
+    );
+});
+
+test('outline acceptance gates deterministic dispatch and telemetry when available', () => {
+    const validOutlineRuntime = {
+        hoverOutlineActiveTargetCount: 2,
+        hoverOutlineAllocatedHeight: 256,
+        hoverOutlineAllocatedPixelCount: 131_072,
+        hoverOutlineAllocatedWidth: 512,
+        hoverOutlineAllocationEstimatedBytes: 262_144,
+        hoverOutlineCompositePassCount: 2,
+        hoverOutlineCropClippedCount: 0,
+        hoverOutlineCropPixelCount: 100_000,
+        hoverOutlineDrawingBufferPixelCount: 3_686_400,
+        hoverOutlineFormat: 'r8',
+        hoverOutlineHorizontalPassCount: 2,
+        hoverOutlineKernelSampleCount: 23,
+        hoverOutlineMaskPassCount: 2,
+        hoverOutlineMaxKernelSampleCount: 51,
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+        hoverOutlineProfileCommandAction: 'show',
+        hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+        hoverOutlineProfileTargetRaisedBedId: 2,
+        hoverOutlineRenderTargetCount: 2,
+        hoverOutlineRoiRatio: 0.04,
+        hoverOutlineStyleGroupCount: 1,
+        hoverOutlineThickness: 5,
+    };
+    const createInput = ({
+        environment,
+        requested = {},
+        runtime = {},
+        sample = {},
+    } = {}) => ({
+        apiErrors: [],
+        environment,
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
+            ...requested,
+        },
+        runtime,
+        sample: {
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: false,
+            ...sample,
+        },
+    });
+    const withoutTelemetry = evaluateHighTargetAcceptance(createInput());
+    assert.equal(
+        withoutTelemetry.checks.find(
+            (check) => check.name === 'highTargetOutlineProfileDispatched',
+        )?.pass,
+        true,
+    );
+    assert.equal(
+        withoutTelemetry.checks.some(
+            (check) => check.name === 'highTargetOutlineActiveTargets',
+        ),
+        false,
+    );
+
+    const withTelemetry = evaluateHighTargetAcceptance(
+        createInput({
+            runtime: validOutlineRuntime,
+            sample: {
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    assert.equal(
+        withTelemetry.checks
+            .filter((check) => check.name.startsWith('highTargetOutline'))
+            .every((check) => check.pass),
+        true,
+    );
+
+    const metalEvidence = evaluateHighTargetAcceptance(
+        createInput({
+            environment: {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            requested: {
+                graphicsBackend: 'angle-metal',
+            },
+            runtime: validOutlineRuntime,
+            sample: {
+                gpu: {
+                    elapsedP95Ms: 12.5,
+                    sampleCount: 45,
+                    supported: true,
+                    valid: true,
+                },
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    const metalCheckNames = [
+        'highTargetOutlineAngleMetalRenderer',
+        'highTargetOutlineGpuTimerSupported',
+        'highTargetOutlineGpuTimerValid',
+        'highTargetOutlineGpuTimerSamples',
+        'highTargetOutlineGpuElapsedP95Ms',
+    ];
+    assert.equal(
+        metalEvidence.checks
+            .filter((check) => metalCheckNames.includes(check.name))
+            .every((check) => check.pass),
+        true,
+    );
+
+    for (const [environment, gpu, checkName] of [
+        [
+            { renderer: 'ANGLE (Apple, OpenGL 4.1)' },
+            {
+                elapsedP95Ms: 12.5,
+                sampleCount: 45,
+                supported: true,
+                valid: true,
+            },
+            'highTargetOutlineAngleMetalRenderer',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: null,
+                sampleCount: 0,
+                supported: false,
+                valid: false,
+            },
+            'highTargetOutlineGpuTimerSupported',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: null,
+                sampleCount: 0,
+                supported: true,
+                valid: false,
+            },
+            'highTargetOutlineGpuTimerValid',
+        ],
+        [
+            {
+                renderer:
+                    'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+            },
+            {
+                elapsedP95Ms: Number.POSITIVE_INFINITY,
+                sampleCount: 45,
+                supported: true,
+                valid: true,
+            },
+            'highTargetOutlineGpuElapsedP95Ms',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                environment,
+                requested: {
+                    graphicsBackend: 'angle-metal',
+                },
+                runtime: validOutlineRuntime,
+                sample: {
+                    gpu,
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject missing hardware evidence`,
+        );
+    }
+
+    const portableOutline = evaluateHighTargetAcceptance(
+        createInput({
+            environment: { renderer: 'SwiftShader' },
+            requested: {
+                graphicsBackend: 'default',
+            },
+            runtime: validOutlineRuntime,
+            sample: {
+                gpu: {
+                    elapsedP95Ms: null,
+                    sampleCount: 0,
+                    supported: false,
+                    valid: false,
+                },
+                outlineProfileTelemetryAvailable: true,
+            },
+        }),
+    );
+    assert.equal(
+        portableOutline.checks.some((check) =>
+            metalCheckNames.includes(check.name),
+        ),
+        false,
+    );
+
+    for (const [field, invalidValue, checkName] of [
+        ['hoverOutlineActiveTargetCount', 1, 'highTargetOutlineActiveTargets'],
+        ['hoverOutlineStyleGroupCount', 2, 'highTargetOutlineStyleGroups'],
+        [
+            'hoverOutlineProfileCommandAction',
+            'hide',
+            'highTargetOutlineProfileCommandAction',
+        ],
+        [
+            'hoverOutlineProfileTargetBlockId',
+            'profile-raised-bed:3:0',
+            'highTargetOutlineProfileTargetBlockId',
+        ],
+        [
+            'hoverOutlineProfileTargetRaisedBedId',
+            3,
+            'highTargetOutlineProfileTargetRaisedBedId',
+        ],
+        ['hoverOutlinePipeline', 'legacy', 'highTargetOutlinePipeline'],
+        ['hoverOutlineFormat', 'rgba8', 'highTargetOutlineFormat'],
+        ['hoverOutlineRenderTargetCount', 3, 'highTargetOutlineRenderTargets'],
+        [
+            'hoverOutlineDrawingBufferPixelCount',
+            1,
+            'highTargetOutlineDrawingBufferPixels',
+        ],
+        ['hoverOutlineCropPixelCount', 0, 'highTargetOutlineCropPixels'],
+        ['hoverOutlineAllocatedWidth', 0, 'highTargetOutlineAllocatedWidth'],
+        ['hoverOutlineAllocatedHeight', 0, 'highTargetOutlineAllocatedHeight'],
+        ['hoverOutlineRoiRatio', 0.26, 'highTargetOutlineRoiRatio'],
+        ['hoverOutlineCropClippedCount', 1, 'highTargetOutlineCropClipping'],
+        ['hoverOutlineThickness', 4, 'highTargetOutlineThickness'],
+        ['hoverOutlineKernelSampleCount', 21, 'highTargetOutlineKernelSamples'],
+        [
+            'hoverOutlineMaxKernelSampleCount',
+            49,
+            'highTargetOutlineMaximumKernelSamples',
+        ],
+        ['hoverOutlineMaskPassCount', 0, 'highTargetOutlineMaskPasses'],
+        [
+            'hoverOutlineHorizontalPassCount',
+            1,
+            'highTargetOutlineHorizontalPassAlignment',
+        ],
+        [
+            'hoverOutlineCompositePassCount',
+            1,
+            'highTargetOutlineCompositePassAlignment',
+        ],
+        [
+            'hoverOutlineAllocationEstimatedBytes',
+            1,
+            'highTargetOutlineAllocationBytes',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                runtime: {
+                    ...validOutlineRuntime,
+                    [field]: invalidValue,
+                },
+                sample: {
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${invalidValue}`,
+        );
+    }
+});
+
+test('adaptive High acceptance allows bounded effective DPR during interaction', () => {
+    const input = {
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            adaptiveHigh: '1',
+            gardenProfile: 'high-target',
+            mode: 'details',
+            motion: 'pan-zoom-rotate',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 5,
+            adaptiveHighDprCap: 1.75,
+            adaptiveHighEnabled: true,
+            adaptiveHighOscillationCount: 0,
+            adaptiveHighTransitionCount: 1,
+            animatedCasterShadowRefreshCount: 0,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+            weatherDisabled: false,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            adaptiveHighDeclineCountDelta: 1,
+            adaptiveHighDeclineObserved: true,
+            adaptiveHighDprCapAtEnd: 1.75,
+            adaptiveHighDprCapAtStart: 2,
+            adaptiveHighDprCapMin: 1.75,
+            adaptiveHighInteractionObserved: true,
+            adaptiveHighLevelAtEnd: 1,
+            adaptiveHighLevelAtStart: 0,
+            adaptiveHighLevelMax: 1,
+            adaptiveHighTransitionCountDelta: 1,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1260,
+                width: 2240,
+            },
+            drawCalls: 100,
+            effectiveDprAtEnd: 1.75,
+            effectiveDprMin: 1.75,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+
+    assert.equal(evaluateHighTargetAcceptance(input).pass, true);
+
+    const controlled = {
+        ...input,
+        requested: {
+            ...input.requested,
+            profileControl: true,
+        },
+        runtime: {
+            ...input.runtime,
+            adaptiveHighProfileControlActive: true,
+            adaptiveHighProfileControlEnabled: true,
+        },
+        sample: {
+            ...input.sample,
+            adaptiveHighProfileControlObserved: true,
+            adaptiveHighProfileControlStarted: true,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(controlled).pass, true);
+    for (const sample of [
+        {
+            ...controlled.sample,
+            adaptiveHighProfileControlObserved: false,
+        },
+        {
+            ...controlled.sample,
+            adaptiveHighProfileControlStarted: false,
+        },
+    ]) {
+        assert.equal(
+            evaluateHighTargetAcceptance({ ...controlled, sample }).pass,
+            false,
+        );
+    }
+
+    for (const runtime of [
+        { ...input.runtime, adaptiveHighOscillationCount: 1 },
+        { ...input.runtime, weatherDisabled: true },
+    ]) {
+        assert.equal(
+            evaluateHighTargetAcceptance({ ...input, runtime }).pass,
+            false,
+        );
+    }
+
+    for (const sample of [
+        { ...input.sample, adaptiveHighTransitionCountDelta: 0 },
+        { ...input.sample, adaptiveHighDeclineObserved: false },
+        { ...input.sample, adaptiveHighDprCapMin: 2 },
+        { ...input.sample, adaptiveHighInteractionObserved: false },
+        { ...input.sample, adaptiveHighLevelMax: 0 },
+    ]) {
+        assert.equal(
+            evaluateHighTargetAcceptance({ ...input, sample }).pass,
+            false,
+        );
+    }
+
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                canvas: {
+                    ...input.sample.canvas,
+                    width: 2560,
+                },
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...input,
+            runtime: {
+                ...input.runtime,
+                adaptiveHighDprCap: 1.4,
+            },
+            sample: {
+                ...input.sample,
+                adaptiveHighDprCapAtEnd: 1.4,
+                effectiveDprAtEnd: 1.4,
+                effectiveDprMin: 1.4,
+            },
+        }).pass,
+        false,
+    );
+
+    const recovered = {
+        ...input,
+        requested: {
+            ...input.requested,
+            motion: 'pan-zoom-rotate-then-idle',
+            profileControl: true,
+            profileControlRecovery: true,
+        },
+        runtime: {
+            ...input.runtime,
+            adaptiveHighDprCap: 2,
+            adaptiveHighOscillationCount: 1,
+            adaptiveHighProfileControlActive: true,
+            adaptiveHighProfileControlEnabled: true,
+        },
+        sample: {
+            ...input.sample,
+            adaptiveHighDprCapAtEnd: 2,
+            adaptiveHighLevelAtEnd: 0,
+            adaptiveHighRecoveryCountDelta: 1,
+            adaptiveHighProfileControlObserved: true,
+            adaptiveHighProfileControlSampleCountDelta: 22,
+            adaptiveHighProfileControlStarted: true,
+            adaptiveHighTransitionCountDelta: 2,
+            canvas: {
+                ...input.sample.canvas,
+                height: 1440,
+                width: 2560,
+            },
+            effectiveDprAtEnd: 2,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(recovered).pass, true);
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...recovered,
+            sample: {
+                ...recovered.sample,
+                adaptiveHighDprCapMin: 2,
+                adaptiveHighDeclineObserved: false,
+                adaptiveHighLevelMax: 0,
+                adaptiveHighRecoveryCountDelta: 0,
+                adaptiveHighTransitionCountDelta: 0,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...recovered,
+            runtime: {
+                ...recovered.runtime,
+                adaptiveHighDprCap: 1.75,
+            },
+            sample: {
+                ...recovered.sample,
+                adaptiveHighDprCapAtEnd: 1.75,
+                adaptiveHighLevelAtEnd: 1,
+                effectiveDprAtEnd: 1.75,
+            },
+        }).pass,
+        false,
+    );
+
+    const runtimeGpuSource = {
+        ...input,
+        requested: {
+            ...input.requested,
+            motion: 'none',
+            runtimeGpuSource: true,
+        },
+        runtime: {
+            ...input.runtime,
+            adaptiveHighGpuTimerSupported: true,
+            adaptiveHighSampleSource: 'gpu',
+        },
+        sample: {
+            ...input.sample,
+            adaptiveHighGpuSourceObserved: true,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(runtimeGpuSource).pass, true);
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...runtimeGpuSource,
+            runtime: {
+                ...runtimeGpuSource.runtime,
+                adaptiveHighSampleSource: 'frame',
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...runtimeGpuSource,
+            runtime: {
+                ...runtimeGpuSource.runtime,
+                adaptiveHighGpuTimerSupported: false,
+                adaptiveHighSampleSource: 'frame',
+            },
+            sample: {
+                ...runtimeGpuSource.sample,
+                adaptiveHighGpuSourceObserved: false,
+            },
+        }).pass,
+        true,
+    );
+
+    const cloudy = {
+        ...input,
+        requested: {
+            ...input.requested,
+            mode: 'cloudy',
+            motion: 'none',
+        },
+        runtime: {
+            ...input.runtime,
+            actorGroundingShadowCount: 4,
+            actorGroundingShadowVisibleCount: 4,
+            cloudVisualCount: 8,
+        },
+        sample: {
+            ...input.sample,
+            cloudAttenuationUpdateCountDelta: 1,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(cloudy).pass, true);
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...cloudy,
+            sample: {
+                ...cloudy.sample,
+                cloudAttenuationUpdateCountDelta: 0,
+            },
+        }).pass,
+        false,
+    );
+
+    const windy = {
+        ...cloudy,
+        requested: {
+            ...cloudy.requested,
+            mode: 'windy',
+        },
+        runtime: {
+            ...cloudy.runtime,
+            adaptiveHighAmbientFps: 20,
+            cloudVisualCount: 7,
+        },
+    };
+    assert.equal(evaluateHighTargetAcceptance(windy).pass, true);
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...windy,
+            runtime: {
+                ...windy.runtime,
+                adaptiveHighAmbientFps: 0,
+            },
+        }).pass,
+        false,
+    );
+
+    for (const [mode, particleField, particleCount] of [
+        ['rain', 'rainParticleCount', 2_000],
+        ['snow', 'snowParticleCount', 3_500],
+    ]) {
+        const weather = {
+            ...input,
+            requested: {
+                ...input.requested,
+                mode,
+                motion: 'none',
+            },
+            runtime: {
+                ...input.runtime,
+                actorGroundingShadowCount: 4,
+                actorGroundingShadowVisibleCount: 4,
+                [particleField]: particleCount,
+                ...(mode === 'snow'
+                    ? {
+                          groundDecorationCount: 0,
+                          groundDecorationVisibleCount: null,
+                          snowParticleCapacity: 5_000,
+                      }
+                    : {}),
+            },
+        };
+        assert.equal(evaluateHighTargetAcceptance(weather).pass, true);
+        assert.equal(
+            evaluateHighTargetAcceptance({
+                ...weather,
+                runtime: {
+                    ...weather.runtime,
+                    [particleField]: 0,
+                },
+            }).pass,
+            false,
+        );
+    }
+});
+
+test('high target acceptance distinguishes a cached map from refreshes and resets', () => {
+    for (const [primaryShadowRefreshCountDelta, expectedPass] of [
+        [0, true],
+        [1, false],
+        [-1, false],
+    ]) {
+        const result = evaluateHighTargetAcceptance({
+            apiErrors: [],
+            pageErrors: [],
+            requested: {
+                gardenProfile: 'high-target',
+                mode: 'details',
+                quality: 'high',
+                scenarioName: 'game-high-target-clear-idle-desktop-run-1',
+            },
+            runtime: {
+                actorGroundingShadowBatchCount: 1,
+                actorGroundingShadowCount: 5,
+                actorGroundingShadowDroppedCount: 0,
+                actorGroundingShadowPrimaryCasterCount: 0,
+                actorGroundingShadowVisibleCount: 4,
+                animatedCasterShadowRefreshCount: 0,
+                groundDecorationCount: 596,
+                groundDecorationDensity: 1,
+                groundDecorationVisibleCount: 571,
+                generatedPlantExpectedInstanceCount: 537,
+                generatedPlantFieldCount: 54,
+                generatedPlantInstanceCount: 537,
+                generatedPlantVisibleFieldCount: 54,
+                generatedPlantVisibleInstanceCount: 537,
+                qualityTier: 'high',
+                shadowMapSize: 4_096,
+                shadowsEnabled: true,
+            },
+            sample: {
+                actorGroundingShadowUpdateCountDelta: 60,
+                animatedCasterShadowRefreshCountDelta: 0,
+                canvas: {
+                    clientHeight: 720,
+                    clientWidth: 1280,
+                    height: 1440,
+                    width: 2560,
+                },
+                drawCalls: 100,
+                elapsedMs: 5_000,
+                primaryShadowRefreshCountAtStart: 2,
+                primaryShadowRefreshCountDelta,
+                renderedFps: 12,
+                renderedFrames: 60,
+                reportedDpr: 2,
+                submittedTriangles: 1_000_000,
+            },
+        });
+
+        assert.equal(result.pass, expectedPass);
+        assert.deepEqual(
+            result.checks.find(
+                (check) =>
+                    check.name ===
+                    'highTargetPrimaryShadowRefreshesDuringClearIdle',
+            ),
+            {
+                actual: primaryShadowRefreshCountDelta,
+                comparison: 'equal',
+                limit: 0,
+                name: 'highTargetPrimaryShadowRefreshesDuringClearIdle',
+                pass: expectedPass,
+            },
+        );
+    }
+});
+
+test('high target placement acceptance requires one deferred final shadow flush', () => {
+    const createInput = ({
+        activeCount = 0,
+        deferredDelta = 2,
+        flushDelta = 1,
+        primaryDelta = 1,
+        projectedDrops = 0,
+        projectedEnd = 0,
+        projectedPeak = 2,
+    } = {}) => ({
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'details',
+            placementProfile: 'placement-drop',
+            quality: 'high',
+        },
+        runtime: {
+            actorGroundingShadowBatchCount: 1,
+            actorGroundingShadowCount: 5,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowPrimaryCasterCount: 0,
+            actorGroundingShadowVisibleCount: 4,
+            animatedCasterShadowRefreshCount: 0,
+            groundDecorationCount: 596,
+            groundDecorationDensity: 1,
+            groundDecorationVisibleCount: 571,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            placementChunkPhysicalRebuildCount: 2,
+            placementProjectedShadowCount: projectedEnd,
+            placementProjectedShadowDroppedCount: projectedDrops,
+            placementProjectedShadowPeakCount: projectedPeak,
+            placementShadowActiveCount: activeCount,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        sample: {
+            actorGroundingShadowUpdateCountDelta: 60,
+            animatedCasterShadowRefreshCountDelta: 0,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            placementProfileDispatched: true,
+            placementShadowDeferredChangeCountDelta: deferredDelta,
+            placementShadowFlushCountDelta: flushDelta,
+            primaryShadowRefreshCountDelta: primaryDelta,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    });
+
+    assert.equal(evaluateHighTargetAcceptance(createInput()).pass, true);
+
+    for (const invalid of [
+        { flushDelta: 0 },
+        { flushDelta: 2 },
+        { primaryDelta: 0 },
+        { primaryDelta: 2 },
+        { deferredDelta: 0 },
+        { activeCount: 1 },
+        { projectedEnd: 1 },
+        { projectedDrops: 1 },
+        { projectedPeak: 0 },
+        { projectedPeak: 1 },
+        { projectedPeak: 3 },
+    ]) {
+        assert.equal(
+            evaluateHighTargetAcceptance(createInput(invalid)).pass,
+            false,
+        );
+    }
+});
+
+test('high target acceptance requires the full workload to remain visible', () => {
+    const result = evaluateHighTargetAcceptance({
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'details',
+            quality: 'high',
+        },
+        runtime: {
+            animatedCasterShadowRefreshCount: 1,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 53,
+            generatedPlantVisibleInstanceCount: 536,
+            qualityTier: 'high',
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    });
+
+    assert.equal(result.pass, false);
+    assert.deepEqual(
+        result.checks
+            .filter((check) =>
+                [
+                    'highTargetVisiblePlantFields',
+                    'highTargetVisiblePlantInstances',
+                ].includes(check.name),
+            )
+            .map((check) => ({
+                actual: check.actual,
+                limit: check.limit,
+                pass: check.pass,
+            })),
+        [
+            { actual: 53, limit: 54, pass: false },
+            { actual: 536, limit: 537, pass: false },
+        ],
+    );
+});
+
+test('high target acceptance rejects failed API requests', () => {
+    const result = evaluateHighTargetAcceptance({
+        apiErrors: [
+            {
+                status: 401,
+                url: 'http://localhost/api/gredice/api/gardens/1/stacks',
+            },
+        ],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'details',
+            quality: 'high',
+        },
+        runtime: {
+            animatedCasterShadowRefreshCount: 1,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            qualityTier: 'high',
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    });
+
+    assert.equal(result.pass, false);
+    assert.deepEqual(
+        result.checks.find((check) => check.name === 'highTargetApiErrors'),
+        {
+            actual: 1,
+            comparison: 'equal',
+            limit: 0,
+            name: 'highTargetApiErrors',
+            pass: false,
+        },
+    );
+});
+
+test('static scene-cache acceptance requires a warm, stable timed window', () => {
+    const requested = {
+        comparisonPair: 'static-opaque-scene-cache',
+        comparisonRole: 'cache',
+        gardenProfile: 'high-target',
+        mode: 'details',
+        quality: 'high',
+        staticSceneCache: 'cache',
+    };
+    const runtime = {
+        staticOpaqueSceneCacheBoundaryCount: 19,
+        staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+        staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+        staticOpaqueSceneCacheMeshCount: 19,
+        staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+        staticOpaqueSceneCacheReplayStatus: 'ready',
+        staticOpaqueSceneCacheReplaySubmissionCount: 1,
+        staticOpaqueSceneCacheReplayTriangleCount: 1,
+        staticOpaqueSceneCacheState: 'ready',
+        staticOpaqueSceneCacheSupported: true,
+        staticOpaqueSceneCacheTargetHeight: 1440,
+        staticOpaqueSceneCacheTargetSampleCount: 4,
+        staticOpaqueSceneCacheTargetWidth: 2560,
+        staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+        staticOpaqueSceneCacheTriangleCount: 12_000,
+    };
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1280,
+            height: 1440,
+            width: 2560,
+        },
+        drawCalls: 100,
+        elapsedMs: 5_000,
+        renderedFps: 60,
+        renderedFrames: 300,
+        reportedDpr: 2,
+        staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+        staticOpaqueSceneCacheCaptureCountAtStart: 1,
+        staticOpaqueSceneCacheCaptureCountDelta: 0,
+        staticOpaqueSceneCacheCompositePassCountDelta: 300,
+        staticOpaqueSceneCacheHitFrameCountAtStart: 3,
+        staticOpaqueSceneCacheHitFrameCountDelta: 300,
+        staticOpaqueSceneCacheHitRatio: 1,
+        staticOpaqueSceneCacheInvalidationCountDelta: 0,
+        staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+        staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+        staticOpaqueSceneCacheSavedSubmissionCountDelta: 5_700,
+        staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_000,
+        staticOpaqueSceneCacheStateAtStart: 'ready',
+        staticOpaqueSceneCacheSupportedAtStart: true,
+        staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+        submittedTriangles: 1_000_000,
+    };
+    const evaluate = ({ runtimeOverride = {}, sampleOverride = {} } = {}) =>
+        evaluateHighTargetAcceptance({
+            apiErrors: [],
+            consoleMessages: [],
+            pageErrors: [],
+            requested,
+            runtime: { ...runtime, ...runtimeOverride },
+            sample: { ...sample, ...sampleOverride },
+        });
+    const checks = evaluate().checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCache'),
+    );
+
+    assert.equal(checks.length, 32);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.deepEqual(
+        evaluate({
+            sampleOverride: {
+                staticOpaqueSceneCacheCaptureCountDelta: 1,
+            },
+        }).checks.find(
+            (check) => check.name === 'highTargetStaticSceneCacheTimedCaptures',
+        ),
+        {
+            actual: 1,
+            comparison: 'equal',
+            limit: 0,
+            name: 'highTargetStaticSceneCacheTimedCaptures',
+            pass: false,
+        },
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheReplayStatus: 'pending',
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheFinalReplayStatus',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheReplaySubmissionCount: 2,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheReplaySubmissions',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheTargetSampleCount: 2,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheTargetSampleCount',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            runtimeOverride: {
+                staticOpaqueSceneCacheTotalEstimatedBytes:
+                    160 * 1024 * 1024 + 1,
+            },
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheTotalEstimatedBytes',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            sampleOverride: {
+                staticOpaqueSceneCacheHitRatio: 0.99,
+            },
+        }).checks.find(
+            (check) => check.name === 'highTargetStaticSceneCacheTimedHitRatio',
+        )?.pass,
+        false,
+    );
+});
+
+test('cloudy static scene-cache acceptance proves live cloud attenuation without shadow recaptures', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            comparisonPair: 'static-opaque-scene-cache-cloudy',
+            comparisonRole: 'cache',
+            fixedTimeSeconds: 12,
+            gardenProfile: 'high-target',
+            mode: 'cloudy',
+            quality: 'high',
+            staticSceneCache: 'cache',
+        },
+        runtime: {
+            cloudAttenuationMaskResolution: 192,
+            cloudAttenuationMaterialCount: 19,
+            cloudAttenuationUpdateMs: 96,
+            cloudProjectedShadowCount: 8,
+            cloudRealShadowCasterCount: 0,
+            cloudVisualCount: 8,
+            staticOpaqueSceneCacheBoundaryCount: 19,
+            staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+            staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+            staticOpaqueSceneCacheEnabled: true,
+            staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+            staticOpaqueSceneCacheMeshCount: 19,
+            staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+            staticOpaqueSceneCacheReplayStatus: 'ready',
+            staticOpaqueSceneCacheReplaySubmissionCount: 1,
+            staticOpaqueSceneCacheReplayTriangleCount: 1,
+            staticOpaqueSceneCacheState: 'ready',
+            staticOpaqueSceneCacheSupported: true,
+            staticOpaqueSceneCacheTargetHeight: 1440,
+            staticOpaqueSceneCacheTargetSampleCount: 4,
+            staticOpaqueSceneCacheTargetWidth: 2560,
+            staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+            staticOpaqueSceneCacheTriangleCount: 12_000,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            cloudAttenuationUpdateCountDelta: 52,
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            primaryShadowRefreshCountDelta: 0,
+            renderedFps: 60,
+            renderedFrames: 300,
+            reportedDpr: 2,
+            staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+            staticOpaqueSceneCacheCaptureCountAtStart: 1,
+            staticOpaqueSceneCacheCaptureCountDelta: 0,
+            staticOpaqueSceneCacheCompositePassCountDelta: 300,
+            staticOpaqueSceneCacheHitFrameCountAtStart: 3,
+            staticOpaqueSceneCacheHitFrameCountDelta: 300,
+            staticOpaqueSceneCacheHitRatio: 1,
+            staticOpaqueSceneCacheInvalidationCountDelta: 0,
+            staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+            staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+            staticOpaqueSceneCacheSavedSubmissionCountDelta: 5_700,
+            staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_000,
+            staticOpaqueSceneCacheStateAtStart: 'ready',
+            staticOpaqueSceneCacheSupportedAtStart: true,
+            staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateHighTargetAcceptance(input);
+    const checks = result.checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCacheCloud'),
+    );
+
+    assert.equal(checks.length, 9);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluateHighTargetAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                cloudAttenuationUpdateCountDelta: 1,
+            },
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'highTargetStaticSceneCacheCloudAttenuationUpdates',
+        )?.pass,
+        false,
+    );
+});
+
+test('static scene-cache occlusion acceptance requires cached depth and live layers on verified hits', () => {
+    const requested = {
+        gardenProfile: 'high-target',
+        mode: 'details',
+        quality: 'high',
+        staticSceneCache: 'cache',
+        staticSceneCacheOcclusionFixture: '1',
+    };
+    const runtime = {
+        staticOpaqueSceneCacheBoundaryCount: 20,
+        staticOpaqueSceneCacheCaptureCount: 1,
+        staticOpaqueSceneCacheCaptureSubmissionCount: 20,
+        staticOpaqueSceneCacheCaptureTriangleCount: 12_002,
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheHitFrameCount: 7,
+        staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
+        staticOpaqueSceneCacheMeshCount: 20,
+        staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionCaptureCountAtTransition: 1,
+        staticOpaqueSceneCacheOcclusionFixtureEnabled: true,
+        staticOpaqueSceneCacheOcclusionFixturePass: true,
+        staticOpaqueSceneCacheOcclusionFixtureState: 'passed',
+        staticOpaqueSceneCacheOcclusionForegroundMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionHitFrameCountAtTransition: 3,
+        staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio: 0,
+        staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio: 1,
+        staticOpaqueSceneCacheOcclusionTransitionCount: 1,
+        staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount: 3,
+        staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+        staticOpaqueSceneCacheReplayStatus: 'ready',
+        staticOpaqueSceneCacheReplaySubmissionCount: 1,
+        staticOpaqueSceneCacheReplayTriangleCount: 1,
+        staticOpaqueSceneCacheState: 'ready',
+        staticOpaqueSceneCacheSupported: true,
+        staticOpaqueSceneCacheTargetHeight: 1440,
+        staticOpaqueSceneCacheTargetSampleCount: 4,
+        staticOpaqueSceneCacheTargetWidth: 2560,
+        staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+        staticOpaqueSceneCacheTriangleCount: 12_002,
+    };
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1280,
+            height: 1440,
+            width: 2560,
+        },
+        drawCalls: 100,
+        elapsedMs: 5_000,
+        renderedFps: 60,
+        renderedFrames: 300,
+        reportedDpr: 2,
+        staticOpaqueSceneCacheBypassFrameCountDelta: 0,
+        staticOpaqueSceneCacheCaptureCountAtStart: 1,
+        staticOpaqueSceneCacheCaptureCountDelta: 0,
+        staticOpaqueSceneCacheCompositePassCountDelta: 300,
+        staticOpaqueSceneCacheHitFrameCountAtStart: 7,
+        staticOpaqueSceneCacheHitFrameCountDelta: 300,
+        staticOpaqueSceneCacheHitRatio: 1,
+        staticOpaqueSceneCacheInvalidationCountDelta: 0,
+        staticOpaqueSceneCacheLiveFrameCountDelta: 0,
+        staticOpaqueSceneCacheReplayStatusAtStart: 'ready',
+        staticOpaqueSceneCacheSavedSubmissionCountDelta: 6_000,
+        staticOpaqueSceneCacheSavedTriangleCountDelta: 3_600_600,
+        staticOpaqueSceneCacheStateAtStart: 'ready',
+        staticOpaqueSceneCacheSupportedAtStart: true,
+        staticOpaqueSceneCacheUnexpectedStaticSubmissionCountAtEnd: 0,
+        submittedTriangles: 1_000_000,
+    };
+    const evaluate = (runtimeOverride = {}) =>
+        evaluateHighTargetAcceptance({
+            apiErrors: [],
+            consoleMessages: [],
+            pageErrors: [],
+            requested,
+            runtime: { ...runtime, ...runtimeOverride },
+            sample,
+        });
+    const checks = evaluate().checks.filter((check) =>
+        check.name.startsWith('highTargetStaticSceneCacheOcclusion'),
+    );
+
+    assert.equal(checks.length, 11);
+    assert.equal(
+        checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluate({
+            staticOpaqueSceneCacheCaptureCount: 2,
+        }).checks.find(
+            (check) =>
+                check.name === 'highTargetStaticSceneCacheOcclusionRecaptures',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        evaluate({
+            staticOpaqueSceneCacheOcclusionOccludedBackgroundLeakMaximumRatio: 0.08,
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'highTargetStaticSceneCacheOcclusionBackgroundLeak',
+        )?.pass,
+        false,
+    );
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-07-27T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'high-target-static-scene-cache',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-high-target-static-scene-cache-occlusion-fixture-desktop',
+                pageErrors: [],
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '1',
+                    hud: '0',
+                    motion: 'none',
+                    ...requested,
+                },
+                runtime,
+                sample: {
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 20,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 15_000,
+                    trianglesPerRenderedFrame: 300_000,
+                    ...sample,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 2,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(
+        markdown,
+        /Static opaque scene-cache occlusion fixture[\s\S]*passed \| 1 \| 1\/1 \| 4\/3 \| 1 \| 1 \| 1 \| 0 \| pass/,
+    );
+});
+
+test('high target acceptance rejects a demand-render scene with one frame', () => {
+    const result = evaluateHighTargetAcceptance({
+        apiErrors: [],
+        pageErrors: [],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'details',
+            quality: 'high',
+        },
+        runtime: {
+            animatedCasterShadowRefreshCount: 1,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            qualityTier: 'high',
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1440,
+                width: 2560,
+            },
+            drawCalls: 10,
+            elapsedMs: 5_000,
+            renderedFps: 0.2,
+            renderedFrames: 1,
+            reportedDpr: 2,
+            submittedTriangles: 10_000,
+        },
+    });
+
+    assert.equal(result.pass, false);
+    assert.deepEqual(
+        result.checks
+            .filter((check) =>
+                ['highTargetRenderedFps', 'highTargetRenderedFrames'].includes(
+                    check.name,
+                ),
+            )
+            .map((check) => ({
+                limit: check.limit,
+                name: check.name,
+                pass: check.pass,
+            })),
+        [
+            { limit: 1, name: 'highTargetRenderedFps', pass: false },
+            { limit: 5, name: 'highTargetRenderedFrames', pass: false },
+        ],
+    );
+});
+
+test('high target acceptance rejects zero work and an incomplete fixture', () => {
+    const result = evaluateHighTargetAcceptance({
+        apiErrors: [
+            { status: 401, url: 'http://localhost/api/gardens/1/stacks' },
+        ],
+        consoleMessages: [
+            { type: 'error', text: 'THREE.WebGLProgram: Shader Error' },
+        ],
+        pageErrors: ['render failed'],
+        requested: {
+            gardenProfile: 'high-target',
+            mode: 'snow',
+            quality: 'medium',
+        },
+        runtime: {
+            generatedPlantFieldCount: 0,
+            generatedPlantExpectedInstanceCount: 0,
+            generatedPlantInstanceCount: 1,
+            generatedPlantVisibleFieldCount: 0,
+            generatedPlantVisibleInstanceCount: 0,
+            qualityTier: 'medium',
+            snowParticleCount: 0,
+        },
+        sample: {
+            canvas: null,
+            drawCalls: 0,
+            elapsedMs: 5_000,
+            renderedFps: 0,
+            renderedFrames: 0,
+            reportedDpr: 1,
+            submittedTriangles: 0,
+        },
+    });
+
+    assert.equal(result.pass, false);
+    assert.equal(
+        result.checks.some((check) => check.pass),
+        false,
+    );
+});
+
+function highTargetRun(value, index, acceptancePass = true) {
+    const performancePass = value <= 33.3;
+    return {
+        baseName: 'game-high-target-clear-idle-desktop',
+        acceptance: { pass: acceptancePass },
+        budget: { pass: acceptancePass && performancePass },
+        budgetName: 'gameHighTarget',
+        name: `game-high-target-clear-idle-desktop-run-${index + 1}`,
+        performanceBudget: { pass: performancePass },
+        profileRun: index + 1,
+        requested: { gardenProfile: 'high-target' },
+        sample: {
+            drawCallsPerFrame: 100,
+            drawCallsPerRenderedFrame: 100,
+            gpu: {
+                elapsedP95Ms: 10,
+                valid: true,
+            },
+            jsHeapMb: 200,
+            longTaskCount: 0,
+            maxFrameMs: 80,
+            p95FrameMs: value,
+            renderedFps: 60 - index,
+            trianglesPerFrame: 1_000_000,
+            trianglesPerRenderedFrame: 1_000_000,
+        },
+    };
+}
+
+test('high target repeated runs budget the median while retaining run diagnostics', () => {
+    const runs = [10, 20, 40].map((value, index) =>
+        highTargetRun(value, index),
+    );
+    const medians = buildHighTargetMedians(runs);
+    const aggregate = medians['game-high-target-clear-idle-desktop'];
+
+    assert.deepEqual(aggregate.p95FrameMs, {
+        max: 40,
+        median: 20,
+        min: 10,
+    });
+    assert.equal(aggregate.medianSample.p95FrameMs, 20);
+    assert.equal(aggregate.performanceBudget.pass, true);
+    assert.equal(aggregate.acceptancePass, true);
+    assert.equal(aggregate.pass, true);
+    assert.equal(aggregate.passedRunCount, 2);
+    assert.deepEqual(buildProfileSummary(runs, medians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 1,
+        passedRuns: 2,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+});
+
+test('high target aggregate requires acceptance from every repeated run', () => {
+    const runs = [
+        highTargetRun(10, 0),
+        highTargetRun(20, 1, false),
+        highTargetRun(40, 2),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const aggregate = medians['game-high-target-clear-idle-desktop'];
+
+    assert.equal(aggregate.performanceBudget.pass, true);
+    assert.equal(aggregate.acceptancePass, false);
+    assert.equal(aggregate.pass, false);
+    assert.deepEqual(aggregate.failedAcceptanceRuns, [
+        'game-high-target-clear-idle-desktop-run-2',
+    ]);
+    assert.deepEqual(buildProfileSummary(runs, medians).failedScenarioNames, [
+        'game-high-target-clear-idle-desktop',
+    ]);
+});
+
+test('high target aggregate fails when the median exceeds a performance budget', () => {
+    const runs = [34, 40, 50].map((value, index) =>
+        highTargetRun(value, index),
+    );
+    const aggregate =
+        buildHighTargetMedians(runs)['game-high-target-clear-idle-desktop'];
+
+    assert.equal(aggregate.acceptancePass, true);
+    assert.equal(aggregate.medianSample.p95FrameMs, 40);
+    assert.equal(aggregate.performanceBudget.pass, false);
+    assert.equal(aggregate.pass, false);
+});
+
+test('adaptive High comparison reports paired pass rates and frame/GPU deltas', () => {
+    const pairedRun = ({
+        baseName,
+        comparisonRole,
+        gpuP95,
+        index,
+        p95,
+        renderedFps,
+    }) => {
+        const run = highTargetRun(p95, index);
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'adaptive-camera-motion',
+                comparisonRole,
+            },
+            sample: {
+                ...run.sample,
+                gpu: {
+                    elapsedP95Ms: gpuP95,
+                    valid: true,
+                },
+                renderedFps,
+            },
+        };
+    };
+    const runs = [
+        ...[18, 20, 22].map((p95, index) =>
+            pairedRun({
+                baseName:
+                    'game-high-target-adaptive-pair-fixed-camera-motion-desktop',
+                comparisonRole: 'fixed',
+                gpuP95: 10,
+                index,
+                p95,
+                renderedFps: 50,
+            }),
+        ),
+        ...[14, 15, 16].map((p95, index) =>
+            pairedRun({
+                baseName: 'game-high-target-adaptive-camera-motion-desktop',
+                comparisonRole: 'adaptive',
+                gpuP95: 8,
+                index,
+                p95,
+                renderedFps: 60,
+            }),
+        ),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const comparison =
+        buildAdaptiveHighComparisons(medians)['adaptive-camera-motion'];
+
+    assert.deepEqual(comparison.acceptancePassRate, {
+        adaptive: 100,
+        fixed: 100,
+    });
+    assert.deepEqual(comparison.p95FrameMs, {
+        adaptive: 15,
+        delta: -5,
+        fixed: 20,
+        percentDelta: -25,
+    });
+    assert.deepEqual(comparison.gpuElapsedP95Ms, {
+        adaptive: 8,
+        delta: -2,
+        fixed: 10,
+        percentDelta: -20,
+    });
+    assert.deepEqual(comparison.renderedFps, {
+        adaptive: 60,
+        delta: 10,
+        fixed: 50,
+        percentDelta: 20,
+    });
+    assert.equal(comparison.relativePerformancePass, true);
+    assert.equal(
+        comparison.relativePerformanceChecks.every((check) => check.pass),
+        true,
+    );
+    assert.match(
+        buildMarkdown({
+            adaptiveHighComparisons: buildAdaptiveHighComparisons(medians),
+            baseUrl: 'http://profile.local',
+            generatedAt: '2026-07-26T00:00:00.000Z',
+            highTargetMedians: medians,
+            options: {
+                build: false,
+                managedServer: false,
+                sampleMs: 5_000,
+                scenarios: [],
+                scenarioSet: 'adaptive-high',
+                soakMs: 0,
+                warmupMs: 0,
+            },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 2,
+            sourceCommit: null,
+            summary: { failedScenarios: 0 },
+        }),
+        /Adaptive High paired comparison[\s\S]*20 → 15 ms \(-25%\)[\s\S]*10 → 8 ms \(-20%\)/,
+    );
+
+    const regressedRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'adaptive'
+            ? {
+                  ...run,
+                  sample: {
+                      ...run.sample,
+                      gpu: {
+                          elapsedP95Ms: 12,
+                          valid: true,
+                      },
+                      p95FrameMs: 30,
+                      renderedFps: 40,
+                  },
+              }
+            : run,
+    );
+    const regressedMedians = buildHighTargetMedians(regressedRuns);
+    const regressedComparison =
+        buildAdaptiveHighComparisons(regressedMedians)[
+            'adaptive-camera-motion'
+        ];
+
+    assert.equal(
+        regressedMedians['game-high-target-adaptive-camera-motion-desktop']
+            .pass,
+        true,
+    );
+    assert.equal(regressedComparison.relativePerformancePass, false);
+    assert.equal(regressedComparison.aggregatePass.adaptive, false);
+    assert.deepEqual(
+        buildProfileSummary(regressedRuns, regressedMedians)
+            .failedScenarioNames,
+        ['game-high-target-adaptive-camera-motion-desktop'],
+    );
+});
+
+test('static scene-cache comparison gates paired render work, GPU, and resources', () => {
+    const visualComparisons = {
+        'static-opaque-scene-cache': {
+            maximumMismatchRatio: 0.001,
+            maximumP99ByteError: 1,
+            pairedRuns: Array.from({ length: 5 }, (_, index) => ({
+                mismatchRatio: 0.001,
+                p99ByteError: 1,
+                profileRun: index + 1,
+                valid: true,
+            })),
+            pass: true,
+            validRunCount: 5,
+        },
+    };
+    const pairedRun = ({ comparisonRole, index }) => {
+        const cached = comparisonRole === 'cache';
+        const baseName = `game-high-target-static-scene-cache-${cached ? 'cached' : 'legacy'}-desktop`;
+        const run = highTargetRun(cached ? 21 : 20, index);
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'static-opaque-scene-cache',
+                comparisonRole,
+            },
+            runtime: {
+                rendererShaders: cached ? 31 : 30,
+                rendererTextures: cached ? 24 : 20,
+                ...(cached
+                    ? {
+                          staticOpaqueSceneCacheCaptureSubmissionCount: 19,
+                          staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
+                          staticOpaqueSceneCacheReplayEstimatedBytes: 36,
+                          staticOpaqueSceneCacheReplayStatus: 'ready',
+                          staticOpaqueSceneCacheReplaySubmissionCount: 1,
+                          staticOpaqueSceneCacheReplayTriangleCount: 1,
+                          staticOpaqueSceneCacheTargetSampleCount: 4,
+                          staticOpaqueSceneCacheTotalEstimatedBytes: 162_201_636,
+                      }
+                    : {}),
+            },
+            sample: {
+                ...run.sample,
+                drawCallsPerRenderedFrame: cached ? 180 : 200,
+                gpu: {
+                    elapsedP95Ms: cached ? 9.5 : 10,
+                    valid: true,
+                },
+                staticOpaqueSceneCacheHitRatio: cached ? 1 : null,
+                staticOpaqueSceneCacheSavedSubmissionCountDelta: cached
+                    ? 5_700
+                    : null,
+                staticOpaqueSceneCacheSavedTriangleCountDelta: cached
+                    ? 3_600_000
+                    : null,
+                trianglesPerRenderedFrame: cached ? 900_000 : 1_000_000,
+            },
+        };
+    };
+    const runs = [
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'legacy', index }),
+        ),
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'cache', index }),
+        ),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const comparisons = buildStaticSceneCacheComparisons(
+        medians,
+        visualComparisons,
+    );
+    const comparison = comparisons['static-opaque-scene-cache'];
+
+    assert.deepEqual(comparison.acceptancePassRate, {
+        cached: 100,
+        legacy: 100,
+    });
+    assert.equal(comparison.drawCallRatio, 0.9);
+    assert.equal(comparison.triangleRatio, 0.9);
+    assert.equal(comparison.cpuMedianRatio, 1.05);
+    assert.equal(comparison.gpuTimingStatus, 'valid');
+    assert.equal(comparison.gpuMedianRatio, 0.95);
+    assert.equal(comparison.gpuMaximumRunRatio, 0.95);
+    assert.equal(comparison.rendererProgramMaximumIncrease, 1);
+    assert.equal(comparison.rendererTextureMaximumIncrease, 4);
+    assert.equal(comparison.visualComparison.pass, true);
+    assert.equal(comparison.staticOpaqueSceneCacheHitRatio.median, 1);
+    assert.equal(comparison.staticOpaqueSceneCacheReplayReadyRunCount, 5);
+    assert.equal(
+        comparison.staticOpaqueSceneCacheReplaySubmissionCount.median,
+        1,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheReplayTriangleCount.median,
+        1,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheTotalEstimatedBytes.max,
+        162_201_636,
+    );
+    assert.equal(
+        comparison.staticOpaqueSceneCacheSavedSubmissionCountDelta.median,
+        5_700,
+    );
+    assert.equal(comparison.relativePerformancePass, true);
+    assert.equal(comparison.aggregatePass.cached, true);
+    assert.equal(
+        buildProfileSummary(runs, medians, comparisons).failedScenarios,
+        0,
+    );
+    assert.match(
+        buildMarkdown({
+            adaptiveHighComparisons: {},
+            baseUrl: 'http://profile.local',
+            generatedAt: '2026-07-27T00:00:00.000Z',
+            highTargetMedians: medians,
+            options: {
+                build: false,
+                managedServer: false,
+                sampleMs: 5_000,
+                scenarios: [],
+                scenarioSet: 'high-target-static-scene-cache',
+                soakMs: 0,
+                warmupMs: 0,
+            },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 2,
+            sourceCommit: null,
+            staticSceneCacheComparisons: comparisons,
+            summary: { failedScenarios: 0 },
+            weatherSurfaceComparisons: {},
+        }),
+        /Static opaque scene-cache paired comparison[\s\S]*0\.9\/0\.9\/1\.05[\s\S]*0\.95\/0\.95[\s\S]*30 → 31 \(3\.3%\) \(1\)[\s\S]*20 → 24 \(20%\) \(4\)[\s\S]*5\/5 \/ 19→1 \/ 12000→1[\s\S]*154\.69\/154\.69 MiB @ 4x[\s\S]*5700\/3600000/,
+    );
+
+    const gpuOutlierRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'cache' && run.profileRun === 1
+            ? {
+                  ...run,
+                  sample: {
+                      ...run.sample,
+                      gpu: {
+                          elapsedP95Ms: 10.6,
+                          valid: true,
+                      },
+                  },
+              }
+            : run,
+    );
+    const gpuOutlierMedians = buildHighTargetMedians(gpuOutlierRuns);
+    const gpuOutlierComparison = buildStaticSceneCacheComparisons(
+        gpuOutlierMedians,
+        visualComparisons,
+    )['static-opaque-scene-cache'];
+    assert.equal(gpuOutlierComparison.gpuMedianRatio, 0.95);
+    assert.equal(gpuOutlierComparison.gpuMaximumRunRatio, 1.06);
+    assert.equal(gpuOutlierComparison.relativePerformancePass, false);
+    assert.deepEqual(
+        buildProfileSummary(
+            gpuOutlierRuns,
+            gpuOutlierMedians,
+            buildStaticSceneCacheComparisons(
+                gpuOutlierMedians,
+                visualComparisons,
+            ),
+        ).failedScenarioNames,
+        ['game-high-target-static-scene-cache-cached-desktop'],
+    );
+
+    const incompleteTextureRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'cache' && run.profileRun === 1
+            ? {
+                  ...run,
+                  runtime: {
+                      ...run.runtime,
+                      rendererTextures: null,
+                  },
+              }
+            : run,
+    );
+    const incompleteTextureMedians = buildHighTargetMedians(
+        incompleteTextureRuns,
+    );
+    const incompleteTextureComparison = buildStaticSceneCacheComparisons(
+        incompleteTextureMedians,
+        visualComparisons,
+    )['static-opaque-scene-cache'];
+    assert.equal(
+        incompleteTextureComparison.rendererTextureMaximumIncrease,
+        null,
+    );
+    assert.equal(incompleteTextureComparison.relativePerformancePass, false);
+    assert.deepEqual(
+        buildProfileSummary(
+            incompleteTextureRuns,
+            incompleteTextureMedians,
+            buildStaticSceneCacheComparisons(
+                incompleteTextureMedians,
+                visualComparisons,
+            ),
+        ).failedScenarioNames,
+        ['game-high-target-static-scene-cache-cached-desktop'],
+    );
+
+    const visualRegression = {
+        'static-opaque-scene-cache': {
+            ...visualComparisons['static-opaque-scene-cache'],
+            maximumMismatchRatio: 0.02,
+            pass: false,
+        },
+    };
+    const visualRegressionComparison = buildStaticSceneCacheComparisons(
+        medians,
+        visualRegression,
+    )['static-opaque-scene-cache'];
+    assert.equal(visualRegressionComparison.relativePerformancePass, false);
+});
+
+test('static scene-cache image parity measures RGB errors per pixel', () => {
+    const legacy = new Uint8Array(100 * 4);
+    const cached = new Uint8Array(100 * 4);
+    cached[0] = 10;
+    const withinBudget = measureStaticSceneCacheImageParity(
+        {
+            data: legacy,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+        {
+            data: cached,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+    );
+    assert.equal(withinBudget.valid, true);
+    assert.equal(withinBudget.mismatchRatio, 0.01);
+    assert.equal(withinBudget.p99ByteError, 0);
+
+    cached[4] = 10;
+    const regressed = measureStaticSceneCacheImageParity(
+        {
+            data: legacy,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+        {
+            data: cached,
+            info: { channels: 4, height: 10, width: 10 },
+        },
+    );
+    assert.equal(regressed.mismatchRatio, 0.02);
+    assert.equal(regressed.p99ByteError, 10);
+});
+
+test('static scene-cache visual comparison fails closed without a deterministic clock contract', async () => {
+    const visualComparisons = await buildStaticSceneCacheVisualComparisons([
+        {
+            profileRun: 1,
+            requested: {
+                comparisonPair: 'static-opaque-scene-cache-cloudy',
+                comparisonRole: 'legacy',
+                staticSceneCacheVisualDeterministic: false,
+            },
+        },
+        {
+            profileRun: 1,
+            requested: {
+                comparisonPair: 'static-opaque-scene-cache-cloudy',
+                comparisonRole: 'cache',
+                staticSceneCacheVisualDeterministic: false,
+            },
+        },
+    ]);
+    const comparison = visualComparisons['static-opaque-scene-cache-cloudy'];
+
+    assert.equal(comparison.status, 'unavailable');
+    assert.equal(comparison.pass, false);
+    assert.equal(comparison.validRunCount, 0);
+    assert.match(comparison.reason, /no deterministic scene-time/);
+});
+
+test('weather-surface comparison gates render work, GPU time, and renderer programs', () => {
+    const pairedRun = ({ comparisonRole, index }) => {
+        const integrated = comparisonRole === 'integrated';
+        const baseName = `game-high-target-rain-${comparisonRole}-weather-surfaces-desktop`;
+        const run = highTargetRun(20, index);
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'rain-weather-surfaces',
+                comparisonRole,
+            },
+            runtime: {
+                rendererShaders: integrated ? 41 : 40,
+                weatherSurfaceAvoidedOverlaySubmissionCount: integrated
+                    ? 16
+                    : 0,
+                weatherSurfaceAvoidedOverlayTriangleCount: integrated
+                    ? 2_556
+                    : 0,
+                weatherSurfaceFallbackOverlaySubmissionCount: integrated
+                    ? 29
+                    : 45,
+                weatherSurfaceFallbackOverlayTriangleCount: integrated
+                    ? 13_562
+                    : 16_118,
+                weatherSurfaceIntegratedInstanceCount: integrated ? 213 : 0,
+                weatherSurfaceIntegratedMaterialCount: integrated ? 16 : 0,
+                weatherSurfaceMode: comparisonRole,
+                weatherSurfacePluginVariantCount: integrated ? 1 : 0,
+            },
+            sample: {
+                ...run.sample,
+                drawCallsPerRenderedFrame: integrated ? 104 : 120,
+                gpu: {
+                    elapsedP95Ms: integrated ? 9.7 : 10,
+                    valid: true,
+                },
+                trianglesPerRenderedFrame: integrated ? 900_000 : 1_100_000,
+            },
+        };
+    };
+    const runs = [
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'legacy', index }),
+        ),
+        ...[0, 1, 2, 3, 4].map((index) =>
+            pairedRun({ comparisonRole: 'integrated', index }),
+        ),
+    ];
+    const medians = buildHighTargetMedians(runs);
+    const comparisons = buildWeatherSurfaceComparisons(medians);
+    const comparison = comparisons['rain-weather-surfaces'];
+
+    assert.deepEqual(comparison.acceptancePassRate, {
+        integrated: 100,
+        legacy: 100,
+    });
+    assert.deepEqual(comparison.fallbackOverlaySubmissions, {
+        delta: -16,
+        integrated: 29,
+        legacy: 45,
+        percentDelta: -35.6,
+    });
+    assert.deepEqual(comparison.fallbackOverlayTriangles, {
+        delta: -2_556,
+        integrated: 13_562,
+        legacy: 16_118,
+        percentDelta: -15.9,
+    });
+    assert.deepEqual(comparison.gpuElapsedP95Ms, {
+        delta: -0.3,
+        integrated: 9.7,
+        legacy: 10,
+        percentDelta: -3,
+    });
+    assert.equal(comparison.gpuTimingStatus, 'valid');
+    assert.equal(comparison.gpuMedianRatio, 0.97);
+    assert.equal(comparison.gpuMaximumRunRatio, 0.97);
+    assert.equal(comparison.pairedGpuRuns.length, 5);
+    assert.deepEqual(comparison.rendererShaders, {
+        delta: 1,
+        integrated: 41,
+        legacy: 40,
+        percentDelta: 2.5,
+    });
+    assert.equal(comparison.rendererProgramMaximumIncrease, 1);
+    assert.deepEqual(
+        comparison.pairedRendererProgramRuns.map(
+            ({ increase, integrated, legacy, profileRun, valid }) => ({
+                increase,
+                integrated,
+                legacy,
+                profileRun,
+                valid,
+            }),
+        ),
+        [1, 2, 3, 4, 5].map((profileRun) => ({
+            increase: 1,
+            integrated: 41,
+            legacy: 40,
+            profileRun,
+            valid: true,
+        })),
+    );
+    assert.equal(comparison.structuralPass, true);
+    assert.equal(comparison.relativePerformancePass, true);
+    assert.equal(comparison.pairedPass, true);
+    assert.equal(comparison.aggregatePass.integrated, true);
+    assert.equal(
+        comparison.relativePerformanceChecks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(buildProfileSummary(runs, medians).failedScenarios, 0);
+    assert.match(
+        buildMarkdown({
+            adaptiveHighComparisons: {},
+            baseUrl: 'http://profile.local',
+            generatedAt: '2026-07-27T00:00:00.000Z',
+            highTargetMedians: medians,
+            options: {
+                build: false,
+                managedServer: false,
+                sampleMs: 5_000,
+                scenarios: [],
+                scenarioSet: 'high-target-weather-materials',
+                soakMs: 0,
+                warmupMs: 0,
+            },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 2,
+            sourceCommit: null,
+            summary: { failedScenarios: 0 },
+            weatherSurfaceComparisons: comparisons,
+        }),
+        /Integrated weather-surface paired comparison[\s\S]*overlay-triangle proxy[\s\S]*0\.97\/0\.97[\s\S]*40 → 41 \(2\.5%\)[\s\S]*45 → 29 \(-35\.6%\)[\s\S]*16118 → 13562 \(-15\.9%\)[\s\S]*213\/16\/1[\s\S]*16\/2556/,
+    );
+
+    const snowRuns = runs.map((run) => {
+        const comparisonRole = run.requested.comparisonRole;
+        const baseName = `game-high-target-snow-${comparisonRole}-weather-surfaces-desktop`;
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${run.profileRun}`,
+            requested: {
+                ...run.requested,
+                comparisonPair: 'snow-weather-surfaces',
+            },
+            runtime: {
+                ...run.runtime,
+                rendererShaders: comparisonRole === 'integrated' ? 24 : 23,
+            },
+        };
+    });
+    const snowComparison = buildWeatherSurfaceComparisons(
+        buildHighTargetMedians(snowRuns),
+    )['snow-weather-surfaces'];
+    assert.equal(snowComparison.rendererProgramMaximumIncrease, 1);
+    assert.equal(snowComparison.relativePerformancePass, true);
+    assert.equal(snowComparison.pairedPass, true);
+
+    for (const [outlierCount, outlierValue, expectedMaximumIncrease] of [
+        [1, 42, 2],
+        [2, 100, 60],
+    ]) {
+        const programOutlierRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' &&
+            run.profileRun <= outlierCount
+                ? {
+                      ...run,
+                      runtime: {
+                          ...run.runtime,
+                          rendererShaders: outlierValue,
+                      },
+                  }
+                : run,
+        );
+        const programOutlierMedians =
+            buildHighTargetMedians(programOutlierRuns);
+        const programOutlierComparison = buildWeatherSurfaceComparisons(
+            programOutlierMedians,
+        )['rain-weather-surfaces'];
+        const programBoundCheck =
+            programOutlierComparison.relativePerformanceChecks.find(
+                (check) => check.name === 'weatherSurfaceRendererProgramBound',
+            );
+
+        assert.equal(
+            programOutlierComparison.rendererShaders.integrated,
+            41,
+            'the median-only gate would not see these outliers',
+        );
+        assert.equal(
+            programOutlierComparison.rendererProgramMaximumIncrease,
+            expectedMaximumIncrease,
+        );
+        assert.deepEqual(programBoundCheck, {
+            actual: expectedMaximumIncrease,
+            comparison: 'maximum-increase',
+            limit: 1,
+            name: 'weatherSurfaceRendererProgramBound',
+            pass: false,
+        });
+        assert.equal(programOutlierComparison.relativePerformancePass, false);
+        assert.deepEqual(
+            buildProfileSummary(programOutlierRuns, programOutlierMedians)
+                .failedScenarioNames,
+            ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+        );
+    }
+
+    const noFallbackReductionRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'integrated'
+            ? {
+                  ...run,
+                  runtime: {
+                      ...run.runtime,
+                      weatherSurfaceFallbackOverlaySubmissionCount: 45,
+                  },
+              }
+            : run,
+    );
+    const noFallbackReductionMedians = buildHighTargetMedians(
+        noFallbackReductionRuns,
+    );
+    const failedComparison = buildWeatherSurfaceComparisons(
+        noFallbackReductionMedians,
+    )['rain-weather-surfaces'];
+    assert.equal(failedComparison.structuralPass, false);
+    assert.deepEqual(
+        buildProfileSummary(noFallbackReductionRuns, noFallbackReductionMedians)
+            .failedScenarioNames,
+        ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+    );
+
+    for (const [name, mutate] of [
+        [
+            'draw calls',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    drawCallsPerRenderedFrame: 120,
+                },
+            }),
+        ],
+        [
+            'triangles',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    trianglesPerRenderedFrame: 1_100_000,
+                },
+            }),
+        ],
+        [
+            'GPU time',
+            (run) => ({
+                ...run,
+                sample: {
+                    ...run.sample,
+                    gpu: {
+                        elapsedP95Ms: 10,
+                        valid: true,
+                    },
+                },
+            }),
+        ],
+        [
+            'renderer programs',
+            (run) => ({
+                ...run,
+                runtime: {
+                    ...run.runtime,
+                    rendererShaders: 42,
+                },
+            }),
+        ],
+    ]) {
+        const regressedRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' ? mutate(run) : run,
+        );
+        const regressedMedians = buildHighTargetMedians(regressedRuns);
+        const regressedComparison =
+            buildWeatherSurfaceComparisons(regressedMedians)[
+                'rain-weather-surfaces'
+            ];
+
+        assert.equal(
+            regressedComparison.relativePerformancePass,
+            false,
+            `${name} must fail the paired relative gate`,
+        );
+        assert.deepEqual(
+            buildProfileSummary(regressedRuns, regressedMedians)
+                .failedScenarioNames,
+            ['game-high-target-rain-integrated-weather-surfaces-desktop'],
+        );
+    }
+
+    const individualGpuOutlierRuns = runs.map((run) =>
+        run.requested.comparisonRole === 'integrated' && run.profileRun === 1
+            ? {
+                  ...run,
+                  sample: {
+                      ...run.sample,
+                      gpu: {
+                          elapsedP95Ms: 10.6,
+                          valid: true,
+                      },
+                  },
+              }
+            : run,
+    );
+    const individualGpuOutlierComparison = buildWeatherSurfaceComparisons(
+        buildHighTargetMedians(individualGpuOutlierRuns),
+    )['rain-weather-surfaces'];
+    assert.equal(individualGpuOutlierComparison.gpuMedianRatio, 0.97);
+    assert.equal(individualGpuOutlierComparison.gpuMaximumRunRatio, 1.06);
+    assert.equal(individualGpuOutlierComparison.relativePerformancePass, false);
+
+    for (const invalidGpu of [
+        {
+            disjoint: true,
+            elapsedP95Ms: null,
+            reason: 'GPU timer query results became disjoint',
+            valid: false,
+        },
+        {
+            elapsedP95Ms: null,
+            reason: 'EXT_disjoint_timer_query_webgl2 is unavailable',
+            valid: false,
+        },
+    ]) {
+        const incompleteGpuRuns = runs.map((run) =>
+            run.requested.comparisonRole === 'integrated' &&
+            run.profileRun === 1
+                ? {
+                      ...run,
+                      sample: {
+                          ...run.sample,
+                          gpu: invalidGpu,
+                      },
+                  }
+                : run,
+        );
+        const incompleteComparison = buildWeatherSurfaceComparisons(
+            buildHighTargetMedians(incompleteGpuRuns),
+        )['rain-weather-surfaces'];
+        assert.equal(incompleteComparison.gpuTimingStatus, 'inconclusive');
+        assert.equal(incompleteComparison.relativePerformancePass, false);
+        assert.equal(incompleteComparison.aggregatePass.integrated, false);
+    }
+});
+
+test('placement scenario resolves a deterministic staggered two-chunk run', () => {
+    const scenarios = resolveScenarios('placement');
+
+    assert.equal(scenarios.length, 1);
+    assert.equal(scenarios[0].name, 'game-dense-25x25-placement-desktop');
+    assert.deepEqual(scenarios[0].placementProfile, {
+        action: 'run',
+        staggerMs: 120,
+    });
+    assert.match(scenarios[0].path, /placement=1/);
+    assert.match(scenarios[0].path, /profile=dense/);
+});
+
+test('profile request exposes placement profiling mode', () => {
+    const request = getScenarioRequest(
+        '/debug/profile/game?profile=dense&quality=medium&placement=1',
+    );
+
+    assert.equal(request.gardenProfile, 'dense');
+    assert.equal(request.placement, '1');
+    assert.equal(request.quality, 'medium');
+});
+
+function closeupPhase(value) {
+    const sample = {
+        drawCallsPerRenderedFrame: value * 10,
+        gpu: {
+            elapsedMaxMs: value * 2,
+            elapsedP95Ms: value,
+            supported: value > 1,
+        },
+        instancedDrawCalls: value * 4,
+        jsHeapMb: value * 20,
+        longTaskCount: value,
+        longTaskTotalMs: value * 5,
+        maxFrameMs: value * 4,
+        p95FrameMs: value * 3,
+        renderedFps: value * 10,
+        renderedFrames: 2,
+        trianglesPerRenderedFrame: value * 1_000,
+    };
+    const cdp = {
+        jsHeapMb: value * 20,
+        layoutDuration: value / 100,
+        scriptDuration: value / 10,
+        taskDuration: value / 5,
+    };
+    return {
+        profile: {
+            milestonesMs: {
+                firstDetailedChunk: value * 5,
+                fullyDetailed: value * 10,
+            },
+            lodEvaluation: {
+                durationMaxMs: value,
+                durationTotalMs: value * 2,
+                fieldEvaluationCount: value * 10,
+                fieldProjectionTestCount: value * 4,
+                groupRejectionCount: value * 2,
+                groupTestCount: value * 3,
+                updateCount: value,
+            },
+            instanceBuffers: {
+                activeAllocatedBytes: value * 1_000,
+                activeCapacity: value * 10,
+                activeEmptyMeshCount: 0,
+                activeLiveCount: value * 10,
+                activeMeshCount: value,
+                bufferUploadCount: value * 2,
+                orphanedResourceCount: 0,
+                peakAllocatedBytes: value * 2_000,
+                peakCapacity: value * 20,
+                releasedAllocationCount: value,
+                uploadedBytes: value * 500,
+            },
+            pipeline: {
+                packedWorker: {
+                    buildCount: value,
+                    buildDurationMaxMs: value,
+                    buildDurationTotalMs: value * 2,
+                    observed: true,
+                    packingDurationMaxMs: value * 0.5,
+                    packingDurationTotalMs: value,
+                    renderDataBuildDurationMaxMs: value,
+                    renderDataBuildDurationTotalMs: value * 2,
+                    rootBatchingDurationMaxMs: value * 1.5,
+                    rootBatchingDurationTotalMs: value * 3,
+                    topologyGenerationDurationMaxMs: value * 2,
+                    topologyGenerationDurationTotalMs: value * 4,
+                    totalDurationMaxMs: value * 4,
+                    totalDurationTotalMs: value * 8,
+                    transferByteLengthMax: value * 500,
+                    transferByteLengthTotal: value * 1_000,
+                    transferCount: value,
+                },
+                scheduler: {
+                    cancelledSubscriberCount: value,
+                    deduplicatedSubscriberCount: value * 3,
+                    observed: true,
+                    peakQueuedTaskCount: value * 4,
+                    staleResultCount: value * 2,
+                },
+                shaderPrewarm: {
+                    deduplicated: value > 1,
+                    durationMs: value * 6,
+                    observed: true,
+                    postSwapCompilationCount: value - 1,
+                    postSwapProgramCount: value * 7,
+                    programCountAfter: value * 6,
+                    programCountBefore: value * 5,
+                    readyAtFirstDetailSwap: true,
+                    status: 'ready',
+                },
+                templateCache: {
+                    estimatedBytes: value * 10_000,
+                    evictionCount: value,
+                    hitCount: value * 5,
+                    missCount: value * 2,
+                    observed: true,
+                },
+            },
+            renderData: {
+                activeArchetypeCount: value * 2,
+                buildCount: value,
+                buildDurationMaxMs: value * 3,
+                buildDurationTotalMs: value * 6,
+                builtPlantInstanceCount: value * 4,
+                detailedPlantInstanceCount: value * 3,
+                failedArchetypeCount: value - 1,
+                maxArchetypeCountPerBatch: value,
+            },
+        },
+        steady: {
+            cdp,
+            sample,
+        },
+        transition: {
+            cdp,
+            sample,
+        },
+    };
+}
+
+test('closeup medians include scheduler, template cache, and packed worker counters', () => {
+    const medians = buildPlantCloseupMedians(
+        [1, 3, 2].map((value, index) => ({
+            baseName: 'game-plant-heavy-closeup-desktop',
+            closeup: {
+                cold: closeupPhase(value),
+                warm: closeupPhase(value + 3),
+            },
+            name: `run-${index + 1}`,
+        })),
+    );
+    const summary = medians['game-plant-heavy-closeup-desktop'];
+
+    assert.equal(summary.runCount, 3);
+    assert.equal(summary.cold.detailReadyMs, 20);
+    assert.equal(summary.cold.firstDetailChunkMs, 10);
+    assert.equal(summary.cold.pipeline.schedulerPeakQueuedTaskCount, 8);
+    assert.equal(summary.cold.pipeline.schedulerDeduplicatedSubscriberCount, 6);
+    assert.equal(summary.cold.pipeline.templateCacheHitCount, 10);
+    assert.equal(summary.cold.pipeline.templateCacheEstimatedBytes, 20_000);
+    assert.equal(summary.cold.pipeline.packedTransferByteLengthTotal, 2_000);
+    assert.equal(
+        summary.cold.pipeline.packedTopologyGenerationDurationTotalMs,
+        8,
+    );
+    assert.equal(summary.cold.pipeline.packedRenderDataBuildDurationMaxMs, 2);
+    assert.equal(summary.cold.pipeline.packedTotalDurationTotalMs, 16);
+    assert.deepEqual(summary.cold.pipeline.shaderPrewarmStatusCounts, {
+        ready: 3,
+    });
+    assert.equal(summary.cold.pipeline.shaderPrewarmDurationMs, 12);
+    assert.equal(summary.cold.pipeline.shaderPrewarmDeduplicatedRunCount, 2);
+    assert.equal(
+        summary.cold.pipeline.shaderPrewarmPostSwapCompilationCount,
+        1,
+    );
+    assert.equal(
+        summary.cold.pipeline.shaderPrewarmReadyAtFirstDetailSwapRunCount,
+        3,
+    );
+    assert.equal(summary.cold.renderData.activeArchetypeCount, 4);
+    assert.equal(summary.cold.renderData.maxArchetypeCountPerBatch, 2);
+    assert.equal(summary.cold.renderData.detailedPlantInstanceCount, 6);
+    assert.equal(summary.cold.renderData.failedArchetypeCount, 1);
+    assert.equal(summary.cold.lodEvaluation.durationTotalMs, 4);
+    assert.equal(summary.cold.lodEvaluation.durationPerUpdateMs, 2);
+    assert.equal(summary.cold.lodEvaluation.fieldProjectionTestCount, 8);
+    assert.equal(summary.cold.lodEvaluation.fieldProjectionTestsPerUpdate, 4);
+    assert.equal(summary.cold.lodEvaluation.groupRejectionCount, 4);
+    assert.equal(summary.cold.lodEvaluation.groupRejectionRatio, 0.667);
+    assert.equal(summary.cold.instanceBuffers.activeAllocatedBytes, 2_000);
+    assert.equal(summary.cold.instanceBuffers.bufferUploadCount, 4);
+    assert.equal(summary.cold.instanceBuffers.orphanedResourceCount, 0);
+    assert.equal(summary.cold.transition.drawCallsPerRenderedFrame, 20);
+    assert.equal(summary.cold.transition.instancedCallsPerRenderedFrame, 4);
+    assert.equal(summary.cold.transition.trianglesPerRenderedFrame, 2_000);
+    assert.equal(summary.cold.transition.cdpScriptDuration, 0.2);
+    assert.equal(summary.cold.steady.gpuSupportedRunCount, 2);
+    assert.equal(summary.warm.pipeline.schedulerCancelledSubscriberCount, 5);
+    assert.equal(summary.warm.pipeline.packedBuildDurationTotalMs, 10);
+});

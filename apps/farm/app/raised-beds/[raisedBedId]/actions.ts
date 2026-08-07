@@ -66,6 +66,16 @@ export async function requestPlantStateChangeAction(
         };
     }
 
+    const activePlantCycle = field.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
+    if (!activePlantCycle) {
+        return {
+            success: false,
+            message: 'Aktivni ciklus biljke više nije dostupan.',
+        };
+    }
+
     if (requestedStatus === field.plantStatus) {
         return {
             success: false,
@@ -77,6 +87,8 @@ export async function requestPlantStateChangeAction(
         await createPlantStatusApprovalRequest({
             raisedBedId,
             positionIndex,
+            plantCycleEventId: activePlantCycle.plantPlaceEventId,
+            plantCycleVersionEventId: activePlantCycle.endedEventId,
             raisedBedFieldId: field.id,
             accountId: raisedBed.accountId,
             gardenId: raisedBed.gardenId,

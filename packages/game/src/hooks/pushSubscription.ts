@@ -26,6 +26,7 @@ export type BrowserPushSubscriptionJson = {
 export type BrowserPushSubscription = {
     endpoint: string;
     toJSON(): BrowserPushSubscriptionJson;
+    unsubscribe(): Promise<boolean>;
 };
 
 export type BrowserPushManager = {
@@ -39,6 +40,69 @@ export type PushDeviceMetadata = Omit<
     PushDeviceRegistrationPayload,
     'endpoint' | 'keys' | 'permissionState'
 >;
+
+export type PushDeviceRecoveryState = {
+    permissionState?: string | null;
+    revokedAt?: Date | string | null;
+};
+
+type PushDevicePermissionState = PushDeviceRecoveryState & {
+    deviceId?: string | null;
+    enabled: boolean;
+    id: string;
+};
+
+export type CurrentPushDevicePermissionReconciliation = {
+    id: string;
+    permissionState: 'default' | 'denied';
+};
+
+export type BrowserPushRecoveryState = {
+    status: string;
+    subscriptionChecked: boolean;
+};
+
+export function browserPushNeedsSubscriptionRecovery({
+    status,
+    subscriptionChecked,
+}: BrowserPushRecoveryState) {
+    if (!subscriptionChecked && status === 'granted') return false;
+    return status !== 'subscribed';
+}
+
+export function pushDeviceNeedsSubscriptionRecovery(
+    device: PushDeviceRecoveryState,
+) {
+    return Boolean(device.revokedAt) || device.permissionState !== 'granted';
+}
+
+export function currentPushDevicePermissionReconciliation({
+    browserPermission,
+    currentDeviceId,
+    devices,
+}: {
+    browserPermission: NotificationPermission;
+    currentDeviceId?: string;
+    devices: PushDevicePermissionState[];
+}): CurrentPushDevicePermissionReconciliation | null {
+    if (!currentDeviceId || browserPermission === 'granted') return null;
+
+    const currentDevice = devices.find(
+        (device) => device.deviceId === currentDeviceId,
+    );
+    if (!currentDevice || currentDevice.revokedAt) return null;
+    if (
+        !currentDevice.enabled &&
+        currentDevice.permissionState === browserPermission
+    ) {
+        return null;
+    }
+
+    return {
+        id: currentDevice.id,
+        permissionState: browserPermission,
+    };
+}
 
 function safeString(value: string | undefined): string | undefined {
     const trimmed = value?.trim();
@@ -85,6 +149,7 @@ export async function subscribePushDevice({
     metadata,
     persistSubscription,
     pushManager,
+    replaceExistingSubscription = false,
 }: {
     applicationServerKey: string;
     metadata: PushDeviceMetadata;
@@ -92,14 +157,23 @@ export async function subscribePushDevice({
         payload: PushDeviceRegistrationPayload,
     ) => Promise<void>;
     pushManager: BrowserPushManager;
+    replaceExistingSubscription?: boolean;
 }): Promise<PushDeviceRegistrationPayload> {
     const existingSubscription = await pushManager.getSubscription();
+    if (existingSubscription && replaceExistingSubscription) {
+        const removed = await existingSubscription.unsubscribe();
+        if (!removed) {
+            throw new Error('Stale push subscription could not be removed.');
+        }
+    }
     const subscription =
-        existingSubscription ??
-        (await pushManager.subscribe({
-            applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
-            userVisibleOnly: true,
-        }));
+        existingSubscription && !replaceExistingSubscription
+            ? existingSubscription
+            : await pushManager.subscribe({
+                  applicationServerKey:
+                      urlBase64ToUint8Array(applicationServerKey),
+                  userVisibleOnly: true,
+              });
     const payload = pushSubscriptionPayload(subscription, metadata);
 
     if (!payload) {

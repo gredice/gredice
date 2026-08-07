@@ -147,8 +147,10 @@ test('exact driver telemetry disappears after TTL while customer freshness stays
         status: 'offline',
         lastAcceptedAt: acceptedAt.toISOString(),
         mapAvailable: false,
+        exactLocationExpiresInMs: null,
     });
     assert.deepEqual(Object.keys(customer).sort(), [
+        'exactLocationExpiresInMs',
         'lastAcceptedAt',
         'mapAvailable',
         'status',
@@ -160,9 +162,15 @@ test('exact driver telemetry disappears after TTL while customer freshness stays
 });
 
 test('customer map remains available only while exact telemetry is within TTL', () => {
+    const fresh = customerDeliveryTrackingSummary(snapshot(), acceptedAt);
+    assert.equal(fresh.mapAvailable, true);
+    assert.equal(fresh.exactLocationExpiresInMs, deliveryRunExactLocationTtlMs);
     assert.equal(
-        customerDeliveryTrackingSummary(snapshot(), acceptedAt).mapAvailable,
-        true,
+        customerDeliveryTrackingSummary(
+            snapshot(),
+            new Date(acceptedAt.getTime() + 60_000),
+        ).exactLocationExpiresInMs,
+        deliveryRunExactLocationTtlMs - 60_000,
     );
     assert.equal(
         customerDeliveryTrackingSummary(

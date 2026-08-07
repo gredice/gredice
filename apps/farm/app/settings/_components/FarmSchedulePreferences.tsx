@@ -42,8 +42,8 @@ export function FarmSchedulePreferences({
                             <Switch
                                 checked={enabled}
                                 disabled={isPending}
-                                label="Grupiraj zalijevanje"
-                                description="Prikaži zadatke zalijevanja gredica u zasebnoj grupi na vrhu rasporeda."
+                                label="Grupiraj zalijevanje i berbu"
+                                description="Prikaži zadatke zalijevanja i berbe gredica u zasebnim grupama na vrhu rasporeda."
                                 onCheckedChange={setEnabled}
                             />
                             <Button

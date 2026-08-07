@@ -20,6 +20,7 @@ import {
     createFarm,
     createOperation,
     createOutletOffer,
+    deleteRaisedBedField,
     enqueueAutomationRunsFromDomainEvents,
     enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
@@ -36,6 +37,7 @@ import {
     getEvents,
     getFarmAcceptedOperationsByScheduleRange,
     getFarms,
+    getOperationById,
     getOperations,
     getRaisedBed,
     getRaisedBedOperationsByScheduleRange,
@@ -2583,6 +2585,23 @@ test('raised-bed operation automation repairs partial existing operations on ret
         raisedBedId: firstRaisedBedId,
         timestamp: scheduledDate,
     });
+    const completedPartialOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId: secondRaisedBedId,
+        timestamp: scheduledDate,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(
+            completedPartialOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+                images: [],
+            },
+        ),
+    );
     const definition = await createAutomationDefinition({
         key: 'test.raised-bed-photo-repair',
         name: 'Raised-bed photo repair',
@@ -2608,11 +2627,11 @@ test('raised-bed operation automation repairs partial existing operations on ret
     );
     assert.strictEqual(
         Reflect.get(actionStep.output, 'skippedExistingCount'),
-        1,
+        2,
     );
     assert.strictEqual(
         Reflect.get(actionStep.output, 'createdCount'),
-        expectedRecipientCount - 1,
+        expectedRecipientCount - 2,
     );
     assert.deepStrictEqual(
         Reflect.get(actionStep.output, 'repairedAcceptedOperationIds'),
@@ -2642,6 +2661,12 @@ test('raised-bed operation automation repairs partial existing operations on ret
         repairedOperation.scheduledDate?.toISOString(),
         scheduledDate.toISOString(),
     );
+    const completedOperation = await getOperationById(
+        completedPartialOperationId,
+    );
+    assert.strictEqual(completedOperation.status, 'pendingVerification');
+    assert.strictEqual(completedOperation.isAccepted, false);
+    assert.strictEqual(completedOperation.scheduledDate, undefined);
 });
 
 test('default greenhouse seedling watering automation is enabled daily', async () => {
@@ -3142,6 +3167,227 @@ test('plant-attributes automation skips replay when target status already exists
             ])
         ).length,
         1,
+    );
+});
+
+test('plant-attributes automation never rewinds completion evidence to planned', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'pendingVerification',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(field);
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: { eventType: knownEventTypes.operations.complete },
+            },
+            {
+                id: 'rewind-status',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
+                kind: 'action' as const,
+                position: { x: 280, y: 0 },
+                config: { targetStatus: 'planned' },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-rewind-status',
+                source: 'trigger',
+                target: 'rewind-status',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: `test.no-completion-rewind-${randomUUID()}`,
+        name: 'Never rewind completion evidence',
+        status: 'enabled',
+        graph,
+    });
+    const input = {
+        eventId: event.id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        data: event.data as Record<string, unknown>,
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const updatedField = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.strictEqual(updatedField?.plantStatus, 'pendingVerification');
+    const updateEvents = await getEvents(
+        knownEventTypes.raisedBedFields.plantUpdate,
+        [fieldAggregateId],
+    );
+    assert.deepStrictEqual(
+        updateEvents.map(
+            (updateEvent) =>
+                (updateEvent.data as Record<string, unknown> | null)?.status,
+        ),
+        ['pendingVerification'],
+    );
+});
+
+test('queued plant-attributes automation skips a replacement plant cycle', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    const firstPlantPlaceEvent = await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(field);
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: { eventType: knownEventTypes.operations.complete },
+            },
+            {
+                id: 'update-status',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
+                kind: 'action' as const,
+                position: { x: 280, y: 0 },
+                config: { targetStatus: 'sprouted' },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-update-status',
+                source: 'trigger',
+                target: 'update-status',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: `test.stale-plant-cycle-${randomUUID()}`,
+        name: 'Skip replacement plant cycle',
+        status: 'enabled',
+        graph,
+    });
+    const input = {
+        eventId: event.id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        data: event.data as Record<string, unknown>,
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(run);
+
+    await createEvent(knownEvents.raisedBedFields.deletedV1(fieldAggregateId));
+    await deleteRaisedBedField(raisedBedId, 0);
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    const replacementPlantPlaceEvent = await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-02T08:00:00.000Z',
+        }),
+    );
+    assert.notStrictEqual(
+        replacementPlantPlaceEvent.id,
+        firstPlantPlaceEvent.id,
+    );
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const updatedField = (await getRaisedBed(raisedBedId))?.fields[0];
+    const activePlantCycle = updatedField?.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
+    assert.strictEqual(
+        activePlantCycle?.plantPlaceEventId,
+        replacementPlantPlaceEvent.id,
+    );
+    assert.strictEqual(updatedField?.plantStatus, 'new');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fieldAggregateId,
+            ])
+        ).length,
+        0,
     );
 });
 

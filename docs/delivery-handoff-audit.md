@@ -24,9 +24,9 @@ between stops.
   workflow. Administrators can also inspect other runs when investigating
   delivery support cases, but cannot mutate an unassigned run.
 - Other drivers cannot read or mutate a run that is not assigned to them.
-- Customers cannot access raw handoff attempts, operation receipts, QR input,
-  driver identifiers, or internal exception details. A separate,
-  customer-safe receipt projection is deferred to GitHub issue `#4144`.
+- Customers receive only an account-owned handoff receipt projection. They
+  cannot access raw handoff attempts, operation receipts, QR input, driver
+  identifiers, internal exception details, or driver fulfillment notes.
 - The retention cron is an authenticated internal system actor. It receives no
   customer input and returns counts only.
 
@@ -102,6 +102,53 @@ idempotency and support. Logs and cron responses contain aggregate counts only.
 Invalid and wrong-stop attempts are bounded audit outcomes, not manifest
 changes. Network failures leave the operation retryable. A retry with the same
 operation identifier is safe even if the first response was lost.
+
+## Customer handoff receipt
+
+The customer receipt starts from the operation-owner-scoped delivery request,
+not from the driver's physical-stop manifest. A bulk stop can contain requests
+for multiple accounts, but each account receives only its own request, harvest
+description, and public trace path. The customer requests API uses an explicit,
+mode-specific allowlist: delivery responses include only the customer's public
+address and bounded receipt, while pickup responses include only the public
+pickup location and never a delivery receipt. Driver notes, contacts, route
+state, account identifiers, and private trace identifiers are not serialized.
+
+The durable fulfillment event carries the validated recorded handoff time so
+an offline completion keeps the time it happened instead of the later sync
+time. Legacy or malformed timestamps fall back to the server-created event
+time. The handoff payload is strictly validated and reduced to one advisory
+state:
+
+- `scanned` becomes `verified`;
+- `no-label` remains `no-label`;
+- `skipped` remains `skipped` without its operational reason;
+- `unverified`, `missing`, legacy V1 fulfillment, and malformed or unsupported
+  payloads become `not-recorded`.
+
+The receipt never includes a run ID, stop ID, retry attempt, client operation
+ID, numeric trace-link ID, driver identity, skip reason, raw QR value, address,
+phone number, or arbitrary delivery note. QR copy explicitly describes the
+check as supplemental evidence that does not affect the completed delivery
+status.
+
+The delivery dashboard has a separate discriminated customer contract. Pickup
+requests carry pickup status, location, and readiness instructions without ETA,
+driver-tracking, or delivery-recovery fields. Delivery requests carry only
+customer-facing ETA and tracking freshness. Exact driver coordinates remain
+behind the authenticated map proxy, which returns only the server-confirmed
+current physical destination for the owning account; it does not reveal later
+stops for the same account or their route sequence.
+
+Missing-harvest, damaged-harvest, and general-support actions open a prefilled
+message to `podrska@gredice.com`. The message contains only the owned delivery
+request reference, harvest name, and public trace reference when available, so
+support can identify the exact request or manifest item without receiving data
+from another recipient at the same physical stop.
+
+The reduced customer receipt is part of normal fulfillment history and follows
+the delivery/account lifecycle. The 90-day cleanup below removes noisy driver
+attempt and idempotency records, not the customer receipt's fulfillment event.
 
 ## Retention cleanup
 

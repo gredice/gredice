@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
 import { knownEventTypes } from './events';
+import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
 
 export const REFERRAL_REWARD_AMOUNT = 10000;
 
@@ -561,7 +562,17 @@ async function processReferralRewardsForAccountInTransaction(
     };
 }
 
-export async function processReferralRewardsForAccount(accountId: string) {
+export async function processReferralRewardsForAccount(
+    accountId: string,
+    transaction?: ScheduleTaskTransaction,
+) {
+    if (transaction) {
+        return await processReferralRewardsForAccountInTransaction(
+            accountId,
+            transaction,
+        );
+    }
+
     return await storage().transaction((tx) =>
         processReferralRewardsForAccountInTransaction(accountId, tx),
     );

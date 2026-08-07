@@ -1,5 +1,9 @@
 import 'server-only';
 import { formatDeliveryDateTime } from './deliveryFormatting';
+import {
+    deliveryRouteFallbackLogContext,
+    deliveryRouteFallbackLogMessage,
+} from './deliveryOperationalLogging';
 
 export type DeliveryCoordinates = {
     latitude: number;
@@ -772,10 +776,14 @@ export async function planDeliveryRoute({
         if (error instanceof DeliveryRoutePlanningError) {
             throw error;
         }
-        console.warn('Google route optimization failed; using local fallback', {
-            error,
-            stopCount: orderedStops.length,
-        });
+        console.warn(
+            deliveryRouteFallbackLogMessage,
+            deliveryRouteFallbackLogContext({
+                error,
+                nodeCount: orderedStops.length,
+                phase: 'initial-route',
+            }),
+        );
         return estimateDeliveryRoute({
             origin,
             stops: orderedStops,
@@ -812,10 +820,14 @@ export async function recalculateDeliveryRoute({
             enforceTimeWindows: false,
         });
     } catch (error) {
-        console.warn('Google ETA refresh failed; using local estimate', {
-            error,
-            stopCount: stops.length,
-        });
+        console.warn(
+            deliveryRouteFallbackLogMessage,
+            deliveryRouteFallbackLogContext({
+                error,
+                nodeCount: stops.length,
+                phase: 'live-eta',
+            }),
+        );
         return estimateDeliveryRoute({
             origin,
             stops,

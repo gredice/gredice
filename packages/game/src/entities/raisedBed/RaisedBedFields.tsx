@@ -1,11 +1,6 @@
 import { animated, useSpring } from '@react-spring/three';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
-import { resolveInGamePlantPreset } from '../../generators/plant/lib/inGamePlantPresets';
-import {
-    useCurrentGarden,
-    useIsSandboxGarden,
-} from '../../hooks/useCurrentGarden';
-import { useAllSorts } from '../../hooks/usePlantSorts';
+import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useRaisedBedOperationVisualRewards } from '../../hooks/useRaisedBedOperationVisualRewards';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useGameState } from '../../useGameState';
@@ -16,13 +11,10 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { resolveEntityNeighbors } from '../helpers/useEntityNeighbors';
+import { RaisedBedPlantField } from './RaisedBedPlantField';
 import {
-    mockPlantPresetLabelsBySortId,
-    RaisedBedPlantField,
-} from './RaisedBedPlantField';
-import {
-    hasActiveRaisedBedAgrotextileCover,
-    resolveRaisedBedAgrotextileCoverPositions,
+    hasActiveRaisedBedProtectiveCover,
+    resolveRaisedBedProtectiveCoverPositions,
 } from './raisedBedAgrotextileRewards';
 import { resolveRaisedBedHarvestPositions } from './raisedBedHarvestRewards';
 import { getRaisedBedFieldSurfacePosition } from './raisedBedSoilWetPatches';
@@ -234,19 +226,6 @@ function RaisedBedFieldVisitSummaryHighlight({
                 />
             </mesh>
         </animated.group>
-    );
-}
-
-function shouldRenderGeneratedPlantField(field: {
-    positionIndex: number;
-    plantStatus?: string | null;
-    plantSowDate?: string | null;
-}) {
-    return (
-        Boolean(field.plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested')
     );
 }
 
@@ -528,15 +507,16 @@ export function RaisedBedFields({
 }) {
     const { renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: sortData } = useAllSorts();
-    const isMock = useGameState((state) => state.isMock);
-    const isSandbox = useIsSandboxGarden();
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );
-    const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
+    const { data: cart } = useShoppingCart(
+        renderDetails && !isLocalSandbox && !generatedPlantsHandledExternally,
+    );
     const raisedBed = findRaisedBedByBlockId(currentGarden, blockId);
-    const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
+    const visualRewards = useRaisedBedOperationVisualRewards(
+        generatedPlantsHandledExternally ? undefined : raisedBed,
+    );
     const orientation = raisedBed?.orientation ?? 'vertical';
     const visitSummaryHighlight = useGameState(
         (state) => state.gardenVisitSummaryHighlight,
@@ -562,77 +542,82 @@ export function RaisedBedFields({
             item.positionIndex < blockOffset + 9,
     );
 
-    const displayedFields = [
-        ...(raisedBed?.fields?.filter(
-            (field) =>
-                isRaisedBedFieldOccupied(field) &&
-                field.positionIndex >= blockOffset &&
-                field.positionIndex < blockOffset + 9,
-        ) || []),
-        ...(cartItems?.map((item) => {
-            if (item.positionIndex === null) return null;
-            const field = {
-                id: `cart-item-${item.id}`,
-                positionIndex: item.positionIndex,
-                plantSortId: Number(item.entityId),
-            };
-            return field;
-        }) || []),
-    ];
+    const displayedFields = generatedPlantsHandledExternally
+        ? []
+        : [
+              ...(raisedBed?.fields?.filter(
+                  (field) =>
+                      isRaisedBedFieldOccupied(field) &&
+                      field.positionIndex >= blockOffset &&
+                      field.positionIndex < blockOffset + 9,
+              ) || []),
+              ...(cartItems?.map((item) => {
+                  if (item.positionIndex === null) return null;
+                  const field = {
+                      id: `cart-item-${item.id}`,
+                      positionIndex: item.positionIndex,
+                      plantSortId: Number(item.entityId),
+                  };
+                  return field;
+              }) || []),
+          ];
 
     if (!renderDetails) {
         return null;
     }
 
-    const weedFieldVisuals = raisedBed
-        ? Array.from({ length: 9 }, (_, localPositionIndex) => {
-              const positionIndex = blockOffset + localPositionIndex;
-              const field = raisedBed.fields.find(
-                  (candidate) =>
-                      candidate.active &&
-                      candidate.positionIndex === positionIndex,
-              );
-              const weedLevel = resolveRaisedBedFieldWeedLevel({
-                  fieldWeedState: field?.weedState,
-                  raisedBedFieldId:
-                      typeof field?.id === 'number' ? field.id : null,
-                  raisedBedId: raisedBed.id,
-                  raisedBedWeedState: raisedBed.weedState,
-                  visualRewards,
-              });
+    const weedFieldVisuals =
+        !generatedPlantsHandledExternally && raisedBed
+            ? Array.from({ length: 9 }, (_, localPositionIndex) => {
+                  const positionIndex = blockOffset + localPositionIndex;
+                  const field = raisedBed.fields.find(
+                      (candidate) =>
+                          candidate.active &&
+                          candidate.positionIndex === positionIndex,
+                  );
+                  const weedLevel = resolveRaisedBedFieldWeedLevel({
+                      fieldWeedState: field?.weedState,
+                      raisedBedFieldId:
+                          typeof field?.id === 'number' ? field.id : null,
+                      raisedBedId: raisedBed.id,
+                      raisedBedWeedState: raisedBed.weedState,
+                      visualRewards,
+                  });
 
-              return weedLevel
-                  ? {
-                        level: weedLevel,
-                        positionIndex: localPositionIndex,
-                    }
-                  : null;
-          }).filter(
-              (
-                  visual,
-              ): visual is {
-                  level: VisibleRaisedBedWeedLevel;
-                  positionIndex: number;
-              } => Boolean(visual),
-          )
-        : [];
-    const agrotextileCoverPositions = raisedBed
-        ? resolveRaisedBedAgrotextileCoverPositions({
-              blockOffset,
-              fields: raisedBed.fields,
-              raisedBedId: raisedBed.id,
-              visualRewards,
-          })
-        : [];
-    const agrotextileCoverPositionSet = new Set(agrotextileCoverPositions);
-    const hasRaisedBedAgrotextileCover = raisedBed
-        ? hasActiveRaisedBedAgrotextileCover({
-              raisedBedId: raisedBed.id,
-              visualRewards,
-          })
-        : false;
-    const wholeBedAgrotextileCoverLayout =
-        hasRaisedBedAgrotextileCover &&
+                  return weedLevel
+                      ? {
+                            level: weedLevel,
+                            positionIndex: localPositionIndex,
+                        }
+                      : null;
+              }).filter(
+                  (
+                      visual,
+                  ): visual is {
+                      level: VisibleRaisedBedWeedLevel;
+                      positionIndex: number;
+                  } => Boolean(visual),
+              )
+            : [];
+    const protectiveCoverPositions =
+        !generatedPlantsHandledExternally && raisedBed
+            ? resolveRaisedBedProtectiveCoverPositions({
+                  blockOffset,
+                  fields: raisedBed.fields,
+                  raisedBedId: raisedBed.id,
+                  visualRewards,
+              })
+            : [];
+    const protectiveCoverPositionSet = new Set(protectiveCoverPositions);
+    const hasRaisedBedProtectiveCover =
+        !generatedPlantsHandledExternally && raisedBed
+            ? hasActiveRaisedBedProtectiveCover({
+                  raisedBedId: raisedBed.id,
+                  visualRewards,
+              })
+            : false;
+    const wholeBedProtectiveCoverLayout =
+        hasRaisedBedProtectiveCover &&
         currentGarden &&
         blockIds.length > 0 &&
         blockIndex === 0
@@ -643,30 +628,32 @@ export function RaisedBedFields({
                   orientation,
               })
             : null;
-    const fieldAgrotextileCoverPositions = hasRaisedBedAgrotextileCover
+    const fieldProtectiveCoverPositions = hasRaisedBedProtectiveCover
         ? []
-        : agrotextileCoverPositions;
-    const supportPositions = raisedBed
-        ? resolveRaisedBedSupportPositions({
-              blockOffset,
-              fields: raisedBed.fields,
-              raisedBedId: raisedBed.id,
-              visualRewards,
-          })
-        : [];
+        : protectiveCoverPositions;
+    const supportPositions =
+        !generatedPlantsHandledExternally && raisedBed
+            ? resolveRaisedBedSupportPositions({
+                  blockOffset,
+                  fields: raisedBed.fields,
+                  raisedBedId: raisedBed.id,
+                  visualRewards,
+              })
+            : [];
     const visibleSupportPositions = supportPositions.filter(
-        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+        (positionIndex) => !protectiveCoverPositionSet.has(positionIndex),
     );
-    const harvestPositions = raisedBed
-        ? resolveRaisedBedHarvestPositions({
-              blockOffset,
-              fields: raisedBed.fields,
-              raisedBedId: raisedBed.id,
-              visualRewards,
-          })
-        : [];
+    const harvestPositions =
+        !generatedPlantsHandledExternally && raisedBed
+            ? resolveRaisedBedHarvestPositions({
+                  blockOffset,
+                  fields: raisedBed.fields,
+                  raisedBedId: raisedBed.id,
+                  visualRewards,
+              })
+            : [];
     const visibleHarvestPositions = harvestPositions.filter(
-        (positionIndex) => !agrotextileCoverPositionSet.has(positionIndex),
+        (positionIndex) => !protectiveCoverPositionSet.has(positionIndex),
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
     const highlightedPositionIndex =
@@ -696,7 +683,7 @@ export function RaisedBedFields({
                 />
             ) : null}
             {weedFieldVisuals.map((visual) =>
-                agrotextileCoverPositionSet.has(visual.positionIndex) ? null : (
+                protectiveCoverPositionSet.has(visual.positionIndex) ? null : (
                     <RaisedBedFieldWeeds
                         key={`raised-bed-field-weed-${blockId}-${visual.positionIndex}`}
                         blockIndex={blockIndex}
@@ -710,30 +697,8 @@ export function RaisedBedFields({
                 if (!field) return null;
                 const localPositionIndex = field.positionIndex - blockOffset;
 
-                if (agrotextileCoverPositionSet.has(localPositionIndex)) {
+                if (protectiveCoverPositionSet.has(localPositionIndex)) {
                     return null;
-                }
-
-                if (
-                    generatedPlantsHandledExternally &&
-                    field.plantSortId &&
-                    shouldRenderGeneratedPlantField(field)
-                ) {
-                    const sort = sortData?.find(
-                        (item) => item.id === field.plantSortId,
-                    );
-                    const resolvedPlantPreset = resolveInGamePlantPreset([
-                        sort?.information.name,
-                        sort?.information.plant.information?.name,
-                        sort?.information.plant.information?.latinName,
-                        isMock || isSandbox
-                            ? mockPlantPresetLabelsBySortId[field.plantSortId]
-                            : undefined,
-                    ]);
-
-                    if (resolvedPlantPreset) {
-                        return null;
-                    }
                 }
 
                 return (
@@ -744,6 +709,10 @@ export function RaisedBedFields({
                             harvestedVisual:
                                 harvestPositionSet.has(localPositionIndex),
                             positionIndex: localPositionIndex,
+                            supportedVisual:
+                                visibleSupportPositions.includes(
+                                    localPositionIndex,
+                                ),
                         }}
                         blockIndex={blockIndex}
                         orientation={orientation}
@@ -758,14 +727,14 @@ export function RaisedBedFields({
                     positionIndex={positionIndex}
                 />
             ))}
-            {wholeBedAgrotextileCoverLayout && (
+            {wholeBedProtectiveCoverLayout && (
                 <RaisedBedWholeAgrotextileCover
-                    layout={wholeBedAgrotextileCoverLayout}
+                    layout={wholeBedProtectiveCoverLayout}
                 />
             )}
-            {fieldAgrotextileCoverPositions.map((positionIndex) => (
+            {fieldProtectiveCoverPositions.map((positionIndex) => (
                 <RaisedBedFieldAgrotextileCover
-                    key={`raised-bed-field-agrotextile-${blockId}-${positionIndex}`}
+                    key={`raised-bed-field-protective-cover-${blockId}-${positionIndex}`}
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={positionIndex}

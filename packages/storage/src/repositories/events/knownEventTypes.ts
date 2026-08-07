@@ -1,4 +1,7 @@
 export const knownEventTypes = {
+    checkout: {
+        operationCreated: 'checkout.operation.created',
+    },
     accounts: {
         create: 'account.create',
         assignUser: 'account.assignUser',
@@ -49,14 +52,18 @@ export const knownEventTypes = {
         plantPlace: 'raisedBedField.plantPlace',
         plantSchedule: 'raisedBedField.plantSchedule',
         plantUpdate: 'raisedBedField.plantUpdate',
+        plantBlock: 'raisedBedField.plantBlock',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
         aiAnalysis: 'raisedBedField.aiAnalysis',
         weedStateSet: 'raisedBedField.weedState.set',
     },
     operations: {
+        acceptance: 'operation.acceptance',
         assign: 'operation.assign',
+        entityChange: 'operation.entityChange',
         schedule: 'operation.schedule',
         complete: 'operation.complete',
+        block: 'operation.block',
         completionEvidenceUpdate: 'operation.completionEvidence.update',
         verify: 'operation.verify',
         fail: 'operation.fail',
@@ -75,8 +82,15 @@ export const knownEventTypes = {
         requestPreparing: 'delivery.request.preparing',
         requestReady: 'delivery.request.ready',
         requestReadyEmailProcessed: 'delivery.request.ready.email_processed',
+        requestLifecycleNotificationProcessed:
+            'delivery.request.lifecycle_notification.processed',
+        requestLifecycleNotificationDecision:
+            'delivery.request.lifecycle_notification.decision',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
+        requestRouteStarted: 'delivery.request.route_started',
+        requestRouteProgress: 'delivery.request.route_progress',
+        requestArrived: 'delivery.request.arrived',
         requestExceptionRecorded: 'delivery.request.exception.recorded',
         requestExceptionRecovered: 'delivery.request.exception.recovered',
         requestSurveySent: 'delivery.request.survey_sent',

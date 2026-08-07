@@ -73,7 +73,7 @@ export function OperationsListItem({
                       scheduledDate: scheduledDate.toISOString(),
                   })
                 : null,
-            currency: useInventoryItem ? 'inventory' : 'eur',
+            currency: useInventoryItem ? 'inventory' : undefined,
         });
         animateFlyToShoppingCart.run();
     }

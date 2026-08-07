@@ -22,7 +22,7 @@ export type ButtonColor =
     | 'neutral';
 
 const buttonClassNames = cva(
-    'relative inline-flex min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+    'relative inline-flex min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform,translate,scale,rotate] duration-150 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
     {
         variants: {
             variant: {
@@ -51,6 +51,9 @@ const buttonClassNames = cva(
         },
     },
 );
+
+const buttonPressClassNames =
+    'active:scale-[0.98] motion-reduce:active:scale-[0.995] motion-reduce:duration-100';
 
 type ButtonOwnProps = VariantProps<typeof buttonClassNames> & {
     variant?: VariantKeys | 'link';
@@ -238,12 +241,20 @@ export function Button(props: ButtonProps) {
         variant,
         ...rest
     } = props;
+    const ariaDisabled =
+        props['aria-disabled'] === true || props['aria-disabled'] === 'true';
+    const hasPressFeedback =
+        variant !== 'link' &&
+        disabled !== true &&
+        loading !== true &&
+        !ariaDisabled;
 
     return (
         <button
             className={cx(
                 buttonClassNames({ fullWidth, size, variant }),
                 buttonColorClassName(variant, color),
+                hasPressFeedback && buttonPressClassNames,
                 className,
             )}
             disabled={disabled || loading}

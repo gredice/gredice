@@ -2,25 +2,34 @@
     "name": "@gredice/email",
     "version": "1.0.0",
     "private": true,
+    "type": "module",
     "exports": {
         "./*": "./src/*/index.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "test": "pnpm run /^test:.*/",
+        "test:existing-log": "node --experimental-test-module-mocks --experimental-strip-types --test ./src/acs/sendEmailExistingLog.node.spec.ts",
+        "test:operation-status": "node --import tsx --test ./src/acs-operation-status/index.node.spec.ts",
+        "test:provider-classification": "node --conditions=react-server --import tsx --test ./src/acs/index.node.spec.ts",
+        "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
-        "typescript": "6.0.3"
+        "@types/react": "19.2.18",
+        "tsx": "4.23.0",
+        "typescript": "7.0.2"
     },
     "dependencies": {
+        "@azure/communication-common": "2.4.0",
         "@azure/communication-email": "1.1.0",
         "@azure/core-lro": "3.3.1",
+        "@azure/core-rest-pipeline": "1.22.2",
         "@gredice/storage": "workspace:*",
-        "react": "19.2.7",
+        "react": "19.2.8",
         "react-email": "6.6.9"
     }
 }

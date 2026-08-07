@@ -8,6 +8,10 @@ import {
 import type { FarmScheduleDayData } from './scheduleData';
 import { formatScheduleLabelDate } from './scheduleLabelDate';
 import {
+    findHarvestLabelPlantCycleAtDate,
+    isHarvestLabelEligible,
+} from './scheduleLabelEligibility';
+import {
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
 } from './scheduleShared';
@@ -278,8 +282,36 @@ async function buildHarvestFieldLabel(
     dateLabel: string,
     createTraceLink: boolean,
 ): Promise<FieldOperationLabelData | null> {
-    const plantSortName = field.plantSortId
-        ? plantSortById.get(field.plantSortId)?.information?.name
+    const labelScope =
+        operation.raisedBedFieldId === null ? 'raisedBed' : 'explicitField';
+    if (createTraceLink && !isHarvestLabelEligible(field, labelScope)) {
+        return null;
+    }
+
+    const sortedPlantCycles = field.plantCycles?.toSorted((left, right) => {
+        const startedAtDifference =
+            left.startedAt.getTime() - right.startedAt.getTime();
+        if (startedAtDifference !== 0) {
+            return startedAtDifference;
+        }
+
+        return left.plantPlaceEventId - right.plantPlaceEventId;
+    });
+    const explicitPlantCycle =
+        createTraceLink && labelScope === 'explicitField'
+            ? findHarvestLabelPlantCycleAtDate(
+                  sortedPlantCycles,
+                  operation.completedAt ??
+                      operation.verifiedAt ??
+                      operation.timestamp,
+              )
+            : undefined;
+    const plantSortId =
+        createTraceLink && labelScope === 'explicitField'
+            ? explicitPlantCycle?.plantSortId
+            : field.plantSortId;
+    const plantSortName = plantSortId
+        ? plantSortById.get(plantSortId)?.information?.name
         : undefined;
 
     if (!raisedBed.physicalId || !plantSortName) {
@@ -301,21 +333,13 @@ async function buildHarvestFieldLabel(
         return label;
     }
 
-    const sortedPlantCycles = field.plantCycles?.toSorted((left, right) => {
-        const startedAtDifference =
-            left.startedAt.getTime() - right.startedAt.getTime();
-        if (startedAtDifference !== 0) {
-            return startedAtDifference;
-        }
-
-        return left.plantPlaceEventId - right.plantPlaceEventId;
-    });
     const plantCycle =
+        explicitPlantCycle ??
         sortedPlantCycles?.findLast(
             (cycle) =>
-                cycle.plantSortId === field.plantSortId &&
-                cycle.active !== false,
-        ) ?? sortedPlantCycles?.at(-1);
+                cycle.plantSortId === plantSortId && cycle.active !== false,
+        ) ??
+        sortedPlantCycles?.at(-1);
     const accountId = operation.accountId ?? raisedBed.accountId;
     const gardenId = operation.gardenId ?? raisedBed.gardenId;
 
@@ -323,7 +347,7 @@ async function buildHarvestFieldLabel(
         !accountId ||
         !gardenId ||
         !plantCycle ||
-        typeof field.plantSortId !== 'number'
+        typeof plantSortId !== 'number'
     ) {
         return label;
     }
@@ -336,7 +360,7 @@ async function buildHarvestFieldLabel(
         fieldPositionIndex: field.positionIndex,
         fieldLabel,
         plantPlaceEventId: plantCycle.plantPlaceEventId,
-        plantSortId: field.plantSortId,
+        plantSortId,
         harvestOperationId: operation.id,
     });
 

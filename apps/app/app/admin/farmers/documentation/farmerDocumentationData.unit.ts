@@ -39,6 +39,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
                 {
                     duration: 25,
                     application: 'raisedBedFull',
+                    appliesToAllTargets: true,
                 },
                 { perOperation: 2.5 },
             ),
@@ -201,6 +202,14 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             (row) => row.label === 'Cijena',
         ),
         { label: 'Cijena', value: '2,50 EUR' },
+    );
+    assert.equal(
+        documentationPackage.includedOperations[0]?.sections
+            .find((section) => section.title === 'Podaci radnje')
+            ?.lines.find((line) =>
+                line.startsWith('Primjenjivo na sve ciljeve:'),
+            ),
+        'Primjenjivo na sve ciljeve: Da',
     );
     assert.deepEqual(
         documentationPackage.discardedOperations.map((operation) => [

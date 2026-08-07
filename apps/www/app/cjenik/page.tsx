@@ -1,3 +1,4 @@
+import { minimumShoppingCartAmountEur } from '@gredice/js/shoppingCart';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -350,6 +351,10 @@ export default async function PricingPage() {
                                 </Chip>
                             </div>
                             <Typography level="body3" secondary>
+                                Minimalna vrijednost narudžbe iznosi{' '}
+                                {formatPrice(minimumShoppingCartAmountEur)}.
+                            </Typography>
+                            <Typography level="body3" secondary>
                                 Interne radnje namijenjene su OPG partnerima i
                                 ne naplaćuju se. Cijena 0 € za biljku, sortu ili
                                 javnu radnju znači da trenutačno nije dostupna.
@@ -360,7 +365,7 @@ export default async function PricingPage() {
 
                 <nav
                     aria-label="Dijelovi cjenika"
-                    className="sticky top-16 z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
+                    className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
                 >
                     <Chip color="neutral" href="#suncokreti" variant="soft">
                         Suncokreti

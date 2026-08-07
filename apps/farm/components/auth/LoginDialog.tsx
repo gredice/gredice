@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert } from '@gredice/ui/Alert';
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import {
     authCurrentUserQueryKeys,
     FacebookLoginButton,
@@ -8,39 +8,60 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
-import { Input } from '@gredice/ui/Input';
-import { Mail, Warning } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
+import { Mail } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useActionState, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getFarmLoginErrorCode } from '../../lib/auth/farmLoginContract';
+import {
+    type FarmOAuthProvider,
+    getFarmOAuthStartUrl,
+} from '../../lib/auth/safeFarmReturnPath';
 import { queryClient } from '../providers/ClientAppProvider';
-
-type OAuthProvider = 'google' | 'facebook';
+import { EmailLoginForm, type FarmLoginFailure } from './EmailLoginForm';
+import { FarmSignInShell } from './FarmSignInShell';
 
 export function LoginDialog() {
     const posthog = usePostHog();
     const router = useRouter();
     const [emailExpanded, setEmailExpanded] = useState(false);
+    const [emailFailure, setEmailFailure] = useState<FarmLoginFailure | null>(
+        null,
+    );
+    const [emailSubmitting, setEmailSubmitting] = useState(false);
+    const emailAttemptRef = useRef(0);
+    const restoreEmailTriggerFocusRef = useRef(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
         [],
     );
     const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
-    const [error, submitAction, isPending] = useActionState<
-        string | null,
-        FormData
-    >(async (_previousState, formData) => {
-        const email = formData.get('email');
-        const password = formData.get('password');
-
-        if (typeof email !== 'string' || typeof password !== 'string') {
-            return 'Unesi korisničko ime i zaporku.';
+    useEffect(() => {
+        if (!emailExpanded && restoreEmailTriggerFocusRef.current) {
+            restoreEmailTriggerFocusRef.current = false;
+            document.getElementById('farm-email-login-trigger')?.focus();
         }
+    }, [emailExpanded]);
 
+    const setBoundedEmailFailure = (
+        code: ReturnType<typeof getFarmLoginErrorCode>,
+        status?: number,
+    ) => {
+        emailAttemptRef.current += 1;
+        setEmailFailure({ attempt: emailAttemptRef.current, code });
+        posthog?.capture('user_login_failed', {
+            provider: 'password',
+            reason: code,
+            status,
+            surface: 'farm',
+        });
+    };
+
+    const handleEmailLogin = async (email: string, password: string) => {
+        setEmailSubmitting(true);
+        setEmailFailure(null);
         try {
             posthog?.capture('user_login_started', {
                 provider: 'password',
@@ -53,171 +74,138 @@ export function LoginDialog() {
                 },
                 body: JSON.stringify({ email, password }),
             });
+            const responseBody: unknown = await response
+                .json()
+                .catch(() => null);
 
             if (!response.ok) {
-                posthog?.capture('user_login_failed', {
-                    provider: 'password',
-                    reason: 'invalid_credentials_or_access',
+                const code = getFarmLoginErrorCode(responseBody);
+                console.warn('Farm email login rejected', {
+                    reason: code,
                     status: response.status,
-                    surface: 'farm',
                 });
-                console.error('Login failed with status', response.status);
-                return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
-            }
-
-            // Tokens are now in httpOnly cookies set by the API
-            // No need to store them in localStorage
-            await response.json();
-
-            const currentUserResponse = await fetch(
-                '/api/users/current-claims',
-            );
-            if (!currentUserResponse.ok) {
-                posthog?.capture('user_login_failed', {
-                    provider: 'password',
-                    reason: 'no_farm_access',
-                    status: currentUserResponse.status,
-                    surface: 'farm',
-                });
-                return 'Tvoj korisnički račun nema pristup Gredice farmi.';
+                setBoundedEmailFailure(code, response.status);
+                return;
             }
 
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
             router.refresh();
-            return null;
-        } catch (cause) {
-            posthog?.capture('user_login_failed', {
-                provider: 'password',
-                reason: 'unexpected_error',
-                surface: 'farm',
-            });
-            console.error('Login request failed', cause);
-            return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
+        } catch {
+            console.error('Farm email login request failed');
+            setBoundedEmailFailure('service_unavailable');
+        } finally {
+            setEmailSubmitting(false);
         }
-    }, null);
-    const handleOAuthLogin = (provider: OAuthProvider) => {
+    };
+
+    const handleEmailBack = () => {
+        restoreEmailTriggerFocusRef.current = true;
+        setEmailFailure(null);
+        setEmailExpanded(false);
+    };
+
+    const handleOAuthLogin = (provider: FarmOAuthProvider) => {
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'farm',
         });
-        const callbackPath =
-            provider === 'google'
-                ? '/prijava/google-prijava/povratak'
-                : '/prijava/facebook-prijava/povratak';
-        const redirectUrl = `${window.location.origin}${callbackPath}`;
-        // Use proxy path instead of direct API URL
-        const authUrl = new URL(
-            `/api/gredice/api/auth/${provider}`,
-            window.location.origin,
-        );
-        authUrl.searchParams.set('redirect', redirectUrl);
-        window.location.href = authUrl.toString();
+        window.location.href = getFarmOAuthStartUrl({
+            apiOrigin: getBrowserGrediceAppOrigin('api'),
+            farmOrigin: window.location.origin,
+            provider,
+            returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        });
     };
 
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-primary/10 via-transparent to-success/10 p-4">
-            <Image
-                src="/login-bg.webp"
-                alt="Pozadina"
-                fill
-                className="object-cover"
-                quality={100}
-                priority
-            />
-            <Modal
-                open
-                dismissible={false}
-                title="Prijava u Gredice farmu"
-                className="md:max-w-md"
-            >
-                <Stack spacing={8}>
-                    <Stack spacing={2}>
-                        <Typography level="h3" className="text-2xl" semiBold>
-                            Dobrodošli
-                        </Typography>
-                        <Typography className="text-muted-foreground">
-                            Prijavi se s Gredice računom kako bi upravljao
-                            svojom farmom.
-                        </Typography>
-                    </Stack>
-                    {!emailExpanded ? (
-                        <Stack spacing={2}>
-                            <GoogleLoginButton
-                                onClick={() => handleOAuthLogin('google')}
-                                lastUsed={lastLoginProvider === 'google'}
-                            >
-                                Google prijava
-                            </GoogleLoginButton>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            >
-                                Facebook prijava
-                            </FacebookLoginButton>
-                            <Button
-                                type="button"
-                                variant="outlined"
-                                color="neutral"
-                                fullWidth
-                                startDecorator={
-                                    <Mail className="h-4 w-4 shrink-0" />
-                                }
-                                onClick={() => setEmailExpanded(true)}
-                            >
-                                Email prijava
-                            </Button>
-                        </Stack>
-                    ) : (
-                        <form
-                            action={submitAction}
-                            className="w-full space-y-4"
-                        >
-                            <Stack spacing={6}>
-                                <Stack spacing={2}>
-                                    <Input
-                                        name="email"
-                                        label="Email"
-                                        placeholder="ime@primjer.com"
-                                        type="email"
-                                        autoComplete="email"
-                                        fullWidth
-                                        required
-                                    />
-                                    <Input
-                                        name="password"
-                                        label="Zaporka"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        fullWidth
-                                        required
-                                    />
-                                </Stack>
-                                <Button
-                                    type="submit"
-                                    loading={isPending}
-                                    variant="solid"
-                                    fullWidth
-                                >
-                                    Prijavi se
-                                </Button>
-                                {error && (
-                                    <Alert
-                                        color="danger"
-                                        startDecorator={
-                                            <Warning className="size-5" />
-                                        }
-                                    >
-                                        {error}
-                                    </Alert>
-                                )}
-                            </Stack>
-                        </form>
-                    )}
+        <FarmSignInShell>
+            <Stack spacing={7}>
+                <Stack spacing={2}>
+                    <Typography level="h2" className="text-xl" semiBold>
+                        Dobrodošli
+                    </Typography>
+                    <Typography className="text-muted-foreground">
+                        Prijavi se s Gredice računom kako bi upravljao svojom
+                        farmom.
+                    </Typography>
                 </Stack>
-            </Modal>
-        </div>
+                {!emailExpanded ? (
+                    <Stack spacing={2}>
+                        <GoogleLoginButton
+                            aria-describedby={
+                                lastLoginProvider === 'google'
+                                    ? 'farm-google-last-used'
+                                    : undefined
+                            }
+                            lastUsed={lastLoginProvider === 'google'}
+                            onClick={() => handleOAuthLogin('google')}
+                            size="lg"
+                        >
+                            Google prijava
+                        </GoogleLoginButton>
+                        {lastLoginProvider === 'google' ? (
+                            <Typography
+                                className="text-center text-xs text-muted-foreground sm:sr-only"
+                                id="farm-google-last-used"
+                                level="body3"
+                            >
+                                Zadnje korišteno
+                            </Typography>
+                        ) : null}
+                        <FacebookLoginButton
+                            aria-describedby={
+                                lastLoginProvider === 'facebook'
+                                    ? 'farm-facebook-last-used'
+                                    : undefined
+                            }
+                            lastUsed={lastLoginProvider === 'facebook'}
+                            onClick={() => handleOAuthLogin('facebook')}
+                            size="lg"
+                        >
+                            Facebook prijava
+                        </FacebookLoginButton>
+                        {lastLoginProvider === 'facebook' ? (
+                            <Typography
+                                className="text-center text-xs text-muted-foreground sm:sr-only"
+                                id="farm-facebook-last-used"
+                                level="body3"
+                            >
+                                Zadnje korišteno
+                            </Typography>
+                        ) : null}
+                        <Button
+                            color="neutral"
+                            fullWidth
+                            id="farm-email-login-trigger"
+                            onClick={() => {
+                                setEmailFailure(null);
+                                setEmailExpanded(true);
+                            }}
+                            size="lg"
+                            startDecorator={
+                                <Mail
+                                    aria-hidden="true"
+                                    className="h-4 w-4 shrink-0"
+                                />
+                            }
+                            type="button"
+                            variant="outlined"
+                        >
+                            Email prijava
+                        </Button>
+                    </Stack>
+                ) : (
+                    <EmailLoginForm
+                        failure={emailFailure}
+                        loading={emailSubmitting}
+                        onBack={handleEmailBack}
+                        onSubmit={handleEmailLogin}
+                    />
+                )}
+            </Stack>
+        </FarmSignInShell>
     );
 }
 

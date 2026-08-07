@@ -1,7 +1,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 
-type FilterParam = 'category' | 'tag' | 'type';
+type FilterParam = 'category' | 'tag';
 
 type FilterOption = {
     label: string;
@@ -26,10 +26,6 @@ function filterHref({
     const params = new URLSearchParams();
 
     for (const [key, filterValue] of Object.entries(currentFilters ?? {})) {
-        if (key === 'category' && param === 'type' && value === 'changelog') {
-            continue;
-        }
-
         if (key !== param && filterValue) {
             params.set(key, filterValue);
         }

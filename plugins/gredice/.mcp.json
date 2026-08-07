@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"gredice": {
+			"type": "http",
+			"url": "https://api.gredice.com/api/mcp"
+		}
+	}
+}

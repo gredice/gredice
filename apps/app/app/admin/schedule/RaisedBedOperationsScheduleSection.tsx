@@ -45,9 +45,11 @@ import {
     parseScheduledDateInput,
 } from './scheduleOptimisticHelpers';
 import {
+    canAcceptOperationTask,
     formatMinutes,
     getOperationDurationMinutes,
     getScheduleTaskRowClassName,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -159,6 +161,7 @@ export function RaisedBedOperationsScheduleSection({
             link: getScheduleOperationHref(operation.id),
             approved:
                 operation.isAccepted &&
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
@@ -169,8 +172,7 @@ export function RaisedBedOperationsScheduleSection({
         .filter(
             (operation) =>
                 !operation.isAccepted &&
-                !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status) &&
+                canAcceptOperationTask(operation.status) &&
                 !!operation.assignedUserId,
         )
         .map((operation) => {
@@ -181,6 +183,8 @@ export function RaisedBedOperationsScheduleSection({
 
             return {
                 id: operation.id,
+                entityId: operation.entityId,
+                taskVersionEventId: operation.taskVersionEventId,
                 label,
             };
         });
@@ -193,21 +197,27 @@ export function RaisedBedOperationsScheduleSection({
         )
         .map((operation) => ({
             id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
         }));
     const operationsToAssign = dayOperations
         .filter(
             (operation) =>
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({
             id: operation.id,
+            expectedEntityId: operation.entityId,
+            expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
     const operationsToCancel = dayOperations
         .filter(
             (operation) =>
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status) &&
@@ -221,6 +231,8 @@ export function RaisedBedOperationsScheduleSection({
 
             return {
                 id: operation.id,
+                entityId: operation.entityId,
+                taskVersionEventId: operation.taskVersionEventId,
                 label,
             };
         });
@@ -294,7 +306,11 @@ export function RaisedBedOperationsScheduleSection({
                                 action: () =>
                                     Promise.all(
                                         operationsToApprove.map((operation) =>
-                                            acceptOperationAction(operation.id),
+                                            acceptOperationAction(
+                                                operation.id,
+                                                operation.entityId,
+                                                operation.taskVersionEventId,
+                                            ),
                                         ),
                                     ),
                                 errorLogMessage:
@@ -343,6 +359,8 @@ export function RaisedBedOperationsScheduleSection({
                                         operationsToAssign.map((operation) =>
                                             assignOperationUserAction(
                                                 operation.id,
+                                                operation.expectedEntityId,
+                                                operation.expectedTaskVersionEventId,
                                                 assignedUserIds,
                                             ),
                                         ),
@@ -379,6 +397,14 @@ export function RaisedBedOperationsScheduleSection({
                                                 formData.set(
                                                     'operationId',
                                                     operation.id.toString(),
+                                                );
+                                                formData.set(
+                                                    'expectedEntityId',
+                                                    operation.entityId.toString(),
+                                                );
+                                                formData.set(
+                                                    'expectedTaskVersionEventId',
+                                                    operation.taskVersionEventId.toString(),
                                                 );
                                                 formData.set(
                                                     'scheduledDate',
@@ -446,7 +472,11 @@ export function RaisedBedOperationsScheduleSection({
 
                     const operationPendingVerification =
                         isOperationPendingVerification(operation.status);
+                    const operationBlocked = isOperationBlocked(
+                        operation.status,
+                    );
                     const operationLocked =
+                        operationBlocked ||
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status) ||
                         operationPendingVerification;
@@ -464,24 +494,28 @@ export function RaisedBedOperationsScheduleSection({
                         operation.status,
                     )
                         ? 'Otkazano'
-                        : operationPendingVerification
-                          ? 'Čeka verifikaciju'
-                          : isOperationCompleted(operation.status)
-                            ? null
-                            : operation.isAccepted
+                        : operationBlocked
+                          ? 'Blokirano'
+                          : operationPendingVerification
+                            ? 'Čeka verifikaciju'
+                            : isOperationCompleted(operation.status)
                               ? null
-                              : 'Nije potvrđeno';
+                              : operation.isAccepted
+                                ? null
+                                : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
-                        : operationPendingVerification
-                          ? 'text-amber-600'
-                          : isOperationCompleted(operation.status)
-                            ? 'text-green-600'
-                            : operation.isAccepted
+                        : operationBlocked
+                          ? 'text-red-700 dark:text-red-300'
+                          : operationPendingVerification
+                            ? 'text-amber-600'
+                            : isOperationCompleted(operation.status)
                               ? 'text-green-600'
-                              : 'text-muted-foreground';
+                              : operation.isAccepted
+                                ? 'text-green-600'
+                                : 'text-muted-foreground';
                     const attachImages = Boolean(
                         operationData?.conditions?.completionAttachImages ||
                             operationData?.conditions
@@ -524,6 +558,9 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : operationPendingVerification ? (
                                         <VerifyOperationModal
                                             operationId={operation.id}
+                                            expectedTaskVersionEventId={
+                                                operation.taskVersionEventId
+                                            }
                                             label={operationLabel}
                                             onConfirm={() =>
                                                 runOptimisticAction({
@@ -538,6 +575,7 @@ export function RaisedBedOperationsScheduleSection({
                                                     action: () =>
                                                         verifyOperationAction(
                                                             operation.id,
+                                                            operation.taskVersionEventId,
                                                         ),
                                                     errorLogMessage:
                                                         'Error verifying operation:',
@@ -551,6 +589,12 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : operation.isAccepted ? (
                                         <CompleteOperationModal
                                             operationId={operation.id}
+                                            expectedEntityId={
+                                                operation.entityId
+                                            }
+                                            expectedTaskVersionEventId={
+                                                operation.taskVersionEventId
+                                            }
                                             label={operationLabel}
                                             raisedBedPhysicalId={physicalId}
                                             conditions={
@@ -573,11 +617,15 @@ export function RaisedBedOperationsScheduleSection({
                                                         imageUrls
                                                             ? completeOperationWithImageUrls(
                                                                   operation.id,
+                                                                  operation.entityId,
+                                                                  operation.taskVersionEventId,
                                                                   imageUrls,
                                                                   notes,
                                                               )
                                                             : completeOperation(
                                                                   operation.id,
+                                                                  operation.entityId,
+                                                                  operation.taskVersionEventId,
                                                                   undefined,
                                                                   notes,
                                                               ),
@@ -591,6 +639,13 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : (
                                         <AcceptOperationModal
                                             operationId={operation.id}
+                                            expectedEntityId={
+                                                operation.entityId
+                                            }
+                                            expectedTaskVersionEventId={
+                                                operation.taskVersionEventId
+                                            }
+                                            operationStatus={operation.status}
                                             label={operationLabel}
                                             raisedBedPhysicalId={physicalId}
                                             disabled={!operation.assignedUserId}
@@ -607,6 +662,8 @@ export function RaisedBedOperationsScheduleSection({
                                                     action: () =>
                                                         acceptOperationAction(
                                                             operation.id,
+                                                            operation.entityId,
+                                                            operation.taskVersionEventId,
                                                         ),
                                                     errorLogMessage:
                                                         'Error accepting operation:',
@@ -642,6 +699,11 @@ export function RaisedBedOperationsScheduleSection({
                                         <Typography
                                             level="body2"
                                             className={`shrink-0 italic ${operationStatusClassName}`}
+                                            title={
+                                                operationBlocked
+                                                    ? operation.blockReasonLabel
+                                                    : undefined
+                                            }
                                         >
                                             {operationStatusText}
                                         </Typography>
@@ -678,7 +740,10 @@ export function RaisedBedOperationsScheduleSection({
                                     )}
                                 </Row>
                                 <Row spacing={0} className="ml-auto shrink-0">
-                                    {!isOperationCompleted(operation.status) &&
+                                    {!operationBlocked &&
+                                        !isOperationCompleted(
+                                            operation.status,
+                                        ) &&
                                         !operationPendingVerification && (
                                             <OperationRequirementIcons
                                                 attachImages={attachImages}
@@ -702,6 +767,9 @@ export function RaisedBedOperationsScheduleSection({
                                     {operationPendingVerification && (
                                         <OperationCompletionEvidenceEditModal
                                             operationId={operation.id}
+                                            expectedTaskVersionEventId={
+                                                operation.taskVersionEventId
+                                            }
                                             label={operationLabel}
                                             initialNotes={
                                                 operation.completionNotes ?? ''
@@ -723,6 +791,10 @@ export function RaisedBedOperationsScheduleSection({
                                     )}
                                     <AssignOperationModal
                                         operationId={operation.id}
+                                        expectedEntityId={operation.entityId}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
                                         label={operationLabel}
                                         farmUsers={
                                             assignableFarmUsersByOperationId[
@@ -761,6 +833,8 @@ export function RaisedBedOperationsScheduleSection({
                                                 action: () =>
                                                     assignOperationUserAction(
                                                         operation.id,
+                                                        operation.entityId,
+                                                        operation.taskVersionEventId,
                                                         assignedUserIds,
                                                     ),
                                                 errorLogMessage:
@@ -774,6 +848,8 @@ export function RaisedBedOperationsScheduleSection({
                                         operation={{
                                             id: operation.id,
                                             entityId: operation.entityId,
+                                            taskVersionEventId:
+                                                operation.taskVersionEventId,
                                             scheduledDate:
                                                 operation.scheduledDate,
                                         }}
@@ -818,7 +894,10 @@ export function RaisedBedOperationsScheduleSection({
                                                         ? 'Prerasporedi radnju'
                                                         : 'Zakaži radnju'
                                                 }
-                                                disabled={operationLocked}
+                                                disabled={
+                                                    operationLocked &&
+                                                    !operationBlocked
+                                                }
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -828,6 +907,8 @@ export function RaisedBedOperationsScheduleSection({
                                         operation={{
                                             id: operation.id,
                                             entityId: operation.entityId,
+                                            taskVersionEventId:
+                                                operation.taskVersionEventId,
                                             scheduledDate:
                                                 operation.scheduledDate,
                                             status: operation.status,
@@ -861,7 +942,10 @@ export function RaisedBedOperationsScheduleSection({
                                                 variant="plain"
                                                 size="xs"
                                                 title="Otkaži operaciju"
-                                                disabled={operationLocked}
+                                                disabled={
+                                                    operationLocked &&
+                                                    !operationBlocked
+                                                }
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

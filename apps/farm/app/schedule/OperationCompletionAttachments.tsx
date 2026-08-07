@@ -8,7 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 
-const THUMBNAIL_SIZE = 36;
+const THUMBNAIL_SIZE = 44;
 
 type OperationCompletionAttachmentsProps = {
     operationId: number;
@@ -51,6 +51,7 @@ export function OperationCompletionAttachments({
                     title="Napomena završetka"
                     trigger={
                         <IconButton
+                            size="lg"
                             variant="plain"
                             title="Prikaži napomenu završetka"
                         >
@@ -72,7 +73,7 @@ export function OperationCompletionAttachments({
                 </Modal>
             )}
             {images.length > 0 && (
-                <div className="h-9 w-9 shrink-0 overflow-visible">
+                <div className="h-11 w-11 shrink-0 overflow-visible">
                     <ImageGallery
                         images={images}
                         previewWidth={THUMBNAIL_SIZE}

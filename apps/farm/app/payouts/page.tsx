@@ -19,7 +19,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmPayoutFarmSelect } from './FarmPayoutFarmSelect';
 import { PayoutRequestForm } from './PayoutRequestForm';
@@ -137,9 +136,9 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
     if (!selectedFarm) {
         return (
             <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-                <div className="flex min-w-0 items-center">
-                    <HomeButton />
-                </div>
+                <Typography component="h1" level="h5" semiBold>
+                    Isplate
+                </Typography>
                 <Card>
                     <CardContent>
                         <Typography
@@ -186,9 +185,9 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 items-center">
-                <HomeButton />
-            </div>
+            <Typography component="h1" level="h5" semiBold>
+                Isplate
+            </Typography>
 
             {farms.length > 1 && (
                 <Card>

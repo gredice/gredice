@@ -3,6 +3,7 @@ import type { FarmScheduleOperationsDayData } from './scheduleData';
 import type { FarmScheduleOperationsMode } from './scheduleShared';
 
 interface FarmScheduleOperationsSectionContentProps {
+    accountId: string;
     dayDataPromise: Promise<FarmScheduleOperationsDayData>;
     plantSortsPromise: ReturnType<
         typeof import('./scheduleData').getFarmSchedulePlantSorts
@@ -14,15 +15,20 @@ interface FarmScheduleOperationsSectionContentProps {
         typeof import('./scheduleData').getFarmScheduleRaisedBedPhotoPreviewsForDay
     >;
     mode: FarmScheduleOperationsMode;
+    selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }
 
 export async function FarmScheduleOperationsSectionContent({
+    accountId,
     dayDataPromise,
     plantSortsPromise,
     operationsDataPromise,
     raisedBedPhotoPreviewByIdPromise,
     mode,
+    selectedDateKey,
+    sessionIncarnation,
     userId,
 }: FarmScheduleOperationsSectionContentProps) {
     const { raisedBeds, scheduledOperations } = await dayDataPromise;
@@ -38,12 +44,15 @@ export async function FarmScheduleOperationsSectionContent({
 
     return (
         <FarmScheduleOperationsSection
+            accountId={accountId}
             raisedBeds={raisedBeds}
             scheduledOperations={scheduledOperations}
             plantSorts={plantSorts}
             operationsData={operationsData}
             raisedBedPhotoPreviewByIdPromise={raisedBedPhotoPreviewByIdPromise}
             mode={mode}
+            selectedDateKey={selectedDateKey}
+            sessionIncarnation={sessionIncarnation}
             userId={userId}
         />
     );

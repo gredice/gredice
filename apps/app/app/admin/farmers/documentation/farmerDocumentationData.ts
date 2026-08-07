@@ -173,6 +173,7 @@ const documentationEntityConfig: Record<
 
 const operationAttributeLabels: Record<string, string> = {
     application: 'Primjena',
+    appliesToAllTargets: 'Primjenjivo na sve ciljeve',
     deliverable: 'Isporuka',
     frequency: 'Učestalost',
     internal: 'Interno',

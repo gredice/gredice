@@ -1,0 +1,12 @@
+@media (prefers-reduced-motion: reduce) {
+    .reducedMotionCollapse[data-collapse-state] {
+        transition-property: opacity, grid-template-rows;
+        transition-duration: 120ms, 0ms;
+        transition-timing-function: ease-out, linear;
+        transition-delay: 0ms, 120ms;
+    }
+
+    .reducedMotionCollapse[data-collapse-state="open"] {
+        transition-delay: 0ms, 0ms;
+    }
+}

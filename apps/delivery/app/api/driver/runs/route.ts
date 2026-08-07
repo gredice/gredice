@@ -40,7 +40,6 @@ export async function POST(request: Request) {
             console.error('Failed to start delivery run', {
                 ...deliveryRunStartErrorLogContext(error),
                 requestCount: deliveryRequestIds.length,
-                userId,
             });
             return Response.json(
                 {

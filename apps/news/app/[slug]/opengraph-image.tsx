@@ -23,6 +23,8 @@ export default async function BlogPostOpenGraphImage({
         <CmsOgImage
             imageUrl={entry?.metaImageUrl}
             kind="blog"
+            pointOfInterestX={entry?.metaImagePoiX}
+            pointOfInterestY={entry?.metaImagePoiY}
             tags={entry?.tags ?? []}
             title={entry?.title ?? 'Novosti'}
         />,

@@ -2,13 +2,17 @@
 
 import type { PlantSortData } from '@gredice/client';
 import { SelectItems } from '@gredice/ui/SelectItems';
+import { useRouter } from 'next/navigation';
 import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
+import { canSwitchPlantingTaskSort } from '../../schedule/scheduleShared';
 
 type RaisedBedFieldPlantSortSelectorProps = {
     raisedBedId: number;
     positionIndex: number;
     status: string | null;
     plantSortId?: number | null;
+    expectedPlantCycleEventId?: number;
+    expectedPlantCycleVersionEventId?: number;
     plantSorts: PlantSortData[];
     variant?: 'outlined' | 'plain';
     className?: string;
@@ -19,10 +23,13 @@ export function RaisedBedFieldPlantSortSelector({
     positionIndex,
     status,
     plantSortId,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
     plantSorts,
     variant = 'outlined',
     className,
 }: RaisedBedFieldPlantSortSelectorProps) {
+    const router = useRouter();
     const items = plantSorts
         .map((sort) => ({
             value: sort.id.toString(),
@@ -43,8 +50,13 @@ export function RaisedBedFieldPlantSortSelector({
     const placeholder =
         items.length === 0 ? 'Nema dostupnih biljaka' : 'Odaberi biljku';
 
-    const handleChange = (newValue: string) => {
-        if (!newValue) {
+    const handleChange = async (newValue: string) => {
+        if (
+            !newValue ||
+            !plantSortId ||
+            !expectedPlantCycleEventId ||
+            !expectedPlantCycleVersionEventId
+        ) {
             return;
         }
 
@@ -53,12 +65,16 @@ export function RaisedBedFieldPlantSortSelector({
             return;
         }
 
-        raisedBedFieldUpdatePlant({
+        await raisedBedFieldUpdatePlant({
             raisedBedId,
             positionIndex,
             status: status ?? undefined,
             plantSortId: nextPlantSortId,
+            expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId,
+            expectedPlantSortId: plantSortId,
         });
+        router.refresh();
     };
 
     return (
@@ -67,7 +83,13 @@ export function RaisedBedFieldPlantSortSelector({
             value={plantSortId ? plantSortId.toString() : ''}
             onValueChange={handleChange}
             items={items}
-            disabled={items.length === 0}
+            disabled={
+                items.length === 0 ||
+                !plantSortId ||
+                !expectedPlantCycleEventId ||
+                !expectedPlantCycleVersionEventId ||
+                !canSwitchPlantingTaskSort(status)
+            }
             variant={variant}
             className={className}
         />

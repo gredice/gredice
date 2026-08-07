@@ -153,6 +153,7 @@ test('operations list merges operation and sowing rows before sorting, filtering
                 id: 301,
                 entityId: 501,
                 entityTypeName: 'operation',
+                taskVersionEventId: 9101,
                 status: 'planned',
                 accountId: 'account-1',
                 farmId: 1,
@@ -180,6 +181,12 @@ test('operations list merges operation and sowing rows before sorting, filtering
         page.operations.map((operation) => operation.rowId),
         ['sowing:1001:9001', 'operation:301'],
     );
+    const operation = page.operations[1];
+    assert.ok(operation);
+    assert.equal(operation.kind, 'operation');
+    if (operation.kind === 'operation') {
+        assert.equal(operation.taskVersionEventId, 9101);
+    }
 
     const sowing = page.operations[0];
     assert.ok(sowing);
@@ -209,6 +216,7 @@ test('operations list merges operation and sowing rows before sorting, filtering
                 id: 301,
                 entityId: 501,
                 entityTypeName: 'operation',
+                taskVersionEventId: 9101,
                 status: 'planned',
                 accountId: 'account-1',
                 farmId: 1,
@@ -248,6 +256,7 @@ test('operations list entity filter narrows operations and hides sowing rows', (
                 id: 301,
                 entityId: 501,
                 entityTypeName: 'operation',
+                taskVersionEventId: 9101,
                 status: 'planned',
                 timestamp: new Date('2026-07-03T07:00:00.000Z'),
             },
@@ -255,6 +264,7 @@ test('operations list entity filter narrows operations and hides sowing rows', (
                 id: 302,
                 entityId: 502,
                 entityTypeName: 'operation',
+                taskVersionEventId: 9102,
                 status: 'planned',
                 timestamp: new Date('2026-07-04T07:00:00.000Z'),
             },
@@ -275,6 +285,7 @@ test('operations list record type filter selects operation or sowing rows', () =
             id: 301,
             entityId: 501,
             entityTypeName: 'operation',
+            taskVersionEventId: 9101,
             status: 'planned',
             timestamp: new Date('2026-07-03T07:00:00.000Z'),
         },
@@ -282,6 +293,7 @@ test('operations list record type filter selects operation or sowing rows', () =
             id: 302,
             entityId: 502,
             entityTypeName: 'operation',
+            taskVersionEventId: 9102,
             status: 'planned',
             timestamp: new Date('2026-07-04T07:00:00.000Z'),
         },
@@ -355,4 +367,93 @@ test('operations list can surface canceled sowing cycles when their relevant dat
     assert.equal(canceledSowing.kind, 'sowing');
     assert.equal(canceledSowing.status, 'canceled');
     assert.equal(canceledSowing.timestamp, '2026-06-11T07:00:00.000Z');
+});
+
+test('operations list keeps blocked operation and sowing timestamps distinct from completion', () => {
+    const context = buildContext();
+    const raisedBed = context.raisedBeds[0];
+    assert.ok(raisedBed);
+    raisedBed.fields.push({
+        id: 1004,
+        positionIndex: 3,
+        plantCycles: [
+            {
+                active: true,
+                blockedAt: new Date('2026-07-05T09:15:00.000Z'),
+                blockedBy: 'farmer-1',
+                blockImageUrls: ['https://example.com/blocker.jpg'],
+                blockNote: 'Tlo je poplavljeno.',
+                blockReasonCode: 'location_not_ready',
+                blockReasonLabel: 'Biljka, gredica ili lokacija nije spremna',
+                endedAt: new Date('2026-07-01T08:00:00.000Z'),
+                endedEventId: 9010,
+                eventIds: [9006, 9010],
+                plantPlaceEventId: 9006,
+                plantScheduledDate: new Date('2026-07-05T06:00:00.000Z'),
+                plantSortId: 703,
+                plantStatus: 'blocked',
+                positionIndex: 3,
+                sowingLocation: 'direct',
+                startedAt: createdAt,
+            },
+        ],
+    });
+
+    const page = buildOperationsListPage({
+        context,
+        fromDate: new Date('2026-07-05T00:00:00.000Z'),
+        operations: [
+            {
+                blockedAt: new Date('2026-07-05T10:30:00.000Z'),
+                entityId: 501,
+                entityTypeName: 'operation',
+                id: 303,
+                taskVersionEventId: 9103,
+                status: 'blocked',
+                timestamp: new Date('2026-06-05T06:30:00.000Z'),
+            },
+        ],
+        sort: { key: 'date', direction: 'asc' },
+    });
+
+    assert.deepEqual(
+        page.operations.map(({ rowId, status, timestamp, completedAt }) => ({
+            completedAt,
+            rowId,
+            status,
+            timestamp,
+        })),
+        [
+            {
+                completedAt: null,
+                rowId: 'sowing:1004:9006',
+                status: 'blocked',
+                timestamp: '2026-07-05T09:15:00.000Z',
+            },
+            {
+                completedAt: null,
+                rowId: 'operation:303',
+                status: 'blocked',
+                timestamp: '2026-07-05T10:30:00.000Z',
+            },
+        ],
+    );
+
+    const details = findSowingTaskDetails({
+        context,
+        plantCycleEventId: 9006,
+        raisedBedFieldId: 1004,
+    });
+    assert.ok(details);
+    assert.equal(details.blockedAt, '2026-07-05T09:15:00.000Z');
+    assert.equal(details.blockedBy, 'farmer-1');
+    assert.equal(details.blockReasonCode, 'location_not_ready');
+    assert.equal(
+        details.blockReasonLabel,
+        'Biljka, gredica ili lokacija nije spremna',
+    );
+    assert.equal(details.blockNote, 'Tlo je poplavljeno.');
+    assert.deepEqual(details.blockImageUrls, [
+        'https://example.com/blocker.jpg',
+    ]);
 });

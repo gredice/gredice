@@ -13,6 +13,7 @@ interface FarmSchedulePlantingsSectionContentProps {
     raisedBedPhotoPreviewByIdPromise: ReturnType<
         typeof import('./scheduleData').getFarmScheduleRaisedBedPhotoPreviewsForDay
     >;
+    selectedDateKey: string;
     userId: string;
 }
 
@@ -20,6 +21,7 @@ export async function FarmSchedulePlantingsSectionContent({
     dayDataPromise,
     plantSortsPromise,
     raisedBedPhotoPreviewByIdPromise,
+    selectedDateKey,
     userId,
 }: FarmSchedulePlantingsSectionContentProps) {
     const { raisedBeds, scheduledFields } = await dayDataPromise;
@@ -40,6 +42,7 @@ export async function FarmSchedulePlantingsSectionContent({
             userId={userId}
             assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
             raisedBedPhotoPreviewByIdPromise={raisedBedPhotoPreviewByIdPromise}
+            selectedDateKey={selectedDateKey}
         />
     );
 }

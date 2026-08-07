@@ -98,6 +98,8 @@ type WeedReviewProposal = PlantStatusReviewOutput['weedProposals'][number];
 type AcceptedReviewProposal = ReviewProposal & {
     positionIndex: number;
     currentStatus: string;
+    plantCycleEventId: number;
+    plantCycleVersionEventId: number;
     plantSortId: number;
     raisedBedFieldId: number;
 };
@@ -640,6 +642,16 @@ function filterAcceptedProposals({
             continue;
         }
 
+        const activePlantCycle = field.plantCycles.find(
+            (plantCycle) => plantCycle.active,
+        );
+        if (!activePlantCycle) {
+            skipped.push(
+                proposalSkip(proposal, 'Field has no active plant cycle.'),
+            );
+            continue;
+        }
+
         if (proposal.requestedStatus === currentStatus) {
             skipped.push(
                 proposalSkip(proposal, 'Field already has requested status.'),
@@ -675,6 +687,8 @@ function filterAcceptedProposals({
             ...proposal,
             positionIndex,
             currentStatus,
+            plantCycleEventId: activePlantCycle.plantPlaceEventId,
+            plantCycleVersionEventId: activePlantCycle.endedEventId,
             plantSortId: field.plantSortId,
             raisedBedFieldId: field.id,
         });
@@ -979,6 +993,8 @@ export async function runRaisedBedImagePlantStatusReview({
             const request = await createPlantStatusApprovalRequest({
                 raisedBedId: input.raisedBedId,
                 positionIndex: proposal.positionIndex,
+                plantCycleEventId: proposal.plantCycleEventId,
+                plantCycleVersionEventId: proposal.plantCycleVersionEventId,
                 requestedStatus: proposal.requestedStatus,
                 requestedBy,
                 raisedBedFieldId: proposal.raisedBedFieldId,

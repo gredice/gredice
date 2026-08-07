@@ -26,7 +26,27 @@ export type DriverDeliveryTrackingLocation = {
     acceptedAt: string;
 };
 
-export type CustomerDeliveryTrackingSummary = DeliveryTrackingFreshnessSummary;
+export type CustomerDeliveryTrackingSummary =
+    DeliveryTrackingFreshnessSummary & {
+        exactLocationExpiresInMs: number | null;
+    };
+
+export type CustomerDeliveryEtaSummary = {
+    source: 'traffic-route' | 'route-plan' | 'promised-window';
+    calculatedAt: string | null;
+    freshness: 'fresh' | 'stale' | 'fallback' | 'unavailable';
+    confidence: 'high' | 'approximate' | 'none';
+    rangeStartAt: string | null;
+    rangeEndAt: string | null;
+    remainingMinSeconds: number | null;
+    remainingMaxSeconds: number | null;
+};
+
+export type CustomerDeliveryProgressSummary = {
+    phase: 'scheduled' | 'on-route' | 'next' | 'arrived' | 'unavailable';
+    stopsAhead: number | null;
+    delayed: boolean;
+};
 
 export type DeliveryHarvestSummary = {
     plantName: string;
@@ -34,6 +54,19 @@ export type DeliveryHarvestSummary = {
     raisedBedName: string | null;
     fieldName: string | null;
     tracePath: string | null;
+};
+
+export type CustomerHandoffVerification =
+    | 'verified'
+    | 'no-label'
+    | 'skipped'
+    | 'not-recorded';
+
+export type CustomerDeliveryReceiptSummary = {
+    requestReference: string;
+    deliveredAt: string;
+    verification: CustomerHandoffVerification;
+    harvest: DeliveryHarvestSummary;
 };
 
 export type DeliveryExceptionOutcome = DeliveryRunExceptionOutcome;
@@ -58,6 +91,58 @@ export type CustomerDeliveryRecoverySummary =
     | { kind: 'hq-pickup-expired' }
     | { kind: 'support' }
     | { kind: 'cancelled' };
+
+export type CustomerDeliveryDestinationSummary = {
+    recipientName: string;
+    address: string;
+    addressLabel: string | null;
+};
+
+export type CustomerDeliveryLifecycle = 'active' | 'upcoming' | 'history';
+
+export type CustomerDeliveryRequestSummary = {
+    mode: 'delivery';
+    lifecycle: CustomerDeliveryLifecycle;
+    requestId: string;
+    status: string;
+    statusLabel: string;
+    requestNotes: string | null;
+    slotStartAt: string | null;
+    slotEndAt: string | null;
+    eta: CustomerDeliveryEtaSummary;
+    progress: CustomerDeliveryProgressSummary;
+    deliveredAt: string | null;
+    harvest: DeliveryHarvestSummary;
+    destination: CustomerDeliveryDestinationSummary;
+    receipt: CustomerDeliveryReceiptSummary | null;
+    recovery: CustomerDeliveryRecoverySummary | null;
+    tracking: CustomerDeliveryTrackingSummary | null;
+    mapPath: string | null;
+};
+
+export type CustomerPickupLocationSummary = {
+    name: string;
+    address: string;
+    instructions: string;
+};
+
+export type CustomerPickupRequestSummary = {
+    mode: 'pickup';
+    lifecycle: Exclude<CustomerDeliveryLifecycle, 'active'>;
+    requestId: string;
+    status: string;
+    statusLabel: string;
+    requestNotes: string | null;
+    slotStartAt: string | null;
+    slotEndAt: string | null;
+    harvest: DeliveryHarvestSummary;
+    location: CustomerPickupLocationSummary | null;
+    pickedUpAt: string | null;
+};
+
+export type CustomerDeliveryDashboardRequest =
+    | CustomerDeliveryRequestSummary
+    | CustomerPickupRequestSummary;
 
 export type DeliveryStopDeliverySummary = {
     stopId: number | null;
@@ -96,6 +181,8 @@ export type DeliveryStopSummary = {
     arrivedAt: string | null;
     deliveredAt: string | null;
     harvest: DeliveryHarvestSummary;
+    /** Present only on the account-owned, fulfilled customer projection. */
+    receipt?: CustomerDeliveryReceiptSummary | null;
     recovery: CustomerDeliveryRecoverySummary | null;
     tracking: CustomerDeliveryTrackingSummary | null;
     runId: string | null;
@@ -243,7 +330,7 @@ export type CustomerDeliveryDashboard = {
         displayName: string;
         role: string;
     };
-    deliveries: DeliveryStopSummary[];
+    deliveries: CustomerDeliveryDashboardRequest[];
     refreshedAt: string;
 };
 

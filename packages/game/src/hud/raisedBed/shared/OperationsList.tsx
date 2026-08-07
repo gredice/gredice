@@ -1,4 +1,5 @@
 import type { OperationData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { Alert } from '@gredice/ui/Alert';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Search } from '@gredice/ui/icons';
@@ -8,14 +9,13 @@ import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { memo, useState } from 'react';
-import {
-    sortFavoritesFirst,
-    useFavoriteIds,
-} from '../../../hooks/useFavorites';
+import { useFavoriteIds } from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+import { sortOperationsForList } from './operationListSorting';
+import { isPlantTargetMetadataResolved } from './plantTargetMetadata';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
 
 const MemoizedOperationsListItem = memo(OperationsListItem);
@@ -93,12 +93,19 @@ export function OperationsList({
         isLoading: isLoadingOperations,
         isError,
     } = useOperations();
-    const { data: plantSort, isLoading: isPlantSortLoading } =
-        usePlantSort(plantSortId);
+    const { data: plantSort } = usePlantSort(plantSortId);
     const favoriteOperationIds = useFavoriteIds('operation');
-    const isLoading =
-        isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const isPlantMetadataResolved = isPlantTargetMetadataResolved(
+        plantSortId,
+        plantSort,
+    );
+    const isLoading = isLoadingOperations || !isPlantMetadataResolved;
     const [search, setSearch] = useState('');
+    const linkedOperationNames = new Set(
+        plantSort?.information.plant.information?.operations
+            ?.map((operation) => operation.information?.name)
+            .filter((name): name is string => Boolean(name)) ?? [],
+    );
 
     const { shoppingCartOperationIds, scheduledOperationIds } =
         useOperationContextIndicators({
@@ -111,9 +118,8 @@ export function OperationsList({
         ?.filter(filterFunc)
         .filter((op) =>
             plantSortId
-                ? plantSort?.information.plant.information?.operations
-                      ?.map((op) => op.information?.name)
-                      .includes(op.information.name)
+                ? isPlantMetadataResolved &&
+                  isOperationApplicableToPlant(op, linkedOperationNames)
                 : true,
         )
         .filter((op) =>
@@ -127,18 +133,11 @@ export function OperationsList({
                 : true,
         );
 
-    const cartOperations =
-        filteredOperations?.filter((op) =>
-            shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const remainingOperations =
-        filteredOperations?.filter(
-            (op) => !shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const sortedOperations = [
-        ...sortFavoritesFirst(cartOperations, favoriteOperationIds),
-        ...sortFavoritesFirst(remainingOperations, favoriteOperationIds),
-    ];
+    const sortedOperations = sortOperationsForList(
+        filteredOperations ?? [],
+        shoppingCartOperationIds,
+        favoriteOperationIds,
+    );
 
     return (
         <Stack spacing={2}>

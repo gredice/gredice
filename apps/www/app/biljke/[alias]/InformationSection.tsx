@@ -1,4 +1,5 @@
 import type { OperationData, PlantData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { slug } from '@gredice/js/slug';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
@@ -51,12 +52,11 @@ export async function InformationSection({
     const hasSortContent = Boolean(sortContent?.trim());
     const hasTextContent = hasContent || hasSortContent;
 
-    if (!hasTextContent && !attributeCards) {
-        return null;
-    }
-
     // Filter operations based on stage
     const allOperations = (await getOperationsData()).filter(isPublicOperation);
+    const explicitPlantOperationNames = new Set(
+        (operations ?? []).map((operation) => operation.information.name),
+    );
     const gardenOperations = allOperations.filter(
         (operation) =>
             operation.attributes?.application === 'garden' &&
@@ -72,18 +72,39 @@ export async function InformationSection({
             operation.attributes?.application === 'raisedBed1m' &&
             operation.attributes?.stage.information?.name === id,
     );
-    const plantOperations = operations?.filter(
+    const plantOperations = allOperations.filter(
+        (operation) =>
+            operation.attributes?.stage.information?.name === id &&
+            isOperationApplicableToPlant(
+                operation,
+                explicitPlantOperationNames,
+            ),
+    );
+    const canonicalPlantOperationNames = new Set(
+        plantOperations.map((operation) => operation.information.name),
+    );
+    const linkedPlantOperationFallbacks = (operations ?? []).filter(
         (operation) =>
             isPublicOperation(operation) &&
             operation.attributes?.application === 'plant' &&
-            operation.attributes?.stage.information?.name === id,
+            operation.attributes?.stage.information?.name === id &&
+            !canonicalPlantOperationNames.has(operation.information.name),
     );
     const applicableOperations = [
         ...(gardenOperations ?? []),
         ...(raisedBedFullOperations ?? []),
         ...(raisedBedSquareOperations ?? []),
         ...(plantOperations ?? []),
+        ...linkedPlantOperationFallbacks,
     ];
+
+    if (
+        !hasTextContent &&
+        !attributeCards &&
+        applicableOperations.length <= 0
+    ) {
+        return null;
+    }
 
     return (
         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">

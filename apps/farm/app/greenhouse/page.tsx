@@ -24,9 +24,9 @@ import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { GreenhouseMobilePlantList } from './GreenhouseMobilePlantList';
 
 export const dynamic = 'force-dynamic';
 
@@ -251,10 +251,6 @@ async function GreenhousePageContent() {
 
     return (
         <div className="mx-auto w-full max-w-5xl space-y-4 p-4">
-            <div className="flex min-w-0 items-center">
-                <HomeButton />
-            </div>
-
             <Card>
                 <CardContent noHeader>
                     <Row
@@ -262,7 +258,7 @@ async function GreenhousePageContent() {
                         className="flex-wrap items-start gap-3"
                     >
                         <Stack spacing={1} className="min-w-0">
-                            <Typography level="h3" semiBold>
+                            <Typography component="h1" level="h5" semiBold>
                                 Staklenik
                             </Typography>
                             <Typography
@@ -330,7 +326,41 @@ async function GreenhousePageContent() {
                                     </Chip>
                                 </Row>
                             </CardHeader>
-                            <CardOverflow>
+                            <GreenhouseMobilePlantList
+                                items={raisedBed.fields.map((field) => {
+                                    const plantSort = plantSortById.get(
+                                        field.plantSortId,
+                                    );
+
+                                    return {
+                                        germinationDate: formatDate(
+                                            field.plantGrowthDate,
+                                        ),
+                                        key: `${raisedBed.id}-${field.id}`,
+                                        plantName: getPlantName(
+                                            plantSort,
+                                            field.plantSortId,
+                                        ),
+                                        plantSort,
+                                        positionNumber: field.positionIndex + 1,
+                                        sowingDate: sowingDateCell(
+                                            field.plantSowDate,
+                                            field.plantGrowthDate,
+                                            today,
+                                        ),
+                                        statusColor: getStatusColor(
+                                            field.plantStatus,
+                                        ),
+                                        statusEmoji: plantFieldStatusEmoji(
+                                            field.plantStatus ?? undefined,
+                                        ),
+                                        statusLabel: getStatusLabel(
+                                            field.plantStatus,
+                                        ),
+                                    };
+                                })}
+                            />
+                            <CardOverflow className="hidden md:block">
                                 <Table>
                                     <Table.Header>
                                         <Table.Row>

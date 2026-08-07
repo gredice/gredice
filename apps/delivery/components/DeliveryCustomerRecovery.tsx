@@ -1,30 +1,55 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Info, Mail, MapPin, Reset, Warning } from '@gredice/ui/icons';
-import { PublicPagePaths, publicChromeHref } from '@gredice/ui/PublicChrome';
 import { Typography } from '@gredice/ui/Typography';
-import type { CustomerDeliveryRecoverySummary } from '../lib/deliveryDashboardTypes';
+import { customerDeliveryRequestSupportHref } from '../lib/deliveryCustomerReceipt';
+import type {
+    CustomerDeliveryRecoverySummary,
+    DeliveryHarvestSummary,
+} from '../lib/deliveryDashboardTypes';
 import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
 
 export function DeliveryCustomerRecovery({
     recovery,
+    requestReference,
+    harvest,
 }: {
     recovery: CustomerDeliveryRecoverySummary;
+    requestReference: string;
+    harvest: DeliveryHarvestSummary;
 }) {
-    const supportHref = publicChromeHref(PublicPagePaths.Contact, 'www-origin');
+    const supportHref = customerDeliveryRequestSupportHref({
+        kind: 'support',
+        delivery: { requestReference, harvest },
+    });
     if (recovery.kind === 'retry-planned') {
         return (
             <Alert
                 color="warning"
                 startDecorator={<Reset className="size-5" />}
             >
-                <Typography level="body2" semiBold>
-                    Ponovni pokušaj je planiran
-                </Typography>
-                <Typography level="body3" className="mt-1">
-                    Vozač nastavlja rutu i vratit će se kasnije. Novo vrijeme
-                    dolaska prikazat će se čim ruta bude ažurirana.
-                </Typography>
+                <div className="space-y-3">
+                    <div>
+                        <Typography level="body2" semiBold>
+                            Ponovni pokušaj je planiran
+                        </Typography>
+                        <Typography level="body3" className="mt-1">
+                            Vozač nastavlja rutu i vratit će se kasnije. Novo
+                            vrijeme dolaska prikazat će se čim ruta bude
+                            ažurirana.
+                        </Typography>
+                    </div>
+                    <Button
+                        aria-label={`Prijavi problem za dostavu: ${harvest.plantName}`}
+                        href={supportHref}
+                        size="sm"
+                        className="min-h-11"
+                        variant="outlined"
+                        startDecorator={<Mail className="size-4" />}
+                    >
+                        Prijavi problem
+                    </Button>
+                </div>
             </Alert>
         );
     }
@@ -61,20 +86,22 @@ export function DeliveryCustomerRecovery({
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button
+                            aria-label={`Potvrdi preuzimanje za dostavu: ${harvest.plantName}`}
                             href={supportHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             size="sm"
+                            className="min-h-11"
                             variant="outlined"
                             startDecorator={<Mail className="size-4" />}
                         >
                             Potvrdi preuzimanje
                         </Button>
                         <Button
+                            aria-label={`Otvori lokaciju HQ za dostavu: ${harvest.plantName}`}
                             href={navigationUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             size="sm"
+                            className="min-h-11"
                             variant="outlined"
                             startDecorator={<MapPin className="size-4" />}
                         >
@@ -104,10 +131,10 @@ export function DeliveryCustomerRecovery({
                         </Typography>
                     </div>
                     <Button
+                        aria-label={`Kontaktiraj podršku za dostavu: ${harvest.plantName}`}
                         href={supportHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         size="sm"
+                        className="min-h-11"
                         variant="outlined"
                         startDecorator={<Mail className="size-4" />}
                     >
@@ -138,10 +165,10 @@ export function DeliveryCustomerRecovery({
                     </Typography>
                 </div>
                 <Button
+                    aria-label={`Kontaktiraj podršku za dostavu: ${harvest.plantName}`}
                     href={supportHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     size="sm"
+                    className="min-h-11"
                     variant="outlined"
                     startDecorator={<Mail className="size-4" />}
                 >

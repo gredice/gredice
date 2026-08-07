@@ -20,6 +20,7 @@ import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
     events,
+    farms,
     farmUsers,
     gardens,
     type InsertRaisedBed,
@@ -36,6 +37,7 @@ import {
     raisedBedSensors,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import {
     createEvent,
     getAllEvents,
@@ -53,6 +55,8 @@ import {
     type RaisedBedWeedState,
 } from './raisedBedFieldsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
+import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
+import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
@@ -71,6 +75,7 @@ type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
 const raisedBedPhotoOperationStatusEventTypes = [
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
@@ -594,6 +599,71 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
     }
 }
 
+export type CheckoutPlantingRaisedBedActivation =
+    | {
+          available: false;
+          reason: 'abandoned' | 'not_found' | 'status_changed';
+      }
+    | {
+          available: true;
+          activatedAccountId: string | null;
+      };
+
+/**
+ * Serializes checkout planting against abandonment on the parent raised bed.
+ * The caller must keep this in the same transaction as the planting events.
+ */
+export async function lockAndActivateRaisedBedForCheckoutPlanting(
+    raisedBedId: number,
+    transaction: ScheduleTaskTransaction,
+): Promise<CheckoutPlantingRaisedBedActivation> {
+    const [raisedBed] = await transaction
+        .select({
+            accountId: raisedBeds.accountId,
+            status: raisedBeds.status,
+        })
+        .from(raisedBeds)
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1)
+        .for('update');
+
+    if (!raisedBed) {
+        return { available: false, reason: 'not_found' };
+    }
+    if (raisedBed.status === 'abandoned') {
+        return { available: false, reason: 'abandoned' };
+    }
+    if (raisedBed.status === 'active') {
+        return { available: true, activatedAccountId: null };
+    }
+
+    const [activatedRaisedBed] = await transaction
+        .update(raisedBeds)
+        .set({ status: 'active' })
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+                eq(raisedBeds.status, raisedBed.status),
+            ),
+        )
+        .returning({ accountId: raisedBeds.accountId });
+
+    if (!activatedRaisedBed) {
+        return { available: false, reason: 'status_changed' };
+    }
+
+    return {
+        available: true,
+        activatedAccountId: activatedRaisedBed.accountId,
+    };
+}
+
 export async function abandonRaisedBed({
     accountId,
     gardenId,
@@ -647,8 +717,46 @@ export async function mergeRaisedBeds(
     }
 
     const db = storage();
+    const expectedMutableCartItems = await db
+        .select({ id: shoppingCartItems.id })
+        .from(shoppingCartItems)
+        .where(
+            and(
+                eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                eq(shoppingCartItems.isDeleted, false),
+                eq(shoppingCartItems.status, 'new'),
+            ),
+        );
+    const expectedMutableCartItemIds = expectedMutableCartItems.map(
+        (item) => item.id,
+    );
 
-    await db.transaction(async (tx) => {
+    await withCheckoutCartItemLocks(expectedMutableCartItemIds, async (tx) => {
+        const liveMutableCartItems = await tx
+            .select({ id: shoppingCartItems.id })
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                ),
+            );
+        const expectedMutableCartItemIdSet = new Set(
+            expectedMutableCartItemIds,
+        );
+        if (
+            liveMutableCartItems.length !== expectedMutableCartItemIds.length ||
+            liveMutableCartItems.some(
+                (item) => !expectedMutableCartItemIdSet.has(item.id),
+            )
+        ) {
+            throw new Error(
+                'Shopping cart items changed while fencing raised bed merge.',
+            );
+        }
+        await lockAndAssertCartItemsMutable(expectedMutableCartItemIds, tx);
+
         const targetRaisedBed = await tx.query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, targetRaisedBedId),
@@ -770,6 +878,7 @@ export async function mergeRaisedBeds(
                             knownEventTypes.raisedBedFields.plantPlace,
                             knownEventTypes.raisedBedFields.plantSchedule,
                             knownEventTypes.raisedBedFields.plantUpdate,
+                            knownEventTypes.raisedBedFields.plantBlock,
                             knownEventTypes.raisedBedFields.plantReplaceSort,
                         ]),
                     ),
@@ -817,15 +926,17 @@ export async function getFarmUserRaisedBeds(userId: string) {
 
 async function getFarmUserRaisedBedsUncached(userId: string) {
     const farmRaisedBeds = await storage()
-        .select({ raisedBed: raisedBeds })
+        .select({ farmId: gardens.farmId, raisedBed: raisedBeds })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farms, eq(gardens.farmId, farms.id))
         .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
         .where(
             and(
                 eq(farmUsers.userId, userId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
+                eq(farms.isDeleted, false),
                 // Sandbox ("play") gardens never appear in farm scheduling.
                 eq(gardens.isSandbox, false),
             ),
@@ -836,8 +947,9 @@ async function getFarmUserRaisedBedsUncached(userId: string) {
         farmRaisedBeds.map((row) => row.raisedBed.id),
     );
 
-    return farmRaisedBeds.map(({ raisedBed }) => ({
+    return farmRaisedBeds.map(({ farmId, raisedBed }) => ({
         ...raisedBed,
+        farmId,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }

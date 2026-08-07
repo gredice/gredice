@@ -1,5 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+    usePaymentStatusParam,
+    useShoppingCartOpenParam,
+} from '../useUrlState';
 
 export interface CheckoutData {
     cartId: number;
@@ -10,12 +14,41 @@ export interface CheckoutData {
         locationId?: number;
         notes?: string;
     };
+    harvestDates?: Array<{
+        cartItemId: number;
+        scheduledDate: string;
+    }>;
+}
+
+type CheckoutResult =
+    | { kind: 'completed-in-app' }
+    | { kind: 'stripe'; url: string };
+
+async function getCheckoutErrorMessage(response: Response) {
+    try {
+        const responseData: unknown = await response.json();
+        if (
+            responseData &&
+            typeof responseData === 'object' &&
+            'error' in responseData &&
+            typeof responseData.error === 'string' &&
+            responseData.error.trim()
+        ) {
+            return responseData.error;
+        }
+    } catch {
+        // The fallback also covers non-JSON gateway responses.
+    }
+
+    return 'Nije moguće pokrenuti plaćanje. Provjeri košaricu i pokušaj ponovno.';
 }
 
 // Type guard to check if delivery selection is complete
 export function isCompleteDeliverySelection(
-    // biome-ignore lint/suspicious/noExplicitAny: Valid for validation
-    selection: any,
+    selection:
+        | Partial<NonNullable<CheckoutData['deliveryInfo']>>
+        | null
+        | undefined,
 ): selection is CheckoutData['deliveryInfo'] {
     return (
         Boolean(selection) &&
@@ -30,41 +63,54 @@ export function isCompleteDeliverySelection(
 }
 
 export function useCheckout() {
+    const queryClient = useQueryClient();
+    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
+    const [, setPaymentStatus] = usePaymentStatusParam();
+
     return useMutation({
-        mutationFn: async (data: CheckoutData) => {
+        mutationFn: async (data: CheckoutData): Promise<CheckoutResult> => {
             const response =
                 await clientAuthenticated().api.checkout.checkout.$post({
                     json: data,
                 });
             if (!response.ok) {
-                console.error(
-                    'Failed to create checkout session:',
-                    response.statusText,
-                );
-                // TODO: Show notification to user
-                return;
+                throw new Error(await getCheckoutErrorMessage(response));
             }
 
             const responseData = await response.json();
             if (!responseData) {
-                console.error('Failed to create checkout session');
-                return;
+                throw new Error(
+                    'Poslužitelj nije vratio podatke za pokretanje plaćanja.',
+                );
             }
 
             if ('success' in responseData) {
-                window.location.href = '/?placanje=uspijesno';
+                return { kind: 'completed-in-app' };
+            }
+
+            if (!('url' in responseData) || !responseData.url) {
+                throw new Error(
+                    'Poslužitelj nije vratio poveznicu za plaćanje.',
+                );
+            }
+
+            return { kind: 'stripe', url: responseData.url };
+        },
+        onSuccess: (result) => {
+            if (result.kind === 'stripe') {
+                window.location.href = result.url;
                 return;
             }
 
-            const { url } = responseData;
-            if (!url) {
-                console.error('No URL returned from checkout session');
-                // TODO: Show notification to user
-                return;
-            }
-
-            // If a URL is provided, redirect the user to that URL
-            window.location.href = url;
+            setShoppingCartOpen(false);
+            setPaymentStatus('uspjesno');
+            void queryClient.invalidateQueries();
+        },
+        onError: () => {
+            // A direct checkout can fail after durable payment or fulfillment
+            // work. Keep the cart open, but reconcile every active checkout-
+            // affected view before the user retries.
+            void queryClient.invalidateQueries();
         },
         // Prevent the mutation from being run in parallel
         scope: {

@@ -1,5 +1,5 @@
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
-import type { Stack } from '../../types/Stack';
+import type { GardenStack } from '../../types/Stack';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 
@@ -23,7 +23,7 @@ export type RaisedBedFieldTargetGarden = {
     id: number;
     isSandbox?: boolean | null;
     raisedBeds: RaisedBedTarget[];
-    stacks: Stack[];
+    stacks: GardenStack[];
 };
 
 export type RaisedBedFieldTargetCartItem = {

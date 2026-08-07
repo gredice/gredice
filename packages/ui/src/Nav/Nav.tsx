@@ -103,7 +103,7 @@ export function PageNav({
     };
 
     return (
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-40">
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-40 [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)] [padding-top:env(safe-area-inset-top,0px)]">
             <Container
                 padded={false}
                 className={cx(

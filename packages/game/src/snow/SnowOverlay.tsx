@@ -1,14 +1,13 @@
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, ColorRepresentation, Vector3Tuple } from 'three';
 import {
     Color,
-    MathUtils,
     ShaderMaterial,
     UniformsLib,
     UniformsUtils,
     Vector3,
 } from 'three';
+import { useSnowSurfaceAmountUniform } from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
 import { createSnowOverlayGeometry } from './createSnowOverlayGeometry';
 import {
@@ -96,8 +95,10 @@ export function useSnowMaterial({
     bounds,
     overrideSnow,
 }: SnowMaterialOptions = {}) {
-    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
-    const snowCoverage = overrideSnow ?? gameSnowCoverage;
+    const snowAmountUniform = useSnowSurfaceAmountUniform({
+        coverageMultiplier,
+        overrideSnow,
+    });
     const colorKey = resolveColorKey(color);
     const snowColor = useMemo(() => new Color(colorKey), [colorKey]);
     const resolvedBounds = bounds ?? fallbackBounds;
@@ -132,6 +133,7 @@ export function useSnowMaterial({
             vertexShader: snowOverlayVertexShader,
             fragmentShader: snowOverlayFragmentShader,
         });
+        mat.uniforms.uSnowAmount = snowAmountUniform;
         mat.polygonOffset = true;
         mat.polygonOffsetFactor = 1; // push towards camera
         mat.polygonOffsetUnits = 1;
@@ -143,6 +145,7 @@ export function useSnowMaterial({
         noiseScale,
         slopeExponent,
         snowColor,
+        snowAmountUniform,
         resolvedBounds.max,
         resolvedBounds.min,
     ]);
@@ -158,15 +161,6 @@ export function useSnowMaterial({
     }, [bounds, material]);
 
     useEffect(() => () => material.dispose(), [material]);
-
-    useFrame((_, delta) => {
-        material.uniforms.uSnowAmount.value = MathUtils.damp(
-            material.uniforms.uSnowAmount.value,
-            Math.min(1, Math.max(0, snowCoverage * coverageMultiplier)),
-            6,
-            delta,
-        );
-    });
 
     return material;
 }

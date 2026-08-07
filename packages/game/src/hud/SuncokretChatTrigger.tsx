@@ -3,7 +3,6 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { useGameFlags } from '../GameFlagsContext';
 import {
     type SuncokretChatTarget,
     useSuncokretChat,
@@ -22,10 +21,9 @@ export function SuncokretChatTrigger({
     title: string;
     variant?: 'compact' | 'hud';
 }) {
-    const enabled = Boolean(useGameFlags().enableSuncokretChatFlag);
     const chat = useSuncokretChat();
 
-    if (!enabled || !chat || (action === 'open' && !target)) {
+    if (!chat || (action === 'open' && !target)) {
         return null;
     }
 

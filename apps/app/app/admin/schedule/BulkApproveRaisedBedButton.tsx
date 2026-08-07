@@ -11,11 +11,16 @@ type FieldApprovalTarget = {
     id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
 type OperationApprovalTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
@@ -58,10 +63,17 @@ export function BulkApproveRaisedBedButton({
                 acceptRaisedBedFieldAction(
                     field.raisedBedId,
                     field.positionIndex,
+                    field.expectedPlantCycleEventId,
+                    field.expectedPlantSortId,
+                    field.expectedPlantCycleVersionEventId,
                 ),
             ),
             ...operations.map((operation) =>
-                acceptOperationAction(operation.id),
+                acceptOperationAction(
+                    operation.id,
+                    operation.entityId,
+                    operation.taskVersionEventId,
+                ),
             ),
         ])
             .catch((error: unknown) => {

@@ -89,7 +89,7 @@ export function SettingsTab({
                     title="Reset na zadani preset"
                 >
                     <p>
-                        Vraća L-system pravila, boje i ostale parametre na
+                        Vraća razvojni program, boje i ostale parametre na
                         originalni ugrađeni preset trenutne biljke.
                     </p>
                     <p>
@@ -125,20 +125,12 @@ export function SettingsTab({
             </Row>
 
             <PlantSlider
-                label={`Generacija: ${generationLabel} (oko ${generationLabel}. tjedan)`}
+                label={`Faza rasta: ${generationLabel}`}
                 min={0}
                 max={MAX_PLANT_GENERATION}
                 step={0.1}
                 value={[state.generation]}
                 onValueChange={(v) => onStateChange({ generation: v[0] })}
-            />
-            <PlantSlider
-                label={`Kut: ${state.definition.angle}°`}
-                value={[state.definition.angle]}
-                onValueChange={(v) => onDefinitionChange('angle', v[0])}
-                min={0}
-                max={90}
-                step={1}
             />
             <PlantSlider
                 label={`Visina: ${state.definition.height.toFixed(2)}`}
@@ -147,24 +139,6 @@ export function SettingsTab({
                 min={0.1}
                 max={2}
                 step={0.05}
-            />
-            <PlantSlider
-                label={`Grananje: ${state.definition.branching.toFixed(2)}`}
-                value={[state.definition.branching]}
-                onValueChange={(v) => onDefinitionChange('branching', v[0])}
-                min={0.1}
-                max={2}
-                step={0.05}
-            />
-            <PlantSlider
-                label={`Nestabilnost: ${state.definition.directionVariability.toFixed(2)}`}
-                value={[state.definition.directionVariability]}
-                onValueChange={(v) =>
-                    onDefinitionChange('directionVariability', v[0])
-                }
-                min={0}
-                max={1}
-                step={0.01}
             />
             <VisibilityControls
                 visibility={visibility}

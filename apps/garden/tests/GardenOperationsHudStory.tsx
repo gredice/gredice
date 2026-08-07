@@ -232,6 +232,7 @@ function buildHudOperationItem({
     return {
         id,
         entityId,
+        taskVersionEventId: id,
         entityTypeName: 'operation',
         raisedBedId: TEST_RAISED_BED_ID,
         raisedBedFieldId,
@@ -247,6 +248,10 @@ function buildHudOperationItem({
             status === 'canceled'
                 ? (cancellationReason ?? 'Korisnik je otkazao radnju.')
                 : null,
+        blockedAt: null,
+        blockReasonLabel: null,
+        blockNote: null,
+        blockImageUrls: [],
         imageUrls: [],
         completionNotes: `Zapis radnje ${id.toString()}.`,
         targetLabel: 'Raised Bed 1 › Polje 3',
@@ -293,6 +298,7 @@ function createQueryClient({
               {
                   id: 601,
                   entityId: 999_001,
+                  taskVersionEventId: 601,
                   entityTypeName: 'operation',
                   raisedBedId: TEST_RAISED_BED_ID,
                   raisedBedFieldId: 1,
@@ -304,6 +310,10 @@ function createQueryClient({
                   verifiedAt: null,
                   canceledAt: null,
                   cancellationReason: null,
+                  blockedAt: null,
+                  blockReasonLabel: null,
+                  blockNote: null,
+                  blockImageUrls: [],
                   imageUrls: [],
                   completionNotes: null,
                   targetLabel: 'Raised Bed 1 › Polje 3',

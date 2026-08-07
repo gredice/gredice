@@ -7,6 +7,8 @@ import {
     getEntitiesFormatted,
     getFarmUserAcceptedOperations,
     getFarmUserAcceptedOperationsByScheduleRange,
+    getFarmUserBlockedOperations,
+    getFarmUserPendingVerificationOperations,
     getFarmUserRaisedBeds,
     getRaisedBedPhotoPreviews,
     getTimeZoneDateKey,
@@ -15,21 +17,16 @@ import {
     scheduleCacheTtls,
 } from '@gredice/storage';
 import { cache } from 'react';
+import {
+    filterUnavailableRaisedBedOperations,
+    getCarryoverOperationsForToday,
+    getScheduledFieldsForDay,
+    getSelectedDateOperationsForDay,
+} from './scheduleDayFilters';
 import { FARM_SCHEDULE_TIME_ZONE } from './scheduleShared';
 
 const operationsBackDays = 90;
 const raisedBedPhotoPreviewImageLimit = 3;
-const SCHEDULE_FIELD_STATUSES = new Set([
-    'planned',
-    'pendingVerification',
-    'sowed',
-]);
-const SCHEDULE_OPERATION_STATUSES = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'completed',
-]);
 
 function startOfDaysAgo(days: number) {
     const todayKey = getTimeZoneDateKey(new Date(), FARM_SCHEDULE_TIME_ZONE);
@@ -41,130 +38,6 @@ function startOfDaysAgo(days: number) {
 
 function dedupeById<T extends { id: number }>(items: T[]) {
     return Array.from(new Map(items.map((item) => [item.id, item])).values());
-}
-
-function isOperationCompleted(status?: string) {
-    return status === 'completed' || status === 'pendingVerification';
-}
-
-function isFieldCompleted(status?: string) {
-    return status === 'sowed' || status === 'pendingVerification';
-}
-
-function getScheduledFieldsForDay(
-    isToday: boolean,
-    dateKey: string,
-    raisedBeds: FarmScheduleRaisedBed[],
-) {
-    return raisedBeds
-        .filter((raisedBed) => Boolean(raisedBed.physicalId))
-        .flatMap((raisedBed) => raisedBed.fields)
-        .filter((field) => {
-            if (!field.plantSortId) {
-                return false;
-            }
-
-            if (!SCHEDULE_FIELD_STATUSES.has(field.plantStatus ?? 'new')) {
-                return false;
-            }
-
-            if (isFieldCompleted(field.plantStatus) && field.plantSowDate) {
-                const sowDate = new Date(field.plantSowDate);
-                return (
-                    getTimeZoneDateKey(sowDate, FARM_SCHEDULE_TIME_ZONE) ===
-                    dateKey
-                );
-            }
-
-            if (!field.plantScheduledDate) {
-                return isToday;
-            }
-
-            const scheduledDate = new Date(field.plantScheduledDate);
-            const scheduledDateKey = getTimeZoneDateKey(
-                scheduledDate,
-                FARM_SCHEDULE_TIME_ZONE,
-            );
-
-            return (
-                scheduledDateKey === dateKey ||
-                (isToday && scheduledDateKey < dateKey)
-            );
-        });
-}
-
-function getSelectedDateOperationsForDay(
-    dateKey: string,
-    operations: FarmScheduleOperation[],
-) {
-    return operations.filter((operation) => {
-        if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
-            return false;
-        }
-
-        if (
-            operation.raisedBedId === null &&
-            typeof operation.farmId !== 'number'
-        ) {
-            return false;
-        }
-
-        if (isOperationCompleted(operation.status) && operation.completedAt) {
-            const completedDate = new Date(operation.completedAt);
-            return (
-                getTimeZoneDateKey(completedDate, FARM_SCHEDULE_TIME_ZONE) ===
-                dateKey
-            );
-        }
-
-        const scheduledDate = operation.scheduledDate
-            ? new Date(operation.scheduledDate)
-            : undefined;
-
-        return (
-            scheduledDate !== undefined &&
-            getTimeZoneDateKey(scheduledDate, FARM_SCHEDULE_TIME_ZONE) ===
-                dateKey
-        );
-    });
-}
-
-function getCarryoverOperationsForToday(
-    isToday: boolean,
-    dateKey: string,
-    operations: FarmScheduleOperation[],
-) {
-    if (!isToday) {
-        return [];
-    }
-
-    return operations.filter((operation) => {
-        if (!SCHEDULE_OPERATION_STATUSES.has(operation.status)) {
-            return false;
-        }
-
-        if (isOperationCompleted(operation.status)) {
-            return false;
-        }
-
-        if (
-            operation.raisedBedId === null &&
-            typeof operation.farmId !== 'number'
-        ) {
-            return false;
-        }
-
-        if (!operation.scheduledDate) {
-            return true;
-        }
-
-        return (
-            getTimeZoneDateKey(
-                new Date(operation.scheduledDate),
-                FARM_SCHEDULE_TIME_ZONE,
-            ) < dateKey
-        );
-    });
 }
 
 function sortOperationsNewestFirst(operations: FarmScheduleOperation[]) {
@@ -275,21 +148,26 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
     return cacheScheduleRead(
         scheduleCacheKeys.farmUserActiveOperations(userId, from),
         async () => {
-            const [newOrScheduledOperations, completedOperationsTodayOrLater] =
-                await Promise.all([
-                    getFarmUserAcceptedOperations(userId, {
-                        from,
-                        status: ['new', 'planned'],
-                    }),
-                    getFarmUserAcceptedOperations(userId, {
-                        completedFrom: from,
-                        status: ['pendingVerification', 'completed'],
-                    }),
-                ]);
+            const [
+                newOrScheduledOperations,
+                completedOperationsTodayOrLater,
+                blockedOperationsTodayOrLater,
+            ] = await Promise.all([
+                getFarmUserAcceptedOperations(userId, {
+                    from,
+                    status: ['new', 'planned'],
+                }),
+                getFarmUserAcceptedOperations(userId, {
+                    completedFrom: from,
+                    status: ['pendingVerification', 'completed'],
+                }),
+                getFarmUserBlockedOperations(userId),
+            ]);
 
             const operations = [
                 ...newOrScheduledOperations,
                 ...completedOperationsTodayOrLater,
+                ...blockedOperationsTodayOrLater,
             ].sort(
                 (left, right) =>
                     right.timestamp.getTime() - left.timestamp.getTime(),
@@ -300,6 +178,10 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
         scheduleCacheTtls.operations,
     );
 });
+
+export const getFarmSchedulePendingOperations = cache(async (userId: string) =>
+    getFarmUserPendingVerificationOperations(userId),
+);
 
 export const getFarmScheduleOperationsForDay = cache(
     async (userId: string, dateKey: string, isToday: boolean) => {
@@ -326,23 +208,29 @@ export const getFarmScheduleSelectedDateOperationsForDay = cache(
             dateKey,
             FARM_SCHEDULE_TIME_ZONE,
         );
-        const [scheduledOperations, completedOperations] = await Promise.all([
-            getFarmUserAcceptedOperationsByScheduleRange({
-                userId,
-                from,
-                to,
-            }),
-            getFarmUserAcceptedOperations(userId, {
-                completedFrom: from,
-                completedTo: to,
-                status: ['pendingVerification', 'completed'],
-            }),
-        ]);
+        const [scheduledOperations, completedOperations, blockedOperations] =
+            await Promise.all([
+                getFarmUserAcceptedOperationsByScheduleRange({
+                    userId,
+                    from,
+                    to,
+                }),
+                getFarmUserAcceptedOperations(userId, {
+                    completedFrom: from,
+                    completedTo: to,
+                    status: ['pendingVerification', 'completed'],
+                }),
+                getFarmUserBlockedOperations(userId, { from, to }),
+            ]);
 
         return getSelectedDateOperationsForDay(
             dateKey,
             sortOperationsNewestFirst(
-                dedupeById([...scheduledOperations, ...completedOperations]),
+                dedupeById([
+                    ...scheduledOperations,
+                    ...completedOperations,
+                    ...blockedOperations,
+                ]),
             ),
         );
     },
@@ -392,7 +280,10 @@ export const getFarmScheduleOperationsDayData = cache(
 
         return {
             raisedBeds,
-            scheduledOperations,
+            scheduledOperations: filterUnavailableRaisedBedOperations(
+                scheduledOperations,
+                raisedBeds,
+            ),
         };
     },
 );
@@ -423,7 +314,10 @@ export const getFarmScheduleDayData = cache(
                 return {
                     raisedBeds: plantingsDayData.raisedBeds,
                     scheduledFields: plantingsDayData.scheduledFields,
-                    scheduledOperations,
+                    scheduledOperations: filterUnavailableRaisedBedOperations(
+                        scheduledOperations,
+                        plantingsDayData.raisedBeds,
+                    ),
                 };
             },
             scheduleCacheTtls.day,

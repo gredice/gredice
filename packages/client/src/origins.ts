@@ -68,17 +68,20 @@ function isLocalGrediceHostname(hostname: string) {
     return hostname === 'gredice.test' || hostname.endsWith('.gredice.test');
 }
 
-export function getBrowserGrediceAppOrigin(app: GrediceAppOrigin) {
+export function getGrediceAppOrigin(
+    app: GrediceAppOrigin,
+    currentOrigin?: string,
+) {
     const configured = configuredPublicOrigin(app)?.trim();
     if (configured) {
         return trimTrailingSlash(configured);
     }
 
-    if (typeof window === 'undefined') {
+    if (!currentOrigin) {
         return productionOrigins[app];
     }
 
-    const currentUrl = new URL(window.location.origin);
+    const currentUrl = new URL(currentOrigin);
     if (isLocalGrediceHostname(currentUrl.hostname)) {
         currentUrl.hostname = localHostnames[app];
         return currentUrl.origin;
@@ -89,4 +92,11 @@ export function getBrowserGrediceAppOrigin(app: GrediceAppOrigin) {
     }
 
     return productionOrigins[app];
+}
+
+export function getBrowserGrediceAppOrigin(app: GrediceAppOrigin) {
+    return getGrediceAppOrigin(
+        app,
+        typeof window === 'undefined' ? undefined : window.location.origin,
+    );
 }

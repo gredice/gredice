@@ -4,6 +4,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
+import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
@@ -11,7 +12,7 @@ import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
-import { DebugHud } from './hud/DebugHud';
+import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
@@ -35,7 +36,7 @@ import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
-    'pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center md:block';
+    'pointer-events-none absolute bottom-[var(--game-safe-area-bottom,0px)] left-[var(--game-safe-area-left,0px)] right-[var(--game-safe-area-right,0px)] flex flex-col items-center md:block';
 
 export const gameHudBottomControlsClassName =
     'self-start flex flex-row items-end justify-start p-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:absolute md:bottom-0 md:left-0';
@@ -61,10 +62,12 @@ export function GameHud({
     debugHud,
     noWeather,
     suppressOpeningHud,
+    viewMode = '3d',
 }: {
     debugHud?: boolean;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
+    viewMode?: GardenViewMode;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
@@ -122,13 +125,14 @@ export function GameHud({
     return (
         <SuncokretChatProvider>
             <div
+                data-game-hud-top-left
                 className={cx(
-                    'absolute top-2 left-2 flex flex-col items-start gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-left-4',
                 )}
             >
-                {!isLocalSandbox && <AccountHud />}
+                {!isLocalSandbox && <AccountHud viewMode={viewMode} />}
                 {!isLocalSandbox && raisedBedOnboardingAvailable && (
                     <RaisedBedOnboardingModal
                         autoOpen={raisedBedOnboardingEnabled}
@@ -165,8 +169,9 @@ export function GameHud({
                 )}
             </div>
             <div
+                data-game-hud-top-right
                 className={cx(
-                    'absolute top-2 right-2 flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-right-4',
                 )}
@@ -179,8 +184,19 @@ export function GameHud({
                     )}
                 </div>
                 {!isSandbox && <SunflowersHud />}
-                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
+            {!isSandbox && !isLocalSandbox && (
+                <div
+                    data-game-hud-bottom-right
+                    className={cx(
+                        'pointer-events-none absolute right-[calc(var(--game-safe-area-right,0px)+0.5rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] z-40',
+                        gameHudEntranceClassName,
+                        'motion-safe:slide-in-from-right-4',
+                    )}
+                >
+                    <SuncokretChatHud />
+                </div>
+            )}
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
@@ -192,8 +208,8 @@ export function GameHud({
                     )}
                 >
                     <CameraHud />
-                    <AudioHud />
-                    <ControlsTooltipHud />
+                    {viewMode === '3d' ? <AudioHud /> : null}
+                    {viewMode === '3d' ? <ControlsTooltipHud /> : null}
                     {whatsNewHudEnabled && (
                         <IconButton
                             title="Što je novo"
@@ -221,7 +237,12 @@ export function GameHud({
                     <ItemsHud />
                 </div>
             </div>
-            {!isLocalSandbox && <RaisedBedFieldHud />}
+            {!isLocalSandbox && (
+                <RaisedBedFieldHud
+                    instantTransition={viewMode === '2d'}
+                    show2DPlaceholder={viewMode === '2d'}
+                />
+            )}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
@@ -247,7 +268,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {debugHud && <DebugHud />}
+            {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );
 }

@@ -16,8 +16,8 @@ import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import {
-    formatAiCostUsd,
-    sumAiAnalysisCostUsd,
+    formatAiCostEur,
+    sumAiAnalysisCostEur,
 } from '../../../src/ai/aiAnalyticsCost';
 import { AiAnalyticsFilters } from './AiAnalyticsFilters';
 import { type AiAnalyticsRow, AiAnalyticsTable } from './AiAnalyticsTable';
@@ -34,7 +34,7 @@ function formatTokens(value: number | undefined | null) {
     return value.toLocaleString('hr-HR');
 }
 
-function microUsdToUsd(value: number) {
+function microEurToEur(value: number) {
     return value / 1_000_000;
 }
 
@@ -130,7 +130,7 @@ export default async function AiAnalyticsPage({
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
     );
-    const totalCostUsd = sumAiAnalysisCostUsd(events);
+    const totalCostEur = sumAiAnalysisCostEur(events);
     const chatRows: AiChatRow[] = chatConversations.map((conversation) => {
         const finalizedUsage = conversation.usageLedger.filter(
             (usage) => usage.status === 'finalized',
@@ -152,9 +152,9 @@ export default async function AiAnalyticsPage({
                 (sum, usage) => sum + usage.totalTokens,
                 0,
             ),
-            totalCostUsd: microUsdToUsd(
+            totalCostEur: microEurToEur(
                 finalizedUsage.reduce(
-                    (sum, usage) => sum + usage.totalMicroUsd,
+                    (sum, usage) => sum + usage.totalMicroEur,
                     0,
                 ),
             ),
@@ -285,7 +285,7 @@ export default async function AiAnalyticsPage({
                                             Ukupni trošak
                                         </Typography>
                                         <Typography level="h4" semiBold>
-                                            {formatAiCostUsd(totalCostUsd)}
+                                            {formatAiCostEur(totalCostEur)}
                                         </Typography>
                                     </Stack>
                                 </CardOverflow>
@@ -406,9 +406,9 @@ export default async function AiAnalyticsPage({
                                             Chat trošak
                                         </Typography>
                                         <Typography level="h4" semiBold>
-                                            {formatAiCostUsd(
-                                                microUsdToUsd(
-                                                    chatTotals30d.totalMicroUsd,
+                                            {formatAiCostEur(
+                                                microEurToEur(
+                                                    chatTotals30d.totalMicroEur,
                                                 ),
                                             )}
                                         </Typography>
@@ -485,22 +485,45 @@ export default async function AiAnalyticsPage({
 
                                                                 <div className="grid min-w-0 gap-x-4 gap-y-1 text-muted-foreground sm:grid-cols-2 lg:text-right">
                                                                     <Typography level="body3">
-                                                                        Dnevni
-                                                                        limit:{' '}
+                                                                        Limit 24
+                                                                        h:{' '}
                                                                         <span className="font-medium text-foreground tabular-nums">
-                                                                            {formatAiCostUsd(
-                                                                                microUsdToUsd(
-                                                                                    limitState.dailyLimitMicroUsd,
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.dailyLimitMicroEur,
                                                                                 ),
                                                                             )}
                                                                         </span>
                                                                     </Typography>
                                                                     <Typography level="body3">
-                                                                        Iskorišteno:{' '}
+                                                                        Tjedni
+                                                                        limit:{' '}
                                                                         <span className="font-medium text-foreground tabular-nums">
-                                                                            {formatAiCostUsd(
-                                                                                microUsdToUsd(
-                                                                                    limitState.usedMicroUsd,
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.weeklyLimitMicroEur,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                    <Typography level="body3">
+                                                                        Iskorišteno
+                                                                        24 h:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.usedMicroEur,
+                                                                                ),
+                                                                            )}
+                                                                        </span>
+                                                                    </Typography>
+                                                                    <Typography level="body3">
+                                                                        Iskorišteno
+                                                                        tjedno:{' '}
+                                                                        <span className="font-medium text-foreground tabular-nums">
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.weeklyUsedMicroEur,
                                                                                 ),
                                                                             )}
                                                                         </span>
@@ -508,9 +531,9 @@ export default async function AiAnalyticsPage({
                                                                     <Typography level="body3">
                                                                         Rezervirano:{' '}
                                                                         <span className="font-medium text-foreground tabular-nums">
-                                                                            {formatAiCostUsd(
-                                                                                microUsdToUsd(
-                                                                                    limitState.reservedMicroUsd,
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.reservedMicroEur,
                                                                                 ),
                                                                             )}
                                                                         </span>
@@ -518,9 +541,9 @@ export default async function AiAnalyticsPage({
                                                                     <Typography level="body3">
                                                                         Preostalo:{' '}
                                                                         <span className="font-medium text-foreground tabular-nums">
-                                                                            {formatAiCostUsd(
-                                                                                microUsdToUsd(
-                                                                                    limitState.remainingMicroUsd,
+                                                                            {formatAiCostEur(
+                                                                                microEurToEur(
+                                                                                    limitState.remainingMicroEur,
                                                                                 ),
                                                                             )}
                                                                         </span>

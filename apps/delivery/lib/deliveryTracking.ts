@@ -103,15 +103,21 @@ export function customerDeliveryTrackingSummary(
     now = new Date(),
 ): CustomerDeliveryTrackingSummary {
     const status = deliveryTrackingStatus(snapshot, now);
+    const ageMs = acceptedLocationAgeMs(snapshot, now);
+    const mapAvailable =
+        driverDeliveryTrackingLocation(snapshot, now) !== null &&
+        (status === 'live' || status === 'delayed');
     return {
         status,
         lastAcceptedAt:
             snapshot.state === DeliveryRunStates.ACTIVE
                 ? (snapshot.currentLocationReceivedAt?.toISOString() ?? null)
                 : null,
-        mapAvailable:
-            driverDeliveryTrackingLocation(snapshot, now) !== null &&
-            (status === 'live' || status === 'delayed'),
+        mapAvailable,
+        exactLocationExpiresInMs:
+            mapAvailable && ageMs !== null
+                ? Math.max(0, deliveryRunExactLocationTtlMs - ageMs)
+                : null,
     };
 }
 

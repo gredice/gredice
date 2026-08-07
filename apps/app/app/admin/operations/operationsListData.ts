@@ -4,6 +4,7 @@ import {
     getAccounts,
     getAllOperations,
     getAllRaisedBeds,
+    getBlockedOperations,
     getEntitiesFormatted,
     getFarms,
     getGardens,
@@ -32,6 +33,7 @@ type RawOperation = {
     id: number;
     entityId: number;
     entityTypeName: string;
+    taskVersionEventId: number;
     status: OperationsListStatus;
     accountId?: string | null;
     farmId?: number | null;
@@ -42,6 +44,7 @@ type RawOperation = {
     createdAt?: Date | string | null;
     scheduledDate?: Date | string | null;
     completedAt?: Date | string | null;
+    blockedAt?: Date | string | null;
     assignedUsers?: Array<{
         userName: string | null;
         displayName: string | null;
@@ -62,6 +65,12 @@ type RawRaisedBedFieldPlantCycle = {
     plantScheduledDate?: Date;
     sowingLocation: OperationsListSowingTask['sowingLocation'];
     plantSowDate?: Date;
+    blockedAt?: Date;
+    blockedBy?: string;
+    blockReasonCode?: string;
+    blockReasonLabel?: string;
+    blockNote?: string;
+    blockImageUrls?: string[];
     stoppedDate?: Date;
     startedAt: Date;
     endedAt: Date;
@@ -355,6 +364,7 @@ function serializeOperation(
         id: operation.id,
         entityId: operation.entityId,
         entityTypeName: operation.entityTypeName,
+        taskVersionEventId: operation.taskVersionEventId,
         label,
         operationDefinition: serializeOperationDefinitionForList(
             operationDefinition,
@@ -375,7 +385,11 @@ function serializeOperation(
                 ? null
                 : raisedBedField.positionIndex + 1,
         timestamp:
-            toIsoString(operation.timestamp) ?? new Date(0).toISOString(),
+            toIsoString(
+                operation.status === 'blocked'
+                    ? operation.blockedAt
+                    : operation.timestamp,
+            ) ?? new Date(0).toISOString(),
         createdAt: toIsoString(operation.createdAt),
         scheduledDate: toIsoString(operation.scheduledDate),
         completedAt: toIsoString(operation.completedAt),
@@ -397,6 +411,10 @@ function sowingTaskEntityTypeName(
 function sowingTaskStatus(
     cycle: RawRaisedBedFieldPlantCycle,
 ): OperationsListStatus {
+    if (cycle.plantStatus === 'blocked') {
+        return 'blocked';
+    }
+
     if (cycle.plantStatus === 'pendingVerification') {
         return 'pendingVerification';
     }
@@ -420,6 +438,10 @@ function sowingTaskRelevantDate(
     cycle: RawRaisedBedFieldPlantCycle,
     status: OperationsListStatus,
 ) {
+    if (status === 'blocked') {
+        return cycle.blockedAt ?? cycle.endedAt;
+    }
+
     if (status === 'pendingVerification' || status === 'completed') {
         return cycle.plantSowDate ?? cycle.endedAt;
     }
@@ -588,6 +610,12 @@ export function findSowingTaskDetails({
             assignedAt: toIsoString(cycle.assignedAt),
             canceledAt: toIsoString(cycle.stoppedDate),
             cancellationReason: cycle.cancellationReason ?? null,
+            blockedAt: toIsoString(cycle.blockedAt),
+            blockedBy: cycle.blockedBy ?? null,
+            blockReasonCode: cycle.blockReasonCode ?? null,
+            blockReasonLabel: cycle.blockReasonLabel ?? null,
+            blockNote: cycle.blockNote ?? null,
+            blockImageUrls: cycle.blockImageUrls ?? [],
             endedAt: toIsoString(cycle.endedAt) ?? new Date(0).toISOString(),
             eventIds,
             endedEventId:
@@ -713,8 +741,16 @@ export async function listOperationsPageFromContext({
     recordType?: OperationsListRecordType;
     sort?: OperationsListSort;
 }): Promise<OperationsListPage> {
-    const operations = await getAllOperations(
-        fromDate ? { from: fromDate } : undefined,
+    const [operationsInRange, blockedOperationsInRange] = await Promise.all([
+        getAllOperations(fromDate ? { from: fromDate } : undefined),
+        fromDate ? getBlockedOperations({ from: fromDate }) : [],
+    ]);
+    const operations = Array.from(
+        new Map(
+            [...operationsInRange, ...blockedOperationsInRange].map(
+                (operation) => [operation.id, operation],
+            ),
+        ).values(),
     );
 
     return buildOperationsListPage({

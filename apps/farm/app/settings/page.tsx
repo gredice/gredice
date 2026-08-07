@@ -1,10 +1,11 @@
 import { getUser } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmSchedulePreferences } from './_components/FarmSchedulePreferences';
 import { NotificationSettings } from './_components/NotificationSettings';
+import { OperationCompletionSyncSettings } from './_components/OperationCompletionSyncSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,14 +15,15 @@ async function FarmSettingsContent() {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 items-center gap-2">
-                <HomeButton />
-            </div>
+            <Typography component="h1" level="h5" semiBold>
+                Postavke
+            </Typography>
             <FarmSchedulePreferences
                 groupWateringOperations={
                     user?.farmScheduleGroupedWateringEnabled ?? true
                 }
             />
+            <OperationCompletionSyncSettings />
             <NotificationSettings />
         </div>
     );

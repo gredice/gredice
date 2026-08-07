@@ -1,6 +1,9 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import type { PlantStageName } from '@gredice/game';
-import { PLANT_STAGES } from '@gredice/game';
+import { PLANT_STAGES, type PlantStageName } from '@gredice/js/plants';
+import {
+    getApplicablePlantOperationStageNames,
+    type OperationForStageAvailability,
+} from './plantOperationStageAvailability';
 
 export type InformationSection = {
     header: string;
@@ -79,13 +82,20 @@ function hasSectionAttributes(
 export function getPlantInforationSections(
     plant: PlantData,
     sort?: PlantSortData | null,
+    operations: readonly OperationForStageAvailability[] = [],
 ): InformationSection[] {
+    const operationStageNames = getApplicablePlantOperationStageNames(
+        operations,
+        plant.information.operations,
+    );
+
     return PLANT_STAGES.map((stage) => ({
         header: stage.label,
         id: stage.name,
         avaialble:
             hasSortInformationText(sort, stage.name) ||
             hasInformationText(plant.information[stage.name]) ||
-            hasSectionAttributes(plant, stage.name),
+            hasSectionAttributes(plant, stage.name) ||
+            operationStageNames.has(stage.name),
     }));
 }

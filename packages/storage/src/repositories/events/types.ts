@@ -1,3 +1,30 @@
+import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
+
+// ============================================================================
+// Checkout event payload types
+// ============================================================================
+export type CheckoutOperationCreatedPayload = {
+    operationId: number;
+    accountId: string | null;
+    entityId: number;
+    entityTypeName: string;
+    farmId: number | null;
+    gardenId: number | null;
+    raisedBedId: number | null;
+    raisedBedFieldId: number | null;
+    operationTimestamp: string | null;
+    paymentCurrency: 'eur' | 'inventory' | 'sunflower';
+    delivery: {
+        addressId: number | null;
+        locationId: number | null;
+        mode: 'delivery' | 'pickup';
+        notes: string | null;
+        slotId: number;
+    } | null;
+    scheduledDate: string;
+    accepted: boolean;
+};
+
 // ============================================================================
 // Account event payload types
 // ============================================================================
@@ -7,6 +34,10 @@ export type AccountAssignUserPayload = {
 
 export type AccountSunflowersPayload = {
     amount: number;
+    coveredAmount?: number;
+    idempotencyKey?: string;
+    legacyCartReason?: string;
+    legacyRewardAlreadyEarned?: boolean;
     reason: string;
 };
 
@@ -186,6 +217,11 @@ export type RaisedBedFieldCreatePayload = {
 };
 export type RaisedBedFieldDeletePayload = {
     canceledBy?: string;
+    expectedPlantCycleEventId?: number;
+    expectedPlantCycleVersionEventId?: number;
+    expectedPlantSortId?: number;
+    notificationRequested?: boolean;
+    refundAmount?: number;
     reason?: string;
 };
 
@@ -268,12 +304,14 @@ export type RaisedBedFieldPlantEventsPayload =
     | RaisedBedFieldPlantPlacePayload
     | RaisedBedFieldPlantSchedulePayload
     | RaisedBedFieldPlantUpdatePayload
+    | ScheduleTaskBlockPayload
     | RaisedBedFieldPlantReplaceSortPayload
     | RaisedBedFieldAiAnalysisPayload;
 export type RaisedBedFieldPlantEventsAnyPayload = Partial<
     RaisedBedFieldPlantPlacePayload &
         RaisedBedFieldPlantSchedulePayload &
         RaisedBedFieldPlantUpdatePayload &
+        ScheduleTaskBlockPayload &
         RaisedBedFieldPlantReplaceSortPayload &
         RaisedBedFieldAiAnalysisPayload
 >;
@@ -283,6 +321,15 @@ export type RaisedBedFieldPlantEventsAnyPayload = Partial<
 // ============================================================================
 export type OperationSchedulePayload = {
     scheduledDate: string;
+};
+
+export type OperationAcceptancePayload = {
+    accepted: boolean;
+};
+
+export type OperationEntityChangePayload = {
+    entityId: number;
+    entityTypeName: string;
 };
 
 export type OperationAssignPayload =
@@ -304,9 +351,16 @@ export type OperationAssignPayload =
 
 export type OperationCompletePayload = {
     completedBy: string;
+    expectedAccountId?: string;
+    expectedEntityId?: number;
+    expectedTaskVersionEventId?: number;
     images?: string[];
     notes?: string;
+    submissionId?: string;
 };
+
+export type OperationBlockPayload = ScheduleTaskBlockPayload;
+export type RaisedBedFieldPlantBlockPayload = ScheduleTaskBlockPayload;
 
 export type OperationCompletionEvidenceUpdatePayload = {
     updatedBy: string;
@@ -325,21 +379,31 @@ export type OperationFailPayload = {
 
 export type OperationCancelPayload = {
     canceledBy: string;
+    expectedEntityId?: number;
+    expectedTaskVersionEventId?: number;
+    notificationRequested?: boolean;
+    operatorNotificationRequested?: boolean;
+    refundAmount?: number;
     reason: string;
 };
 
 /** Union of all operation event payloads */
 export type OperationEventsPayload =
+    | OperationAcceptancePayload
     | OperationAssignPayload
+    | OperationEntityChangePayload
     | OperationSchedulePayload
     | OperationCompletePayload
+    | OperationBlockPayload
     | OperationCompletionEvidenceUpdatePayload
     | OperationVerifyPayload
     | OperationFailPayload
     | OperationCancelPayload;
 
 export type OperationEventsAnyPayload = Partial<
-    OperationAssignPayload &
+    OperationAcceptancePayload &
+        OperationAssignPayload &
+        OperationEntityChangePayload &
         OperationSchedulePayload &
         OperationCompletePayload &
         OperationCompletionEvidenceUpdatePayload &
@@ -356,6 +420,8 @@ export type PlantStatusApprovalTarget = {
     raisedBedId: number;
     positionIndex: number;
     raisedBedFieldId?: number | null;
+    plantCycleEventId?: number | null;
+    plantCycleVersionEventId?: number | null;
     accountId?: string | null;
     gardenId?: number | null;
     plantSortId?: number | null;
@@ -415,26 +481,43 @@ export type DeliveryRequestStatusPayload = {
     status: string;
 };
 
-export type DeliveryRequestFulfilledPayload = {
+type DeliveryRequestFulfilledPayloadBase = {
     status: string;
     deliveryNotes?: string;
-    handoffVerification?: {
-        version: 1;
-        runId: string;
-        stopId: number;
-        retryAttempt: number;
-        clientOperationId: string;
-        traceLinkId: number | null;
-        qrAvailable: boolean;
-        result: 'unverified' | 'scanned' | 'no-label' | 'missing' | 'skipped';
-        reason?:
-            | 'scanner-unavailable'
-            | 'label-unreadable'
-            | 'manual-verification'
-            | 'other-operational';
-        verifiedAt?: string;
-    };
 };
+
+export type DeliveryRequestHandoffVerificationPayload = {
+    version: 1;
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    clientOperationId: string;
+    traceLinkId: number | null;
+    qrAvailable: boolean;
+    result: 'unverified' | 'scanned' | 'no-label' | 'missing' | 'skipped';
+    reason?:
+        | 'scanner-unavailable'
+        | 'label-unreadable'
+        | 'manual-verification'
+        | 'other-operational';
+    verifiedAt?: string;
+};
+
+export type DeliveryRequestFulfilledPayloadV1 =
+    DeliveryRequestFulfilledPayloadBase & {
+        handoffVerification?: never;
+    };
+
+export type DeliveryRequestFulfilledPayloadV2 =
+    DeliveryRequestFulfilledPayloadBase & {
+        fulfilledAt?: string;
+        handoffVerification: DeliveryRequestHandoffVerificationPayload;
+    };
+
+export type DeliveryRequestFulfilledPayload =
+    DeliveryRequestFulfilledPayloadBase & {
+        handoffVerification?: DeliveryRequestHandoffVerificationPayload;
+    };
 
 export type DeliveryRequestExceptionRecordedPayload = {
     runId: string;
@@ -454,6 +537,25 @@ export type DeliveryRequestExceptionRecordedPayload = {
     occurredAt: string;
     recordedByUserId: string;
     routeRevision: number;
+    retryAttempt?: number;
+};
+
+export type DeliveryRequestLifecycleTransitionPayload = {
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    clientOperationId: string;
+    occurredAt: string;
+    routeRevision: number;
+};
+
+export type DeliveryRequestRouteProgressPayload = {
+    runId: string;
+    stopId: number;
+    retryAttempt: number;
+    milestone: 'near-arrival' | 'next-stop' | 'delayed';
+    occurredAt: string;
+    routeRevision: number;
 };
 
 export type DeliveryRequestExceptionRecoveredPayload = {
@@ -463,6 +565,7 @@ export type DeliveryRequestExceptionRecoveredPayload = {
     recoveredAt: string;
     recoveredByUserId: string;
     routeRevision: number;
+    retryAttempt?: number;
 };
 
 export type DeliveryRequestSurveySentPayload = {
@@ -475,6 +578,37 @@ export type DeliveryRequestReadyEmailProcessedPayload = {
     batchRequestIds: string[];
     completed?: boolean;
     skipped?: boolean;
+};
+
+export type DeliveryRequestLifecycleNotificationProcessedPayload = {
+    completed: boolean;
+    notificationId?: string;
+    processedAt: string;
+    reason:
+        | 'already-published'
+        | 'invalid-source-event'
+        | 'owner-unavailable'
+        | 'published';
+    skipped: boolean;
+    sourceEventId: number;
+};
+
+export type DeliveryRequestLifecycleNotificationDecisionPayload = {
+    decision: 'suppressed';
+    milestone:
+        | 'route-started'
+        | 'near-arrival'
+        | 'next-stop'
+        | 'delayed'
+        | 'arrived'
+        | 'delivered'
+        | 'exception'
+        | 'recovery';
+    reason: 'eta_threshold_already_emitted' | 'idempotency_reused';
+    retryAttempt: number;
+    runId: string;
+    sourceId: string;
+    stopId: string;
 };
 
 export type DeliveryRunReassignedPayload = {
@@ -500,10 +634,14 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestCancelledPayload
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
+    | DeliveryRequestLifecycleTransitionPayload
+    | DeliveryRequestRouteProgressPayload
     | DeliveryRequestExceptionRecordedPayload
     | DeliveryRequestExceptionRecoveredPayload
     | DeliveryRequestSurveySentPayload
-    | DeliveryRequestReadyEmailProcessedPayload;
+    | DeliveryRequestReadyEmailProcessedPayload
+    | DeliveryRequestLifecycleNotificationProcessedPayload
+    | DeliveryRequestLifecycleNotificationDecisionPayload;
 
 export type DeliveryRequestEventsAnyPayload = Partial<
     DeliveryRequestCreatePayload &
@@ -512,10 +650,12 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestCancelledPayload &
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
+        DeliveryRequestRouteProgressPayload &
         DeliveryRequestExceptionRecordedPayload &
         DeliveryRequestExceptionRecoveredPayload &
         DeliveryRequestSurveySentPayload &
-        DeliveryRequestReadyEmailProcessedPayload
+        DeliveryRequestReadyEmailProcessedPayload &
+        DeliveryRequestLifecycleNotificationProcessedPayload
 >;
 
 // ============================================================================

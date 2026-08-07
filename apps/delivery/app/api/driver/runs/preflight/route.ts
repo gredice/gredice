@@ -47,7 +47,6 @@ export async function POST(request: Request) {
                 console.warn('Delivery run preflight rejected', {
                     ...context,
                     requestCount: deliveryRequestIds.length,
-                    userId,
                 });
                 return Response.json(
                     {
@@ -69,7 +68,6 @@ export async function POST(request: Request) {
             console.error('Delivery run preflight failed', {
                 ...context,
                 requestCount: deliveryRequestIds.length,
-                userId,
             });
             return Response.json(
                 {

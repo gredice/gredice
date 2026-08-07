@@ -1,8 +1,11 @@
-import {
-    applyDeliveryRunPickupMutations,
-    DeliveryRunExecutionError,
-} from '@gredice/storage';
+import { DeliveryRunExecutionError } from '@gredice/storage';
 import { withAuth } from '../../../../../../../../lib/auth/auth';
+import { applyDriverDeliveryRunPickupMutations } from '../../../../../../../../lib/deliveryDashboard';
+import {
+    deliveryOperationalOpaqueId,
+    deliveryOperationFailureLogContext,
+    deliveryOperationRejectionLogContext,
+} from '../../../../../../../../lib/deliveryOperationalLogging';
 import { parseDeliveryPickupMutationRequest } from '../../../../../../../../lib/deliveryPickupMutationRequest';
 
 const privateNoStoreHeaders = {
@@ -63,7 +66,7 @@ export async function POST(
         }
 
         try {
-            const results = await applyDeliveryRunPickupMutations({
+            const results = await applyDriverDeliveryRunPickupMutations({
                 driverUserId: userId,
                 runId,
                 pickupNodeId,
@@ -80,11 +83,12 @@ export async function POST(
                     : 'pickup-mutation-failed';
             if (error instanceof DeliveryRunExecutionError) {
                 console.warn('Delivery pickup mutation rejected', {
-                    code,
-                    runId,
-                    pickupNodeId,
-                    mutationCount: mutations.length,
-                    userId,
+                    ...deliveryOperationRejectionLogContext({
+                        errorCode: code,
+                        mutationCount: mutations.length,
+                    }),
+                    runId: deliveryOperationalOpaqueId(runId),
+                    pickupNodeId: deliveryOperationalOpaqueId(pickupNodeId),
                 });
                 return Response.json(
                     { error: executionErrorMessage(code), code },
@@ -92,11 +96,12 @@ export async function POST(
                 );
             }
             console.error('Delivery pickup mutation failed', {
-                error,
-                runId,
-                pickupNodeId,
-                mutationCount: mutations.length,
-                userId,
+                ...deliveryOperationFailureLogContext({
+                    error,
+                    mutationCount: mutations.length,
+                }),
+                runId: deliveryOperationalOpaqueId(runId),
+                pickupNodeId: deliveryOperationalOpaqueId(pickupNodeId),
             });
             return Response.json(
                 {

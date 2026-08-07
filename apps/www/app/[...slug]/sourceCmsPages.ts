@@ -36,6 +36,8 @@ export type SourceCmsPage = {
     metaTitle: string;
     metaDescription: string;
     metaImageUrl: string | null;
+    metaImagePoiX: number | null;
+    metaImagePoiY: number | null;
     seoImageUrl: string | null;
     canonicalPath: string;
     noIndex: false;
@@ -55,6 +57,8 @@ export const companionPlantingCmsPage: SourceCmsPage = {
     metaDescription:
         'Što je companion planting, kako čitati dobre i loše biljne susjede te kako ih koristiti pri planiranju gredice.',
     metaImageUrl: null,
+    metaImagePoiX: null,
+    metaImagePoiY: null,
     seoImageUrl: null,
     canonicalPath: COMPANION_PLANTING_PATH,
     noIndex: false,
@@ -177,6 +181,8 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
     metaDescription:
         'Kako Gredice prate higijenu, sljedivost, berbu i dostavu svježeg uroda u trenutnom modelu usluge.',
     metaImageUrl: null,
+    metaImagePoiX: null,
+    metaImagePoiY: null,
     seoImageUrl: null,
     canonicalPath: QUALITY_HARVEST_SAFETY_PATH,
     noIndex: false,

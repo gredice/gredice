@@ -137,7 +137,7 @@ function DisabledOperationChip({
     );
 }
 
-function RaisedBedAiOperationChip({
+export function RaisedBedAiOperationChip({
     gardenId,
     label,
     target,
@@ -170,6 +170,7 @@ function RaisedBedAiOperationChip({
     return (
         <OperationScheduleModal
             gardenId={gardenId}
+            initialScheduledDate={target.scheduledDate}
             operation={operation}
             onConfirm={async (scheduledDate) => {
                 await setShoppingCartItem.mutateAsync({
@@ -182,7 +183,6 @@ function RaisedBedAiOperationChip({
                     additionalData: JSON.stringify({
                         scheduledDate: scheduledDate.toISOString(),
                     }),
-                    currency: 'eur',
                 });
             }}
             positionIndex={targetPositionIndex}

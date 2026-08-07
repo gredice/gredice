@@ -3,9 +3,12 @@ import type {
     OperationAssignedUser,
 } from '@gredice/storage';
 import {
+    canAcceptOperationTask,
     isFieldApproved,
+    isFieldBlocked,
     isFieldCompleted,
     isFieldPendingVerification,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -87,6 +90,8 @@ export function isDayBulkOperationApprovalTargetVisible(
     return (
         !patch?.isAccepted &&
         !hasOptimisticUnassignment(patch) &&
+        (patch?.status === undefined || canAcceptOperationTask(patch.status)) &&
+        !isOperationBlocked(patch?.status) &&
         !isOperationCompleted(patch?.status) &&
         !isOperationPendingVerification(patch?.status) &&
         !isOperationCancelled(patch?.status)
@@ -98,6 +103,7 @@ export function isDayBulkOperationAssignmentTargetVisible(
 ) {
     return (
         !patch?.assignedUserId &&
+        !isOperationBlocked(patch?.status) &&
         !isOperationCompleted(patch?.status) &&
         !isOperationPendingVerification(patch?.status) &&
         !isOperationCancelled(patch?.status)
@@ -108,6 +114,7 @@ export function isDayBulkOperationCancelTargetVisible(
     patch: DayBulkOperationPatch | undefined,
 ) {
     return (
+        !isOperationBlocked(patch?.status) &&
         !isOperationCompleted(patch?.status) &&
         !isOperationPendingVerification(patch?.status) &&
         !isOperationCancelled(patch?.status) &&
@@ -121,6 +128,7 @@ export function isDayBulkFieldApprovalTargetVisible(
     return (
         !patch?.isDeleted &&
         !hasOptimisticUnassignment(patch) &&
+        !isFieldBlocked(patch?.plantStatus) &&
         !isFieldApproved(patch?.plantStatus) &&
         !isFieldPendingVerification(patch?.plantStatus) &&
         !isFieldCompleted(patch?.plantStatus)
@@ -132,6 +140,7 @@ export function isDayBulkFieldCancelTargetVisible(
 ) {
     return (
         !patch?.isDeleted &&
+        !isFieldBlocked(patch?.plantStatus) &&
         !isFieldPendingVerification(patch?.plantStatus) &&
         !isFieldCompleted(patch?.plantStatus)
     );
@@ -143,6 +152,7 @@ export function isDayBulkFieldAssignmentTargetVisible(
     return (
         !patch?.isDeleted &&
         !patch?.assignedUserId &&
+        !isFieldBlocked(patch?.plantStatus) &&
         !isFieldPendingVerification(patch?.plantStatus) &&
         !isFieldCompleted(patch?.plantStatus)
     );

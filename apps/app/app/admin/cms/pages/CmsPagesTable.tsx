@@ -1,7 +1,9 @@
 import type { SelectCmsPage } from '@gredice/storage';
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
 import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Typography } from '@gredice/ui/Typography';
+import Image from 'next/image';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { CmsPageStateChip } from './CmsPageStateChip';
@@ -67,6 +69,27 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                     key={page.id}
                     href={KnownPages.CmsPageEdit(page.id)}
                     className="rounded-none px-3 py-3 hover:bg-muted/40 sm:px-4"
+                    startDecorator={
+                        page.metaImageUrl ? (
+                            <span className="h-10 w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
+                                <Image
+                                    alt=""
+                                    className="size-full object-cover"
+                                    decoding="async"
+                                    height={40}
+                                    loading="lazy"
+                                    src={page.metaImageUrl}
+                                    style={{
+                                        objectPosition: cmsImageObjectPosition(
+                                            page.metaImagePoiX,
+                                            page.metaImagePoiY,
+                                        ),
+                                    }}
+                                    width={64}
+                                />
+                            </span>
+                        ) : undefined
+                    }
                     label={
                         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <Typography

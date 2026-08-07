@@ -1,3 +1,4 @@
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { formatNewsDate } from '../lib/news';
@@ -7,6 +8,8 @@ export type NewsCardKind = 'blog' | 'changelog';
 export type NewsCardEntry = {
     category?: string | null;
     excerpt?: string | null;
+    metaImagePoiX?: number | null;
+    metaImagePoiY?: number | null;
     metaImageUrl?: string | null;
     publishedAt?: string | null;
     slug: string;
@@ -95,6 +98,12 @@ export function NewsCard({
                             alt=""
                             className="h-full w-full object-cover"
                             src={entry.metaImageUrl}
+                            style={{
+                                objectPosition: cmsImageObjectPosition(
+                                    entry.metaImagePoiX,
+                                    entry.metaImagePoiY,
+                                ),
+                            }}
                         />
                     </div>
                 ) : null}

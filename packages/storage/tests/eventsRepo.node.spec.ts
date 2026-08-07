@@ -5,6 +5,7 @@ import {
     countAiRequestEventsSince,
     createAutomationDefinition,
     createAutomationRun,
+    createDeliveryLifecycleNotificationDecisionOnce,
     createEvent,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
@@ -13,6 +14,7 @@ import {
     getEvents,
     getLatestEvents,
     getLatestEventsByAggregateIdPrefix,
+    getSunflowersDailyTotals,
     knownEvents,
     knownEventTypes,
     recordAutomationRunStep,
@@ -51,6 +53,111 @@ test('createEvent and getEvents basic usage', async () => {
             (e) => e.type === event.type && e.aggregateId === aggregateId,
         ),
     );
+});
+
+test('getSunflowersDailyTotals groups events by the requested timezone', async () => {
+    createTestDb();
+    const aggregateId = `sunflower-daily-${randomUUID()}`;
+
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(aggregateId, {
+            amount: 4,
+            reason: 'late-utc-earn',
+        }),
+        createdAt: new Date('2035-07-16T22:30:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.sunflowersSpentV1(aggregateId, {
+            amount: 2,
+            reason: 'late-local-spend',
+        }),
+        createdAt: new Date('2035-07-17T21:30:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(aggregateId, {
+            amount: 7,
+            reason: 'next-local-day-earn',
+        }),
+        createdAt: new Date('2035-07-17T22:30:00.000Z'),
+    });
+
+    const totals = await getSunflowersDailyTotals({
+        from: new Date('2035-07-16T22:00:00.000Z'),
+        to: new Date('2035-07-18T21:59:59.999Z'),
+        timeZone: 'Europe/Zagreb',
+    });
+
+    assert.deepEqual(totals, [
+        { date: '2035-07-17', spent: 2, earned: 4 },
+        { date: '2035-07-18', spent: 0, earned: 7 },
+    ]);
+});
+
+test('delivery lifecycle notification decisions are inserted once under concurrent replay', async () => {
+    createTestDb();
+    const requestId = `request:${randomUUID()}`;
+    const decision =
+        knownEvents.delivery.requestLifecycleNotificationDecisionV1(requestId, {
+            decision: 'suppressed',
+            milestone: 'arrived',
+            reason: 'idempotency_reused',
+            retryAttempt: 0,
+            runId: `run:${randomUUID()}`,
+            sourceId: `arrival:${randomUUID()}`,
+            stopId: '42',
+        });
+
+    const results = await Promise.all(
+        Array.from(
+            { length: 10 },
+            async () =>
+                await createDeliveryLifecycleNotificationDecisionOnce(decision),
+        ),
+    );
+    assert.equal(results.filter(Boolean).length, 1);
+    const recorded = await getEvents(decision.type, [requestId]);
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0]?.version, 1);
+    assert.deepEqual(recorded[0]?.data, decision.data);
+});
+
+test('ETA threshold suppression is inserted once across repeated route-progress sources', async () => {
+    createTestDb();
+    const requestId = `request:${randomUUID()}`;
+    const common = {
+        decision: 'suppressed' as const,
+        milestone: 'near-arrival' as const,
+        reason: 'eta_threshold_already_emitted' as const,
+        retryAttempt: 0,
+        runId: `run:${randomUUID()}`,
+        stopId: '42',
+    };
+    const first = knownEvents.delivery.requestLifecycleNotificationDecisionV1(
+        requestId,
+        {
+            ...common,
+            sourceId: `route-progress:${randomUUID()}`,
+        },
+    );
+    const second = knownEvents.delivery.requestLifecycleNotificationDecisionV1(
+        requestId,
+        {
+            ...common,
+            sourceId: `route-progress:${randomUUID()}`,
+        },
+    );
+
+    assert.equal(
+        await createDeliveryLifecycleNotificationDecisionOnce(first),
+        true,
+    );
+    assert.equal(
+        await createDeliveryLifecycleNotificationDecisionOnce(second),
+        false,
+    );
+    const recorded = await getEvents(first.type, [requestId]);
+    assert.equal(recorded.length, 1);
+    assert.deepEqual(recorded[0]?.data, first.data);
 });
 
 test('getEvents returns empty for unknown aggregate', async () => {

@@ -1,122 +1,153 @@
 import type { PlantDefinition } from '../plant-definition-types';
-import { createPlant } from './helpers';
+import { createDevelopmentProgram, createPlant } from './helpers';
 
-const treeRules: PlantDefinition['rules'] = {
-    F: [
-        {
-            rule: 'F(1.08,1.06)S(1,0.94)[+(24)S(0.86,0.8)][-(22)S(0.86,0.8)]',
-            weight: 3,
-        },
-        {
-            rule: 'F(1.04,1.02)S(0.94,0.9)[^(20)S(0.82,0.76)][&(18)S(0.82,0.76)]',
-            weight: 2,
-        },
-        { rule: 'F(0.98,0.98)S(0.9,0.88)', weight: 1 },
-    ],
-    S: [
-        {
-            right: ['L'],
-            rule: 'F(0.9,0.82)S(0.78,0.72)[+(18)L(0.92)][-(18)L(0.88)]',
-            weight: 2,
-        },
-        {
-            rule: 'F(0.88,0.8)S(0.74,0.7)[+(26)L(1.02)][-(24)L(0.96)]',
-            weight: 3,
-        },
-        { rule: 'F(0.78,0.72)[+(18)L(0.86)][-(16)L(0.82)]', weight: 2 },
-        { rule: 'F(0.72,0.68)L(0.76)', weight: 1 },
-    ],
-};
-
-const treeBase: PlantDefinition = {
-    name: 'Tree Base',
-    axiom: 'F(1.24,1.36)',
-    rules: treeRules,
-    angle: 22,
-    height: 1.58,
-    branching: 0.92,
-    directionVariability: 0.06,
-    stem: {
-        color: '#7c5b35',
-        radius: 0.09,
-        length: 0.14,
-        radiusDecay: 0.34,
-        minRadius: 0.008,
-        surface: 'bark',
-        detailColor: '#5a4022',
-        detailStrength: 0.38,
-        detailScale: 18,
-    },
-    leaf: {
-        color: '#618637',
-        size: 0.24,
-        type: 'oval',
-        density: 2,
-        hangAngle: 24,
-        hangAngleRandomness: 10,
-        sizeDecay: 0.28,
-    },
-    flower: {
-        enabled: false,
-        ageStart: 0,
-        color: '#ffffff',
-        size: 0,
-    },
-    vegetable: {
-        enabled: false,
-        ageStart: 0,
-        type: 'tomato',
-        yield: 0,
-        baseSize: 0.16,
-    },
+const treeVegetable: PlantDefinition['vegetable'] = {
+    enabled: false,
+    type: 'tomato',
+    baseSize: 0.16,
 };
 
 export const treePlants = {
-    figtree: createPlant({
-        ...treeBase,
+    figtree: createPlant('figtree', {
         name: 'Smokva',
+        development: createDevelopmentProgram('tree', {
+            axes: {
+                branchCount: 7,
+                branchLengthScale: 0.62,
+                branchNodeCount: 3,
+                branchPitchDegrees: 48,
+                branchingPattern: 'forked',
+                nodeCount: 5,
+                spread: 0.5,
+            },
+            foliage: {
+                count: 44,
+                petioleLengthScale: 0.3,
+                pitchRangeDegrees: [30, 58],
+                sizeRange: [0.72, 1.08],
+            },
+            phenology: { maturityGeneration: 11 },
+            variability: 0.1,
+        }),
         height: 1.42,
+        stem: {
+            color: '#7c5b35',
+            radius: 0.09,
+            radiusDecay: 0.34,
+            minRadius: 0.008,
+            surface: 'bark',
+            detailColor: '#5a4022',
+            detailStrength: 0.38,
+            detailScale: 18,
+        },
         leaf: {
-            ...treeBase.leaf,
             color: '#5b7f37',
             size: 0.3,
-            type: 'heart',
-            density: 2,
+            type: 'palmate',
         },
+        flower: {
+            enabled: false,
+            color: '#ffffff',
+            size: 0,
+        },
+        vegetable: treeVegetable,
     }),
-    olivetree: createPlant({
-        ...treeBase,
+    olivetree: createPlant('olivetree', {
         name: 'Maslina',
+        development: createDevelopmentProgram('tree', {
+            axes: {
+                branchCount: 8,
+                branchLengthScale: 0.56,
+                branchNodeCount: 4,
+                branchPitchDegrees: 52,
+                branchingPattern: 'forked',
+                nodeCount: 5,
+                spread: 0.46,
+            },
+            foliage: {
+                arrangement: 'opposite',
+                count: 52,
+                emergenceInterval: 0.17,
+                petioleLengthScale: 0.12,
+                pitchRangeDegrees: [24, 50],
+                sizeRange: [0.7, 1.04],
+            },
+            phenology: { maturityGeneration: 11.5 },
+            variability: 0.08,
+        }),
         height: 1.2,
-        branching: 0.82,
         stem: {
-            ...treeBase.stem,
             color: '#84705a',
+            radius: 0.09,
+            radiusDecay: 0.34,
+            minRadius: 0.008,
+            surface: 'bark',
             detailColor: '#665542',
+            detailStrength: 0.38,
             detailScale: 22,
         },
         leaf: {
-            ...treeBase.leaf,
             color: '#7b9360',
             size: 0.16,
-            density: 3,
+            type: 'lanceolate',
         },
+        flower: {
+            enabled: false,
+            color: '#ffffff',
+            size: 0,
+        },
+        vegetable: treeVegetable,
     }),
-    youngappletree: createPlant({
-        ...treeBase,
+    youngappletree: createPlant('youngappletree', {
         name: 'Mlada jabuka',
+        development: createDevelopmentProgram('tree', {
+            axes: {
+                branchCount: 6,
+                branchLengthScale: 0.58,
+                branchNodeCount: 3,
+                branchPitchDegrees: 50,
+                branchingPattern: 'alternate',
+                nodeCount: 5,
+                spread: 0.44,
+            },
+            foliage: {
+                count: 46,
+                emergenceInterval: 0.19,
+                petioleLengthScale: 0.24,
+                pitchRangeDegrees: [28, 56],
+                sizeRange: [0.72, 1.04],
+            },
+            phenology: { maturityGeneration: 11 },
+            reproduction: {
+                flowerStart: 7,
+                flowersPerSite: 2,
+                form: 'cluster',
+                site: 'terminal',
+                siteCount: 4,
+            },
+            variability: 0.09,
+        }),
         height: 1.34,
+        stem: {
+            color: '#7c5b35',
+            radius: 0.09,
+            radiusDecay: 0.34,
+            minRadius: 0.008,
+            surface: 'bark',
+            detailColor: '#5a4022',
+            detailStrength: 0.38,
+            detailScale: 18,
+        },
         leaf: {
-            ...treeBase.leaf,
             color: '#6b8f3a',
-            type: 'serrated',
             size: 0.22,
+            type: 'serrated',
         },
         flower: {
             enabled: true,
-            ageStart: 7,
             color: '#f7e6ef',
             size: 0.06,
         },
+        vegetable: treeVegetable,
     }),
 };

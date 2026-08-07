@@ -27,6 +27,67 @@ export type DeliveryMapSelection =
     | { kind: 'pickup'; id: string }
     | { kind: 'delivery'; id: string };
 
+export function deliveryMapAudience({
+    role,
+    userId,
+    driverUserId,
+}: {
+    role: string;
+    userId: string;
+    driverUserId: string | null;
+}) {
+    return (role === 'driver' || role === 'admin') && userId === driverUserId
+        ? 'driver'
+        : 'customer';
+}
+
+export function customerCurrentDeliveryMapStops({
+    accountId,
+    groups,
+    currentDeliveryStopIds,
+}: {
+    accountId: string;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{
+            stop: {
+                id: number;
+                latitude: number;
+                longitude: number;
+            };
+            request?: { accountId?: string | null };
+        }>;
+    }>;
+    currentDeliveryStopIds: ReadonlySet<number>;
+}): DeliveryMapStop[] {
+    const currentGroup = groups.find((group) =>
+        group.items.some(({ stop }) => currentDeliveryStopIds.has(stop.id)),
+    );
+    if (
+        !currentGroup?.items.some(
+            ({ stop, request }) =>
+                currentDeliveryStopIds.has(stop.id) &&
+                request?.accountId === accountId,
+        )
+    ) {
+        return [];
+    }
+    const representative = currentGroup.items.find(
+        ({ stop, request }) =>
+            currentDeliveryStopIds.has(stop.id) &&
+            request?.accountId === accountId,
+    )?.stop;
+    return representative
+        ? [
+              {
+                  latitude: representative.latitude,
+                  longitude: representative.longitude,
+                  sequence: 1,
+                  selectionId: null,
+              },
+          ]
+        : [];
+}
+
 export function deliveryMapSelectionKey(
     selection: DeliveryMapSelection | null,
 ) {

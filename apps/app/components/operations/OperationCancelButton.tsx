@@ -3,11 +3,13 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close } from '@gredice/ui/icons';
 import { CancelOperationModal } from '../../app/admin/schedule/CancelOperationModal';
+import { canCancelOperationTask } from '../../app/admin/schedule/scheduleShared';
 
 interface OperationCancelButtonProps {
     operation: {
         id: number;
         entityId: number;
+        taskVersionEventId: number;
         scheduledDate?: Date;
         status: string;
     };
@@ -18,7 +20,7 @@ export function OperationCancelButton({
     operation,
     operationLabel,
 }: OperationCancelButtonProps) {
-    if (operation.status === 'canceled' || operation.status === 'cancelled') {
+    if (!canCancelOperationTask(operation.status)) {
         return null;
     }
 

@@ -6,8 +6,11 @@ import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSec
 import { ScheduleDayPlantingsBulkActions } from './ScheduleDayPlantingsBulkActions';
 import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
 import {
+    activePlantCycleEventId,
+    activePlantCycleVersionEventId,
     groupRaisedBedsForSchedule,
     isFieldApproved,
+    isFieldBlocked,
     isFieldCompleted,
     isFieldPendingVerification,
 } from './scheduleShared';
@@ -46,41 +49,88 @@ export async function ScheduleDayPlantingsSection({
     const dayFieldsToApprove = scheduledFields
         .filter(
             (field) =>
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldApproved(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !!field.assignedUserId,
         )
-        .map((field) => ({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-            label: `${field.positionIndex + 1}`,
-        }));
+        .flatMap((field) => {
+            const expectedPlantCycleEventId = activePlantCycleEventId(field);
+            const expectedPlantCycleVersionEventId =
+                activePlantCycleVersionEventId(field);
+            return expectedPlantCycleEventId &&
+                expectedPlantCycleVersionEventId &&
+                field.plantSortId
+                ? [
+                      {
+                          id: field.id,
+                          raisedBedId: field.raisedBedId,
+                          positionIndex: field.positionIndex,
+                          expectedPlantCycleEventId,
+                          expectedPlantCycleVersionEventId,
+                          expectedPlantSortId: field.plantSortId,
+                          label: `${field.positionIndex + 1}`,
+                      },
+                  ]
+                : [];
+        });
 
     const dayFieldsToAssign = scheduledFields
         .filter(
             (field) =>
                 !field.assignedUserId &&
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus),
         )
-        .map((field) => ({
-            id: field.id,
-            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
-        }));
+        .flatMap((field) => {
+            const expectedPlantCycleEventId = activePlantCycleEventId(field);
+            const expectedPlantCycleVersionEventId =
+                activePlantCycleVersionEventId(field);
+            return expectedPlantCycleEventId &&
+                expectedPlantCycleVersionEventId &&
+                field.plantSortId
+                ? [
+                      {
+                          id: field.id,
+                          expectedPlantCycleEventId,
+                          expectedPlantCycleVersionEventId,
+                          expectedPlantSortId: field.plantSortId,
+                          farmUsers:
+                              assignableFarmUsersByRaisedBedFieldId[field.id] ??
+                              [],
+                      },
+                  ]
+                : [];
+        });
     const dayFieldsToCancel = scheduledFields
         .filter(
             (field) =>
+                !isFieldBlocked(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus),
         )
-        .map((field) => ({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-            label: `${field.positionIndex + 1}`,
-        }));
+        .flatMap((field) => {
+            const expectedPlantCycleEventId = activePlantCycleEventId(field);
+            const expectedPlantCycleVersionEventId =
+                activePlantCycleVersionEventId(field);
+            return expectedPlantCycleEventId &&
+                expectedPlantCycleVersionEventId &&
+                field.plantSortId
+                ? [
+                      {
+                          id: field.id,
+                          raisedBedId: field.raisedBedId,
+                          positionIndex: field.positionIndex,
+                          expectedPlantCycleEventId,
+                          expectedPlantCycleVersionEventId,
+                          expectedPlantSortId: field.plantSortId,
+                          label: `${field.positionIndex + 1}`,
+                      },
+                  ]
+                : [];
+        });
 
     return (
         <OptimisticScheduleActionsProvider>

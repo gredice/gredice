@@ -8,6 +8,7 @@ import type {
     getAllFiscalizationSettings,
     getFiscalizationUserSettings,
     getReceipt,
+    updateReceiptFiscalization,
 } from '@gredice/storage';
 
 const date = new Date('2026-07-05T10:00:00.000Z');
@@ -21,6 +22,9 @@ type FiscalizationUserSettings = NonNullable<
 >;
 type FiscalizationPosSettings = NonNullable<
     FiscalizationSettings['posSettings']
+>;
+type UpdateReceiptFiscalizationArgs = Parameters<
+    typeof updateReceiptFiscalization
 >;
 
 function receipt(overrides: Partial<ReceiptRecord> = {}): ReceiptRecord {
@@ -81,6 +85,7 @@ function posSettings(
 ): FiscalizationPosSettings {
     return {
         id: 1,
+        name: 'Web checkout',
         posId: '1',
         premiseId: 'WEB',
         isActive: true,
@@ -131,7 +136,7 @@ test('issueReceiptForPaidInvoice fills business settings and delegates idempoten
 });
 
 test('fiscalizeReceipt records missing fiscalization settings as failed', async () => {
-    const updates: unknown[] = [];
+    const updates: UpdateReceiptFiscalizationArgs[] = [];
 
     const result = await fiscalizeReceipt(77, {
         getReceipt: async () => receipt(),
@@ -142,7 +147,9 @@ test('fiscalizeReceipt records missing fiscalization settings as failed', async 
         receiptRequest: async () => {
             throw new Error('should not call CIS');
         },
-        updateReceiptFiscalization: async (...args: unknown[]) => {
+        updateReceiptFiscalization: async (
+            ...args: UpdateReceiptFiscalizationArgs
+        ) => {
             updates.push(args);
         },
     });
@@ -166,7 +173,7 @@ test('fiscalizeReceipt records missing fiscalization settings as failed', async 
 });
 
 test('fiscalizeReceipt records CIS rejection response', async () => {
-    const updates: unknown[] = [];
+    const updates: UpdateReceiptFiscalizationArgs[] = [];
 
     const result = await fiscalizeReceipt(77, {
         getReceipt: async () => receipt(),
@@ -180,7 +187,9 @@ test('fiscalizeReceipt records CIS rejection response', async () => {
             responseText: '<xml>failed</xml>',
             errors: [{ errorMessage: 'CIS says no' }],
         }),
-        updateReceiptFiscalization: async (...args: unknown[]) => {
+        updateReceiptFiscalization: async (
+            ...args: UpdateReceiptFiscalizationArgs
+        ) => {
             updates.push(args);
         },
     });
@@ -194,7 +203,7 @@ test('fiscalizeReceipt records CIS rejection response', async () => {
 });
 
 test('fiscalizeReceipt records successful confirmation', async () => {
-    const updates: unknown[] = [];
+    const updates: UpdateReceiptFiscalizationArgs[] = [];
 
     const result = await fiscalizeReceipt(77, {
         getReceipt: async () => receipt(),
@@ -210,7 +219,9 @@ test('fiscalizeReceipt records successful confirmation', async () => {
             zki: 'zki-123',
             responseText: '<xml>ok</xml>',
         }),
-        updateReceiptFiscalization: async (...args: unknown[]) => {
+        updateReceiptFiscalization: async (
+            ...args: UpdateReceiptFiscalizationArgs
+        ) => {
             updates.push(args);
         },
     });

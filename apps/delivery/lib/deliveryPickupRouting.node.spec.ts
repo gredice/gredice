@@ -5,6 +5,7 @@ import {
     planPickupAwareDeliveryRoute,
     type RemainingDeliveryRouteNode,
     recalculatePickupAwareDeliveryRoute,
+    refreshFixedPickupAwareDeliveryRoute,
 } from './deliveryPickupRouting';
 import { DeliveryRoutePlanningError } from './deliveryRouting';
 
@@ -588,6 +589,51 @@ function remainingCustomer(
         ...overrides,
     };
 }
+
+test('refreshes live ETAs without reordering the accepted pickup-aware itinerary', async (t) => {
+    const google = installGoogleMock(t);
+    const nodes: RemainingDeliveryRouteNode[] = [
+        {
+            kind: 'pickup',
+            nodeKey: 'persisted-pickup',
+            formattedAddress: 'Persisted pickup',
+            latitude: 45.9,
+            longitude: 16.1,
+            serviceDurationSeconds: 120,
+        },
+        {
+            ...remainingCustomer(1),
+            nodeKey: 'persisted-delivery',
+            requiredPickupKey: 'persisted-pickup',
+            latitude: 45.91,
+            longitude: 16.11,
+            windowEndAt: new Date(departureTime.getTime() - 60_000),
+        },
+        {
+            ...remainingCustomer(2),
+            nodeKey: 'nearby-but-later',
+            latitude: 45.7501,
+            longitude: 15.9001,
+        },
+    ];
+
+    const plan = await refreshFixedPickupAwareDeliveryRoute({
+        origin: { latitude: 45.75, longitude: 15.9 },
+        nodes,
+        departureTime,
+    });
+
+    assert.equal(plan.estimateSource, 'google');
+    assert.deepEqual(
+        plan.visits.map((visit) => visit.nodeKey),
+        nodes.map((node) => node.nodeKey),
+    );
+    assert.equal(google.matrixBodies.length, 0);
+    assert.equal(google.routeBodies.length, 1);
+    const [routeBody] = google.routeBodies;
+    assert.ok(isRecord(routeBody));
+    assert.equal(routeBody.optimizeWaypointOrder, false);
+});
 
 test('reuses one Google matrix while selectively relaxing many overdue reroute windows', async (t) => {
     const google = installGoogleMock(t);

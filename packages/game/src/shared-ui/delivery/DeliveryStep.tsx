@@ -9,16 +9,15 @@ import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useState } from 'react';
-import type { useCheckout } from '../../hooks/useCheckout';
 import { useDeliveryAddresses } from '../../hooks/useDeliveryAddresses';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { usePickupLocations } from '../../hooks/usePickupLocations';
 import { useTimeSlots } from '../../hooks/useTimeSlots';
-import { ButtonConfirmPayment } from '../../hud/components/shopping-cart/ButtonConfirmPayment';
 import { DeliveryAddressesSection } from './DeliveryAddressesSection';
 import {
     DeliverySlotPicker,
     type DeliverySlotPickerSlot,
 } from './DeliverySlotPicker';
+import { isDeliverySlotAvailable } from './deliverySlotAvailability';
 
 export interface DeliverySelectionData {
     mode: 'delivery' | 'pickup';
@@ -28,44 +27,65 @@ export interface DeliverySelectionData {
     notes?: string;
 }
 
+export interface DeliveryStepSummary {
+    mode: 'delivery' | 'pickup';
+    startAt: string;
+    endAt: string;
+    destinationLabel: string;
+}
+
 interface DeliveryStepProps {
+    initialSelection?: DeliverySelectionData | null;
     onSelectionChange: (selection: DeliverySelectionData | null) => void;
     onBack: () => void;
-    onProceed: () => void;
-    checkout: ReturnType<typeof useCheckout>;
+    onProceed: (summary: DeliveryStepSummary) => void;
     isValid: boolean;
 }
 
 export function DeliveryStep({
+    initialSelection,
     onSelectionChange,
     onBack,
-    checkout,
     onProceed,
     isValid,
 }: DeliveryStepProps) {
-    const [selection, setSelection] = useState<DeliverySelectionData>({
-        mode: 'delivery',
-    });
+    const [selection, setSelection] = useState<DeliverySelectionData>(
+        initialSelection ?? {
+            mode: 'delivery',
+        },
+    );
     const [manageAddresses, setManageAddresses] = useState(false);
     const [slotRange] = useState(() => {
-        const from = new Date();
+        const referenceDate = new Date();
+        const from = new Date(referenceDate);
         const daysFromMonday = (from.getDay() + 6) % 7;
         from.setDate(from.getDate() - daysFromMonday);
         from.setHours(0, 0, 0, 0);
 
-        const to = new Date();
+        const to = new Date(referenceDate);
         to.setMonth(to.getMonth() + 1);
 
         return {
             from: from.toISOString(),
+            referenceDate: referenceDate.toISOString(),
             to: to.toISOString(),
         };
     });
-    const { data: cart } = useShoppingCart();
     const { data: addresses, isLoading: isLoadingAddresses } =
         useDeliveryAddresses();
-    const { data: timeSlots, isLoading: slotsLoading } =
-        useTimeSlots(slotRange);
+    const {
+        data: pickupLocations,
+        isError: pickupLocationsError,
+        isFetching: pickupLocationsFetching,
+        isPending: pickupLocationsPending,
+        refetch: refetchPickupLocations,
+    } = usePickupLocations();
+    const { data: timeSlots, isLoading: slotsLoading } = useTimeSlots({
+        from: slotRange.from,
+        includeArchived: true,
+        includeClosed: true,
+        to: slotRange.to,
+    });
     const pickerSlots = useMemo<DeliverySlotPickerSlot[]>(
         () =>
             (timeSlots ?? []).flatMap((slot) => {
@@ -79,14 +99,41 @@ export function DeliveryStep({
                         startAt: slot.startAt,
                         endAt: slot.endAt,
                         fulfillment: slot.type,
+                        disabled: !isDeliverySlotAvailable(
+                            slot,
+                            slotRange.referenceDate,
+                        ),
                     },
                 ];
             }),
-        [timeSlots],
+        [slotRange.referenceDate, timeSlots],
     );
     const selectedTimeSlot = timeSlots?.find(
         (slot) => slot.id === selection.slotId,
     );
+    const selectedAddress = addresses?.find(
+        (address) => address.id === selection.addressId,
+    );
+    const selectedPickupLocation = pickupLocations?.find(
+        (location) =>
+            location.id === selection.locationId &&
+            location.id === selectedTimeSlot?.locationId,
+    );
+    const selectedSlotAvailable =
+        selectedTimeSlot !== undefined &&
+        (selectedTimeSlot.type === 'delivery' ||
+            selectedTimeSlot.type === 'pickup') &&
+        isDeliverySlotAvailable(selectedTimeSlot, slotRange.referenceDate);
+    const canProceed =
+        isValid &&
+        selectedSlotAvailable &&
+        selection.mode === selectedTimeSlot.type &&
+        (selectedTimeSlot.type === 'delivery'
+            ? selectedAddress !== undefined
+            : selectedPickupLocation !== undefined);
+    const pickupDestinationLabel = selectedPickupLocation
+        ? `${selectedPickupLocation.name} — ${selectedPickupLocation.street1}, ${selectedPickupLocation.postalCode} ${selectedPickupLocation.city}`
+        : 'odabranoj lokaciji';
 
     useEffect(() => {
         if (
@@ -190,21 +237,63 @@ export function DeliveryStep({
                 emptyMessage="Trenutno nema dostupnih termina dostave ili osobnog preuzimanja."
                 label={null}
                 loading={slotsLoading}
+                referenceDate={slotRange.referenceDate}
                 slots={pickerSlots}
                 value={selection.slotId}
                 onValueChange={handleSlotChange}
             />
 
-            {selectedTimeSlot?.type === 'pickup' && (
+            {selectedTimeSlot?.type === 'pickup' && selectedPickupLocation ? (
                 <Alert
                     color="warning"
                     startDecorator={<Info className="size-5 shrink-0" />}
                 >
                     <strong>Odabrano je osobno preuzimanje.</strong> Narudžbu
-                    preuzimaš na lokaciji Gredice HQ; neće biti dostavljena na
-                    tvoju adresu.
+                    preuzimaš na {pickupDestinationLabel}; neće biti dostavljena
+                    na tvoju adresu.
                 </Alert>
-            )}
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsPending ? (
+                <div
+                    aria-label="Učitavanje lokacije za osobno preuzimanje"
+                    role="status"
+                >
+                    <Skeleton className="h-16 w-full rounded-md" />
+                </div>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsError ? (
+                <Stack spacing={3}>
+                    <Alert color="danger">
+                        Nije moguće učitati lokaciju za osobno preuzimanje.
+                        Pokušaj ponovno ili odaberi drugi termin.
+                    </Alert>
+                    <Row justifyContent="end">
+                        <Button
+                            loading={pickupLocationsFetching}
+                            variant="outlined"
+                            onClick={() => refetchPickupLocations()}
+                        >
+                            Pokušaj ponovno
+                        </Button>
+                    </Row>
+                </Stack>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            !pickupLocationsPending &&
+            !pickupLocationsError ? (
+                <Alert color="danger">
+                    Lokacija za odabrani termin osobnog preuzimanja više nije
+                    dostupna. Odaberi drugi termin.
+                </Alert>
+            ) : null}
 
             {selectedTimeSlot?.type === 'delivery' && (
                 <Row alignItems="end" className="min-w-0" spacing={2}>
@@ -226,7 +315,7 @@ export function DeliveryStep({
                         />
                     ) : (
                         <NoDataPlaceholder className="min-w-0 flex-1">
-                            Dodaj adresu za dostavu kako bi mogao nastaviti.
+                            Dodaj adresu za dostavu kako bi mogao/la nastaviti.
                         </NoDataPlaceholder>
                     )}
                     <Button
@@ -244,12 +333,39 @@ export function DeliveryStep({
                 <Button variant="outlined" onClick={onBack}>
                     Natrag
                 </Button>
-                <ButtonConfirmPayment
-                    cart={cart}
-                    checkout={checkout}
-                    disabled={!isValid}
-                    onConfirm={onProceed}
-                />
+                <Button
+                    variant="solid"
+                    disabled={!canProceed}
+                    endDecorator={<Navigate className="size-5 shrink-0" />}
+                    onClick={() => {
+                        if (
+                            !canProceed ||
+                            !selectedTimeSlot ||
+                            (selectedTimeSlot.type !== 'delivery' &&
+                                selectedTimeSlot.type !== 'pickup')
+                        ) {
+                            return;
+                        }
+
+                        onProceed({
+                            mode: selectedTimeSlot.type,
+                            startAt: new Date(
+                                selectedTimeSlot.startAt,
+                            ).toISOString(),
+                            endAt: new Date(
+                                selectedTimeSlot.endAt,
+                            ).toISOString(),
+                            destinationLabel:
+                                selectedTimeSlot.type === 'pickup'
+                                    ? pickupDestinationLabel
+                                    : selectedAddress
+                                      ? `${selectedAddress.label} — ${selectedAddress.street1}, ${selectedAddress.city}`
+                                      : 'Adresa za dostavu',
+                        });
+                    }}
+                >
+                    Nastavi
+                </Button>
             </Row>
         </Stack>
     );

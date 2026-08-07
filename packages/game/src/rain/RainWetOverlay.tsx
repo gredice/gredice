@@ -1,14 +1,11 @@
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import type { BufferGeometry, Vector3Tuple } from 'three';
+import type { BufferGeometry, IUniform, Vector3Tuple } from 'three';
+import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
 import {
-    MathUtils,
-    ShaderMaterial,
-    UniformsLib,
-    UniformsUtils,
-    Vector3,
-} from 'three';
-import { useGameFlags } from '../GameFlagsContext';
+    useRainSurfacePuddleStrengthUniform,
+    useRainSurfaceWetnessState,
+    useRainSurfaceWetnessUniform,
+} from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
@@ -90,12 +87,6 @@ void main() {
 `;
 
 export function RainWetOverlay(props: RainWetOverlayProps) {
-    const flags = useGameFlags();
-
-    if (!flags.enableRainWetOverlayFlag) {
-        return null;
-    }
-
     return <RainWetOverlayEffect {...props} />;
 }
 
@@ -103,13 +94,9 @@ export function useRainWetOverlayVisible({
     intensityMultiplier = 1,
     minRain = 0.08,
 }: Pick<RainWetOverlayProps, 'intensityMultiplier' | 'minRain'> = {}) {
-    const flags = useGameFlags();
-    const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
+    const rainAmount = useGameState((state) => state.rainSurfaceIntensity);
 
-    return (
-        flags.enableRainWetOverlayFlag &&
-        rainAmount * intensityMultiplier >= minRain
-    );
+    return rainAmount * intensityMultiplier >= minRain;
 }
 
 export function useRainWetOverlayMaterial({
@@ -132,7 +119,37 @@ export function useRainWetOverlayMaterial({
     | 'topSurfaceBias'
     | 'wetSpeed'
 >) {
-    const rainAmount = useGameState((state) => state.weather?.rainy ?? 0);
+    const wetnessUniform = useRainSurfaceWetnessUniform({
+        drySpeed,
+        intensityMultiplier,
+        wetSpeed,
+    });
+    return useRainWetOverlayMaterialWithWetnessUniform({
+        bounds,
+        darkness,
+        geometry,
+        glossiness,
+        topSurfaceBias,
+        wetnessUniform,
+    });
+}
+
+function useRainWetOverlayMaterialWithWetnessUniform({
+    bounds,
+    darkness,
+    geometry,
+    glossiness,
+    topSurfaceBias,
+    wetnessUniform,
+}: {
+    bounds: RainWetOverlayProps['bounds'];
+    darkness: number;
+    geometry: BufferGeometry;
+    glossiness: number;
+    topSurfaceBias: number;
+    wetnessUniform: IUniform<number>;
+}) {
+    const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const resolvedBounds = useMemo(() => {
         if (bounds) return bounds;
         if (!geometry.boundingBox) {
@@ -168,6 +185,8 @@ export function useRainWetOverlayMaterial({
             vertexShader: rainOverlayVertexShader,
             fragmentShader: rainOverlayFragmentShader,
         });
+        mat.uniforms.uWetness = wetnessUniform;
+        mat.uniforms.uPuddleStrength = puddleStrengthUniform;
         mat.polygonOffset = true;
         mat.polygonOffsetFactor = -1;
         mat.polygonOffsetUnits = -1;
@@ -175,18 +194,18 @@ export function useRainWetOverlayMaterial({
     }, [
         darkness,
         glossiness,
+        puddleStrengthUniform,
         resolvedBounds.max,
         resolvedBounds.min,
         topSurfaceBias,
+        wetnessUniform,
     ]);
 
     useEffect(() => {
         material.uniforms.uTopSurfaceBias.value = topSurfaceBias;
         material.uniforms.uDarkness.value = darkness;
         material.uniforms.uGlossiness.value = glossiness;
-        material.uniforms.uPuddleStrength.value =
-            Math.max(0, rainAmount - 0.66) / 0.34;
-    }, [darkness, glossiness, material, rainAmount, topSurfaceBias]);
+    }, [darkness, glossiness, material, topSurfaceBias]);
 
     useEffect(() => {
         material.uniforms.uBoundsMin.value.set(...resolvedBounds.min);
@@ -194,21 +213,6 @@ export function useRainWetOverlayMaterial({
     }, [material, resolvedBounds.max, resolvedBounds.min]);
 
     useEffect(() => () => material.dispose(), [material]);
-
-    useFrame((_, delta) => {
-        const target = Math.min(
-            1,
-            Math.max(0, rainAmount * intensityMultiplier),
-        );
-        const speed =
-            target > material.uniforms.uWetness.value ? wetSpeed : drySpeed;
-        material.uniforms.uWetness.value = MathUtils.damp(
-            material.uniforms.uWetness.value,
-            target,
-            speed,
-            delta,
-        );
-    });
 
     return material;
 }
@@ -229,18 +233,22 @@ function RainWetOverlayEffect({
         intensityMultiplier,
         minRain,
     });
-    const material = useRainWetOverlayMaterial({
-        bounds,
-        darkness,
+    const { active: dryingDown, wetnessUniform } = useRainSurfaceWetnessState({
         drySpeed,
-        geometry,
-        glossiness,
         intensityMultiplier,
-        topSurfaceBias,
+        minimumWetness: 0.01,
         wetSpeed,
     });
+    const material = useRainWetOverlayMaterialWithWetnessUniform({
+        bounds,
+        darkness,
+        geometry,
+        glossiness,
+        topSurfaceBias,
+        wetnessUniform,
+    });
 
-    if (!shouldRender && material.uniforms.uWetness.value < 0.01) {
+    if (!shouldRender && !dryingDown) {
         return null;
     }
 

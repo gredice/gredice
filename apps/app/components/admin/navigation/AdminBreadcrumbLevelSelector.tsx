@@ -10,6 +10,7 @@ import {
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Home,
     Inbox,
@@ -178,6 +179,43 @@ const breadcrumbSections: {
             {
                 ...adminPages.DeliveryRequests,
                 icon: <Truck className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryOperations,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryNotifications,
+                icon: <Graph className="size-4" />,
+            },
+        ],
+    },
+    {
+        title: 'Izvještaji',
+        pages: [
+            {
+                ...adminPages.SowingStatistics,
+                icon: <Tally3 className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryRequestStatistics,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.UsersStatistics,
+                icon: <User className="size-4" />,
+            },
+            {
+                ...adminPages.OperationsStatistics,
+                icon: <Hammer className="size-4" />,
+            },
+            {
+                ...adminPages.RecordsStatistics,
+                icon: <File className="size-4" />,
+            },
+            {
+                ...adminPages.SunflowersStatistics,
+                icon: <Success className="size-4" />,
             },
         ],
     },

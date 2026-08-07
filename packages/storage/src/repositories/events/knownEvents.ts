@@ -8,13 +8,19 @@ import type {
     AdventCalendarOpenPayload,
     ApprovalRequestCreatePayload,
     ApprovalRequestReviewPayload,
+    CheckoutOperationCreatedPayload,
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
     DeliveryRequestExceptionRecordedPayload,
     DeliveryRequestExceptionRecoveredPayload,
-    DeliveryRequestFulfilledPayload,
+    DeliveryRequestFulfilledPayloadV1,
+    DeliveryRequestFulfilledPayloadV2,
+    DeliveryRequestLifecycleNotificationDecisionPayload,
+    DeliveryRequestLifecycleNotificationProcessedPayload,
+    DeliveryRequestLifecycleTransitionPayload,
     DeliveryRequestReadyEmailProcessedPayload,
+    DeliveryRequestRouteProgressPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
@@ -28,10 +34,13 @@ import type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAcceptancePayload,
     OperationAssignPayload,
+    OperationBlockPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationCompletionEvidenceUpdatePayload,
+    OperationEntityChangePayload,
     OperationFailPayload,
     OperationSchedulePayload,
     OperationVerifyPayload,
@@ -44,6 +53,7 @@ import type {
     RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
     RaisedBedFieldDeletePayload,
+    RaisedBedFieldPlantBlockPayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
@@ -57,6 +67,17 @@ import type {
 } from './types';
 
 export const knownEvents = {
+    checkout: {
+        operationCreatedV1: (
+            aggregateId: string,
+            data: CheckoutOperationCreatedPayload,
+        ) => ({
+            type: knownEventTypes.checkout.operationCreated,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
     accounts: {
         createdV1: (aggregateId: string) => ({
             type: knownEventTypes.accounts.create,
@@ -320,6 +341,15 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        plantBlockedV1: (
+            aggregateId: string,
+            data: RaisedBedFieldPlantBlockPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.plantBlock,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         plantReplaceSortV1: (
             aggregateId: string,
             data: RaisedBedFieldPlantReplaceSortPayload,
@@ -349,8 +379,26 @@ export const knownEvents = {
         }),
     },
     operations: {
+        acceptanceChangedV1: (
+            aggregateId: string,
+            data: OperationAcceptancePayload,
+        ) => ({
+            type: knownEventTypes.operations.acceptance,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         assignedV1: (aggregateId: string, data: OperationAssignPayload) => ({
             type: knownEventTypes.operations.assign,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        entityChangedV1: (
+            aggregateId: string,
+            data: OperationEntityChangePayload,
+        ) => ({
+            type: knownEventTypes.operations.entityChange,
             version: 1,
             aggregateId,
             data,
@@ -363,6 +411,12 @@ export const knownEvents = {
         }),
         completedV1: (aggregateId: string, data: OperationCompletePayload) => ({
             type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        blockedV1: (aggregateId: string, data: OperationBlockPayload) => ({
+            type: knownEventTypes.operations.block,
             version: 1,
             aggregateId,
             data,
@@ -497,9 +551,28 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        requestLifecycleNotificationProcessedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleNotificationProcessedPayload,
+        ) => ({
+            type: knownEventTypes.delivery
+                .requestLifecycleNotificationProcessed,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestLifecycleNotificationDecisionV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleNotificationDecisionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestLifecycleNotificationDecision,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         requestFulfilledV1: (
             aggregateId: string,
-            data: DeliveryRequestFulfilledPayload,
+            data: DeliveryRequestFulfilledPayloadV1,
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 1,
@@ -508,10 +581,37 @@ export const knownEvents = {
         }),
         requestFulfilledV2: (
             aggregateId: string,
-            data: DeliveryRequestFulfilledPayload,
+            data: DeliveryRequestFulfilledPayloadV2,
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 2,
+            aggregateId,
+            data,
+        }),
+        requestRouteStartedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleTransitionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestRouteStarted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestRouteProgressV1: (
+            aggregateId: string,
+            data: DeliveryRequestRouteProgressPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestRouteProgress,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestArrivedV1: (
+            aggregateId: string,
+            data: DeliveryRequestLifecycleTransitionPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestArrived,
+            version: 1,
             aggregateId,
             data,
         }),

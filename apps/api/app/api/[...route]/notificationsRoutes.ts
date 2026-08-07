@@ -5,9 +5,9 @@ import {
     enqueueNotificationCampaign,
     getNotification,
     getNotificationCampaign,
-    getNotificationsByAccount,
-    getNotificationsByUser,
+    getNotificationsForCenter,
     isDeliverablePushSubscription,
+    maxNotificationReadBatchSize,
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
@@ -29,9 +29,14 @@ import {
     sanitizeGrediceLinkUrl,
     validateHostedImageUrl,
 } from '../../../lib/http/safeUrls';
-import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
+import { notificationPreferenceUpdateSchema } from '../../../lib/notifications/notificationPreferences';
+import {
+    notificationPreferencesWritable,
+    notificationRolloutFlags,
+} from '../../../lib/notifications/notificationRollout';
 import { notificationCenterRoles } from '../../../lib/notifications/notificationRouteRoles';
 import {
+    normalizePushDevicePatch,
     pushDeviceResponse,
     pushDeviceUpsertSchema,
 } from '../../../lib/notifications/pushDevices';
@@ -288,10 +293,13 @@ function bulkCampaignsDisabledResponse(context: {
     );
 }
 
-function premiumControlsDisabledResponse(context: {
-    json: (body: { error: string }, status: 403) => Response;
-}) {
-    if (notificationRolloutFlags.premiumControlsEnabled) return null;
+function premiumControlsDisabledResponse(
+    context: {
+        json: (body: { error: string }, status: 403) => Response;
+    },
+    preferences: ReadonlyArray<{ category: string; channel: string }>,
+) {
+    if (notificationPreferencesWritable({ preferences })) return null;
     return context.json(
         {
             error: 'Premium notification controls are not enabled in this environment',
@@ -600,27 +608,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const [userNotifications, accountNotifications] = await Promise.all(
-                [
-                    getNotificationsByUser(userId, read ?? false, page, limit),
-                    getNotificationsByAccount(
-                        accountId,
-                        read ?? false,
-                        page,
-                        limit,
-                    ),
-                ],
-            );
-
-            // Deduplicate notifications by ID to prevent duplicates when a notification
-            // has both userId and accountId set
-            const allNotifications =
-                userNotifications.concat(accountNotifications);
-            const uniqueNotifications = Array.from(
-                new Map(allNotifications.map((n) => [n.id, n])).values(),
-            );
-
-            return context.json(uniqueNotifications, 200);
+            const notifications = await getNotificationsForCenter({
+                accountId,
+                userId,
+                read: read ?? false,
+                page,
+                limit,
+            });
+            return context.json(notifications, 200);
         },
     )
     .put(
@@ -631,7 +626,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 notificationIds: z
-                    .array(z.string())
+                    .array(z.string().min(1))
+                    .max(maxNotificationReadBatchSize)
                     .describe(
                         'List of notification IDs to update. If not provided, all notifications will be updated.',
                     ),
@@ -712,13 +708,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const { accountId, userId } = context.get('authContext');
             if (
-                notification.accountId !== accountId &&
-                (!notification.userId || notification.userId !== userId)
+                notification.accountId !== accountId ||
+                (notification.userId !== null && notification.userId !== userId)
             ) {
-                return context.json(
-                    { error: 'Unauthorized access to notification' },
-                    403,
-                );
+                // Keep absent and out-of-scope IDs indistinguishable so this
+                // endpoint cannot be used as a cross-account existence oracle.
+                return context.json({ error: 'Notification not found' }, 404);
             }
 
             if (typeof read === 'boolean') {
@@ -739,7 +734,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/preferences',
         describeRoute({ description: 'Get notification preferences for user' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
             const preferences =
@@ -762,43 +757,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .put(
         '/preferences',
         describeRoute({ description: 'Upsert notification preferences' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator(
             'json',
             z.object({
-                preferences: z.array(
-                    z.object({
-                        scope: z.enum(['global', 'account']),
-                        category: z.string().min(1),
-                        channel: z.enum(['in_app', 'email', 'push', 'sms']),
-                        enabled: z.boolean(),
-                        quietHoursStartMinute: z
-                            .number()
-                            .int()
-                            .min(0)
-                            .max(1439)
-                            .nullable()
-                            .optional(),
-                        quietHoursEndMinute: z
-                            .number()
-                            .int()
-                            .min(0)
-                            .max(1439)
-                            .nullable()
-                            .optional(),
-                        digestFrequency: z
-                            .enum(['off', 'hourly', 'daily', 'weekly'])
-                            .optional(),
-                    }),
-                ),
+                preferences: z.array(notificationPreferenceUpdateSchema),
             }),
         ),
         async (context) => {
-            const disabledResponse = premiumControlsDisabledResponse(context);
+            const { preferences } = context.req.valid('json');
+            const disabledResponse = premiumControlsDisabledResponse(
+                context,
+                preferences,
+            );
             if (disabledResponse) return disabledResponse;
 
             const { userId, accountId } = context.get('authContext');
-            const { preferences } = context.req.valid('json');
             for (const preference of preferences) {
                 const effectiveAccountId =
                     preference.scope === 'account' ? accountId : null;
@@ -815,6 +789,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             preference.quietHoursStartMinute ?? null,
                         quietHoursEndMinute:
                             preference.quietHoursEndMinute ?? null,
+                        timezone: preference.timezone,
                         digestFrequency: preference.digestFrequency ?? 'off',
                     })
                     .onConflictDoUpdate({
@@ -841,6 +816,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 preference.quietHoursStartMinute ?? null,
                             quietHoursEndMinute:
                                 preference.quietHoursEndMinute ?? null,
+                            timezone: preference.timezone,
                             ...(preference.digestFrequency === undefined
                                 ? {}
                                 : {
@@ -862,7 +838,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 'Upsert the current authenticated user push device subscription.',
             security: authSecurity,
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator('json', pushDeviceUpsertSchema),
         async (context) => {
             const payload = context.req.valid('json');
@@ -948,7 +924,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 'List push devices for the current authenticated user/account.',
             security: authSecurity,
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         async (context) => {
             const { userId, accountId } = context.get('authContext');
             const devices = await storage().query.webPushSubscriptions.findMany(
@@ -977,7 +953,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .patch(
         '/devices/:id',
         describeRoute({ description: 'Update push device metadata' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator('param', z.object({ id: z.string() })),
         zValidator(
             'json',
@@ -1003,7 +979,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json({ error: 'Device not found' }, 404);
             }
-            const data = context.req.valid('json');
+            const data = normalizePushDevicePatch(
+                existing,
+                context.req.valid('json'),
+            );
+            if (!data) {
+                return context.json(
+                    {
+                        error: 'A valid browser subscription is required to enable this device',
+                    },
+                    409,
+                );
+            }
             await storage()
                 .insert(webPushSubscriptions)
                 .values({
@@ -1024,7 +1011,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .delete(
         '/devices/:id',
         describeRoute({ description: 'Revoke a push device' }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator('param', z.object({ id: z.string() })),
         async (context) => {
             const { id } = context.req.valid('param');
@@ -1069,7 +1056,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             description:
                 'Get current push status/capability for authenticated user',
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
             const subscriptions =
@@ -1111,7 +1098,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 'Record authenticated Web Push click and dismissal events.',
             security: authSecurity,
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         zValidator('json', pushNotificationEventSchema),
         async (context) => {
             const payload = context.req.valid('json');
@@ -1183,7 +1170,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             description:
                 'Send a user-triggered test notification (rate limited)',
         }),
-        authValidator(['user', 'admin']),
+        authValidator([...notificationCenterRoles]),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
             const now = Date.now();

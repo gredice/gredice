@@ -12,7 +12,10 @@ const meta = {
     tags: ['autodocs'],
     beforeEach: () => {
         createNavigation({});
-        useRouter.mockImplementation(getRouter);
+        useRouter.mockImplementation(() => ({
+            ...getRouter(),
+            bfcacheId: 'storybook',
+        }));
     },
     parameters: {
         docs: {

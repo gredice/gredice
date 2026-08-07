@@ -1,3 +1,66 @@
+import { plantHealthDirectoryDiseases } from './plantHealthDirectoryDiseases';
+import { plantHealthDirectoryPests } from './plantHealthDirectoryPests';
+
+/**
+ * Published plant catalog snapshot used to author and statically validate the
+ * plant-health dataset. The backfill still resolves every name against the
+ * current published CMS catalog before writing.
+ */
+export const plantHealthDirectoryPlantNames = [
+    'Artičoka',
+    'Bamija',
+    'Blitva',
+    'Bob',
+    'Bosiljak',
+    'Brokula',
+    'Celer',
+    'Cikla',
+    'Cvjetača',
+    'Dinja',
+    'Grah',
+    'Grašak',
+    'Jagoda',
+    'Kadulja',
+    'Kamilica',
+    'Kelj',
+    'Kelj pupčar',
+    'Komorač',
+    'Kopar',
+    'Koraba',
+    'Korijandar',
+    'Krastavac',
+    'Kupus',
+    'Ljupčac',
+    'Luk',
+    'Luk vlasac',
+    'Mahuna',
+    'Matičnjak',
+    'Matovilac',
+    'Mrkva',
+    'Origano',
+    'Paprika',
+    'Patlidžan',
+    'Peršin',
+    'Poriluk',
+    'Rajčica',
+    'Raštika',
+    'Repa',
+    'Rotkvica',
+    'Rukola',
+    'Salata',
+    'Tikva',
+    'Tikvice',
+    'Timijan',
+    'Češnjak',
+    'Čili',
+    'Špinat',
+] as const;
+
+export type PlantHealthDirectoryPlantName =
+    (typeof plantHealthDirectoryPlantNames)[number];
+
+// Source objects are serialized into multiple CMS values. Keep an existing
+// label/URL pair stable unless the importer is also taught to reconcile it.
 export const plantHealthDirectorySources = {
     umnTomatoLeafSpots: {
         label: 'University of Minnesota Extension tomato leaf spot diseases',
@@ -7,9 +70,153 @@ export const plantHealthDirectorySources = {
         label: 'University of Minnesota Extension early blight in tomato and potato',
         url: 'https://extension.umn.edu/node/2681',
     },
+    umnLateBlight: {
+        label: 'University of Minnesota Extension late blight',
+        url: 'https://extension.umn.edu/disease-management/late-blight',
+    },
+    umnFusariumWilt: {
+        label: 'University of Minnesota Extension Fusarium wilt',
+        url: 'https://extension.umn.edu/disease-management/fusarium-wilt',
+    },
+    umnBacterialSpotTomatoPepper: {
+        label: 'University of Minnesota Extension bacterial spot of tomato and pepper',
+        url: 'https://extension.umn.edu/disease-management/bacterial-spot-tomato-and-pepper',
+    },
     ucIpmPowderyMildewVegetables: {
         label: 'UC IPM Powdery Mildew on Vegetables',
         url: 'https://ipm.ucanr.edu/m/pn7406-0.html',
+    },
+    usuPowderyMildewVegetables: {
+        label: 'Utah State University Extension powdery mildew of vegetables',
+        url: 'https://extension.usu.edu/planthealth/research/powdery-mildew-vegetables',
+    },
+    umnDampingOff: {
+        label: 'University of Minnesota Extension seedling damping off',
+        url: 'https://extension.umn.edu/solve-problem/how-prevent-seedling-damping',
+    },
+    umnGrayMoldTomatoes: {
+        label: 'University of Minnesota Extension gray mold in tomatoes',
+        url: 'https://extension.umn.edu/disease-management/gray-mold-tomatoes',
+    },
+    umnWhiteMoldGarden: {
+        label: 'University of Minnesota Extension white mold in gardens',
+        url: 'https://extension.umn.edu/plant-diseases/white-mold-garden',
+    },
+    umnWhiteMoldCucurbits: {
+        label: 'University of Minnesota Extension white mold of cucurbits',
+        url: 'https://extension.umn.edu/disease-management/white-mold-cucurbits',
+    },
+    umnGrowingStrawberries: {
+        label: 'University of Minnesota Extension growing strawberries in the home garden',
+        url: 'https://extension.umn.edu/gardening-minnesota/growing-strawberries-home-garden',
+    },
+    umnDownyMildewCucurbits: {
+        label: 'University of Minnesota Extension downy mildew of cucurbits',
+        url: 'https://extension.umn.edu/disease-management/downy-mildew-cucurbits',
+    },
+    umnBlackRotBrassicas: {
+        label: 'University of Minnesota Extension black rot of brassicas',
+        url: 'https://extension.umn.edu/disease-management/organic-management-black-rot',
+    },
+    rhsBrassicaDownyMildew: {
+        label: 'Royal Horticultural Society brassica downy mildew',
+        url: 'https://www.rhs.org.uk/disease/brassica-downy-mildew',
+    },
+    umnClubroot: {
+        label: 'University of Minnesota Extension clubroot',
+        url: 'https://extension.umn.edu/plant-diseases/clubroot',
+    },
+    umnGrowingBeans: {
+        label: 'University of Minnesota Extension growing beans',
+        url: 'https://extension.umn.edu/vegetables/growing-beans',
+    },
+    usuPeas: {
+        label: 'Utah State University Extension peas in the garden',
+        url: 'https://extension.usu.edu/yardandgarden/research/peas-in-the-garden',
+    },
+    rhsBroadBeans: {
+        label: 'Royal Horticultural Society growing broad beans',
+        url: 'https://www.rhs.org.uk/vegetables/broad-beans/grow-your-own',
+    },
+    umnOnionDiagnosis: {
+        label: 'University of Minnesota Extension onion disease diagnosis',
+        url: 'https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/onion/leaveswilt.html',
+    },
+    rhsOnionWhiteRot: {
+        label: 'Royal Horticultural Society onion white rot',
+        url: 'https://www.rhs.org.uk/disease/onion-white-rot',
+    },
+    rhsChives: {
+        label: 'Royal Horticultural Society growing chives',
+        url: 'https://www.rhs.org.uk/herbs/chives/grow-your-own',
+    },
+    umnBeetLeafSpots: {
+        label: 'University of Minnesota Extension beet leaf spot diagnosis',
+        url: 'https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/beet/leavesspots.html',
+    },
+    umassCercosporaLeafSpot: {
+        label: 'UMass Extension Cercospora leaf spot',
+        url: 'https://www.umass.edu/agriculture-food-environment/node/8698',
+    },
+    umnCarrotLeafSpots: {
+        label: 'University of Minnesota Extension carrot leaf spot diagnosis',
+        url: 'https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/carrot/leavesspots.html',
+    },
+    umnLettuceDiseases: {
+        label: 'University of Minnesota Extension lettuce disease diagnosis',
+        url: 'https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/lettuce%26endive/fuzzygrowth.html',
+    },
+    umnAsterYellows: {
+        label: 'University of Minnesota Extension aster yellows crop guidance',
+        url: 'https://blog-fruit-vegetable-ipm.extension.umn.edu/2021/06/leafhopper-watch-hot-weather-and-aster.html',
+    },
+    umnBasilDownyMildew: {
+        label: 'University of Minnesota Extension basil downy mildew',
+        url: 'https://extension.umn.edu/disease-management/basil-downy-mildew',
+    },
+    ucIpmSpinachDownyMildew: {
+        label: 'UC IPM downy mildew on spinach',
+        url: 'https://ipm.ucanr.edu/home-and-landscape/downy-mildew-on-spinach/',
+    },
+    ucIpmCilantroParsleyBacterialLeafSpot: {
+        label: 'UC IPM bacterial leaf spot of cilantro and parsley',
+        url: 'https://ipm.ucanr.edu/agriculture/cilantro-and-parsley/bacterial-leaf-spot/',
+    },
+    eppoFusariumLettuce: {
+        label: 'EPPO Fusarium wilt of lettuce',
+        url: 'https://gd.eppo.int/taxon/FUSALC/hosts',
+    },
+    rhsHerbsContainers: {
+        label: 'Royal Horticultural Society herbs in containers',
+        url: 'https://www.rhs.org.uk/advice/profile?PID=142',
+    },
+    umnGrowingHerbs: {
+        label: 'University of Minnesota Extension growing herbs',
+        url: 'https://extension.umn.edu/gardening-minnesota/growing-herbs',
+    },
+    ucIpmRootStemCrownRots: {
+        label: 'UC IPM root, stem and crown rots',
+        url: 'https://ipm.ucanr.edu/home-and-landscape/root-stem-and-crown-rots/',
+    },
+    usuGrowingBasil: {
+        label: 'Utah State University Extension growing basil',
+        url: 'https://extension.usu.edu/yardandgarden/research/basil-in-the-garden',
+    },
+    usuOkra: {
+        label: 'Utah State University Extension okra in the garden',
+        url: 'https://extension.usu.edu/yardandgarden/research/okra-in-the-garden',
+    },
+    arkansasOkraWilt: {
+        label: 'University of Arkansas Extension okra wilt',
+        url: 'https://www.uaex.uada.edu/yard-garden/plant-health-clinic/disease-notes/posts/okra-wilt.aspx',
+    },
+    ucIpmArtichokeGrayMold: {
+        label: 'UC IPM gray mold of artichoke',
+        url: 'https://ipm.ucanr.edu/agriculture/artichoke/gray-mold-botrytis-fruit-rot/',
+    },
+    umnAphids: {
+        label: 'University of Minnesota Extension aphids in home gardens',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/aphids',
     },
     ucIpmAphids: {
         label: 'UC IPM Aphids Pest Notes',
@@ -23,6 +230,102 @@ export const plantHealthDirectorySources = {
         label: 'UC IPM Whiteflies Pest Notes',
         url: 'https://ipm.ucanr.edu/home-and-landscape/whiteflies/pest-notes',
     },
+    rhsCabbageWhitefly: {
+        label: 'Royal Horticultural Society cabbage whitefly',
+        url: 'https://www.rhs.org.uk/biodiversity/cabbage-whitefly',
+    },
+    umnSpiderMites: {
+        label: 'University of Minnesota Extension spider mites',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/spider-mites',
+    },
+    usuSpiderMitesVegetables: {
+        label: 'Utah State University Extension spider mites in vegetables',
+        url: 'https://extension.usu.edu/planthealth/ipm/notes_ag/veg-spider-mites',
+    },
+    umnCutworms: {
+        label: 'University of Minnesota Extension cutworms',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/cutworms',
+    },
+    umnLeafminers: {
+        label: 'University of Minnesota Extension leafminers',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/leafminers',
+    },
+    umnFleaBeetles: {
+        label: 'University of Minnesota Extension flea beetles',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/flea-beetles',
+    },
+    rhsCabbageCaterpillars: {
+        label: 'Royal Horticultural Society cabbage caterpillars',
+        url: 'https://www.rhs.org.uk/advice/profile?cID=446&pID=457',
+    },
+    rhsCabbageRootFly: {
+        label: 'Royal Horticultural Society cabbage root fly',
+        url: 'https://www.rhs.org.uk/biodiversity/cabbage-root-fly',
+    },
+    umnRootMaggots: {
+        label: 'University of Minnesota Extension root maggots',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/root-maggots',
+    },
+    rhsOnionFly: {
+        label: 'Royal Horticultural Society onion fly',
+        url: 'https://www.rhs.org.uk/biodiversity/onion-fly',
+    },
+    usuOnionThrips: {
+        label: 'Utah State University Extension onion thrips',
+        url: 'https://extension.usu.edu/planthealth/research/onion-thrips',
+    },
+    rhsAlliumLeafMiner: {
+        label: 'Royal Horticultural Society allium leaf miner',
+        url: 'https://www.rhs.org.uk/biodiversity/allium-leaf-miner',
+    },
+    rhsCarrotFly: {
+        label: 'Royal Horticultural Society carrot fly',
+        url: 'https://www.rhs.org.uk/biodiversity/carrot-fly',
+    },
+    usuVegetablePestGuide: {
+        label: 'Utah State University vegetable pest identification guide',
+        url: 'https://extension.usu.edu/pests/files/pubs/Vegetable-Pest-of-Utah-ID-Guide.pdf',
+    },
+    rhsBeetLeafMiner: {
+        label: 'Royal Horticultural Society beet leaf miner',
+        url: 'https://www.rhs.org.uk/biodiversity/beet-leaf-miner',
+    },
+    rhsPeaBeanWeevils: {
+        label: 'Royal Horticultural Society pea and bean weevils',
+        url: 'https://www.rhs.org.uk/biodiversity/pea-and-bean-weevils',
+    },
+    rhsPeaMoth: {
+        label: 'Royal Horticultural Society pea moth',
+        url: 'https://www.rhs.org.uk/advice/profile?lang=en&pid=660',
+    },
+    umnColoradoPotatoBeetle: {
+        label: 'University of Minnesota Extension Colorado potato beetle',
+        url: 'https://extension.umn.edu/yard-and-garden-insects/colorado-potato-beetle',
+    },
+    eppoTomatoLeafMinerCroatia: {
+        label: 'EPPO first report of tomato leaf miner in Croatia',
+        url: 'https://gd.eppo.int/reporting/article-1805',
+    },
+    eppoTomatoLeafMinerHosts: {
+        label: 'EPPO tomato leaf miner host plants',
+        url: 'https://gd.eppo.int/taxon/GNORAB/hosts',
+    },
+    eppoCottonBollworm: {
+        label: 'EPPO cotton bollworm datasheet',
+        url: 'https://gd.eppo.int/taxon/HELIAR/datasheet',
+    },
+    rhsRosemaryBeetle: {
+        label: 'Royal Horticultural Society rosemary beetle',
+        url: 'https://www.rhs.org.uk/biodiversity/rosemary-beetle',
+    },
+    rhsSageLigurianLeafhoppers: {
+        label: 'Royal Horticultural Society sage and Ligurian leafhoppers',
+        url: 'https://www.rhs.org.uk/biodiversity/sage-and-ligurian-leafhoppers',
+    },
+    usuRootKnotNematodes: {
+        label: 'Utah State University Extension root-knot nematodes',
+        url: 'https://extension.usu.edu/vegetableguide/tomato-pepper-eggplant/root-knot-nematodes',
+    },
 } as const;
 
 export type PlantHealthDirectorySource =
@@ -33,171 +336,25 @@ export type PlantHealthDirectoryIssueKind = 'disease' | 'pest';
 export type PlantHealthDirectoryIssue = {
     kind: PlantHealthDirectoryIssueKind;
     name: string;
+    legacyNames?: readonly string[];
     label?: string;
     shortDescription: string;
     description: string;
     symptoms: string;
     favorableConditions: string;
     severity: string;
-    affectedPlants: string[];
+    affectedPlants: readonly PlantHealthDirectoryPlantName[];
     operations?: {
-        prevention?: string[];
-        reduction?: string[];
-        alleviation?: string[];
+        prevention?: readonly string[];
+        reduction?: readonly string[];
+        alleviation?: readonly string[];
     };
-    sources: PlantHealthDirectorySource[];
-    reviewNotes?: string[];
+    reconcileAffectedPlants?: boolean;
+    reconcileOperations?: boolean;
+    reconcileSources?: boolean;
+    sources: readonly PlantHealthDirectorySource[];
+    reviewNotes?: readonly string[];
 };
 
-export const plantHealthDirectoryDataset: PlantHealthDirectoryIssue[] = [
-    {
-        kind: 'disease',
-        name: 'Rana plamenjača rajčice',
-        shortDescription:
-            'Gljivična bolest rajčice koja najčešće počinje na starijem donjem lišću tamnim pjegama s koncentričnim krugovima.',
-        description:
-            'Rana plamenjača može zahvatiti listove, stabljike i plodove rajčice. U maloj gredici najvažnije je rano uočiti pjege, smanjiti zadržavanje vlage na listu i ukloniti zaraženo lišće prije jačeg širenja.',
-        symptoms:
-            'Na starijem lišću blizu tla nastaju tamne okrugle pjege. Veće pjege često imaju koncentrične prstenove, okolno tkivo žuti, a jako zaraženi listovi posmeđe i otpadaju ili ostaju suhi na biljci.',
-        favorableConditions:
-            'Bolesti lista rajčice lakše se šire kada su listovi mokri, uz rosu, prskanje tla po donjem lišću, visoku relativnu vlagu i umjereno toplo vrijeme.',
-        severity:
-            'Srednje do visoko: rana reakcija obično ograničava štetu, ali jači napad može uzrokovati defolijaciju i ožegotine plodova.',
-        affectedPlants: ['Rajčica'],
-        operations: {
-            prevention: ['applyTomatoResiliencePreparation'],
-            reduction: ['hygiene-pruning'],
-            alleviation: ['plantRemoval'],
-        },
-        sources: ['umnEarlyBlightTomatoPotato', 'umnTomatoLeafSpots'],
-    },
-    {
-        kind: 'disease',
-        name: 'Pepelnica povrća',
-        shortDescription:
-            'Skupina gljivičnih bolesti koje stvaraju bijele praškaste prevlake ili svijetle pjege na listovima više vrsta povrća.',
-        description:
-            'Pepelnica se razlikuje po uzročniku i biljci domaćinu, ali se u gredici najčešće prepoznaje po bijelim praškastim pjegama na listu. Kod jačeg napada listovi slabe, žute ili odumiru pa biljka teže dozrijeva i daje slabiji urod.',
-        symptoms:
-            'Bijele praškaste pjege šire se po gornjoj ili donjoj strani lista, mladim izbojima, a ponekad i cvjetovima ili plodovima. Na rajčici i paprici simptomi mogu izgledati kao žute pjege s manje vidljive bijele prevlake.',
-        favorableConditions:
-            'Pepelnica se može razvijati bez dugotrajnog kvašenja lista. Česta je u toplim uvjetima, na zasjenjenim ili gustim biljkama i kada je strujanje zraka slabo.',
-        severity:
-            'Srednje: često počinje kasnije u sezoni, ali kod osjetljivih biljaka i gustog sklopa može brzo oslabiti lisnu masu.',
-        affectedPlants: [
-            'Artičoka',
-            'Grah',
-            'Cikla',
-            'Mrkva',
-            'Krastavac',
-            'Patlidžan',
-            'Salata',
-            'Dinja',
-            'Grašak',
-            'Paprika',
-            'Rajčica',
-            'Repa',
-            'Rotkvica',
-            'Tikva',
-            'Tikvice',
-        ],
-        operations: {
-            reduction: ['hygiene-pruning'],
-        },
-        sources: ['ucIpmPowderyMildewVegetables'],
-        reviewNotes: [
-            'Host list is limited to current published Gredice plants explicitly covered by the UC IPM vegetable host list.',
-        ],
-    },
-    {
-        kind: 'pest',
-        name: 'Lisne uši',
-        shortDescription:
-            'Sitni mekani kukci koji sišu biljne sokove, često na mladim izbojima i naličju listova.',
-        description:
-            'Lisne uši mogu se pojaviti u skupinama na mladim dijelovima biljke. Osim izravnog sisanja sokova, izlučuju ljepljivu mednu rosu i mogu prenositi biljne viruse. U gredici je korisno redovito pregledavati mlade izboje i reagirati dok je napad lokaliziran.',
-        symptoms:
-            'Uvijanje mladih listova, žućenje, zastoj rasta, ljepljiva medna rosa, crna čađava prevlaka na mednoj rosi i vidljive kolonije sitnih zelenih, crnih ili žućkastih uši.',
-        favorableConditions:
-            'Napadi se često razvijaju na mladom mekanom rastu i blizu drugih zaraženih biljaka. Mravi mogu štititi lisne uši zbog medne rose.',
-        severity:
-            'Nisko do srednje kod ranog uočavanja; visoko na mladim biljkama ili kada se napad ne prati.',
-        affectedPlants: [
-            'Bosiljak',
-            'Brokula',
-            'Cvjetača',
-            'Čili',
-            'Grah',
-            'Grašak',
-            'Jagoda',
-            'Kelj',
-            'Kelj pupčar',
-            'Krastavac',
-            'Kupus',
-            'Mahuna',
-            'Paprika',
-            'Rajčica',
-            'Salata',
-        ],
-        operations: {
-            prevention: ['applyPestProtectionPreparation'],
-            reduction: ['rinsePestsFromPlant'],
-            alleviation: ['applyPestProtectionPreparation'],
-        },
-        sources: ['ucIpmAphids'],
-    },
-    {
-        kind: 'pest',
-        name: 'Puževi',
-        shortDescription:
-            'Puževi i golaći hrane se noću ili za vlažnog vremena te ostavljaju nepravilne rupe i sluzave tragove.',
-        description:
-            'Puževi vole hladna, vlažna i zasjenjena mjesta. Najviše štete rade na mladim biljkama, nježnom lišću, jagodama i biljkama uz gustu vegetaciju ili zaklon. Trag sluzi i nepravilne rupe dobar su znak da treba provjeriti gredicu navečer ili rano ujutro.',
-        symptoms:
-            'Nepravilne rupe na lišću, oštećeni rubovi listova, izgriženi plodovi pri tlu, sluzavi srebrnkasti tragovi i slabije ili uništene mlade biljke.',
-        favorableConditions:
-            'Hladna, vlažna i sjenovita mjesta, biljni ostaci, daske, gust pokrov tla i kišni periodi pogoduju aktivnosti puževa.',
-        severity:
-            'Srednje do visoko na mladim biljkama i presadnicama; starije biljke bolje podnose manju defolijaciju.',
-        affectedPlants: [
-            'Bosiljak',
-            'Grah',
-            'Jagoda',
-            'Kupus',
-            'Mahuna',
-            'Salata',
-        ],
-        operations: {
-            prevention: ['applySlugProtectionPreparation'],
-            reduction: ['applySlugProtectionPreparation'],
-        },
-        sources: ['umnSlugs'],
-    },
-    {
-        kind: 'pest',
-        name: 'Bijela mušica',
-        shortDescription:
-            'Sitni bijeli kukci koji sišu sokove s naličja listova, osobito u toplim i zaštićenim uvjetima.',
-        description:
-            'Bijele mušice imaju širok krug domaćina i mogu se brzo namnožiti u toplim uvjetima. Hrane se s naličja listova, izlučuju mednu rosu i slabe biljku. U gredici je važan pregled naličja listova i rana mehanička ili zaštitna reakcija.',
-        symptoms:
-            'Pri dodiru biljke uzlijeću sitni bijeli kukci. Na listovima se vide žućenje, ljepljiva medna rosa, čađava prevlaka i opće slabljenje biljke.',
-        favorableConditions:
-            'Toplo vrijeme, zaštićeni prostori, gust sklop i visoke populacije koje nisu rano uočene pogoduju jačem napadu.',
-        severity:
-            'Srednje: teško ih je kontrolirati kada populacija naraste, ali rana reakcija može smanjiti pritisak.',
-        affectedPlants: [
-            'Čili',
-            'Krastavac',
-            'Paprika',
-            'Patlidžan',
-            'Rajčica',
-        ],
-        operations: {
-            prevention: ['applyPestProtectionPreparation'],
-            reduction: ['rinsePestsFromPlant'],
-            alleviation: ['applyPestProtectionPreparation'],
-        },
-        sources: ['ucIpmWhiteflies'],
-    },
-];
+export const plantHealthDirectoryDataset: readonly PlantHealthDirectoryIssue[] =
+    [...plantHealthDirectoryDiseases, ...plantHealthDirectoryPests];

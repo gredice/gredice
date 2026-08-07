@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     productionBrowserSourceMaps: !process.env.CI,
     allowedDevOrigins: getAppAllowedDevOrigins(app),
