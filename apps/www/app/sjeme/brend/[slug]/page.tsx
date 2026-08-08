@@ -25,6 +25,10 @@ import {
 
 export const revalidate = 3600;
 
+function stringParam(value: string | string[] | undefined) {
+    return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
+
 async function getBrand(slug: string) {
     const brands = await getSeedBrandsData();
     return brands.find(
@@ -102,8 +106,12 @@ export async function generateStaticParams() {
 export default async function SeedBrandPage(
     props: PageProps<'/sjeme/brend/[slug]'>,
 ) {
-    const { slug: encodedSlug } = await props.params;
+    const [{ slug: encodedSlug }, searchParams] = await Promise.all([
+        props.params,
+        props.searchParams,
+    ]);
     const slug = decodeRouteParam(encodedSlug);
+    const search = stringParam(searchParams.pretraga);
     const data = await getBrandPageData(slug);
     if (!data) {
         notFound();
@@ -261,12 +269,13 @@ export default async function SeedBrandPage(
                             <PageFilterInput
                                 searchParamName="pretraga"
                                 fieldName="brand-seed-search"
+                                initialValue={search}
                                 placeholder="Pretraži sjeme brenda..."
                             />
                         </Suspense>
                     </div>
                     <Suspense>
-                        <SeedsGallery seeds={seeds} />
+                        <SeedsGallery seeds={seeds} initialSearch={search} />
                     </Suspense>
                 </Stack>
             </Stack>

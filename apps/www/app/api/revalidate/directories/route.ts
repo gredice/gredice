@@ -36,7 +36,9 @@ const revalidationPathsByEntityType: Record<
         { path: '/blokovi/biljke/[alias]', type: 'page' },
         { path: '/radnje/[alias]', type: 'page' },
         { path: '/cjenik' },
+        { path: '/sjeme' },
         { path: '/sjeme/[slug]', type: 'page' },
+        { path: '/sjeme/brend/[slug]', type: 'page' },
     ],
     plantDisease: [
         { path: '/bolesti' },
@@ -53,7 +55,9 @@ const revalidationPathsByEntityType: Record<
         { path: '/biljke/[alias]', type: 'page' },
         { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
         { path: '/blokovi/biljke/[alias]', type: 'page' },
+        { path: '/sjeme' },
         { path: '/sjeme/[slug]', type: 'page' },
+        { path: '/sjeme/brend/[slug]', type: 'page' },
     ],
     operation: [
         { path: '/radnje' },
