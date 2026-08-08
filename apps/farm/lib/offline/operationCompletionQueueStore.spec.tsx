@@ -231,6 +231,7 @@ test('atomically hands a draft to the queue, preserves File metadata, and fences
                 submissionId: queued.item.submissionId,
             },
             repeated,
+            sourceDraftId: save.draftId,
         };
     }, baseScope);
 
@@ -259,6 +260,7 @@ test('atomically hands a draft to the queue, preserves File metadata, and fences
         scheduleDateKey: '2026-07-15',
         state: 'queued',
     });
+    expect(result.queued.submissionId).toBe(result.sourceDraftId);
     expect(result.draftAfterHandoff).toEqual({
         reason: 'not_found',
         status: 'missing',

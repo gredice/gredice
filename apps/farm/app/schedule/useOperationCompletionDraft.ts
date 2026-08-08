@@ -72,6 +72,16 @@ export type OperationCompletionDraftHandoffInput = {
     scheduleDateKey?: string;
 };
 
+export type PrepareOperationCompletionDraftSubmissionResult =
+    | { status: 'ready'; submissionId: string }
+    | {
+          reason: Extract<
+              SaveOperationCompletionDraftResult,
+              { status: 'error' }
+          >['reason'];
+          status: 'error';
+      };
+
 function photoSignature(photos: OperationCompletionDraftPhotoInput[]) {
     return photos
         .map(
@@ -486,6 +496,96 @@ export function useOperationCompletionDraft({
         [markSessionChanged, scope, scopeIdentity, showQueueGate],
     );
 
+    const prepareSubmission =
+        useCallback(async (): Promise<PrepareOperationCompletionDraftSubmissionResult> => {
+            const generation = generationRef.current;
+            const lease = leaseRef.current;
+            if (saveTimerRef.current) {
+                clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+            if (!lease) {
+                markSessionChanged();
+                return { reason: 'session_changed', status: 'error' };
+            }
+
+            let preparation: PrepareOperationCompletionDraftSubmissionResult = {
+                reason: 'storage_unavailable',
+                status: 'error',
+            };
+            writeQueueRef.current = writeQueueRef.current
+                .catch(() => undefined)
+                .then(async () => {
+                    if (generationRef.current !== generation) {
+                        preparation = {
+                            reason: 'session_changed',
+                            status: 'error',
+                        };
+                        return;
+                    }
+                    const currentForm = {
+                        notes: latestFormRef.current.notes,
+                        photos: [...latestFormRef.current.photos],
+                    };
+                    const result = await saveOperationCompletionDraft(
+                        {
+                            ...scope,
+                            notes: currentForm.notes,
+                            photos: currentForm.photos,
+                        },
+                        {
+                            expectedRevisionId:
+                                persistedRevisionByScopeRef.current.get(
+                                    scopeIdentity,
+                                ) ?? null,
+                            lease,
+                            preserveEmpty: true,
+                        },
+                    );
+                    if (generationRef.current !== generation) {
+                        preparation = {
+                            reason: 'session_changed',
+                            status: 'error',
+                        };
+                        return;
+                    }
+                    if (result.status === 'error') {
+                        preparation = result;
+                        if (result.reason === 'session_changed') {
+                            markSessionChanged();
+                        } else {
+                            updateSaveState(
+                                { kind: 'error', reason: result.reason },
+                                generation,
+                            );
+                        }
+                        return;
+                    }
+                    if (!result.draftId || !result.revisionId) {
+                        preparation = {
+                            reason: 'storage_unavailable',
+                            status: 'error',
+                        };
+                        updateSaveState(
+                            { kind: 'error', reason: 'storage_unavailable' },
+                            generation,
+                        );
+                        return;
+                    }
+                    persistedRevisionByScopeRef.current.set(
+                        scopeIdentity,
+                        result.revisionId,
+                    );
+                    updateSaveState({ kind: 'saved' }, generation);
+                    preparation = {
+                        status: 'ready',
+                        submissionId: result.draftId,
+                    };
+                });
+            await writeQueueRef.current;
+            return preparation;
+        }, [markSessionChanged, scope, scopeIdentity, updateSaveState]);
+
     useEffect(() => {
         if (resetScopeIdentityRef.current === scopeIdentity) {
             return;
@@ -882,6 +982,7 @@ export function useOperationCompletionDraft({
         gate,
         handoffToQueue,
         notice,
+        prepareSubmission,
         resume,
         saveState,
     };
