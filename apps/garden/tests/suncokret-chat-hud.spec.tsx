@@ -664,3 +664,56 @@ test('completed AI cart actions refresh the active shopping-cart query', async (
     expect(chatRequests).toBe(2);
     expect(cartReads).toBe(2);
 });
+
+test('completed AI cart actions refresh after a later stream error', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    let cartReads = 0;
+    await page.route('**/api/test/suncokret-shopping-cart', async (route) => {
+        cartReads += 1;
+        await route.fulfill({ body: cartReads.toString() });
+    });
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        await route.fulfill({
+            body: uiMessageStream([
+                { type: 'start', messageId: 'assistant-cart-error' },
+                { type: 'start-step' },
+                {
+                    type: 'tool-input-available',
+                    toolCallId: 'cart-call-error',
+                    toolName: 'addProductToCart',
+                    input: {
+                        productId: 'plant-sort-458',
+                        quantity: 1,
+                    },
+                },
+                {
+                    type: 'tool-output-available',
+                    toolCallId: 'cart-call-error',
+                    output: { cartItemId: 43 },
+                },
+                {
+                    type: 'error',
+                    errorText:
+                        'Model follow-up failed after the tool completed',
+                },
+            ]),
+            headers: {
+                'content-type': 'text/event-stream',
+                'x-vercel-ai-ui-message-stream': 'v1',
+            },
+        });
+    });
+
+    await mount(<SuncokretChatHudStory observeShoppingCart />);
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByLabel('Pitaj Suncokret').fill('Dodaj bosiljak');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('2');
+    expect(cartReads).toBe(2);
+});

@@ -882,6 +882,7 @@ export function SuncokretChatHud() {
         raisedBedId: contextRaisedBedId,
         uiContext,
     });
+    const requestRaisedBedIdRef = useRef(contextRaisedBedId);
     requestContextRef.current = {
         conversationId: activeConversationId,
         debug,
@@ -900,6 +901,7 @@ export function SuncokretChatHud() {
                 credentials: 'include',
                 prepareSendMessagesRequest: ({ id, messages }) => {
                     const requestContext = requestContextRef.current;
+                    requestRaisedBedIdRef.current = requestContext.raisedBedId;
                     return {
                         body: {
                             id,
@@ -932,13 +934,9 @@ export function SuncokretChatHud() {
         id: chatSessionId,
         transport,
         experimental_throttle: 80,
-        onFinish: ({ isAbort, isDisconnect, isError, message }) => {
-            if (isAbort || isDisconnect || isError) {
-                return;
-            }
-
+        onFinish: ({ message }) => {
             void invalidateSuncokretMutationQueries({
-                fallbackRaisedBedId: contextRaisedBedId,
+                fallbackRaisedBedId: requestRaisedBedIdRef.current,
                 message,
                 queryClient,
             });
