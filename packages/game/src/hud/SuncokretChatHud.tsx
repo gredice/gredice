@@ -29,6 +29,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     DefaultChatTransport,
     lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -66,6 +67,7 @@ import {
     suncokretContextSuggestions,
     suncokretConversationLabel,
 } from './suncokretChatContext';
+import { invalidateSuncokretMutationQueries } from './suncokretChatQueryInvalidation';
 
 type SuncokretLimit = {
     retryAt: string;
@@ -797,6 +799,7 @@ function ChatMessage({
 }
 
 export function SuncokretChatHud() {
+    const queryClient = useQueryClient();
     const flags = useGameFlags();
     const debug = Boolean(flags.enableSuncokretDebugFlag);
     const chat = useSuncokretChat();
@@ -929,6 +932,17 @@ export function SuncokretChatHud() {
         id: chatSessionId,
         transport,
         experimental_throttle: 80,
+        onFinish: ({ isAbort, isDisconnect, isError, message }) => {
+            if (isAbort || isDisconnect || isError) {
+                return;
+            }
+
+            void invalidateSuncokretMutationQueries({
+                fallbackRaisedBedId: contextRaisedBedId,
+                message,
+                queryClient,
+            });
+        },
         sendAutomaticallyWhen:
             lastAssistantMessageIsCompleteWithApprovalResponses,
     });

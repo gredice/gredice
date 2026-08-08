@@ -3,6 +3,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useMemo } from 'react';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
+import { useShoppingCartQueryKey } from '../../../packages/game/src/hooks/useShoppingCart';
 import { SuncokretChatHud } from '../../../packages/game/src/hud/SuncokretChatHud';
 import {
     SuncokretChatProvider,
@@ -87,17 +88,34 @@ function createQueryClient() {
     return queryClient;
 }
 
+function ShoppingCartQueryProbe() {
+    const { data = 'učitavanje' } = ReactQuery.useQuery({
+        queryKey: useShoppingCartQueryKey,
+        queryFn: async () => {
+            const response = await fetch('/api/test/suncokret-shopping-cart');
+            if (!response.ok) {
+                throw new Error('Shopping-cart test query failed');
+            }
+            return response.text();
+        },
+    });
+
+    return <output aria-label="Verzija košarice">{data}</output>;
+}
+
 export function SuncokretChatHudStory({
     contextTarget,
     debug = false,
     fieldUiTarget,
     focusedRaisedBed = false,
+    observeShoppingCart = false,
     settingsSection,
 }: {
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
     fieldUiTarget?: SuncokretChatTarget;
     focusedRaisedBed?: boolean;
+    observeShoppingCart?: boolean;
     settingsSection?: string;
 }) {
     const queryClient = useMemo(createQueryClient, []);
@@ -131,6 +149,9 @@ export function SuncokretChatHudStory({
                         }}
                     >
                         <SuncokretChatProvider>
+                            {observeShoppingCart ? (
+                                <ShoppingCartQueryProbe />
+                            ) : null}
                             {fieldUiTarget ? (
                                 <GameModal open title="Kartica biljke">
                                     <SuncokretChatTrigger
