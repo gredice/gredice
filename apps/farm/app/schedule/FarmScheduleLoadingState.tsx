@@ -1,5 +1,6 @@
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
 
@@ -10,6 +11,9 @@ export function FarmScheduleLoadingState() {
             aria-busy="true"
         >
             <div className="space-y-2">
+                <Typography component="h1" className="sr-only">
+                    Raspored
+                </Typography>
                 <div className="grid min-w-0 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="min-w-0 justify-self-center sm:justify-self-start">
                         <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-1 sm:gap-2">
