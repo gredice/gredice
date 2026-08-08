@@ -3,18 +3,21 @@
 Status: repository package prepared; official OpenAI and Anthropic submissions
 remain blocked on production OAuth and reviewer-safe end-to-end verification.
 
-Last reviewed against vendor documentation: 2026-08-03.
+Last reviewed against vendor documentation: 2026-08-08.
 
-Gredice uses one release unit at [`plugins/gredice`](../plugins/gredice): aligned
-Codex and Claude manifests, one remote MCP configuration, three skills, brand
-assets, and submission eval fixtures. Keep both manifest versions identical and
-use strict semantic versions.
+Gredice uses one release unit at [`plugins/gredice`](../plugins/gredice): an
+[Agent Plugins 1.0.0](https://agent-plugins.org) portable manifest and MCP
+configuration, retained Codex and Claude compatibility manifests, three skills,
+brand assets, and submission eval fixtures. Keep all manifest versions and MCP
+endpoints aligned and use strict semantic versions.
 
 ## Prepared in this change
 
-- [x] Package `gredice@0.1.0` with `.codex-plugin/plugin.json` and
-  `.claude-plugin/plugin.json`.
-- [x] Shared Streamable HTTP server configuration for
+- [x] Portable `gredice@0.2.0` package with root `plugin.json`, root `mcp.json`,
+  fixed `skills/` discovery, and Agent Plugins 1.0.0 schema identifiers.
+- [x] Retained `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and
+  `.mcp.json` compatibility metadata for existing client installation flows.
+- [x] Aligned Streamable HTTP server configuration for
   `https://api.gredice.com/api/mcp`.
 - [x] Skills for public plant research, read-only garden review, and confirmed
   cart changes.
@@ -147,8 +150,9 @@ customer credentials or reads private garden/cart data.
 
 1. Make MCP changes backward-compatible and deploy them through the protected
    release workflow.
-2. Bump both plugin manifests together and update skills, starter prompts,
-   evals, and release notes as one unit.
+2. Bump root `plugin.json` and both client compatibility manifests together;
+   keep root `mcp.json` and `.mcp.json` on the same endpoint, then update skills,
+   starter prompts, evals, and release notes as one unit.
 3. Re-run validators and fresh-profile authenticated smokes.
 4. OpenAI requires a new tool scan, reviewed snapshot, approval, and explicit
    publication. Claude requires a new explicit version and verified catalog

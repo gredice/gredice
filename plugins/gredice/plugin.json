@@ -1,4 +1,5 @@
 {
+	"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
 	"name": "gredice",
 	"version": "0.2.0",
 	"description": "Explore Croatian plant knowledge and work with your Gredice garden and cart.",
@@ -10,6 +11,5 @@
 	"homepage": "https://www.gredice.com/mcp",
 	"repository": "https://github.com/gredice/gredice",
 	"license": "AGPL-3.0-only",
-	"keywords": ["gardening", "plants", "garden", "croatia", "mcp"],
-	"mcpServers": "./.mcp.json"
+	"keywords": ["gardening", "plants", "garden", "croatia", "mcp"]
 }
