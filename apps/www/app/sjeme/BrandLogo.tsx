@@ -1,7 +1,15 @@
-import type { BrandData } from '@gredice/client';
 import { Store } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
+
+type BrandWithLogo = {
+    information: {
+        name: string;
+        logo?: {
+            url: string;
+        };
+    };
+};
 
 function initials(name: string) {
     return name
@@ -21,7 +29,7 @@ export function BrandLogo({
     height = 192,
     className,
 }: {
-    brand: BrandData;
+    brand: BrandWithLogo;
     fill?: boolean;
     preload?: boolean;
     sizes?: string;

@@ -5,6 +5,10 @@ const numberFormatter = new Intl.NumberFormat('hr-HR', {
     maximumFractionDigits: 2,
 });
 
+const kilogramFormatter = new Intl.NumberFormat('hr-HR', {
+    maximumFractionDigits: 3,
+});
+
 type SeedSearchData = {
     information: {
         name: string;
@@ -43,6 +47,10 @@ export function seedCountLabel(count: number) {
 }
 
 export function formatSeedWeight(weight: number) {
+    if (weight > 100) {
+        return `${kilogramFormatter.format(weight / 1000)} kg`;
+    }
+
     return `${numberFormatter.format(weight)} g`;
 }
 

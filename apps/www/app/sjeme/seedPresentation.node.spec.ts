@@ -51,6 +51,10 @@ test('seed search covers package, brand, plant, sort, barcode, and origin', () =
 
 test('seed presentation formats catalogue values in Croatian', () => {
     assert.equal(formatSeedWeight(1.5), '1,5 g');
+    assert.equal(formatSeedWeight(100), '100 g');
+    assert.equal(formatSeedWeight(101), '0,101 kg');
+    assert.equal(formatSeedWeight(250), '0,25 kg');
+    assert.equal(formatSeedWeight(1000), '1 kg');
     assert.equal(formatSeedArea(2.25), '2,25 m²');
     assert.equal(seedCountLabel(1), '1 pakiranje sjemena');
     assert.equal(seedCountLabel(12), '12 pakiranja sjemena');
