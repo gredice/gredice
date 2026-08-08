@@ -29,7 +29,7 @@ export function SocialCard({
         >
             <Card
                 className={cx(
-                    'grid min-h-20 w-full grid-cols-[4rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-xl p-3 shadow transition-shadow duration-300 group-hover:shadow-xl',
+                    'grid h-full min-h-20 w-full grid-cols-[4rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-xl p-3 shadow transition-shadow duration-300 group-hover:shadow-xl',
                     bgColor,
                 )}
             >
