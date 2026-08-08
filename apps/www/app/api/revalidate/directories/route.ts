@@ -3,11 +3,13 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 type PublicDirectoryEntityType =
     | 'block'
+    | 'brand'
     | 'plant'
     | 'plantDisease'
     | 'plantPest'
     | 'plantSort'
-    | 'operation';
+    | 'operation'
+    | 'seed';
 type RevalidationPath = {
     path: string;
     type?: 'page' | 'layout';
@@ -18,6 +20,12 @@ const revalidationPathsByEntityType: Record<
     RevalidationPath[]
 > = {
     block: [{ path: '/blokovi' }, { path: '/blokovi/[alias]', type: 'page' }],
+    brand: [
+        { path: '/sjeme' },
+        { path: '/sjeme/[slug]', type: 'page' },
+        { path: '/sjeme/brendovi' },
+        { path: '/sjeme/brend/[slug]', type: 'page' },
+    ],
     plant: [
         { path: '/' },
         { path: '/biljke' },
@@ -28,6 +36,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/blokovi/biljke/[alias]', type: 'page' },
         { path: '/radnje/[alias]', type: 'page' },
         { path: '/cjenik' },
+        { path: '/sjeme/[slug]', type: 'page' },
     ],
     plantDisease: [
         { path: '/bolesti' },
@@ -44,6 +53,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/biljke/[alias]', type: 'page' },
         { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
         { path: '/blokovi/biljke/[alias]', type: 'page' },
+        { path: '/sjeme/[slug]', type: 'page' },
     ],
     operation: [
         { path: '/radnje' },
@@ -52,6 +62,12 @@ const revalidationPathsByEntityType: Record<
         { path: '/sjetva' },
         { path: '/cjenik' },
     ],
+    seed: [
+        { path: '/sjeme' },
+        { path: '/sjeme/[slug]', type: 'page' },
+        { path: '/sjeme/brendovi' },
+        { path: '/sjeme/brend/[slug]', type: 'page' },
+    ],
 };
 
 function publicDirectoryEntityType(
@@ -59,11 +75,13 @@ function publicDirectoryEntityType(
 ): PublicDirectoryEntityType | null {
     switch (value) {
         case 'block':
+        case 'brand':
         case 'plant':
         case 'plantDisease':
         case 'plantPest':
         case 'plantSort':
         case 'operation':
+        case 'seed':
             return value;
         default:
             return null;

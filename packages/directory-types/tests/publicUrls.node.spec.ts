@@ -83,7 +83,7 @@ test('directory public URL resolver requires route-compatible names', () => {
     );
 });
 
-test('directory public URL resolver links supported list-only entities and excludes unsupported ones', () => {
+test('directory public URL resolver links supported directory entities and excludes unsupported ones', () => {
     assert.equal(
         resolveDirectoryEntityPublicPathFromParts({
             entityTypeName: 'faq',
@@ -101,19 +101,19 @@ test('directory public URL resolver links supported list-only entities and exclu
     assert.equal(
         resolveDirectoryEntityPublicPathFromParts({
             entityTypeName: 'seed',
-            parentName: 'Rajčica',
-            plantSortName: 'Cherry Rajčica',
+            name: 'Vilmorin Rajčica Cherry 1 g',
         }),
-        '/biljke/rajcica/sorte/cherry-rajcica',
+        '/sjeme/vilmorin-rajcica-cherry-1-g',
     );
     assert.equal(
         resolveDirectoryEntityPublicPathFromParts({
             entityTypeName: 'brand',
-            name: 'Dobavljač',
+            name: 'Vilmorin',
         }),
-        null,
+        '/sjeme/brend/vilmorin',
     );
-    assert.ok(publicDirectoryEntityTypeExclusions.brand);
+    assert.equal(PublicDirectoryPaths.Seeds, '/sjeme');
+    assert.equal(PublicDirectoryPaths.SeedBrands, '/sjeme/brendovi');
     assert.ok(publicDirectoryEntityTypeExclusions.farmSupply);
     assert.ok(publicDirectoryEntityTypeExclusions.hqLocations);
     assert.ok(publicDirectoryEntityTypeExclusions.liquidPreparation);

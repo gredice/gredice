@@ -1,0 +1,364 @@
+import { decodeRouteParam } from '@gredice/js/uri';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
+import {
+    Euro,
+    Hash,
+    MapPinHouse,
+    Percent,
+    Ruler,
+    Sprout,
+    Store,
+    Tally3,
+} from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { formatPrice } from '../../../lib/formatPrice';
+import { getSeedsData } from '../../../lib/seeds/getSeedsData';
+import { KnownPages } from '../../../src/KnownPages';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
+import { getSeedImageViewTransitionName } from '../catalogueViewTransition';
+import { SeedImage } from '../SeedImage';
+import {
+    formatSeedArea,
+    formatSeedWeight,
+    seedGtin13,
+    seedPackageImages,
+    seedPageDescription,
+    seedPrimaryImageUrl,
+} from '../seedPresentation';
+
+export const revalidate = 3600;
+
+async function getSeed(slug: string) {
+    const seeds = await getSeedsData();
+    return seeds.find(
+        (seed) =>
+            seed.slug === slug || matchesPageAlias(seed.information.name, slug),
+    );
+}
+
+export async function generateMetadata(
+    props: PageProps<'/sjeme/[slug]'>,
+): Promise<Metadata> {
+    const { slug: encodedSlug } = await props.params;
+    const slug = decodeRouteParam(encodedSlug);
+    const seed = await getSeed(slug);
+    if (!seed) {
+        notFound();
+    }
+
+    const title = seed.information.name;
+    const description = seedPageDescription(seed);
+    const path = KnownPages.Seed(seed.slug || seed.information.name);
+    const image = seedPrimaryImageUrl(seed);
+
+    return {
+        title,
+        description,
+        alternates: {
+            canonical: path,
+        },
+        openGraph: {
+            type: 'website',
+            locale: 'hr_HR',
+            title,
+            description,
+            url: path,
+            ...(image
+                ? {
+                      images: [{ url: image, alt: seed.information.name }],
+                  }
+                : {}),
+        },
+        twitter: {
+            card: image ? 'summary_large_image' : 'summary',
+            title,
+            description,
+            ...(image ? { images: [image] } : {}),
+        },
+        robots: {
+            index: true,
+            follow: true,
+        },
+    };
+}
+
+export async function generateStaticParams() {
+    const seeds = await getSeedsData();
+    return seeds.map((seed) => ({
+        slug: seed.slug || toPageAlias(seed.information.name),
+    }));
+}
+
+export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
+    const { slug: encodedSlug } = await props.params;
+    const slug = decodeRouteParam(encodedSlug);
+    const seed = await getSeed(slug);
+    if (!seed) {
+        notFound();
+    }
+
+    const path = KnownPages.Seed(seed.slug || seed.information.name);
+    const canonicalUrl = `https://www.gredice.com${path}`;
+    const description = seedPageDescription(seed);
+    const packageImages = seedPackageImages(seed);
+    const image = seedPrimaryImageUrl(seed);
+    const productImages =
+        packageImages.length > 0
+            ? packageImages.map((packageImage) => packageImage.src)
+            : image
+              ? [image]
+              : undefined;
+    const gtin13 = seedGtin13(seed);
+    const additionalProperty = [
+        typeof seed.attributes.weight === 'number'
+            ? {
+                  '@type': 'PropertyValue',
+                  name: 'Težina pakiranja',
+                  value: formatSeedWeight(seed.attributes.weight),
+              }
+            : null,
+        seed.attributes.germinationPercentage != null
+            ? {
+                  '@type': 'PropertyValue',
+                  name: 'Klijavost',
+                  value: `${seed.attributes.germinationPercentage}%`,
+              }
+            : null,
+        seed.application?.applicationArea != null
+            ? {
+                  '@type': 'PropertyValue',
+                  name: 'Površina primjene',
+                  value: formatSeedArea(seed.application.applicationArea),
+              }
+            : null,
+        seed.application?.applicationPlants != null
+            ? {
+                  '@type': 'PropertyValue',
+                  name: 'Broj biljaka',
+                  value: seed.application.applicationPlants,
+              }
+            : null,
+    ].filter((property) => property !== null);
+
+    return (
+        <div className="py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@graph': [
+                        {
+                            '@type': 'Product',
+                            '@id': `${canonicalUrl}#product`,
+                            name: seed.information.name,
+                            description,
+                            category: 'Sjeme',
+                            url: canonicalUrl,
+                            image: productImages,
+                            sku: `seed-${seed.id}`,
+                            ...(gtin13 ? { gtin13 } : {}),
+                            brand: {
+                                '@type': 'Brand',
+                                name: seed.information.brand.information.name,
+                            },
+                            ...(typeof seed.attributes.weight === 'number'
+                                ? {
+                                      weight: {
+                                          '@type': 'QuantitativeValue',
+                                          value: seed.attributes.weight,
+                                          unitCode: 'GRM',
+                                      },
+                                  }
+                                : {}),
+                            ...(seed.information.countryOfOrigin
+                                ? {
+                                      countryOfOrigin: {
+                                          '@type': 'Country',
+                                          name: seed.information
+                                              .countryOfOrigin,
+                                      },
+                                  }
+                                : {}),
+                            additionalProperty,
+                        },
+                        {
+                            '@type': 'BreadcrumbList',
+                            itemListElement: [
+                                {
+                                    '@type': 'ListItem',
+                                    position: 1,
+                                    name: 'Sjeme',
+                                    item: `https://www.gredice.com${KnownPages.Seeds}`,
+                                },
+                                {
+                                    '@type': 'ListItem',
+                                    position: 2,
+                                    name: seed.information.name,
+                                    item: canonicalUrl,
+                                },
+                            ],
+                        },
+                    ],
+                }}
+            />
+            <Stack spacing={8}>
+                <Breadcrumbs
+                    items={[
+                        { label: 'Sjeme', href: KnownPages.Seeds },
+                        { label: seed.information.name },
+                    ]}
+                />
+                <PageHeader
+                    visual={
+                        <span
+                            className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                            style={{
+                                viewTransitionName:
+                                    getSeedImageViewTransitionName(seed.id),
+                            }}
+                        >
+                            <SeedImage
+                                seed={seed}
+                                width={192}
+                                height={192}
+                                preload
+                            />
+                        </span>
+                    }
+                    header={seed.information.name}
+                    alternativeName={
+                        seed.information.plantSort.information.name
+                    }
+                    subHeader={description}
+                />
+
+                <Stack spacing={4}>
+                    <Typography level="h2" className="text-2xl">
+                        Informacije o pakiranju
+                    </Typography>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {typeof seed.attributes.price === 'number' ? (
+                            <AttributeCard
+                                icon={<Euro />}
+                                header="Cijena"
+                                value={formatPrice(seed.attributes.price)}
+                            />
+                        ) : null}
+                        {typeof seed.attributes.weight === 'number' ? (
+                            <AttributeCard
+                                icon={<Ruler />}
+                                header="Težina"
+                                value={formatSeedWeight(seed.attributes.weight)}
+                            />
+                        ) : null}
+                        {seed.attributes.germinationPercentage != null ? (
+                            <AttributeCard
+                                icon={<Percent />}
+                                header="Klijavost"
+                                value={`${seed.attributes.germinationPercentage}%`}
+                            />
+                        ) : null}
+                        {seed.application?.applicationArea != null ? (
+                            <AttributeCard
+                                icon={<Tally3 />}
+                                header="Površina primjene"
+                                value={formatSeedArea(
+                                    seed.application.applicationArea,
+                                )}
+                            />
+                        ) : null}
+                        {seed.application?.applicationPlants != null ? (
+                            <AttributeCard
+                                icon={<Sprout />}
+                                header="Broj biljaka"
+                                value={seed.application.applicationPlants}
+                            />
+                        ) : null}
+                        {seed.information.barcode ? (
+                            <AttributeCard
+                                icon={<Hash />}
+                                header="Barkod"
+                                value={seed.information.barcode}
+                            />
+                        ) : null}
+                        {seed.information.countryOfOrigin ? (
+                            <AttributeCard
+                                icon={<MapPinHouse />}
+                                header="Zemlja podrijetla"
+                                value={seed.information.countryOfOrigin}
+                            />
+                        ) : null}
+                    </div>
+                </Stack>
+
+                <Stack spacing={4}>
+                    <Typography level="h2" className="text-2xl">
+                        Povezano
+                    </Typography>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        <AttributeCard
+                            icon={<Store />}
+                            header="Brend"
+                            value={seed.information.brand.information.name}
+                            navigateLabel="Otvori brend"
+                            navigateHref={KnownPages.SeedBrand(
+                                seed.information.brand.information.name,
+                            )}
+                        />
+                        <AttributeCard
+                            icon={<Sprout />}
+                            header="Biljka"
+                            value={seed.information.plant.information.name}
+                            navigateLabel="Otvori biljku"
+                            navigateHref={KnownPages.Plant(
+                                seed.information.plant.information.name,
+                            )}
+                        />
+                        <AttributeCard
+                            icon={<Sprout />}
+                            header="Sorta"
+                            value={seed.information.plantSort.information.name}
+                            navigateLabel="Otvori sortu"
+                            navigateHref={KnownPages.PlantSort(
+                                seed.information.plant.information.name,
+                                seed.information.plantSort.information.name,
+                            )}
+                        />
+                    </div>
+                </Stack>
+
+                {packageImages.length > 0 ? (
+                    <Stack spacing={4}>
+                        <Typography level="h2" className="text-2xl">
+                            Slike pakiranja
+                        </Typography>
+                        <ImageGallery
+                            images={packageImages}
+                            previewVariant="grid"
+                            previewWidth={640}
+                            previewHeight={480}
+                        />
+                    </Stack>
+                ) : null}
+
+                <Row spacing={4}>
+                    <Typography level="body1">
+                        Jesu li ti informacije o ovom sjemenu korisne?
+                    </Typography>
+                    <FeedbackModal
+                        topic="www/seeds/details"
+                        data={{ seedId: seed.id, seedSlug: seed.slug, image }}
+                    />
+                </Row>
+            </Stack>
+        </div>
+    );
+}

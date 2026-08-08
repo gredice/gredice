@@ -1598,6 +1598,8 @@ export interface components {
                     information: {
                         name: string;
                         website?: string;
+                        logo?: components["schemas"]["image"];
+                        country?: string;
                     };
                 };
                 barcode: string;
@@ -2113,6 +2115,8 @@ export interface components {
             information: {
                 name: string;
                 website?: string;
+                logo?: components["schemas"]["image"];
+                country?: string;
             };
             /** Format: date-time */
             createdAt: string;

@@ -149,6 +149,20 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Sjeme',
+                            href: publicChromeHref(
+                                PublicPagePaths.Seeds,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Brendovi sjemena',
+                            href: publicChromeHref(
+                                PublicPagePaths.SeedBrands,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Bolesti',
                             href: publicChromeHref(
                                 PublicPagePaths.PlantDiseases,
