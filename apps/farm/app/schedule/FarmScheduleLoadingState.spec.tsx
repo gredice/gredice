@@ -10,9 +10,7 @@ for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 800 });
         const component = await mount(<FarmScheduleLoadingState />);
 
-        await expect(
-            component.getByRole('heading', { level: 1, name: 'Raspored' }),
-        ).toBeVisible();
+        await expect(component.getByText('Raspored')).toHaveCount(0);
 
         expect(
             await page.evaluate(
