@@ -7,16 +7,33 @@ Last reviewed against vendor documentation: 2026-08-08.
 
 Gredice uses one release unit at [`plugins/gredice`](../plugins/gredice): an
 [Agent Plugins 1.0.0](https://agent-plugins.org) portable manifest and MCP
-configuration, retained Codex and Claude compatibility manifests, three skills,
+configuration, current OpenAI and Claude distribution adapters, three skills,
 brand assets, and submission eval fixtures. Keep all manifest versions and MCP
 endpoints aligned and use strict semantic versions.
+
+## Why the package has multiple manifests
+
+Agent Plugins defines the portable interoperability floor, but client-specific
+distribution and installation remain under each client's control. OpenAI's
+current [packaging guide](https://developers.openai.com/plugins/build/plugins)
+requires `.codex-plugin/plugin.json` for every ChatGPT and Codex plugin and uses
+`.agents/plugins/marketplace.json` as a repository-scoped source for complete
+local installation tests. Claude's current
+[plugin guide](https://code.claude.com/docs/en/plugins) uses
+`.claude-plugin/plugin.json` and `.mcp.json`, with its own marketplace catalog.
+
+These files have not been preserved for backward compatibility with a public
+Gredice release. They are current adapters needed to test and distribute the
+same portable skills and MCP server through each vendor's supported flow. Do
+not remove one until that vendor documents direct installation and submission
+from the root Agent Plugins manifest.
 
 ## Prepared in this change
 
 - [x] Portable `gredice@0.2.0` package with root `plugin.json`, root `mcp.json`,
   fixed `skills/` discovery, and Agent Plugins 1.0.0 schema identifiers.
-- [x] Retained `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and
-  `.mcp.json` compatibility metadata for existing client installation flows.
+- [x] Added the current OpenAI and Claude distribution adapters alongside the
+  portable package, without duplicating skills or MCP implementation.
 - [x] Aligned Streamable HTTP server configuration for
   `https://api.gredice.com/api/mcp`.
 - [x] Skills for public plant research, read-only garden review, and confirmed
@@ -60,7 +77,9 @@ endpoints aligned and use strict semantic versions.
   secrets, debug details, and unstable fields; add useful output schemas and
   stable public error messages before review.
 - [ ] Decide and document the compatibility/deprecation policy for published
-  tool names and response shapes.
+  tool names and response shapes. Track client adoption of Agent Plugins and
+  remove a vendor adapter only after its official install and submission flows
+  accept the portable root manifest.
 
 ### OpenAI universal Plugins Directory
 
@@ -150,7 +169,7 @@ customer credentials or reads private garden/cart data.
 
 1. Make MCP changes backward-compatible and deploy them through the protected
    release workflow.
-2. Bump root `plugin.json` and both client compatibility manifests together;
+2. Bump root `plugin.json` and both client distribution manifests together;
    keep root `mcp.json` and `.mcp.json` on the same endpoint, then update skills,
    starter prompts, evals, and release notes as one unit.
 3. Re-run validators and fresh-profile authenticated smokes.

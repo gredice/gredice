@@ -7,10 +7,19 @@ Claude, and other compatible agents. It conforms to
 HTTP MCP endpoint, and bundles three focused workflows for plant research,
 read-only garden review, and confirmed cart planning.
 
-The `.codex-plugin`, `.claude-plugin`, and `.mcp.json` files remain packaged as
-client compatibility metadata. Portable clients discover the same skills from
-`skills/` and the same server from root `mcp.json`; all manifests share one
-version and canonical endpoint.
+The root manifests are the portable core. The client-specific files are still
+current distribution adapters, not unpublished legacy formats:
+
+- OpenAI currently requires `.codex-plugin/plugin.json` for every ChatGPT and
+  Codex plugin. The repository `.agents/plugins/marketplace.json` is the local
+  source used to install and test the complete package before submission.
+- Claude currently reads `.claude-plugin/plugin.json` and `.mcp.json`, while
+  the repository `.claude-plugin/marketplace.json` supports local installation.
+
+Portable clients discover the same skills from `skills/` and the same server
+from root `mcp.json`; all manifests share one version and canonical endpoint.
+Remove a client adapter only after that client's published installation and
+submission documentation accepts the portable root format directly.
 
 The package does not publish either marketplace listing. MCP discovery, public
 directory data, and the published product catalog are available without
@@ -33,7 +42,7 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 
 `pnpm plugins:check` validates the closed Agent Plugins 1.0.0 manifest shapes,
 schema identifiers, fixed component locations, Streamable HTTP transport, and
-alignment with the retained Codex and Claude compatibility manifests.
+alignment with the current OpenAI and Claude distribution adapters.
 
 ## Test from this repository
 
