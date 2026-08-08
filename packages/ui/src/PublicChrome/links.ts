@@ -5,6 +5,8 @@ export const PublicPagePaths = {
 
     Delivery: '/dostava',
     DeliverySlots: '/dostava/termini',
+    Seeds: '/sjeme',
+    SeedBrands: '/sjeme/brendovi',
     Plants: '/biljke',
     PlantDiseases: '/bolesti',
     PlantPests: '/stetnici',

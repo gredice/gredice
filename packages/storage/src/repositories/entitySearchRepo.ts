@@ -209,10 +209,7 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
     let parentName: string | null = null;
     let parentLabel: string | null = null;
 
-    if (
-        entity.entityTypeName === 'plantSort' ||
-        entity.entityTypeName === 'seed'
-    ) {
+    if (entity.entityTypeName === 'plantSort') {
         const parentPlantId = attributeRefId(entity, 'information', 'plant');
         const parentPlant = parentPlantId
             ? await getEntityRaw(parentPlantId)
@@ -225,22 +222,12 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
             : null;
     }
 
-    let plantSortName: string | null = null;
-    if (entity.entityTypeName === 'seed') {
-        const plantSortId = attributeRefId(entity, 'information', 'plantSort');
-        const plantSort = plantSortId ? await getEntityRaw(plantSortId) : null;
-        plantSortName = plantSort
-            ? attributeValue(plantSort, 'information', 'name')
-            : null;
-    }
-
     return resolveDirectoryEntityPublicPathFromParts({
         entityTypeName: entity.entityTypeName,
         name: attributeValue(entity, 'information', 'name'),
         label: attributeValue(entity, 'information', 'label'),
         parentName,
         parentLabel,
-        plantSortName,
     });
 }
 

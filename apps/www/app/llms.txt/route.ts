@@ -8,6 +8,8 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 
 - [Home](https://www.gredice.com/): Platform overview and main navigation.
 - [Plants](https://www.gredice.com/biljke): Plant catalog and growing references.
+- [Seeds](https://www.gredice.com/sjeme): Searchable seed package catalog with plant, variety, brand, and package details.
+- [Seed brands](https://www.gredice.com/sjeme/brendovi): Seed brand directory and their cataloged seeds.
 - [Blocks](https://www.gredice.com/blokovi): Raised-bed block catalog and layouts.
 - [Operations](https://www.gredice.com/radnje): Gardening operations and activity guidance.
 - [Recipes](https://www.gredice.com/recepti): Recipe content built from garden produce.

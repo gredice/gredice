@@ -76,6 +76,45 @@ async function addPublicGardenPaths({ baseUrl, sitemapPaths }) {
     }
 }
 
+async function addSeedCataloguePaths({ baseUrl, sitemapPaths }) {
+    const catalogues = [
+        {
+            endpoint: '/api/directories/entities/seed',
+            pathForSlug: (slug) => `/sjeme/${slug}`,
+        },
+        {
+            endpoint: '/api/directories/entities/brand',
+            pathForSlug: (slug) => `/sjeme/brend/${slug}`,
+        },
+    ];
+
+    sitemapPaths.add('/sjeme');
+    sitemapPaths.add('/sjeme/brendovi');
+
+    await Promise.all(
+        catalogues.map(async ({ endpoint, pathForSlug }) => {
+            let response;
+            try {
+                response = await fetch(`${baseUrl}${endpoint}`);
+            } catch {
+                return;
+            }
+
+            if (!response.ok) {
+                return;
+            }
+
+            /** @type {Array<{ slug?: string }>} */
+            const entities = await response.json();
+            for (const entity of entities) {
+                if (entity.slug) {
+                    sitemapPaths.add(pathForSlug(entity.slug));
+                }
+            }
+        }),
+    );
+}
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
@@ -133,6 +172,7 @@ module.exports = {
 
         await addNewsFeedPaths({ baseUrl, sitemapPaths });
         await addPublicGardenPaths({ baseUrl, sitemapPaths });
+        await addSeedCataloguePaths({ baseUrl, sitemapPaths });
 
         const transformedPaths = await Promise.all(
             Array.from(sitemapPaths).map((path) =>

@@ -75,6 +75,12 @@ export function PublicHeader({
                         Biljke
                     </NavLinkButton>,
                     <NavLinkButton
+                        key="seeds"
+                        href={publicChromeHref(PublicPagePaths.Seeds, linkMode)}
+                    >
+                        Sjeme
+                    </NavLinkButton>,
+                    <NavLinkButton
                         key="news"
                         href={publicChromeHref(PublicPagePaths.News, linkMode)}
                     >
