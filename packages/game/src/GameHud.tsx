@@ -16,6 +16,7 @@ import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
 import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
+import { GreenhouseOverviewHud } from './hud/GreenhouseOverviewHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
@@ -171,6 +172,11 @@ export function GameHud({
                 {!isSandbox && (
                     <div className={closeupHiddenHudClassName}>
                         <InventoryHud />
+                    </div>
+                )}
+                {!isSandbox && (
+                    <div className={closeupHiddenHudClassName}>
+                        <GreenhouseOverviewHud />
                     </div>
                 )}
                 {!isSandbox && (

@@ -161,6 +161,16 @@ export function getGreenhouseSeedlingProgressData({
     return result;
 }
 
+export function getGreenhouseSeedlingProgressPercentage(
+    progressData: GreenhouseSeedlingProgressData,
+) {
+    return Math.round(
+        (progressData.germinationValue * progressData.germinationPercentage +
+            progressData.seedlingValue * progressData.seedlingPercentage) /
+            100,
+    );
+}
+
 function getDateTime(value: Date | string | null | undefined) {
     if (!value) {
         return null;
