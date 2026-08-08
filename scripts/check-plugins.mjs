@@ -3,6 +3,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CANONICAL_MCP_URL = "https://api.gredice.com/api/mcp";
+const AGENT_PLUGIN_SCHEMA =
+	"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
+const AGENT_MCP_SCHEMA =
+	"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
+const PORTABLE_MANIFEST_FIELDS = new Set([
+	"$schema",
+	"name",
+	"version",
+	"description",
+	"author",
+	"homepage",
+	"repository",
+	"license",
+	"keywords",
+	"extensions",
+]);
 const EXPECTED_SKILLS = ["explore-plants", "plan-garden-cart", "review-garden"];
 const SEMVER =
 	/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -19,6 +35,20 @@ function readJson(root, relativePath) {
 
 function readText(root, relativePath) {
 	return readFileSync(path.join(root, relativePath), "utf8");
+}
+
+function validateClosedObject(value, allowedFields, message) {
+	invariant(
+		value && typeof value === "object" && !Array.isArray(value),
+		`${message} must be an object`,
+	);
+	const unknownFields = Object.keys(value).filter(
+		(field) => !allowedFields.has(field),
+	);
+	invariant(
+		unknownFields.length === 0,
+		`${message} has unsupported fields: ${unknownFields.join(", ")}`,
+	);
 }
 
 function catalogToolNames(root) {
@@ -78,6 +108,8 @@ function validateSkill(root, skillName, knownTools) {
 export function validatePluginPackage(
 	root = path.resolve(fileURLToPath(new URL("..", import.meta.url))),
 ) {
+	const portableManifest = readJson(root, "plugins/gredice/plugin.json");
+	const portableMcp = readJson(root, "plugins/gredice/mcp.json");
 	const codexManifest = readJson(
 		root,
 		"plugins/gredice/.codex-plugin/plugin.json",
@@ -86,15 +118,59 @@ export function validatePluginPackage(
 		root,
 		"plugins/gredice/.claude-plugin/plugin.json",
 	);
-	const mcp = readJson(root, "plugins/gredice/.mcp.json");
+	const clientMcp = readJson(root, "plugins/gredice/.mcp.json");
 	const codexMarketplace = readJson(root, ".agents/plugins/marketplace.json");
 	const claudeMarketplace = readJson(root, ".claude-plugin/marketplace.json");
-	const evals = readJson(root, "plugins/gredice/evals/openai-submission.json");
+	const evals = readJson(
+		root,
+		"plugins/gredice/evals/openai-submission.json",
+	);
 	const knownTools = catalogToolNames(root);
 
+	validateClosedObject(
+		portableManifest,
+		PORTABLE_MANIFEST_FIELDS,
+		"Portable plugin manifest",
+	);
 	invariant(
-		codexManifest.name === "gredice",
-		"Codex plugin name must be gredice",
+		portableManifest.$schema === AGENT_PLUGIN_SCHEMA,
+		"Portable plugin manifest must target Agent Plugins 1.0.0",
+	);
+	validateClosedObject(
+		portableManifest.author,
+		new Set(["name", "email", "url"]),
+		"Portable plugin author",
+	);
+	invariant(
+		Object.values(portableManifest.author).every(
+			(value) => typeof value === "string",
+		),
+		"Portable plugin author fields must be strings",
+	);
+	invariant(
+		Array.isArray(portableManifest.keywords) &&
+			portableManifest.keywords.every(
+				(keyword) => typeof keyword === "string",
+			),
+		"Portable plugin keywords must be strings",
+	);
+	if (portableManifest.extensions !== undefined) {
+		validateClosedObject(
+			portableManifest.extensions,
+			new Set(Object.keys(portableManifest.extensions)),
+			"Portable plugin extensions",
+		);
+		invariant(
+			Object.values(portableManifest.extensions).every(
+				(value) =>
+					value && typeof value === "object" && !Array.isArray(value),
+			),
+			"Portable plugin extensions must be namespaced objects",
+		);
+	}
+	invariant(
+		portableManifest.name === "gredice" && codexManifest.name === "gredice",
+		"Portable and Codex plugin names must be gredice",
 	);
 	invariant(
 		claudeManifest.name === codexManifest.name,
@@ -105,9 +181,24 @@ export function validatePluginPackage(
 		"Plugin version must use strict semver",
 	);
 	invariant(
-		claudeManifest.version === codexManifest.version,
+		portableManifest.version === codexManifest.version &&
+			claudeManifest.version === codexManifest.version,
 		"Plugin versions must match",
 	);
+	for (const field of [
+		"description",
+		"author",
+		"homepage",
+		"repository",
+		"license",
+		"keywords",
+	]) {
+		invariant(
+			JSON.stringify(portableManifest[field]) ===
+				JSON.stringify(codexManifest[field]),
+			`Portable and Codex plugin ${field} must match`,
+		);
+	}
 	invariant(
 		codexManifest.mcpServers === "./.mcp.json",
 		"Codex must use shared MCP config",
@@ -117,14 +208,54 @@ export function validatePluginPackage(
 		"Claude must use shared MCP config",
 	);
 
-	const server = mcp.mcpServers?.gredice;
-	invariant(server?.type === "http", "Gredice MCP server must use remote HTTP");
+	validateClosedObject(
+		portableMcp,
+		new Set(["$schema", "mcpServers"]),
+		"Portable MCP configuration",
+	);
 	invariant(
-		server?.url === CANONICAL_MCP_URL,
-		"Gredice MCP URL must be canonical",
+		portableMcp.$schema === AGENT_MCP_SCHEMA,
+		"Portable MCP configuration must target Agent Plugins 1.0.0",
+	);
+	validateClosedObject(
+		portableMcp.mcpServers,
+		new Set(["gredice"]),
+		"Portable MCP servers",
+	);
+	const portableServer = portableMcp.mcpServers?.gredice;
+	validateClosedObject(
+		portableServer,
+		new Set(["type", "url", "headers"]),
+		"Portable Gredice MCP server",
+	);
+	invariant(
+		portableServer.type === "streamable-http",
+		"Portable Gredice MCP server must use Streamable HTTP",
+	);
+	invariant(
+		portableServer.url === CANONICAL_MCP_URL,
+		"Portable Gredice MCP URL must be canonical",
+	);
+	invariant(
+		portableServer.headers === undefined,
+		"Portable Gredice MCP config must not package credentials or headers",
 	);
 
-	for (const field of ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+	const clientServer = clientMcp.mcpServers?.gredice;
+	invariant(
+		clientServer?.type === "http",
+		"Client-compatible Gredice MCP server must use remote HTTP",
+	);
+	invariant(
+		clientServer?.url === portableServer.url,
+		"Portable and client-compatible MCP URLs must match",
+	);
+
+	for (const field of [
+		"websiteURL",
+		"privacyPolicyURL",
+		"termsOfServiceURL",
+	]) {
 		invariant(
 			codexManifest.interface?.[field]?.startsWith("https://"),
 			`Codex interface ${field} must be an HTTPS URL`,
@@ -213,8 +344,9 @@ export function validatePluginPackage(
 	}
 
 	return {
-		plugin: codexManifest.name,
-		version: codexManifest.version,
+		plugin: portableManifest.name,
+		version: portableManifest.version,
+		standard: "Agent Plugins 1.0.0",
 		skills: EXPECTED_SKILLS.length,
 		positiveCases: evals.positive.length,
 		negativeCases: evals.negative.length,
@@ -227,6 +359,6 @@ if (
 ) {
 	const result = validatePluginPackage();
 	console.log(
-		`Plugin validation passed: ${result.plugin}@${result.version}, ${result.skills} skills, ${result.positiveCases} positive and ${result.negativeCases} negative cases.`,
+		`Plugin validation passed: ${result.plugin}@${result.version}, ${result.standard}, ${result.skills} skills, ${result.positiveCases} positive and ${result.negativeCases} negative cases.`,
 	);
 }
