@@ -1,4 +1,5 @@
 import { decodeRouteParam } from '@gredice/js/uri';
+import { BarcodeValue } from '@gredice/ui/Barcode';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
@@ -8,10 +9,10 @@ import {
     Percent,
     Ruler,
     Sprout,
-    Store,
     Tally3,
 } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -24,8 +25,10 @@ import { formatPrice } from '../../../lib/formatPrice';
 import { getSeedsData } from '../../../lib/seeds/getSeedsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
+import { BrandLogo } from '../BrandLogo';
 import { getSeedImageViewTransitionName } from '../catalogueViewTransition';
 import { SeedImage } from '../SeedImage';
+import { SeedRelatedCard } from '../SeedRelatedCard';
 import {
     formatSeedArea,
     formatSeedWeight,
@@ -237,7 +240,6 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                     alternativeName={
                         seed.information.plantSort.information.name
                     }
-                    subHeader={description}
                 />
 
                 <Stack spacing={4}>
@@ -252,13 +254,15 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                                 value={formatPrice(seed.attributes.price)}
                             />
                         ) : null}
-                        {typeof seed.attributes.weight === 'number' ? (
-                            <AttributeCard
-                                icon={<Ruler />}
-                                header="Težina"
-                                value={formatSeedWeight(seed.attributes.weight)}
-                            />
-                        ) : null}
+                        <AttributeCard
+                            icon={<Ruler />}
+                            header="Težina"
+                            value={
+                                typeof seed.attributes.weight === 'number'
+                                    ? formatSeedWeight(seed.attributes.weight)
+                                    : undefined
+                            }
+                        />
                         {seed.attributes.germinationPercentage != null ? (
                             <AttributeCard
                                 icon={<Percent />}
@@ -286,7 +290,11 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                             <AttributeCard
                                 icon={<Hash />}
                                 header="Barkod"
-                                value={seed.information.barcode}
+                                value={
+                                    <BarcodeValue
+                                        value={seed.information.barcode}
+                                    />
+                                }
                             />
                         ) : null}
                         {seed.information.countryOfOrigin ? (
@@ -304,33 +312,53 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                         Povezano
                     </Typography>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        <AttributeCard
-                            icon={<Store />}
+                        <SeedRelatedCard
                             header="Brend"
-                            value={seed.information.brand.information.name}
-                            navigateLabel="Otvori brend"
-                            navigateHref={KnownPages.SeedBrand(
+                            name={seed.information.brand.information.name}
+                            linkLabel="Otvori brend"
+                            href={KnownPages.SeedBrand(
                                 seed.information.brand.information.name,
                             )}
+                            visual={
+                                <BrandLogo
+                                    brand={seed.information.brand}
+                                    width={80}
+                                    height={80}
+                                />
+                            }
                         />
-                        <AttributeCard
-                            icon={<Sprout />}
+                        <SeedRelatedCard
                             header="Biljka"
-                            value={seed.information.plant.information.name}
-                            navigateLabel="Otvori biljku"
-                            navigateHref={KnownPages.Plant(
+                            name={seed.information.plant.information.name}
+                            linkLabel="Otvori biljku"
+                            href={KnownPages.Plant(
                                 seed.information.plant.information.name,
                             )}
+                            visual={
+                                <PlantOrSortImage
+                                    plant={seed.information.plant}
+                                    width={80}
+                                    height={80}
+                                    className="size-full object-contain p-2"
+                                />
+                            }
                         />
-                        <AttributeCard
-                            icon={<Sprout />}
+                        <SeedRelatedCard
                             header="Sorta"
-                            value={seed.information.plantSort.information.name}
-                            navigateLabel="Otvori sortu"
-                            navigateHref={KnownPages.PlantSort(
+                            name={seed.information.plantSort.information.name}
+                            linkLabel="Otvori sortu"
+                            href={KnownPages.PlantSort(
                                 seed.information.plant.information.name,
                                 seed.information.plantSort.information.name,
                             )}
+                            visual={
+                                <PlantOrSortImage
+                                    plantSort={seed.information.plantSort}
+                                    width={80}
+                                    height={80}
+                                    className="size-full object-contain p-2"
+                                />
+                            }
                         />
                     </div>
                 </Stack>

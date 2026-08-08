@@ -30,7 +30,12 @@ export function SeedsGallery({
 
     return (
         <div className="space-y-4">
-            <Typography level="body2" secondary aria-live="polite">
+            <Typography
+                level="body2"
+                secondary
+                aria-live="polite"
+                className="sr-only"
+            >
                 {seedCountLabel(filteredSeeds.length)}
             </Typography>
             {filteredSeeds.length === 0 ? (

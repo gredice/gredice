@@ -12,6 +12,7 @@ import {
     UserButton,
 } from '@gredice/ui/auth';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
@@ -1171,6 +1172,7 @@ function PublicContentShowcase() {
                                             previewHeight={140}
                                             previewWidth={260}
                                         />
+                                        <BarcodeValue value="3858890410952" />
                                     </Stack>
                                 </CardContent>
                             </Card>

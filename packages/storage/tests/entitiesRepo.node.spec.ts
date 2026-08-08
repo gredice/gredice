@@ -33,6 +33,48 @@ type FormattedSort = {
     };
 };
 
+test('formatted public entity lists exclude draft entries', async () => {
+    createTestDb();
+    const typeName = `published-list-${randomUUID()}`;
+
+    await upsertEntityType({
+        name: typeName,
+        label: 'Published list',
+    });
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: typeName,
+        dataType: 'text',
+    });
+
+    const publishedId = await createEntity(typeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: typeName,
+        entityId: publishedId,
+        value: 'Published entry',
+    });
+    await updateEntity({ id: publishedId, state: 'published' });
+
+    const draftId = await createEntity(typeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: typeName,
+        entityId: draftId,
+        value: 'Draft entry',
+    });
+
+    const formattedEntities =
+        await getEntitiesFormatted<FormattedSort>(typeName);
+
+    assert.deepEqual(
+        formattedEntities.map((entity) => entity.id),
+        [publishedId],
+    );
+});
+
 test('CMS entity references are resolved by entity ID', async () => {
     createTestDb();
     const suffix = randomUUID();
