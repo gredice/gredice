@@ -3,9 +3,10 @@
 ## Summary
 
 Farm operators can finish a scheduled operation with notes and photographs even
-when connectivity is unavailable or unreliable. The Farm app first stores one
-immutable completion command on the current device and then sends that same
-command when the authenticated app is open with connectivity.
+when connectivity is unavailable. With connectivity, the Farm app uploads the
+photographs and confirms the operation directly. Without connectivity, it
+stores one immutable completion command on the current device and sends that
+same command when the authenticated app is open with connectivity.
 
 This workflow covers operation completion only. Planting completion, blocker
 reports, schedule caching, service-worker background synchronization, and farm
@@ -33,7 +34,7 @@ selection are outside its scope.
 | --- | --- | --- | --- |
 | `off` | Uses the legacy online path | Does not drain | Existing records remain visible for recovery |
 | `drain_only` | Uses the legacy online path | Drains in the foreground | Queue and resolution UI remain visible |
-| `enabled` | Persists before any network work | Drains in the foreground | Full queue and resolution UI |
+| `enabled` | Persists offline confirmations before network work; online confirmations upload directly | Drains in the foreground | Full queue and resolution UI |
 
 Production, development, and test default to `enabled` while Farm is in its
 active pilot. A Vercel flag override can select another mode for rollback or
@@ -78,22 +79,24 @@ different facts. A `server_confirmed` submission can still have the domain state
 ## Happy path
 
 1. The modal saves notes and selected photographs as a device-local draft.
-2. **Dovrši radnju** stops and flushes pending draft writes, then atomically
-   converts that draft into a queue record. Its persisted submission UUID and
-   attachment UUIDs never change during retry.
-3. A foreground coordinator claims the record with IndexedDB compare-and-swap.
+2. With connectivity, **Dovrši radnju** uploads photographs directly, confirms
+   the operation, and removes the local draft after the server responds.
+3. Without connectivity, **Dovrši radnju** stops and flushes pending draft
+   writes, then atomically converts that draft into a queue record. Its
+   persisted submission UUID and attachment UUIDs never change during retry.
+4. A foreground coordinator claims the record with IndexedDB compare-and-swap.
    Web Locks reduce duplicate work between tabs but are not the correctness
    boundary. While slow photographs are uploading, the active coordinator
    renews the exact claim; an expired or replaced claim cannot be renewed.
-4. Each photograph uses one deterministic path derived from operation, entity,
+5. Each queued photograph uses one deterministic path derived from operation, entity,
    task version, submission UUID, and attachment UUID. Before retrying an
    uncertain upload, an authenticated recovery action checks that exact object.
-5. The completion Server Action sends the persisted submission UUID. The
+6. The queued completion Server Action sends the persisted submission UUID. The
    storage repository runs under the operation lock:
    - the same UUID and canonical command returns the original receipt;
    - the same UUID with different content is a terminal conflict;
    - a different UUID against already-terminal work is a terminal conflict.
-6. The client stores a content-free `server_confirmed` tombstone, refreshes the
+7. The client stores a content-free `server_confirmed` tombstone, refreshes the
    schedule, and reports the server receipt separately from
    `pendingVerification` or verified completion.
 
@@ -111,8 +114,8 @@ session.
 
 ## Failure handling
 
-- Offline, network, Blob transport, and server-unavailable failures return the
-  record to a retryable state with persisted bounded backoff.
+- Queued Blob transport and server-unavailable failures return the record to a
+  retryable state with persisted bounded backoff.
 - A stale `syncing` claim becomes claimable again after its lease expires.
 - Assignment, authorization, task version, requirement, target status, or
   submission-content conflicts are resolution-required. The UI preserves the
@@ -168,7 +171,8 @@ and successful receipts without joining them to private farmer content.
 
 ## Rollout and rollback
 
-1. Keep production `enabled` while Farm is in its active pilot.
+1. Keep production `enabled` while Farm is in its active pilot so offline
+   confirmations are queued and online confirmations upload directly.
 2. Record physical iOS standalone and Android Chrome results, including weak
    connectivity, background/force-close/reopen, lost response, and logout
    cases. Reopen GitHub task #4194 if a formal go/no-go gate is reinstated.

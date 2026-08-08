@@ -630,7 +630,7 @@ export function CompleteOperationModal({
             submissionInFlightRef.current = true;
             setIsSubmitting(true);
             const completionNotes = attachNotes ? trimmedNotes : undefined;
-            if (completionSync?.mode === 'enabled') {
+            if (completionSync?.mode === 'enabled' && !navigator.onLine) {
                 const handoff = await localDraft.handoffToQueue({
                     operationLabel: label,
                 });
