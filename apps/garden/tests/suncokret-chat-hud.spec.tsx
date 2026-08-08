@@ -585,3 +585,135 @@ test('approving a tool automatically continues the conversation', async ({
     await expect.poll(() => requestBodies.length).toBe(2);
     expect(JSON.stringify(requestBodies[1])).toContain('approval-responded');
 });
+
+test('completed AI cart actions refresh the active shopping-cart query', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    let cartReads = 0;
+    let chatRequests = 0;
+    await page.route('**/api/test/suncokret-shopping-cart', async (route) => {
+        cartReads += 1;
+        await route.fulfill({ body: cartReads.toString() });
+    });
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        chatRequests += 1;
+        const chunks =
+            chatRequests === 1
+                ? [
+                      { type: 'start', messageId: 'assistant-cart-approval' },
+                      { type: 'start-step' },
+                      {
+                          type: 'tool-input-available',
+                          toolCallId: 'cart-call-1',
+                          toolName: 'addProductToCart',
+                          input: {
+                              productId: 'plant-sort-458',
+                              quantity: 1,
+                          },
+                      },
+                      {
+                          type: 'tool-approval-request',
+                          approvalId: 'approval-cart-1',
+                          toolCallId: 'cart-call-1',
+                      },
+                      { type: 'finish-step' },
+                      { type: 'finish', finishReason: 'tool-calls' },
+                  ]
+                : [
+                      { type: 'start', messageId: 'assistant-cart-result' },
+                      { type: 'start-step' },
+                      {
+                          type: 'tool-output-available',
+                          toolCallId: 'cart-call-1',
+                          output: { cartItemId: 42 },
+                      },
+                      { type: 'text-start', id: 'text-cart-result' },
+                      {
+                          type: 'text-delta',
+                          id: 'text-cart-result',
+                          delta: 'Dodano u košaricu.',
+                      },
+                      { type: 'text-end', id: 'text-cart-result' },
+                      { type: 'finish-step' },
+                      { type: 'finish', finishReason: 'stop' },
+                  ];
+        await route.fulfill({
+            body: uiMessageStream(chunks),
+            headers: {
+                'content-type': 'text/event-stream',
+                'x-vercel-ai-ui-message-stream': 'v1',
+            },
+        });
+    });
+
+    await mount(<SuncokretChatHudStory observeShoppingCart />);
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByLabel('Pitaj Suncokret').fill('Dodaj bosiljak');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.getByRole('button', { name: 'Dopusti' })).toBeVisible();
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+    expect(cartReads).toBe(1);
+
+    await page.getByRole('button', { name: 'Dopusti' }).click();
+
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('2');
+    expect(chatRequests).toBe(2);
+    expect(cartReads).toBe(2);
+});
+
+test('completed AI cart actions refresh after a later stream error', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    let cartReads = 0;
+    await page.route('**/api/test/suncokret-shopping-cart', async (route) => {
+        cartReads += 1;
+        await route.fulfill({ body: cartReads.toString() });
+    });
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        await route.fulfill({
+            body: uiMessageStream([
+                { type: 'start', messageId: 'assistant-cart-error' },
+                { type: 'start-step' },
+                {
+                    type: 'tool-input-available',
+                    toolCallId: 'cart-call-error',
+                    toolName: 'addProductToCart',
+                    input: {
+                        productId: 'plant-sort-458',
+                        quantity: 1,
+                    },
+                },
+                {
+                    type: 'tool-output-available',
+                    toolCallId: 'cart-call-error',
+                    output: { cartItemId: 43 },
+                },
+                {
+                    type: 'error',
+                    errorText:
+                        'Model follow-up failed after the tool completed',
+                },
+            ]),
+            headers: {
+                'content-type': 'text/event-stream',
+                'x-vercel-ai-ui-message-stream': 'v1',
+            },
+        });
+    });
+
+    await mount(<SuncokretChatHudStory observeShoppingCart />);
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByLabel('Pitaj Suncokret').fill('Dodaj bosiljak');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('2');
+    expect(cartReads).toBe(2);
+});

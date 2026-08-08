@@ -29,6 +29,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     DefaultChatTransport,
     lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -66,6 +67,7 @@ import {
     suncokretContextSuggestions,
     suncokretConversationLabel,
 } from './suncokretChatContext';
+import { invalidateSuncokretMutationQueries } from './suncokretChatQueryInvalidation';
 
 type SuncokretLimit = {
     retryAt: string;
@@ -797,6 +799,7 @@ function ChatMessage({
 }
 
 export function SuncokretChatHud() {
+    const queryClient = useQueryClient();
     const flags = useGameFlags();
     const debug = Boolean(flags.enableSuncokretDebugFlag);
     const chat = useSuncokretChat();
@@ -879,6 +882,7 @@ export function SuncokretChatHud() {
         raisedBedId: contextRaisedBedId,
         uiContext,
     });
+    const requestRaisedBedIdRef = useRef(contextRaisedBedId);
     requestContextRef.current = {
         conversationId: activeConversationId,
         debug,
@@ -897,6 +901,7 @@ export function SuncokretChatHud() {
                 credentials: 'include',
                 prepareSendMessagesRequest: ({ id, messages }) => {
                     const requestContext = requestContextRef.current;
+                    requestRaisedBedIdRef.current = requestContext.raisedBedId;
                     return {
                         body: {
                             id,
@@ -929,6 +934,13 @@ export function SuncokretChatHud() {
         id: chatSessionId,
         transport,
         experimental_throttle: 80,
+        onFinish: ({ message }) => {
+            void invalidateSuncokretMutationQueries({
+                fallbackRaisedBedId: requestRaisedBedIdRef.current,
+                message,
+                queryClient,
+            });
+        },
         sendAutomaticallyWhen:
             lastAssistantMessageIsCompleteWithApprovalResponses,
     });
