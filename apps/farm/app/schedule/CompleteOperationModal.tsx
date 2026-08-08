@@ -14,12 +14,14 @@ import type { HandoffOperationCompletionDraftToQueueResult } from '../../lib/off
 import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
+    recoverFarmOperationCompletionImage,
     refreshFarmScheduleAfterSubmission,
     validateFarmOperationUploadTarget,
 } from './actions';
 import {
     getFarmOperationCompletionImageFileError,
     getFarmOperationCompletionImagePathPrefix,
+    getFarmOperationCompletionSubmissionImagePath,
     MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT,
 } from './operationCompletionProof';
 import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
@@ -517,11 +519,51 @@ export function CompleteOperationModal({
 
     const uploadImage = async (
         uploadItem: UploadItem,
+        submissionId?: string,
     ): Promise<UploadImageResult> => {
         const extension = uploadItem.file.name.includes('.')
             ? uploadItem.file.name.slice(uploadItem.file.name.lastIndexOf('.'))
             : '';
         let lastErrorMessage = 'Spremanje slike nije uspjelo.';
+
+        const markUploaded = (url: string, attempt: number) => {
+            updateUploadItem(uploadItem.id, (currentUploadItem) => ({
+                ...currentUploadItem,
+                progress: 100,
+                status: 'uploaded',
+                uploadedUrl: url,
+                errorMessage: undefined,
+                attempts: attempt,
+            }));
+            return { failure: null, url } satisfies UploadImageResult;
+        };
+
+        const recoverIdempotentUpload = async (
+            attempt = uploadItem.attempts,
+        ) => {
+            if (!submissionId) {
+                return null;
+            }
+            const recovered = await recoverFarmOperationCompletionImage(
+                operationId,
+                expectedEntityId,
+                expectedTaskVersionEventId,
+                expectedRequirementsFingerprint,
+                submissionId,
+                uploadItem.id,
+                uploadItem.file.name,
+            );
+            if (!recovered.success) {
+                markUploadTargetFailure(uploadItem.id, recovered);
+                return {
+                    failure: recovered,
+                    url: null,
+                } satisfies UploadImageResult;
+            }
+            return recovered.imageUrl
+                ? markUploaded(recovered.imageUrl, attempt)
+                : null;
+        };
 
         const initialTargetValidation = await validateFarmOperationUploadTarget(
             operationId,
@@ -534,8 +576,22 @@ export function CompleteOperationModal({
             return { failure: initialTargetValidation, url: null };
         }
 
+        const previouslyUploaded = await recoverIdempotentUpload();
+        if (previouslyUploaded) {
+            return previouslyUploaded;
+        }
+
         for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
-            const pathname = `${getFarmOperationCompletionImagePathPrefix(operationId, expectedEntityId, expectedTaskVersionEventId)}${uploadItem.id}-${attempt}${extension}`;
+            const pathname = submissionId
+                ? getFarmOperationCompletionSubmissionImagePath(
+                      operationId,
+                      expectedEntityId,
+                      expectedTaskVersionEventId,
+                      submissionId,
+                      uploadItem.id,
+                      uploadItem.file.name,
+                  )
+                : `${getFarmOperationCompletionImagePathPrefix(operationId, expectedEntityId, expectedTaskVersionEventId)}${uploadItem.id}-${attempt}${extension}`;
 
             updateUploadItem(uploadItem.id, (currentUploadItem) => ({
                 ...currentUploadItem,
@@ -551,6 +607,13 @@ export function CompleteOperationModal({
                     contentType: uploadItem.file.type || undefined,
                     handleUploadUrl: '/api/operations/images/upload',
                     clientPayload: JSON.stringify({
+                        ...(submissionId
+                            ? {
+                                  attachmentId: uploadItem.id,
+                                  fileName: uploadItem.file.name,
+                                  submissionId,
+                              }
+                            : {}),
                         expectedEntityId,
                         expectedRequirementsFingerprint,
                         expectedTaskVersionEventId,
@@ -571,20 +634,15 @@ export function CompleteOperationModal({
                     },
                 });
 
-                updateUploadItem(uploadItem.id, (currentUploadItem) => ({
-                    ...currentUploadItem,
-                    progress: 100,
-                    status: 'uploaded',
-                    uploadedUrl: uploadedImage.url,
-                    errorMessage: undefined,
-                    attempts: attempt,
-                }));
-
-                return { failure: null, url: uploadedImage.url };
+                return markUploaded(uploadedImage.url, attempt);
             } catch {
                 console.error('Error uploading completion image.');
                 lastErrorMessage =
                     'Spremanje fotografije nije uspjelo. Pokušaj ponovno.';
+                const recoveredUpload = await recoverIdempotentUpload(attempt);
+                if (recoveredUpload) {
+                    return recoveredUpload;
+                }
                 const currentTargetValidation =
                     await validateFarmOperationUploadTarget(
                         operationId,
@@ -630,33 +688,48 @@ export function CompleteOperationModal({
             submissionInFlightRef.current = true;
             setIsSubmitting(true);
             const completionNotes = attachNotes ? trimmedNotes : undefined;
-            if (completionSync?.mode === 'enabled' && !navigator.onLine) {
-                const handoff = await localDraft.handoffToQueue({
-                    operationLabel: label,
-                });
-                if (handoff.status === 'error') {
+            let submissionId: string | undefined;
+            if (completionSync?.mode === 'enabled') {
+                if (!navigator.onLine) {
+                    const handoff = await localDraft.handoffToQueue({
+                        operationLabel: label,
+                    });
+                    if (handoff.status === 'error') {
+                        setErrorMessage(
+                            getQueueHandoffErrorMessage(handoff.reason),
+                        );
+                        setRequiresRefresh(
+                            handoff.reason === 'server_confirmed' ||
+                                handoff.reason === 'incompatible' ||
+                                handoff.reason === 'queue_conflict' ||
+                                handoff.reason === 'draft_changed',
+                        );
+                        requestAnimationFrame(() => errorRef.current?.focus());
+                        return;
+                    }
+                    if (handoff.status === 'existing') {
+                        return;
+                    }
+                    setSuccessMessage(
+                        `Radnja „${label}” sigurno je spremljena samo na ovom uređaju. Poslat će se kada ponovno otvoriš aplikaciju uz internetsku vezu.`,
+                    );
+                    setSuccessNeedsScheduleRefresh(false);
+                    return;
+                }
+
+                const preparation = await localDraft.prepareSubmission();
+                if (preparation.status === 'error') {
                     setErrorMessage(
-                        getQueueHandoffErrorMessage(handoff.reason),
+                        getLocalDraftSaveErrorMessage(preparation.reason),
                     );
                     setRequiresRefresh(
-                        handoff.reason === 'server_confirmed' ||
-                            handoff.reason === 'incompatible' ||
-                            handoff.reason === 'queue_conflict' ||
-                            handoff.reason === 'draft_changed',
+                        preparation.reason === 'draft_changed' ||
+                            preparation.reason === 'incompatible',
                     );
                     requestAnimationFrame(() => errorRef.current?.focus());
                     return;
                 }
-                if (handoff.status === 'existing') {
-                    return;
-                }
-                setSuccessMessage(
-                    navigator.onLine
-                        ? `Radnja „${label}” sigurno je spremljena na ovom uređaju i čeka potvrdu farme.`
-                        : `Radnja „${label}” sigurno je spremljena samo na ovom uređaju. Poslat će se kada ponovno otvoriš aplikaciju uz internetsku vezu.`,
-                );
-                setSuccessNeedsScheduleRefresh(false);
-                return;
+                submissionId = preparation.submissionId;
             }
             let result: Awaited<ReturnType<typeof completeFarmOperation>>;
             if (attachImages && uploadItems.length > 0) {
@@ -670,7 +743,10 @@ export function CompleteOperationModal({
                         continue;
                     }
 
-                    const uploadResult = await uploadImage(uploadItem);
+                    const uploadResult = await uploadImage(
+                        uploadItem,
+                        submissionId,
+                    );
                     if (uploadResult.failure) {
                         setErrorMessage(uploadResult.failure.message);
                         setRequiresRefresh(!uploadResult.failure.canRetry);
@@ -694,6 +770,7 @@ export function CompleteOperationModal({
                     expectedRequirementsFingerprint,
                     imageUrls,
                     completionNotes,
+                    submissionId,
                 );
             } else {
                 result = await completeFarmOperation(
@@ -703,6 +780,7 @@ export function CompleteOperationModal({
                     expectedRequirementsFingerprint,
                     undefined,
                     completionNotes,
+                    submissionId,
                 );
             }
             if (!result.success) {

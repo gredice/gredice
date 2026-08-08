@@ -159,6 +159,7 @@ type SaveOperationCompletionDraftInput = OperationCompletionDraftScope & {
 type SaveOperationCompletionDraftOptions = {
     expectedRevisionId?: string | null;
     lease?: OperationCompletionDraftLease;
+    preserveEmpty?: boolean;
 };
 
 type DiscardOperationCompletionDraftOptions = {
@@ -1139,7 +1140,11 @@ export async function loadOperationCompletionDraft(
 
 export async function saveOperationCompletionDraft(
     { notes, photos, ...scope }: SaveOperationCompletionDraftInput,
-    { expectedRevisionId, lease }: SaveOperationCompletionDraftOptions = {},
+    {
+        expectedRevisionId,
+        lease,
+        preserveEmpty = false,
+    }: SaveOperationCompletionDraftOptions = {},
 ): Promise<SaveOperationCompletionDraftResult> {
     const leaseResult = await resolveOperationCompletionDraftLease(
         scope.userId,
@@ -1210,7 +1215,7 @@ export async function saveOperationCompletionDraft(
                     }
                 }
 
-                if (!notes.trim() && photos.length === 0) {
+                if (!preserveEmpty && !notes.trim() && photos.length === 0) {
                     const storedValue: unknown =
                         await requestOperationCompletionStoreResult(
                             draftStore.get(key),

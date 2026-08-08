@@ -79,11 +79,15 @@ different facts. A `server_confirmed` submission can still have the domain state
 ## Happy path
 
 1. The modal saves notes and selected photographs as a device-local draft.
-2. With connectivity, **Dovrši radnju** uploads photographs directly, confirms
-   the operation, and removes the local draft after the server responds.
+2. With connectivity, **Dovrši radnju** first persists a stable submission UUID
+   in the local draft, uploads photographs directly to deterministic attachment
+   paths, confirms the operation with that UUID, and removes private draft
+   content after the server responds. A lost response can therefore be retried
+   or queued without creating a different completion identity.
 3. Without connectivity, **Dovrši radnju** stops and flushes pending draft
    writes, then atomically converts that draft into a queue record. Its
-   persisted submission UUID and attachment UUIDs never change during retry.
+   persisted submission UUID (reused from the draft) and attachment UUIDs never
+   change during retry.
 4. A foreground coordinator claims the record with IndexedDB compare-and-swap.
    Web Locks reduce duplicate work between tabs but are not the correctness
    boundary. While slow photographs are uploading, the active coordinator

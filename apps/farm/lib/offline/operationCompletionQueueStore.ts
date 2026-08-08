@@ -800,7 +800,7 @@ export async function handoffOperationCompletionDraftToQueue(
                     serverConfirmedAt: null,
                     serverState: null,
                     state: 'queued',
-                    submissionId: newId(),
+                    submissionId: draft?.draftId ?? newId(),
                     updatedAt: now,
                     writerGeneration: lease.generation,
                 };
