@@ -24,6 +24,7 @@ import {
     hasPlantRelationships,
     PlantRelationshipsSection,
 } from '../../PlantRelationshipsSection';
+import { PlantSortSeedsList } from '../../PlantSortSeedsList';
 import { PlantTips } from '../../PlantTips';
 import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
@@ -312,6 +313,7 @@ export default async function PlantSortPage(
                     }}
                     relationships={relationships}
                 />
+                <PlantSortSeedsList plantSortId={sortData.id} />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
