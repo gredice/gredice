@@ -37,6 +37,7 @@ import type {
     DriverRouteTimelineItem,
     DriverRouteTimelineState,
 } from '../lib/deliveryRouteTimelinePresentation';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 import type {
     OfflineRouteDeliveryStep,
     OfflineRoutePickupStep,
@@ -530,7 +531,9 @@ export function OfflineRoutePanel({
                                         </Button>
                                     ) : (
                                         <Button
-                                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(step.address)}`}
+                                            href={buildGoogleMapsDirectionsUrl(
+                                                step.address,
+                                            )}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             variant="outlined"

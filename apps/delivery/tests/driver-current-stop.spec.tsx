@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 import {
     DriverCurrentDeferredCommandStory,
     DriverCurrentDeliveryCommandStory,
@@ -61,7 +62,7 @@ test.describe('320px current-stop command center', () => {
             }),
         ).toHaveAttribute(
             'href',
-            'https://www.google.com/maps/dir/?api=1&destination=Ilica%2042%2C%20Zagreb',
+            buildGoogleMapsDirectionsUrl('Ilica 42, Zagreb'),
         );
         const calls = command.getByRole('link', { name: /^Nazovi / });
         await expect(calls).toHaveCount(2);

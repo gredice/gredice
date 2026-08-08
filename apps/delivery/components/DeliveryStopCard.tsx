@@ -36,6 +36,7 @@ import {
     formatDistance,
     formatTravelDuration,
 } from '../lib/deliveryFormatting';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 import { DeliveryCustomerReceipt } from './DeliveryCustomerReceipt';
 import { DeliveryCustomerRecovery } from './DeliveryCustomerRecovery';
 import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
@@ -97,7 +98,7 @@ export function DeliveryStopCard({
 }) {
     const [notes, setNotes] = useState('');
     const [syncRecoveryPending, setSyncRecoveryPending] = useState(false);
-    const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
+    const navigationUrl = buildGoogleMapsDirectionsUrl(stop.address);
     const driverMode = mode === 'driver';
     const customerReceipt = driverMode ? null : (stop.receipt ?? null);
     const delivered = stop.statusLabel === 'Dostavljeno';

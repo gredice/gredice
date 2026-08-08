@@ -55,6 +55,7 @@ import {
 } from '../lib/deliveryFormatting';
 import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 import { DeliveryExceptionSheet } from './DeliveryExceptionSheet';
 import { DeliveryHandoffCompletionDialog } from './DeliveryHandoffCompletionDialog';
 import {
@@ -379,7 +380,7 @@ function DeliveryCurrentStopCommandCenter({
             new Date(stop.estimatedArrivalAt) > new Date(stop.slotEndAt),
     );
     const effectivePendingAction = localPendingAction ?? pendingAction;
-    const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`;
+    const navigationUrl = buildGoogleMapsDirectionsUrl(stop.address);
     const runCommand = async (
         kind: 'retry' | 'arrive' | 'deliver',
         action: (() => unknown | Promise<unknown>) | undefined,
@@ -1269,7 +1270,7 @@ function PickupCurrentStopCommandCenter({
                     <Button
                         size="lg"
                         aria-label="Navigacija do trenutačne stanice preuzimanja"
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.address)}`}
+                        href={buildGoogleMapsDirectionsUrl(pickup.address)}
                         target="_blank"
                         rel="noopener noreferrer"
                         variant="outlined"
