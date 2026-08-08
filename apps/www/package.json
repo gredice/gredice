@@ -21,7 +21,7 @@
         "test:preview-backfill": "node --experimental-strip-types --test ./app/vrtovi/publicGardenPreviewBackfill.unit.ts",
         "test:wallpapers": "node --experimental-strip-types --test ./app/pozadine/wallpaperComposer.node.spec.ts ./app/pozadine/macOSDynamicWallpaper.node.spec.ts",
         "test:plant-operation-stages": "node --experimental-strip-types --test ./tests/plantOperationStageAvailability.node.spec.ts",
-        "test:seeds": "node --experimental-strip-types --test ./app/sjeme/seedPresentation.node.spec.ts ./tests/plantSortSeeds.node.spec.ts",
+        "test:seeds": "node --experimental-strip-types --test ./app/sjeme/seedPresentation.node.spec.ts ./tests/directoryRevalidationPaths.node.spec.ts ./tests/plantSortSeeds.node.spec.ts",
         "test:cms-pages": "node --experimental-strip-types --test ./tests/cmsPages.node.spec.ts ./lib/plants/qualityHarvestSafetyFaq.node.spec.ts",
         "test-ui": "pnpm run test:prepare && playwright test --project=chromium --ui",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
