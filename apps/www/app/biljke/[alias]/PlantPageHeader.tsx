@@ -16,6 +16,7 @@ import { PriceAttributeCard } from '../../../components/attributes/PriceAttribut
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
+import { resolvePlantSowingPrice } from '../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
@@ -119,17 +120,7 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
-    const plantPrice = sort ? sort.prices?.perPlant : plant.prices?.perPlant;
-    const price =
-        typeof plantPrice === 'number'
-            ? {
-                  currentPrice: plantPrice,
-                  entityId: sort?.id ?? plant.id,
-                  entityTypeName: sort
-                      ? ('plantSort' as const)
-                      : ('plant' as const),
-              }
-            : null;
+    const price = resolvePlantSowingPrice(plant, sort);
 
     return (
         <PageHeader

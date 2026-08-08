@@ -10,6 +10,7 @@ import { StructuredDataScript } from '../../../../../components/shared/seo/Struc
 import { getOperationsData } from '../../../../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
+import { resolvePlantSowingPrice } from '../../../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
@@ -181,9 +182,8 @@ export default async function PlantSortPage(
 
     const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
     const sortUrl = `https://www.gredice.com${sortPath}`;
-    const sortPrice = sortData.prices?.perPlant;
-    const hasPerPlantPrice = typeof sortPrice === 'number';
-    const hasPricedOffer = hasPerPlantPrice && sortPrice > 0;
+    const sowingPrice = resolvePlantSowingPrice(basePlantData, sortData);
+    const hasPricedOffer = sowingPrice !== null && sowingPrice.currentPrice > 0;
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
@@ -193,7 +193,7 @@ export default async function PlantSortPage(
         <div className="py-8">
             <StructuredDataScript
                 data={
-                    hasPerPlantPrice
+                    sowingPrice
                         ? {
                               '@context': 'https://schema.org',
                               '@type': 'Product',
@@ -220,7 +220,9 @@ export default async function PlantSortPage(
                                   ? {
                                         offers: {
                                             '@type': 'Offer',
-                                            price: sortPrice.toFixed(2),
+                                            price: sowingPrice.currentPrice.toFixed(
+                                                2,
+                                            ),
                                             priceCurrency: 'EUR',
                                             availability:
                                                 sortData.store
