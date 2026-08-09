@@ -154,9 +154,9 @@ export default async function SeedBrandPage(
                                 '@type': 'ListItem',
                                 position: index + 1,
                                 item: {
-                                    '@type': 'Product',
+                                    '@type': 'Thing',
+                                    '@id': `https://www.gredice.com${KnownPages.Seed(seed.slug || seed.information.name)}`,
                                     name: seed.information.name,
-                                    category: 'Sjeme',
                                     url: `https://www.gredice.com${KnownPages.Seed(seed.slug || seed.information.name)}`,
                                     image: seedPrimaryImageUrl(seed),
                                 },

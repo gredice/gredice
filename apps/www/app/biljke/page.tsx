@@ -15,7 +15,6 @@ import { StructuredDataScript } from '../../components/shared/seo/StructuredData
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
-import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
@@ -61,23 +60,11 @@ export default async function PlantsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Thing',
+                                '@id': `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 name: plant.information.name,
                                 url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 image: plant.image?.cover?.url,
-                                offers:
-                                    typeof plant.prices?.perPlant ===
-                                        'number' && plant.prices.perPlant > 0
-                                        ? {
-                                              '@type': 'Offer',
-                                              price: plant.prices.perPlant.toFixed(
-                                                  2,
-                                              ),
-                                              priceCurrency: 'EUR',
-                                              hasMerchantReturnPolicy:
-                                                  merchantReturnPolicy,
-                                          }
-                                        : undefined,
                             },
                         })),
                     }}

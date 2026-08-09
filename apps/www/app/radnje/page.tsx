@@ -80,10 +80,15 @@ export default async function OperationsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Service',
                                 name: operation.information.label,
+                                category: 'Vrtlarska radnja',
                                 url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
                                 image: operation.image?.cover?.url,
+                                provider: {
+                                    '@type': 'Organization',
+                                    name: 'Gredice',
+                                },
                                 ...(getOperationPriceAvailability(operation) ===
                                 'available'
                                     ? {

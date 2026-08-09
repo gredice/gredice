@@ -83,15 +83,15 @@ export default async function OperationPage(
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
-                    '@type': 'Product',
+                    '@type': 'Service',
                     name: operation.information.label,
                     description:
                         operation.information.shortDescription ??
                         operation.information.description,
-                    category: 'Radnja',
+                    serviceType: 'Vrtlarska radnja',
                     image: operation.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
+                    provider: {
+                        '@type': 'Organization',
                         name: 'Gredice',
                     },
                     url: `https://www.gredice.com${operationPath}`,
