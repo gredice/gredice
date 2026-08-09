@@ -90,6 +90,51 @@ test('finds invalid Products recursively in graphs and lists', () => {
     );
 });
 
+test('rejects malformed non-empty Product qualifiers', () => {
+    const malformedQualifiers = [
+        { offers: {} },
+        { offers: 'not-an-offer' },
+        {
+            offers: {
+                '@type': 'Offer',
+                priceCurrency: 'EUR',
+            },
+        },
+        {
+            review: {
+                '@type': 'Review',
+                reviewRating: {},
+                author: {
+                    '@type': 'Person',
+                    name: 'Gredice korisnik',
+                },
+            },
+        },
+        {
+            aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: 4.8,
+                reviewCount: 0,
+            },
+        },
+    ];
+
+    for (const qualifier of malformedQualifiers) {
+        const issues = validateStructuredData({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: 'Rajčica',
+            ...qualifier,
+        });
+
+        assert.ok(
+            issues.some((issue) =>
+                issue.message.includes('offers, review, or aggregateRating'),
+            ),
+        );
+    }
+});
+
 test('rejects incomplete Offers and AggregateOffers', () => {
     const issues = validateStructuredData({
         '@context': 'https://schema.org',
@@ -116,8 +161,10 @@ test('rejects incomplete Offers and AggregateOffers', () => {
     assert.deepEqual(
         issues.map((issue) => issue.message),
         [
+            'Product must specify offers, review, or aggregateRating for Google Product snippets.',
             'Offer must have a non-negative numeric price.',
             'Offer must have a three-letter uppercase ISO priceCurrency.',
+            'Product must specify offers, review, or aggregateRating for Google Product snippets.',
             'AggregateOffer must have a non-negative lowPrice.',
         ],
     );

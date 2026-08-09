@@ -9,16 +9,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function hasValue(value: unknown): boolean {
-    if (Array.isArray(value)) {
-        return value.length > 0;
-    }
-
-    return value !== null && value !== undefined && value !== '';
-}
-
 function isNonEmptyString(value: unknown): value is string {
     return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isPositiveNumber(value: unknown): boolean {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) && value > 0;
+    }
+
+    return (
+        typeof value === 'string' &&
+        value.trim().length > 0 &&
+        Number.isFinite(Number(value)) &&
+        Number(value) > 0
+    );
 }
 
 function isNonNegativeNumber(value: unknown): boolean {
@@ -57,17 +62,49 @@ function validateProduct(
         });
     }
 
-    if (
-        !hasValue(node.offers) &&
-        !hasValue(node.review) &&
-        !hasValue(node.aggregateRating)
-    ) {
+    if (!hasValidProductQualifier(node)) {
         issues.push({
             path,
             message:
                 'Product must specify offers, review, or aggregateRating for Google Product snippets.',
         });
     }
+}
+
+function nodesFrom(value: unknown): Record<string, unknown>[] {
+    const candidates = Array.isArray(value) ? value : [value];
+    return candidates.filter(isRecord);
+}
+
+function hasValidTypedNode(value: unknown, acceptedTypes: string[]): boolean {
+    return nodesFrom(value).some((candidate) => {
+        const types = schemaTypes(candidate);
+        const matchingType = acceptedTypes.find((type) => types.includes(type));
+        if (!matchingType) {
+            return false;
+        }
+
+        const candidateIssues: StructuredDataIssue[] = [];
+        if (matchingType === 'Offer') {
+            validateOffer(candidate, '$', candidateIssues);
+        } else if (matchingType === 'AggregateOffer') {
+            validateAggregateOffer(candidate, '$', candidateIssues);
+        } else if (matchingType === 'Review') {
+            validateReview(candidate, '$', candidateIssues);
+        } else if (matchingType === 'AggregateRating') {
+            validateAggregateRating(candidate, '$', candidateIssues);
+        }
+
+        return candidateIssues.length === 0;
+    });
+}
+
+function hasValidProductQualifier(node: Record<string, unknown>): boolean {
+    return (
+        hasValidTypedNode(node.offers, ['Offer', 'AggregateOffer']) ||
+        hasValidTypedNode(node.review, ['Review']) ||
+        hasValidTypedNode(node.aggregateRating, ['AggregateRating'])
+    );
 }
 
 function validateOffer(
@@ -123,10 +160,14 @@ function validateReview(
     path: string,
     issues: StructuredDataIssue[],
 ) {
-    if (!isRecord(node.reviewRating)) {
+    if (
+        !isRecord(node.reviewRating) ||
+        !schemaTypes(node.reviewRating).includes('Rating') ||
+        !isNonNegativeNumber(node.reviewRating.ratingValue)
+    ) {
         issues.push({
             path,
-            message: 'Review must have a reviewRating object.',
+            message: 'Review must have a Rating with a numeric ratingValue.',
         });
     }
 
@@ -151,13 +192,13 @@ function validateAggregateRating(
     }
 
     if (
-        !isNonNegativeNumber(node.reviewCount) &&
-        !isNonNegativeNumber(node.ratingCount)
+        !isPositiveNumber(node.reviewCount) &&
+        !isPositiveNumber(node.ratingCount)
     ) {
         issues.push({
             path,
             message:
-                'AggregateRating must have a numeric reviewCount or ratingCount.',
+                'AggregateRating must have a positive reviewCount or ratingCount.',
         });
     }
 }
