@@ -89,7 +89,9 @@ export const gameAssetModels = {
     FireflyJar: { url: '/assets/models/FireflyJar.glb' },
     CatPillow: { url: '/assets/models/CatPillow.glb' },
     DogHouse: { url: '/assets/models/DogHouse.glb' },
-    SmallWoodenBridge: { url: '/assets/models/SmallWoodenBridge.glb' },
+    SmallWoodenBridge: {
+        url: '/assets/models/SmallWoodenBridge.glb?v=3f5e5e39b5e4',
+    },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },

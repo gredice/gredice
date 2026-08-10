@@ -576,6 +576,9 @@ importers:
       '@gredice/label-printer':
         specifier: workspace:*
         version: link:../../packages/label-printer
+      '@gredice/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -1043,6 +1046,9 @@ importers:
       tailwindcss-animate:
         specifier: 1.0.7
         version: 1.0.7(tailwindcss@4.3.2)
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -1425,6 +1431,9 @@ importers:
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
       '@gredice/slack':
         specifier: workspace:*
         version: link:../slack

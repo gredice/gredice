@@ -50,3 +50,60 @@ test('keeps one speech bubble attached to the actor and refreshes its lifetime',
     await expect(bubble).toBeVisible();
     await expect(bubble).toHaveCount(0, { timeout: 2_000 });
 });
+
+test('allows an actor speech bubble to open its action', async ({ mount }) => {
+    const fixture = await mount(<ActorSpeechBubbleFixture interactive />);
+    const canvas = fixture.locator('canvas');
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    if (!canvasBox) {
+        return;
+    }
+
+    await canvas.hover({
+        position: {
+            x: canvasBox.width / 2,
+            y: canvasBox.height / 2,
+        },
+    });
+    const bubble = fixture.getByRole('button', { name: 'Otvori poruku' });
+    await bubble.click();
+    await expect(fixture).toHaveAttribute('data-bubble-clicks', '1');
+});
+
+test('keeps the bubble body above its head anchor when zoomed out', async ({
+    mount,
+}) => {
+    const cameraZoom = 30;
+    const fixture = await mount(
+        <ActorSpeechBubbleFixture cameraZoom={cameraZoom} />,
+    );
+    const canvas = fixture.locator('canvas');
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    if (!canvasBox) {
+        return;
+    }
+
+    await canvas.hover({
+        position: {
+            x: canvasBox.width / 2,
+            y: canvasBox.height / 2,
+        },
+    });
+    const bubble = fixture.locator('[data-actor-speech-bubble]');
+    await expect(bubble).toBeVisible();
+
+    const bubbleBox = await bubble.boundingBox();
+    expect(bubbleBox).not.toBeNull();
+    if (!bubbleBox) {
+        return;
+    }
+
+    const headAnchorY = canvasBox.y + canvasBox.height / 2 - 1.2 * cameraZoom;
+    expect(bubbleBox.y + bubbleBox.height).toBeLessThan(headAnchorY - 3);
+});

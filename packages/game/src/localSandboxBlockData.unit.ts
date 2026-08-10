@@ -92,6 +92,7 @@ test('local sandbox exposes the small wooden bridge with its model bounds', () =
     assert.equal(bridge.attributes.hitboxDepth, 1);
     assert.equal(bridge.attributes.hitboxHeight, 0.38);
     assert.equal(bridge.attributes.hitboxWidth, 0.84);
+    assert.equal(bridge.attributes.placeableOnWater, true);
 });
 
 test('local sandbox exposes flower decorations used by the item HUD', () => {

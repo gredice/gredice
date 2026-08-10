@@ -1341,6 +1341,7 @@
             "name": "SmallWoodenBridge",
             "source": "SmallWoodenBridge.blend",
             "output": "SmallWoodenBridge.glb",
+            "version": "3f5e5e39b5e4",
             "preload": "lazy",
             "objects": [
                 "SmallWoodenBridge_PlanksLight",

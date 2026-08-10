@@ -378,6 +378,14 @@ function isToolRunningState(state: string) {
     );
 }
 
+function isCompletedRecommendationPart(part: Record<string, unknown>) {
+    const state = toolState(part);
+    return (
+        toolName(part) === 'presentRecommendations' &&
+        (state === 'output-available' || state === 'result')
+    );
+}
+
 function debugJson(value: unknown) {
     try {
         return JSON.stringify(value, null, 2);
@@ -636,6 +644,23 @@ function ChatMessage({
 }) {
     const isUser = message.role === 'user';
     const partKeyCounts = new Map<string, number>();
+    const keyedParts = message.parts.map((part) => {
+        const baseKey = messagePartKey(part);
+        const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
+        partKeyCounts.set(baseKey, duplicateCount + 1);
+
+        return {
+            key:
+                duplicateCount === 0 ? baseKey : `${baseKey}:${duplicateCount}`,
+            part,
+        };
+    });
+    const completedRecommendationParts = keyedParts.flatMap(({ key, part }) => {
+        const toolData = toolPart(part);
+        return toolData && isCompletedRecommendationPart(toolData)
+            ? [{ key, toolData }]
+            : [];
+    });
     const toolParts = message.parts
         .map(toolPart)
         .filter((part): part is Record<string, unknown> => Boolean(part));
@@ -686,14 +711,7 @@ function ChatMessage({
                 className={cx('flex flex-col gap-2', !isUser && 'w-full')}
                 variant={isUser ? 'sunflower' : 'ghost'}
             >
-                {message.parts.map((part) => {
-                    const baseKey = messagePartKey(part);
-                    const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
-                    partKeyCounts.set(baseKey, duplicateCount + 1);
-                    const key =
-                        duplicateCount === 0
-                            ? baseKey
-                            : `${baseKey}:${duplicateCount}`;
+                {keyedParts.map(({ key, part }) => {
                     const text = textPart(part);
                     if (text) {
                         return (
@@ -705,29 +723,8 @@ function ChatMessage({
 
                     const toolData = toolPart(part);
                     if (toolData) {
-                        if (
-                            toolName(toolData) === 'presentRecommendations' &&
-                            (toolState(toolData) === 'output-available' ||
-                                toolState(toolData) === 'result')
-                        ) {
-                            return (
-                                <div className="space-y-2" key={key}>
-                                    <SuncokretRecommendationChips
-                                        output={
-                                            toolData.output ?? toolData.result
-                                        }
-                                    />
-                                    {debug && (
-                                        <ToolPart
-                                            addToolApprovalResponse={
-                                                addToolApprovalResponse
-                                            }
-                                            debug
-                                            part={toolData}
-                                        />
-                                    )}
-                                </div>
-                            );
+                        if (isCompletedRecommendationPart(toolData)) {
+                            return null;
                         }
 
                         if (!debug && !isToolApprovalRequested(toolData)) {
@@ -793,6 +790,22 @@ function ChatMessage({
                         </pre>
                     </details>
                 )}
+                {completedRecommendationParts.map(({ key, toolData }) => (
+                    <div className="space-y-2" key={key}>
+                        <SuncokretRecommendationChips
+                            output={toolData.output ?? toolData.result}
+                        />
+                        {debug && (
+                            <ToolPart
+                                addToolApprovalResponse={
+                                    addToolApprovalResponse
+                                }
+                                debug
+                                part={toolData}
+                            />
+                        )}
+                    </div>
+                ))}
             </ChatBubble>
         </ChatMessageLayout>
     );

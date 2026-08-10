@@ -14,6 +14,16 @@ const blockDataByName = new Map([
             },
         },
     ],
+    [
+        'SmallWoodenBridge',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.38,
+                placeableOnWater: true,
+            },
+        },
+    ],
     ['Tree', { attributes: { stackable: true, height: 1 } }],
 ]);
 
@@ -40,6 +50,19 @@ describe('validateStackPlacement', () => {
             blockNameById: new Map([
                 ['water-a', 'Block_Water'],
                 ['water-b', 'Block_Water'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepEqual(validation, { valid: true });
+    });
+
+    it('allows the small wooden bridge directly above water', () => {
+        const validation = validateStackPlacement({
+            blockIds: ['water-a', 'bridge-a'],
+            blockNameById: new Map([
+                ['water-a', 'Block_Water'],
+                ['bridge-a', 'SmallWoodenBridge'],
             ]),
             blockDataByName,
         });

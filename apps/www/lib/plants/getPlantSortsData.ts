@@ -1,9 +1,6 @@
-import {
-    directoriesClient,
-    type PlantData,
-    type PlantSortData,
-} from '@gredice/client';
+import type { PlantData, PlantSortData } from '@gredice/directory-types';
 import { cache } from 'react';
+import { getDirectoryEntitiesData } from '../server/getDirectoryEntitiesData';
 
 export type PlantSortDataWithRelationships = PlantSortData & {
     prices?: PlantData['prices'];
@@ -19,21 +16,8 @@ function includeRuntimeRelationships(
 }
 
 const getPlantSortsDataUncached = async () => {
-    try {
-        const { data, error } = await directoriesClient().GET(
-            '/entities/plantSort',
-        );
-
-        if (error) {
-            console.error('Failed to fetch plant sorts data', error);
-            return [];
-        }
-
-        return data?.map(includeRuntimeRelationships) ?? [];
-    } catch (error) {
-        console.error('Failed to fetch plant sorts data', error);
-        return [];
-    }
+    const data = await getDirectoryEntitiesData('plantSort');
+    return data.map(includeRuntimeRelationships);
 };
 
 export const getPlantSortsData = cache(getPlantSortsDataUncached);

@@ -774,7 +774,7 @@ function buildTools({
         }),
         presentRecommendations: tool({
             description:
-                'Prikaži klikabilne prijedloge za konkretne radnje ili sijanja. Pozovi tek nakon provjere kataloga i ciljne gredice/polja. Za radnju koristi operationId iz kataloga radnji. Za sijanje koristi entityId sorte iz rezultata searchProducts kao plantSortId. Ako zadaješ datum, koristi YYYY-MM-DD. Ovaj alat samo prikazuje prijedloge; ne mijenja košaricu.',
+                'Prikaži klikabilne prijedloge za konkretne radnje ili sijanja. Pozovi tek nakon provjere kataloga i ciljne gredice/polja. Za radnju koristi operationId iz getOperationsDirectory. Radnja kategorije plant mora imati positionIndex ciljnog polja; za svako ciljano polje pošalji zaseban prijedlog. Radnja za cijelu gredicu ne smije imati positionIndex. Za sijanje koristi entityId sorte iz rezultata searchProducts kao plantSortId. Ako zadaješ datum, koristi YYYY-MM-DD. Ovaj alat samo prikazuje prijedloge; ne mijenja košaricu.',
             inputSchema: z.object({
                 recommendations: z
                     .array(SuncokretRecommendationSchema)
