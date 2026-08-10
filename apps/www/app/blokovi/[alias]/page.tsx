@@ -1,4 +1,4 @@
-import { type BlockData, directoriesClient } from '@gredice/client';
+import type { BlockData } from '@gredice/directory-types';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Layers, Ruler } from '@gredice/ui/icons';
@@ -14,27 +14,12 @@ import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { getBlocksData } from '../../../lib/blocks/getBlocksData';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
 export const revalidate = 3600; // 1 hour
-
-async function getBlocksData() {
-    try {
-        const { data, error } =
-            await directoriesClient().GET('/entities/block');
-        if (error) {
-            console.error('Failed to fetch blocks data', error);
-            return [];
-        }
-
-        return data ?? [];
-    } catch (error) {
-        console.error('Failed to fetch blocks data', error);
-        return [];
-    }
-}
 
 export async function generateMetadata(
     props: PageProps<'/blokovi/[alias]'>,
