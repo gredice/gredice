@@ -10,6 +10,7 @@ import {
     validateHostedImageUrl,
 } from '@gredice/js/urls';
 import {
+    notifyDetailedRaisedBedInspectionCompleted,
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
 } from '@gredice/notifications';
@@ -29,6 +30,7 @@ import {
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     submitOperationTaskCompletion,
     switchOperationEntity,
     unacceptOperation,
@@ -933,8 +935,6 @@ async function notifyVerifiedOperationCompletion(
     operation: Awaited<ReturnType<typeof getOperationById>>,
     { notifySlack }: { notifySlack: boolean },
 ) {
-    const { header, content, linkUrl } =
-        await buildOperationCompletionNotification(operation);
     if (!operation.completedBy) {
         throw new Error('Completed operation is missing a completion actor.');
     }
@@ -942,22 +942,30 @@ async function notifyVerifiedOperationCompletion(
         throw new Error('Completed operation is missing a verification event.');
     }
 
+    const detailedInspectionHandled =
+        operation.entityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+            ? await notifyDetailedRaisedBedInspectionCompleted(operation.id)
+            : false;
+    const completionNotification = detailedInspectionHandled
+        ? null
+        : await buildOperationCompletionNotification(operation);
+
     await Promise.all([
         notifySlack
             ? notifyOperationUpdate(operation.id, 'completed', {
                   completedBy: operation.completedBy,
               })
             : undefined,
-        operation.accountId
+        operation.accountId && completionNotification
             ? createNotification(
                   {
                       accountId: operation.accountId,
                       gardenId: operation.gardenId,
                       raisedBedId: operation.raisedBedId,
-                      header,
-                      content,
+                      header: completionNotification.header,
+                      content: completionNotification.content,
                       imageUrl: operation.imageUrls?.[0],
-                      linkUrl,
+                      linkUrl: completionNotification.linkUrl,
                       timestamp: operation.verifiedAt,
                   },
                   {
@@ -1027,6 +1035,10 @@ async function completeOperationForActor(
         await notifyVerifiedOperationCompletion(verifiedOperation, {
             notifySlack: result.created,
         });
+    } else if (
+        expectedEntityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+    ) {
+        await notifyDetailedRaisedBedInspectionCompleted(operationId);
     }
 
     await revalidateOperationPaths(operation);

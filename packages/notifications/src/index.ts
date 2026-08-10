@@ -25,6 +25,7 @@ import {
 
 export * from './customerDeliveryNotifications';
 export * from './deliveryLifecycle';
+export * from './detailedRaisedBedInspection';
 
 type OperationEventType =
     | 'scheduled'
