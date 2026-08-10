@@ -15,7 +15,12 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
-import { allSorts, buildOperation } from './raisedBedFieldHudScenarios';
+import {
+    allSorts,
+    buildField,
+    buildOperation,
+    testSorts,
+} from './raisedBedFieldHudScenarios';
 
 const gardenId = 1;
 const raisedBedId = 11;
@@ -38,7 +43,19 @@ const garden = {
             name: 'Sunčano Sunce',
             blockId: raisedBedBlock.id,
             physicalId: 'A1',
-            fields: [],
+            fields: [
+                {
+                    ...buildField(
+                        {
+                            positionIndex: 1,
+                            plantSortId: testSorts.tomato.id,
+                            plantStatus: 'sprouted',
+                        },
+                        1,
+                    ),
+                    raisedBedId,
+                },
+            ],
             appliedOperations: [],
             weedState: null,
             status: 'active',
@@ -71,6 +88,30 @@ const wateringOperation = {
         application: 'raisedBedFull' as const,
     },
 };
+const resistanceOperation = buildOperation({
+    id: 569,
+    name: 'applyTomatoResiliencePreparation',
+    label: 'Jačanje otpornosti rajčice i patlidžana',
+    stageName: 'maintenance',
+    stageLabel: 'Održavanje',
+});
+const recommendationSorts = allSorts.map((plantSort) =>
+    plantSort.id === testSorts.tomato.id
+        ? {
+              ...plantSort,
+              information: {
+                  ...plantSort.information,
+                  plant: {
+                      ...plantSort.information.plant,
+                      information: {
+                          ...plantSort.information.plant.information,
+                          operations: [resistanceOperation],
+                      },
+                  },
+              },
+          }
+        : plantSort,
+);
 
 function createQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
@@ -83,8 +124,11 @@ function createQueryClient() {
         [{ id: gardenId, name: garden.name, isSandbox: false }],
     );
     queryClient.setQueryData(currentGardenKeys('summer', gardenId), garden);
-    queryClient.setQueryData(['operations'], [wateringOperation]);
-    queryClient.setQueryData(['sorts'], allSorts);
+    queryClient.setQueryData(
+        ['operations'],
+        [wateringOperation, resistanceOperation],
+    );
+    queryClient.setQueryData(['sorts'], recommendationSorts);
     return queryClient;
 }
 
