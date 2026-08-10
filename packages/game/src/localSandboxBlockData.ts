@@ -39,6 +39,7 @@ export const localSandboxBlockNames = [
     'Stool',
     'WoodenBench',
     'Fence',
+    'SmallWoodenBridge',
     'WaterWell',
     'LemonadeStand',
     'IceCreamCart',
@@ -129,6 +130,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         PalmTree: 1.5,
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
+        SmallWoodenBridge: 0.38,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
@@ -160,6 +162,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 0.96,
         hitboxHeight: 0.08,
         hitboxWidth: 0.96,
+    },
+    SmallWoodenBridge: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.38,
+        hitboxWidth: 0.84,
     },
     SummerHat: {
         hitboxDepth: 0.64,
