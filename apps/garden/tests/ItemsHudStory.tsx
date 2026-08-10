@@ -138,6 +138,7 @@ const blockNames = [
     'Shade',
     'BeachUmbrella',
     'Stool',
+    'WoodenBench',
     'Fence',
     'StoneSmall',
     'StoneMedium',

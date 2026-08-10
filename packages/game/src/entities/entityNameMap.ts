@@ -73,6 +73,7 @@ import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
+import { WoodenBench } from './WoodenBench';
 
 export const entityNameMap = {
     Block_Ground: BlockGround,
@@ -113,6 +114,7 @@ export const entityNameMap = {
     LiquidPreparationBottleBeetleControl: LiquidPreparationBottle,
     PaintRoller: PaintRoller,
     WaterWell: WaterWell,
+    WoodenBench: WoodenBench,
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
     SummerHat: SummerHat,
