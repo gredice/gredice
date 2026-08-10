@@ -73,7 +73,7 @@ export function DetailedRaisedBedInspectionModal({
             }}
             open={open}
             showHeader
-            title="OPGov Detaljan pregled"
+            title="OPG - Detaljan pregled gredica"
         >
             <Stack spacing={4} className="min-w-0">
                 <Typography level="body2" secondary>

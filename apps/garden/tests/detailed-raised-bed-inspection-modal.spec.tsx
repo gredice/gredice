@@ -8,7 +8,9 @@ test('shows the farmer notes for every inspected raised bed', async ({
     await mount(<DetailedRaisedBedInspectionModalStory />);
 
     await expect(
-        page.getByRole('heading', { name: 'OPGov Detaljan pregled' }).last(),
+        page
+            .getByRole('heading', { name: 'OPG - Detaljan pregled gredica' })
+            .last(),
     ).toBeVisible();
     await expect(page.getByText(/Broj pregledanih gredica/)).toHaveCount(0);
     await expect(page.getByText('Gredica Sjever')).toBeVisible();
@@ -34,7 +36,9 @@ test('shows the farmer notes for every inspected raised bed', async ({
 
     await page.getByRole('button', { name: 'Zatvori' }).first().click();
     await expect(
-        page.getByRole('heading', { name: 'OPGov Detaljan pregled' }),
+        page.getByRole('heading', {
+            name: 'OPG - Detaljan pregled gredica',
+        }),
     ).toHaveCount(0);
 });
 
