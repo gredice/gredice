@@ -62,6 +62,7 @@ import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
 import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
+import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
@@ -128,6 +129,7 @@ export const entityNameMap = {
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,
     DogHouse: DogHouse,
+    SmallWoodenBridge: SmallWoodenBridge,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,

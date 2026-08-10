@@ -1338,6 +1338,18 @@
             ]
         },
         {
+            "name": "SmallWoodenBridge",
+            "source": "SmallWoodenBridge.blend",
+            "output": "SmallWoodenBridge.glb",
+            "preload": "lazy",
+            "objects": [
+                "SmallWoodenBridge_PlanksLight",
+                "SmallWoodenBridge_PlanksWarm",
+                "SmallWoodenBridge_Stringers",
+                "SmallWoodenBridge_Pegs"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
