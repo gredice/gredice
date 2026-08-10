@@ -9,6 +9,7 @@ const firstLabel: FieldOperationLabelData = {
     detailLabel: 'Berba',
     plantSortName: 'Salata',
     dateLabel: '02.08.2026.',
+    traceUrl: 'https://gredice.com/t/123',
 };
 
 const labels: FieldOperationLabelData[] = [
@@ -49,6 +50,7 @@ test('lets farmers exclude labels and restore the full print selection', async (
     });
 
     await expect(dialog.getByText('Odabrano: 3 od 3 etiketa')).toBeVisible();
+    await expect(dialog.getByText('QR trag uključen')).toHaveCount(0);
     const secondLabel = dialog.getByRole('checkbox', {
         name: 'Uključi etiketu #2',
     });

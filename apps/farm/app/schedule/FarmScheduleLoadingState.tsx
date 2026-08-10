@@ -11,7 +11,7 @@ export function FarmScheduleLoadingState() {
             aria-busy="true"
         >
             <div className="space-y-2">
-                <Typography component="h1" level="h5" semiBold>
+                <Typography component="h1" className="sr-only">
                     Raspored
                 </Typography>
                 <div className="grid min-w-0 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">

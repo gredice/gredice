@@ -32,7 +32,6 @@ function formatLabelCount(count: number) {
 function formatLabelSummary(
     sowingLabelCount: number,
     harvestLabelCount: number,
-    traceLabelCount: number,
 ) {
     const parts = [];
     if (sowingLabelCount > 0) {
@@ -41,10 +40,6 @@ function formatLabelSummary(
     if (harvestLabelCount > 0) {
         parts.push(`berba: ${formatLabelCount(harvestLabelCount)}`);
     }
-    if (traceLabelCount > 0) {
-        parts.push(`QR trag: ${formatLabelCount(traceLabelCount)}`);
-    }
-
     return parts.join(' · ');
 }
 
@@ -73,7 +68,6 @@ export async function ScheduleLabelPrintSection({
     const labelSummary = formatLabelSummary(
         printData.sowingLabelCount,
         printData.harvestLabelCount,
-        printData.traceLabelCount,
     );
 
     return (

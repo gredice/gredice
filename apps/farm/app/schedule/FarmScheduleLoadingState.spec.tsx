@@ -12,7 +12,7 @@ for (const width of [320, 1280]) {
 
         await expect(
             component.getByRole('heading', { level: 1, name: 'Raspored' }),
-        ).toBeVisible();
+        ).toHaveClass(/sr-only/);
 
         expect(
             await page.evaluate(

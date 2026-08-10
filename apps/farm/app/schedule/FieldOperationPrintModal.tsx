@@ -5,16 +5,16 @@ import {
     type FieldOperationLabelData,
     GrediceLabelPrinter,
     getLabelPrinterAvailabilityMessage,
-    type LabelPrinterSnapshot,
 } from '@gredice/label-printer';
 import { Button, type ButtonProps } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
+import { LinkOff, Reset } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useEffect, useState } from 'react';
 import { FieldOperationLabelPreviewCanvas } from '../../components/labels/FieldOperationLabelPreviewCanvas';
+import { LabelPrinterStatusSummary } from './LabelPrinterStatusSummary';
 
 const sharedLabelPrinter = new GrediceLabelPrinter();
 
@@ -24,25 +24,6 @@ function getErrorMessage(error: unknown) {
     }
 
     return 'Pisač nije odgovorio. Pokušajte ponovno.';
-}
-
-function getStatusPillClassName(tone: 'neutral' | 'success' | 'warning') {
-    switch (tone) {
-        case 'success':
-            return 'rounded-full border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700';
-        case 'warning':
-            return 'rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700';
-        default:
-            return 'rounded-full border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-foreground';
-    }
-}
-
-function getConsumableUsageLabel(snapshot: LabelPrinterSnapshot) {
-    if (!snapshot.consumableUsage) {
-        return null;
-    }
-
-    return `${snapshot.consumableUsage.remaining}/${snapshot.consumableUsage.total} etiketa`;
 }
 
 function getLabelPreviewItems(labels: FieldOperationLabelData[]) {
@@ -87,18 +68,6 @@ function getTraceLinkIds(labels: FieldOperationLabelData[]) {
                 ),
         ),
     );
-}
-
-function getTraceStatusLabel(label: FieldOperationLabelData) {
-    if (label.traceUrl) {
-        return 'QR trag uključen';
-    }
-
-    if (label.traceStatus === 'revoked') {
-        return 'QR trag opozvan';
-    }
-
-    return null;
 }
 
 interface FieldOperationPrintModalProps {
@@ -259,7 +228,7 @@ export function FieldOperationPrintModal({
                     await onPrintSuccess(traceLinkIds);
                 } catch {
                     setActionError(
-                        'Etikete su poslane na pisač, ali status QR traga nije spremljen.',
+                        'Etikete su poslane na pisač, ali evidencija ispisa nije spremljena.',
                     );
                 }
             }
@@ -276,7 +245,6 @@ export function FieldOperationPrintModal({
     const availabilityMessage = snapshot.availability.supported
         ? null
         : getLabelPrinterAvailabilityMessage(snapshot.availability);
-    const consumableUsageLabel = getConsumableUsageLabel(snapshot);
     const canPrint =
         snapshot.isConnected &&
         !snapshot.isConnecting &&
@@ -388,18 +356,6 @@ export function FieldOperationPrintModal({
                                                 labelData={item.label}
                                                 className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                                             />
-                                            {getTraceStatusLabel(
-                                                item.label,
-                                            ) && (
-                                                <Typography
-                                                    level="body2"
-                                                    className="mt-1 text-center text-xs text-muted-foreground"
-                                                >
-                                                    {getTraceStatusLabel(
-                                                        item.label,
-                                                    )}
-                                                </Typography>
-                                            )}
                                         </div>
                                     </div>
                                 );
@@ -415,88 +371,7 @@ export function FieldOperationPrintModal({
                 ) : (
                     <Stack spacing={3}>
                         <Stack spacing={2}>
-                            <Typography semiBold>Stanje pisača</Typography>
-                            <Row spacing={2} className="flex-wrap gap-y-2">
-                                <span
-                                    className={getStatusPillClassName(
-                                        snapshot.isConnected
-                                            ? 'success'
-                                            : 'neutral',
-                                    )}
-                                >
-                                    {snapshot.isConnected
-                                        ? 'Povezan'
-                                        : 'Nije povezan'}
-                                </span>
-                                {snapshot.batteryPercent !== undefined && (
-                                    <span
-                                        className={getStatusPillClassName(
-                                            snapshot.batteryPercent > 25
-                                                ? 'success'
-                                                : 'warning',
-                                        )}
-                                    >
-                                        Baterija {snapshot.batteryPercent}%
-                                    </span>
-                                )}
-                                {snapshot.paperInserted !== undefined && (
-                                    <span
-                                        className={getStatusPillClassName(
-                                            snapshot.paperInserted
-                                                ? 'success'
-                                                : 'warning',
-                                        )}
-                                    >
-                                        {snapshot.paperInserted
-                                            ? 'Etikete su umetnute'
-                                            : 'Nema umetnutih etiketa'}
-                                    </span>
-                                )}
-                                {snapshot.lidClosed !== undefined && (
-                                    <span
-                                        className={getStatusPillClassName(
-                                            snapshot.lidClosed
-                                                ? 'success'
-                                                : 'warning',
-                                        )}
-                                    >
-                                        {snapshot.lidClosed
-                                            ? 'Poklopac zatvoren'
-                                            : 'Poklopac otvoren'}
-                                    </span>
-                                )}
-                                {consumableUsageLabel && (
-                                    <span
-                                        className={getStatusPillClassName(
-                                            'neutral',
-                                        )}
-                                    >
-                                        {consumableUsageLabel}
-                                    </span>
-                                )}
-                            </Row>
-
-                            {(snapshot.deviceName ||
-                                snapshot.modelName ||
-                                snapshot.serial) && (
-                                <Stack spacing={1}>
-                                    {snapshot.deviceName && (
-                                        <Typography level="body2">
-                                            Uređaj: {snapshot.deviceName}
-                                        </Typography>
-                                    )}
-                                    {snapshot.modelName && (
-                                        <Typography level="body2">
-                                            Model: {snapshot.modelName}
-                                        </Typography>
-                                    )}
-                                    {snapshot.serial && (
-                                        <Typography level="body2">
-                                            Serijski broj: {snapshot.serial}
-                                        </Typography>
-                                    )}
-                                </Stack>
-                            )}
+                            <LabelPrinterStatusSummary snapshot={snapshot} />
 
                             {!snapshot.consumableUsage &&
                                 snapshot.isConnected && (
@@ -543,8 +418,18 @@ export function FieldOperationPrintModal({
                                 {snapshot.isConnected ? (
                                     <>
                                         <Button
-                                            variant="outlined"
+                                            variant="plain"
+                                            size="sm"
                                             type="button"
+                                            aria-label="Osvježi stanje"
+                                            title="Osvježi stanje"
+                                            className="size-9 px-0"
+                                            startDecorator={
+                                                <Reset
+                                                    aria-hidden
+                                                    className="size-4"
+                                                />
+                                            }
                                             onClick={handleRefresh}
                                             loading={isRefreshing}
                                             disabled={
@@ -552,12 +437,20 @@ export function FieldOperationPrintModal({
                                                 snapshot.isPrinting ||
                                                 isDisconnecting
                                             }
-                                        >
-                                            Osvježi stanje
-                                        </Button>
+                                        />
                                         <Button
-                                            variant="outlined"
+                                            variant="plain"
+                                            size="sm"
                                             type="button"
+                                            aria-label="Prekini vezu"
+                                            title="Prekini vezu"
+                                            className="size-9 px-0"
+                                            startDecorator={
+                                                <LinkOff
+                                                    aria-hidden
+                                                    className="size-4"
+                                                />
+                                            }
                                             onClick={handleDisconnect}
                                             loading={isDisconnecting}
                                             disabled={
@@ -565,9 +458,7 @@ export function FieldOperationPrintModal({
                                                 snapshot.isPrinting ||
                                                 isRefreshing
                                             }
-                                        >
-                                            Prekini vezu
-                                        </Button>
+                                        />
                                     </>
                                 ) : (
                                     <Button
