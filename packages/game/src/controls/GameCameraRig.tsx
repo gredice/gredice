@@ -12,6 +12,10 @@ import {
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
 import {
+    applyCursorAnchoredZoom,
+    createCursorAnchoredZoomScratch,
+} from './cursorAnchoredZoom';
+import {
     getDragEdgeAutopanDelta,
     hasDragEdgeAutopanDelta,
 } from './dragEdgeAutopan';
@@ -238,6 +242,10 @@ export function GameCameraRig({
     });
     const scratchForwardRef = useRef(new Vector3());
     const scratchRightRef = useRef(new Vector3());
+    const cursorAnchoredZoomScratch = useMemo(
+        createCursorAnchoredZoomScratch,
+        [],
+    );
 
     const closeupTarget = useMemo(() => {
         if (!closeupBlock || !garden) {
@@ -780,7 +788,23 @@ export function GameCameraRig({
             }
 
             event.preventDefault();
-            setCameraZoom(camera.zoom * Math.exp(-event.deltaY * 0.001));
+            const nextZoom = MathUtils.clamp(
+                camera.zoom * Math.exp(-event.deltaY * 0.001),
+                minZoom,
+                maxZoom,
+            );
+            const changed = applyCursorAnchoredZoom({
+                camera,
+                cursor: event,
+                nextZoom,
+                scratch: cursorAnchoredZoomScratch,
+                target: targetRef.current,
+                viewport: element.getBoundingClientRect(),
+            });
+            if (changed) {
+                applyCamera();
+                saveNormalCamera();
+            }
         };
 
         element.addEventListener('pointerdown', handlePointerDown);
@@ -803,10 +827,13 @@ export function GameCameraRig({
             clearPointers();
         };
     }, [
+        applyCamera,
         camera,
         controlsDisabled,
+        cursorAnchoredZoomScratch,
         gl.domElement,
         panByScreenPixels,
+        saveNormalCamera,
         setCameraZoom,
         setIsDragging,
     ]);
