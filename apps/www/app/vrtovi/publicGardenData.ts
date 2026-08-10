@@ -1,5 +1,6 @@
-import { clientPublic, directoriesClient } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { notFound } from 'next/navigation';
+import { getBlocksData } from '../../lib/blocks/getBlocksData';
 import { countActivePlantsFromPublicGarden } from './publicGardenFormatting';
 
 async function getActivePlantCountFallback(gardenId: number) {
@@ -60,19 +61,7 @@ export async function getPublicGardensForWww() {
 }
 
 export async function getPublicGardenBlockDataForWww() {
-    try {
-        const { data, error } =
-            await directoriesClient().GET('/entities/block');
-        if (error) {
-            console.error('Failed to fetch public garden block data', error);
-            return undefined;
-        }
-
-        return data ?? [];
-    } catch (error) {
-        console.error('Failed to fetch public garden block data', error);
-        return undefined;
-    }
+    return getBlocksData();
 }
 
 export async function getPublicGardenForWww(gardenId: number) {
