@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import { validateSerializedStructuredData } from '../components/shared/seo/structuredDataValidation';
@@ -123,6 +124,41 @@ test.describe('public SEO metadata', () => {
         readFileSync('./tests/sitemap-pages.json', 'utf8'),
     ) as string[];
     const representativeCoverPaths = representativeDynamicCoverPaths(pages);
+
+    test('generated OG images survive a cache-miss image optimization', async ({
+        page,
+    }) => {
+        // The fragment creates a fresh optimizer key without changing the static asset request.
+        const optimizerCacheKey = encodeURIComponent(
+            `/web-app-manifest-192x192.png#${randomUUID()}`,
+        );
+        const optimizedImage = await page.request.get(
+            `/_next/image?url=${optimizerCacheKey}&w=3840&q=75`,
+        );
+
+        expect(optimizedImage.ok()).toBe(true);
+        expect(optimizedImage.headers()['x-nextjs-cache']).toBe('MISS');
+
+        await page.goto('/sjetva', { waitUntil: 'domcontentloaded' });
+
+        const openGraphImageContent = await page
+            .locator('meta[property="og:image"]')
+            .first()
+            .getAttribute('content');
+        const openGraphImageUrl = new URL(openGraphImageContent ?? '');
+        const openGraphImageResponse = await page.request.get(
+            `${openGraphImageUrl.pathname}${openGraphImageUrl.search}`,
+        );
+        const openGraphImageBody = await openGraphImageResponse.body();
+
+        expect(openGraphImageResponse.ok()).toBe(true);
+        expect(openGraphImageResponse.headers()['content-type']).toContain(
+            'image/png',
+        );
+        expect(openGraphImageBody.subarray(1, 4).toString()).toBe('PNG');
+        expect(openGraphImageBody.readUInt32BE(16)).toBe(1200);
+        expect(openGraphImageBody.readUInt32BE(20)).toBe(630);
+    });
 
     for (const url of pages) {
         test(`page ${url} has valid SEO metadata`, async ({ page }) => {
