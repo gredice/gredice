@@ -25,7 +25,7 @@ import {
 
 const now = '2026-05-13T00:00:00.000Z';
 
-const mulchBlockFixtures: Record<
+const blockFixtures: Record<
     string,
     {
         label: string;
@@ -59,10 +59,18 @@ const mulchBlockFixtures: Record<
         height: 0.01,
         stackable: true,
     },
+    SmallWoodenBridge: {
+        label: 'Mali drveni most',
+        shortDescription:
+            'Mali lučni most za povezivanje obala uskog vrtnog kanala.',
+        sunflowers: 80,
+        height: 0.38,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
-    const mulchFixture = mulchBlockFixtures[name];
+    const fixture = blockFixtures[name];
 
     return {
         id: index + 1,
@@ -70,23 +78,21 @@ function createBlockData(name: string, index: number) {
         slug: name.toLowerCase().replaceAll('_', '-'),
         information: {
             name,
-            label: mulchFixture?.label ?? name.replaceAll('_', ' '),
+            label: fixture?.label ?? name.replaceAll('_', ' '),
             shortDescription:
-                mulchFixture?.shortDescription ??
-                'Mock block for HUD layout tests.',
+                fixture?.shortDescription ?? 'Mock block for HUD layout tests.',
             fullDescription:
-                mulchFixture?.shortDescription ??
-                'Mock block for HUD layout tests.',
+                fixture?.shortDescription ?? 'Mock block for HUD layout tests.',
         },
         attributes: {
-            height: mulchFixture?.height ?? 1,
+            height: fixture?.height ?? 1,
             nightOnlyPurchase: name === 'FireflyJar',
-            stackable: mulchFixture?.stackable ?? true,
+            stackable: fixture?.stackable ?? true,
             type: name === 'Raised_Bed' ? 'raisedBed' : 'decoration',
         },
         prices: {
             sunflowers:
-                mulchFixture?.sunflowers ?? (name === 'PaintRoller' ? 100 : 10),
+                fixture?.sunflowers ?? (name === 'PaintRoller' ? 100 : 10),
         },
         functions: {
             recycler: false,
@@ -140,6 +146,7 @@ const blockNames = [
     'Stool',
     'WoodenBench',
     'Fence',
+    'SmallWoodenBridge',
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',

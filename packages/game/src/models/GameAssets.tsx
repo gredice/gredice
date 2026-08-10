@@ -877,6 +877,10 @@ export type GLTFResult = GLTF & {
         DogHouse_Bowl: THREE.Mesh;
         DogHouse_Bowl_Rim: THREE.Mesh;
         DogHouse_Bowl_Water: THREE.Mesh;
+        SmallWoodenBridge_PlanksLight: THREE.Mesh;
+        SmallWoodenBridge_PlanksWarm: THREE.Mesh;
+        SmallWoodenBridge_Stringers: THREE.Mesh;
+        SmallWoodenBridge_Pegs: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -1283,6 +1287,9 @@ export type GLTFResult = GLTF & {
         'Material.SensorStakeMeter.Charcoal': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.FaceCream': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.ScreenBlue': THREE.MeshStandardMaterial;
+        'Material.SmallWoodenBridge.DeepWood': THREE.MeshStandardMaterial;
+        'Material.SmallWoodenBridge.LightWood': THREE.MeshStandardMaterial;
+        'Material.SmallWoodenBridge.WarmWood': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;

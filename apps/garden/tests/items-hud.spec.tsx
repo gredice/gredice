@@ -441,6 +441,9 @@ test('sandbox decoration picker includes special blocks', async ({
     await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'Mali drveni most' }),
+    ).toBeVisible();
+    await expect(
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Poklon kutije' }),
@@ -475,6 +478,20 @@ test('sandbox decoration picker includes special blocks', async ({
 
     await expect(
         page.getByRole('button', { name: 'Block Snow Falling' }),
+    ).toBeVisible();
+});
+
+test('small wooden bridge uses the published shop price', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Mali drveni most' }).click();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*80/u }),
     ).toBeVisible();
 });
 
