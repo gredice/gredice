@@ -60,6 +60,18 @@ test('local sandbox summer hat metadata matches the reduced visual scale', () =>
     assert.equal(summerHat?.attributes.hitboxWidth, 0.8);
 });
 
+test('local sandbox exposes the wooden bench with production dimensions', () => {
+    const blockData = getLocalSandboxBlockData();
+    const woodenBench = blockData.find(
+        (block) => block.information.name === 'WoodenBench',
+    );
+
+    assert.equal(woodenBench?.attributes.height, 0.41);
+    assert.equal(woodenBench?.attributes.hitboxDepth, 0.36);
+    assert.equal(woodenBench?.attributes.hitboxHeight, 0.41);
+    assert.equal(woodenBench?.attributes.hitboxWidth, 1.1);
+});
+
 test('local sandbox exposes animal home blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

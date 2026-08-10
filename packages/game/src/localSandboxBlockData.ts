@@ -37,6 +37,7 @@ export const localSandboxBlockNames = [
     'Shade',
     'BeachUmbrella',
     'Stool',
+    'WoodenBench',
     'Fence',
     'WaterWell',
     'LemonadeStand',
@@ -124,6 +125,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         BeachTowelStriped: 0.08,
         InflatablePoolSmall: 0.35,
         BeachChair: 0.55,
+        WoodenBench: 0.41,
         PalmTree: 1.5,
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
@@ -163,6 +165,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 0.64,
         hitboxHeight: 0.2,
         hitboxWidth: 0.8,
+    },
+    WoodenBench: {
+        hitboxDepth: 0.36,
+        hitboxHeight: 0.41,
+        hitboxWidth: 1.1,
     },
 };
 
