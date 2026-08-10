@@ -27,6 +27,11 @@ import type { Stack } from '../../types/Stack';
 import { type GardenAvatarView, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import { playerSpeechMessages } from '../animals/actorSpeechMessages';
 import { GardenAvatarCollisionDebug } from './GardenAvatarCollisionDebug';
 import { getGardenAvatarPerspectiveEntryPosition } from './gardenAvatarCamera';
 import {
@@ -54,6 +59,7 @@ import type { GardenAvatarPresenceState } from './gardenVisitorPresence';
 
 export const avatarModelScale = 0.697;
 const avatarEyeHeight = 1.2;
+const avatarSpeechBubbleOffsetY = 1.85;
 const avatarCrouchEyeHeight = 0.9;
 const avatarWalkSpeed = 2.15;
 const avatarRunSpeed = 4.68;
@@ -621,6 +627,11 @@ export function GardenAvatar({
         quaternion: camera.quaternion.clone(),
     });
     const initializedRef = useRef(false);
+    const {
+        dismissMessage: dismissSpeechMessage,
+        message: speechMessage,
+        showMessage: showSpeechMessage,
+    } = useActorHoverSpeech(playerSpeechMessages);
     const finishTemporaryZoom = useCallback(() => {
         if (mouseZoomingRef.current || touchZoomInputRef.current) {
             return;
@@ -931,6 +942,7 @@ export function GardenAvatar({
         yawRef.current = actor.rotation.y;
         pitchRef.current = -0.08;
         roamRef.current.route = [];
+        dismissSpeechMessage();
         setView('third-person');
     }
 
@@ -947,6 +959,7 @@ export function GardenAvatar({
         event.stopPropagation();
         if (view === 'overview') {
             gl.domElement.style.cursor = 'pointer';
+            showSpeechMessage();
         }
     }
 
@@ -1315,6 +1328,13 @@ export function GardenAvatar({
                     </Html>
                 ) : null}
             </group>
+            {view === 'overview' && speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={actorRef}
+                    message={speechMessage}
+                    offsetY={avatarSpeechBubbleOffsetY}
+                />
+            ) : null}
             {collisionDebugVisible ? (
                 <GardenAvatarCollisionDebug
                     actorRef={actorRef}
