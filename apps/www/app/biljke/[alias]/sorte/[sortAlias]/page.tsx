@@ -11,6 +11,7 @@ import { getOperationsData } from '../../../../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { resolvePlantSowingPrice } from '../../../../../lib/plants/resolvePlantSowingPrice';
+import { createPublicMetadata } from '../../../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
@@ -53,18 +54,22 @@ export async function generateMetadata(
             matchesPageAlias(sort.information.name, sortAlias),
     );
     if (!plant || !sort) {
-        return {
-            title: 'Sorta nije pronađena',
-            description: 'Sorta nije pronađena',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: sort.information.name,
         description:
             sort.information.shortDescription ??
             sort.information.description ??
             plant.information.description,
-    };
+        path: KnownPages.PlantSort(
+            plant.slug || plant.information.name,
+            sort.slug || sort.information.name,
+        ),
+        category: `Sorta biljke ${plant.information.name}`,
+        imageUrl: sort.image?.cover?.url,
+        imageAlt: `Fotografija sorte ${sort.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {

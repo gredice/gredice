@@ -1,14 +1,138 @@
 import { readFileSync } from 'node:fs';
+import sharp from 'sharp';
 import { validateSerializedStructuredData } from '../components/shared/seo/structuredDataValidation';
 import { expect, test } from './fixtures';
+
+const publicSiteOrigin = 'https://www.gredice.com';
+const homepageOpenGraphTitle = 'Gredice - vrt po tvom';
+const externalRewritePrefixes = ['/novosti'];
+const publicOgExactPaths = new Set([
+    '/',
+    '/biljke',
+    '/blokovi',
+    '/blokovi/biljke',
+    '/bolesti',
+    '/cesta-pitanja',
+    '/cjenik',
+    '/dostava',
+    '/dostava/termini',
+    '/kontakt',
+    '/mcp',
+    '/o-nama',
+    '/outlet',
+    '/podignuta-gredica',
+    '/povrati-i-povrat-novca',
+    '/preporuke',
+    '/radnje',
+    '/recepti',
+    '/sjeme',
+    '/sjeme/brendovi',
+    '/sjetva',
+    '/stetnici',
+    '/suncokreti',
+    '/vodic-za-prvu-gredicu',
+    '/vrtovi',
+]);
+
+function isExternalRewriteRoute(pathname: string) {
+    return externalRewritePrefixes.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+}
+
+function shouldUseEntityCover(pathname: string) {
+    if (pathname.startsWith('/biljke/')) {
+        return true;
+    }
+
+    if (pathname.startsWith('/radnje/')) {
+        return true;
+    }
+
+    return (
+        pathname.startsWith('/blokovi/') &&
+        pathname !== '/blokovi/biljke' &&
+        pathname !== '/blokovi/biljke/generator'
+    );
+}
+
+function dynamicCoverFamily(pathname: string) {
+    if (/^\/biljke\/[^/]+\/sorte\/[^/]+$/u.test(pathname)) {
+        return 'plant-sort';
+    }
+
+    if (/^\/biljke\/[^/]+$/u.test(pathname)) {
+        return 'plant';
+    }
+
+    if (/^\/radnje\/[^/]+$/u.test(pathname)) {
+        return 'operation';
+    }
+
+    if (/^\/blokovi\/biljke\/[^/]+$/u.test(pathname)) {
+        return pathname.endsWith('/generator') ? null : 'block-plant';
+    }
+
+    if (/^\/blokovi\/[^/]+$/u.test(pathname)) {
+        return pathname === '/blokovi/biljke' ? null : 'block';
+    }
+
+    return null;
+}
+
+function representativeDynamicCoverPaths(pages: string[]) {
+    const representativeByFamily = new Map<string, string>();
+
+    for (const page of pages) {
+        const pathname = new URL(page, publicSiteOrigin).pathname;
+        const family = dynamicCoverFamily(pathname);
+        if (family && !representativeByFamily.has(family)) {
+            representativeByFamily.set(family, pathname);
+        }
+    }
+
+    return new Set(representativeByFamily.values());
+}
+
+function requiresPublicOgCoverage(url: string) {
+    const { pathname } = new URL(url, publicSiteOrigin);
+
+    if (publicOgExactPaths.has(pathname) || pathname.startsWith('/legalno')) {
+        return true;
+    }
+
+    if (
+        pathname.startsWith('/biljke/') ||
+        pathname.startsWith('/bolesti/') ||
+        pathname.startsWith('/radnje/') ||
+        pathname.startsWith('/recepti/') ||
+        pathname.startsWith('/stetnici/')
+    ) {
+        return true;
+    }
+
+    if (pathname.startsWith('/blokovi/biljke/')) {
+        return pathname !== '/blokovi/biljke/generator';
+    }
+
+    return pathname.startsWith('/blokovi/') && pathname !== '/blokovi/biljke';
+}
 
 test.describe('public SEO metadata', () => {
     const pages = JSON.parse(
         readFileSync('./tests/sitemap-pages.json', 'utf8'),
     ) as string[];
+    const representativeCoverPaths = representativeDynamicCoverPaths(pages);
+
     for (const url of pages) {
         test(`page ${url} has valid SEO metadata`, async ({ page }) => {
             test.slow();
+            const sitemapPathname = new URL(url, publicSiteOrigin).pathname;
+
+            test.skip(
+                isExternalRewriteRoute(sitemapPathname),
+                'Route is rendered and tested by the separate News app.',
+            );
 
             await page.goto(`${url}`, {
                 waitUntil: 'domcontentloaded',
@@ -17,6 +141,137 @@ test.describe('public SEO metadata', () => {
             if (url !== '/') {
                 const title = await page.title();
                 expect(title).not.toBe('Gredice - vrt po tvom');
+            }
+
+            if (requiresPublicOgCoverage(url)) {
+                const expectedPathname = new URL(page.url()).pathname;
+                const expectedCanonicalUrl = new URL(
+                    expectedPathname,
+                    publicSiteOrigin,
+                ).href;
+                const canonical = page.locator('link[rel="canonical"]');
+                const openGraphTitle = page.locator(
+                    'meta[property="og:title"]',
+                );
+                const openGraphDescription = page.locator(
+                    'meta[property="og:description"]',
+                );
+                const openGraphUrl = page.locator('meta[property="og:url"]');
+                const openGraphImage = page
+                    .locator('meta[property="og:image"]')
+                    .first();
+                const twitterTitle = page.locator('meta[name="twitter:title"]');
+                const twitterDescription = page.locator(
+                    'meta[name="twitter:description"]',
+                );
+                const twitterImage = page
+                    .locator('meta[name="twitter:image"]')
+                    .first();
+
+                await expect(canonical).toHaveAttribute(
+                    'href',
+                    expectedCanonicalUrl,
+                );
+                await expect(openGraphTitle).toHaveAttribute('content', /.+/);
+                await expect(openGraphDescription).toHaveAttribute(
+                    'content',
+                    /.+/,
+                );
+                await expect(openGraphUrl).toHaveAttribute(
+                    'content',
+                    expectedCanonicalUrl,
+                );
+                await expect(openGraphImage).toHaveAttribute('content', /.+/);
+                await expect(
+                    page.locator('meta[property="og:image:width"]').first(),
+                ).toHaveAttribute('content', '1200');
+                await expect(
+                    page.locator('meta[property="og:image:height"]').first(),
+                ).toHaveAttribute('content', '630');
+                await expect(
+                    page.locator('meta[property="og:image:alt"]').first(),
+                ).toHaveAttribute('content', /.+/);
+                await expect(
+                    page.locator('meta[property="og:image:type"]').first(),
+                ).toHaveAttribute('content', 'image/png');
+                await expect(
+                    page.locator('meta[property="og:type"]'),
+                ).toHaveAttribute('content', 'website');
+                await expect(
+                    page.locator('meta[name="twitter:card"]'),
+                ).toHaveAttribute('content', 'summary_large_image');
+                await expect(twitterTitle).toHaveAttribute(
+                    'content',
+                    (await openGraphTitle.getAttribute('content')) ?? '',
+                );
+                await expect(twitterDescription).toHaveAttribute(
+                    'content',
+                    (await openGraphDescription.getAttribute('content')) ?? '',
+                );
+                await expect(twitterImage).toHaveAttribute('content', /.+/);
+                await expect(
+                    page.locator('meta[name="twitter:image:alt"]').first(),
+                ).toHaveAttribute('content', /.+/);
+
+                const openGraphTitleContent =
+                    await openGraphTitle.getAttribute('content');
+                const openGraphImageContent =
+                    await openGraphImage.getAttribute('content');
+                const twitterImageContent =
+                    await twitterImage.getAttribute('content');
+
+                if (expectedPathname !== '/') {
+                    expect(openGraphTitleContent).not.toBe(
+                        homepageOpenGraphTitle,
+                    );
+                    expect(twitterImageContent).toBe(openGraphImageContent);
+                }
+
+                if (shouldUseEntityCover(expectedPathname)) {
+                    expect(
+                        new URL(openGraphImageContent ?? '').searchParams.has(
+                            'image',
+                        ),
+                    ).toBe(true);
+                }
+
+                if (
+                    publicOgExactPaths.has(expectedPathname) ||
+                    expectedPathname.startsWith('/legalno') ||
+                    representativeCoverPaths.has(expectedPathname)
+                ) {
+                    const imageUrl = new URL(openGraphImageContent ?? '');
+                    const imageResponse = await page.request.get(
+                        `${imageUrl.pathname}${imageUrl.search}`,
+                    );
+                    const imageBody = await imageResponse.body();
+
+                    expect(imageResponse.ok()).toBe(true);
+                    expect(imageResponse.headers()['content-type']).toContain(
+                        'image/png',
+                    );
+                    expect(imageBody.subarray(1, 4).toString()).toBe('PNG');
+                    expect(imageBody.readUInt32BE(16)).toBe(1200);
+                    expect(imageBody.readUInt32BE(20)).toBe(630);
+
+                    if (representativeCoverPaths.has(expectedPathname)) {
+                        const coverStats = await sharp(imageBody)
+                            .extract({
+                                left: 808,
+                                top: 138,
+                                width: 318,
+                                height: 354,
+                            })
+                            .stats();
+                        const maximumColorDeviation = Math.max(
+                            ...coverStats.channels
+                                .slice(0, 3)
+                                .map((channel) => channel.stdev),
+                        );
+
+                        expect(maximumColorDeviation).toBeGreaterThan(3);
+                    }
+                }
             }
 
             const structuredDataScripts = await page

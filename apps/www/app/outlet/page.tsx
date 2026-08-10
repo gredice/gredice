@@ -3,8 +3,8 @@ import { Discount, ShoppingCart, Sprout, Timer } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { OutletOfferCard } from './OutletOfferCard';
 import { getOutletOffers, outletOfferImage } from './outletData';
@@ -12,20 +12,13 @@ import { currencyFormatter } from './outletPresentation';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Outlet sadnica',
     description:
         'Vremenski ograničene outlet ponude presadnica koje su ostale u Gredice stakleniku.',
-    alternates: {
-        canonical: KnownPages.Outlet,
-    },
-    openGraph: {
-        title: 'Gredice Outlet sadnica',
-        description:
-            'Pogledaj dostupne presadnice iz staklenika po outlet cijeni.',
-        url: KnownPages.Outlet,
-    },
-};
+    path: KnownPages.Outlet,
+    eyebrow: 'Ponuda iz staklenika',
+});
 
 function outletStructuredData(
     offers: Awaited<ReturnType<typeof getOutletOffers>>,

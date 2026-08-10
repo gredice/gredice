@@ -17,6 +17,7 @@ import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -36,15 +37,18 @@ export async function generateMetadata(
         matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
-        return {
-            title: 'Radnja nije pronađena',
-            description: 'Radnja koju tražiš nije pronađena.',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: operation.information.label,
         description: operation.information.shortDescription,
-    };
+        path: KnownPages.Operation(
+            operation.slug || operation.information.label,
+        ),
+        category: 'Vrtlarska radnja',
+        imageUrl: operation.image?.cover?.url,
+        imageAlt: `Prikaz radnje ${operation.information.label}`,
+    });
 }
 
 export async function generateStaticParams() {

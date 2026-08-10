@@ -11,7 +11,9 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run typecheck"
+        "test": "pnpm run typecheck && pnpm run test:unit && pnpm run test:production-metadata",
+        "test:unit": "node --test lib/newsArchiveMetadata.node.spec.ts",
+        "test:production-metadata": "pnpm run build && node --test tests/newsArchives.production.node.spec.mjs"
     },
     "dependencies": {
         "@posthog/next": "0.8.0",

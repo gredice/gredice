@@ -5,17 +5,20 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { getFaqData } from '../../lib/plants/getFaqData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
 
 export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Česta pitanja',
     description: 'Odgovaramo na sva tvoja pitanja.',
-};
+    path: KnownPages.FAQ,
+    eyebrow: 'Pomoć i podrška',
+});
 
 export default async function FaqPage() {
     const faq = await getFaqData();

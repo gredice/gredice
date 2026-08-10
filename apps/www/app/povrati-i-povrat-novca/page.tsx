@@ -2,14 +2,16 @@ import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Povrat novca',
     description:
         'Informacije o povratu novca, suncokretima, rezervacijama i korekcijama Gredice salda.',
-};
+    path: KnownPages.Refunds,
+    eyebrow: 'Povrati',
+});
 
 export default function RefundsPage() {
     return (

@@ -12,6 +12,7 @@ import { StructuredDataScript } from '../../../components/shared/seo/StructuredD
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -38,15 +39,16 @@ export async function generateMetadata(
         matchesPageAlias(plant.information.name, alias),
     );
     if (!plant) {
-        return {
-            title: 'Biljka nije pronađena',
-            description: 'Biljka nije pronađena',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: plant.information.name,
         description: plant.information.description,
-    };
+        path: KnownPages.Plant(plant.slug || plant.information.name),
+        category: 'Biljka',
+        imageUrl: plant.image?.cover?.url,
+        imageAlt: `Fotografija biljke ${plant.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {

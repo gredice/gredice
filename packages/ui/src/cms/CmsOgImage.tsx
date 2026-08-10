@@ -113,7 +113,6 @@ export function CmsOgImage({
                     padding: '14px 18px',
                     position: 'relative',
                     width: hasImage ? 666 : '100%',
-                    zIndex: 1,
                 }}
             >
                 <div

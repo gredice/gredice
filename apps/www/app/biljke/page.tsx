@@ -14,17 +14,20 @@ import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoS
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
     description:
         'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
-};
+    path: KnownPages.Plants,
+    category: 'Katalog biljaka',
+});
 
 export default async function PlantsPage({
     searchParams,
