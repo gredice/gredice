@@ -12,6 +12,11 @@ test('provides several Croatian farmer prompts for inspection notes', () => {
             /gredic|pregled|bilješk/i.test(message),
         ),
     );
+    assert.ok(
+        detailedInspectionFarmerMessages.every((message) =>
+            message.endsWith('...'),
+        ),
+    );
 });
 
 test('keeps the prompt stable for the same notification set', () => {

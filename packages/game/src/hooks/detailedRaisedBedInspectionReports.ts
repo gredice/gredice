@@ -1,8 +1,8 @@
 export const detailedInspectionFarmerMessages = [
-    'Zanimljivo... evo što mislim o tvojim gredicama.',
-    'Pregledao sam gredice. Imam nekoliko bilješki za tebe.',
-    'Završio sam pregled. Želiš čuti što sam primijetio?',
-    'Tvoje gredice imaju priču. Pogledaj moje bilješke.',
+    'Zanimljivo... evo što mislim o tvojim gredicama...',
+    'Pregledao sam gredice. Imam nekoliko bilješki za tebe...',
+    'Završio sam pregled. Želiš čuti što sam primijetio...',
+    'Tvoje gredice imaju priču. Pogledaj moje bilješke...',
 ] as const;
 
 function stableMessageIndex(keys: readonly string[], length: number) {
