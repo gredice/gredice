@@ -44,6 +44,7 @@ test('article Open Graph images are eligible for static generation', () => {
             new URL(relativePath, import.meta.url),
             'utf8',
         );
+        assert.match(source, /export const revalidate = 3600/u, relativePath);
         assert.doesNotMatch(source, /force-dynamic/u, relativePath);
     }
 });
