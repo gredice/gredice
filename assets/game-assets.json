@@ -1141,6 +1141,29 @@
             ]
         },
         {
+            "name": "WoodenBench",
+            "source": "WoodenBench.blend",
+            "output": "WoodenBench.glb",
+            "preload": "lazy",
+            "objects": [
+                "WoodenBench_SeatSlatFront",
+                "WoodenBench_SeatSlatCenter",
+                "WoodenBench_SeatSlatBack",
+                "WoodenBench_SupportRailFront",
+                "WoodenBench_SupportRailBack",
+                "WoodenBench_EndBraceLeft",
+                "WoodenBench_EndBraceRight",
+                "WoodenBench_LegFrontLeft",
+                "WoodenBench_LegFrontRight",
+                "WoodenBench_LegBackLeft",
+                "WoodenBench_LegBackRight",
+                "WoodenBench_PinFrontLeft",
+                "WoodenBench_PinFrontRight",
+                "WoodenBench_PinBackLeft",
+                "WoodenBench_PinBackRight"
+            ]
+        },
+        {
             "name": "PalmTree",
             "source": "PalmTree.blend",
             "output": "PalmTree.glb",
