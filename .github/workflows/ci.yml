@@ -49,7 +49,6 @@ jobs:
               - turbo.json
             app_news:
               - apps/news/**
-              - packages/client/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -237,6 +236,17 @@ jobs:
           {"name":"rest 2/2","index":5,"total":5,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts --shard=2/2"}
         ]
       testShardPrepareScript: "test:prepare:routes"
+    secrets: inherit
+
+  ci_news:
+    name: "CI - news"
+    needs: changes
+    if: success() && needs.changes.outputs.app_news == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "news"
+      path: "apps/news"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_NEWS"
     secrets: inherit
 
   ci_garden:
@@ -457,6 +467,7 @@ jobs:
       [
         changes,
         ci_www,
+        ci_news,
         ci_garden,
         ci_farm,
         ci_delivery,
