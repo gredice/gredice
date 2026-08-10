@@ -519,6 +519,14 @@ export async function completeFarmOperation(
                 submissionId: validSubmissionId,
             });
             if (replay) {
+                if (
+                    validExpectedEntityId ===
+                    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+                ) {
+                    await notifyDetailedRaisedBedInspectionCompleted(
+                        validOperationId,
+                    );
+                }
                 return actionResult(
                     completionState(replay.status),
                     replay.occurredAt,
