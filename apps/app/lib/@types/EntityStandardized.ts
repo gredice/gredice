@@ -37,6 +37,7 @@ export type EntityStandardized = {
     prices?: {
         perPlant?: number;
         perOperation?: number;
+        materialCost?: number;
     };
     conditions?: {
         completionAttachImages?: boolean;

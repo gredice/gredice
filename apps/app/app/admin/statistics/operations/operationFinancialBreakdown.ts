@@ -3,6 +3,7 @@ export type OperationFinancialOccurrence = {
     label: string;
     durationMinutes: number;
     farmerCost: number | null;
+    materialCost: number;
     userCost: number | null;
 };
 
@@ -12,8 +13,9 @@ export type OperationFinancialBreakdownRow = {
     taskCount: number;
     totalDurationMinutes: number;
     farmerCost: number;
+    materialCost: number;
     userCost: number;
-    grossEarnings: number;
+    estimatedEarnings: number;
     missingFarmerPriceCount: number;
     missingUserPriceCount: number;
     incompleteEarningsCount: number;
@@ -26,11 +28,12 @@ export type OperationFinancialBreakdown = {
 
 type MutableOperationFinancialBreakdownRow = Omit<
     OperationFinancialBreakdownRow,
-    'farmerCost' | 'userCost' | 'grossEarnings'
+    'farmerCost' | 'materialCost' | 'userCost' | 'estimatedEarnings'
 > & {
     farmerCostCents: number;
+    materialCostCents: number;
     userCostCents: number;
-    grossEarningsCents: number;
+    estimatedEarningsCents: number;
 };
 
 function moneyToCents(value: number) {
@@ -50,8 +53,9 @@ function finalizeRow(
         taskCount: row.taskCount,
         totalDurationMinutes: row.totalDurationMinutes,
         farmerCost: centsToMoney(row.farmerCostCents),
+        materialCost: centsToMoney(row.materialCostCents),
         userCost: centsToMoney(row.userCostCents),
-        grossEarnings: centsToMoney(row.grossEarningsCents),
+        estimatedEarnings: centsToMoney(row.estimatedEarningsCents),
         missingFarmerPriceCount: row.missingFarmerPriceCount,
         missingUserPriceCount: row.missingUserPriceCount,
         incompleteEarningsCount: row.incompleteEarningsCount,
@@ -70,8 +74,9 @@ export function buildOperationFinancialBreakdown(
             taskCount: 0,
             totalDurationMinutes: 0,
             farmerCostCents: 0,
+            materialCostCents: 0,
             userCostCents: 0,
-            grossEarningsCents: 0,
+            estimatedEarningsCents: 0,
             missingFarmerPriceCount: 0,
             missingUserPriceCount: 0,
             incompleteEarningsCount: 0,
@@ -86,6 +91,10 @@ export function buildOperationFinancialBreakdown(
             row.farmerCostCents += moneyToCents(occurrence.farmerCost);
         }
 
+        row.materialCostCents += moneyToCents(
+            Math.max(0, occurrence.materialCost),
+        );
+
         if (occurrence.userCost === null) {
             row.missingUserPriceCount += 1;
         } else {
@@ -95,9 +104,10 @@ export function buildOperationFinancialBreakdown(
         if (occurrence.farmerCost === null || occurrence.userCost === null) {
             row.incompleteEarningsCount += 1;
         } else {
-            row.grossEarningsCents +=
+            row.estimatedEarningsCents +=
                 moneyToCents(occurrence.userCost) -
-                moneyToCents(occurrence.farmerCost);
+                moneyToCents(occurrence.farmerCost) -
+                moneyToCents(Math.max(0, occurrence.materialCost));
         }
 
         rowsByKey.set(occurrence.key, row);
@@ -116,12 +126,16 @@ export function buildOperationFinancialBreakdown(
             farmerCost: centsToMoney(
                 moneyToCents(result.farmerCost) + moneyToCents(row.farmerCost),
             ),
+            materialCost: centsToMoney(
+                moneyToCents(result.materialCost) +
+                    moneyToCents(row.materialCost),
+            ),
             userCost: centsToMoney(
                 moneyToCents(result.userCost) + moneyToCents(row.userCost),
             ),
-            grossEarnings: centsToMoney(
-                moneyToCents(result.grossEarnings) +
-                    moneyToCents(row.grossEarnings),
+            estimatedEarnings: centsToMoney(
+                moneyToCents(result.estimatedEarnings) +
+                    moneyToCents(row.estimatedEarnings),
             ),
             missingFarmerPriceCount:
                 result.missingFarmerPriceCount + row.missingFarmerPriceCount,
@@ -134,8 +148,9 @@ export function buildOperationFinancialBreakdown(
             taskCount: 0,
             totalDurationMinutes: 0,
             farmerCost: 0,
+            materialCost: 0,
             userCost: 0,
-            grossEarnings: 0,
+            estimatedEarnings: 0,
             missingFarmerPriceCount: 0,
             missingUserPriceCount: 0,
             incompleteEarningsCount: 0,
