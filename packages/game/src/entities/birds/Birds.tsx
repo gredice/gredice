@@ -15,8 +15,13 @@ import {
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { birdSpeechMessages } from '../animals/actorSpeechMessages';
 import { waterBlockName } from '../waterBlockFoam';
 import {
     type BirdBehavior,
@@ -152,6 +157,7 @@ const birdDebugBehaviors = [
 ] satisfies BirdBehavior[];
 
 const birdScale = 0.28;
+const birdSpeechBubblePosition: [number, number, number] = [0, 2, 0];
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
 const birdHouseEntranceYawOffset = Math.PI;
@@ -1535,6 +1541,11 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
+    const {
+        hideMessage: hideSpeechMessage,
+        message: speechMessage,
+        showMessage: showSpeechMessage,
+    } = useActorHoverSpeech(birdSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
@@ -1635,6 +1646,16 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
+    }
+
+    function handlePointerOut(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        hideSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -2069,8 +2090,16 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 scale={birdScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
+                onPointerOut={handlePointerOut}
             >
                 <primitive object={birdModel.scene} />
+                {speechMessage ? (
+                    <ActorSpeechBubble
+                        message={speechMessage}
+                        position={birdSpeechBubblePosition}
+                    />
+                ) : null}
             </group>
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#fb7185" />
         </>
