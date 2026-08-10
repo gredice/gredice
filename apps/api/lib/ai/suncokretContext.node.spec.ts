@@ -52,6 +52,8 @@ test('buildSuncokretSystemPrompt requires structured actionable recommendations'
 
     assert.match(prompt, /pozovi presentRecommendations/);
     assert.match(prompt, /klikabilne prijedloge/);
+    assert.match(prompt, /provjeri kroz getOperationsDirectory/);
+    assert.match(prompt, /nikada ne šalji biljnu radnju bez positionIndex/);
     assert.match(prompt, /ne dodaje ništa u košaricu/);
     assert.match(prompt, /ručno naručiti/);
     assert.match(prompt, /dodaš u košaricu/);

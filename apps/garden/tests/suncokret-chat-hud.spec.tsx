@@ -112,6 +112,13 @@ async function mockSuncokretRoutes(
                                                     raisedBedId: 11,
                                                 },
                                                 {
+                                                    kind: 'operation',
+                                                    operationId: 569,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    scheduledDate: '2026-08-12',
+                                                },
+                                                {
                                                     kind: 'sowing',
                                                     plantSortId: 102,
                                                     gardenId: 1,
@@ -127,6 +134,13 @@ async function mockSuncokretRoutes(
                                                     operationId: 77,
                                                     gardenId: 1,
                                                     raisedBedId: 11,
+                                                },
+                                                {
+                                                    kind: 'operation',
+                                                    operationId: 569,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    scheduledDate: '2026-08-12',
                                                 },
                                                 {
                                                     kind: 'sowing',
@@ -311,6 +325,18 @@ test('saved AI recommendations open manual operation and sowing flows', async ({
     await expect(
         page.getByRole('dialog', {
             name: 'Zakaži radnju: Zalijevanje gredice',
+        }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Odustani' }).click();
+
+    const resistanceRecommendation = recommendations.getByRole('button', {
+        name: 'Jačanje otpornosti rajčice i patlidžana - polje 2',
+    });
+    await expect(resistanceRecommendation).toBeEnabled();
+    await resistanceRecommendation.click();
+    await expect(
+        page.getByRole('dialog', {
+            name: 'Zakaži radnju: Jačanje otpornosti rajčice i patlidžana',
         }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Odustani' }).click();
