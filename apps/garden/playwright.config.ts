@@ -19,7 +19,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglTestPattern =
-    /(actor-speech-bubble|garden-preview-capture|hover-outline|instanced-mesh-material-swap)\.spec\.tsx/;
+    /(actor-speech-bubble|garden-preview-capture|hover-outline|instanced-mesh-material-swap)\.spec\.tsx|outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -90,7 +90,10 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'node ../../scripts/run-app-command.mjs start',
-        env: { GREDICE_DETACH_CHILD_PROCESS: 'false' },
+        env: {
+            GREDICE_DETACH_CHILD_PROCESS: 'false',
+            VERCEL_ENV: 'preview',
+        },
         gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
         url: getPlaywrightBaseUrl(app),
         reuseExistingServer: shouldReusePlaywrightServer(),

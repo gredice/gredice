@@ -68,6 +68,7 @@ import {
     defaultGameLocation,
     type GameLocation,
 } from '../utils/timeOfDay';
+import { PublicGardenBlockInteractions } from './PublicGardenBlockInteractions';
 import {
     type PublicGardenCaptureOutput,
     PublicGardenCaptureProbe,
@@ -132,6 +133,13 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
+    interactiveBlockIds?: ReadonlySet<string>;
+    selectedBlockId?: string | null;
+    onSelectBlock?: (blockId: string) => void;
+    onSceneReady?: () => void;
+    noWeather?: boolean;
+    renderDetails?: boolean;
+    sceneChildren?: ReactNode;
     deferDetails?: boolean;
     className?: string;
     capture?: PublicGardenCapture;
@@ -152,6 +160,14 @@ const publicGardenWallpaperCaptureQuality = {
     shadowMapSize: 4096,
     tier: 'custom',
 } satisfies GameQualityProfile;
+
+function PublicGardenSceneReady({ onReady }: { onReady: () => void }) {
+    useEffect(() => {
+        onReady();
+    }, [onReady]);
+
+    return null;
+}
 
 const publicGardenCaptureTimeOfDay = {
     morning: 0.22,
@@ -383,9 +399,15 @@ function PublicGardenScene({
     className,
     garden,
     gardenCacheReady,
+    interactiveBlockIds,
+    loadPlantSorts,
+    noWeather,
     normalizedStacks,
+    onSelectBlock,
     onSelectRaisedBedBlock,
+    onSceneReady,
     renderDetails,
+    sceneChildren,
     visitorPresence,
 }: {
     capture?: PublicGardenViewerProps['capture'];
@@ -393,14 +415,20 @@ function PublicGardenScene({
     className?: string;
     garden?: ReturnType<typeof publicGardenForGameState>;
     gardenCacheReady: boolean;
+    interactiveBlockIds?: ReadonlySet<string>;
+    loadPlantSorts: boolean;
+    noWeather: boolean;
     normalizedStacks: Stack[];
+    onSelectBlock?: (blockId: string) => void;
     onSelectRaisedBedBlock: (blockId: string) => void;
+    onSceneReady?: () => void;
     renderDetails: boolean;
+    sceneChildren?: ReactNode;
     visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
     const blockDataLoaded = Boolean(blockDataQuery.data);
-    const plantSortsQuery = useAllSorts();
+    const plantSortsQuery = useAllSorts(loadPlantSorts);
     const plantSortsLoaded = Boolean(plantSortsQuery.data);
     const fetchingQueryCount = useIsFetching();
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
@@ -469,7 +497,7 @@ function PublicGardenScene({
                                 }
                                 noBackground={Boolean(capture?.transparent)}
                                 noSound
-                                noWeather={Boolean(capture)}
+                                noWeather={Boolean(capture) || noWeather}
                                 quality={qualityProfile}
                                 weather={undefined}
                             />
@@ -501,6 +529,12 @@ function PublicGardenScene({
                                         stacks={normalizedStacks}
                                         renderDetails={renderLivingDetails}
                                     />
+                                    {sceneChildren}
+                                    {onSceneReady ? (
+                                        <PublicGardenSceneReady
+                                            onReady={onSceneReady}
+                                        />
+                                    ) : null}
                                     {renderLivingDetails && garden ? (
                                         <Suspense fallback={null}>
                                             <RaisedBedMulchOverlays
@@ -510,6 +544,16 @@ function PublicGardenScene({
                                     ) : null}
                                     {!capture && !gardenAvatarActive ? (
                                         <>
+                                            {interactiveBlockIds?.size &&
+                                            onSelectBlock ? (
+                                                <PublicGardenBlockInteractions
+                                                    blockIds={
+                                                        interactiveBlockIds
+                                                    }
+                                                    onSelect={onSelectBlock}
+                                                    stacks={normalizedStacks}
+                                                />
+                                            ) : null}
                                             <PublicGardenRaisedBedInteractions
                                                 onSelect={
                                                     onSelectRaisedBedBlock
@@ -700,6 +744,13 @@ export function PublicGardenViewer({
     spriteBaseUrl,
     deferDetails = true,
     garden,
+    interactiveBlockIds,
+    noWeather = false,
+    onSelectBlock,
+    onSceneReady,
+    renderDetails: renderDetailsOverride,
+    sceneChildren,
+    selectedBlockId,
     stacks,
     className,
     visitorPresence,
@@ -791,7 +842,9 @@ export function PublicGardenViewer({
         garden?.homeCamera,
         normalizedStacks,
     ]);
-    const renderDetails = useDeferredSceneDetails(deferDetails);
+    const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
+    const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
+    const loadPlantSorts = renderDetailsOverride !== false || Boolean(capture);
     const cacheKey = getPublicGardenCacheKey(garden);
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
         number | null
@@ -844,6 +897,49 @@ export function PublicGardenViewer({
         storeRef.current?.getState().setView({ view: 'normal' });
     }, []);
 
+    const openInteractiveBlock = useCallback(
+        (blockId: string) => {
+            if (!interactiveBlockIds?.has(blockId)) {
+                return;
+            }
+
+            const block = normalizedStacks
+                .flatMap((stack) => stack.blocks)
+                .find((candidate) => candidate.id === blockId);
+            if (!block) {
+                return;
+            }
+
+            onSelectBlock?.(blockId);
+            storeRef.current?.getState().setView({
+                view: 'closeup',
+                block,
+            });
+        },
+        [interactiveBlockIds, normalizedStacks, onSelectBlock],
+    );
+
+    useEffect(() => {
+        if (selectedBlockId === undefined) {
+            return;
+        }
+
+        if (
+            selectedBlockId === null ||
+            !interactiveBlockIds?.has(selectedBlockId)
+        ) {
+            storeRef.current?.getState().setView({ view: 'normal' });
+            return;
+        }
+
+        const block = normalizedStacks
+            .flatMap((stack) => stack.blocks)
+            .find((candidate) => candidate.id === selectedBlockId);
+        storeRef.current
+            ?.getState()
+            .setView(block ? { view: 'closeup', block } : { view: 'normal' });
+    }, [interactiveBlockIds, normalizedStacks, selectedBlockId]);
+
     useEffect(() => {
         storeRef.current
             ?.getState()
@@ -853,15 +949,19 @@ export function PublicGardenViewer({
     useEffect(() => {
         if (gameGarden?.id === undefined) {
             setSelectedRaisedBedId(null);
-            storeRef.current?.getState().setView({ view: 'normal' });
+            if (selectedBlockId === undefined || selectedBlockId === null) {
+                storeRef.current?.getState().setView({ view: 'normal' });
+            }
             storeRef.current?.getState().setGardenAvatarView('overview');
             return;
         }
 
         setSelectedRaisedBedId(null);
-        storeRef.current?.getState().setView({ view: 'normal' });
+        if (selectedBlockId === undefined || selectedBlockId === null) {
+            storeRef.current?.getState().setView({ view: 'normal' });
+        }
         storeRef.current?.getState().setGardenAvatarView('overview');
-    }, [gameGarden?.id]);
+    }, [gameGarden?.id, selectedBlockId]);
 
     return (
         <QueryClientProvider client={clientRef.current}>
@@ -890,11 +990,17 @@ export function PublicGardenViewer({
                                     garden={gameGarden}
                                     gardenCacheReady={gardenCacheReady}
                                     initialView={initialView}
+                                    interactiveBlockIds={interactiveBlockIds}
+                                    loadPlantSorts={loadPlantSorts}
+                                    noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
+                                    onSelectBlock={openInteractiveBlock}
                                     onSelectRaisedBedBlock={
                                         openRaisedBedByBlockId
                                     }
+                                    onSceneReady={onSceneReady}
                                     renderDetails={renderDetails}
+                                    sceneChildren={sceneChildren}
                                     visitorPresence={visitorPresence}
                                 />
                                 {gameGarden && !capture ? (

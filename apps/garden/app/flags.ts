@@ -43,3 +43,13 @@ export const enableGardenAvatarFlag = flag<boolean>({
     decide: () => false,
     options: booleanFlagOptions,
 });
+
+export const enableOutletGardenFlag = flag<boolean>({
+    key: 'enableOutletGarden',
+    description:
+        'Expose the read-only 3D Outlet garden validation route from the current Outlet flow.',
+    decide: () =>
+        process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'preview',
+    options: booleanFlagOptions,
+});
