@@ -9,7 +9,6 @@ import { getChangelogEntry } from '../../../lib/news';
 export const alt = 'Gredice što je novo';
 export const size = cmsOgImageSize;
 export const contentType = cmsOgImageContentType;
-export const dynamic = 'force-dynamic';
 
 export default async function ChangelogOpenGraphImage({
     params,

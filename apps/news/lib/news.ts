@@ -1,5 +1,17 @@
 import 'server-only';
-import { clientPublic } from '@gredice/client';
+import {
+    type CmsNewsContentKind,
+    type CmsPageContentDocument,
+    cmsPagePublicPath,
+    getCmsPages,
+    parseCmsPageContent,
+    type SelectCmsPage,
+} from '@gredice/storage';
+
+type SelectCmsNewsPage = Omit<SelectCmsPage, 'contentKind' | 'publishedAt'> & {
+    contentKind: CmsNewsContentKind;
+    publishedAt: Date;
+};
 
 type NewsListQuery = {
     category?: string;
@@ -16,61 +28,200 @@ type NewsTagSource = {
     tags: string[];
 };
 
-function newsQuery(input: NewsListQuery = {}) {
+const blogSlugPrefix = 'novosti/';
+const changelogSlugPrefix = 'novosti/sto-je-novo/';
+
+function newsEntrySlug(page: Pick<SelectCmsPage, 'contentKind' | 'slug'>) {
+    if (page.contentKind === 'changelog') {
+        return page.slug.startsWith(changelogSlugPrefix)
+            ? page.slug.slice(changelogSlugPrefix.length)
+            : page.slug;
+    }
+
+    return page.slug.startsWith(blogSlugPrefix)
+        ? page.slug.slice(blogSlugPrefix.length)
+        : page.slug;
+}
+
+function textExcerpt(value: string | undefined) {
+    const normalized = value?.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+        return null;
+    }
+
+    return normalized.length > 180
+        ? `${normalized.slice(0, 177).trimEnd()}...`
+        : normalized;
+}
+
+function sectionExcerpt(section: Record<string, unknown>) {
+    const description =
+        typeof section.description === 'string' ? section.description : null;
+    if (description) {
+        return description;
+    }
+
+    const markdown =
+        typeof section.markdown === 'string' ? section.markdown : null;
+    if (markdown) {
+        return markdown
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/!\[[^\]]*]\([^)]+\)/g, '')
+            .replace(/\[[^\]]+]\([^)]+\)/g, (match) =>
+                match.replace(/^\[|\]\([^)]+\)$/g, ''),
+            );
+    }
+
+    return null;
+}
+
+function pageExcerpt(page: SelectCmsPage) {
+    if (page.metaDescription) {
+        return textExcerpt(page.metaDescription);
+    }
+
+    try {
+        const content = parseCmsPageContent(page.content);
+        for (const section of content.sections) {
+            const excerpt = textExcerpt(sectionExcerpt(section) ?? undefined);
+            if (excerpt) {
+                return excerpt;
+            }
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+}
+
+function pageContent(page: SelectCmsPage): CmsPageContentDocument {
+    try {
+        return parseCmsPageContent(page.content);
+    } catch {
+        return {
+            renderMode: 'container',
+            renderMaxWidth: 'lg',
+            sections: [],
+        };
+    }
+}
+
+function newsPageSummary(page: SelectCmsNewsPage) {
     return {
-        ...(input.category ? { category: input.category } : {}),
-        ...(input.tag ? { tag: input.tag } : {}),
-        ...(input.since ? { since: input.since } : {}),
-        ...(input.limit ? { limit: input.limit.toString() } : {}),
+        id: page.id,
+        contentKind: page.contentKind,
+        slug: newsEntrySlug(page),
+        cmsSlug: page.slug,
+        path: cmsPagePublicPath(page),
+        title: page.title,
+        excerpt: pageExcerpt(page),
+        category: page.category,
+        tags: page.tags,
+        publishedAt: page.publishedAt.toISOString(),
+        updatedAt: page.updatedAt.toISOString(),
+        metaTitle: page.metaTitle,
+        metaDescription: page.metaDescription,
+        metaImageUrl: page.metaImageUrl,
+        metaImagePoiX: page.metaImagePoiX,
+        metaImagePoiY: page.metaImagePoiY,
+        seoImageUrl: page.seoImageUrl,
+        canonicalPath: page.canonicalPath,
+        noIndex: page.noIndex,
     };
 }
 
-export async function getBlogPosts(query: NewsListQuery = {}) {
-    const response = await clientPublic().api.news.blog.$get({
-        query: newsQuery(query),
-    });
-    if (!response.ok) {
-        return [];
-    }
-
-    const body = await response.json();
-    return body.items;
+function newsPageDetail(page: SelectCmsNewsPage) {
+    const content = pageContent(page);
+    return {
+        ...newsPageSummary(page),
+        content: content.sections,
+        renderMode: content.renderMode,
+        renderMaxWidth: content.renderMaxWidth,
+    };
 }
 
-export async function getBlogPost(slug: string) {
-    const response = await clientPublic().api.news.blog[':slug{.+}'].$get({
-        param: { slug },
-    });
-    if (!response.ok) {
-        return null;
-    }
-
-    return await response.json();
+function normalizedTaxonomyValue(value: string | null | undefined) {
+    return value?.trim().toLocaleLowerCase('hr-HR') || null;
 }
 
-export async function getChangelogEntries(
+function publishedTime(page: SelectCmsPage) {
+    return page.publishedAt?.getTime() ?? 0;
+}
+
+function isPublishedNewsPage(
+    page: SelectCmsPage,
+    contentKind: CmsNewsContentKind,
+): page is SelectCmsNewsPage {
+    return page.contentKind === contentKind && page.publishedAt !== null;
+}
+
+async function getPublishedNewsSourcePages(contentKind: CmsNewsContentKind) {
+    const pages = await getCmsPages({ state: 'published' });
+    return pages
+        .filter((page) => isPublishedNewsPage(page, contentKind))
+        .sort(
+            (left, right) =>
+                publishedTime(right) - publishedTime(left) ||
+                right.id - left.id,
+        );
+}
+
+async function getNewsEntries(
+    contentKind: CmsNewsContentKind,
+    query: NewsListQuery = {},
+) {
+    const category = normalizedTaxonomyValue(query.category);
+    const tag = normalizedTaxonomyValue(query.tag);
+    const since = query.since ? new Date(query.since) : null;
+    const publishedAfter =
+        since && !Number.isNaN(since.getTime()) ? since.getTime() : null;
+    const pages = await getPublishedNewsSourcePages(contentKind);
+    const items = pages.filter((page) => {
+        if (category && normalizedTaxonomyValue(page.category) !== category) {
+            return false;
+        }
+
+        if (
+            tag &&
+            !page.tags.some(
+                (pageTag) => normalizedTaxonomyValue(pageTag) === tag,
+            )
+        ) {
+            return false;
+        }
+
+        return publishedAfter === null || publishedTime(page) > publishedAfter;
+    });
+    const limit = query.limit
+        ? Math.max(1, Math.min(query.limit, 50))
+        : items.length;
+
+    return items.slice(0, limit).map(newsPageSummary);
+}
+
+async function getNewsEntry(contentKind: CmsNewsContentKind, slug: string) {
+    const pages = await getPublishedNewsSourcePages(contentKind);
+    const page = pages.find((candidate) => newsEntrySlug(candidate) === slug);
+    return page ? newsPageDetail(page) : null;
+}
+
+export function getBlogPosts(query: NewsListQuery = {}) {
+    return getNewsEntries('blog', query);
+}
+
+export function getBlogPost(slug: string) {
+    return getNewsEntry('blog', slug);
+}
+
+export function getChangelogEntries(
     query: Omit<NewsListQuery, 'category'> = {},
 ) {
-    const response = await clientPublic().api.news.changelog.$get({
-        query: newsQuery(query),
-    });
-    if (!response.ok) {
-        return [];
-    }
-
-    const body = await response.json();
-    return body.items;
+    return getNewsEntries('changelog', query);
 }
 
-export async function getChangelogEntry(slug: string) {
-    const response = await clientPublic().api.news.changelog[':slug{.+}'].$get({
-        param: { slug },
-    });
-    if (!response.ok) {
-        return null;
-    }
-
-    return await response.json();
+export function getChangelogEntry(slug: string) {
+    return getNewsEntry('changelog', slug);
 }
 
 export type NewsListItem = Awaited<ReturnType<typeof getBlogPosts>>[number];

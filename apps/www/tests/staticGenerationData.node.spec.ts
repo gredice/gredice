@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { collectSitemapSourcePaths } from '../lib/sitemap/sitemapSourcePaths.ts';
+import { canonicalLegacyNewsPathname } from '../src/newsPaths.ts';
 
 const staticDataLoaders = [
     '../lib/blocks/getBlocksData.ts',
@@ -84,4 +85,20 @@ test('sitemap source paths keep only public CMS and catalogue records', () => {
     assert.ok(paths.includes('/novosti'));
     assert.equal(paths.includes('/bez-indeksa'), false);
     assert.equal(paths.includes('/bez-datuma'), false);
+});
+
+test('legacy changelog paths redirect below the canonical news base path', () => {
+    assert.equal(
+        canonicalLegacyNewsPathname('/sto-je-novo'),
+        '/novosti/sto-je-novo',
+    );
+    assert.equal(
+        canonicalLegacyNewsPathname('/sto-je-novo/objava'),
+        '/novosti/sto-je-novo/objava',
+    );
+    assert.equal(canonicalLegacyNewsPathname('/sto-je-novosti'), null);
+    assert.equal(
+        canonicalLegacyNewsPathname('/novosti/sto-je-novo/objava'),
+        null,
+    );
 });

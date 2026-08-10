@@ -11,7 +11,8 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run typecheck"
+        "test": "pnpm run test:static-data && pnpm run typecheck",
+        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts"
     },
     "dependencies": {
         "@posthog/next": "0.8.0",
@@ -24,7 +25,6 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
-        "@gredice/client": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@tailwindcss/postcss": "4.3.2",

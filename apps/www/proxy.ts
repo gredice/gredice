@@ -13,6 +13,7 @@ import {
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
 } from './lib/posthog-server';
+import { canonicalLegacyNewsPathname } from './src/newsPaths';
 import { toPageAlias } from './src/pageAliases';
 
 const postHogApiKey =
@@ -37,6 +38,11 @@ function normalizeSlugSegment(segment: string): string | null {
 }
 
 function getCanonicalPathname(pathname: string): string | null {
+    const canonicalNewsPathname = canonicalLegacyNewsPathname(pathname);
+    if (canonicalNewsPathname) {
+        return canonicalNewsPathname;
+    }
+
     const segments = pathname.split('/').filter(Boolean);
 
     if (segments.length === 2 && segments[0] === 'biljke') {

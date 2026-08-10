@@ -1,0 +1,15 @@
+{
+    "$schema": "https://v2-9-16.turborepo.dev/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "GREDICE_API_HOST",
+                "NEXT_PUBLIC_GREDICE_WWW_ORIGIN",
+                "NEXT_PUBLIC_VERCEL_ENV",
+                "POSTGRES_URL",
+                "VERCEL_ENV"
+            ]
+        }
+    }
+}
