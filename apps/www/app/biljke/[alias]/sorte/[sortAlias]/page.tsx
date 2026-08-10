@@ -184,7 +184,10 @@ export default async function PlantSortPage(
     const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
     const sortUrl = `https://www.gredice.com${sortPath}`;
     const sowingPrice = resolvePlantSowingPrice(basePlantData, sortData);
-    const hasPricedOffer = sowingPrice !== null && sowingPrice.currentPrice > 0;
+    const pricedSowingOffer =
+        sowingPrice !== null && sowingPrice.currentPrice > 0
+            ? sowingPrice
+            : null;
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
@@ -194,7 +197,7 @@ export default async function PlantSortPage(
         <div className="py-8">
             <StructuredDataScript
                 data={
-                    sowingPrice
+                    pricedSowingOffer
                         ? {
                               '@context': 'https://schema.org',
                               '@type': 'Product',
@@ -211,31 +214,20 @@ export default async function PlantSortPage(
                                   '@type': 'Brand',
                                   name: 'Gredice',
                               },
-                              isVariantOf: {
-                                  '@type': 'Product',
-                                  name: basePlantData.information.name,
-                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
-                              },
                               url: sortUrl,
-                              ...(hasPricedOffer
-                                  ? {
-                                        offers: {
-                                            '@type': 'Offer',
-                                            price: sowingPrice.currentPrice.toFixed(
-                                                2,
-                                            ),
-                                            priceCurrency: 'EUR',
-                                            availability:
-                                                sortData.store
-                                                    ?.availableInStore === false
-                                                    ? 'https://schema.org/OutOfStock'
-                                                    : 'https://schema.org/InStock',
-                                            url: sortUrl,
-                                            hasMerchantReturnPolicy:
-                                                merchantReturnPolicy,
-                                        },
-                                    }
-                                  : {}),
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: pricedSowingOffer.currentPrice.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: sortUrl,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
                           }
                         : {
                               '@context': 'https://schema.org',

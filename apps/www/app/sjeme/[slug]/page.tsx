@@ -114,43 +114,27 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
     const description = seedPageDescription(seed);
     const packageImages = seedPackageImages(seed);
     const image = seedPrimaryImageUrl(seed);
-    const productImages =
+    const seedImages =
         packageImages.length > 0
             ? packageImages.map((packageImage) => packageImage.src)
             : image
               ? [image]
               : undefined;
     const gtin13 = seedGtin13(seed);
-    const additionalProperty = [
-        typeof seed.attributes.weight === 'number'
+    const identifiers = [
+        {
+            '@type': 'PropertyValue',
+            propertyID: 'Gredice seed ID',
+            value: `seed-${seed.id}`,
+        },
+        gtin13
             ? {
                   '@type': 'PropertyValue',
-                  name: 'Težina pakiranja',
-                  value: formatSeedWeight(seed.attributes.weight),
+                  propertyID: 'GTIN-13',
+                  value: gtin13,
               }
             : null,
-        seed.attributes.germinationPercentage != null
-            ? {
-                  '@type': 'PropertyValue',
-                  name: 'Klijavost',
-                  value: `${seed.attributes.germinationPercentage}%`,
-              }
-            : null,
-        seed.application?.applicationArea != null
-            ? {
-                  '@type': 'PropertyValue',
-                  name: 'Površina primjene',
-                  value: formatSeedArea(seed.application.applicationArea),
-              }
-            : null,
-        seed.application?.applicationPlants != null
-            ? {
-                  '@type': 'PropertyValue',
-                  name: 'Broj biljaka',
-                  value: seed.application.applicationPlants,
-              }
-            : null,
-    ].filter((property) => property !== null);
+    ].filter((identifier) => identifier !== null);
 
     return (
         <div className="py-8">
@@ -159,38 +143,25 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                     '@context': 'https://schema.org',
                     '@graph': [
                         {
-                            '@type': 'Product',
-                            '@id': `${canonicalUrl}#product`,
+                            '@type': 'WebPage',
+                            '@id': `${canonicalUrl}#webpage`,
+                            url: canonicalUrl,
                             name: seed.information.name,
                             description,
-                            category: 'Sjeme',
+                            inLanguage: 'hr-HR',
+                            mainEntity: { '@id': `${canonicalUrl}#seed` },
+                        },
+                        {
+                            '@type': 'Thing',
+                            '@id': `${canonicalUrl}#seed`,
+                            name: seed.information.name,
+                            description,
                             url: canonicalUrl,
-                            image: productImages,
-                            sku: `seed-${seed.id}`,
-                            ...(gtin13 ? { gtin13 } : {}),
-                            brand: {
-                                '@type': 'Brand',
-                                name: seed.information.brand.information.name,
+                            image: seedImages,
+                            identifier: identifiers,
+                            subjectOf: {
+                                '@id': `${canonicalUrl}#webpage`,
                             },
-                            ...(typeof seed.attributes.weight === 'number'
-                                ? {
-                                      weight: {
-                                          '@type': 'QuantitativeValue',
-                                          value: seed.attributes.weight,
-                                          unitCode: 'GRM',
-                                      },
-                                  }
-                                : {}),
-                            ...(seed.information.countryOfOrigin
-                                ? {
-                                      countryOfOrigin: {
-                                          '@type': 'Country',
-                                          name: seed.information
-                                              .countryOfOrigin,
-                                      },
-                                  }
-                                : {}),
-                            additionalProperty,
                         },
                         {
                             '@type': 'BreadcrumbList',
