@@ -9,8 +9,10 @@ import {
 const fixtureMessages = ['Lijep dan u vrtu!', 'Vrt izgleda prekrasno!'];
 
 export function ActorSpeechBubbleFixture({
+    cameraZoom = 80,
     interactive = false,
 }: {
+    cameraZoom?: number;
     interactive?: boolean;
 }) {
     const [ready, setReady] = useState(false);
@@ -51,7 +53,7 @@ export function ActorSpeechBubbleFixture({
             </button>
             <Canvas
                 orthographic
-                camera={{ position: [0, 0, 10], zoom: 80 }}
+                camera={{ position: [0, 0, 10], zoom: cameraZoom }}
                 frameloop="always"
                 onCreated={() => setReady(true)}
             >

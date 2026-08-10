@@ -15,11 +15,20 @@ type DetailedInspectionOperation = {
     id: number;
     raisedBedId?: number | null;
     status: string;
+    assignedUser?: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        userName: string;
+    } | null;
 };
 
 type DetailedInspectionRaisedBed = {
     id: number;
+    latestPhotoOperation?: {
+        imageUrls: string[];
+    } | null;
     name: string;
+    physicalId?: string | null;
 };
 
 export function detailedInspectionOperationId(
@@ -77,8 +86,18 @@ export function buildDetailedRaisedBedInspectionReports({
             return [];
         }
 
+        const assignedFarmer = operation.assignedUser
+            ? {
+                  avatarUrl: operation.assignedUser.avatarUrl,
+                  displayName:
+                      operation.assignedUser.displayName?.trim() ||
+                      operation.assignedUser.userName,
+              }
+            : null;
+
         return [
             {
+                assignedFarmer,
                 inspectedAt: (
                     operation.completedAt ?? notification.timestamp
                 ).toISOString(),
@@ -86,7 +105,10 @@ export function buildDetailedRaisedBedInspectionReports({
                 notificationId: notification.id,
                 operationId: operation.id,
                 raisedBedId: raisedBed.id,
+                raisedBedImageUrl:
+                    raisedBed.latestPhotoOperation?.imageUrls[0] ?? null,
                 raisedBedName: raisedBed.name,
+                raisedBedPhysicalId: raisedBed.physicalId ?? null,
             },
         ];
     });

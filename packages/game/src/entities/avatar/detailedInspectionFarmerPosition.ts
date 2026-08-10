@@ -4,12 +4,17 @@ import {
     createGardenAvatarCollisionWorld,
     findGardenAvatarSpawnPoint,
     getGardenAvatarGroundY,
+    getGardenAvatarRoamBlockedCells,
 } from './gardenAvatarMovement';
 
 export type DetailedInspectionFarmerTransform = {
     position: [x: number, y: number, z: number];
     rotationY: number;
 };
+
+function gridCellKey(point: { x: number; z: number }) {
+    return `${Math.round(point.x).toString()}:${Math.round(point.z).toString()}`;
+}
 
 export function findDetailedInspectionFarmerTransform({
     blockData,
@@ -34,10 +39,16 @@ export function findDetailedInspectionFarmerTransform({
             : null;
     }
 
+    const blockedCellKeys = new Set(
+        getGardenAvatarRoamBlockedCells(world).map(gridCellKey),
+    );
+
     const walkableCandidate = world.surfaces
         .filter(
             (surface) =>
-                surface.kind === 'ground' && surface.roamable !== false,
+                surface.kind === 'ground' &&
+                surface.roamable !== false &&
+                !blockedCellKeys.has(gridCellKey(surface)),
         )
         .map((surface) => ({
             distance: Math.hypot(
