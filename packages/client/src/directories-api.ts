@@ -3,7 +3,7 @@ import createClient from 'openapi-fetch';
 import { createDevSafeFetch, getAppUrl } from './shared';
 
 const blockDirectoryCacheVersion =
-    'wooden-bench-and-small-wooden-bridge-2026-08-10-2';
+    'small-wooden-bridge-water-placement-2026-08-10-3';
 const blockDirectoryPath = '/api/directories/entities/block';
 
 function withBlockDirectoryCacheVersion(baseFetch: typeof fetch): typeof fetch {

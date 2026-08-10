@@ -14,6 +14,16 @@ const blockDataByName = new Map([
             },
         },
     ],
+    [
+        'SmallWoodenBridge',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.38,
+                placeableOnWater: true,
+            },
+        },
+    ],
     ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
     [
@@ -217,6 +227,26 @@ describe('resolveGardenBlockPlacement', () => {
             blockName: 'Block_Water',
             stacks,
             blockNameById,
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: 0,
+                index: 1,
+                existingBlocks: ['water-origin'],
+            },
+        });
+    });
+
+    it('places the small wooden bridge on a requested water stack', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'SmallWoodenBridge',
+            requestedPosition: { x: 0, y: 0 },
+            stacks: [{ positionX: 0, positionY: 0, blocks: ['water-origin'] }],
+            blockNameById: new Map([['water-origin', 'Block_Water']]),
             blockDataByName,
         });
 

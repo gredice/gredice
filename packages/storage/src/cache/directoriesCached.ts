@@ -8,7 +8,7 @@ import {
 export const cacheKeys = {
     entity: (entityId: number) => `entity:${entityId}`,
     entityTypeName: (entityTypeName: string) =>
-        `entities:formatted:${entityTypeName}:state:published:locale:default:v1`,
+        `entities:formatted:${entityTypeName}:state:published:locale:default:${entityTypeName === 'block' ? 'v2' : 'v1'}`,
     cmsPagesList: (
         state: 'draft' | 'in-review' | 'published' | 'all' = 'all',
     ) => `cms:pages:list:${state}:v1`,
