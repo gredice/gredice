@@ -117,7 +117,7 @@ function signatureMatches(
 }
 
 export function verifyPublicOgSignature(
-    receivedSearchParams: URLSearchParams,
+    receivedRawQuery: string,
     canonicalSearchParams: URLSearchParams,
     config: PublicOgSigningConfig = resolvePublicOgSigningConfig(),
 ): PublicOgSignatureVerification {
@@ -125,15 +125,14 @@ export function verifyPublicOgSignature(
         return 'configuration-error';
     }
 
-    const receivedEntries = Array.from(receivedSearchParams.entries());
+    const receivedSearchParams = new URLSearchParams(receivedRawQuery);
     const signature = receivedSearchParams.get(PUBLIC_OG_SIGNATURE_PARAMETER);
-    const unsignedReceived = new URLSearchParams(
-        receivedEntries.filter(
-            ([key]) => key !== PUBLIC_OG_SIGNATURE_PARAMETER,
-        ),
-    );
+    const canonicalReceived = new URLSearchParams(canonicalSearchParams);
+    if (signature) {
+        canonicalReceived.set(PUBLIC_OG_SIGNATURE_PARAMETER, signature);
+    }
 
-    if (unsignedReceived.toString() !== canonicalSearchParams.toString()) {
+    if (receivedRawQuery !== canonicalReceived.toString()) {
         return 'noncanonical-query';
     }
 
@@ -145,10 +144,6 @@ export function verifyPublicOgSignature(
 
     if (!signature) {
         return 'missing-signature';
-    }
-
-    if (receivedEntries.at(-1)?.[0] !== PUBLIC_OG_SIGNATURE_PARAMETER) {
-        return 'noncanonical-query';
     }
 
     return signatureMatches(

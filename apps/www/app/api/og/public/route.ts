@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
     const signingConfig = resolvePublicOgSigningConfig();
     const signatureVerification = verifyPublicOgSignature(
-        requestUrl.searchParams,
+        requestUrl.search.slice(1),
         buildPublicOgCanonicalSearchParams(card),
         signingConfig,
     );

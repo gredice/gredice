@@ -29,7 +29,7 @@ test('accepts a valid domain-separated public OG signature', () => {
     const signed = addPublicOgSignature(canonical, signingConfig);
 
     assert.equal(
-        verifyPublicOgSignature(signed, canonical, signingConfig),
+        verifyPublicOgSignature(signed.toString(), canonical, signingConfig),
         'valid',
     );
     assert.match(signed.get('sig') ?? '', /^[A-Za-z0-9_-]{43}$/);
@@ -43,8 +43,33 @@ test('rejects a tampered signed card query', () => {
     signed.set('title', 'Drugi naslov');
 
     assert.equal(
-        verifyPublicOgSignature(signed, tamperedCanonical, signingConfig),
+        verifyPublicOgSignature(
+            signed.toString(),
+            tamperedCanonical,
+            signingConfig,
+        ),
         'invalid-signature',
+    );
+});
+
+test('rejects equivalent noncanonical raw query encodings', () => {
+    const canonical = canonicalCardQuery();
+    const signed = addPublicOgSignature(canonical, signingConfig);
+    const noncanonicalRawQuery = signed
+        .toString()
+        .replace('title=Biljke', 'title=%42iljke');
+    const requestUrl = new URL(
+        `https://www.gredice.com/api/og/public?${noncanonicalRawQuery}`,
+    );
+
+    assert.equal(requestUrl.search.slice(1), noncanonicalRawQuery);
+    assert.equal(
+        verifyPublicOgSignature(
+            requestUrl.search.slice(1),
+            canonical,
+            signingConfig,
+        ),
+        'noncanonical-query',
     );
 });
 
@@ -52,7 +77,7 @@ test('rejects a missing signature when a secret is configured', () => {
     const canonical = canonicalCardQuery();
 
     assert.equal(
-        verifyPublicOgSignature(canonical, canonical, signingConfig),
+        verifyPublicOgSignature(canonical.toString(), canonical, signingConfig),
         'missing-signature',
     );
 });
@@ -61,7 +86,11 @@ test('allows unsigned cards only for explicit local/test configuration', () => {
     const canonical = canonicalCardQuery();
 
     assert.equal(
-        verifyPublicOgSignature(canonical, canonical, localUnsignedConfig),
+        verifyPublicOgSignature(
+            canonical.toString(),
+            canonical,
+            localUnsignedConfig,
+        ),
         'unsigned-local',
     );
     assert.deepEqual(resolvePublicOgSigningConfig({}), localUnsignedConfig);
@@ -72,6 +101,11 @@ test('allows unsigned cards only for explicit local/test configuration', () => {
 });
 
 test('fails closed when a deployment or CI environment lacks the secret', () => {
+    const invalidConfig = {
+        allowUnsigned: false,
+        configurationValid: false,
+    } as const;
+
     assert.deepEqual(resolvePublicOgSigningConfig({ VERCEL_ENV: 'preview' }), {
         allowUnsigned: false,
         configurationValid: false,
@@ -88,11 +122,15 @@ test('fails closed when a deployment or CI environment lacks the secret', () => 
         },
     );
     assert.throws(
-        () =>
-            addPublicOgSignature(canonicalCardQuery(), {
-                allowUnsigned: false,
-                configurationValid: false,
-            }),
+        () => addPublicOgSignature(canonicalCardQuery(), invalidConfig),
         /CMS_PAGES_PREVIEW_SECRET/,
+    );
+    assert.equal(
+        verifyPublicOgSignature(
+            canonicalCardQuery().toString(),
+            canonicalCardQuery(),
+            invalidConfig,
+        ),
+        'configuration-error',
     );
 });
