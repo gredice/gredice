@@ -1190,6 +1190,8 @@ export interface components {
                         discounted?: number;
                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                         discountDescription?: string;
+                        /** @description Procijenjeni trošak materijala u EUR potreban za izvršavanje jedne operacije. */
+                        materialCost?: number;
                     };
                     image: {
                         cover: components["schemas"]["image"];
@@ -1431,6 +1433,8 @@ export interface components {
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
+                                /** @description Procijenjeni trošak materijala u EUR potreban za izvršavanje jedne operacije. */
+                                materialCost?: number;
                             };
                             image: {
                                 cover: components["schemas"]["image"];
@@ -1733,6 +1737,8 @@ export interface components {
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
+                                /** @description Procijenjeni trošak materijala u EUR potreban za izvršavanje jedne operacije. */
+                                materialCost?: number;
                             };
                             image: {
                                 cover: components["schemas"]["image"];
@@ -1960,6 +1966,8 @@ export interface components {
                                         discounted?: number;
                                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                         discountDescription?: string;
+                                        /** @description Procijenjeni trošak materijala u EUR potreban za izvršavanje jedne operacije. */
+                                        materialCost?: number;
                                     };
                                     image: {
                                         cover: components["schemas"]["image"];
@@ -2274,6 +2282,8 @@ export interface components {
                 discounted?: number;
                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                 discountDescription?: string;
+                /** @description Procijenjeni trošak materijala u EUR potreban za izvršavanje jedne operacije. */
+                materialCost?: number;
             };
             image: {
                 cover: components["schemas"]["image"];

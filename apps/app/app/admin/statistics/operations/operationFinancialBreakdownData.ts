@@ -217,6 +217,7 @@ export async function getOperationFinancialBreakdownData({
                       operation.entityId,
                   )
                 : 0,
+            materialCost: parsePrice(definition?.prices?.materialCost) ?? 0,
             userCost: isInternal
                 ? 0
                 : userPrice && userPrice > 0
@@ -246,6 +247,7 @@ export async function getOperationFinancialBreakdownData({
                 entityTypeName,
                 null,
             ),
+            materialCost: 0,
             userCost: userPrice && userPrice > 0 ? userPrice : null,
         });
     }

@@ -40,7 +40,8 @@ export function OperationsFinancialBreakdownTable({
                 <Typography level="body3" className="text-muted-foreground">
                     Završeni zadaci u odabranom razdoblju. Iznosi koriste
                     trenutačne korisničke cijene i cijene farmera za farmu
-                    zadatka.
+                    zadatka te procijenjeni trošak materijala definiran na
+                    radnji.
                 </Typography>
             </CardHeader>
 
@@ -53,7 +54,7 @@ export function OperationsFinancialBreakdownTable({
                 </CardContent>
             ) : (
                 <CardOverflow>
-                    <Table className="min-w-[920px]">
+                    <Table className="min-w-[1080px]">
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>Vrsta zadatka</Table.Head>
@@ -67,10 +68,13 @@ export function OperationsFinancialBreakdownTable({
                                     Trošak farmera
                                 </Table.Head>
                                 <Table.Head className="text-right">
+                                    Trošak materijala
+                                </Table.Head>
+                                <Table.Head className="text-right">
                                     Trošak korisnika
                                 </Table.Head>
                                 <Table.Head className="text-right">
-                                    Naša zarada
+                                    Procijenjena zarada
                                 </Table.Head>
                             </Table.Row>
                         </Table.Header>
@@ -102,6 +106,9 @@ export function OperationsFinancialBreakdownTable({
                                         ) : null}
                                     </Table.Cell>
                                     <Table.Cell className="text-right tabular-nums">
+                                        {formatPrice(row.materialCost)}
+                                    </Table.Cell>
+                                    <Table.Cell className="text-right tabular-nums">
                                         <div>{formatPrice(row.userCost)}</div>
                                         {row.missingUserPriceCount > 0 ? (
                                             <Typography
@@ -117,12 +124,12 @@ export function OperationsFinancialBreakdownTable({
                                     <Table.Cell className="text-right tabular-nums font-medium">
                                         <div
                                             className={
-                                                row.grossEarnings < 0
+                                                row.estimatedEarnings < 0
                                                     ? 'text-destructive'
                                                     : undefined
                                             }
                                         >
-                                            {formatPrice(row.grossEarnings)}
+                                            {formatPrice(row.estimatedEarnings)}
                                         </div>
                                         {row.incompleteEarningsCount > 0 ? (
                                             <Typography
@@ -164,6 +171,9 @@ export function OperationsFinancialBreakdownTable({
                                     ) : null}
                                 </Table.Cell>
                                 <Table.Cell className="text-right tabular-nums">
+                                    {formatPrice(data.totals.materialCost)}
+                                </Table.Cell>
+                                <Table.Cell className="text-right tabular-nums">
                                     <div>
                                         {formatPrice(data.totals.userCost)}
                                     </div>
@@ -182,12 +192,14 @@ export function OperationsFinancialBreakdownTable({
                                 <Table.Cell className="text-right tabular-nums font-semibold">
                                     <div
                                         className={
-                                            data.totals.grossEarnings < 0
+                                            data.totals.estimatedEarnings < 0
                                                 ? 'text-destructive'
                                                 : undefined
                                         }
                                     >
-                                        {formatPrice(data.totals.grossEarnings)}
+                                        {formatPrice(
+                                            data.totals.estimatedEarnings,
+                                        )}
                                     </div>
                                     {data.totals.incompleteEarningsCount > 0 ? (
                                         <Typography
