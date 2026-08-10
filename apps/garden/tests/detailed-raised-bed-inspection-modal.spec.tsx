@@ -15,7 +15,9 @@ test('shows the farmer notes for every inspected raised bed', async ({
     await expect(
         page.getByAltText('Najnovija fotografija gredice Gredica Sjever'),
     ).toBeVisible();
-    await expect(page.getByLabel('Pregled obradio Ana Farmer')).toBeVisible();
+    await expect(
+        page.getByLabel('Dodijeljeni farmer Ana Farmer'),
+    ).toBeVisible();
     await expect(
         page.getByText('Tlo je rahlo i dovoljno vlažno.'),
     ).toBeVisible();
@@ -23,7 +25,9 @@ test('shows the farmer notes for every inspected raised bed', async ({
     await expect(
         page.locator('[data-raised-bed-review-fallback]'),
     ).toContainText('18');
-    await expect(page.getByLabel('Pregled obradio Ivan Marić')).toBeVisible();
+    await expect(
+        page.getByLabel('Dodijeljeni farmer Ivan Marić'),
+    ).toBeVisible();
     await expect(
         page.getByText('Pregled je završen bez dodatne bilješke.'),
     ).toBeVisible();

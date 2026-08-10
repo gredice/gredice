@@ -122,11 +122,11 @@ export function DetailedRaisedBedInspectionModal({
                                     </Row>
                                     {report.assignedFarmer ? (
                                         <span
-                                            aria-label={`Pregled obradio ${report.assignedFarmer.displayName}`}
+                                            aria-label={`Dodijeljeni farmer ${report.assignedFarmer.displayName}`}
                                             className="shrink-0"
                                             data-raised-bed-review-farmer
                                             role="img"
-                                            title={`Pregled obradio ${report.assignedFarmer.displayName}`}
+                                            title={`Dodijeljeni farmer ${report.assignedFarmer.displayName}`}
                                         >
                                             <UserAvatar
                                                 avatarUrl={
