@@ -15,7 +15,22 @@ test('selects a live offer and exposes truthful read-only details', async ({
     await mount(<OutletGardenOfferBrowserStory />);
 
     const offerList = page.locator('[data-outlet-garden-offer-list]');
-    await expect(offerList.getByRole('button')).toHaveCount(2);
+    await expect(offerList.getByRole('button')).toHaveCount(4);
+    const tomatoGroup = offerList.locator(
+        '[data-outlet-garden-plant-group="1"]',
+    );
+    await expect(
+        tomatoGroup.getByRole('heading', { name: 'Rajčica', exact: true }),
+    ).toBeVisible();
+    await expect(
+        tomatoGroup.locator('[data-outlet-garden-sort-group]'),
+    ).toHaveCount(2);
+    await expect(tomatoGroup.getByRole('button')).toHaveCount(3);
+    await expect(
+        offerList
+            .locator('[data-outlet-garden-plant-group="2"]')
+            .getByRole('heading', { name: 'Paprika', exact: true }),
+    ).toBeVisible();
 
     const paprika = offerList.getByRole('button', {
         name: /Paprika Zlata Snack/u,
@@ -49,7 +64,7 @@ test('recovers from a stale deep link without hiding current offers', async ({
     ).toContainText('Ova ponuda više nije dostupna.');
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
-    ).toHaveCount(2);
+    ).toHaveCount(4);
 
     await page.getByRole('button', { name: 'Prikaži dostupne ponude' }).click();
     await expect(

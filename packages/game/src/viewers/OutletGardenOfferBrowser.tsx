@@ -20,6 +20,84 @@ const dateFormatter = new Intl.DateTimeFormat('hr-HR', {
     year: 'numeric',
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat('hr-HR', {
+    day: 'numeric',
+    month: 'short',
+});
+
+type OutletGardenSortGroup = {
+    id: number;
+    name: string;
+    offers: OutletOfferData[];
+};
+
+type OutletGardenPlantGroup = {
+    id: number | null;
+    key: string;
+    name: string;
+    sorts: OutletGardenSortGroup[];
+};
+
+function compareOutletGardenOffers(
+    left: OutletOfferData,
+    right: OutletOfferData,
+) {
+    const leftPlantId = left.plantSort.plant?.id ?? Number.MAX_SAFE_INTEGER;
+    const rightPlantId = right.plantSort.plant?.id ?? Number.MAX_SAFE_INTEGER;
+
+    return (
+        leftPlantId - rightPlantId ||
+        left.plantSort.id - right.plantSort.id ||
+        left.sowingDate.localeCompare(right.sowingDate) ||
+        left.endAt.localeCompare(right.endAt) ||
+        left.id - right.id
+    );
+}
+
+function groupOutletGardenOffers(offers: readonly OutletOfferData[]) {
+    const plantGroups = new Map<string, OutletGardenPlantGroup>();
+
+    for (const offer of [...offers].sort(compareOutletGardenOffers)) {
+        const plant = offer.plantSort.plant;
+        const plantKey = plant
+            ? `plant:${plant.id.toString()}`
+            : 'plant:unknown';
+        const plantGroup = plantGroups.get(plantKey) ?? {
+            id: plant?.id ?? null,
+            key: plantKey,
+            name: plant?.name ?? 'Ostale sadnice',
+            sorts: [],
+        };
+        let sortGroup = plantGroup.sorts.find(
+            (candidate) => candidate.id === offer.plantSort.id,
+        );
+        if (!sortGroup) {
+            sortGroup = {
+                id: offer.plantSort.id,
+                name: offer.plantSort.name,
+                offers: [],
+            };
+            plantGroup.sorts.push(sortGroup);
+        }
+        sortGroup.offers.push(offer);
+        plantGroups.set(plantKey, plantGroup);
+    }
+
+    return Array.from(plantGroups.values());
+}
+
+function countLabel(count: number, forms: [string, string, string]) {
+    if (count === 1) {
+        return `${count.toString()} ${forms[0]}`;
+    }
+
+    if (count >= 2 && count <= 4) {
+        return `${count.toString()} ${forms[1]}`;
+    }
+
+    return `${count.toString()} ${forms[2]}`;
+}
+
 function offerImageUrl(offer: OutletOfferData) {
     return offer.imageUrls[0] ?? offer.plantSort.imageUrl;
 }
@@ -45,6 +123,7 @@ export function OutletGardenOfferBrowser({
     onSelectOffer,
     selectedOfferId,
 }: OutletGardenOfferBrowserProps) {
+    const plantGroups = groupOutletGardenOffers(offers);
     const selectedOffer =
         offers.find((offer) => offer.id === selectedOfferId) ?? null;
     const selectedOfferMissing =
@@ -193,41 +272,140 @@ export function OutletGardenOfferBrowser({
                             Dostupne sadnice ({offers.length})
                         </h2>
                         <div
-                            className="grid grid-cols-2 gap-2 lg:grid-cols-1"
+                            className="space-y-4"
                             data-outlet-garden-offer-list
                         >
-                            {offers.map((offer) => {
-                                const selected = offer.id === selectedOffer?.id;
+                            {plantGroups.map((plantGroup) => {
+                                const offerCount = plantGroup.sorts.reduce(
+                                    (count, sortGroup) =>
+                                        count + sortGroup.offers.length,
+                                    0,
+                                );
+                                const plantHeadingId = `outlet-garden-${plantGroup.key}-title`;
+
                                 return (
-                                    <button
-                                        aria-label={`${offer.plantSort.name}, ${currencyFormatter.format(offer.outletPrice)}, preostalo ${offer.remainingQuantity}`}
-                                        aria-pressed={selected}
-                                        className={cx(
-                                            'min-h-11 rounded-xl border bg-card p-3 text-left transition-[border-color,background-color,transform] hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 active:scale-[0.99] motion-reduce:transition-none',
-                                            selected
-                                                ? 'border-lime-600 bg-lime-50/70 dark:bg-lime-950/30'
-                                                : 'border-border',
-                                        )}
-                                        data-outlet-garden-offer-id={offer.id}
-                                        key={offer.id}
-                                        onClick={() => onSelectOffer(offer.id)}
-                                        type="button"
+                                    <section
+                                        aria-labelledby={plantHeadingId}
+                                        className="rounded-xl border bg-muted/30 p-3"
+                                        data-outlet-garden-plant-group={
+                                            plantGroup.id ?? 'unknown'
+                                        }
+                                        key={plantGroup.key}
                                     >
-                                        <span className="block truncate text-sm font-semibold">
-                                            {offer.plantSort.name}
-                                        </span>
-                                        <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 text-xs text-muted-foreground">
-                                            <span>
-                                                preostalo{' '}
-                                                {offer.remainingQuantity}
+                                        <div className="mb-3 flex items-baseline justify-between gap-3">
+                                            <h3
+                                                className="text-sm font-bold"
+                                                id={plantHeadingId}
+                                            >
+                                                {plantGroup.name}
+                                            </h3>
+                                            <span className="text-[11px] text-muted-foreground">
+                                                {countLabel(
+                                                    plantGroup.sorts.length,
+                                                    ['sorta', 'sorte', 'sorti'],
+                                                )}{' '}
+                                                ·{' '}
+                                                {countLabel(offerCount, [
+                                                    'ponuda',
+                                                    'ponude',
+                                                    'ponuda',
+                                                ])}
                                             </span>
-                                            <strong className="text-sm text-foreground">
-                                                {currencyFormatter.format(
-                                                    offer.outletPrice,
-                                                )}
-                                            </strong>
-                                        </span>
-                                    </button>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {plantGroup.sorts.map(
+                                                (sortGroup) => {
+                                                    const sortHeadingId = `outlet-garden-sort-${sortGroup.id.toString()}-title`;
+                                                    return (
+                                                        <section
+                                                            aria-labelledby={
+                                                                sortHeadingId
+                                                            }
+                                                            data-outlet-garden-sort-group={
+                                                                sortGroup.id
+                                                            }
+                                                            key={sortGroup.id}
+                                                        >
+                                                            <h4
+                                                                className="mb-1.5 text-xs font-semibold text-muted-foreground"
+                                                                id={
+                                                                    sortHeadingId
+                                                                }
+                                                            >
+                                                                {sortGroup.name}
+                                                            </h4>
+                                                            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                                                                {sortGroup.offers.map(
+                                                                    (offer) => {
+                                                                        const selected =
+                                                                            offer.id ===
+                                                                            selectedOffer?.id;
+                                                                        const status =
+                                                                            plantFieldStatusLabel(
+                                                                                offer.initialPlantStatus,
+                                                                            ).shortLabel;
+                                                                        return (
+                                                                            <button
+                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, ${currencyFormatter.format(offer.outletPrice)}, preostalo ${offer.remainingQuantity}`}
+                                                                                aria-pressed={
+                                                                                    selected
+                                                                                }
+                                                                                className={cx(
+                                                                                    'min-h-11 rounded-xl border bg-card p-3 text-left transition-[border-color,background-color,transform] hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 active:scale-[0.99] motion-reduce:transition-none',
+                                                                                    selected
+                                                                                        ? 'border-lime-600 bg-lime-50/70 dark:bg-lime-950/30'
+                                                                                        : 'border-border',
+                                                                                )}
+                                                                                data-outlet-garden-offer-id={
+                                                                                    offer.id
+                                                                                }
+                                                                                key={
+                                                                                    offer.id
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    onSelectOffer(
+                                                                                        offer.id,
+                                                                                    )
+                                                                                }
+                                                                                type="button"
+                                                                            >
+                                                                                <span className="block truncate text-xs font-medium">
+                                                                                    Sjetva{' '}
+                                                                                    {shortDateFormatter.format(
+                                                                                        new Date(
+                                                                                            offer.sowingDate,
+                                                                                        ),
+                                                                                    )}{' '}
+                                                                                    ·{' '}
+                                                                                    {
+                                                                                        status
+                                                                                    }
+                                                                                </span>
+                                                                                <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 text-xs text-muted-foreground">
+                                                                                    <span>
+                                                                                        preostalo{' '}
+                                                                                        {
+                                                                                            offer.remainingQuantity
+                                                                                        }
+                                                                                    </span>
+                                                                                    <strong className="text-sm text-foreground">
+                                                                                        {currencyFormatter.format(
+                                                                                            offer.outletPrice,
+                                                                                        )}
+                                                                                    </strong>
+                                                                                </span>
+                                                                            </button>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                            </div>
+                                                        </section>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    </section>
                                 );
                             })}
                         </div>
@@ -331,8 +509,9 @@ export function OutletGardenOfferBrowser({
                             </dl>
 
                             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                                Fotografija prikazuje stvarnu ponudu; 3D model
-                                je reprezentativan. Pregled i odabir ovdje ne
+                                Fotografija može prikazivati konkretnu ponudu
+                                ili pripadajuću sortu; 3D model je
+                                reprezentativan. Pregled i odabir ovdje ne
                                 rezerviraju zalihu.
                             </p>
 

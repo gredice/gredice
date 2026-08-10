@@ -133,6 +133,9 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
+    cameraMinZoom?: number;
+    fixedTime?: Date;
+    initialView?: PublicGardenInitialView;
     interactiveBlockIds?: ReadonlySet<string>;
     selectedBlockId?: string | null;
     onSelectBlock?: (blockId: string) => void;
@@ -291,9 +294,11 @@ export function getPublicGardenInitialView({
 }
 
 export function getPublicGardenCaptureInitialView({
+    minimumZoom = 24,
     stacks,
     viewport,
 }: {
+    minimumZoom?: number;
     stacks: Stack[];
     viewport: PublicGardenCaptureViewport;
 }): PublicGardenInitialView {
@@ -332,7 +337,7 @@ export function getPublicGardenCaptureInitialView({
 
     return {
         ...initialView,
-        cameraZoom: Math.max(24, Math.min(180, fittedZoom)),
+        cameraZoom: Math.max(minimumZoom, Math.min(180, fittedZoom)),
     };
 }
 
@@ -394,12 +399,14 @@ function publicGardenTimeLocation(
 }
 
 function PublicGardenScene({
+    cameraMinZoom,
     capture,
     initialView,
     className,
     garden,
     gardenCacheReady,
     interactiveBlockIds,
+    initialSnapshot,
     loadPlantSorts,
     noWeather,
     normalizedStacks,
@@ -410,12 +417,14 @@ function PublicGardenScene({
     sceneChildren,
     visitorPresence,
 }: {
+    cameraMinZoom?: number;
     capture?: PublicGardenViewerProps['capture'];
     initialView: PublicGardenInitialView;
     className?: string;
     garden?: ReturnType<typeof publicGardenForGameState>;
     gardenCacheReady: boolean;
     interactiveBlockIds?: ReadonlySet<string>;
+    initialSnapshot?: PublicGardenHomeCamera;
     loadPlantSorts: boolean;
     noWeather: boolean;
     normalizedStacks: Stack[];
@@ -625,13 +634,12 @@ function PublicGardenScene({
                                 </group>
                             </Suspense>
                             <GameCameraRig
+                                minZoom={cameraMinZoom}
                                 controlsEnabled={
                                     !capture && !gardenAvatarActive
                                 }
                                 initialPosition={initialView.cameraPosition}
-                                initialSnapshot={
-                                    garden?.homeCamera ?? undefined
-                                }
+                                initialSnapshot={initialSnapshot}
                                 initialTarget={initialView.cameraTarget}
                                 initialViewKey={garden?.id ?? 'stacks'}
                                 initialZoom={initialView.cameraZoom}
@@ -740,10 +748,13 @@ function SeedPublicGardenQueryCache({
 
 export function PublicGardenViewer({
     appBaseUrl,
+    cameraMinZoom,
     capture,
     spriteBaseUrl,
     deferDetails = true,
+    fixedTime,
     garden,
+    initialView: initialViewOverride,
     interactiveBlockIds,
     noWeather = false,
     onSelectBlock,
@@ -765,14 +776,16 @@ export function PublicGardenViewer({
             authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
             dayNightCycleDisabled: capture?.phase ? false : undefined,
-            freezeTime: capture
-                ? capture.phase
-                    ? getPublicGardenCapturePhaseDate(
-                          capture.phase,
-                          initialTimeLocation ?? defaultGameLocation,
-                      )
-                    : getPublicGardenCaptureDate()
-                : null,
+            freezeTime:
+                fixedTime ??
+                (capture
+                    ? capture.phase
+                        ? getPublicGardenCapturePhaseDate(
+                              capture.phase,
+                              initialTimeLocation ?? defaultGameLocation,
+                          )
+                        : getPublicGardenCaptureDate()
+                    : null),
             isMock: false,
             timeLocation: initialTimeLocation,
             winterMode: 'summer',
@@ -817,6 +830,10 @@ export function PublicGardenViewer({
         [gameGarden, normalizedStacks],
     );
     const initialView = useMemo(() => {
+        if (initialViewOverride) {
+            return initialViewOverride;
+        }
+
         if (
             capture?.fitGarden &&
             capture.output?.width &&
@@ -840,6 +857,7 @@ export function PublicGardenViewer({
         capture?.output?.height,
         capture?.output?.width,
         garden?.homeCamera,
+        initialViewOverride,
         normalizedStacks,
     ]);
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
@@ -985,12 +1003,18 @@ export function PublicGardenViewer({
                                 )}
                             >
                                 <PublicGardenScene
+                                    cameraMinZoom={cameraMinZoom}
                                     capture={capture}
                                     className="size-full"
                                     garden={gameGarden}
                                     gardenCacheReady={gardenCacheReady}
                                     initialView={initialView}
                                     interactiveBlockIds={interactiveBlockIds}
+                                    initialSnapshot={
+                                        initialViewOverride
+                                            ? undefined
+                                            : (garden?.homeCamera ?? undefined)
+                                    }
                                     loadPlantSorts={loadPlantSorts}
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}

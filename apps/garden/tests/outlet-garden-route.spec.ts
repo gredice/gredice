@@ -157,6 +157,7 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
                 ...outletOffers[0].plantSort,
                 id: 103,
                 name: 'Bosiljak Genovese',
+                plant: { id: 3, name: 'Bosiljak' },
             },
         },
     ]);

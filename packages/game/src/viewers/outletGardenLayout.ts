@@ -5,16 +5,37 @@ import type {
 
 export type OutletGardenLayoutOffer = {
     id: number;
+    plantId: number | null;
+    plantSortId: number;
 };
 
-export type OutletGardenSlotAssignments = ReadonlyMap<number, number>;
+export type OutletGardenSlotAssignment = {
+    plantKey: string;
+    slotIndex: number;
+};
+
+export type OutletGardenSlotAssignments = ReadonlyMap<
+    number,
+    OutletGardenSlotAssignment
+>;
+
+export type OutletGardenOfferPlacement = {
+    aisleRow: number;
+    plantBay: number;
+    surface: 'floor' | 'table';
+    x: number;
+    y: number;
+};
 
 const outletOfferBlockIdPrefix = 'outlet-offer:';
-const outletGardenColumns = 3;
-const outletGardenDisplaySpacing = 2;
-const outletGardenMinimumRows = 1;
+const outletGardenOffersPerPlantBay = 4;
+const outletGardenPlantBaysPerAisleRow = 2;
+const outletGardenAisleRowSpacing = 3;
+const outletGardenTableDistance = 3;
+const outletGardenFloorDistance = 4;
+const outletGardenPathHalfWidth = 1;
 const outletGardenSideMargin = 2;
-const outletGardenFrontMargin = 2;
+const outletGardenFrontMargin = 3;
 const outletGardenBackMargin = 3;
 const outletGardenVirtualId = -1;
 const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
@@ -37,8 +58,8 @@ type OutletGardenPotName = (typeof outletGardenPotNames)[number];
 export const outletGardenRegisteredBlockNames = [
     'Block_Grass',
     'Fence',
-    'Shade',
-    'Stool',
+    'MulchWood',
+    'WoodenBench',
     ...outletGardenPotNames,
 ] as const;
 
@@ -60,50 +81,144 @@ export function outletOfferIdFromBlockId(blockId: string) {
     return Number.isSafeInteger(offerId) ? offerId : null;
 }
 
+function compareOutletGardenOffers(
+    left: OutletGardenLayoutOffer,
+    right: OutletGardenLayoutOffer,
+) {
+    const leftPlantId = left.plantId ?? Number.MAX_SAFE_INTEGER;
+    const rightPlantId = right.plantId ?? Number.MAX_SAFE_INTEGER;
+
+    return (
+        leftPlantId - rightPlantId ||
+        left.plantSortId - right.plantSortId ||
+        left.id - right.id
+    );
+}
+
+function outletGardenPlantKey(offer: OutletGardenLayoutOffer) {
+    return offer.plantId === null
+        ? 'plant:unknown'
+        : `plant:${offer.plantId.toString()}`;
+}
+
+function outletGardenPlantBay(slotIndex: number) {
+    return Math.floor(slotIndex / outletGardenOffersPerPlantBay);
+}
+
 /**
- * Retains every previously allocated slot, including slots for offers that
- * disappeared. New offers are appended in numeric ID order, so a refetch can
- * never compact or reorder the outlet displays during the mounted session.
+ * Keeps every allocated slot, including removed-offer tombstones. Initial
+ * offers receive plant-grouped bays; later offers fill a never-used slot in an
+ * existing plant bay when possible, otherwise they get a new bay. Existing
+ * displays therefore never move during the mounted session.
  */
 export function reconcileOutletGardenSlots(
     previousAssignments: OutletGardenSlotAssignments,
     offers: readonly OutletGardenLayoutOffer[],
 ) {
-    const unseenOfferIds = Array.from(
-        new Set(
-            offers
-                .map((offer) => offer.id)
-                .filter((offerId) => !previousAssignments.has(offerId)),
-        ),
-    ).sort((left, right) => left - right);
-    if (unseenOfferIds.length === 0) {
+    const offersById = new Map<number, OutletGardenLayoutOffer>();
+    for (const offer of offers) {
+        if (!offersById.has(offer.id)) {
+            offersById.set(offer.id, offer);
+        }
+    }
+
+    const unseenOffers = Array.from(offersById.values())
+        .filter((offer) => !previousAssignments.has(offer.id))
+        .sort(compareOutletGardenOffers);
+    if (unseenOffers.length === 0) {
         return previousAssignments;
     }
 
     const assignments = new Map(previousAssignments);
-    const nextSlot = Math.max(-1, ...Array.from(assignments.values())) + 1;
+    const usedSlots = new Set(
+        Array.from(assignments.values(), (assignment) => assignment.slotIndex),
+    );
+    const existingPlantBays = new Map<string, Set<number>>();
 
-    unseenOfferIds.forEach((offerId, index) => {
-        assignments.set(offerId, nextSlot + index);
-    });
+    for (const assignment of assignments.values()) {
+        const { plantKey, slotIndex } = assignment;
+        const plantBays = existingPlantBays.get(plantKey) ?? new Set<number>();
+        plantBays.add(outletGardenPlantBay(slotIndex));
+        existingPlantBays.set(plantKey, plantBays);
+    }
+
+    let nextPlantBay =
+        Math.max(
+            -1,
+            ...Array.from(assignments.values(), (assignment) =>
+                outletGardenPlantBay(assignment.slotIndex),
+            ),
+        ) + 1;
+    const unseenOffersByPlant = new Map<string, OutletGardenLayoutOffer[]>();
+    for (const offer of unseenOffers) {
+        const plantKey = outletGardenPlantKey(offer);
+        const plantOffers = unseenOffersByPlant.get(plantKey) ?? [];
+        plantOffers.push(offer);
+        unseenOffersByPlant.set(plantKey, plantOffers);
+    }
+
+    for (const [plantKey, plantOffers] of unseenOffersByPlant) {
+        const availableSlots = Array.from(existingPlantBays.get(plantKey) ?? [])
+            .sort((left, right) => left - right)
+            .flatMap((plantBay) =>
+                Array.from(
+                    { length: outletGardenOffersPerPlantBay },
+                    (_, offset) =>
+                        plantBay * outletGardenOffersPerPlantBay + offset,
+                ),
+            )
+            .filter((slotIndex) => !usedSlots.has(slotIndex));
+
+        for (const offer of plantOffers) {
+            let slotIndex = availableSlots.shift();
+            if (slotIndex === undefined) {
+                slotIndex = nextPlantBay * outletGardenOffersPerPlantBay;
+                nextPlantBay += 1;
+                for (
+                    let offset = 1;
+                    offset < outletGardenOffersPerPlantBay;
+                    offset += 1
+                ) {
+                    availableSlots.push(slotIndex + offset);
+                }
+            }
+
+            assignments.set(offer.id, { plantKey, slotIndex });
+            usedSlots.add(slotIndex);
+        }
+    }
 
     return assignments;
 }
 
-function outletGardenPotName(offerId: number): OutletGardenPotName {
-    const potIndex = Math.abs(offerId) % outletGardenPotNames.length;
+function outletGardenPotName(plantSortId: number): OutletGardenPotName {
+    const potIndex = Math.abs(plantSortId) % outletGardenPotNames.length;
     return outletGardenPotNames[potIndex] ?? outletGardenPotNames[0];
 }
 
-function outletGardenDisplayPosition(slotIndex: number) {
-    const column = slotIndex % outletGardenColumns;
-    const row = Math.floor(slotIndex / outletGardenColumns);
+export function getOutletGardenOfferPlacement(
+    slotIndex: number,
+): OutletGardenOfferPlacement {
+    const plantBay = outletGardenPlantBay(slotIndex);
+    const aisleRow = Math.floor(plantBay / outletGardenPlantBaysPerAisleRow);
+    const side = plantBay % outletGardenPlantBaysPerAisleRow === 0 ? -1 : 1;
+    const slotInPlantBay = slotIndex % outletGardenOffersPerPlantBay;
+    const y =
+        aisleRow * outletGardenAisleRowSpacing + Math.floor(slotInPlantBay / 2);
+    const startsOnTable = side < 0;
+    const surface =
+        (slotInPlantBay % 2 === 0) === startsOnTable ? 'table' : 'floor';
+    const distance =
+        surface === 'table'
+            ? outletGardenTableDistance
+            : outletGardenFloorDistance;
 
     return {
-        x:
-            (column - Math.floor(outletGardenColumns / 2)) *
-            outletGardenDisplaySpacing,
-        y: row * outletGardenDisplaySpacing,
+        aisleRow,
+        plantBay,
+        surface,
+        x: side * distance,
+        y,
     };
 }
 
@@ -131,26 +246,32 @@ function compareStacks(left: PublicGardenStack, right: PublicGardenStack) {
     return left.y - right.y || left.x - right.x;
 }
 
+function outletGardenBounds(assignments: OutletGardenSlotAssignments) {
+    const highestPlantBay = Math.max(
+        -1,
+        ...Array.from(assignments.values(), (assignment) =>
+            outletGardenPlantBay(assignment.slotIndex),
+        ),
+    );
+    const aisleRowCount = Math.max(
+        1,
+        Math.ceil((highestPlantBay + 1) / outletGardenPlantBaysPerAisleRow),
+    );
+    const lastDisplayY = (aisleRowCount - 1) * outletGardenAisleRowSpacing + 1;
+
+    return {
+        maxX: outletGardenFloorDistance + outletGardenSideMargin,
+        maxY: lastDisplayY + outletGardenBackMargin,
+        minX: -outletGardenFloorDistance - outletGardenSideMargin,
+        minY: -outletGardenFrontMargin,
+    };
+}
+
 export function buildOutletGardenStacks(
     offers: readonly OutletGardenLayoutOffer[],
     assignments: OutletGardenSlotAssignments,
 ) {
-    const highestAssignedSlot = Math.max(
-        -1,
-        ...Array.from(assignments.values()),
-    );
-    const rowCount = Math.max(
-        outletGardenMinimumRows,
-        Math.ceil((highestAssignedSlot + 1) / outletGardenColumns),
-    );
-    const displayHalfWidth =
-        Math.floor(outletGardenColumns / 2) * outletGardenDisplaySpacing;
-    const minX = -displayHalfWidth - outletGardenSideMargin;
-    const maxX = displayHalfWidth + outletGardenSideMargin;
-    const minY = -outletGardenFrontMargin;
-    const maxY =
-        (rowCount - 1) * outletGardenDisplaySpacing + outletGardenBackMargin;
-    const shadeY = maxY - 1;
+    const { maxX, maxY, minX, minY } = outletGardenBounds(assignments);
     const stacksByPosition = new Map<string, PublicGardenStack>();
 
     for (let y = minY; y <= maxY; y += 1) {
@@ -161,10 +282,18 @@ export function buildOutletGardenStacks(
                 rotation: 0,
             });
 
+            if (y < maxY && Math.abs(x) <= outletGardenPathHalfWidth) {
+                addBlock(stacksByPosition, x, y, {
+                    id: `outlet-path:${x.toString()}:${y.toString()}`,
+                    name: 'MulchWood',
+                    rotation: 0,
+                });
+            }
+
             const atBoundary =
                 x === minX || x === maxX || y === minY || y === maxY;
             const atFrontOpening =
-                y === minY && Math.abs(x) <= outletGardenDisplaySpacing / 2;
+                y === minY && Math.abs(x) <= outletGardenPathHalfWidth;
             if (atBoundary && !atFrontOpening) {
                 addBlock(stacksByPosition, x, y, {
                     id: `outlet-fence:${x.toString()}:${y.toString()}`,
@@ -175,45 +304,56 @@ export function buildOutletGardenStacks(
         }
     }
 
-    for (let x = -displayHalfWidth; x <= displayHalfWidth; x += 1) {
-        addBlock(stacksByPosition, x, shadeY, {
-            id: `outlet-shade:${x.toString()}:${shadeY.toString()}`,
-            name: 'Shade',
-            rotation: 0,
-        });
+    const assignedPlantBays = Array.from(
+        new Set(
+            Array.from(assignments.values(), (assignment) =>
+                outletGardenPlantBay(assignment.slotIndex),
+            ),
+        ),
+    ).sort((left, right) => left - right);
+    for (const plantBay of assignedPlantBays) {
+        const aisleRow = Math.floor(
+            plantBay / outletGardenPlantBaysPerAisleRow,
+        );
+        const side = plantBay % outletGardenPlantBaysPerAisleRow === 0 ? -1 : 1;
+        const tableX = side * outletGardenTableDistance;
+        const tableStartY = aisleRow * outletGardenAisleRowSpacing;
+
+        for (let offset = 0; offset < 2; offset += 1) {
+            addBlock(stacksByPosition, tableX, tableStartY + offset, {
+                id: `outlet-table:${plantBay.toString()}:${offset.toString()}`,
+                name: 'WoodenBench',
+                rotation: 1,
+            });
+        }
     }
 
     const offersById = new Map(offers.map((offer) => [offer.id, offer]));
     const placedOffers = Array.from(offersById.values())
         .map((offer) => ({
+            assignment: assignments.get(offer.id),
             offer,
-            slotIndex: assignments.get(offer.id),
         }))
         .filter(
             (
                 entry,
             ): entry is {
+                assignment: OutletGardenSlotAssignment;
                 offer: OutletGardenLayoutOffer;
-                slotIndex: number;
-            } => typeof entry.slotIndex === 'number',
+            } => entry.assignment !== undefined,
         )
         .sort(
             (left, right) =>
-                left.slotIndex - right.slotIndex ||
+                left.assignment.slotIndex - right.assignment.slotIndex ||
                 left.offer.id - right.offer.id,
         );
 
-    for (const { offer, slotIndex } of placedOffers) {
-        const position = outletGardenDisplayPosition(slotIndex);
-        addBlock(stacksByPosition, position.x, position.y, {
-            id: `outlet-stool:${offer.id.toString()}`,
-            name: 'Stool',
-            rotation: offer.id % 4,
-        });
+    for (const { assignment, offer } of placedOffers) {
+        const position = getOutletGardenOfferPlacement(assignment.slotIndex);
         addBlock(stacksByPosition, position.x, position.y, {
             id: outletOfferBlockId(offer.id),
-            name: outletGardenPotName(offer.id),
-            rotation: offer.id % 4,
+            name: outletGardenPotName(offer.plantSortId),
+            rotation: offer.plantSortId % 4,
         });
     }
 

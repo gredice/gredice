@@ -3,23 +3,35 @@
 import { useMemo } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { getStackHeight } from '../utils/getStackHeight';
-import { outletOfferIdFromBlockId } from './outletGardenLayout';
+import {
+    type OutletGardenLayoutOffer,
+    outletOfferIdFromBlockId,
+} from './outletGardenLayout';
 import {
     normalizePublicGardenStacks,
     type PublicGardenDetail,
     publicGardenStacksFromResponse,
 } from './PublicGardenViewer';
 
-const seedlingLeafColors = ['#4f8f3a', '#5c9f42', '#3f7f35'] as const;
+const seedlingLeafColors = [
+    '#4f8f3a',
+    '#6f9f3b',
+    '#3f7f35',
+    '#7a9f45',
+    '#3f8d58',
+] as const;
 const ignorePointerRaycast = () => undefined;
 
 export function OutletGardenSeedlingMarkers({
+    offers,
     stacks,
 }: {
+    offers: readonly OutletGardenLayoutOffer[];
     stacks: PublicGardenDetail['stacks'];
 }) {
     const { data: blockData } = useBlockData();
     const markers = useMemo(() => {
+        const offersById = new Map(offers.map((offer) => [offer.id, offer]));
         const normalizedStacks = normalizePublicGardenStacks(
             publicGardenStacksFromResponse(stacks),
         );
@@ -30,23 +42,30 @@ export function OutletGardenSeedlingMarkers({
                 if (offerId === null) {
                     return [];
                 }
+                const offer = offersById.get(offerId);
+                if (!offer) {
+                    return [];
+                }
+                const plantVisualId = offer.plantId ?? offer.plantSortId;
 
                 return [
                     {
                         color:
                             seedlingLeafColors[
-                                offerId % seedlingLeafColors.length
+                                Math.abs(plantVisualId) %
+                                    seedlingLeafColors.length
                             ] ?? seedlingLeafColors[0],
                         id: offerId,
                         position: stack.position
                             .clone()
                             .setY(getStackHeight(blockData, stack)),
-                        rotation: ((offerId % 8) * Math.PI) / 4,
+                        rotation: ((offer.plantSortId % 8) * Math.PI) / 4,
+                        scale: 0.92 + (Math.abs(offer.plantSortId) % 3) * 0.08,
                     },
                 ];
             }),
         );
-    }, [blockData, stacks]);
+    }, [blockData, offers, stacks]);
 
     return (
         <group name="OutletGardenSeedlingMarkers">
@@ -55,6 +74,7 @@ export function OutletGardenSeedlingMarkers({
                     key={marker.id}
                     position={marker.position}
                     rotation={[0, marker.rotation, 0]}
+                    scale={marker.scale}
                 >
                     <mesh
                         castShadow

@@ -12,12 +12,21 @@ import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
     buildOutletGardenDetail,
+    type OutletGardenLayoutOffer,
     type OutletGardenSlotAssignments,
     outletOfferBlockId,
     outletOfferIdFromBlockId,
     reconcileOutletGardenSlots,
 } from './outletGardenLayout';
-import { PublicGardenViewer } from './PublicGardenViewer';
+import {
+    getPublicGardenCaptureInitialView,
+    normalizePublicGardenStacks,
+    type PublicGardenInitialView,
+    PublicGardenViewer,
+    publicGardenStacksFromResponse,
+} from './PublicGardenViewer';
+
+const outletGardenPreviewTime = new Date('2026-06-21T10:00:00.000Z');
 
 function OutletGardenScenePlaceholder({ label }: { label: string }) {
     return (
@@ -51,24 +60,67 @@ export function OutletGardenViewer() {
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneReadyTrackedRef = useRef(false);
+    const sceneContainerRef = useRef<HTMLElement>(null);
+    const [initialSceneViewport, setInitialSceneViewport] = useState<{
+        height: number;
+        width: number;
+    } | null>(null);
+    const [sceneInitialView, setSceneInitialView] =
+        useState<PublicGardenInitialView | null>(null);
     const [exitTarget, setExitTarget] = useState<{
         destination: 'existing_outlet' | 'garden';
         href: Route;
     } | null>(null);
-    const offerIdsKey = useMemo(
+    const layoutOffersKey = useMemo(
         () =>
-            Array.from(new Set(offers.map((offer) => offer.id)))
-                .sort((left, right) => left - right)
+            Array.from(
+                new Map(
+                    offers.map((offer) => [
+                        offer.id,
+                        {
+                            id: offer.id,
+                            plantId: offer.plantSort.plant?.id ?? null,
+                            plantSortId: offer.plantSort.id,
+                        },
+                    ]),
+                ).values(),
+            )
+                .sort((left, right) => left.id - right.id)
+                .map((offer) =>
+                    [offer.id, offer.plantId ?? 0, offer.plantSortId].join(':'),
+                )
                 .join(','),
         [offers],
     );
-    const layoutOffers = useMemo(
-        () =>
-            offerIdsKey.length > 0
-                ? offerIdsKey.split(',').map((id) => ({ id: Number(id) }))
-                : [],
-        [offerIdsKey],
-    );
+    const layoutOffers = useMemo(() => {
+        if (layoutOffersKey.length === 0) {
+            return [];
+        }
+
+        return layoutOffersKey.split(',').flatMap((encodedOffer) => {
+            const [offerIdValue, plantIdValue, plantSortIdValue] = encodedOffer
+                .split(':')
+                .map(Number);
+            if (
+                !Number.isSafeInteger(offerIdValue) ||
+                !Number.isSafeInteger(plantIdValue) ||
+                !Number.isSafeInteger(plantSortIdValue) ||
+                offerIdValue <= 0 ||
+                plantIdValue < 0 ||
+                plantSortIdValue <= 0
+            ) {
+                return [];
+            }
+
+            return [
+                {
+                    id: offerIdValue,
+                    plantId: plantIdValue === 0 ? null : plantIdValue,
+                    plantSortId: plantSortIdValue,
+                } satisfies OutletGardenLayoutOffer,
+            ];
+        });
+    }, [layoutOffersKey]);
     const [slotAssignments, setSlotAssignments] =
         useState<OutletGardenSlotAssignments>(() => new Map());
     const reconciledSlotAssignments = useMemo(
@@ -99,6 +151,61 @@ export function OutletGardenViewer() {
     const selectedBlockId = selectedOffer
         ? outletOfferBlockId(selectedOffer.id)
         : null;
+
+    useEffect(() => {
+        const element = sceneContainerRef.current;
+        if (!element || initialSceneViewport) {
+            return;
+        }
+
+        const measure = () => {
+            const bounds = element.getBoundingClientRect();
+            if (bounds.width < 1 || bounds.height < 1) {
+                return;
+            }
+
+            setInitialSceneViewport(
+                (current) =>
+                    current ?? { height: bounds.height, width: bounds.width },
+            );
+        };
+
+        measure();
+        if (typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [initialSceneViewport]);
+
+    useEffect(() => {
+        if (
+            sceneInitialView ||
+            !initialSceneViewport ||
+            !layoutReady ||
+            offers.length === 0
+        ) {
+            return;
+        }
+
+        setSceneInitialView(
+            getPublicGardenCaptureInitialView({
+                minimumZoom: 18,
+                stacks: normalizePublicGardenStacks(
+                    publicGardenStacksFromResponse(outletGarden.stacks),
+                ),
+                viewport: initialSceneViewport,
+            }),
+        );
+    }, [
+        initialSceneViewport,
+        layoutReady,
+        offers.length,
+        outletGarden.stacks,
+        sceneInitialView,
+    ]);
 
     useEffect(() => {
         if (openedTrackedRef.current || isLoading) {
@@ -186,12 +293,18 @@ export function OutletGardenViewer() {
             data-outlet-garden
             data-outlet-garden-exiting={exitTarget ? true : undefined}
         >
-            <main className="relative min-h-0 overflow-hidden">
-                {layoutReady && offers.length > 0 ? (
+            <main
+                className="relative min-h-0 overflow-hidden"
+                ref={sceneContainerRef}
+            >
+                {layoutReady && offers.length > 0 && sceneInitialView ? (
                     <PublicGardenViewer
                         appBaseUrl=""
+                        cameraMinZoom={18}
                         className="size-full"
+                        fixedTime={outletGardenPreviewTime}
                         garden={outletGarden}
+                        initialView={sceneInitialView}
                         interactiveBlockIds={interactiveBlockIds}
                         noWeather
                         onSelectBlock={selectBlock}
@@ -199,6 +312,7 @@ export function OutletGardenViewer() {
                         renderDetails={false}
                         sceneChildren={
                             <OutletGardenSeedlingMarkers
+                                offers={layoutOffers}
                                 stacks={outletGarden.stacks}
                             />
                         }
