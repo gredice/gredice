@@ -56,6 +56,37 @@ describe('SmallWoodenBridge asset', () => {
         );
     });
 
+    it('starts at the placement surface instead of floating above it', () => {
+        const document: unknown = readGlbDocument(readFileSync(modelPath));
+        assert.ok(isRecord(document));
+        assert.ok(Array.isArray(document.accessors));
+
+        const verticalBounds = document.accessors.flatMap((accessor) => {
+            if (
+                !isRecord(accessor) ||
+                accessor.type !== 'VEC3' ||
+                !Array.isArray(accessor.min) ||
+                !Array.isArray(accessor.max)
+            ) {
+                return [];
+            }
+
+            const minimum = accessor.min[1];
+            const maximum = accessor.max[1];
+            return typeof minimum === 'number' && typeof maximum === 'number'
+                ? [{ minimum, maximum }]
+                : [];
+        });
+
+        assert.ok(verticalBounds.length > 0);
+        assert.ok(
+            Math.abs(
+                Math.min(...verticalBounds.map(({ minimum }) => minimum)),
+            ) < 0.000_01,
+        );
+        assert.ok(verticalBounds.every(({ maximum }) => maximum <= 0.38));
+    });
+
     it('uses a cache version matching the exported model', () => {
         const model = readFileSync(modelPath);
         const expectedVersion = createHash('sha256')

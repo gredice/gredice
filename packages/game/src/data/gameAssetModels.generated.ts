@@ -90,7 +90,7 @@ export const gameAssetModels = {
     CatPillow: { url: '/assets/models/CatPillow.glb' },
     DogHouse: { url: '/assets/models/DogHouse.glb' },
     SmallWoodenBridge: {
-        url: '/assets/models/SmallWoodenBridge.glb?v=b0ddbffcda8b',
+        url: '/assets/models/SmallWoodenBridge.glb?v=3f5e5e39b5e4',
     },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
