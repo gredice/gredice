@@ -1,3 +1,5 @@
+export const actorSpeechDurationMs = 5_000;
+
 export const catSpeechMessages = ['Mijau!', 'Prrr...', 'Mjau-mjau!'] as const;
 
 export const dogSpeechMessages = ['Vau!', 'Av-av!', 'Hov-hov!'] as const;

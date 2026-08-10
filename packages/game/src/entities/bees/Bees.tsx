@@ -152,7 +152,7 @@ const clearBeeWeather = {
 } satisfies BeeWeather;
 
 const beeScale = 0.095;
-const beeSpeechBubblePosition: [number, number, number] = [0, 2.6, 0];
+const beeSpeechBubbleOffsetY = 0.25;
 const beeFlightSpeedBlocksPerSecond = 1.1;
 const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
@@ -1164,11 +1164,8 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
-    const {
-        hideMessage: hideSpeechMessage,
-        message: speechMessage,
-        showMessage: showSpeechMessage,
-    } = useActorHoverSpeech(beeSpeechMessages);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(beeSpeechMessages);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
@@ -1247,11 +1244,6 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     function handlePointerOver(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
         showSpeechMessage();
-    }
-
-    function handlePointerOut(event: ThreeEvent<PointerEvent>) {
-        event.stopPropagation();
-        hideSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1481,16 +1473,16 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
                 onPointerOver={handlePointerOver}
-                onPointerOut={handlePointerOut}
             >
                 <primitive object={beeModel.scene} />
-                {speechMessage ? (
-                    <ActorSpeechBubble
-                        message={speechMessage}
-                        position={beeSpeechBubblePosition}
-                    />
-                ) : null}
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={beeSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#facc15" />
         </>
     );

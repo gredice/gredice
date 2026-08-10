@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    actorSpeechDurationMs,
     beeSpeechMessages,
     birdSpeechMessages,
     catSpeechMessages,
@@ -8,6 +9,10 @@ import {
     pickActorSpeechMessage,
     playerSpeechMessages,
 } from './actorSpeechMessages';
+
+test('keeps actor speech visible for five seconds by default', () => {
+    assert.equal(actorSpeechDurationMs, 5_000);
+});
 
 test('provides speech for every interactive animal and the player', () => {
     assert.ok(catSpeechMessages.length > 1);

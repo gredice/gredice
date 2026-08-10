@@ -151,7 +151,7 @@ const clearDogWeather = {
 } satisfies DogWeather;
 
 const dogScale = 0.46;
-const dogSpeechBubblePosition: [number, number, number] = [0, 2.45, 0];
+const dogSpeechBubbleOffsetY = 1.13;
 const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
 const dogHouseNightRestInset = 0.42;
@@ -1451,11 +1451,8 @@ function Dog({
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
-    const {
-        hideMessage: hideSpeechMessage,
-        message: speechMessage,
-        showMessage: showSpeechMessage,
-    } = useActorHoverSpeech(dogSpeechMessages);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(dogSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalPathfindingDebugVisible = useGameState(
         (state) => state.animalPathfindingDebugVisible,
@@ -1581,11 +1578,6 @@ function Dog({
     function handlePointerOver(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
         showSpeechMessage();
-    }
-
-    function handlePointerOut(event: ThreeEvent<PointerEvent>) {
-        event.stopPropagation();
-        hideSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1922,18 +1914,18 @@ function Dog({
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
                 onPointerOver={handlePointerOver}
-                onPointerOut={handlePointerOut}
             >
                 <group rotation={[0, dogVisualYawOffset, 0]}>
                     <primitive object={dogModel.scene} />
                 </group>
-                {speechMessage ? (
-                    <ActorSpeechBubble
-                        message={speechMessage}
-                        position={dogSpeechBubblePosition}
-                    />
-                ) : null}
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={dogSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
                 color="#f59e0b"

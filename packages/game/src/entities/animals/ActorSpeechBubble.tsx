@@ -1,36 +1,108 @@
 import { Html } from '@react-three/drei';
-import { useCallback, useRef, useState } from 'react';
-import { pickActorSpeechMessage } from './actorSpeechMessages';
+import {
+    type RefObject,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
+import { type Camera, type Group, type Object3D, Vector3 } from 'three';
+import {
+    actorSpeechDurationMs,
+    pickActorSpeechMessage,
+} from './actorSpeechMessages';
 
-export function useActorHoverSpeech(messages: readonly string[]) {
+export type ActorSpeechAnchor = Group;
+
+export function useActorHoverSpeech(
+    messages: readonly string[],
+    durationMs = actorSpeechDurationMs,
+) {
     const [message, setMessage] = useState<string | null>(null);
+    const messageRef = useRef<string | null>(null);
     const previousMessageRef = useRef<string | null>(null);
+    const dismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
+
+    const clearDismissTimeout = useCallback(() => {
+        if (dismissTimeoutRef.current === null) {
+            return;
+        }
+
+        clearTimeout(dismissTimeoutRef.current);
+        dismissTimeoutRef.current = null;
+    }, []);
+
+    const dismissMessage = useCallback(() => {
+        clearDismissTimeout();
+        messageRef.current = null;
+        setMessage(null);
+    }, [clearDismissTimeout]);
 
     const showMessage = useCallback(() => {
-        const nextMessage = pickActorSpeechMessage({
-            messages,
-            previousMessage: previousMessageRef.current,
-        });
-        previousMessageRef.current = nextMessage;
-        setMessage(nextMessage);
-    }, [messages]);
+        if (messageRef.current === null) {
+            const nextMessage = pickActorSpeechMessage({
+                messages,
+                previousMessage: previousMessageRef.current,
+            });
+            previousMessageRef.current = nextMessage;
+            messageRef.current = nextMessage;
+            setMessage(nextMessage);
+        }
 
-    const hideMessage = useCallback(() => setMessage(null), []);
+        clearDismissTimeout();
+        dismissTimeoutRef.current = setTimeout(() => {
+            dismissTimeoutRef.current = null;
+            messageRef.current = null;
+            setMessage(null);
+        }, durationMs);
+    }, [clearDismissTimeout, durationMs, messages]);
 
-    return { hideMessage, message, showMessage };
+    useEffect(() => clearDismissTimeout, [clearDismissTimeout]);
+
+    return { dismissMessage, message, showMessage };
 }
 
 export function ActorSpeechBubble({
+    actorRef,
     message,
-    position,
+    offsetY,
 }: {
+    actorRef: RefObject<Object3D | null>;
     message: string;
-    position: [number, number, number];
+    offsetY: number;
 }) {
+    const actorWorldPositionRef = useRef(new Vector3());
+    const calculateActorPosition = useCallback(
+        (
+            _element: Object3D,
+            camera: Camera,
+            size: { width: number; height: number },
+        ) => {
+            const actor = actorRef.current;
+            if (!actor) {
+                return [size.width / 2, size.height / 2];
+            }
+
+            actor.getWorldPosition(actorWorldPositionRef.current);
+            actorWorldPositionRef.current.y += offsetY;
+            actorWorldPositionRef.current.project(camera);
+            const screenPosition = [
+                actorWorldPositionRef.current.x * (size.width / 2) +
+                    size.width / 2,
+                -actorWorldPositionRef.current.y * (size.height / 2) +
+                    size.height / 2,
+            ];
+            return screenPosition;
+        },
+        [actorRef, offsetY],
+    );
+
     return (
         <Html
+            calculatePosition={calculateActorPosition}
             center
-            position={position}
             style={{ pointerEvents: 'none' }}
             zIndexRange={[50, 31]}
         >

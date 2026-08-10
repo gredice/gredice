@@ -157,7 +157,7 @@ const birdDebugBehaviors = [
 ] satisfies BirdBehavior[];
 
 const birdScale = 0.28;
-const birdSpeechBubblePosition: [number, number, number] = [0, 2, 0];
+const birdSpeechBubbleOffsetY = 0.56;
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
 const birdHouseEntranceYawOffset = Math.PI;
@@ -1541,11 +1541,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
-    const {
-        hideMessage: hideSpeechMessage,
-        message: speechMessage,
-        showMessage: showSpeechMessage,
-    } = useActorHoverSpeech(birdSpeechMessages);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(birdSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
@@ -1651,11 +1648,6 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     function handlePointerOver(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
         showSpeechMessage();
-    }
-
-    function handlePointerOut(event: ThreeEvent<PointerEvent>) {
-        event.stopPropagation();
-        hideSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -2091,16 +2083,16 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
                 onPointerOver={handlePointerOver}
-                onPointerOut={handlePointerOut}
             >
                 <primitive object={birdModel.scene} />
-                {speechMessage ? (
-                    <ActorSpeechBubble
-                        message={speechMessage}
-                        position={birdSpeechBubblePosition}
-                    />
-                ) : null}
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={birdSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#fb7185" />
         </>
     );

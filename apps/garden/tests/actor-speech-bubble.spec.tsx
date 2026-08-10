@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { ActorSpeechBubbleFixture } from './ActorSpeechBubbleFixture';
 
-test('shows a fresh speech bubble above a hovered actor without stealing pointer events', async ({
+test('keeps one speech bubble attached to the actor and refreshes its lifetime', async ({
     mount,
+    page,
 }) => {
     const fixture = await mount(<ActorSpeechBubbleFixture />);
     const canvas = fixture.locator('canvas');
@@ -23,11 +24,29 @@ test('shows a fresh speech bubble above a hovered actor without stealing pointer
     await expect(fixture).not.toHaveAttribute('data-message', '');
     await expect(bubble).toBeVisible();
     const firstMessage = await bubble.textContent();
+    const firstBubbleBox = await bubble.boundingBox();
+    expect(firstBubbleBox).not.toBeNull();
 
     await canvas.hover({ position: { x: 10, y: 10 } });
-    await expect(bubble).toHaveCount(0);
+    await expect(bubble).toBeVisible();
+    await expect(bubble).toHaveText(firstMessage ?? '');
 
+    await fixture.getByTestId('move-actor').click();
+    await expect(fixture).toHaveAttribute('data-actor-x', '0.75');
+    if (firstBubbleBox) {
+        await expect
+            .poll(async () => (await bubble.boundingBox())?.x)
+            .toBeGreaterThan(firstBubbleBox.x + 40);
+    }
+    await fixture.getByTestId('move-actor').click();
+    await expect(fixture).toHaveAttribute('data-actor-x', '0');
+
+    await page.waitForTimeout(1_800);
     await canvas.hover({ position: actorPosition });
     await expect(bubble).toBeVisible();
-    await expect(bubble).not.toHaveText(firstMessage ?? '');
+    await expect(bubble).toHaveText(firstMessage ?? '');
+
+    await page.waitForTimeout(1_800);
+    await expect(bubble).toBeVisible();
+    await expect(bubble).toHaveCount(0, { timeout: 2_000 });
 });

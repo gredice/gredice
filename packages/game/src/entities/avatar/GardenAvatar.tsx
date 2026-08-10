@@ -59,7 +59,7 @@ import type { GardenAvatarPresenceState } from './gardenVisitorPresence';
 
 export const avatarModelScale = 0.697;
 const avatarEyeHeight = 1.2;
-const avatarSpeechBubblePosition: [number, number, number] = [0, 1.85, 0];
+const avatarSpeechBubbleOffsetY = 1.85;
 const avatarCrouchEyeHeight = 0.9;
 const avatarWalkSpeed = 2.15;
 const avatarRunSpeed = 4.68;
@@ -628,7 +628,7 @@ export function GardenAvatar({
     });
     const initializedRef = useRef(false);
     const {
-        hideMessage: hideSpeechMessage,
+        dismissMessage: dismissSpeechMessage,
         message: speechMessage,
         showMessage: showSpeechMessage,
     } = useActorHoverSpeech(playerSpeechMessages);
@@ -942,7 +942,7 @@ export function GardenAvatar({
         yawRef.current = actor.rotation.y;
         pitchRef.current = -0.08;
         roamRef.current.route = [];
-        hideSpeechMessage();
+        dismissSpeechMessage();
         setView('third-person');
     }
 
@@ -965,7 +965,6 @@ export function GardenAvatar({
 
     function hideAvatarPointer() {
         gl.domElement.style.cursor = 'auto';
-        hideSpeechMessage();
     }
 
     useFrame(({ clock }, frameDelta) => {
@@ -1314,12 +1313,6 @@ export function GardenAvatar({
                 <group scale={avatarModelScale}>
                     <primitive object={model.scene} />
                 </group>
-                {view === 'overview' && speechMessage ? (
-                    <ActorSpeechBubble
-                        message={speechMessage}
-                        position={avatarSpeechBubblePosition}
-                    />
-                ) : null}
                 {view === 'overview' ? (
                     <Html center position={[0, 1.43, 0]} zIndexRange={[30, 20]}>
                         <button
@@ -1335,6 +1328,13 @@ export function GardenAvatar({
                     </Html>
                 ) : null}
             </group>
+            {view === 'overview' && speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={actorRef}
+                    message={speechMessage}
+                    offsetY={avatarSpeechBubbleOffsetY}
+                />
+            ) : null}
             {collisionDebugVisible ? (
                 <GardenAvatarCollisionDebug
                     actorRef={actorRef}
