@@ -138,6 +138,12 @@ const blockData = [
         name: 'Block_Water',
         placeableOnWater: true,
     }),
+    createBlockData({
+        id: 9,
+        name: 'SmallWoodenBridge',
+        placeableOnWater: true,
+        stackable: false,
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -419,6 +425,27 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         });
 
         assert.equal(preview?.nextIsBlocked, false);
+    });
+
+    it('allows the small wooden bridge to be dropped onto water', () => {
+        const bridge = createBlock('SmallWoodenBridge', 'bridge');
+        const water = createBlock('Block_Water', 'water');
+        const sourceStack = createStack(0, 0, [bridge]);
+        const waterStack = createStack(1, 0, [water]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: bridge, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.targetOffsets[0]?.hoverHeight, 1);
     });
 
     it('matches the single-resolution path when reusing prepared placement state', () => {

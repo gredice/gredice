@@ -24,6 +24,7 @@ const smallWoodenBridgeAttributes = {
     'attributes.hitboxDepth': '1',
     'attributes.hitboxHeight': '0.38',
     'attributes.hitboxWidth': '0.84',
+    'attributes.placeableOnWater': 'true',
     'attributes.spanDepth': '1',
     'attributes.spanWidth': '1',
     'attributes.stackable': 'false',

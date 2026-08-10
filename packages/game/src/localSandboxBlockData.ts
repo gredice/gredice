@@ -206,6 +206,7 @@ function createLocalSandboxBlockData(
         },
         attributes: {
             height: getLocalSandboxStackHeight(name),
+            ...(name === 'SmallWoodenBridge' ? { placeableOnWater: true } : {}),
             stackable: isGroundBlock,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,
