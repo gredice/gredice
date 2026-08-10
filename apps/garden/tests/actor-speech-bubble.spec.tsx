@@ -50,3 +50,25 @@ test('keeps one speech bubble attached to the actor and refreshes its lifetime',
     await expect(bubble).toBeVisible();
     await expect(bubble).toHaveCount(0, { timeout: 2_000 });
 });
+
+test('allows an actor speech bubble to open its action', async ({ mount }) => {
+    const fixture = await mount(<ActorSpeechBubbleFixture interactive />);
+    const canvas = fixture.locator('canvas');
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    if (!canvasBox) {
+        return;
+    }
+
+    await canvas.hover({
+        position: {
+            x: canvasBox.width / 2,
+            y: canvasBox.height / 2,
+        },
+    });
+    const bubble = fixture.getByRole('button', { name: 'Otvori poruku' });
+    await bubble.click();
+    await expect(fixture).toHaveAttribute('data-bubble-clicks', '1');
+});

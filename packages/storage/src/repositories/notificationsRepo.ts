@@ -4232,6 +4232,43 @@ export async function getNotificationsForCenter({
     });
 }
 
+export async function getUnreadNotificationsByType({
+    accountId,
+    gardenId,
+    limit = maxNotificationReadBatchSize,
+    type,
+    userId,
+}: {
+    accountId: string;
+    gardenId?: number;
+    limit?: number;
+    type: string;
+    userId: string;
+}) {
+    const boundedLimit = Math.min(
+        Math.max(Number.isSafeInteger(limit) ? limit : 1, 1),
+        maxNotificationReadBatchSize,
+    );
+
+    return await storage().query.notifications.findMany({
+        where: and(
+            eq(notifications.accountId, accountId),
+            or(eq(notifications.userId, userId), isNull(notifications.userId)),
+            gardenId === undefined
+                ? undefined
+                : eq(notifications.gardenId, gardenId),
+            eq(notifications.type, type),
+            isNull(notifications.readAt),
+        ),
+        orderBy: [
+            desc(notifications.timestamp),
+            desc(notifications.createdAt),
+            desc(notifications.id),
+        ],
+        limit: boundedLimit,
+    });
+}
+
 export function getNotifications(page: number, limit: number) {
     return storage().query.notifications.findMany({
         orderBy: desc(notifications.timestamp),

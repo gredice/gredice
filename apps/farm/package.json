@@ -41,6 +41,7 @@
         "@gredice/client": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/label-printer": "workspace:*",
+        "@gredice/notifications": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "4.0.4",

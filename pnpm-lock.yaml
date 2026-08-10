@@ -576,6 +576,9 @@ importers:
       '@gredice/label-printer':
         specifier: workspace:*
         version: link:../../packages/label-printer
+      '@gredice/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -1425,6 +1428,9 @@ importers:
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
       '@gredice/slack':
         specifier: workspace:*
         version: link:../slack

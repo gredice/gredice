@@ -8,9 +8,14 @@ import {
 
 const fixtureMessages = ['Lijep dan u vrtu!', 'Vrt izgleda prekrasno!'];
 
-export function ActorSpeechBubbleFixture() {
+export function ActorSpeechBubbleFixture({
+    interactive = false,
+}: {
+    interactive?: boolean;
+}) {
     const [ready, setReady] = useState(false);
     const [actorX, setActorX] = useState(0);
+    const [bubbleClicks, setBubbleClicks] = useState(0);
     const actorRef = useRef<ActorSpeechAnchor>(null);
     const { message, showMessage } = useActorHoverSpeech(
         fixtureMessages,
@@ -30,6 +35,7 @@ export function ActorSpeechBubbleFixture() {
     return (
         <div
             data-actor-x={actorX}
+            data-bubble-clicks={bubbleClicks}
             data-message={message ?? ''}
             data-render-ready={ready ? 'true' : 'false'}
             data-testid="actor-speech-bubble-fixture"
@@ -63,9 +69,15 @@ export function ActorSpeechBubbleFixture() {
                 </group>
                 {message ? (
                     <ActorSpeechBubble
+                        actionLabel={interactive ? 'Otvori poruku' : undefined}
                         actorRef={actorRef}
                         message={message}
                         offsetY={1.2}
+                        onClick={
+                            interactive
+                                ? () => setBubbleClicks((count) => count + 1)
+                                : undefined
+                        }
                     />
                 ) : null}
             </Canvas>

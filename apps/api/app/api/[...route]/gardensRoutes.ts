@@ -8,6 +8,7 @@ import {
     gardenPreviewSourceRevisionHeader,
     gardenPreviewWidth,
 } from '@gredice/js/gardenPreviews';
+import { detailedRaisedBedInspectionNotificationType } from '@gredice/js/notifications';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
@@ -54,6 +55,7 @@ import {
     getGardenStack,
     getGardenStackForUpdate,
     getGardenVisitState,
+    getOperationsByIds,
     getOperationsPage,
     getPreviousPlantStatusChangedAtForUpdate,
     getPublicGarden,
@@ -67,11 +69,13 @@ import {
     getRaisedBedSensors,
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
+    getUnreadNotificationsByType,
     getUserLikedGardenIds,
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
     markGardenVisitSummarySeen,
+    maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
     recordGardenPreviewBlobDeletionFailures,
@@ -79,6 +83,7 @@ import {
     replaceGardenPreview,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    setAllNotificationsRead,
     setGardenLike,
     sowSandboxField,
     spendSunflowers,
@@ -104,6 +109,10 @@ import {
     serializeAppliedRaisedBedOperation,
 } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
+import {
+    buildDetailedRaisedBedInspectionReports,
+    detailedInspectionOperationId,
+} from '../../../lib/garden/detailedRaisedBedInspectionReports';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import {
@@ -164,6 +173,15 @@ const DEFAULT_TIMEZONE = 'Europe/Paris';
 const gardenLikeBodySchema = z
     .object({
         liked: z.boolean(),
+    })
+    .strict();
+
+const detailedInspectionReportsSeenBodySchema = z
+    .object({
+        notificationIds: z
+            .array(z.string().min(1))
+            .min(1)
+            .max(maxNotificationReadBatchSize),
     })
     .strict();
 
@@ -519,6 +537,38 @@ function serializeGardenOperation(
             'Vrt',
         statusHistory,
     };
+}
+
+async function loadDetailedRaisedBedInspectionReports({
+    accountId,
+    garden,
+    userId,
+}: {
+    accountId: string;
+    garden: NonNullable<Awaited<ReturnType<typeof getGarden>>>;
+    userId: string;
+}) {
+    const notifications = await getUnreadNotificationsByType({
+        accountId,
+        gardenId: garden.id,
+        type: detailedRaisedBedInspectionNotificationType,
+        userId,
+    });
+    const operationIds = notifications.flatMap((notification) => {
+        const operationId = detailedInspectionOperationId(
+            notification.metadata,
+        );
+        return operationId === null ? [] : [operationId];
+    });
+    const operations = await getOperationsByIds(operationIds);
+
+    return buildDetailedRaisedBedInspectionReports({
+        accountId,
+        gardenId: garden.id,
+        notifications,
+        operations,
+        raisedBeds: garden.raisedBeds,
+    });
 }
 
 function serializeGardenVisitState(
@@ -1166,6 +1216,95 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 nextCursor: operationsPage.nextCursor,
                 total: operationsPage.total,
             });
+        },
+    )
+    .get(
+        '/:gardenId/detailed-inspection-reports',
+        describeRoute({
+            description:
+                'Get unread detailed raised bed inspection reports for the current account and garden.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const reports = await loadDetailedRaisedBedInspectionReports({
+                accountId,
+                garden,
+                userId,
+            });
+            return context.json({ reports }, 200);
+        },
+    )
+    .post(
+        '/:gardenId/detailed-inspection-reports/seen',
+        describeRoute({
+            description:
+                'Dismiss detailed raised bed inspection reports after the current user views the farmer notes.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', detailedInspectionReportsSeenBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const { notificationIds } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const reports = await loadDetailedRaisedBedInspectionReports({
+                accountId,
+                garden,
+                userId,
+            });
+            const unreadReportIds = new Set(
+                reports.map((report) => report.notificationId),
+            );
+            const dismissedNotificationIds = [
+                ...new Set(notificationIds),
+            ].filter((notificationId) => unreadReportIds.has(notificationId));
+
+            if (dismissedNotificationIds.length > 0) {
+                await setAllNotificationsRead(
+                    accountId,
+                    userId,
+                    dismissedNotificationIds,
+                    true,
+                    'game_detailed_inspection_farmer',
+                );
+            }
+
+            return context.json({ dismissedNotificationIds }, 200);
         },
     )
     .post(
