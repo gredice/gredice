@@ -74,6 +74,7 @@ jobs:
               - packages/client/**
               - packages/js/**
               - packages/label-printer/**
+              - packages/notifications/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
