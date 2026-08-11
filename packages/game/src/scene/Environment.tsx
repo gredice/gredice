@@ -48,6 +48,11 @@ import {
     resolveSkyGradientColors,
     resolveThemedSkyBackgroundColors,
 } from './skyGradient';
+import {
+    getSolarEclipseState,
+    getSolarEclipseVisualScales,
+    type SolarEclipseState,
+} from './solarEclipse';
 import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
 import {
     getVisualDaylightAmount,
@@ -297,12 +302,14 @@ function useEnvironmentElements({
     backgroundPaletteIndex,
     location,
     currentTime,
+    solarEclipse,
     timeOfDay,
     weather,
 }: {
     backgroundPaletteIndex: number;
     location: { lat: number; lon: number };
     currentTime: Date;
+    solarEclipse: SolarEclipseState | null;
     timeOfDay: number;
     weather: EnvironmentWeather | null | undefined;
 }) {
@@ -311,6 +318,9 @@ function useEnvironmentElements({
         colors: { sunTemperature },
         intensities: { sun: sunIntensity },
     } = environmentState(location, currentTime, timeOfDay);
+    const solarEclipseScales = getSolarEclipseVisualScales(
+        solarEclipse?.obscuration ?? 0,
+    );
     const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
     const moonlitNightScales = getMoonlitNightScales({
         date: sceneDate,
@@ -343,12 +353,13 @@ function useEnvironmentElements({
             ),
         [sunTemperatureBlue, sunTemperatureGreen, sunTemperatureRed],
     );
-    const directionalLightIntensity = Math.max(
-        0,
-        sunIntensity * 5 -
-            (weather?.cloudy ?? 0) * 4 -
-            (weather?.foggy ?? 0) * 4,
-    );
+    const directionalLightIntensity =
+        Math.max(
+            0,
+            sunIntensity * 5 -
+                (weather?.cloudy ?? 0) * 4 -
+                (weather?.foggy ?? 0) * 4,
+        ) * solarEclipseScales.direct;
     const directionalLightPosition = sunPosition;
 
     // Ambient light
@@ -357,28 +368,29 @@ function useEnvironmentElements({
         (sunIntensity *
             (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) +
             ambientIntensityOffset) *
-        moonlitNightScales.lightScale;
+        moonlitNightScales.lightScale *
+        solarEclipseScales.ambient;
 
     // Background color
     const effectiveBackground = skyBackgroundColors.background;
     const backgroundRed = effectiveBackground[0];
     const backgroundGreen = effectiveBackground[1];
     const backgroundBlue = effectiveBackground[2];
-    const backgroundColor = useMemo(
-        () =>
-            resolveSkyBackgroundColor({
-                background: [backgroundRed, backgroundGreen, backgroundBlue],
-                moonlitSkyScale: moonlitNightScales.skyScale,
-                weather,
-            }),
-        [
-            backgroundBlue,
-            backgroundGreen,
-            backgroundRed,
-            moonlitNightScales.skyScale,
+    const backgroundColor = useMemo(() => {
+        const color = resolveSkyBackgroundColor({
+            background: [backgroundRed, backgroundGreen, backgroundBlue],
+            moonlitSkyScale: moonlitNightScales.skyScale,
             weather,
-        ],
-    );
+        });
+        return color.multiplyScalar(solarEclipseScales.sky);
+    }, [
+        backgroundBlue,
+        backgroundGreen,
+        backgroundRed,
+        moonlitNightScales.skyScale,
+        solarEclipseScales.sky,
+        weather,
+    ]);
     const moonlight = moonlitNightScales.visibleMoonlight;
     const skyLowerColor = useMemo(
         () =>
@@ -386,6 +398,7 @@ function useEnvironmentElements({
                 backgroundColor,
                 backgroundPaletteIndex,
                 moonlight,
+                solarEclipseObscuration: solarEclipse?.obscuration,
                 timeOfDay,
                 weather,
             }).lower,
@@ -393,6 +406,7 @@ function useEnvironmentElements({
             backgroundColor,
             backgroundPaletteIndex,
             moonlight,
+            solarEclipse?.obscuration,
             timeOfDay,
             weather,
         ],
@@ -441,7 +455,9 @@ function useEnvironmentElements({
         return color;
     }, [backgroundColor, hasThemedBackground]);
     const hemisphereIntensity =
-        (sunIntensity * 2 + 3) * moonlitNightScales.lightScale;
+        (sunIntensity * 2 + 3) *
+        moonlitNightScales.lightScale *
+        solarEclipseScales.ambient;
 
     return {
         background: backgroundColor,
@@ -492,6 +508,7 @@ export function StaticEnvironment({
         backgroundPaletteIndex,
         location: defaultLocation,
         currentTime,
+        solarEclipse: null,
         timeOfDay,
         weather: undefined,
     });
@@ -584,6 +601,9 @@ export function Environment({
     const directionalLightRef = useRef<DirectionalLight | null>(null);
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const dayNightCycleDisabled = useGameState(
+        (state) => state.dayNightCycleDisabled,
+    );
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
@@ -621,6 +641,13 @@ export function Environment({
         [garden?.location.lat, garden?.location.lon],
     );
     const currentTime = useSyncGameTime(location);
+    const solarEclipse = useMemo(
+        () =>
+            dayNightCycleDisabled
+                ? null
+                : getSolarEclipseState(currentTime, location),
+        [currentTime, dayNightCycleDisabled, location],
+    );
     const shadowCameraSize = useMemo(() => {
         const stacks = garden?.stacks;
         if (!stacks?.length) {
@@ -785,6 +812,7 @@ export function Environment({
         backgroundPaletteIndex,
         location,
         currentTime,
+        solarEclipse,
         timeOfDay,
         weather: blendedWeather,
     });
@@ -1035,6 +1063,7 @@ export function Environment({
                         location={location}
                         moonlight={sky.moonlight}
                         screenOffsetMultiplier={celestialOffsetMultiplier}
+                        solarEclipseObscuration={solarEclipse?.obscuration}
                         timeOfDay={timeOfDay}
                         weather={blendedWeather}
                     />
@@ -1118,6 +1147,7 @@ export function Environment({
             {!noBackground && (
                 <SunMoon
                     screenOffsetMultiplier={celestialOffsetMultiplier}
+                    solarEclipse={solarEclipse}
                     visibility={closeupCameraSettled ? 0 : bodyVisibility}
                 />
             )}

@@ -12,6 +12,7 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useSyncGameTime } from './hooks/useSyncGameTime';
 import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundPalette';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
+import { getSolarEclipseState } from './scene/solarEclipse';
 import { useGameState } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 import { defaultGameLocation } from './utils/timeOfDay';
@@ -53,7 +54,17 @@ export function GardenOverview2DContent({
         }),
         [gardenLatitude, gardenLongitude],
     );
-    useSyncGameTime(location);
+    const currentTime = useSyncGameTime(location);
+    const dayNightCycleDisabled = useGameState(
+        (state) => state.dayNightCycleDisabled,
+    );
+    const solarEclipseObscuration = useMemo(
+        () =>
+            dayNightCycleDisabled
+                ? 0
+                : getSolarEclipseState(currentTime, location).obscuration,
+        [currentTime, dayNightCycleDisabled, location],
+    );
     useClearSandboxEnvironmentOverrides(garden);
     useSyncGardenBackgroundPalette(garden?.backgroundPalette);
 
@@ -132,7 +143,11 @@ export function GardenOverview2DContent({
                 className,
             )}
         >
-            <GardenOverview2DMap blockData={blockData} garden={garden} />
+            <GardenOverview2DMap
+                blockData={blockData}
+                garden={garden}
+                solarEclipseObscuration={solarEclipseObscuration}
+            />
             {hud}
             {isLocalSandbox ? null : (
                 <span className="sr-only">
