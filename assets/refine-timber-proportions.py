@@ -7,7 +7,6 @@ import bpy
 
 ASSETS_DIR = Path(__file__).resolve().parent / "game-assets"
 RAISED_BED_PLANK_WIDTH = 0.08
-RAISED_BED_PLANK_EMISSION_STRENGTH = 0.45
 RAISED_BED_SOIL_COLOR = (0.09, 0.041, 0.022, 1.0)
 STOOL_SCALE = 0.8
 STOOL_BASE_LOCAL_Z = -1.0
@@ -121,26 +120,6 @@ def refine_raised_bed(check_only):
     group = get_geometry_group("Raised Bed I Construction")
     for node_name in ("Group", "Group.001", "Group.002"):
         set_input(group, node_name, "Thickness", RAISED_BED_PLANK_WIDTH, drift)
-
-    planks = bpy.data.materials.get("Material.Planks")
-    if planks is None:
-        raise RuntimeError("Missing Material.Planks in RaisedBed.blend")
-    plank_node = get_principled_node(planks)
-    plank_color = tuple(plank_node.inputs["Base Color"].default_value)
-    set_input(
-        planks.node_tree,
-        plank_node.name,
-        "Emission Color",
-        plank_color,
-        drift,
-    )
-    set_input(
-        planks.node_tree,
-        plank_node.name,
-        "Emission Strength",
-        RAISED_BED_PLANK_EMISSION_STRENGTH,
-        drift,
-    )
 
     dirt = bpy.data.materials.get("Material.Dirt")
     if dirt is None:

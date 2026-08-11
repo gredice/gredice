@@ -12,6 +12,18 @@ REFERENCE_MATERIALS = {
     "light": "Material.SmallWoodenBridge.LightWood",
     "warm": "Material.SmallWoodenBridge.WarmWood",
 }
+REFERENCE_PROFILE_INPUTS = (
+    "Base Color",
+    "Metallic",
+    "Roughness",
+    "IOR",
+    "Specular IOR Level",
+    "Coat Weight",
+    "Coat Roughness",
+    "Emission Color",
+    "Emission Strength",
+    "Alpha",
+)
 # The bridge's warm middle plank is the default in-game brown.
 DEFAULT_WOOD_ROLE = "warm"
 TARGET_MATERIALS = {
@@ -68,13 +80,13 @@ def parse_args():
     return parser.parse_args(argv)
 
 
-def get_principled_base_color(material):
+def get_principled_node(material):
     if not material.use_nodes or material.node_tree is None:
         raise RuntimeError(f"Material {material.name} does not use nodes")
 
     for node in material.node_tree.nodes:
         if node.bl_idname == "ShaderNodeBsdfPrincipled":
-            return node.inputs["Base Color"]
+            return node
 
     raise RuntimeError(f"Material {material.name} has no Principled BSDF")
 
@@ -86,12 +98,25 @@ def load_reference_palette():
         material = bpy.data.materials.get(material_name)
         if material is None:
             raise RuntimeError(f"Missing reference material {material_name}")
-        palette[role] = tuple(get_principled_base_color(material).default_value)
+        principled = get_principled_node(material)
+        palette[role] = {}
+        for input_name in REFERENCE_PROFILE_INPUTS:
+            value = principled.inputs[input_name].default_value
+            try:
+                value = tuple(value)
+            except TypeError:
+                pass
+            palette[role][input_name] = value
     return palette
 
 
-def colors_match(left, right, epsilon=0.000_001):
-    return all(abs(a - b) <= epsilon for a, b in zip(left, right, strict=True))
+def values_match(left, right, epsilon=0.000_001):
+    try:
+        return all(
+            abs(a - b) <= epsilon for a, b in zip(left, right, strict=True)
+        )
+    except TypeError:
+        return abs(left - right) <= epsilon
 
 
 def sync_asset(filename, material_roles, palette, check_only):
@@ -104,15 +129,25 @@ def sync_asset(filename, material_roles, palette, check_only):
         if material is None:
             raise RuntimeError(f"Missing material {material_name} in {filename}")
 
-        base_color = get_principled_base_color(material)
-        expected = palette[role]
-        if colors_match(base_color.default_value, expected):
+        principled = get_principled_node(material)
+        expected_profile = palette[role]
+        material_drift = []
+        for input_name, expected in expected_profile.items():
+            socket = principled.inputs[input_name]
+            if values_match(socket.default_value, expected):
+                continue
+            material_drift.append(input_name)
+            if not check_only:
+                socket.default_value = expected
+
+        if not material_drift:
             continue
 
-        drift.append(f"{material_name} -> {role}")
+        drift.append(
+            f"{material_name} -> {role} ({', '.join(material_drift)})",
+        )
         if not check_only:
-            base_color.default_value = expected
-            material.diffuse_color = expected
+            material.diffuse_color = expected_profile["Base Color"]
 
     if drift and not check_only:
         bpy.ops.wm.save_as_mainfile(filepath=str(asset_path))

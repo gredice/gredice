@@ -59,6 +59,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
+function readNumber(value: unknown): number {
+    if (typeof value !== 'number') {
+        throw new TypeError(`Expected number, received ${typeof value}`);
+    }
+    return value;
+}
+
 function readGlbDocument(assetName: string): unknown {
     const modelPath = fileURLToPath(
         new URL(
@@ -91,15 +98,28 @@ function readBaseColor(materials: Record<string, unknown>[], name: string) {
     });
 }
 
-function readEmissiveColor(materials: Record<string, unknown>[], name: string) {
+function readSurfaceProfile(
+    materials: Record<string, unknown>[],
+    name: string,
+) {
     const material = materials.find((candidate) => candidate.name === name);
     assert.ok(material, `Missing material ${name}`);
-    assert.ok(Array.isArray(material.emissiveFactor));
-    assert.equal(material.emissiveFactor.length, 3);
-    return material.emissiveFactor.map((value) => {
-        assert.equal(typeof value, 'number');
-        return value;
-    });
+    assert.ok(isRecord(material.pbrMetallicRoughness));
+    const metallic = readNumber(
+        material.pbrMetallicRoughness.metallicFactor ?? 1,
+    );
+    const roughness = readNumber(
+        material.pbrMetallicRoughness.roughnessFactor ?? 1,
+    );
+    const emissive = material.emissiveFactor ?? [0, 0, 0];
+    assert.ok(Array.isArray(emissive));
+    assert.equal(emissive.length, 3);
+    return {
+        baseColor: readBaseColor(materials, name),
+        emissive: emissive.map(readNumber),
+        metallic,
+        roughness,
+    };
 }
 
 function assertColorsEqual(
@@ -114,6 +134,16 @@ function assertColorsEqual(
             `Color channel ${index} differs: ${value} != ${expected[index]}`,
         );
     }
+}
+
+function assertSurfaceProfilesEqual(
+    actual: ReturnType<typeof readSurfaceProfile>,
+    expected: ReturnType<typeof readSurfaceProfile>,
+) {
+    assertColorsEqual(actual.baseColor, expected.baseColor);
+    assertColorsEqual(actual.emissive, expected.emissive);
+    assert.ok(Math.abs(actual.metallic - expected.metallic) < 0.000_001);
+    assert.ok(Math.abs(actual.roughness - expected.roughness) < 0.000_001);
 }
 
 function readManifestAssets() {
@@ -133,6 +163,12 @@ describe('timber asset palette', () => {
     );
     const referenceColor = palette.warm;
     assert.ok(referenceColor);
+    const referenceProfiles = Object.fromEntries(
+        Object.entries(referenceMaterials).map(([role, materialName]) => [
+            role,
+            readSurfaceProfile(bridgeMaterials, materialName),
+        ]),
+    );
     const manifestAssets = readManifestAssets();
 
     it('uses the bridge middle plank as the default in-game wood color', () => {
@@ -143,11 +179,13 @@ describe('timber asset palette', () => {
         );
     });
 
-    it('keeps raised-bed planks visibly warm on shadowed faces', () => {
-        assertColorsEqual(
-            readEmissiveColor(readMaterials('RaisedBed'), 'Material.Planks'),
-            referenceColor.slice(0, 3).map((channel) => channel * 0.45),
+    it('uses the bridge non-metallic response for raised-bed planks', () => {
+        const raisedBedProfile = readSurfaceProfile(
+            readMaterials('RaisedBed'),
+            'Material.Planks',
         );
+        assert.equal(raisedBedProfile.metallic, 0);
+        assertSurfaceProfilesEqual(raisedBedProfile, referenceProfiles.warm);
     });
 
     for (const [assetName, expectedMaterials] of Object.entries(
@@ -164,9 +202,11 @@ describe('timber asset palette', () => {
             )) {
                 const expectedColor = palette[role];
                 assert.ok(expectedColor);
-                assertColorsEqual(
-                    readBaseColor(materials, materialName),
-                    expectedColor,
+                const expectedProfile = referenceProfiles[role];
+                assert.ok(expectedProfile);
+                assertSurfaceProfilesEqual(
+                    readSurfaceProfile(materials, materialName),
+                    expectedProfile,
                 );
             }
 
