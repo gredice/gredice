@@ -509,6 +509,9 @@ test('local sandbox decoration picker includes sunflower and mulch', async ({
         page.getByRole('button', { name: 'SmallWoodenBridge' }),
     ).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'WoodenWalkway' }),
+    ).toBeVisible();
+    await expect(
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),

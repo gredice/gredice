@@ -8,23 +8,23 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { getWaterSurfacePlacementYOffset } from './waterSurfacePlacement';
+import { getWoodenWalkwayPlacementYOffset } from './woodenWalkwayPlacement';
 
-type SmallWoodenBridgeNodeName = Extract<
+type WoodenWalkwayNodeName = Extract<
     keyof GLTFResult['nodes'],
-    `SmallWoodenBridge_${string}`
+    `WoodenWalkway_${string}`
 >;
-type SmallWoodenBridgeNode = GLTFResult['nodes'][SmallWoodenBridgeNodeName];
+type WoodenWalkwayNode = GLTFResult['nodes'][WoodenWalkwayNodeName];
 
-function BridgePart({
+function WalkwayPart({
     children,
     material,
     node,
-    snowMaxThickness = 0.045,
+    snowMaxThickness = 0.018,
 }: {
     children?: ReactNode;
     material: Material;
-    node: SmallWoodenBridgeNode;
+    node: WoodenWalkwayNode;
     snowMaxThickness?: number;
 }) {
     return (
@@ -54,15 +54,11 @@ function BridgePart({
     );
 }
 
-export function SmallWoodenBridge({
-    stack,
-    block,
-    rotation,
-}: EntityInstanceProps) {
-    const { materials, nodes } = useGameGLTF('SmallWoodenBridge');
+export function WoodenWalkway({ stack, block, rotation }: EntityInstanceProps) {
+    const { materials, nodes } = useGameGLTF('WoodenWalkway');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const placementYOffset = getWaterSurfacePlacementYOffset(stack, block);
+    const placementYOffset = getWoodenWalkwayPlacementYOffset(stack, block);
 
     return (
         <animated.group
@@ -71,23 +67,18 @@ export function SmallWoodenBridge({
                 .setY(currentStackHeight + placementYOffset)}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
-            <BridgePart
-                material={materials['Material.SmallWoodenBridge.LightWood']}
-                node={nodes.SmallWoodenBridge_PlanksLight}
+            <WalkwayPart
+                material={materials['Material.WoodenWalkway.LightWood']}
+                node={nodes.WoodenWalkway_PlanksLight}
             />
-            <BridgePart
-                material={materials['Material.SmallWoodenBridge.WarmWood']}
-                node={nodes.SmallWoodenBridge_PlanksWarm}
+            <WalkwayPart
+                material={materials['Material.WoodenWalkway.WarmWood']}
+                node={nodes.WoodenWalkway_PlanksWarm}
             />
-            <BridgePart
-                material={materials['Material.SmallWoodenBridge.DeepWood']}
-                node={nodes.SmallWoodenBridge_Stringers}
-                snowMaxThickness={0.035}
-            />
-            <BridgePart
-                material={materials['Material.SmallWoodenBridge.DeepWood']}
-                node={nodes.SmallWoodenBridge_Pegs}
-                snowMaxThickness={0.025}
+            <WalkwayPart
+                material={materials['Material.WoodenWalkway.Pegs']}
+                node={nodes.WoodenWalkway_Pegs}
+                snowMaxThickness={0.008}
             />
         </animated.group>
     );

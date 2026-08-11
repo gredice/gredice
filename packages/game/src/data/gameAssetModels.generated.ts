@@ -92,6 +92,9 @@ export const gameAssetModels = {
     SmallWoodenBridge: {
         url: '/assets/models/SmallWoodenBridge.glb?v=3f5e5e39b5e4',
     },
+    WoodenWalkway: {
+        url: '/assets/models/WoodenWalkway.glb?v=b4345a9a9ca1',
+    },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },
@@ -201,6 +204,7 @@ export const lazyGameAssetNames = [
     'CatPillow',
     'DogHouse',
     'SmallWoodenBridge',
+    'WoodenWalkway',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',
@@ -298,6 +302,7 @@ export const allGameAssetNames = [
     'CatPillow',
     'DogHouse',
     'SmallWoodenBridge',
+    'WoodenWalkway',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',

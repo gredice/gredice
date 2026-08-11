@@ -4,7 +4,7 @@ import { waterBlockBottomOverlap } from './waterBlockGeometry';
 
 const waterBlockName = 'Block_Water';
 
-export function getSmallWoodenBridgeYOffset(
+export function getWaterSurfacePlacementYOffset(
     stack: Stack | undefined,
     block: Block,
 ) {
@@ -12,8 +12,8 @@ export function getSmallWoodenBridgeYOffset(
         return 0;
     }
 
-    const bridgeIndex = stack.blocks.indexOf(block);
-    const supportBlock = stack.blocks[bridgeIndex - 1];
+    const blockIndex = stack.blocks.indexOf(block);
+    const supportBlock = stack.blocks[blockIndex - 1];
 
     return supportBlock?.name === waterBlockName ? -waterBlockBottomOverlap : 0;
 }
