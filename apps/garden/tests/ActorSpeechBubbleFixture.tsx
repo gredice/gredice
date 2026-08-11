@@ -11,18 +11,19 @@ const fixtureMessages = ['Lijep dan u vrtu!', 'Vrt izgleda prekrasno!'];
 export function ActorSpeechBubbleFixture({
     cameraZoom = 80,
     interactive = false,
+    messages = fixtureMessages,
+    wide = false,
 }: {
     cameraZoom?: number;
     interactive?: boolean;
+    messages?: readonly string[];
+    wide?: boolean;
 }) {
     const [ready, setReady] = useState(false);
     const [actorX, setActorX] = useState(0);
     const [bubbleClicks, setBubbleClicks] = useState(0);
     const actorRef = useRef<ActorSpeechAnchor>(null);
-    const { message, showMessage } = useActorHoverSpeech(
-        fixtureMessages,
-        3_000,
-    );
+    const { message, showMessage } = useActorHoverSpeech(messages, 3_000);
 
     function moveActor() {
         const nextActorX = actorX === 0 ? 0.75 : 0;
@@ -80,6 +81,7 @@ export function ActorSpeechBubbleFixture({
                                 ? () => setBubbleClicks((count) => count + 1)
                                 : undefined
                         }
+                        wide={wide}
                     />
                 ) : null}
             </Canvas>

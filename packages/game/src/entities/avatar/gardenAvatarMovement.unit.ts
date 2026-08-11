@@ -13,6 +13,7 @@ import {
     getGardenAvatarGroundY,
     getGardenAvatarNextJumpCount,
     getGardenAvatarRoamBlockedCells,
+    getGardenAvatarRoamTargets,
     getGardenAvatarSurfaceY,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
@@ -168,6 +169,9 @@ test('uses complete stack heights as walkable avatar terrain', () => {
 
     assert.equal(world.blockedCells.length, 0);
     assert.equal(Math.max(...world.surfaces.map((surface) => surface.y)), 0.8);
+    assert.deepEqual(getGardenAvatarRoamTargets(world), [
+        { x: 2, y: 0.8, z: -1 },
+    ]);
 });
 
 test('follows angled terrain height continuously instead of flattening it', () => {

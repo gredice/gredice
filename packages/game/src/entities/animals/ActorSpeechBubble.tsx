@@ -1,3 +1,4 @@
+import { cx } from '@gredice/ui/utils';
 import { Html } from '@react-three/drei';
 import {
     type MouseEventHandler,
@@ -71,12 +72,14 @@ export function ActorSpeechBubble({
     message,
     offsetY,
     onClick,
+    wide = false,
 }: {
     actionLabel?: string;
     actorRef: RefObject<Object3D | null>;
     message: string;
     offsetY: number;
     onClick?: MouseEventHandler<HTMLButtonElement>;
+    wide?: boolean;
 }) {
     const actorWorldPositionRef = useRef(new Vector3());
     const calculateActorPosition = useCallback(
@@ -115,7 +118,12 @@ export function ActorSpeechBubble({
                     type="button"
                     aria-label={actionLabel}
                     aria-live="polite"
-                    className="relative max-w-[min(15rem,75vw)] -translate-x-1/2 -translate-y-[calc(100%+0.5rem)] whitespace-normal rounded-xl border border-emerald-200 bg-white/95 px-3 py-1.5 text-center text-sm font-semibold leading-snug text-emerald-900 shadow-lg backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-emerald-800/80 dark:bg-neutral-950/95 dark:text-emerald-100"
+                    className={cx(
+                        'relative -translate-x-1/2 -translate-y-[calc(100%+0.5rem)] whitespace-normal rounded-xl border border-emerald-200 bg-white/95 px-3 py-1.5 text-center text-sm font-semibold leading-snug text-emerald-900 shadow-lg backdrop-blur-sm transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-emerald-800/80 dark:bg-neutral-950/95 dark:text-emerald-100',
+                        wide
+                            ? 'w-max max-w-[min(18rem,75vw)]'
+                            : 'max-w-[min(15rem,75vw)]',
+                    )}
                     data-actor-speech-bubble
                     onClick={onClick}
                 >
