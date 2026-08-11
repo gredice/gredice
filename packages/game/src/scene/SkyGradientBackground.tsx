@@ -129,6 +129,7 @@ type SkyGradientBackgroundProps = {
     location: { lat: number; lon: number };
     moonlight: number;
     screenOffsetMultiplier?: number;
+    solarEclipseObscuration?: number;
     timeOfDay: number;
     weather?: SkyGradientWeather | null;
 };
@@ -205,6 +206,7 @@ export function SkyGradientBackground({
     location,
     moonlight,
     screenOffsetMultiplier = 1,
+    solarEclipseObscuration = 0,
     timeOfDay,
     weather,
 }: SkyGradientBackgroundProps) {
@@ -271,6 +273,7 @@ export function SkyGradientBackground({
             ),
             backgroundPaletteIndex,
             moonlight,
+            solarEclipseObscuration,
             timeOfDay,
             weather,
         });
@@ -285,6 +288,7 @@ export function SkyGradientBackground({
         backgroundRed,
         groundView,
         moonlight,
+        solarEclipseObscuration,
         timeOfDay,
         weather,
     ]);

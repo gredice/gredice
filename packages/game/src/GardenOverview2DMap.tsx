@@ -23,6 +23,7 @@ import {
     RaisedBedNotificationBubbleContent,
     useRaisedBedNotificationSurface,
 } from './hud/RaisedBedNotificationSurface';
+import { getSolarEclipseVisualScales } from './scene/solarEclipse';
 import { useGameState } from './useGameState';
 import { useSetRaisedBedCloseupParam } from './useRaisedBedCloseup';
 import { getRaisedBedBlockIds } from './utils/raisedBedBlocks';
@@ -58,9 +59,11 @@ function isGroundBlock(blockName: string) {
 export function GardenOverview2DMap({
     blockData,
     garden,
+    solarEclipseObscuration = 0,
 }: {
     blockData: BlockData[];
     garden: CurrentGarden;
+    solarEclipseObscuration?: number;
 }) {
     const gridRef = useRef<HTMLElement>(null);
     const panSessionRef = useRef<PanSession | null>(null);
@@ -190,6 +193,9 @@ export function GardenOverview2DMap({
     const isCloseup = activeView === 'closeup';
     const gridColumnCount = layout.columnCount + previewTrackPadding * 2;
     const gridRowCount = layout.rowCount + previewTrackPadding * 2;
+    const solarEclipseScales = getSolarEclipseVisualScales(
+        solarEclipseObscuration,
+    );
     const gridStyle: CSSProperties = {
         gridTemplateColumns: `repeat(${gridColumnCount}, clamp(2.75rem, 7vw, 4.5rem))`,
         gridTemplateRows: `repeat(${gridRowCount}, clamp(2.75rem, 7vw, 4.5rem))`,
@@ -278,13 +284,17 @@ export function GardenOverview2DMap({
     return (
         <section
             data-garden-overview-2d
+            data-solar-eclipse-obscuration={solarEclipseObscuration.toFixed(3)}
             data-panning={isPanning ? 'true' : 'false'}
             aria-label="Pomicanje tlocrta vrta"
             className={cx(
-                'absolute inset-0 touch-none cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_top,#dcfce7_0%,#bbf7d0_38%,#86efac_100%)] transition-[opacity,transform] duration-300 dark:bg-[radial-gradient(circle_at_top,#163522_0%,#10271a_45%,#07150d_100%)]',
+                'absolute inset-0 touch-none cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_top,#dcfce7_0%,#bbf7d0_38%,#86efac_100%)] transition-[filter,opacity,transform] duration-300 dark:bg-[radial-gradient(circle_at_top,#163522_0%,#10271a_45%,#07150d_100%)]',
                 isPanning && 'cursor-grabbing',
                 isCloseup && 'pointer-events-none scale-95 opacity-0',
             )}
+            style={{
+                filter: `brightness(${solarEclipseScales.ambient.toFixed(3)}) saturate(${(0.82 + solarEclipseScales.sunGlow * 0.18).toFixed(3)})`,
+            }}
             aria-hidden={isCloseup ? 'true' : 'false'}
             inert={isCloseup ? true : undefined}
             tabIndex={isCloseup ? -1 : 0}
