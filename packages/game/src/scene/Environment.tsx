@@ -27,6 +27,8 @@ import {
 } from './gameQuality';
 import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
 import { getMoonlitNightScales } from './moonlight';
+import { Perseids } from './PerseidMeteorShower';
+import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
 import { Drops } from './Rain/Drops';
 import { resolveRainParticleState } from './Rain/rainParticles';
 import { useSceneTimeInvalidation } from './SceneTime';
@@ -858,6 +860,12 @@ export function Environment({
         ? 0
         : Math.max(0, 1 - cloudCover / 0.6) ** 1.5 * nightVisibility;
     const showStars = starVisibility > 0;
+    const perseidsVisibility = closeupCameraSettled ? 0 : starVisibility;
+    const perseidsMeteorRate = getPerseidsMeteorRatePerHour(currentTime);
+    const showPerseids = shouldRenderPerseids({
+        date: currentTime,
+        skyVisibility: perseidsVisibility,
+    });
     // Dense clouds or fog dim the sun/moon discs toward a small residual
     // glow. The curve drops fast so 70%+ overcast reads as "no sun" rather
     // than a dimmer but still-solid disc, but never fully hits zero — matching
@@ -1100,6 +1108,12 @@ export function Environment({
             )}
             {showStars && (
                 <Stars visibility={closeupCameraSettled ? 0 : starVisibility} />
+            )}
+            {showPerseids && (
+                <Perseids
+                    meteorsPerHour={perseidsMeteorRate}
+                    visibility={perseidsVisibility}
+                />
             )}
             {!noBackground && (
                 <SunMoon
