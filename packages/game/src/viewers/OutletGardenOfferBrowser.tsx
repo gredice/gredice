@@ -206,8 +206,8 @@ export function OutletGardenOfferBrowser({
                     </Button>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    Razgledaj aktualne ponude. Svaka 3D sadnica predstavlja
-                    jednu ponudu, a ne pojedinačni fizički primjerak.
+                    Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno
+                    dostupnu količinu svake ponude.
                 </p>
             </header>
 
@@ -292,7 +292,7 @@ export function OutletGardenOfferBrowser({
                             className="mb-2 text-sm font-semibold"
                             id="outlet-garden-list-title"
                         >
-                            Dostupne sadnice ({offers.length})
+                            Dostupne ponude ({offers.length})
                         </h2>
                         <div
                             className="space-y-4"

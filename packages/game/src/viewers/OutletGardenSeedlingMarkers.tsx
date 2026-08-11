@@ -16,7 +16,6 @@ import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
 } from '../generators/plant/lib/plant-definitions';
-import { getApproximatePlantHeight } from '../generators/plant/lib/plantRenderData';
 import { useBlockData } from '../hooks/useBlockData';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import { getStackHeight } from '../utils/getStackHeight';
@@ -123,10 +122,11 @@ function resolveOutletGardenPlantPreset(offer: OutletOfferData) {
 }
 
 type OutletGardenSeedlingMarker = {
+    blockId: string;
     fallbackColor: string;
     generation: number;
-    highlightHeight: number;
-    id: number;
+    highlightPosition: THREE.Vector3;
+    offerId: number;
     position: THREE.Vector3;
     preset: ResolvedInGamePlantPreset | null;
     rotation: number;
@@ -149,57 +149,21 @@ function OutletGardenSeedlingHighlight({
 }: {
     marker: OutletGardenSeedlingMarker;
 }) {
-    const height = marker.highlightHeight;
-    const radius = Math.min(0.42, Math.max(0.27, height * 0.32));
-
     return (
         <group
-            name={`OutletGardenSeedlingHighlight:${marker.id.toString()}`}
-            position={marker.position}
+            name={`OutletGardenSeedlingHighlight:${marker.blockId}`}
+            position={marker.highlightPosition}
         >
-            <mesh
-                position={[0, 0.018, 0]}
-                renderOrder={42}
-                rotation={[-Math.PI / 2, 0, 0]}
-            >
-                <ringGeometry args={[radius * 0.72, radius, 32]} />
+            <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.32, 0.4, 32]} />
                 <meshBasicMaterial
-                    color="#facc15"
-                    depthTest={false}
+                    color="#eab308"
+                    depthTest
                     depthWrite={false}
-                    opacity={0.95}
-                    side={THREE.DoubleSide}
-                    toneMapped={false}
-                    transparent
-                />
-            </mesh>
-            <mesh position={[0, height / 2, 0]} renderOrder={41}>
-                <cylinderGeometry
-                    args={[radius * 0.55, radius, height, 20, 1, true]}
-                />
-                <meshBasicMaterial
-                    blending={THREE.AdditiveBlending}
-                    color="#fde047"
-                    depthTest={false}
-                    depthWrite={false}
-                    opacity={0.18}
-                    side={THREE.DoubleSide}
-                    toneMapped={false}
-                    transparent
-                />
-            </mesh>
-            <mesh
-                position={[0, height * 0.62, 0]}
-                renderOrder={43}
-                rotation={[-Math.PI / 2, 0, 0]}
-            >
-                <ringGeometry args={[radius * 0.68, radius * 0.86, 32]} />
-                <meshBasicMaterial
-                    blending={THREE.AdditiveBlending}
-                    color="#fef08a"
-                    depthTest={false}
-                    depthWrite={false}
-                    opacity={0.72}
+                    opacity={0.78}
+                    polygonOffset
+                    polygonOffsetFactor={-1}
+                    polygonOffsetUnits={-1}
                     side={THREE.DoubleSide}
                     toneMapped={false}
                     transparent
@@ -216,7 +180,7 @@ function OutletGardenFallbackSeedling({
 }) {
     return (
         <group
-            name={`OutletGardenFallbackSeedling:${marker.id.toString()}`}
+            name={`OutletGardenFallbackSeedling:${marker.blockId}`}
             position={marker.position}
             rotation={[0, marker.rotation, 0]}
             scale={0.78}
@@ -295,31 +259,20 @@ export function OutletGardenSeedlingMarkers({
                 const scale = preset
                     ? getInGamePlantInstanceScale(preset, 1) * 1.12
                     : 0.78;
-                const highlightHeight = preset
-                    ? Math.min(
-                          1.3,
-                          Math.max(
-                              0.28,
-                              getApproximatePlantHeight(preset.definition) *
-                                  scale *
-                                  Math.max(
-                                      0.28,
-                                      stage.generation / MAX_PLANT_GENERATION,
-                                  ),
-                          ),
-                      )
-                    : 0.48;
 
                 return [
                     {
+                        blockId: block.id,
                         fallbackColor:
                             fallbackLeafColors[
                                 Math.abs(plantVisualId) %
                                     fallbackLeafColors.length
                             ] ?? fallbackLeafColors[0],
                         generation: stage.generation,
-                        highlightHeight,
-                        id: offerId,
+                        highlightPosition: stack.position
+                            .clone()
+                            .setY(getStackHeight(blockData, stack, block)),
+                        offerId,
                         position: stack.position
                             .clone()
                             .setY(getStackHeight(blockData, stack) + 0.02),
@@ -373,9 +326,6 @@ export function OutletGardenSeedlingMarkers({
             fallbackMarkers: fallback,
         };
     }, [markers]);
-    const highlightedMarker =
-        markers.find((marker) => marker.id === highlightedOfferId) ?? null;
-
     return (
         <group
             name="OutletGardenSeedlingMarkers"
@@ -393,11 +343,19 @@ export function OutletGardenSeedlingMarkers({
                 />
             ))}
             {fallbackMarkers.map((marker) => (
-                <OutletGardenFallbackSeedling key={marker.id} marker={marker} />
+                <OutletGardenFallbackSeedling
+                    key={marker.blockId}
+                    marker={marker}
+                />
             ))}
-            {highlightedMarker ? (
-                <OutletGardenSeedlingHighlight marker={highlightedMarker} />
-            ) : null}
+            {markers
+                .filter((marker) => marker.offerId === highlightedOfferId)
+                .map((marker) => (
+                    <OutletGardenSeedlingHighlight
+                        key={marker.blockId}
+                        marker={marker}
+                    />
+                ))}
         </group>
     );
 }
