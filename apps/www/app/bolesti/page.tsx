@@ -15,19 +15,19 @@ import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantDiseasesData } from '../../lib/plants/getPlantHealthIssuesData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 const pageDescription =
     'Pregled bolesti biljaka koje se mogu pojaviti u gredicama, s pogođenim biljkama i preporučenim radnjama.';
 
 export const revalidate = 3600;
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Bolesti biljaka',
     description: pageDescription,
-    alternates: {
-        canonical: KnownPages.PlantDiseases,
-    },
-};
+    path: KnownPages.PlantDiseases,
+    category: 'Zdravlje biljaka',
+});
 
 export default async function PlantDiseasesPage({
     searchParams,

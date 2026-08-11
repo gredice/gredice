@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getSeedsData } from '../../lib/seeds/getSeedsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { SeedsGallery } from './SeedsGallery';
 import { seedPrimaryImageUrl } from './seedPresentation';
@@ -16,29 +17,16 @@ const pageDescription =
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: pageTitle,
     description: pageDescription,
-    alternates: {
-        canonical: KnownPages.Seeds,
-    },
-    openGraph: {
-        type: 'website',
-        locale: 'hr_HR',
-        title: pageTitle,
-        description: pageDescription,
-        url: KnownPages.Seeds,
-    },
-    twitter: {
-        card: 'summary',
-        title: pageTitle,
-        description: pageDescription,
-    },
+    path: KnownPages.Seeds,
+    category: 'Katalog sjemena',
     robots: {
         index: true,
         follow: true,
     },
-};
+});
 
 function stringParam(value: string | string[] | undefined) {
     return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');

@@ -1,0 +1,24 @@
+diff --git a/dist/esm/server/image-optimizer.js b/dist/esm/server/image-optimizer.js
+index 193b9c7..ce395b7 100644
+--- a/dist/esm/server/image-optimizer.js
++++ b/dist/esm/server/image-optimizer.js
+@@ -90,6 +90,7 @@ export function getSharp(concurrency, operationCache) {
+                 'VipsForeignLoadJpeg',
+                 'VipsForeignLoadNsgif',
+                 'VipsForeignLoadPng',
++                'VipsForeignLoadSvg',
+                 'VipsForeignLoadTiff',
+                 'VipsForeignLoadWebp'
+             ]
+diff --git a/dist/server/image-optimizer.js b/dist/server/image-optimizer.js
+index 74000ec..b5e4ee4 100644
+--- a/dist/server/image-optimizer.js
++++ b/dist/server/image-optimizer.js
+@@ -210,6 +210,7 @@ function getSharp(concurrency, operationCache) {
+                 'VipsForeignLoadJpeg',
+                 'VipsForeignLoadNsgif',
+                 'VipsForeignLoadPng',
++                'VipsForeignLoadSvg',
+                 'VipsForeignLoadTiff',
+                 'VipsForeignLoadWebp'
+             ]

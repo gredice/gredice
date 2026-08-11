@@ -1,16 +1,19 @@
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import type { Metadata } from 'next';
 import { FacebookCard } from '../../components/social/FacebookCard';
 import { InstagramCard } from '../../components/social/InstagramCard';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Kontakt',
     description:
         'Slobodno nam se javi ako imaš pitanja, prijedloge ili komentare.',
-};
+    path: KnownPages.Contact,
+    eyebrow: 'Kontakt',
+});
 
 export default function ContactPage() {
     return (

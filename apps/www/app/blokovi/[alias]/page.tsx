@@ -15,6 +15,7 @@ import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { getBlocksData } from '../../../lib/blocks/getBlocksData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
@@ -31,15 +32,16 @@ export async function generateMetadata(
         matchesPageAlias(block.information.label, alias),
     );
     if (!block) {
-        return {
-            title: 'Blok nije pronađen',
-            description: 'Blok koji tražiš nije pronađen.',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: block.information.label,
         description: block.information.shortDescription,
-    };
+        path: KnownPages.Block(block.slug || block.information.label),
+        category: 'Vrtni blok',
+        imageUrl: block.image?.cover?.url,
+        imageAlt: `Prikaz bloka ${block.information.label}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -92,7 +94,7 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     if (!entity) {
         notFound();
     }
-    const blockPath = KnownPages.Block(alias);
+    const blockPath = KnownPages.Block(entity.slug || entity.information.label);
 
     return (
         <div className="border-b">

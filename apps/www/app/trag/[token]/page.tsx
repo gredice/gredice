@@ -27,11 +27,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import {
     PlantMonthCalendar,
     type PlantMonthCalendarRow,
@@ -40,14 +40,15 @@ import { HarvestTraceStatusEvent } from './HarvestTraceStatusEvent';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Trag berbe',
     description: 'Javni trag berbe Gredice.',
+    eyebrow: 'Od vrta do stola',
     robots: {
         index: false,
         follow: false,
     },
-};
+});
 
 const dayFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: 'numeric',

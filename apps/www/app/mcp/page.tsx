@@ -5,7 +5,7 @@ import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 const mcpEndpoint = 'https://api.gredice.com/api/mcp';
@@ -20,18 +20,12 @@ const clientConfiguration = `{
 const metadataDescription =
     'Poveži AI asistenta s javnim znanjem Gredica i, uz autorizaciju, podacima svojeg vrta preko sigurnog MCP sučelja.';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Gredice za AI asistente',
     description: metadataDescription,
-    alternates: {
-        canonical: KnownPages.MCP,
-    },
-    openGraph: {
-        title: 'Gredice za AI asistente',
-        description: metadataDescription,
-        url: KnownPages.MCP,
-    },
-};
+    path: KnownPages.MCP,
+    eyebrow: 'Za AI asistente',
+});
 
 const accessLevels = [
     {

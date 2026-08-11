@@ -4,20 +4,22 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import {
     GrowthCalendarPreview,
     SowingCalendarPreview,
 } from './SowingCalendarPreview';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Sjetva biljaka',
     description:
         'Saznaj kako funkcionira sjetva biljaka u Gredicama, koliko košta i koje pogodnosti dobivaš tijekom ljeta.',
-};
+    path: KnownPages.Sowing,
+    eyebrow: 'Planiranje vrta',
+});
 
 const DEFAULT_FREE_WATERING_OPERATION_LABEL = 'Površinsko zalijevanje (20 L)';
 const FREE_WATERING_OPERATION_ID = 274;

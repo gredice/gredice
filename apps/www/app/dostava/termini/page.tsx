@@ -9,17 +9,20 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 import { ClosingSoonIndicator } from './ClosingSoonIndicator';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Termini dostave',
     description:
         'Vidi raspoložive i zatvorene termine za dostavu ili osobno preuzimanje u sljedećih mjesec dana.',
-};
+    path: KnownPages.DeliverySlots,
+    eyebrow: 'Raspored dostave',
+});
 
 // Types from API response - these match the type-safe client schema
 interface TimeSlot {

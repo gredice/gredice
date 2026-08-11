@@ -17,7 +17,7 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata, Route } from 'next';
+import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
@@ -26,6 +26,7 @@ import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { getPublicSunflowerPackages } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
 import {
@@ -40,11 +41,13 @@ import {
 } from './pricingRows';
 import { ThirtyDayMinimumPrice } from './ThirtyDayMinimumPrice';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Cjenik',
     description:
         'Pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave.',
-};
+    path: KnownPages.Pricing,
+    eyebrow: 'Ponuda Gredica',
+});
 
 const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
     maximumFractionDigits: 0,

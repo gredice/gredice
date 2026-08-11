@@ -654,6 +654,16 @@ function createWalkableSurfaceMap(world: GardenAvatarCollisionWorld) {
     return surfaces;
 }
 
+export function getGardenAvatarRoamTargets(
+    world: GardenAvatarCollisionWorld,
+): GardenAvatarPoint[] {
+    return [...createWalkableSurfaceMap(world).values()].map((surface) => ({
+        x: surface.x,
+        y: surface.y,
+        z: surface.z,
+    }));
+}
+
 export function getGardenAvatarNextJumpCount({
     grounded,
     jumpsUsed,
