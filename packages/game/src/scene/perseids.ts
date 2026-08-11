@@ -2,8 +2,9 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // The recurring window and peak ZHR follow the International Meteor
 // Organization calendar. The product multiplier intentionally makes the
-// in-game shower twice as dense as that real-world baseline.
-export const PERSEIDS_DENSITY_MULTIPLIER = 2;
+// in-game shower six times as dense as that real-world baseline: three times
+// the original in-game cadence.
+export const PERSEIDS_DENSITY_MULTIPLIER = 6;
 export const PERSEIDS_REAL_EDGE_RATE_PER_HOUR = 1;
 export const PERSEIDS_REAL_PEAK_ZHR = 100;
 
