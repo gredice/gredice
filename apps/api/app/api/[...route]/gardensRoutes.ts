@@ -24,6 +24,7 @@ import {
     CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
+    cancelSelectedRaisedBedPlantingTaskForOwner,
     claimGardenPreviewBlobDeletion,
     clearSandboxField,
     completeGardenPreviewBlobDeletions,
@@ -66,6 +67,7 @@ import {
     getRaisedBedFieldDiaryEntries,
     getRaisedBedFieldsWithEvents,
     getRaisedBedIdsByAccount,
+    getRaisedBedPlanting,
     getRaisedBedSensors,
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
@@ -83,6 +85,8 @@ import {
     replaceGardenPreview,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    rescheduleSelectedRaisedBedPlantingTaskForOwner,
+    ScheduleTaskSubmissionError,
     setAllNotificationsRead,
     setGardenLike,
     sowSandboxField,
@@ -94,6 +98,7 @@ import {
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
+    updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
     upsertGardenOpenedAt,
     withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
@@ -134,6 +139,7 @@ import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockP
 import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
+    serializeRaisedBedPlantingsForGardenView,
 } from '../../../lib/garden/publicGardenSerialization';
 import {
     publicGardenVisitorClientAddress,
@@ -231,6 +237,39 @@ const reschedulePlantingDiaryItemBodySchema =
         scheduledDate: z.string().trim().min(1),
     });
 
+const selectedPlantingOwnerIdentityBodySchema = z
+    .object({
+        commandId: z.uuid(),
+        expectedLifecycleVersionEventId: z.number().int().positive(),
+        expectedPlantSortId: z.number().int().positive(),
+    })
+    .strict();
+
+const rescheduleSelectedPlantingBodySchema =
+    selectedPlantingOwnerIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+        sowingLocation: z.enum(['direct', 'greenhouse']),
+    });
+
+const cancelSelectedPlantingBodySchema =
+    selectedPlantingOwnerIdentityBodySchema.extend({
+        effectiveAt: z.iso.datetime().optional(),
+        reason: z.string().trim().min(1).max(2000),
+    });
+
+const updateSelectedPlantingStatusBodySchema =
+    selectedPlantingOwnerIdentityBodySchema.extend({
+        effectiveAt: z.iso.datetime().optional(),
+        status: z.enum([
+            'sowed',
+            'sprouted',
+            'notSprouted',
+            'died',
+            'ready',
+            'removed',
+        ]),
+    });
+
 const visitSummarySeenBodySchema = z.object({
     factsHash: z.string().trim().min(1).max(128).nullable().optional(),
 });
@@ -289,6 +328,59 @@ function diaryCancelErrorResponse(
         case 409:
             return context.json({ error: error.message }, 409);
     }
+}
+
+function selectedPlantingOwnerErrorResponse(
+    context: Context,
+    error: ScheduleTaskSubmissionError,
+) {
+    switch (error.code) {
+        case 'invalid_input':
+            return context.json(
+                { code: error.code, error: error.message },
+                400,
+            );
+        case 'not_found':
+        case 'not_authorized':
+            return context.json(
+                { code: 'not_found', error: 'Planting not found' },
+                404,
+            );
+        case 'assignment_changed':
+        case 'task_changed':
+        case 'invalid_status':
+        case 'submission_conflict':
+            return context.json(
+                { code: error.code, error: error.message },
+                409,
+            );
+    }
+}
+
+async function selectedPlantingMatchesGardenRoute({
+    accountId,
+    gardenId,
+    plantingId,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId: number;
+    plantingId: number;
+    raisedBedId: number;
+}) {
+    const planting = await getRaisedBedPlanting(plantingId);
+    if (
+        planting?.configurationSource !== 'selected' ||
+        planting.raisedBedId !== raisedBedId
+    ) {
+        return false;
+    }
+    const raisedBed = await getRaisedBed(raisedBedId);
+    return Boolean(
+        raisedBed &&
+            raisedBed.accountId === accountId &&
+            raisedBed.gardenId === gardenId,
+    );
 }
 
 const aiTextStreamResponseInit = {
@@ -791,6 +883,10 @@ async function serializeGardenDetails(
             fields: options.publicView
                 ? raisedBed.fields.map(serializePublicRaisedBedField)
                 : raisedBed.fields,
+            ...serializeRaisedBedPlantingsForGardenView(
+                raisedBed.plantings,
+                options,
+            ),
             appliedOperations:
                 appliedOperationsByRaisedBedId.get(raisedBed.id) ?? [],
             createdAt: raisedBed.createdAt,
@@ -3922,6 +4018,285 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 type,
                 values: history.data?.values || [],
             });
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/reschedule',
+        describeRoute({
+            description:
+                'Reschedule one selected Advanced Sowing planting for the current garden owner',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                plantingId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleSelectedPlantingBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, plantingId, raisedBedId } =
+                context.req.valid('param');
+            const {
+                commandId,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                scheduledDate,
+                sowingLocation,
+            } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const plantingIdNumber = Number.parseInt(plantingId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            if (
+                !Number.isSafeInteger(gardenIdNumber) ||
+                gardenIdNumber <= 0 ||
+                !Number.isSafeInteger(plantingIdNumber) ||
+                plantingIdNumber <= 0 ||
+                !Number.isSafeInteger(raisedBedIdNumber) ||
+                raisedBedIdNumber <= 0
+            ) {
+                return context.json({ error: 'Invalid planting target' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            try {
+                if (
+                    !(await selectedPlantingMatchesGardenRoute({
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        plantingId: plantingIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    }))
+                ) {
+                    return context.json({ error: 'Planting not found' }, 404);
+                }
+                const result =
+                    await rescheduleSelectedRaisedBedPlantingTaskForOwner({
+                        commandId,
+                        expectedLifecycleVersionEventId,
+                        expectedPlantSortId,
+                        kind: 'selected',
+                        owner: { accountId, userId },
+                        plantingId: plantingIdNumber,
+                        scheduledDate,
+                        sowingLocation,
+                    });
+                return context.json(
+                    {
+                        created: result.created,
+                        scheduledDate: result.task.scheduledDate,
+                        sowingLocation: result.task.sowingLocation,
+                        status: result.task.status,
+                    },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError) {
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                }
+                console.error('Failed to reschedule selected planting', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    plantingId: plantingIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to reschedule planting' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/cancel',
+        describeRoute({
+            description:
+                'Cancel one future selected Advanced Sowing planting for the current garden owner',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                plantingId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator('json', cancelSelectedPlantingBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, plantingId, raisedBedId } =
+                context.req.valid('param');
+            const {
+                commandId,
+                effectiveAt,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                reason,
+            } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const plantingIdNumber = Number.parseInt(plantingId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            if (
+                !Number.isSafeInteger(gardenIdNumber) ||
+                gardenIdNumber <= 0 ||
+                !Number.isSafeInteger(plantingIdNumber) ||
+                plantingIdNumber <= 0 ||
+                !Number.isSafeInteger(raisedBedIdNumber) ||
+                raisedBedIdNumber <= 0
+            ) {
+                return context.json({ error: 'Invalid planting target' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            try {
+                if (
+                    !(await selectedPlantingMatchesGardenRoute({
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        plantingId: plantingIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    }))
+                ) {
+                    return context.json({ error: 'Planting not found' }, 404);
+                }
+                const result =
+                    await cancelSelectedRaisedBedPlantingTaskForOwner({
+                        commandId,
+                        ...(effectiveAt ? { effectiveAt } : {}),
+                        expectedLifecycleVersionEventId,
+                        expectedPlantSortId,
+                        kind: 'selected',
+                        owner: { accountId, userId },
+                        plantingId: plantingIdNumber,
+                        reason,
+                    });
+                return context.json(
+                    {
+                        created: result.created,
+                        isActive: result.isActive,
+                        lifecycleStatus: result.lifecycleStatus,
+                        refundAmount:
+                            result.task.cancellation?.refundSunflowerAmount ??
+                            0,
+                        status: result.task.status,
+                    },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError) {
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                }
+                console.error('Failed to cancel selected planting', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    plantingId: plantingIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to cancel planting' },
+                    500,
+                );
+            }
+        },
+    )
+    .patch(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId',
+        describeRoute({
+            description:
+                'Update the lifecycle status of one selected Advanced Sowing planting',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                plantingId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator('json', updateSelectedPlantingStatusBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, plantingId, raisedBedId } =
+                context.req.valid('param');
+            const {
+                commandId,
+                effectiveAt,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                status,
+            } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const plantingIdNumber = Number.parseInt(plantingId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            if (
+                !Number.isSafeInteger(gardenIdNumber) ||
+                gardenIdNumber <= 0 ||
+                !Number.isSafeInteger(plantingIdNumber) ||
+                plantingIdNumber <= 0 ||
+                !Number.isSafeInteger(raisedBedIdNumber) ||
+                raisedBedIdNumber <= 0
+            ) {
+                return context.json({ error: 'Invalid planting target' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            try {
+                if (
+                    !(await selectedPlantingMatchesGardenRoute({
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        plantingId: plantingIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    }))
+                ) {
+                    return context.json({ error: 'Planting not found' }, 404);
+                }
+                const result =
+                    await updateSelectedRaisedBedPlantingLifecycleStatusForOwner(
+                        {
+                            commandId,
+                            ...(effectiveAt ? { effectiveAt } : {}),
+                            expectedLifecycleVersionEventId,
+                            expectedPlantSortId,
+                            kind: 'selected',
+                            owner: { accountId, userId },
+                            plantingId: plantingIdNumber,
+                            status,
+                        },
+                    );
+                return context.json(
+                    {
+                        created: result.created,
+                        isActive: result.isActive,
+                        lifecycleStatus: result.lifecycleStatus,
+                        lifecycleStoppedAt:
+                            result.lifecycleStoppedAt?.toISOString() ?? null,
+                    },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError) {
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                }
+                console.error('Failed to update selected planting status', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    plantingId: plantingIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to update planting' },
+                    500,
+                );
+            }
         },
     )
     .post(

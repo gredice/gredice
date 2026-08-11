@@ -24,6 +24,10 @@ import {
     getSelectedDateOperationsForDay,
 } from './scheduleDayFilters';
 import { FARM_SCHEDULE_TIME_ZONE } from './scheduleShared';
+import {
+    type FarmScheduleSelectedPlanting,
+    getScheduledSelectedPlantingsForDay,
+} from './selectedPlantingSchedule';
 
 const operationsBackDays = 90;
 const raisedBedPhotoPreviewImageLimit = 3;
@@ -55,6 +59,7 @@ export type FarmScheduleOperation = Awaited<
 export type FarmSchedulePlantingsDayData = {
     raisedBeds: FarmScheduleRaisedBed[];
     scheduledFields: FarmScheduleRaisedBed['fields'];
+    scheduledSelectedPlantings: FarmScheduleSelectedPlanting[];
 };
 export type FarmScheduleOperationsDayData = {
     raisedBeds: FarmScheduleRaisedBed[];
@@ -90,6 +95,11 @@ export async function getFarmScheduleRaisedBedPhotoPreviewsForDay(
     const visibleRaisedBedIds = Array.from(
         new Set([
             ...dayData.scheduledFields.map((field) => field.raisedBedId),
+            ...dayData.scheduledSelectedPlantings.flatMap(({ planting }) =>
+                planting.memberships.map(
+                    (membership) => membership.raisedBedField.raisedBedId,
+                ),
+            ),
             ...dayData.scheduledOperations
                 .map((operation) => operation.raisedBedId)
                 .filter((id): id is number => id !== null),
@@ -263,6 +273,11 @@ export const getFarmSchedulePlantingsDayData = cache(
                 dateKey,
                 raisedBeds,
             ),
+            scheduledSelectedPlantings: getScheduledSelectedPlantingsForDay(
+                isToday,
+                dateKey,
+                raisedBeds,
+            ),
         };
     },
 );
@@ -314,6 +329,8 @@ export const getFarmScheduleDayData = cache(
                 return {
                     raisedBeds: plantingsDayData.raisedBeds,
                     scheduledFields: plantingsDayData.scheduledFields,
+                    scheduledSelectedPlantings:
+                        plantingsDayData.scheduledSelectedPlantings,
                     scheduledOperations: filterUnavailableRaisedBedOperations(
                         scheduledOperations,
                         plantingsDayData.raisedBeds,

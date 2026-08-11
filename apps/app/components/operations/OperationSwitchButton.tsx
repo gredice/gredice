@@ -13,6 +13,7 @@ import {
     type SwitchOperationEntityActionState,
     switchOperationEntityAction,
 } from '../../app/(actions)/operationActions';
+import { ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE } from '../../app/admin/operations/operationScope';
 import { canSwitchOperationTaskEntity } from '../../app/admin/schedule/scheduleShared';
 
 export type OperationSwitchOption = {
@@ -27,6 +28,7 @@ interface OperationSwitchButtonProps {
     operationStatus: string;
     operationLabel: string;
     operationOptions: OperationSwitchOption[];
+    plantOperationTargetBlocked?: boolean;
 }
 
 export function OperationSwitchButton({
@@ -36,6 +38,7 @@ export function OperationSwitchButton({
     operationStatus,
     operationLabel,
     operationOptions,
+    plantOperationTargetBlocked = false,
 }: OperationSwitchButtonProps) {
     const [open, setOpen] = useState(false);
     const [selectedEntityId, setSelectedEntityId] = useState(
@@ -84,6 +87,18 @@ export function OperationSwitchButton({
         !canSwitchOperationTaskEntity(operationStatus)
     ) {
         return null;
+    }
+
+    if (plantOperationTargetBlocked) {
+        return (
+            <IconButton
+                variant="plain"
+                title={ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE}
+                disabled
+            >
+                <Replace className="size-4 shrink-0" />
+            </IconButton>
+        );
     }
 
     return (

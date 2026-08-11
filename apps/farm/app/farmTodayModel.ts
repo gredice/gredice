@@ -1,8 +1,13 @@
-import type { EntityStandardized, OperationStatus } from '@gredice/storage';
+import type {
+    EntityStandardized,
+    OperationStatus,
+    RaisedBedPlantingWithFields,
+} from '@gredice/storage';
 import {
     getScheduleOperationCompletionRequirements,
     type ScheduleOperationCompletionRequirements,
 } from './schedule/scheduleOperationRequirements';
+import { buildFarmScheduleSelectedPlantingLabel } from './schedule/schedulePlantingPresentation';
 import {
     compareScheduleDates,
     getFieldPhysicalPositionIndex,
@@ -28,6 +33,7 @@ import {
     getOperationTaskState,
     getPlantingTaskState,
     getScheduleTaskSummary,
+    getSelectedPlantingTaskState,
     isActionableTaskState,
     type ScheduleTaskState,
 } from './schedule/scheduleTaskState';
@@ -70,6 +76,7 @@ export type FarmTodayRaisedBedInput = {
     fields: FarmTodayPlantingInput[];
     gardenId?: number | null;
     id: number;
+    plantings?: FarmTodaySelectedPlantingInput[];
     physicalId?: string | null;
     status?: string | null;
 };
@@ -93,6 +100,41 @@ export type FarmTodayOperationInput = {
 export type FarmTodayPlantingsSourceData = {
     raisedBeds: FarmTodayRaisedBedInput[];
     scheduledFields: FarmTodayPlantingInput[];
+    scheduledSelectedPlantings?: Array<{
+        planting: FarmTodaySelectedPlantingInput;
+        raisedBedId: number;
+    }>;
+};
+
+type FarmTodaySelectedPlantingTask = Pick<
+    NonNullable<RaisedBedPlantingWithFields['selectedTask']>,
+    | 'assignedUserIds'
+    | 'block'
+    | 'completion'
+    | 'identity'
+    | 'scheduledDate'
+    | 'sowingLocation'
+    | 'status'
+>;
+
+export type FarmTodaySelectedPlantingInput = Pick<
+    RaisedBedPlantingWithFields,
+    | 'configurationSource'
+    | 'id'
+    | 'plantCount'
+    | 'plantSortId'
+    | 'plantsPerAxis'
+    | 'selectedSeedingDistanceCm'
+    | 'spanColumns'
+    | 'spanRows'
+> & {
+    memberships: readonly {
+        raisedBedField: {
+            positionIndex: number;
+            raisedBedId: number;
+        };
+    }[];
+    selectedTask: FarmTodaySelectedPlantingTask | null;
 };
 
 export type FarmTodayOperationsSourceData = {
@@ -169,10 +211,11 @@ export type FarmTodayOperationTask = FarmTodayTaskBase & {
 export type FarmTodayPlantingTask = FarmTodayTaskBase & {
     actionTarget: Extract<
         ScheduleTaskBlockerTarget,
-        { kind: 'planting' }
+        { kind: 'planting' | 'selected' }
     > | null;
-    fieldId: number;
+    fieldId?: number;
     kind: 'planting';
+    plantingId?: number;
     plantSortId: number;
     proofRequirements: {
         images: 'none';
@@ -287,6 +330,19 @@ function getRaisedBedLabel(raisedBed: FarmTodayRaisedBedInput) {
         : `Gredica ${raisedBed.id}`;
 }
 
+function getPhysicalRaisedBedGroup(
+    raisedBed: FarmTodayRaisedBedInput,
+    relatedRaisedBeds: FarmTodayRaisedBedInput[],
+) {
+    return relatedRaisedBeds.filter(
+        (candidate) =>
+            candidate.accountId === raisedBed.accountId &&
+            candidate.farmId === raisedBed.farmId &&
+            candidate.gardenId === raisedBed.gardenId &&
+            candidate.physicalId === raisedBed.physicalId,
+    );
+}
+
 function getRaisedBedLocation({
     greenhouse,
     positionIndex,
@@ -298,12 +354,9 @@ function getRaisedBedLocation({
     raisedBed: FarmTodayRaisedBedInput;
     relatedRaisedBeds: FarmTodayRaisedBedInput[];
 }): FarmTodayTaskLocation {
-    const groupedRaisedBeds = relatedRaisedBeds.filter(
-        (candidate) =>
-            candidate.accountId === raisedBed.accountId &&
-            candidate.farmId === raisedBed.farmId &&
-            candidate.gardenId === raisedBed.gardenId &&
-            candidate.physicalId === raisedBed.physicalId,
+    const groupedRaisedBeds = getPhysicalRaisedBedGroup(
+        raisedBed,
+        relatedRaisedBeds,
     );
     const positionNumber =
         positionIndex === null
@@ -424,6 +477,27 @@ function buildPlantingCandidates({
                     'pendingVerification',
         );
     const fields = dedupeById([...source.scheduledFields, ...pendingFields]);
+    const pendingSelectedPlantings = authorizedRaisedBeds.flatMap((raisedBed) =>
+        (raisedBed.plantings ?? [])
+            .filter((planting) => {
+                const task = planting.selectedTask;
+                return (
+                    planting.configurationSource === 'selected' &&
+                    task !== null &&
+                    getSelectedPlantingTaskState(task.status) ===
+                        'pendingVerification'
+                );
+            })
+            .map((planting) => ({ planting, raisedBedId: raisedBed.id })),
+    );
+    const selectedPlantings = [
+        ...new Map(
+            [
+                ...(source.scheduledSelectedPlantings ?? []),
+                ...pendingSelectedPlantings,
+            ].map((entry) => [entry.planting.id, entry]),
+        ).values(),
+    ];
     const plantSortById =
         plantSorts.status === 'ready'
             ? new Map(
@@ -488,6 +562,101 @@ function buildPlantingCandidates({
                 notes: 'none',
             },
             raisedBedId: field.raisedBedId,
+            state,
+        });
+    }
+
+    for (const entry of selectedPlantings) {
+        const { planting, raisedBedId } = entry;
+        const raisedBed = raisedBedById.get(raisedBedId);
+        const task = planting.selectedTask;
+        if (
+            !raisedBed ||
+            planting.configurationSource !== 'selected' ||
+            !task
+        ) {
+            continue;
+        }
+        const state = getSelectedPlantingTaskState(task.status);
+        if (raisedBed.status === 'abandoned' && isActionableTaskState(state)) {
+            continue;
+        }
+
+        authorizedCandidateCount += 1;
+        const assignment =
+            task.assignedUserIds.length === 0
+                ? 'shared'
+                : task.assignedUserIds.includes(userId)
+                  ? 'mine'
+                  : 'other';
+        if (assignment === 'other') {
+            continue;
+        }
+
+        const plantSort = plantSortById.get(planting.plantSortId);
+        if (plantSorts.status === 'ready' && !plantSort) {
+            issues.add('plantSortMetadataMissing');
+        }
+        const physicalRaisedBedGroup = getPhysicalRaisedBedGroup(
+            raisedBed,
+            authorizedRaisedBeds,
+        );
+        const physicalPositions = planting.memberships
+            .map((membership) =>
+                getFieldPhysicalPositionIndex(
+                    {
+                        positionIndex: membership.raisedBedField.positionIndex,
+                        raisedBedId: membership.raisedBedField.raisedBedId,
+                    },
+                    physicalRaisedBedGroup,
+                ),
+            )
+            .sort((left, right) => left - right)
+            .join(', ');
+        const label = `${buildFarmScheduleSelectedPlantingLabel({
+            plantCount: planting.plantCount,
+            plantName: plantSort?.information?.name,
+            plantsPerAxis: planting.plantsPerAxis,
+            selectedSeedingDistanceCm: planting.selectedSeedingDistanceCm,
+            sowingLocation: task.sowingLocation,
+            spanColumns: planting.spanColumns,
+            spanRows: planting.spanRows,
+        })} · polja ${physicalPositions}`;
+
+        tasks.push({
+            ...buildTaskTiming(state, task.scheduledDate, referenceDate),
+            actionTarget: task.identity,
+            assignment,
+            blocker:
+                state === 'blocked'
+                    ? {
+                          occurredAt: toIsoString(task.block?.blockedAt),
+                          reason: task.block?.reasonLabel ?? null,
+                      }
+                    : undefined,
+            durationMinutes: PLANTING_TASK_DURATION_MINUTES,
+            href: `/raised-beds/${raisedBedId.toString()}`,
+            key: `selected-planting:${planting.id.toString()}`,
+            kind: 'planting',
+            label,
+            location: getRaisedBedLocation({
+                greenhouse: task.sowingLocation === 'greenhouse',
+                positionIndex: null,
+                raisedBed,
+                relatedRaisedBeds: authorizedRaisedBeds,
+            }),
+            occurredAt: toIsoString(
+                state === 'blocked'
+                    ? task.block?.blockedAt
+                    : task.completion?.completedAt,
+            ),
+            plantingId: planting.id,
+            plantSortId: planting.plantSortId,
+            proofRequirements: {
+                images: 'none',
+                notes: 'none',
+            },
+            raisedBedId,
             state,
         });
     }

@@ -1,12 +1,20 @@
+import type { AdvancedSowingCartAuthorizationV1 } from '@gredice/js/plants';
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import {
     events,
     notifications,
+    shoppingCartItemAdvancedSowingAuthorizations,
     shoppingCartItems,
     shoppingCarts,
 } from '../schema';
 import { storage } from '../storage';
 import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
+import {
+    AdvancedSowingCartAuthorizationPersistenceError,
+    clearShoppingCartItemAdvancedSowingAuthorization,
+    getShoppingCartItemAdvancedSowingAuthorizations,
+    persistShoppingCartItemAdvancedSowingAuthorization,
+} from './advancedSowingCartAuthorizationRepo';
 import {
     withCheckoutCartItemLock,
     withCheckoutCartItemLocks,
@@ -32,6 +40,11 @@ import {
     getActiveStripeCheckoutAttempt,
 } from './stripeCheckoutAttemptRepo';
 
+export {
+    AdvancedSowingCartAuthorizationPersistenceError,
+    getShoppingCartItemAdvancedSowingAuthorizations,
+} from './advancedSowingCartAuthorizationRepo';
+
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
@@ -48,6 +61,11 @@ export class CheckoutCartItemFulfillmentStartedError extends Error {
             `Shopping cart item ${cartItemId.toString()} cannot change after checkout fulfillment starts.`,
         );
     }
+}
+
+export class AdvancedSowingCartItemExplicitIdentityRequiredError extends Error {
+    override readonly name =
+        'AdvancedSowingCartItemExplicitIdentityRequiredError';
 }
 
 class CheckoutCartChangedDuringDeleteError extends Error {
@@ -818,6 +836,20 @@ export async function upsertOrRemoveCartItem(
         if (existingItem && existingItem.cartId !== cartId) {
             throw new Error('Shopping cart item does not belong to this cart');
         }
+        if (
+            existingItem &&
+            !id &&
+            (
+                await getShoppingCartItemAdvancedSowingAuthorizations(
+                    [existingItem.id],
+                    db,
+                )
+            ).has(existingItem.id)
+        ) {
+            throw new AdvancedSowingCartItemExplicitIdentityRequiredError(
+                'Advanced Sowing cart items require an explicit cart item ID.',
+            );
+        }
         const [mutationCart] = await db
             .select({
                 accountId: shoppingCarts.accountId,
@@ -885,6 +917,10 @@ export async function upsertOrRemoveCartItem(
                         isDeleted: true,
                     })
                     .where(eq(shoppingCartItems.id, existingItem.id));
+                await clearShoppingCartItemAdvancedSowingAuthorization(
+                    existingItem.id,
+                    db,
+                );
                 await releaseOutletReservationForCartItem(
                     existingItem.id,
                     new Date(),
@@ -910,6 +946,22 @@ export async function upsertOrRemoveCartItem(
         }
 
         if (existingItem) {
+            const targetChanged =
+                amount !== existingItem.amount ||
+                entityId !== existingItem.entityId ||
+                entityTypeName !== existingItem.entityTypeName ||
+                (gardenId !== undefined &&
+                    gardenId !== existingItem.gardenId) ||
+                (raisedBedId !== undefined &&
+                    raisedBedId !== existingItem.raisedBedId) ||
+                (typeof positionIndex === 'number' &&
+                    positionIndex !== existingItem.positionIndex);
+            if (targetChanged) {
+                await clearShoppingCartItemAdvancedSowingAuthorization(
+                    existingItem.id,
+                    db,
+                );
+            }
             return (
                 await db
                     .update(shoppingCartItems)
@@ -990,6 +1042,84 @@ export async function upsertOrRemoveCartItem(
         : storage().transaction((db) => applyMutation(db));
 }
 
+/**
+ * Mutates a cart item and its server-owned Advanced Sowing authorization under
+ * the same checkout/cart-item fence. Client routes must never write the
+ * authorization table separately or place this envelope in additionalData.
+ */
+export async function upsertOrRemoveCartItemWithAdvancedSowingAuthorization({
+    id,
+    cartId,
+    entityId,
+    entityTypeName,
+    amount,
+    gardenId,
+    raisedBedId,
+    positionIndex,
+    additionalData,
+    currency,
+    forceCreate,
+    forceDelete = false,
+    authorization,
+}: {
+    id?: number | null;
+    cartId: number;
+    entityId: string;
+    entityTypeName: string;
+    amount: number;
+    gardenId?: number;
+    raisedBedId?: number;
+    positionIndex?: number;
+    additionalData?: string | null;
+    currency?: string | null;
+    forceCreate?: boolean;
+    forceDelete?: boolean;
+    authorization: AdvancedSowingCartAuthorizationV1 | null;
+}) {
+    return storage().transaction(async (tx) => {
+        const cartItemId = await upsertOrRemoveCartItem(
+            id,
+            cartId,
+            entityId,
+            entityTypeName,
+            amount,
+            gardenId,
+            raisedBedId,
+            positionIndex,
+            additionalData,
+            currency,
+            forceCreate,
+            forceDelete,
+            tx,
+        );
+        if (cartItemId && authorization) {
+            if (await getOutletOfferReservationForCartItem(cartItemId, tx)) {
+                throw new AdvancedSowingCartAuthorizationPersistenceError(
+                    'Advanced Sowing cannot replace an outlet-reserved cart item.',
+                );
+            }
+            await persistShoppingCartItemAdvancedSowingAuthorization(
+                cartItemId,
+                authorization,
+                tx,
+                {
+                    cartId,
+                    entityId,
+                    entityTypeName,
+                    gardenId,
+                    raisedBedId,
+                },
+            );
+        } else if (cartItemId) {
+            await clearShoppingCartItemAdvancedSowingAuthorization(
+                cartItemId,
+                tx,
+            );
+        }
+        return cartItemId;
+    });
+}
+
 export async function upsertOrRemoveCartItemWithOutletReservation({
     id,
     cartId,
@@ -1043,6 +1173,10 @@ export async function upsertOrRemoveCartItemWithOutletReservation({
         );
 
         if (amount > 0 && cartItemId) {
+            await clearShoppingCartItemAdvancedSowingAuthorization(
+                cartItemId,
+                tx,
+            );
             await reserveOutletOffer({
                 offerId: outletOfferId,
                 accountId,
@@ -1141,6 +1275,16 @@ export async function deleteShoppingCart(accountId: string) {
                     .update(shoppingCartItems)
                     .set({ isDeleted: true })
                     .where(eq(shoppingCartItems.cartId, lockedCart.id));
+                if (liveItemIds.length > 0) {
+                    await db
+                        .delete(shoppingCartItemAdvancedSowingAuthorizations)
+                        .where(
+                            inArray(
+                                shoppingCartItemAdvancedSowingAuthorizations.cartItemId,
+                                liveItemIds,
+                            ),
+                        );
+                }
                 await releaseOutletReservationsForCart(
                     lockedCart.id,
                     new Date(),
@@ -1298,6 +1442,10 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
                         .update(shoppingCartItems)
                         .set({ amount: inventoryAmount })
                         .where(eq(shoppingCartItems.id, item.id));
+                    await clearShoppingCartItemAdvancedSowingAuthorization(
+                        item.id,
+                        tx,
+                    );
 
                     await tx.insert(shoppingCartItems).values({
                         cartId: item.cartId,

@@ -27,7 +27,11 @@ import type {
     UserBirthdayRewardPayload,
 } from './types';
 
-type DatabaseClient = ReturnType<typeof storage>;
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 const DEFAULT_ALL_EVENTS_PAGE_SIZE = 10000;
 
 export type AiAnalyticsOperationType =
@@ -114,6 +118,14 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.raisedBedFields.plantUpdate,
     knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedPlantings.lifecycleStarted,
+    knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+    knownEventTypes.raisedBedPlantings.taskScheduled,
+    knownEventTypes.raisedBedPlantings.taskAssigned,
+    knownEventTypes.raisedBedPlantings.taskBlocked,
+    knownEventTypes.raisedBedPlantings.taskCompleted,
+    knownEventTypes.raisedBedPlantings.taskVerified,
+    knownEventTypes.raisedBedPlantings.taskCancelled,
 ]);
 
 const deliveryInvalidatingEventTypes = new Set<string>([
@@ -774,9 +786,14 @@ export async function getSunflowersDailyTotals(filter?: {
     );
 }
 
-export async function deleteEventById(eventId: number) {
-    const event = await getEventById(eventId);
-    await storage().delete(events).where(eq(events.id, eventId));
+export async function deleteEventById(
+    eventId: number,
+    db: DatabaseClient = storage(),
+) {
+    const event = await db.query.events.findFirst({
+        where: eq(events.id, eventId),
+    });
+    await db.delete(events).where(eq(events.id, eventId));
     if (event) {
         await bustReadModelCachesForEvent(event);
     }

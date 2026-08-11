@@ -1,6 +1,9 @@
 import type { FarmTodayTask } from './farmTodayModel';
 import { CompleteOperationModal } from './schedule/CompleteOperationModal';
-import { CompletePlantingModal } from './schedule/CompletePlantingModal';
+import {
+    CompletePlantingModal,
+    CompleteSelectedPlantingModal,
+} from './schedule/CompletePlantingModal';
 import { ScheduleTaskBlockerModal } from './schedule/ScheduleTaskBlockerModal';
 import { ScheduleTaskStateControl } from './schedule/ScheduleTaskStateControl';
 
@@ -60,18 +63,25 @@ export function FarmTodayTaskActions({
     }
 
     const completionAction = task.actionTarget ? (
-        <CompletePlantingModal
-            expectedPlantCycleEventId={
-                task.actionTarget.expectedPlantCycleEventId
-            }
-            expectedPlantCycleVersionEventId={
-                task.actionTarget.expectedPlantCycleVersionEventId
-            }
-            expectedPlantSortId={task.actionTarget.expectedPlantSortId}
-            label={task.label}
-            positionIndex={task.actionTarget.positionIndex}
-            raisedBedId={task.actionTarget.raisedBedId}
-        />
+        task.actionTarget.kind === 'selected' ? (
+            <CompleteSelectedPlantingModal
+                {...task.actionTarget}
+                label={task.label}
+            />
+        ) : (
+            <CompletePlantingModal
+                expectedPlantCycleEventId={
+                    task.actionTarget.expectedPlantCycleEventId
+                }
+                expectedPlantCycleVersionEventId={
+                    task.actionTarget.expectedPlantCycleVersionEventId
+                }
+                expectedPlantSortId={task.actionTarget.expectedPlantSortId}
+                label={task.label}
+                positionIndex={task.actionTarget.positionIndex}
+                raisedBedId={task.actionTarget.raisedBedId}
+            />
+        )
     ) : undefined;
     const blockerAction = task.actionTarget ? (
         <ScheduleTaskBlockerModal

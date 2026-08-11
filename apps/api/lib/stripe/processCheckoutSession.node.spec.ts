@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    advancedSowingCartAuthorizationKind,
+    buildAdvancedSowingCartConfigurationV1,
+} from '@gredice/js/plants';
+import {
     fingerprintStripeCheckoutValue,
+    RaisedBedPlantingError,
     StripePaymentProcessingClaimLostError,
     StripePaymentProcessingDeferredError,
     StripePaymentProcessingPermanentError,
@@ -42,6 +47,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function advancedSowingAuthorization({
+    anchorPositionIndex,
+    selectedDistanceCm,
+}: {
+    anchorPositionIndex: number;
+    selectedDistanceCm: number;
+}) {
+    return {
+        kind: advancedSowingCartAuthorizationKind,
+        plan: buildAdvancedSowingCartConfigurationV1({
+            anchorPositionIndex,
+            bedFieldCount: 18,
+            maxDistanceCm: 60,
+            minDistanceCm: 15,
+            optimalDistanceCm: 30,
+            selectedDistanceCm,
+        }),
+        version: 1 as const,
+    };
+}
+
 function isRecordedEvent(value: unknown): value is {
     type: string;
     aggregateId: string;
@@ -80,7 +106,18 @@ function makeDependencies(
         record(calls, 'getShoppingCart', args);
         return null;
     };
+    const writeEvent = async (...args: unknown[]) => {
+        const override = overrides.createEvent;
+        if (typeof override === 'function') {
+            return override(...args);
+        }
+        record(calls, 'createEvent', args);
+        return undefined;
+    };
     const dependencies = {
+        acquirePlantingScheduleTaskLock: async (...args: unknown[]) => {
+            record(calls, 'acquirePlantingScheduleTaskLock', args);
+        },
         isRaisedBedAbandoned: (status: unknown) => {
             record(calls, 'isRaisedBedAbandoned', [status]);
             return status === 'abandoned';
@@ -102,8 +139,37 @@ function makeDependencies(
             record(calls, 'getOrCreateDeliveryRequest', args);
             return { created: true, requestId: 'delivery-request-701' };
         },
-        createEvent: async (...args: unknown[]) => {
-            record(calls, 'createEvent', args);
+        createEvent: writeEvent,
+        createLegacyRaisedBedPlantPlaceWithProjection: async (
+            ...args: unknown[]
+        ) => {
+            const override =
+                overrides.createLegacyRaisedBedPlantPlaceWithProjection;
+            if (typeof override === 'function') {
+                return override(...args);
+            }
+            record(
+                calls,
+                'createLegacyRaisedBedPlantPlaceWithProjection',
+                args,
+            );
+            const input = args[0];
+            if (!isRecord(input) || !('event' in input)) {
+                throw new Error('Missing legacy plant-place event input.');
+            }
+            await writeEvent(input.event, args[1]);
+            return undefined;
+        },
+        createRaisedBedPlanting: async (...args: unknown[]) => {
+            const override = overrides.createRaisedBedPlanting;
+            if (typeof override === 'function') {
+                return override(...args);
+            }
+            record(calls, 'createRaisedBedPlanting', args);
+            return { created: true, planting: {} };
+        },
+        ensureLegacyRaisedBedPlantingProjection: async (...args: unknown[]) => {
+            record(calls, 'ensureLegacyRaisedBedPlantingProjection', args);
         },
         createNotificationWithStatus: async (...args: unknown[]) => {
             record(calls, 'createNotificationWithStatus', args);
@@ -217,9 +283,20 @@ function makeDependencies(
             record(calls, 'getRaisedBed', args);
             return null;
         },
+        getRaisedBedPlantingByEventAggregateId: async (...args: unknown[]) => {
+            record(calls, 'getRaisedBedPlantingByEventAggregateId', args);
+            return null;
+        },
         getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
             record(calls, 'getRaisedBedFieldsWithEvents', args);
-            return [];
+            return [
+                {
+                    id: 88,
+                    positionIndex: 2,
+                    active: false,
+                    plantCycles: [],
+                },
+            ];
         },
         getStripeCheckoutAttempt: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutAttempt', args);
@@ -353,6 +430,20 @@ function makeDependencies(
                 throw new Error('Missing planting transaction callback.');
             }
             return callback({ transaction: 'planting-test' });
+        },
+        withPlantingScheduleTaskFootprintTransaction: async (
+            ...args: unknown[]
+        ) => {
+            record(
+                calls,
+                'withPlantingScheduleTaskFootprintTransaction',
+                args.slice(0, 2),
+            );
+            const callback = args[2];
+            if (typeof callback !== 'function') {
+                throw new Error('Missing planting footprint callback.');
+            }
+            return callback({ transaction: 'planting-footprint-test' });
         },
         withCheckoutCartItemLock: async (...args: unknown[]) => {
             record(calls, 'withCheckoutCartItemLock', args.slice(0, 1));
@@ -2986,7 +3077,14 @@ describe('processCheckoutSession', () => {
             },
             getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
                 record(calls, 'getRaisedBedFieldsWithEvents', args);
-                return [];
+                return [
+                    {
+                        id: 88,
+                        positionIndex: 2,
+                        active: false,
+                        plantCycles: [],
+                    },
+                ];
             },
             createNotificationWithStatus: async (...args: unknown[]) => {
                 record(calls, 'createNotificationWithStatus', args);
@@ -3237,6 +3335,96 @@ describe('processCheckoutSession', () => {
             },
         );
         assert.equal(conflictCaptures.length, 2);
+    });
+
+    it('maps canonical placement collisions into the paid planting incident path', async () => {
+        for (const code of [
+            'layout_collision',
+            'legacy_layout_unknown',
+            'plant_operation_conflict',
+        ] as const) {
+            const calls: RecordedCall[] = [];
+            const dependencies = makeDependencies(calls, {
+                createRaisedBedPlanting: async (...args: unknown[]) => {
+                    record(calls, 'createRaisedBedPlanting', args);
+                    throw new RaisedBedPlantingError(
+                        code,
+                        `Canonical planting conflict: ${code}`,
+                    );
+                },
+            });
+
+            await assert.rejects(
+                processItem(
+                    {
+                        accountId: 'account-1',
+                        advancedSowingAuthorization:
+                            advancedSowingAuthorization({
+                                anchorPositionIndex: 2,
+                                selectedDistanceCm: 15,
+                            }),
+                        amount_total: 2500,
+                        additionalData: { scheduledDate: '2026-07-01' },
+                        cartId: 100,
+                        cartItemId: 1,
+                        checkoutSessionId: `cs_${code}`,
+                        currency: 'eur',
+                        entityId: '101',
+                        entityTypeName: 'plantSort',
+                        gardenId: 200,
+                        positionIndex: 2,
+                        raisedBedId: 300,
+                    },
+                    dependencies,
+                ),
+                (error) =>
+                    error instanceof RaisedBedPlantingError &&
+                    error.code === code,
+            );
+
+            assert.equal(
+                callsNamed(calls, 'createNotificationWithStatus').length,
+                1,
+            );
+            const incident = callsNamed(
+                calls,
+                'createNotificationWithStatus',
+            )[0]?.args[0];
+            assert.ok(isRecord(incident));
+            assert.equal(incident.type, 'checkout_planting_target_conflict');
+            assert.equal(
+                callsNamed(calls, 'notifyCheckoutFulfillmentIncident').length,
+                1,
+            );
+            assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+
+            const captures = callsNamed(calls, 'posthog.capture');
+            assert.equal(captures.length, 1);
+            const capture = captures[0]?.args[0];
+            assert.deepEqual(capture, {
+                distinctId: 'advanced-sowing-checkout',
+                event: 'advanced_sowing_checkout_conflict',
+                properties: { reason_code: code },
+            });
+            assert.ok(isRecord(capture));
+            const properties = capture.properties;
+            assert.ok(isRecord(properties));
+            for (const forbiddenProperty of [
+                '$insert_id',
+                'account_id',
+                'cart_item_id',
+                'checkout_session_id',
+                'garden_id',
+                'position_index',
+                'raised_bed_id',
+                'sort_id',
+            ]) {
+                assert.equal(
+                    Object.hasOwn(properties, forbiddenProperty),
+                    false,
+                );
+            }
+        }
     });
 
     it('continues later paid lines after an earlier failure and rebuilds finalization on retry', async () => {
@@ -4716,7 +4904,332 @@ describe('processItem', () => {
         });
     });
 
-    it('finds the same checkout planting after its cycle moves to another field', async () => {
+    it('creates one selected planting for a paid one-field density snapshot', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls);
+
+        const result = await processItem(
+            {
+                accountId: 'account-1',
+                advancedSowingAuthorization: advancedSowingAuthorization({
+                    anchorPositionIndex: 2,
+                    selectedDistanceCm: 15,
+                }),
+                amount_total: 2500,
+                additionalData: {
+                    scheduledDate: '2026-07-01',
+                    sowingLocation: 'greenhouse',
+                },
+                cartId: 100,
+                cartItemId: 1,
+                checkoutSessionId: 'cs_advanced_density',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(result, { status: 'fulfilled' });
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withPlantingScheduleTaskFootprintTransaction')[0]
+                ?.args,
+            [300, [2]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'upsertRaisedBedField').map(
+                (call) => call.args[0],
+            ),
+            [{ positionIndex: 2, raisedBedId: 300 }],
+        );
+        assert.equal(
+            callsNamed(calls, 'acquirePlantingScheduleTaskLock').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'createRaisedBedPlanting').length, 1);
+        assert.equal(
+            callsNamed(calls, 'createLegacyRaisedBedPlantPlaceWithProjection')
+                .length,
+            0,
+        );
+        const createInput = callsNamed(calls, 'createRaisedBedPlanting')[0]
+            ?.args[0];
+        assert.ok(isRecord(createInput));
+        assert.equal(createInput.configurationSource, 'selected');
+        assert.equal(
+            createInput.eventAggregateId,
+            'raised-bed-planting:cart-item:1',
+        );
+        assert.equal(createInput.plantSortId, 101);
+        assert.equal(createInput.plantsPerAxis, 2);
+        assert.equal(createInput.plantCount, 4);
+        assert.deepStrictEqual(createInput.memberships, [
+            {
+                isAnchor: true,
+                raisedBedFieldId: 88,
+                relativeColumn: 0,
+                relativeRow: 0,
+            },
+        ]);
+        assert.ok(isRecord(createInput.lifecycleStarted));
+        assert.equal(
+            createInput.lifecycleStarted.scheduledDate,
+            '2026-07-01T00:00:00.000Z',
+        );
+        assert.equal(createInput.lifecycleStarted.sowingLocation, 'greenhouse');
+        assert.deepStrictEqual(createInput.lifecycleStarted.purchase, {
+            cartItemId: 1,
+            currency: 'eur',
+            euroAmountCents: 2500,
+        });
+        assert.equal(
+            callsNamed(calls, 'lockAndActivateRaisedBedForCheckoutPlanting')
+                .length,
+            1,
+        );
+    });
+
+    it('creates selected plantings from direct sunflower and inventory checkout inputs', async () => {
+        for (const checkout of [
+            {
+                amountTotal: 40,
+                cartItemId: 4,
+                currency: 'sunflower',
+                expectedPurchase: {
+                    cartItemId: 4,
+                    currency: 'sunflower',
+                    sunflowerAmount: 40,
+                },
+            },
+            {
+                amountTotal: 0,
+                cartItemId: 5,
+                currency: 'inventory',
+                expectedPurchase: {
+                    cartItemId: 5,
+                    currency: 'inventory',
+                },
+            },
+        ] as const) {
+            const calls: RecordedCall[] = [];
+            const dependencies = makeDependencies(calls);
+
+            await processItem(
+                {
+                    accountId: 'account-1',
+                    advancedSowingAuthorization: advancedSowingAuthorization({
+                        anchorPositionIndex: 2,
+                        selectedDistanceCm: 15,
+                    }),
+                    amount_total: checkout.amountTotal,
+                    additionalData: { scheduledDate: '2026-07-01' },
+                    cartId: 100,
+                    cartItemId: checkout.cartItemId,
+                    checkoutSessionId: 'direct-checkout',
+                    currency: checkout.currency,
+                    entityId: '101',
+                    entityTypeName: 'plantSort',
+                    gardenId: 200,
+                    positionIndex: 2,
+                    raisedBedId: 300,
+                },
+                dependencies,
+            );
+
+            const createInput = callsNamed(calls, 'createRaisedBedPlanting')[0]
+                ?.args[0];
+            assert.ok(isRecord(createInput));
+            assert.ok(isRecord(createInput.lifecycleStarted));
+            assert.deepStrictEqual(
+                createInput.lifecycleStarted.purchase,
+                checkout.expectedPurchase,
+            );
+            assert.equal(
+                callsNamed(
+                    calls,
+                    'createLegacyRaisedBedPlantPlaceWithProjection',
+                ).length,
+                0,
+            );
+        }
+    });
+
+    it('locks and creates a paid 2x2 snapshot as one logical planting', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return [0, 1, 3, 4].map((positionIndex) => ({
+                    active: false,
+                    id: 100 + positionIndex,
+                    plantCycles: [],
+                    positionIndex,
+                }));
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                advancedSowingAuthorization: advancedSowingAuthorization({
+                    anchorPositionIndex: 4,
+                    selectedDistanceCm: 60,
+                }),
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 2,
+                checkoutSessionId: 'cs_advanced_2x2',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 4,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'withPlantingScheduleTaskFootprintTransaction')[0]
+                ?.args,
+            [300, [0, 1, 3, 4]],
+        );
+        assert.deepStrictEqual(
+            callsNamed(calls, 'upsertRaisedBedField').map(
+                (call) => call.args[0],
+            ),
+            [0, 1, 3, 4].map((positionIndex) => ({
+                positionIndex,
+                raisedBedId: 300,
+            })),
+        );
+        const createInput = callsNamed(calls, 'createRaisedBedPlanting')[0]
+            ?.args[0];
+        assert.ok(isRecord(createInput));
+        assert.equal(
+            createInput.eventAggregateId,
+            'raised-bed-planting:cart-item:2',
+        );
+        assert.equal(createInput.spanRows, 2);
+        assert.equal(createInput.spanColumns, 2);
+        assert.equal(createInput.plantCount, 1);
+        assert.deepStrictEqual(createInput.memberships, [
+            {
+                isAnchor: true,
+                raisedBedFieldId: 104,
+                relativeColumn: 0,
+                relativeRow: 0,
+            },
+            {
+                isAnchor: false,
+                raisedBedFieldId: 103,
+                relativeColumn: 1,
+                relativeRow: 0,
+            },
+            {
+                isAnchor: false,
+                raisedBedFieldId: 101,
+                relativeColumn: 0,
+                relativeRow: 1,
+            },
+            {
+                isAnchor: false,
+                raisedBedFieldId: 100,
+                relativeColumn: 1,
+                relativeRow: 1,
+            },
+        ]);
+        assert.equal(callsNamed(calls, 'createRaisedBedPlanting').length, 1);
+        assert.equal(
+            callsNamed(calls, 'createLegacyRaisedBedPlantPlaceWithProjection')
+                .length,
+            0,
+        );
+        assert.ok(
+            callNames(calls).indexOf('createRaisedBedPlanting') <
+                callNames(calls).indexOf(
+                    'lockAndActivateRaisedBedForCheckoutPlanting',
+                ),
+        );
+    });
+
+    it('replays a selected planting identity before touching a deleted bed', async () => {
+        const calls: RecordedCall[] = [];
+        const existingPlanting = {
+            memberships: [
+                {
+                    raisedBedField: {
+                        id: 88,
+                        positionIndex: 2,
+                    },
+                },
+            ],
+        };
+        const dependencies = makeDependencies(calls, {
+            createRaisedBedPlanting: async (...args: unknown[]) => {
+                record(calls, 'createRaisedBedPlanting', args);
+                return { created: false, planting: existingPlanting };
+            },
+            getRaisedBedPlantingByEventAggregateId: async (
+                ...args: unknown[]
+            ) => {
+                record(calls, 'getRaisedBedPlantingByEventAggregateId', args);
+                return existingPlanting;
+            },
+        });
+
+        const result = await processItem(
+            {
+                accountId: 'account-1',
+                advancedSowingAuthorization: advancedSowingAuthorization({
+                    anchorPositionIndex: 2,
+                    selectedDistanceCm: 15,
+                }),
+                amount_total: 2500,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 3,
+                checkoutSessionId: 'cs_advanced_replay',
+                currency: 'eur',
+                entityId: '101',
+                entityTypeName: 'plantSort',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(result, { status: 'fulfilled' });
+        assert.deepStrictEqual(
+            callsNamed(
+                calls,
+                'getRaisedBedPlantingByEventAggregateId',
+            )[0]?.args.slice(0, 1),
+            ['raised-bed-planting:cart-item:3'],
+        );
+        assert.equal(callsNamed(calls, 'createRaisedBedPlanting').length, 1);
+        assert.equal(callsNamed(calls, 'upsertRaisedBedField').length, 0);
+        assert.equal(
+            callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'lockAndActivateRaisedBedForCheckoutPlanting')
+                .length,
+            0,
+        );
+        assert.equal(
+            callsNamed(calls, 'processReferralRewardsForAccount').length,
+            0,
+        );
+    });
+
+    it('finds the same checkout planting after its cycle moves and its sort is replaced', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
             getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
@@ -4736,7 +5249,7 @@ describe('processItem', () => {
                             {
                                 active: true,
                                 plantPlaceEventId: 400,
-                                plantSortId: 101,
+                                plantSortId: 202,
                                 plantStatus: 'planned',
                                 purchase: {
                                     cartItemId: 1,
@@ -4769,6 +5282,14 @@ describe('processItem', () => {
         );
 
         assert.equal(callsNamed(calls, 'createEvent').length, 0);
+        assert.equal(
+            callsNamed(calls, 'ensureLegacyRaisedBedPlantingProjection').length,
+            1,
+        );
+        assert.equal(
+            callsNamed(calls, 'notifyCheckoutFulfillmentIncident').length,
+            0,
+        );
         assert.equal(
             callsNamed(calls, 'lockAndActivateRaisedBedForCheckoutPlanting')
                 .length,

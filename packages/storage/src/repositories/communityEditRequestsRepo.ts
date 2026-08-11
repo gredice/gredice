@@ -1,7 +1,11 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { PLANT_STAGE_LABELS, type PlantStageName } from '@gredice/js/plants';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import {
+    getAdvancedSowingLayoutOptions,
+    PLANT_STAGE_LABELS,
+    type PlantStageName,
+} from '@gredice/js/plants';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     type CommunityEditableFieldDefinition,
     type CommunityEditControlType,
@@ -19,6 +23,7 @@ import {
 import { storage } from '../storage';
 import { evaluateCommunityEditAchievementsForSubmitter } from './achievementsRepo';
 import {
+    applyAdvancedSowingAttributeValueBatch,
     createAttributeValueMutationSideEffects,
     deleteAttributeValue,
     flushAttributeValueMutationSideEffects,
@@ -920,11 +925,18 @@ function normalizeNumberValue(
         return null;
     }
 
+    const normalizedString = typeof value === 'string' ? value.trim() : null;
+    if (normalizedString === '') {
+        return null;
+    }
     const numberValue =
         typeof value === 'number'
             ? value
-            : typeof value === 'string'
-              ? Number.parseFloat(value)
+            : normalizedString !== null &&
+                /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(
+                    normalizedString,
+                )
+              ? Number(normalizedString)
               : Number.NaN;
 
     if (!Number.isFinite(numberValue)) {
@@ -935,6 +947,130 @@ function normalizeNumberValue(
     }
 
     return String(numberValue);
+}
+
+const advancedSowingAttributeNames = [
+    'seedingDistance',
+    'seedingDistanceMin',
+    'seedingDistanceMax',
+] as const;
+
+type AdvancedSowingAttributeName =
+    (typeof advancedSowingAttributeNames)[number];
+
+const advancedSowingAttributeNameSet = new Set<string>(
+    advancedSowingAttributeNames,
+);
+
+type AdvancedSowingCommunityChange = {
+    field: Pick<CommunityEditableFieldDefinition, 'category' | 'name'>;
+    proposedValue: string | null;
+};
+
+function isAdvancedSowingAttributeName(
+    value: string,
+): value is AdvancedSowingAttributeName {
+    return advancedSowingAttributeNameSet.has(value);
+}
+
+function isAdvancedSowingCommunityField(
+    field: Pick<CommunityEditableFieldDefinition, 'category' | 'name'>,
+) {
+    return (
+        field.category === 'attributes' &&
+        isAdvancedSowingAttributeName(field.name)
+    );
+}
+
+function advancedSowingValuesFromEntity(entity: EntityRaw) {
+    const values = new Map<AdvancedSowingAttributeName, string | null>();
+    for (const attribute of entity.attributes) {
+        const definition = attribute.attributeDefinition;
+        if (
+            attribute.isDeleted ||
+            definition.category !== 'attributes' ||
+            !isAdvancedSowingAttributeName(definition.name)
+        ) {
+            continue;
+        }
+        if (values.has(definition.name)) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                `Plant has multiple active values for attributes.${definition.name}.`,
+            );
+        }
+        values.set(definition.name, attribute.value);
+    }
+    return values;
+}
+
+function parseAdvancedSowingAttributeValue(
+    values: ReadonlyMap<AdvancedSowingAttributeName, string | null>,
+    name: AdvancedSowingAttributeName,
+) {
+    const value = values.get(name) ?? null;
+    if (value === null) {
+        return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field attributes.${name} must contain a finite number.`,
+        );
+    }
+    return parsed;
+}
+
+function assertProspectiveAdvancedSowingCommunityConfiguration(input: {
+    currentValues: ReadonlyMap<AdvancedSowingAttributeName, string | null>;
+    changes: readonly AdvancedSowingCommunityChange[];
+}) {
+    const relevantChanges = input.changes.filter(({ field }) =>
+        isAdvancedSowingCommunityField(field),
+    );
+    if (relevantChanges.length === 0) {
+        return;
+    }
+
+    const prospectiveValues = new Map(input.currentValues);
+    for (const { field, proposedValue } of relevantChanges) {
+        if (isAdvancedSowingAttributeName(field.name)) {
+            prospectiveValues.set(field.name, proposedValue);
+        }
+    }
+
+    const optimalDistanceCm = parseAdvancedSowingAttributeValue(
+        prospectiveValues,
+        'seedingDistance',
+    );
+    if (optimalDistanceCm === null) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Recommended sowing distance is required when editing Advanced Sowing spacing.',
+        );
+    }
+
+    try {
+        getAdvancedSowingLayoutOptions({
+            optimalDistanceCm,
+            minDistanceCm: parseAdvancedSowingAttributeValue(
+                prospectiveValues,
+                'seedingDistanceMin',
+            ),
+            maxDistanceCm: parseAdvancedSowingAttributeValue(
+                prospectiveValues,
+                'seedingDistanceMax',
+            ),
+        });
+    } catch (error) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            error instanceof Error
+                ? `Invalid Advanced Sowing spacing: ${error.message}`
+                : 'Invalid Advanced Sowing spacing.',
+        );
+    }
 }
 
 function normalizeBooleanValue(
@@ -1744,6 +1880,25 @@ export async function createCommunityEditRequest(
         );
     }
 
+    if (entity.entityTypeName === 'plant') {
+        assertProspectiveAdvancedSowingCommunityConfiguration({
+            currentValues: advancedSowingValuesFromEntity(entity),
+            changes: changes.map((change) => {
+                const field = getCommunityEditableFieldDefinition(
+                    entity.entityTypeName,
+                    change.fieldKey,
+                );
+                if (!field) {
+                    throw new CommunityEditRequestError(
+                        'invalid_field',
+                        `Field ${change.fieldKey} is not editable for ${entity.entityTypeName}.`,
+                    );
+                }
+                return { field, proposedValue: change.proposedValue };
+            }),
+        });
+    }
+
     const createdRequest = await storage().transaction(async (tx) => {
         const [request] = await tx
             .insert(communityEditRequests)
@@ -2052,6 +2207,9 @@ export async function rejectCommunityEditRequest(input: {
             `Request ${input.id} was not found.`,
         );
     }
+    if (request.status === 'applied') {
+        return request;
+    }
     assertReviewableStatus(request);
 
     const [updated] = await storage()
@@ -2063,10 +2221,15 @@ export async function rejectCommunityEditRequest(input: {
             reviewerNote: input.reviewerNote,
             reviewedAt: new Date(),
         })
-        .where(eq(communityEditRequests.id, input.id))
+        .where(
+            and(
+                eq(communityEditRequests.id, input.id),
+                inArray(communityEditRequests.status, ['pending', 'approved']),
+            ),
+        )
         .returning();
 
-    return updated;
+    return updated ?? getCommunityEditRequest(input.id);
 }
 
 export async function markCommunityEditRequestConflicted(input: {
@@ -2083,10 +2246,15 @@ export async function markCommunityEditRequestConflicted(input: {
             applicationFailureReason: input.reason,
             reviewedAt: new Date(),
         })
-        .where(eq(communityEditRequests.id, input.id))
+        .where(
+            and(
+                eq(communityEditRequests.id, input.id),
+                inArray(communityEditRequests.status, ['pending', 'approved']),
+            ),
+        )
         .returning();
 
-    return updated;
+    return updated ?? getCommunityEditRequest(input.id);
 }
 
 function parseMultipleProposedValue(value: string | null) {
@@ -2449,6 +2617,9 @@ export async function approveCommunityEditRequest(input: {
             `Request ${input.id} was not found.`,
         );
     }
+    if (request.status === 'applied') {
+        return request;
+    }
     assertReviewableStatus(request);
 
     const entity = await getCommunityEditableEntity(
@@ -2460,6 +2631,7 @@ export async function approveCommunityEditRequest(input: {
         change: (typeof request.changes)[number];
         field: CommunityEditableFieldDefinition;
         attributeValueId: number | null;
+        currentValue: string | null;
         proposedValue: string | null;
     }[] = [];
     for (const change of request.changes) {
@@ -2510,13 +2682,74 @@ export async function approveCommunityEditRequest(input: {
             change,
             field,
             attributeValueId: snapshot.attributeValueId,
+            currentValue: snapshot.currentValue,
             proposedValue: applicationValue.proposedValue,
         });
     }
 
+    const advancedSowingPreparedChanges = preparedChanges.filter(({ field }) =>
+        isAdvancedSowingCommunityField(field),
+    );
+
     const sideEffects = createAttributeValueMutationSideEffects();
+    let appliedByThisReviewer = false;
     try {
         await storage().transaction(async (tx) => {
+            const [lockedRequest] = await tx
+                .select({ status: communityEditRequests.status })
+                .from(communityEditRequests)
+                .where(eq(communityEditRequests.id, request.id))
+                .limit(1)
+                .for('update');
+            if (!lockedRequest) {
+                throw new CommunityEditRequestError(
+                    'not_found',
+                    `Request ${request.id} was not found while applying.`,
+                );
+            }
+            if (
+                lockedRequest.status !== 'pending' &&
+                lockedRequest.status !== 'approved'
+            ) {
+                return;
+            }
+
+            if (advancedSowingPreparedChanges.length > 0) {
+                await applyAdvancedSowingAttributeValueBatch(
+                    advancedSowingPreparedChanges.map(
+                        ({
+                            change,
+                            attributeValueId,
+                            currentValue,
+                            proposedValue,
+                        }) => ({
+                            action: 'upsert' as const,
+                            attributeValue: {
+                                id: attributeValueId ?? undefined,
+                                attributeDefinitionId:
+                                    change.attributeDefinitionId,
+                                entityTypeName: request.entityTypeName,
+                                entityId: request.entityId,
+                                value: proposedValue,
+                            },
+                            expectedCurrent:
+                                attributeValueId === null
+                                    ? { state: 'absent' as const }
+                                    : {
+                                          state: 'present' as const,
+                                          attributeValueId,
+                                          value: currentValue,
+                                      },
+                        }),
+                    ),
+                    {
+                        id: input.reviewer.id,
+                        name: input.reviewer.name ?? undefined,
+                    },
+                    { db: tx, sideEffects },
+                );
+            }
+
             await tx
                 .update(communityEditRequests)
                 .set({
@@ -2535,6 +2768,9 @@ export async function approveCommunityEditRequest(input: {
                 attributeValueId,
                 proposedValue,
             } of preparedChanges) {
+                if (isAdvancedSowingCommunityField(field)) {
+                    continue;
+                }
                 if (field.controlType === 'operationSuggestion') {
                     await applyOperationSuggestionChange({
                         db: tx,
@@ -2577,6 +2813,7 @@ export async function approveCommunityEditRequest(input: {
                     applicationFailureReason: null,
                 })
                 .where(eq(communityEditRequests.id, request.id));
+            appliedByThisReviewer = true;
         });
     } catch (error) {
         await markCommunityEditRequestConflicted({
@@ -2589,6 +2826,17 @@ export async function approveCommunityEditRequest(input: {
             throw error;
         }
         return conflicted;
+    }
+
+    if (!appliedByThisReviewer) {
+        const resolved = await getCommunityEditRequest(request.id);
+        if (!resolved) {
+            throw new CommunityEditRequestError(
+                'not_found',
+                `Request ${request.id} was not found after concurrent review.`,
+            );
+        }
+        return resolved;
     }
 
     await flushAttributeValueMutationSideEffects(sideEffects);

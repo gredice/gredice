@@ -79,6 +79,155 @@ test('plant sort details render description markdown', async ({
     await expect(page.getByText('- zalijevanje')).toHaveCount(0);
 });
 
+test('plant sort details show configurable sowing distances and density', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <PlantSortDetails
+            plantSort={{
+                id: 105,
+                information: {
+                    name: 'Gusta sadnja',
+                    plant: {
+                        id: 5,
+                        information: { name: 'Testna biljka' },
+                        attributes: {
+                            seedingDistance: 15,
+                            seedingDistanceMin: 10,
+                            seedingDistanceMax: 30,
+                        },
+                    },
+                },
+            }}
+        />,
+    );
+
+    await expect(
+        page.getByText('Raspored za novu naprednu sjetvu/sadnju'),
+    ).toBeVisible();
+    await expect(page.getByText('4 biljke u jednom polju')).toBeVisible();
+    await expect(
+        page.getByText('Minimalni razmak sijanja/sadnje'),
+    ).toBeVisible();
+    await expect(page.getByText('10 cm', { exact: true })).toBeVisible();
+    await expect(
+        page.getByText('Preporučeni razmak sijanja/sadnje'),
+    ).toBeVisible();
+    await expect(page.getByText('15 cm', { exact: true })).toBeVisible();
+    await expect(
+        page.getByText('Maksimalni razmak sijanja/sadnje'),
+    ).toBeVisible();
+    await expect(page.getByText('30 cm', { exact: true })).toBeVisible();
+});
+
+test('plant sort details keep legacy spacing compact and derive its footprint', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <PlantSortDetails
+            plantSort={{
+                id: 106,
+                information: {
+                    name: 'Široka sadnja',
+                    plant: {
+                        id: 6,
+                        information: { name: 'Tikvica' },
+                        attributes: { seedingDistance: 60 },
+                    },
+                },
+            }}
+        />,
+    );
+
+    await expect(
+        page.getByText('Raspored za novu naprednu sjetvu/sadnju'),
+    ).toBeVisible();
+    await expect(page.getByText('1 biljka preko 2 x 2 polja')).toBeVisible();
+    await expect(
+        page.getByText(
+            'Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        ),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Preporučeni razmak sijanja/sadnje'),
+    ).toBeVisible();
+    await expect(page.getByText('60 cm', { exact: true })).toBeVisible();
+    await expect(page.getByText('Minimalni razmak sijanja/sadnje')).toHaveCount(
+        0,
+    );
+    await expect(
+        page.getByText('Maksimalni razmak sijanja/sadnje'),
+    ).toHaveCount(0);
+});
+
+test('plant sort details warn about a footprint wider than the raised bed', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <PlantSortDetails
+            plantSort={{
+                id: 107,
+                information: {
+                    name: 'Nepodržana široka sadnja',
+                    plant: {
+                        id: 7,
+                        information: { name: 'Široka biljka' },
+                        attributes: {
+                            seedingDistance: 30,
+                            seedingDistanceMax: 95,
+                        },
+                    },
+                },
+            }}
+        />,
+    );
+
+    await expect(
+        page.getByText('Raspored za novu naprednu sjetvu/sadnju'),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Raspon razmaka nije podržan za gredicu 3 x 6 polja.'),
+    ).toBeVisible();
+    await expect(page.getByText('30 cm', { exact: true })).toBeVisible();
+    await expect(page.getByText('95 cm', { exact: true })).toBeVisible();
+});
+
+test('plant sort details warn about contradictory sowing distances', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <PlantSortDetails
+            plantSort={{
+                id: 108,
+                information: {
+                    name: 'Neispravan razmak',
+                    plant: {
+                        id: 8,
+                        information: { name: 'Neispravna biljka' },
+                        attributes: {
+                            seedingDistance: 25,
+                            seedingDistanceMin: 30,
+                        },
+                    },
+                },
+            }}
+        />,
+    );
+
+    await expect(
+        page.getByText('Raspored za novu naprednu sjetvu/sadnju'),
+    ).toBeVisible();
+    await expect(
+        page.getByText(
+            'Neispravna konfiguracija razmaka (min ≤ preporučeni ≤ max).',
+        ),
+    ).toBeVisible();
+});
+
 test('keeps long plant guidance contained on a narrow phone', async ({
     mount,
     page,

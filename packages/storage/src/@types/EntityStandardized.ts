@@ -18,6 +18,8 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        seedingDistanceMin?: number; // in cm
+        seedingDistanceMax?: number; // in cm
         frequency?: string;
         application?: string;
         deliverable?: boolean;

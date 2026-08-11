@@ -21,8 +21,10 @@ type DeliveryRequestsSummaryCacheInput = {
 };
 
 const CACHE_VERSION = 'v2';
-// Raised-bed payloads added farmId in v3; keep old cached shapes out of Farm Today.
-const FARM_USER_RAISED_BED_PAYLOAD_VERSION = 'v3';
+// Raised-bed payloads added planting memberships in these versions. Keep older
+// cached shapes out of Admin and Farm task reads during rollout.
+const ADMIN_RAISED_BED_PAYLOAD_VERSION = 'v3';
+const FARM_USER_RAISED_BED_PAYLOAD_VERSION = 'v4';
 
 export const scheduleCacheTtls = {
     day: 45,
@@ -74,7 +76,8 @@ function rangePart(input?: DateRangeCacheInput) {
 }
 
 export const scheduleCacheKeys = {
-    adminRaisedBeds: () => `schedule:admin:raisedBeds:${CACHE_VERSION}`,
+    adminRaisedBeds: () =>
+        `schedule:admin:raisedBeds:${ADMIN_RAISED_BED_PAYLOAD_VERSION}`,
     adminOperations: (input?: DateRangeCacheInput) =>
         `schedule:admin:operations:${rangePart(input)}:${CACHE_VERSION}`,
     adminActiveOperations: (from: Date, completedFrom: Date) =>

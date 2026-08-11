@@ -40,6 +40,7 @@ import { useOperations } from '../../hooks/useOperations';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { buildAdvancedSowingGardenPlantingVisuals } from '../../hud/raisedBed/advancedSowingGardenVisuals';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import type { GameQualityProfile } from '../../scene/gameQuality';
@@ -58,6 +59,10 @@ import {
     getGridPositionFromIndex,
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
+import {
+    buildAdvancedSowingPlantVisualLayout,
+    getSelectedPlantingVisualGeneration,
+} from './advancedSowingPlantVisualLayout';
 import { reconcileGeneratedPlantBatches } from './generatedPlantBatchReconciliation';
 import {
     allocateGeneratedPlantDetailBudget,
@@ -229,6 +234,12 @@ function getFieldPosition({
         blockPosition[1] - 0.75,
         blockPosition[2] + (2 - row) * multiplierY - offsetY,
     ] as const;
+}
+
+function readRaisedBedPlantings(value: unknown) {
+    return typeof value === 'object' && value !== null
+        ? Reflect.get(value, 'plantings')
+        : null;
 }
 
 function getOrthographicCameraZoom(camera: THREE.Camera) {
@@ -856,6 +867,129 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     position: fieldPosition,
                     raisedBedId: raisedBed.id,
                     renderVariant: `${resolvedPlantPreset.plantType}:${supported ? 'supported' : 'free'}`,
+                });
+            }
+        }
+
+        const sceneBlockById = new Map(
+            blocks.map((block) => [block.blockId, block]),
+        );
+        for (const raisedBed of currentGarden.raisedBeds) {
+            if (raisedBed.status === 'abandoned') {
+                continue;
+            }
+
+            const orientation = raisedBed.orientation ?? 'vertical';
+            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
+            if (blockIds.length === 0) {
+                continue;
+            }
+
+            const fieldPositionByIndex = new Map<
+                number,
+                readonly [number, number, number]
+            >();
+            const blockIdByPositionIndex = new Map<number, string>();
+            for (const [blockIndex, blockId] of blockIds.entries()) {
+                const sceneBlock = sceneBlockById.get(blockId);
+                if (!sceneBlock) {
+                    continue;
+                }
+                const blockOffset =
+                    Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+                for (
+                    let localPositionIndex = 0;
+                    localPositionIndex < 9;
+                    localPositionIndex += 1
+                ) {
+                    const positionIndex = blockOffset + localPositionIndex;
+                    fieldPositionByIndex.set(
+                        positionIndex,
+                        getFieldPosition({
+                            blockIndex,
+                            blockPosition: sceneBlock.position,
+                            orientation,
+                            positionIndex: localPositionIndex,
+                        }),
+                    );
+                    blockIdByPositionIndex.set(positionIndex, blockId);
+                }
+            }
+
+            const selectedPlantings = buildAdvancedSowingGardenPlantingVisuals(
+                readRaisedBedPlantings(raisedBed),
+                blockIds.length * 9,
+            );
+            for (const planting of selectedPlantings) {
+                const generation = getSelectedPlantingVisualGeneration(
+                    planting.lifecycleStatus,
+                );
+                if (generation === null) {
+                    continue;
+                }
+                const layout = buildAdvancedSowingPlantVisualLayout({
+                    fieldPositionByIndex,
+                    planting,
+                });
+                const anchorBlockId = blockIdByPositionIndex.get(
+                    planting.anchorPositionIndex,
+                );
+                if (!layout || !anchorBlockId) {
+                    continue;
+                }
+
+                const sort = sortData?.find(
+                    (item) => item.id === planting.plantSortId,
+                );
+                // Catalogue labels select the existing visual archetype only.
+                // Density, count, footprint, and growth all come from the
+                // persisted planting snapshot and lifecycle projection above.
+                const resolvedPlantPreset = resolveInGamePlantPreset([
+                    sort?.information.name,
+                    sort?.information.plant.information?.name,
+                    sort?.information.plant.information?.latinName,
+                    isMock || isSandbox
+                        ? mockPlantPresetLabelsBySortId[planting.plantSortId]
+                        : undefined,
+                ]);
+                if (!resolvedPlantPreset) {
+                    continue;
+                }
+
+                const plantInstanceScale = getInGamePlantInstanceScale(
+                    resolvedPlantPreset,
+                    planting.plantsPerAxis,
+                );
+                const plantDefinition = getInGamePlantDefinition(
+                    resolvedPlantPreset,
+                    false,
+                );
+                const fieldKey = `advanced-sowing:${raisedBed.id.toString()}:${planting.id.toString()}`;
+                const instances = layout.instancePositions.map(
+                    (
+                        position,
+                        index,
+                    ): RaisedBedGeneratedPlantBatchInstance => ({
+                        fieldKey,
+                        generation,
+                        position,
+                        raisedBedId: raisedBed.id,
+                        scale: plantInstanceScale,
+                        seed: `${fieldKey}:${planting.plantSortId.toString()}:${index.toString()}`,
+                    }),
+                );
+
+                fields.push({
+                    approximatePlantHeight:
+                        getApproximatePlantHeight(plantDefinition) *
+                        plantInstanceScale,
+                    blockId: anchorBlockId,
+                    definition: plantDefinition,
+                    fieldKey,
+                    instances,
+                    position: layout.centroid,
+                    raisedBedId: raisedBed.id,
+                    renderVariant: `${resolvedPlantPreset.plantType}:advanced-selected`,
                 });
             }
         }

@@ -20,12 +20,18 @@ import {
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
 import {
+    attributeDefinitions,
+    attributeValues,
+    entities,
     events,
     farms,
     farmUsers,
     gardens,
     type InsertOperation,
     operations,
+    raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBeds,
     type SelectOperation,
     users,
@@ -65,6 +71,22 @@ const checkoutOperationLockTails = new Map<string, Promise<void>>();
 
 export class CheckoutOperationConflictError extends Error {
     override name = 'CheckoutOperationConflictError';
+}
+
+export const SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE =
+    'Radnju za pojedinu biljku nije moguće planirati na polju s naprednom sjetvom. Odaberi radnju za cijelo polje ili gredicu.';
+
+export type OperationTargetConflictErrorCode = 'selected_planting_conflict';
+
+export class OperationTargetConflictError extends Error {
+    override readonly name = 'OperationTargetConflictError';
+
+    constructor(
+        readonly code: OperationTargetConflictErrorCode,
+        message = SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE,
+    ) {
+        super(message);
+    }
 }
 
 async function withCheckoutOperationInProcessLock<T>(
@@ -602,6 +624,369 @@ const terminalOperationStatuses: OperationStatus[] = [
     'failed',
     'canceled',
 ];
+
+export const selectedPlantingBlockingOperationStatuses = [
+    'new',
+    'planned',
+    'pendingVerification',
+] as const satisfies readonly OperationStatus[];
+
+type SelectedPlantingBlockingOperationStatus =
+    (typeof selectedPlantingBlockingOperationStatuses)[number];
+
+function isSelectedPlantingBlockingOperationStatus(
+    status: OperationStatus,
+): status is SelectedPlantingBlockingOperationStatus {
+    return selectedPlantingBlockingOperationStatuses.some(
+        (candidate) => candidate === status,
+    );
+}
+
+type OperationTarget = Pick<
+    InsertOperation,
+    'entityId' | 'entityTypeName' | 'raisedBedFieldId'
+>;
+
+export type BlockingPlantOperation = {
+    operationId: number;
+    raisedBedFieldId: number;
+    positionIndex: number;
+    status: SelectedPlantingBlockingOperationStatus;
+};
+
+function operationDefinitionMutationLockKey(entityId: number) {
+    return `operation-definition-application:${entityId.toString()}`;
+}
+
+async function lockOperationDefinitionApplication(
+    db: DatabaseClient,
+    entityId: number,
+) {
+    if (!isPgliteTestDatabase()) {
+        await db.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${operationDefinitionMutationLockKey(entityId)}));`,
+        );
+    }
+}
+
+async function getEffectiveOperationApplication(
+    db: DatabaseClient,
+    entityId: number,
+    entityTypeName: string,
+) {
+    if (entityTypeName !== 'operation') {
+        return null;
+    }
+
+    const [applicationDefinition] = await db
+        .select({
+            id: attributeDefinitions.id,
+            defaultValue: attributeDefinitions.defaultValue,
+        })
+        .from(attributeDefinitions)
+        .where(
+            and(
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.category, 'attributes'),
+                eq(attributeDefinitions.name, 'application'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(attributeDefinitions.id))
+        .limit(1);
+    if (!applicationDefinition) {
+        return null;
+    }
+
+    const visitedEntityIds = new Set<number>();
+    let currentEntityId: number | null = entityId;
+    while (currentEntityId !== null) {
+        if (visitedEntityIds.has(currentEntityId)) {
+            return null;
+        }
+        visitedEntityIds.add(currentEntityId);
+
+        const [entity] = await db
+            .select({
+                id: entities.id,
+                entityTypeName: entities.entityTypeName,
+                parentId: entities.parentId,
+            })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.id, currentEntityId),
+                    eq(entities.isDeleted, false),
+                ),
+            )
+            .limit(1);
+        if (entity?.entityTypeName !== 'operation') {
+            return null;
+        }
+
+        const [applicationValue] = await db
+            .select({ value: attributeValues.value })
+            .from(attributeValues)
+            .where(
+                and(
+                    eq(attributeValues.entityId, entity.id),
+                    eq(
+                        attributeValues.attributeDefinitionId,
+                        applicationDefinition.id,
+                    ),
+                    eq(attributeValues.entityTypeName, 'operation'),
+                    eq(attributeValues.isDeleted, false),
+                ),
+            )
+            .orderBy(asc(attributeValues.id))
+            .limit(1);
+        if (applicationValue) {
+            return applicationValue.value;
+        }
+
+        currentEntityId = entity.parentId;
+    }
+
+    return applicationDefinition.defaultValue;
+}
+
+async function getBlockingPlantOperationsForFieldIds(
+    fieldIds: readonly number[],
+    db: DatabaseClient,
+): Promise<BlockingPlantOperation[]> {
+    const uniqueFieldIds = Array.from(new Set(fieldIds)).sort(
+        (left, right) => left - right,
+    );
+    if (uniqueFieldIds.length === 0) {
+        return [];
+    }
+
+    const candidateRows = await db
+        .select({
+            operationId: operations.id,
+            entityId: operations.entityId,
+            entityTypeName: operations.entityTypeName,
+            raisedBedFieldId: raisedBedFields.id,
+            positionIndex: raisedBedFields.positionIndex,
+            status: getOperationStatusExpression(),
+        })
+        .from(operations)
+        .innerJoin(
+            raisedBedFields,
+            eq(operations.raisedBedFieldId, raisedBedFields.id),
+        )
+        .where(
+            and(
+                inArray(raisedBedFields.id, uniqueFieldIds),
+                eq(raisedBedFields.isDeleted, false),
+                eq(operations.isDeleted, false),
+                getOperationStatusWhere([
+                    ...selectedPlantingBlockingOperationStatuses,
+                ]),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id), asc(operations.id));
+
+    const applicationByEntityId = new Map<number, string | null>();
+    const conflicts: BlockingPlantOperation[] = [];
+    for (const candidate of candidateRows) {
+        if (candidate.entityTypeName !== 'operation') {
+            continue;
+        }
+        let application = applicationByEntityId.get(candidate.entityId);
+        if (application === undefined) {
+            application = await getEffectiveOperationApplication(
+                db,
+                candidate.entityId,
+                candidate.entityTypeName,
+            );
+            applicationByEntityId.set(candidate.entityId, application);
+        }
+        if (application !== 'plant') {
+            continue;
+        }
+        if (!isSelectedPlantingBlockingOperationStatus(candidate.status)) {
+            continue;
+        }
+
+        conflicts.push({
+            operationId: candidate.operationId,
+            raisedBedFieldId: candidate.raisedBedFieldId,
+            positionIndex: candidate.positionIndex,
+            status: candidate.status,
+        });
+    }
+    return conflicts;
+}
+
+export async function getBlockingPlantOperationsForRaisedBedFootprint(
+    input: {
+        raisedBedId: number;
+        positionIndices: readonly number[];
+    },
+    db: DatabaseClient = storage(),
+): Promise<BlockingPlantOperation[]> {
+    if (
+        !Number.isSafeInteger(input.raisedBedId) ||
+        input.raisedBedId <= 0 ||
+        input.positionIndices.some(
+            (positionIndex) =>
+                !Number.isSafeInteger(positionIndex) || positionIndex < 0,
+        )
+    ) {
+        throw new RangeError('Raised-bed operation footprint is invalid.');
+    }
+
+    const positionIndices = Array.from(new Set(input.positionIndices)).sort(
+        (left, right) => left - right,
+    );
+    if (positionIndices.length === 0) {
+        return [];
+    }
+    const fields = await db
+        .select({ id: raisedBedFields.id })
+        .from(raisedBedFields)
+        .where(
+            and(
+                eq(raisedBedFields.raisedBedId, input.raisedBedId),
+                inArray(raisedBedFields.positionIndex, positionIndices),
+                eq(raisedBedFields.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id));
+
+    return getBlockingPlantOperationsForFieldIds(
+        fields.map((field) => field.id),
+        db,
+    );
+}
+
+async function hasActiveSelectedPlantingMembership(
+    db: DatabaseClient,
+    raisedBedFieldIds: readonly number[],
+) {
+    if (raisedBedFieldIds.length === 0) {
+        return false;
+    }
+
+    const [membership] = await db
+        .select({ id: raisedBedPlantingFields.id })
+        .from(raisedBedPlantingFields)
+        .innerJoin(
+            raisedBedPlantings,
+            eq(raisedBedPlantingFields.plantingId, raisedBedPlantings.id),
+        )
+        .where(
+            and(
+                inArray(
+                    raisedBedPlantingFields.raisedBedFieldId,
+                    Array.from(new Set(raisedBedFieldIds)),
+                ),
+                eq(raisedBedPlantingFields.isDeleted, false),
+                eq(raisedBedPlantings.configurationSource, 'selected'),
+                eq(raisedBedPlantings.isActive, true),
+                eq(raisedBedPlantings.isDeleted, false),
+            ),
+        )
+        .limit(1);
+    return Boolean(membership);
+}
+
+async function lockRaisedBedFieldsForOperationGuard(
+    db: DatabaseClient,
+    raisedBedFieldIds: readonly number[],
+) {
+    const uniqueFieldIds = Array.from(new Set(raisedBedFieldIds)).sort(
+        (left, right) => left - right,
+    );
+    if (uniqueFieldIds.length === 0) {
+        return [];
+    }
+
+    return db
+        .select({ id: raisedBedFields.id })
+        .from(raisedBedFields)
+        .where(inArray(raisedBedFields.id, uniqueFieldIds))
+        .orderBy(asc(raisedBedFields.id))
+        .for('update');
+}
+
+async function assertOperationTargetAllowsDefinition(
+    operation: OperationTarget,
+    db: DatabaseClient,
+) {
+    if (
+        operation.entityTypeName !== 'operation' ||
+        !operation.raisedBedFieldId
+    ) {
+        return;
+    }
+
+    await lockOperationDefinitionApplication(db, operation.entityId);
+    const application = await getEffectiveOperationApplication(
+        db,
+        operation.entityId,
+        operation.entityTypeName,
+    );
+    if (application !== 'plant') {
+        return;
+    }
+
+    const lockedFields = await lockRaisedBedFieldsForOperationGuard(db, [
+        operation.raisedBedFieldId,
+    ]);
+    if (
+        await hasActiveSelectedPlantingMembership(
+            db,
+            lockedFields.map((field) => field.id),
+        )
+    ) {
+        throw new OperationTargetConflictError('selected_planting_conflict');
+    }
+}
+
+/**
+ * Guards a directory application change that would turn existing field tasks
+ * into plant-scoped operations. Call this inside the attribute mutation
+ * transaction before persisting `application = plant`.
+ */
+export async function assertOperationDefinitionCanBecomePlantScoped(
+    entityId: number,
+    db: DatabaseClient,
+) {
+    await lockOperationDefinitionApplication(db, entityId);
+    const operationRows = await db
+        .select({ raisedBedFieldId: operations.raisedBedFieldId })
+        .from(operations)
+        .where(
+            and(
+                eq(operations.entityId, entityId),
+                eq(operations.entityTypeName, 'operation'),
+                eq(operations.isDeleted, false),
+                isNotNull(operations.raisedBedFieldId),
+                getOperationStatusWhere([
+                    ...selectedPlantingBlockingOperationStatuses,
+                ]),
+            ),
+        )
+        .orderBy(asc(operations.raisedBedFieldId));
+    const lockedFields = await lockRaisedBedFieldsForOperationGuard(
+        db,
+        operationRows.flatMap((operation) =>
+            operation.raisedBedFieldId === null
+                ? []
+                : [operation.raisedBedFieldId],
+        ),
+    );
+    if (
+        await hasActiveSelectedPlantingMembership(
+            db,
+            lockedFields.map((field) => field.id),
+        )
+    ) {
+        throw new OperationTargetConflictError('selected_planting_conflict');
+    }
+}
 
 function getOperationLatestStatusChangeDateExpression() {
     return sql<Date | null>`(
@@ -1552,24 +1937,32 @@ export async function createOperation(
     }: InsertOperation,
     db?: DatabaseClient,
 ) {
-    const client = db ?? storage();
-    const [result] = await client
-        .insert(operations)
-        .values({
-            entityId,
-            entityTypeName,
-            accountId,
-            farmId,
-            gardenId,
-            raisedBedId,
-            raisedBedFieldId,
-            timestamp: timestamp ?? new Date(),
-        })
-        .returning({ id: operations.id });
-    if (!db) {
-        await bustScheduleCache();
+    const operation: InsertOperation = {
+        entityId,
+        entityTypeName,
+        accountId,
+        farmId,
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId,
+        timestamp: timestamp ?? new Date(),
+    };
+    const insertOperation = async (client: DatabaseClient) => {
+        await assertOperationTargetAllowsDefinition(operation, client);
+        const [result] = await client
+            .insert(operations)
+            .values(operation)
+            .returning({ id: operations.id });
+        return result.id;
+    };
+
+    if (db) {
+        return insertOperation(db);
     }
-    return result.id;
+
+    const id = await storage().transaction(insertOperation);
+    await bustScheduleCache();
+    return id;
 }
 
 export async function createScheduledOperation(
@@ -1979,18 +2372,34 @@ export async function switchOperationEntity(
     db?: DatabaseClient,
 ) {
     const updateEntity = async (client: DatabaseClient) => {
-        const [result] = await client
+        const [currentOperation] = await client
+            .select({
+                id: operations.id,
+                raisedBedFieldId: operations.raisedBedFieldId,
+            })
+            .from(operations)
+            .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
+            .limit(1)
+            .for('update');
+
+        if (!currentOperation) {
+            throw new Error(`Operation with id ${id} not found`);
+        }
+
+        await assertOperationTargetAllowsDefinition(
+            {
+                ...entity,
+                raisedBedFieldId: currentOperation.raisedBedFieldId,
+            },
+            client,
+        );
+        await client
             .update(operations)
             .set({
                 entityId: entity.entityId,
                 entityTypeName: entity.entityTypeName,
             })
-            .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
-            .returning({ id: operations.id });
-
-        if (!result) {
-            throw new Error(`Operation with id ${id} not found`);
-        }
+            .where(eq(operations.id, currentOperation.id));
 
         await createEvent(
             knownEvents.operations.entityChangedV1(id.toString(), {

@@ -1,5 +1,6 @@
 import 'server-only';
-import { and, eq, inArray } from 'drizzle-orm';
+import { getAdvancedSowingLayoutOptions } from '@gredice/js/plants';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { storage } from '..';
 import {
     bustCached,
@@ -30,12 +31,88 @@ import {
     type SelectAttributeDefinition,
     type SelectAttributeValue,
 } from '../schema';
+import { assertOperationDefinitionCanBecomePlantScoped } from './operationsRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
+
+const advancedSowingAttributeNames = [
+    'seedingDistance',
+    'seedingDistanceMin',
+    'seedingDistanceMax',
+] as const;
+
+type AdvancedSowingAttributeName =
+    (typeof advancedSowingAttributeNames)[number];
+
+const advancedSowingAttributeNameSet = new Set<string>(
+    advancedSowingAttributeNames,
+);
+
+function isAdvancedSowingAttributeName(
+    value: string,
+): value is AdvancedSowingAttributeName {
+    return advancedSowingAttributeNameSet.has(value);
+}
+
+function isOperationApplicationAttributeDefinition(
+    definition:
+        | Awaited<ReturnType<typeof getAttributeDefinitionForMutation>>
+        | undefined,
+) {
+    return (
+        definition?.entityTypeName === 'operation' &&
+        definition.category === 'attributes' &&
+        definition.name === 'application'
+    );
+}
+
+type AttributeValueMutationOptions = {
+    db?: DatabaseClient;
+    sideEffects?: AttributeValueMutationSideEffects;
+};
+
+type InternalAttributeValueMutationOptions = AttributeValueMutationOptions & {
+    /**
+     * Private escape hatch used only by the atomic batch API, which owns the
+     * surrounding transaction, plant locks, and final-state validation.
+     */
+    advancedSowingValidation?: 'deferred-by-batch';
+};
+
+export type AdvancedSowingAttributeValueExpectedCurrent =
+    | { state: 'absent' }
+    | {
+          state: 'present';
+          attributeValueId: number;
+          value: string | null;
+      };
+
+export type AdvancedSowingAttributeValueBatchMutation = (
+    | {
+          action: 'upsert';
+          attributeValue: InsertAttributeValue;
+      }
+    | {
+          action: 'delete';
+          attributeValueId: number;
+      }
+) & {
+    expectedCurrent?: AdvancedSowingAttributeValueExpectedCurrent;
+};
+
+type AdvancedSowingAttributeValueBatchOptions =
+    | {
+          db?: undefined;
+          sideEffects?: AttributeValueMutationSideEffects;
+      }
+    | {
+          db: DatabaseClient;
+          sideEffects: AttributeValueMutationSideEffects;
+      };
 
 export type AttributeValueMutationSideEffects = {
     dashboardAdmin: boolean;
@@ -443,14 +520,299 @@ async function plantHealthAffectedPlantIdsForMutation({
     return Array.from(affectedPlantIds);
 }
 
-export async function upsertAttributeValue(
+function isAdvancedSowingAttributeDefinition(
+    definition: SelectAttributeDefinition | undefined,
+): definition is SelectAttributeDefinition & {
+    name: AdvancedSowingAttributeName;
+} {
+    return Boolean(
+        definition &&
+            definition.entityTypeName === 'plant' &&
+            definition.category === 'attributes' &&
+            isAdvancedSowingAttributeName(definition.name),
+    );
+}
+
+function parseAdvancedSowingAttributeValue(
+    name: AdvancedSowingAttributeName,
+    value: string | null,
+) {
+    if (value === null) {
+        return null;
+    }
+
+    const normalized = value.trim();
+    const parsed = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(
+        normalized,
+    )
+        ? Number(normalized)
+        : Number.NaN;
+    if (!Number.isFinite(parsed)) {
+        throw new RangeError(
+            `Advanced Sowing attributes.${name} must contain a finite number.`,
+        );
+    }
+
+    return parsed;
+}
+
+type AdvancedSowingAttributeMutationEffect = {
+    additions: Array<{
+        name: AdvancedSowingAttributeName;
+        value: string | null;
+    }>;
+    removedAttributeValueIds: Set<number>;
+};
+
+function advancedSowingMutationEffectForEntity(
+    effects: Map<number, AdvancedSowingAttributeMutationEffect>,
+    entityId: number,
+) {
+    const existing = effects.get(entityId);
+    if (existing) {
+        return existing;
+    }
+
+    const created: AdvancedSowingAttributeMutationEffect = {
+        additions: [],
+        removedAttributeValueIds: new Set(),
+    };
+    effects.set(entityId, created);
+    return created;
+}
+
+async function assertProspectiveAdvancedSowingConfiguration(
+    db: DatabaseClient,
+    entityId: number,
+    effect: AdvancedSowingAttributeMutationEffect,
+) {
+    const persistedValues = await db
+        .select({
+            id: attributeValues.id,
+            name: attributeDefinitions.name,
+            value: attributeValues.value,
+        })
+        .from(attributeValues)
+        .innerJoin(
+            attributeDefinitions,
+            eq(attributeValues.attributeDefinitionId, attributeDefinitions.id),
+        )
+        .where(
+            and(
+                eq(attributeValues.entityId, entityId),
+                eq(attributeValues.isDeleted, false),
+                eq(attributeDefinitions.isDeleted, false),
+                eq(attributeDefinitions.entityTypeName, 'plant'),
+                eq(attributeDefinitions.category, 'attributes'),
+                inArray(attributeDefinitions.name, [
+                    ...advancedSowingAttributeNames,
+                ]),
+            ),
+        );
+
+    const prospectiveValues = new Map<
+        AdvancedSowingAttributeName,
+        Array<string | null>
+    >();
+    for (const value of persistedValues) {
+        if (
+            effect.removedAttributeValueIds.has(value.id) ||
+            !isAdvancedSowingAttributeName(value.name)
+        ) {
+            continue;
+        }
+        const values = prospectiveValues.get(value.name) ?? [];
+        values.push(value.value);
+        prospectiveValues.set(value.name, values);
+    }
+    for (const addition of effect.additions) {
+        const values = prospectiveValues.get(addition.name) ?? [];
+        values.push(addition.value);
+        prospectiveValues.set(addition.name, values);
+    }
+
+    for (const [name, values] of prospectiveValues) {
+        if (values.length > 1) {
+            throw new RangeError(
+                `Advanced Sowing attributes.${name} must have exactly one active value per plant.`,
+            );
+        }
+    }
+
+    const valueFor = (name: AdvancedSowingAttributeName) =>
+        prospectiveValues.get(name)?.[0] ?? null;
+    const hasConfiguredValue = advancedSowingAttributeNames.some(
+        (name) => valueFor(name) !== null,
+    );
+    if (!hasConfiguredValue) {
+        return;
+    }
+
+    const optimalDistanceCm = parseAdvancedSowingAttributeValue(
+        'seedingDistance',
+        valueFor('seedingDistance'),
+    );
+    if (optimalDistanceCm === null) {
+        throw new RangeError(
+            'Advanced Sowing attributes.seedingDistance is required when a spacing boundary is configured.',
+        );
+    }
+
+    try {
+        getAdvancedSowingLayoutOptions({
+            optimalDistanceCm,
+            minDistanceCm: parseAdvancedSowingAttributeValue(
+                'seedingDistanceMin',
+                valueFor('seedingDistanceMin'),
+            ),
+            maxDistanceCm: parseAdvancedSowingAttributeValue(
+                'seedingDistanceMax',
+                valueFor('seedingDistanceMax'),
+            ),
+        });
+    } catch (error) {
+        if (
+            error instanceof RangeError &&
+            error.message.startsWith('Advanced Sowing ')
+        ) {
+            throw error;
+        }
+        throw new RangeError(
+            error instanceof Error
+                ? `Invalid Advanced Sowing spacing: ${error.message}`
+                : 'Invalid Advanced Sowing spacing.',
+        );
+    }
+}
+
+async function getAttributeDefinitionForExistingValue(
+    db: DatabaseClient,
+    existingValue: SelectAttributeValue | undefined,
+) {
+    if (!existingValue) {
+        return undefined;
+    }
+    return getAttributeDefinitionForMutation(
+        db,
+        existingValue.attributeDefinitionId,
+    );
+}
+
+async function upsertTouchesAdvancedSowingAttribute(
+    db: DatabaseClient,
+    attributeValue: InsertAttributeValue,
+) {
+    const targetDefinition = await getAttributeDefinitionForMutation(
+        db,
+        attributeValue.attributeDefinitionId,
+    );
+    if (isAdvancedSowingAttributeDefinition(targetDefinition)) {
+        return true;
+    }
+    if (!attributeValue.id) {
+        return false;
+    }
+
+    const existingValue = await db.query.attributeValues.findFirst({
+        where: eq(attributeValues.id, attributeValue.id),
+    });
+    return isAdvancedSowingAttributeDefinition(
+        await getAttributeDefinitionForExistingValue(db, existingValue),
+    );
+}
+
+async function upsertMakesOperationPlantScoped(
+    db: DatabaseClient,
+    attributeValue: InsertAttributeValue,
+) {
+    const definition = await getAttributeDefinitionForMutation(
+        db,
+        attributeValue.attributeDefinitionId,
+    );
+    return (
+        attributeValue.entityTypeName === 'operation' &&
+        isOperationApplicationAttributeDefinition(definition) &&
+        (attributeValue.value || definition?.defaultValue) === 'plant'
+    );
+}
+
+async function deleteTouchesAdvancedSowingAttribute(
+    db: DatabaseClient,
+    id: number,
+) {
+    const existingValue = await db.query.attributeValues.findFirst({
+        where: eq(attributeValues.id, id),
+    });
+    return isAdvancedSowingAttributeDefinition(
+        await getAttributeDefinitionForExistingValue(db, existingValue),
+    );
+}
+
+async function lockAdvancedSowingPlantMutations(
+    db: DatabaseClient,
+    entityIds: readonly number[],
+) {
+    for (const entityId of entityIds) {
+        await db.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`advanced-sowing-spacing:${entityId.toString()}`}));`,
+        );
+    }
+}
+
+async function lockAndValidateAdvancedSowingMutation(
+    db: DatabaseClient,
+    effects: Map<number, AdvancedSowingAttributeMutationEffect>,
+) {
+    const entityIds = Array.from(effects.keys()).sort(
+        (left, right) => left - right,
+    );
+    await lockAdvancedSowingPlantMutations(db, entityIds);
+    for (const entityId of entityIds) {
+        const effect = effects.get(entityId);
+        if (effect) {
+            await assertProspectiveAdvancedSowingConfiguration(
+                db,
+                entityId,
+                effect,
+            );
+        }
+    }
+}
+
+async function upsertAttributeValueInternal(
     attributeValue: InsertAttributeValue,
     actor?: { id?: string; name?: string },
-    options?: {
-        db?: DatabaseClient;
-        sideEffects?: AttributeValueMutationSideEffects;
-    },
+    options?: InternalAttributeValueMutationOptions,
 ) {
+    if (
+        !options?.db &&
+        options?.advancedSowingValidation !== 'deferred-by-batch'
+    ) {
+        const rootDb = storage();
+        if (
+            (await upsertTouchesAdvancedSowingAttribute(
+                rootDb,
+                attributeValue,
+            )) ||
+            (await upsertMakesOperationPlantScoped(rootDb, attributeValue))
+        ) {
+            const sideEffects =
+                options?.sideEffects ??
+                createAttributeValueMutationSideEffects();
+            await rootDb.transaction((transaction) =>
+                upsertAttributeValueInternal(attributeValue, actor, {
+                    ...options,
+                    db: transaction,
+                    sideEffects,
+                }),
+            );
+            if (!options?.sideEffects) {
+                await flushAttributeValueMutationSideEffects(sideEffects);
+            }
+            return;
+        }
+    }
+
     const db = options?.db ?? storage();
     const sideEffects =
         options?.sideEffects ?? createAttributeValueMutationSideEffects();
@@ -472,6 +834,63 @@ export async function upsertAttributeValue(
             definition,
             entityId: attributeValue.entityId ?? existingValue?.entityId,
         });
+    }
+
+    if (options?.advancedSowingValidation !== 'deferred-by-batch') {
+        const existingDefinition = await getAttributeDefinitionForExistingValue(
+            db,
+            existingValue,
+        );
+        const effects = new Map<
+            number,
+            AdvancedSowingAttributeMutationEffect
+        >();
+
+        if (
+            existingValue &&
+            !existingValue.isDeleted &&
+            isAdvancedSowingAttributeDefinition(existingDefinition)
+        ) {
+            advancedSowingMutationEffectForEntity(
+                effects,
+                existingValue.entityId,
+            ).removedAttributeValueIds.add(existingValue.id);
+        }
+
+        const finalIsDeleted =
+            attributeValue.isDeleted ?? existingValue?.isDeleted ?? false;
+        if (
+            !finalIsDeleted &&
+            isAdvancedSowingAttributeDefinition(definition)
+        ) {
+            if (attributeValue.entityTypeName !== 'plant') {
+                throw new RangeError(
+                    'Advanced Sowing spacing attributes can only be stored on plant entities.',
+                );
+            }
+            advancedSowingMutationEffectForEntity(
+                effects,
+                attributeValue.entityId,
+            ).additions.push({
+                name: definition.name,
+                value: value ?? null,
+            });
+        }
+
+        if (effects.size > 0) {
+            await lockAndValidateAdvancedSowingMutation(db, effects);
+        }
+    }
+
+    if (
+        attributeValue.entityTypeName === 'operation' &&
+        isOperationApplicationAttributeDefinition(definition) &&
+        value === 'plant'
+    ) {
+        await assertOperationDefinitionCanBecomePlantScoped(
+            attributeValue.entityId,
+            db,
+        );
     }
 
     const previousRelationshipTargetId = definition
@@ -567,14 +986,34 @@ export async function upsertAttributeValue(
     }
 }
 
-export async function deleteAttributeValue(
+async function deleteAttributeValueInternal(
     id: number,
     actor?: { id?: string; name?: string },
-    options?: {
-        db?: DatabaseClient;
-        sideEffects?: AttributeValueMutationSideEffects;
-    },
+    options?: InternalAttributeValueMutationOptions,
 ) {
+    if (
+        !options?.db &&
+        options?.advancedSowingValidation !== 'deferred-by-batch'
+    ) {
+        const rootDb = storage();
+        if (await deleteTouchesAdvancedSowingAttribute(rootDb, id)) {
+            const sideEffects =
+                options?.sideEffects ??
+                createAttributeValueMutationSideEffects();
+            await rootDb.transaction((transaction) =>
+                deleteAttributeValueInternal(id, actor, {
+                    ...options,
+                    db: transaction,
+                    sideEffects,
+                }),
+            );
+            if (!options?.sideEffects) {
+                await flushAttributeValueMutationSideEffects(sideEffects);
+            }
+            return;
+        }
+    }
+
     const db = options?.db ?? storage();
     const sideEffects =
         options?.sideEffects ?? createAttributeValueMutationSideEffects();
@@ -594,6 +1033,23 @@ export async function deleteAttributeValue(
                   existingValue.value,
               )
             : null;
+
+    if (
+        options?.advancedSowingValidation !== 'deferred-by-batch' &&
+        existingValue &&
+        !existingValue.isDeleted &&
+        isAdvancedSowingAttributeDefinition(definition)
+    ) {
+        const effects = new Map<
+            number,
+            AdvancedSowingAttributeMutationEffect
+        >();
+        advancedSowingMutationEffectForEntity(
+            effects,
+            existingValue.entityId,
+        ).removedAttributeValueIds.add(existingValue.id);
+        await lockAndValidateAdvancedSowingMutation(db, effects);
+    }
 
     await Promise.all([
         db
@@ -657,4 +1113,243 @@ export async function deleteAttributeValue(
     if (!options?.sideEffects) {
         await flushAttributeValueMutationSideEffects(sideEffects);
     }
+}
+
+async function advancedSowingPlantIdsForBatchMutation(
+    db: DatabaseClient,
+    mutation: AdvancedSowingAttributeValueBatchMutation,
+) {
+    if (mutation.action === 'delete') {
+        const existingValue = await db.query.attributeValues.findFirst({
+            where: eq(attributeValues.id, mutation.attributeValueId),
+        });
+        const definition = await getAttributeDefinitionForExistingValue(
+            db,
+            existingValue,
+        );
+        if (
+            !existingValue ||
+            !isAdvancedSowingAttributeDefinition(definition)
+        ) {
+            throw new RangeError(
+                'Advanced Sowing batch deletes may only target plant spacing attributes.',
+            );
+        }
+        return [existingValue.entityId];
+    }
+
+    const { attributeValue } = mutation;
+    const definition = await getAttributeDefinitionForMutation(
+        db,
+        attributeValue.attributeDefinitionId,
+    );
+    if (
+        attributeValue.entityTypeName !== 'plant' ||
+        !isAdvancedSowingAttributeDefinition(definition)
+    ) {
+        throw new RangeError(
+            'Advanced Sowing batches may only upsert plant spacing attributes.',
+        );
+    }
+
+    const entityIds = new Set([attributeValue.entityId]);
+    if (attributeValue.id) {
+        const existingValue = await db.query.attributeValues.findFirst({
+            where: eq(attributeValues.id, attributeValue.id),
+        });
+        if (existingValue) {
+            const existingDefinition =
+                await getAttributeDefinitionForExistingValue(db, existingValue);
+            if (!isAdvancedSowingAttributeDefinition(existingDefinition)) {
+                throw new RangeError(
+                    'Advanced Sowing batches cannot reassign a non-spacing attribute value.',
+                );
+            }
+            entityIds.add(existingValue.entityId);
+        }
+    }
+    return Array.from(entityIds);
+}
+
+async function advancedSowingBatchMutationSlot(
+    db: DatabaseClient,
+    mutation: AdvancedSowingAttributeValueBatchMutation,
+) {
+    if (mutation.action === 'upsert') {
+        return {
+            attributeDefinitionId:
+                mutation.attributeValue.attributeDefinitionId,
+            entityId: mutation.attributeValue.entityId,
+        };
+    }
+
+    const existingValue = await db.query.attributeValues.findFirst({
+        where: eq(attributeValues.id, mutation.attributeValueId),
+    });
+    if (!existingValue) {
+        throw new RangeError(
+            'Advanced Sowing batch current-value precondition failed because the target value no longer exists.',
+        );
+    }
+    return {
+        attributeDefinitionId: existingValue.attributeDefinitionId,
+        entityId: existingValue.entityId,
+    };
+}
+
+async function assertAdvancedSowingBatchMutationPrecondition(
+    db: DatabaseClient,
+    mutation: AdvancedSowingAttributeValueBatchMutation,
+) {
+    if (!mutation.expectedCurrent) {
+        return;
+    }
+
+    const slot = await advancedSowingBatchMutationSlot(db, mutation);
+    const currentValues = await db.query.attributeValues.findMany({
+        where: and(
+            eq(attributeValues.entityId, slot.entityId),
+            eq(
+                attributeValues.attributeDefinitionId,
+                slot.attributeDefinitionId,
+            ),
+            eq(attributeValues.isDeleted, false),
+        ),
+    });
+    const matches =
+        mutation.expectedCurrent.state === 'absent'
+            ? currentValues.length === 0
+            : currentValues.length === 1 &&
+              currentValues[0]?.id ===
+                  mutation.expectedCurrent.attributeValueId &&
+              currentValues[0]?.value === mutation.expectedCurrent.value;
+    if (!matches) {
+        throw new RangeError(
+            'Advanced Sowing batch current-value precondition failed because persisted spacing changed after it was read.',
+        );
+    }
+}
+
+export async function applyAdvancedSowingAttributeValueBatch(
+    mutations: readonly AdvancedSowingAttributeValueBatchMutation[],
+    actor?: { id?: string; name?: string },
+    options?: AdvancedSowingAttributeValueBatchOptions,
+) {
+    if (mutations.length === 0) {
+        return;
+    }
+
+    const db = options?.db ?? storage();
+    const sideEffects =
+        options?.sideEffects ?? createAttributeValueMutationSideEffects();
+    await db.transaction(async (transaction) => {
+        const entityIds = new Set<number>();
+        for (const mutation of mutations) {
+            for (const entityId of await advancedSowingPlantIdsForBatchMutation(
+                transaction,
+                mutation,
+            )) {
+                entityIds.add(entityId);
+            }
+        }
+        const orderedEntityIds = Array.from(entityIds).sort(
+            (left, right) => left - right,
+        );
+        await lockAdvancedSowingPlantMutations(transaction, orderedEntityIds);
+
+        const lockedEntityIds = new Set(orderedEntityIds);
+        for (const mutation of mutations) {
+            const currentEntityIds =
+                await advancedSowingPlantIdsForBatchMutation(
+                    transaction,
+                    mutation,
+                );
+            if (
+                currentEntityIds.some(
+                    (entityId) => !lockedEntityIds.has(entityId),
+                )
+            ) {
+                throw new RangeError(
+                    'Advanced Sowing batch target changed before its plant lock was acquired.',
+                );
+            }
+            await assertAdvancedSowingBatchMutationPrecondition(
+                transaction,
+                mutation,
+            );
+        }
+
+        for (const mutation of mutations) {
+            if (mutation.action === 'upsert') {
+                await upsertAttributeValueInternal(
+                    mutation.attributeValue,
+                    actor,
+                    {
+                        advancedSowingValidation: 'deferred-by-batch',
+                        db: transaction,
+                        sideEffects,
+                    },
+                );
+            } else {
+                await deleteAttributeValueInternal(
+                    mutation.attributeValueId,
+                    actor,
+                    {
+                        advancedSowingValidation: 'deferred-by-batch',
+                        db: transaction,
+                        sideEffects,
+                    },
+                );
+            }
+        }
+
+        for (const entityId of orderedEntityIds) {
+            await assertProspectiveAdvancedSowingConfiguration(
+                transaction,
+                entityId,
+                {
+                    additions: [],
+                    removedAttributeValueIds: new Set(),
+                },
+            );
+        }
+    });
+
+    if (!options?.db && !options?.sideEffects) {
+        await flushAttributeValueMutationSideEffects(sideEffects);
+    }
+}
+
+export async function upsertAttributeValue(
+    attributeValue: InsertAttributeValue,
+    actor?: { id?: string; name?: string },
+    options?: AttributeValueMutationOptions,
+) {
+    return upsertAttributeValueInternal(
+        attributeValue,
+        actor,
+        options
+            ? {
+                  db: options.db,
+                  sideEffects: options.sideEffects,
+              }
+            : undefined,
+    );
+}
+
+export async function deleteAttributeValue(
+    id: number,
+    actor?: { id?: string; name?: string },
+    options?: AttributeValueMutationOptions,
+) {
+    return deleteAttributeValueInternal(
+        id,
+        actor,
+        options
+            ? {
+                  db: options.db,
+                  sideEffects: options.sideEffects,
+              }
+            : undefined,
+    );
 }

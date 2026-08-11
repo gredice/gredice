@@ -3,6 +3,8 @@
 import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
+    /** Gates new Advanced Sowing selection/submission; persisted data stays readable. */
+    enableAdvancedSowingFlag?: boolean;
     enableGardenAvatarFlag?: boolean;
     enableDebugHudFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;

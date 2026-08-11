@@ -114,6 +114,16 @@ export type {
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
     RaisedBedFieldSowingLocation,
+    RaisedBedPlantingEventsPayload,
+    RaisedBedPlantingLifecycleStartedPayload,
+    RaisedBedPlantingLifecycleStatus,
+    RaisedBedPlantingLifecycleStatusChangedPayload,
+    RaisedBedPlantingTaskAssignedPayload,
+    RaisedBedPlantingTaskBlockedPayload,
+    RaisedBedPlantingTaskCancelledPayload,
+    RaisedBedPlantingTaskCompletedPayload,
+    RaisedBedPlantingTaskScheduledPayload,
+    RaisedBedPlantingTaskVerifiedPayload,
     RaisedBedWeedStateLevel,
     RaisedBedWeedStateSetPayload,
     RaisedBedWeedStateSource,
@@ -126,3 +136,4 @@ export type {
     // User
     UserBirthdayRewardPayload,
 } from './types';
+export { raisedBedPlantingLifecycleStatuses } from './types';

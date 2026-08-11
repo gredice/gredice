@@ -1,6 +1,7 @@
 import type {
     OperationAssignedUser,
     RaisedBedFieldSowingLocation,
+    RaisedBedPlantingWithFields,
     SelectTimeSlot,
 } from '@gredice/storage';
 
@@ -44,7 +45,15 @@ export type RaisedBed = {
     gardenId?: number | null;
     blockId?: string | null;
     fields: RaisedBedField[];
+    plantings?: RaisedBedPlantingWithFields[];
+    status?: string | null;
 };
+
+export type ScheduledSelectedPlanting<TPlanting = RaisedBedPlantingWithFields> =
+    {
+        planting: TPlanting;
+        raisedBedId: number;
+    };
 
 export type Operation = {
     id: number;

@@ -1,3 +1,4 @@
+import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import {
     assignStripeCustomerIdIfUnchanged,
     bindStripeCheckoutAttempt,
@@ -7,13 +8,19 @@ import {
     fingerprintStripeCheckoutValue,
     getAccount,
     getActiveStripeCheckoutAttempt,
+    getBlockingPlantOperationsForRaisedBedFootprint,
     getCheckoutFulfillmentStartedCartItemIds,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
     getDeliveryAddress,
+    getEntityRaw,
+    getGarden,
     getHarvestScheduleForCart,
     getPickupLocation,
+    getRaisedBed,
+    getRaisedBedPlantingsForRaisedBed,
     getShoppingCart,
+    getShoppingCartItemAdvancedSowingAuthorizations,
     getStripeCheckoutAttempt,
     getSunflowerPackageEligibilityForAccount,
     getTimeSlot,
@@ -47,6 +54,23 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import {
+    assertAdvancedSowingPlanAvailable,
+    assertLegacySowingCartTargetsAvailable,
+    assertNoBlockingLegacyPlantOperations,
+    LegacySowingSelectedPlantingConflictError,
+} from '../../../lib/checkout/advancedSowingAvailability';
+import {
+    AdvancedSowingPlanBoundaryError,
+    assertNoReservedAdvancedSowingAdditionalData,
+    buildAdvancedSowingSupportedCartTarget,
+    readAdvancedSowingCatalogueDistanceRange,
+    validateAdvancedSowingCartAuthorizationBeforeCheckout,
+} from '../../../lib/checkout/advancedSowingPlan';
+import {
+    advancedSowingSelectedFulfillmentReady,
+    isAdvancedSowingServerEnabled,
+} from '../../../lib/checkout/advancedSowingServerFlag';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
     assertCheckoutCartItemSnapshot,
@@ -221,6 +245,82 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 return context.json(retryResponse.body, retryResponse.status);
             }
 
+            const assertSowingCartAvailableBeforePayment = async (
+                items: typeof initialCart.items,
+            ) => {
+                const authorizationsByCartItemId =
+                    await getShoppingCartItemAdvancedSowingAuthorizations(
+                        items.map((item) => item.id),
+                    );
+                await assertLegacySowingCartTargetsAvailable({
+                    authorizationsByCartItemId,
+                    cartItems: items,
+                    loadPlantingsForRaisedBed:
+                        getRaisedBedPlantingsForRaisedBed,
+                });
+                const itemsById = new Map(items.map((item) => [item.id, item]));
+                await Promise.all(
+                    Array.from(authorizationsByCartItemId).map(
+                        async ([cartItemId, authorization]) => {
+                            const item = itemsById.get(cartItemId);
+                            if (item?.status === 'paid') {
+                                return;
+                            }
+                            if (
+                                item?.entityTypeName !== 'plantSort' ||
+                                item.amount !== 1 ||
+                                item.raisedBedId === null ||
+                                item.positionIndex === null ||
+                                item.positionIndex !==
+                                    authorization.plan.anchorPositionIndex
+                            ) {
+                                throw new AdvancedSowingPlanBoundaryError(
+                                    'target_mismatch',
+                                );
+                            }
+                            assertNoBlockingLegacyPlantOperations(
+                                await getBlockingPlantOperationsForRaisedBedFootprint(
+                                    {
+                                        positionIndices:
+                                            authorization.plan
+                                                .occupiedPositionIndices,
+                                        raisedBedId: item.raisedBedId,
+                                    },
+                                ),
+                            );
+                        },
+                    ),
+                );
+                return authorizationsByCartItemId;
+            };
+
+            const sowingAvailabilityConflictResponse = (error: unknown) => {
+                if (
+                    error instanceof LegacySowingSelectedPlantingConflictError
+                ) {
+                    return context.json(
+                        {
+                            code: 'LEGACY_SOWING_SELECTED_PLANTING_CONFLICT',
+                            error: error.message,
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof AdvancedSowingPlanBoundaryError) {
+                    return context.json(
+                        {
+                            code:
+                                error.reasonCode === 'feature_disabled'
+                                    ? 'ADVANCED_SOWING_DISABLED'
+                                    : `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
+                            error: error.message,
+                        },
+                        409,
+                    );
+                }
+                return null;
+            };
+
             const recoverAttempt = async (
                 attempt: NonNullable<
                     Awaited<ReturnType<typeof getActiveStripeCheckoutAttempt>>
@@ -275,6 +375,9 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             const activeAttempt = await getActiveStripeCheckoutAttempt(cartId);
             if (activeAttempt) {
                 try {
+                    await assertSowingCartAvailableBeforePayment(
+                        initialCart.items,
+                    );
                     const recovery = await recoverAttempt(activeAttempt);
                     if (recovery.status === 'open' && recovery.url) {
                         return context.json({
@@ -292,6 +395,11 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                         );
                     }
                 } catch (error) {
+                    const conflictResponse =
+                        sowingAvailabilityConflictResponse(error);
+                    if (conflictResponse) {
+                        return conflictResponse;
+                    }
                     if (error instanceof StripeCheckoutAttemptConflictError) {
                         return context.json(
                             {
@@ -513,6 +621,162 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
+            let persistedAdvancedSowingAuthorizationsByCartItemId: Awaited<
+                ReturnType<
+                    typeof getShoppingCartItemAdvancedSowingAuthorizations
+                >
+            >;
+            try {
+                persistedAdvancedSowingAuthorizationsByCartItemId =
+                    await assertSowingCartAvailableBeforePayment(cart.items);
+            } catch (error) {
+                const conflictResponse =
+                    sowingAvailabilityConflictResponse(error);
+                if (conflictResponse) {
+                    return conflictResponse;
+                }
+                throw error;
+            }
+            let advancedSowingAuthorizationsByCartItemId =
+                persistedAdvancedSowingAuthorizationsByCartItemId;
+            if (persistedAdvancedSowingAuthorizationsByCartItemId.size > 0) {
+                const cartInfoItemsById = new Map(
+                    cartInfo.items.map((item) => [item.id, item]),
+                );
+                const plantingPromisesByRaisedBedId = new Map<
+                    number,
+                    ReturnType<typeof getRaisedBedPlantingsForRaisedBed>
+                >();
+                const loadPlantingsForRaisedBed = (raisedBedId: number) => {
+                    const existing =
+                        plantingPromisesByRaisedBedId.get(raisedBedId);
+                    if (existing) {
+                        return existing;
+                    }
+                    const pending =
+                        getRaisedBedPlantingsForRaisedBed(raisedBedId);
+                    plantingPromisesByRaisedBedId.set(raisedBedId, pending);
+                    return pending;
+                };
+                try {
+                    advancedSowingAuthorizationsByCartItemId = new Map(
+                        await Promise.all(
+                            Array.from(
+                                persistedAdvancedSowingAuthorizationsByCartItemId,
+                            ).map(async ([cartItemId, authorization]) => {
+                                const item = cartInfoItemsById.get(cartItemId);
+                                const entityId = Number(item?.entityId);
+                                if (
+                                    !item ||
+                                    item.status === 'paid' ||
+                                    item.entityTypeName !== 'plantSort' ||
+                                    item.amount !== 1 ||
+                                    item.gardenId === null ||
+                                    item.raisedBedId === null ||
+                                    item.positionIndex === null ||
+                                    !Number.isSafeInteger(entityId) ||
+                                    entityId <= 0
+                                ) {
+                                    throw new AdvancedSowingPlanBoundaryError(
+                                        'target_mismatch',
+                                    );
+                                }
+
+                                const [raisedBed, garden, rawPlantSort] =
+                                    await Promise.all([
+                                        getRaisedBed(item.raisedBedId),
+                                        getGarden(item.gardenId),
+                                        getEntityRaw(entityId),
+                                    ]);
+                                if (
+                                    !raisedBed ||
+                                    raisedBed.accountId !== accountId ||
+                                    raisedBed.gardenId !== item.gardenId ||
+                                    isRaisedBedAbandoned(raisedBed.status) ||
+                                    !garden ||
+                                    garden.accountId !== accountId ||
+                                    garden.isSandbox
+                                ) {
+                                    throw new AdvancedSowingPlanBoundaryError(
+                                        'target_mismatch',
+                                    );
+                                }
+                                if (
+                                    rawPlantSort?.state !== 'published' ||
+                                    rawPlantSort.entityType?.name !==
+                                        'plantSort'
+                                ) {
+                                    throw new AdvancedSowingPlanBoundaryError(
+                                        'catalogue_mismatch',
+                                    );
+                                }
+
+                                const validatedAuthorization =
+                                    validateAdvancedSowingCartAuthorizationBeforeCheckout(
+                                        {
+                                            catalogueDistanceRange:
+                                                readAdvancedSowingCatalogueDistanceRange(
+                                                    item.entityData.information
+                                                        ?.plant?.attributes,
+                                                ),
+                                            enableAdvancedSowing:
+                                                isAdvancedSowingServerEnabled(),
+                                            persistedAuthorization:
+                                                authorization,
+                                            target: buildAdvancedSowingSupportedCartTarget(
+                                                item.positionIndex,
+                                            ),
+                                        },
+                                    );
+                                if (!validatedAuthorization) {
+                                    throw new AdvancedSowingPlanBoundaryError(
+                                        'invalid_authorization',
+                                    );
+                                }
+                                assertAdvancedSowingPlanAvailable({
+                                    authorizationsByCartItemId:
+                                        persistedAdvancedSowingAuthorizationsByCartItemId,
+                                    cartItems: cart.items,
+                                    excludedCartItemId: cartItemId,
+                                    gardenId: item.gardenId,
+                                    plan: validatedAuthorization.plan,
+                                    plantings: await loadPlantingsForRaisedBed(
+                                        item.raisedBedId,
+                                    ),
+                                    raisedBedId: item.raisedBedId,
+                                });
+                                return [
+                                    cartItemId,
+                                    validatedAuthorization,
+                                ] as const;
+                            }),
+                        ),
+                    );
+                } catch (error) {
+                    if (error instanceof AdvancedSowingPlanBoundaryError) {
+                        return context.json(
+                            {
+                                code:
+                                    error.reasonCode === 'feature_disabled'
+                                        ? 'ADVANCED_SOWING_DISABLED'
+                                        : `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
+                                error: error.message,
+                            },
+                            409,
+                        );
+                    }
+                    throw error;
+                }
+                if (!advancedSowingSelectedFulfillmentReady) {
+                    return context.json(
+                        {
+                            code: 'ADVANCED_SOWING_FULFILLMENT_NOT_READY',
+                            error: 'Advanced Sowing checkout is not available yet',
+                        },
+                        409,
+                    );
+                }
+            }
             let checkoutAdditionalDataByCartItemId: ReadonlyMap<
                 number,
                 ReturnType<typeof buildCheckoutAdditionalData>
@@ -523,12 +787,17 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                         .filter((item) => item.status !== 'paid')
                         .map((item) => [
                             item.id,
-                            buildCheckoutAdditionalData({
-                                additionalData: item.additionalData,
-                                deliveryInfo,
-                                scheduledHarvestDate:
-                                    harvestDateByCartItemId.get(item.id),
-                            }),
+                            (() => {
+                                assertNoReservedAdvancedSowingAdditionalData(
+                                    item.additionalData,
+                                );
+                                return buildCheckoutAdditionalData({
+                                    additionalData: item.additionalData,
+                                    deliveryInfo,
+                                    scheduledHarvestDate:
+                                        harvestDateByCartItemId.get(item.id),
+                                });
+                            })(),
                         ]),
                 );
             } catch (error) {
@@ -689,6 +958,10 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                                 checkoutAdditionalDataByCartItemId.get(
                                                     item.id,
                                                 ) ?? {},
+                                            advancedSowingAuthorization:
+                                                advancedSowingAuthorizationsByCartItemId.get(
+                                                    item.id,
+                                                ),
                                             checkoutOperationMapping,
                                         });
                                         assertCheckoutItemFulfilled(
@@ -782,6 +1055,10 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                                 checkoutAdditionalDataByCartItemId.get(
                                                     item.id,
                                                 ) ?? {},
+                                            advancedSowingAuthorization:
+                                                advancedSowingAuthorizationsByCartItemId.get(
+                                                    item.id,
+                                                ),
                                             checkoutOperationMapping,
                                         });
                                         assertCheckoutItemFulfilled(
@@ -993,6 +1270,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     ? outletCheckoutExpiresAt
                     : addMinutes(outletCheckoutStartedAt, 24 * 60 - 1);
                 const checkoutAttempt = buildStripeCheckoutAttemptSnapshot({
+                    advancedSowingAuthorizationsByCartItemId,
                     cartId: cart.id,
                     checkoutAdditionalDataByCartItemId,
                     customerId: canonicalCustomerId,

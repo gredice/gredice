@@ -9,6 +9,7 @@ import {
     getOperationTaskState,
     getPlantingTaskState,
     getScheduleTaskSummary,
+    getSelectedPlantingTaskState,
     type ScheduleTaskSummary,
     type ScheduleTaskSummaryItem,
 } from './scheduleTaskState';
@@ -32,7 +33,8 @@ export function ScheduleDaySummary({
     dayData,
     operationsData,
 }: ScheduleDaySummaryProps) {
-    const { scheduledFields, scheduledOperations } = dayData;
+    const { scheduledFields, scheduledOperations, scheduledSelectedPlantings } =
+        dayData;
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -61,6 +63,12 @@ export function ScheduleDaySummary({
     }));
     const summaryItems: ScheduleTaskSummaryItem[] = [
         ...plantingItems,
+        ...scheduledSelectedPlantings.map(({ planting }) => ({
+            state: getSelectedPlantingTaskState(
+                planting.selectedTask?.status ?? 'cancelled',
+            ),
+            durationMinutes: PLANTING_TASK_DURATION_MINUTES,
+        })),
         ...operationItems,
     ];
     const summary = getScheduleTaskSummary(summaryItems);

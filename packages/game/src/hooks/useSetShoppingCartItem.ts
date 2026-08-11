@@ -1,4 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
+import {
+    type AdvancedSowingSelectionRequestV1,
+    type AdvancedSowingSelectionSummaryV1,
+    advancedSowingSelectionRequestKind,
+} from '@gredice/js/plants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEffectiveEurPrice } from '../utils/sunflowerPricing';
 import {
@@ -24,6 +29,9 @@ type SetShoppingCartItemInput = {
     currency?: string | null;
     outletOfferId?: number;
     forceCreate?: boolean;
+    advancedSowingSelection?:
+        | AdvancedSowingSelectionRequestV1
+        | AdvancedSowingSelectionSummaryV1;
 };
 
 type CurrentAccountData = ReturnType<typeof useCurrentAccount>['data'];
@@ -159,11 +167,24 @@ export function useSetShoppingCartItem() {
                 throw new Error('Shopping cart is not available');
             }
 
+            const {
+                advancedSowingSelection: suppliedAdvancedSowingSelection,
+                ...cartItem
+            } = item;
+            const advancedSowingSelection =
+                suppliedAdvancedSowingSelection?.kind ===
+                advancedSowingSelectionRequestKind
+                    ? suppliedAdvancedSowingSelection
+                    : undefined;
+
             const response = await clientAuthenticated().api[
                 'shopping-cart'
             ].$post({
                 json: {
-                    ...item,
+                    ...cartItem,
+                    ...(advancedSowingSelection
+                        ? { advancedSowingSelection }
+                        : {}),
                     cartId: cart.id,
                 },
             });

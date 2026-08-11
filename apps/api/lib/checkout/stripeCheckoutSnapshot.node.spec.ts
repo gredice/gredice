@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    advancedSowingCartAuthorizationKind,
+    buildAdvancedSowingCartConfigurationV1,
+} from '@gredice/js/plants';
+import {
     fingerprintStripeCheckoutValue,
     type StripeCheckoutAttempt,
     StripeCheckoutAttemptConflictError,
 } from '@gredice/storage';
 import {
     assertStripeSessionMatchesCheckoutAttempt,
+    buildStripeCheckoutReplayInput,
     buildVerifiedStripeCheckoutAdditionalData,
     decodeStripeCheckoutAttemptMetadata,
+    getStripeCheckoutSnapshotAdvancedSowingAuthorizations,
     getStripeCheckoutSnapshotNonStripeAmounts,
     getStripeCheckoutSnapshotNonStripePaymentKinds,
     type StripeCheckoutSessionForSnapshot,
@@ -23,6 +29,18 @@ const attempt: StripeCheckoutAttempt = {
         harvestDates: [],
         items: [
             {
+                advancedSowingAuthorization: {
+                    kind: advancedSowingCartAuthorizationKind,
+                    plan: buildAdvancedSowingCartConfigurationV1({
+                        anchorPositionIndex: 3,
+                        bedFieldCount: 18,
+                        maxDistanceCm: 60,
+                        minDistanceCm: 15,
+                        optimalDistanceCm: 30,
+                        selectedDistanceCm: 30,
+                    }),
+                    version: 1,
+                },
                 additionalDataFingerprint: fingerprintStripeCheckoutValue(null),
                 amount: 2,
                 cartId: 12,
@@ -155,6 +173,43 @@ describe('Stripe checkout snapshot metadata', () => {
                     checkoutAttemptId: attempt.snapshot.attemptId,
                 }),
             'session_metadata_invalid',
+        );
+    });
+
+    it('keeps server authorization in the snapshot and out of Stripe product metadata', () => {
+        assert.equal(
+            getStripeCheckoutSnapshotAdvancedSowingAuthorizations(attempt).get(
+                41,
+            )?.kind,
+            advancedSowingCartAuthorizationKind,
+        );
+        const replay = buildStripeCheckoutReplayInput({
+            accountId: runtimeIdentity.accountId,
+            attempt,
+            checkoutAdditionalDataByCartItemId: new Map([
+                [41, { delivery: { mode: 'pickup', slotId: 7 } }],
+                [
+                    42,
+                    {
+                        delivery: { mode: 'pickup', slotId: 7 },
+                        scheduledDate: '2026-08-10T00:00:00.000Z',
+                    },
+                ],
+            ]),
+            customerId: 'cus_1',
+            userId: runtimeIdentity.userId,
+        });
+        const metadata = replay.data.items[0]?.product.metadata;
+        assert.ok(metadata);
+        assert.equal(
+            Object.hasOwn(metadata, 'advancedSowingAuthorization'),
+            false,
+        );
+        assert.equal(
+            JSON.stringify(metadata).includes(
+                advancedSowingCartAuthorizationKind,
+            ),
+            false,
         );
     });
 });
