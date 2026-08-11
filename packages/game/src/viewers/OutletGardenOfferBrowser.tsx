@@ -320,6 +320,8 @@ export function OutletGardenOfferBrowser({
                                                         alt=""
                                                         className="size-full object-cover"
                                                         data-outlet-garden-plant-image
+                                                        decoding="async"
+                                                        loading="lazy"
                                                         src={plantImageUrl}
                                                     />
                                                 ) : (
@@ -366,6 +368,8 @@ export function OutletGardenOfferBrowser({
                                                                             alt=""
                                                                             className="size-full object-cover"
                                                                             data-outlet-garden-sort-image
+                                                                            decoding="async"
+                                                                            loading="lazy"
                                                                             src={
                                                                                 sortImageUrl
                                                                             }
@@ -529,6 +533,7 @@ export function OutletGardenOfferBrowser({
                                 <img
                                     alt={selectedOffer.plantSort.name}
                                     className="size-full object-cover"
+                                    decoding="async"
                                     src={offerImageUrl(selectedOffer) ?? ''}
                                 />
                             ) : (
