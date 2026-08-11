@@ -756,9 +756,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.3
         version: 2.5.3
-      '@gredice/client':
-        specifier: workspace:*
-        version: link:../../packages/client
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage

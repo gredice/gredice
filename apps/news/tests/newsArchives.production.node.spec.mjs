@@ -78,38 +78,12 @@ async function reservePort() {
     return port;
 }
 
-function startMockApi() {
-    const requests = [];
-    const server = createServer((request, response) => {
-        const url = new URL(request.url ?? '/', 'http://127.0.0.1');
-        requests.push(url.pathname);
-
-        if (
-            url.pathname === '/api/news/blog' ||
-            url.pathname === '/api/news/changelog'
-        ) {
-            response.writeHead(200, {
-                'content-type': 'application/json; charset=utf-8',
-            });
-            response.end(JSON.stringify({ items: [] }));
-            return;
-        }
-
-        response.writeHead(404, {
-            'content-type': 'application/json; charset=utf-8',
-        });
-        response.end(JSON.stringify({ error: 'not-found' }));
-    });
-
-    return { requests, server };
-}
-
-function startNextServer(port, apiOrigin) {
+function startNextServer(port) {
     const child = spawn(process.execPath, [nextCli, 'start', '-p', `${port}`], {
         cwd: appDirectory,
         env: {
             ...process.env,
-            GREDICE_API_HOST: apiOrigin,
+            GREDICE_API_HOST: 'http://127.0.0.1:9',
             NEXT_TELEMETRY_DISABLED: '1',
             VERCEL_ENV: 'development',
         },
@@ -234,15 +208,8 @@ describe('production news archive metadata', () => {
     it('renders distinct public metadata and 1200x630 PNG previews', {
         timeout: 60_000,
     }, async (testContext) => {
-        const mockApi = startMockApi();
-        const apiPort = await listen(mockApi.server);
-        testContext.after(() => closeServer(mockApi.server));
-
         const nextPort = await reservePort();
-        const nextServer = startNextServer(
-            nextPort,
-            `http://127.0.0.1:${apiPort}`,
-        );
+        const nextServer = startNextServer(nextPort);
         testContext.after(() => stopChild(nextServer.child));
 
         const origin = `http://127.0.0.1:${nextPort}`;
@@ -288,7 +255,5 @@ describe('production news archive metadata', () => {
             renderedMetadata[1].get('og:image'),
         );
         assert.notEqual(imageHashes[0], imageHashes[1]);
-        assert.ok(mockApi.requests.includes('/api/news/blog'));
-        assert.ok(mockApi.requests.includes('/api/news/changelog'));
     });
 });

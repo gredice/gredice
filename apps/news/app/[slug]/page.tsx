@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NewsDetail } from '../../components/NewsDetail';
-import { getBlogPost } from '../../lib/news';
+import { getBlogPost, getBlogPosts } from '../../lib/news';
 import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+    const entries = await getBlogPosts();
+    return entries.map((entry) => ({ slug: entry.slug }));
+}
 
 export default async function BlogPostPage({
     params,
@@ -33,7 +38,7 @@ export async function generateMetadata({
     const { slug } = await params;
     const entry = await getBlogPost(slug);
     if (!entry) {
-        return {};
+        notFound();
     }
     const openGraphImage = entry.seoImageUrl || `${entry.path}/opengraph-image`;
 
