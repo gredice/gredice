@@ -225,6 +225,7 @@ export function publicGardenStacksFromResponse(
                 name: block.name,
                 rotation: block.rotation ?? 0,
                 variant: block.variant,
+                message: block.message,
             })),
         })),
     );

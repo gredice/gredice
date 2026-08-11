@@ -15,7 +15,8 @@ function areBlocksEqual(left: Block, right: Block) {
         (left.id === right.id &&
             left.name === right.name &&
             left.rotation === right.rotation &&
-            left.variant === right.variant)
+            left.variant === right.variant &&
+            left.message === right.message)
     );
 }
 

@@ -7,6 +7,7 @@ import type {
     GameCameraRigApi,
     GameCameraSnapshot,
 } from '../../../packages/game/src/controls/GameCameraRigApi';
+import { arrowSignNames } from '../../../packages/game/src/entities/signageConfig';
 import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
@@ -161,6 +162,8 @@ const blockNames = [
     'BeachUmbrella',
     'Stool',
     'WoodenBench',
+    ...arrowSignNames,
+    'WoodenSign',
     'OutletDisplayTable',
     'Fence',
     'SmallWoodenBridge',

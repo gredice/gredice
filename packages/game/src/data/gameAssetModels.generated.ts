@@ -131,6 +131,8 @@ export const gameAssetModels = {
     PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
     PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
     HarvestBasket: { url: '/assets/models/HarvestBasket.glb?v=5361f192e361' },
+    ArrowSign: { url: '/assets/models/ArrowSign.glb?v=a7af022e88ee' },
+    WoodenSign: { url: '/assets/models/WoodenSign.glb?v=0c75cd59f180' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -239,6 +241,8 @@ export const lazyGameAssetNames = [
     'PotTallSlenderCone',
     'PotWideLippedCup',
     'HarvestBasket',
+    'ArrowSign',
+    'WoodenSign',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -339,4 +343,6 @@ export const allGameAssetNames = [
     'PotTallSlenderCone',
     'PotWideLippedCup',
     'HarvestBasket',
+    'ArrowSign',
+    'WoodenSign',
 ] satisfies GameAssetName[];

@@ -372,6 +372,7 @@ export const gardenBlocks = pgTable(
         name: text('name').notNull(),
         rotation: integer('rotation'),
         variant: integer('variant'),
+        message: text('message'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

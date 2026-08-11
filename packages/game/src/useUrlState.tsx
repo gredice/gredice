@@ -78,6 +78,11 @@ export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
 }
 
+// Editable wooden sign parameter (Croatian: "natpis" = inscription)
+export function useWoodenSignParam() {
+    return useQueryState('natpis', parseAsString);
+}
+
 // Current garden ID parameter (Croatian: "vrt" = garden)
 export function useCurrentGardenIdParam() {
     return useQueryState('vrt', parseAsInteger);
@@ -98,6 +103,7 @@ export const urlStateSerializer = createSerializer({
     gredica: parseAsString,
     polje: parseAsInteger,
     'poklon-kutija': parseAsString,
+    natpis: parseAsString,
     vrt: parseAsInteger,
     pregled: parseAsString,
 });

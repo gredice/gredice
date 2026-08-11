@@ -34,6 +34,7 @@ import { WhatsNewWidget } from './hud/WhatsNewWidget';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
+import { WoodenSignModal } from './modals/WoodenSignModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -257,6 +258,7 @@ export function GameHud({
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
+            <WoodenSignModal />
             {!isLocalSandbox && !suppressOpeningHud && (
                 <>
                     <WelcomeMessage

@@ -85,6 +85,11 @@ for (const entity of entities) {
                         cameraTarget={target}
                         cameraUp={[0, 0, -1]}
                         entityName={entity.information.name}
+                        message={
+                            entity.information.name === 'WoodenSign'
+                                ? 'MOJ\nVRT'
+                                : undefined
+                        }
                         itemPosition={itemPosition}
                         noControl
                         quality={snapshotQuality}

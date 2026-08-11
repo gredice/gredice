@@ -1057,6 +1057,13 @@ export type GLTFResult = GLTF & {
         HarvestBasket_Zucchini: THREE.Mesh;
         HarvestBasket_Pumpkin: THREE.Mesh;
         HarvestBasket_PumpkinStem: THREE.Mesh;
+        ArrowSign_Post: THREE.Mesh;
+        ArrowSign_Arrow: THREE.Mesh;
+        ArrowSign_Fastener: THREE.Mesh;
+        WoodenSign_Post: THREE.Mesh;
+        WoodenSign_Board: THREE.Mesh;
+        WoodenSign_Frame: THREE.Mesh;
+        WoodenSign_Fasteners: THREE.Mesh;
     };
     materials: {
         BeachBall_Cap: THREE.MeshStandardMaterial;
@@ -1110,6 +1117,9 @@ export type GLTFResult = GLTF & {
         lemon: THREE.MeshStandardMaterial;
         lemon_light: THREE.MeshStandardMaterial;
         liquid: THREE.MeshStandardMaterial;
+        'Material.ArrowSign.Color': THREE.MeshStandardMaterial;
+        'Material.ArrowSign.DeepWood': THREE.MeshStandardMaterial;
+        'Material.ArrowSign.WarmWood': THREE.MeshStandardMaterial;
         'Material.BasketInner': THREE.MeshStandardMaterial;
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;
@@ -1320,6 +1330,9 @@ export type GLTFResult = GLTF & {
         'Material.WaterSprayKit.WandMetal': THREE.MeshStandardMaterial;
         'Material.WaterSprayKit.Water': THREE.MeshStandardMaterial;
         'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
+        'Material.WoodenSign.BoardWood': THREE.MeshStandardMaterial;
+        'Material.WoodenSign.DeepWood': THREE.MeshStandardMaterial;
+        'Material.WoodenSign.WarmWood': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.LightWood': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.Pegs': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.WarmWood': THREE.MeshStandardMaterial;

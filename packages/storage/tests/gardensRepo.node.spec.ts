@@ -644,11 +644,53 @@ test('updateGardenBlock updates block', async () => {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
-    await updateGardenBlock({ id: blockId, rotation: 1 });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'MOJ VRT',
+        rotation: 1,
+    });
+    const block = await getGardenBlock(gardenId, blockId);
+    assert.strictEqual(updated, true);
+    assert.ok(block);
+    assert.strictEqual(block?.message, 'MOJ VRT');
+    assert.strictEqual(block?.rotation, 1);
+});
+
+test('updateGardenBlock only updates a block in the selected garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+
+    const updated = await updateGardenBlock(otherGardenId, {
+        id: blockId,
+        message: 'KRIVI VRT',
+    });
+
+    assert.strictEqual(updated, false);
     const block = await getGardenBlock(gardenId, blockId);
     assert.ok(block);
-    assert.strictEqual(block?.rotation, 1);
+    assert.strictEqual(block.message, null);
+});
+
+test('updateGardenBlock does not restore or modify a deleted block', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    await deleteGardenBlock(gardenId, blockId);
+
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'NE SMIJE',
+    });
+
+    assert.strictEqual(updated, false);
+    assert.strictEqual(await getGardenBlock(gardenId, blockId), null);
 });
 
 test('deleteGardenBlock marks block as deleted', async () => {

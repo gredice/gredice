@@ -1753,6 +1753,31 @@
                 "HarvestBasket_Pumpkin",
                 "HarvestBasket_PumpkinStem"
             ]
+        },
+        {
+            "name": "ArrowSign",
+            "source": "ArrowSign.blend",
+            "output": "ArrowSign.glb",
+            "version": "a7af022e88ee",
+            "preload": "lazy",
+            "objects": [
+                "ArrowSign_Post",
+                "ArrowSign_Arrow",
+                "ArrowSign_Fastener"
+            ]
+        },
+        {
+            "name": "WoodenSign",
+            "source": "WoodenSign.blend",
+            "output": "WoodenSign.glb",
+            "version": "0c75cd59f180",
+            "preload": "lazy",
+            "objects": [
+                "WoodenSign_Post",
+                "WoodenSign_Board",
+                "WoodenSign_Frame",
+                "WoodenSign_Fasteners"
+            ]
         }
     ]
 }

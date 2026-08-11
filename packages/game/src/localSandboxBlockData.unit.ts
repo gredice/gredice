@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { arrowSignConfigs, arrowSignNames } from './entities/signageConfig';
 import { getLocalSandboxBlockData } from './localSandboxBlockData';
 
 test('local sandbox grass block data uses the rendered surface height', () => {
@@ -70,6 +71,43 @@ test('local sandbox exposes the wooden bench with production dimensions', () => 
     assert.equal(woodenBench?.attributes.hitboxDepth, 0.36);
     assert.equal(woodenBench?.attributes.hitboxHeight, 0.41);
     assert.equal(woodenBench?.attributes.hitboxWidth, 1.1);
+});
+
+test('local sandbox exposes every arrow sign with direction-specific bounds', () => {
+    const blockData = getLocalSandboxBlockData();
+    const blockNames = new Set(
+        blockData.map((block) => block.information.name),
+    );
+
+    assert.equal(arrowSignNames.length, 16);
+    for (const config of arrowSignConfigs) {
+        const arrowSign = blockData.find(
+            (block) => block.information.name === config.name,
+        );
+        const height =
+            config.direction === 'Up' || config.direction === 'Down'
+                ? 1.32
+                : 1.18;
+
+        assert.equal(blockNames.has(config.name), true);
+        assert.ok(arrowSign);
+        assert.equal(arrowSign.attributes.height, height);
+        assert.equal(arrowSign.attributes.hitboxDepth, 0.12);
+        assert.equal(arrowSign.attributes.hitboxHeight, height);
+        assert.equal(arrowSign.attributes.hitboxWidth, 0.8);
+    }
+});
+
+test('local sandbox exposes the editable wooden sign with production bounds', () => {
+    const woodenSign = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'WoodenSign',
+    );
+
+    assert.ok(woodenSign);
+    assert.equal(woodenSign.attributes.height, 1.16);
+    assert.equal(woodenSign.attributes.hitboxDepth, 0.12);
+    assert.equal(woodenSign.attributes.hitboxHeight, 1.16);
+    assert.equal(woodenSign.attributes.hitboxWidth, 0.88);
 });
 
 test('local sandbox exposes the display table as a stackable decoration', () => {
