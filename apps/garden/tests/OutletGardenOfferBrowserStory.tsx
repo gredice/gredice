@@ -18,7 +18,7 @@ const outletOffers = [
         },
         sowingDate: '2026-05-28T00:00:00.000Z',
         initialPlantStatus: 'sprouted',
-        imageUrls: ['https://cdn.gredice.com/sunflower-large.svg'],
+        imageUrls: ['https://manual-images.example/offer-301.svg'],
         outletPrice: 2.49,
         comparePrice: 3.99,
         quantity: 4,

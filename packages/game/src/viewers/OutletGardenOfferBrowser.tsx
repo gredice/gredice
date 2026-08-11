@@ -6,7 +6,6 @@ import { ArrowLeft, Reset, Sprout } from '@gredice/ui/icons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
-import Image from 'next/image';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
@@ -316,12 +315,11 @@ export function OutletGardenOfferBrowser({
                                         <div className="mb-3 flex items-center gap-3">
                                             <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-lime-100 text-lime-800 dark:bg-lime-950 dark:text-lime-300">
                                                 {plantImageUrl ? (
-                                                    <Image
+                                                    // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
+                                                    <img
                                                         alt=""
-                                                        className="object-cover"
+                                                        className="size-full object-cover"
                                                         data-outlet-garden-plant-image
-                                                        fill
-                                                        sizes="40px"
                                                         src={plantImageUrl}
                                                     />
                                                 ) : (
@@ -363,12 +361,11 @@ export function OutletGardenOfferBrowser({
                                                             <div className="mb-2 flex items-center gap-2">
                                                                 <div className="relative size-8 shrink-0 overflow-hidden rounded-md bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
                                                                     {sortImageUrl ? (
-                                                                        <Image
+                                                                        // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
+                                                                        <img
                                                                             alt=""
-                                                                            className="object-cover"
+                                                                            className="size-full object-cover"
                                                                             data-outlet-garden-sort-image
-                                                                            fill
-                                                                            sizes="32px"
                                                                             src={
                                                                                 sortImageUrl
                                                                             }
@@ -528,11 +525,10 @@ export function OutletGardenOfferBrowser({
                     >
                         <div className="relative aspect-[16/9] bg-lime-50 dark:bg-lime-950/30">
                             {offerImageUrl(selectedOffer) ? (
-                                <Image
+                                // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
+                                <img
                                     alt={selectedOffer.plantSort.name}
-                                    className="object-cover"
-                                    fill
-                                    sizes="(min-width: 1024px) 384px, 100vw"
+                                    className="size-full object-cover"
                                     src={offerImageUrl(selectedOffer) ?? ''}
                                 />
                             ) : (
