@@ -13,6 +13,7 @@ import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
+    getOutletGardenOfferPlacement,
     isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
     type OutletGardenSlotAssignments,
@@ -25,12 +26,13 @@ import {
     getPublicGardenCaptureInitialView,
     normalizePublicGardenStacks,
     type PublicGardenInitialView,
+    type PublicGardenSelectedBlockFocus,
     PublicGardenViewer,
     publicGardenStacksFromResponse,
 } from './PublicGardenViewer';
 
-const outletGardenPreviewTime = new Date('2026-06-21T10:00:00.000Z');
 const outletGardenCameraMinZoom = 10;
+const outletGardenCloseupZoom = 210;
 
 function OutletGardenScenePlaceholder({ label }: { label: string }) {
     return (
@@ -185,6 +187,29 @@ export function OutletGardenViewer() {
             ? focusedBlockId
             : outletOfferBlockId(selectedOffer.id)
         : null;
+    const selectedBlockFocus = useMemo<
+        PublicGardenSelectedBlockFocus | undefined
+    >(() => {
+        if (!selectedBlockId) {
+            return undefined;
+        }
+
+        const assignment = reconciledSlotAssignments.get(selectedBlockId);
+        if (!assignment) {
+            return undefined;
+        }
+
+        const placement = getOutletGardenOfferPlacement(assignment.slotIndex);
+        return {
+            mode: 'preserve-angle',
+            target: {
+                x: placement.x,
+                y: placement.surface === 'table' ? 1.5 : 0.9,
+                z: placement.y,
+            },
+            zoom: outletGardenCloseupZoom,
+        };
+    }, [reconciledSlotAssignments, selectedBlockId]);
 
     useEffect(() => {
         if (
@@ -350,7 +375,6 @@ export function OutletGardenViewer() {
                         appBaseUrl=""
                         cameraMinZoom={outletGardenCameraMinZoom}
                         className="size-full"
-                        fixedTime={outletGardenPreviewTime}
                         garden={outletGarden}
                         initialView={sceneInitialView}
                         interactiveBlockIds={interactiveBlockIds}
@@ -366,6 +390,7 @@ export function OutletGardenViewer() {
                             />
                         }
                         selectedBlockId={selectedBlockId}
+                        selectedBlockFocus={selectedBlockFocus}
                         spriteBaseUrl=""
                     />
                 ) : (

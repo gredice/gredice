@@ -38,13 +38,16 @@ export type OutletGardenOfferPlacement = {
 const outletOfferBlockIdPrefix = 'outlet-offer:';
 const outletGardenOffersPerPlantBay = 4;
 const outletGardenPlantBaysPerAisleRow = 2;
+const outletGardenAisleRowsPerPathSegment = 2;
 const outletGardenAisleRowSpacing = 3;
+const outletGardenFirstAisleRowOffset = 1;
+const outletGardenPathSegmentLength = 10;
 const outletGardenTableDistance = 3;
 const outletGardenFloorDistance = 2;
-const outletGardenPathHalfWidth = 0;
-const outletGardenSideMargin = 2;
-const outletGardenFrontMargin = 3;
-const outletGardenBackMargin = 3;
+const outletGardenDecorationDistance = 5;
+const outletGardenMapMargin = 2;
+const outletGardenEntranceY =
+    -outletGardenDecorationDistance - outletGardenMapMargin;
 const outletGardenVirtualId = -1;
 const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
 
@@ -74,11 +77,32 @@ type OutletGardenPotName = (typeof outletGardenPotNames)[number];
 
 export const outletGardenRegisteredBlockNames = [
     'Block_Grass',
+    'Bush',
     'Fence',
     'MulchWood',
     'OutletDisplayTable',
+    'StoneSmall',
+    'Tree',
+    'WoodenBench',
     ...outletGardenPotNames,
 ] as const;
+
+type OutletGardenPoint = {
+    x: number;
+    y: number;
+};
+
+type OutletGardenPathSegment = {
+    direction: OutletGardenPoint;
+    index: number;
+    origin: OutletGardenPoint;
+};
+
+type OutletGardenDecorationName =
+    | 'Bush'
+    | 'StoneSmall'
+    | 'Tree'
+    | 'WoodenBench';
 
 export function outletOfferBlockId(offerId: number, unitIndex = 0) {
     const suffix = unitIndex === 0 ? '' : `:${unitIndex.toString()}`;
@@ -377,26 +401,133 @@ function outletGardenPotName(plantSortId: number): OutletGardenPotName {
     return outletGardenPotNames[potIndex] ?? outletGardenPotNames[0];
 }
 
+/**
+ * The route is a compact eastward serpentine. Each segment has exactly two
+ * display rows: two tables on each side per row, or eight table positions
+ * before the next 90-degree turn. The ten-tile segment leaves a small planted
+ * pause between the last table and the corner instead of crowding the turn.
+ */
+function outletGardenPathSegment(
+    segmentIndex: number,
+): OutletGardenPathSegment {
+    const cycle = Math.floor(segmentIndex / 4);
+    const segmentInCycle = segmentIndex % 4;
+    const cycleStartX = cycle * outletGardenPathSegmentLength * 2;
+
+    if (segmentInCycle === 0) {
+        return {
+            direction: { x: 0, y: 1 },
+            index: segmentIndex,
+            origin: { x: cycleStartX, y: 0 },
+        };
+    }
+    if (segmentInCycle === 1) {
+        return {
+            direction: { x: 1, y: 0 },
+            index: segmentIndex,
+            origin: { x: cycleStartX, y: outletGardenPathSegmentLength },
+        };
+    }
+    if (segmentInCycle === 2) {
+        return {
+            direction: { x: 0, y: -1 },
+            index: segmentIndex,
+            origin: {
+                x: cycleStartX + outletGardenPathSegmentLength,
+                y: outletGardenPathSegmentLength,
+            },
+        };
+    }
+
+    return {
+        direction: { x: 1, y: 0 },
+        index: segmentIndex,
+        origin: {
+            x: cycleStartX + outletGardenPathSegmentLength,
+            y: 0,
+        },
+    };
+}
+
+function outletGardenPointAlongSegment(
+    segment: OutletGardenPathSegment,
+    distance: number,
+) {
+    return {
+        x: segment.origin.x + segment.direction.x * distance,
+        y: segment.origin.y + segment.direction.y * distance,
+    };
+}
+
+function outletGardenAisleRowGeometry(aisleRow: number) {
+    const segmentIndex = Math.floor(
+        aisleRow / outletGardenAisleRowsPerPathSegment,
+    );
+    const aisleRowInSegment = aisleRow % outletGardenAisleRowsPerPathSegment;
+    const segment = outletGardenPathSegment(segmentIndex);
+    const distance =
+        outletGardenFirstAisleRowOffset +
+        aisleRowInSegment * outletGardenAisleRowSpacing;
+
+    return {
+        anchor: outletGardenPointAlongSegment(segment, distance),
+        segment,
+    };
+}
+
+function outletGardenSideNormal(
+    plantBay: number,
+    direction: OutletGardenPoint,
+) {
+    const isLeftSide = plantBay % outletGardenPlantBaysPerAisleRow === 0;
+    return isLeftSide
+        ? { x: -direction.y, y: direction.x }
+        : { x: direction.y, y: -direction.x };
+}
+
+function outletGardenRotationFacingPath(normal: OutletGardenPoint) {
+    const facing = { x: -normal.x, y: -normal.y };
+    if (facing.x === 1) {
+        return 1;
+    }
+    if (facing.y === -1) {
+        return 2;
+    }
+    if (facing.x === -1) {
+        return 3;
+    }
+    return 0;
+}
+
+function outletGardenFacingRotation(slotIndex: number) {
+    const plantBay = outletGardenPlantBay(slotIndex);
+    const aisleRow = Math.floor(plantBay / outletGardenPlantBaysPerAisleRow);
+    const { segment } = outletGardenAisleRowGeometry(aisleRow);
+    const normal = outletGardenSideNormal(plantBay, segment.direction);
+    return outletGardenRotationFacingPath(normal);
+}
+
 export function getOutletGardenOfferPlacement(
     slotIndex: number,
 ): OutletGardenOfferPlacement {
     const plantBay = outletGardenPlantBay(slotIndex);
     const aisleRow = Math.floor(plantBay / outletGardenPlantBaysPerAisleRow);
-    const side = plantBay % outletGardenPlantBaysPerAisleRow === 0 ? -1 : 1;
     const slotInPlantBay = slotIndex % outletGardenOffersPerPlantBay;
-    const y = aisleRow * outletGardenAisleRowSpacing + (slotInPlantBay % 2);
+    const { anchor, segment } = outletGardenAisleRowGeometry(aisleRow);
+    const normal = outletGardenSideNormal(plantBay, segment.direction);
     const surface = slotInPlantBay < 2 ? 'table' : 'floor';
     const distance =
         surface === 'table'
             ? outletGardenTableDistance
             : outletGardenFloorDistance;
+    const tangentOffset = slotInPlantBay % 2;
 
     return {
         aisleRow,
         plantBay,
         surface,
-        x: side * distance,
-        y,
+        x: anchor.x + normal.x * distance + segment.direction.x * tangentOffset,
+        y: anchor.y + normal.y * distance + segment.direction.y * tangentOffset,
     };
 }
 
@@ -424,7 +555,9 @@ function compareStacks(left: PublicGardenStack, right: PublicGardenStack) {
     return left.y - right.y || left.x - right.x;
 }
 
-function outletGardenBounds(assignments: OutletGardenSlotAssignments) {
+function outletGardenPathSegmentCount(
+    assignments: OutletGardenSlotAssignments,
+) {
     const highestPlantBay = Math.max(
         -1,
         ...Array.from(assignments.values(), (assignment) =>
@@ -435,26 +568,183 @@ function outletGardenBounds(assignments: OutletGardenSlotAssignments) {
         1,
         Math.ceil((highestPlantBay + 1) / outletGardenPlantBaysPerAisleRow),
     );
-    const lastDisplayY = (aisleRowCount - 1) * outletGardenAisleRowSpacing + 1;
-
-    const displayDistance = Math.max(
-        outletGardenFloorDistance,
-        outletGardenTableDistance,
+    // Even a small outlet should visibly read as a winding garden, not the old
+    // straight aisle, so always include the first corner and second segment.
+    return Math.max(
+        2,
+        Math.ceil(aisleRowCount / outletGardenAisleRowsPerPathSegment),
     );
+}
+
+function outletGardenPathPoints(segmentCount: number) {
+    const pathPoints = new Map<string, OutletGardenPoint>();
+
+    for (let y = outletGardenEntranceY; y <= 0; y += 1) {
+        pathPoints.set(stackKey(0, y), { x: 0, y });
+    }
+
+    for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+        const segment = outletGardenPathSegment(segmentIndex);
+        for (
+            let distance = 0;
+            distance <= outletGardenPathSegmentLength;
+            distance += 1
+        ) {
+            const point = outletGardenPointAlongSegment(segment, distance);
+            pathPoints.set(stackKey(point.x, point.y), point);
+        }
+    }
+
+    return Array.from(pathPoints.values());
+}
+
+function outletGardenBounds(segmentCount: number) {
+    const pathPoints = outletGardenPathPoints(segmentCount);
+    const maxPathX = Math.max(...pathPoints.map((point) => point.x));
 
     return {
-        maxX: displayDistance + outletGardenSideMargin,
-        maxY: lastDisplayY + outletGardenBackMargin,
-        minX: -displayDistance - outletGardenSideMargin,
-        minY: -outletGardenFrontMargin,
+        maxX: maxPathX + outletGardenDecorationDistance + outletGardenMapMargin,
+        maxY:
+            outletGardenPathSegmentLength +
+            outletGardenDecorationDistance +
+            outletGardenMapMargin,
+        minX: -outletGardenDecorationDistance - outletGardenMapMargin,
+        minY: outletGardenEntranceY,
     };
+}
+
+function outletGardenReservedDisplayPoints(segmentCount: number) {
+    const points: OutletGardenPoint[] = [];
+    const aisleRowCount = segmentCount * outletGardenAisleRowsPerPathSegment;
+
+    for (let aisleRow = 0; aisleRow < aisleRowCount; aisleRow += 1) {
+        for (let side = 0; side < outletGardenPlantBaysPerAisleRow; side += 1) {
+            const plantBay = aisleRow * outletGardenPlantBaysPerAisleRow + side;
+            for (let offset = 0; offset < 2; offset += 1) {
+                for (const surfaceOffset of [0, 2]) {
+                    const placement = getOutletGardenOfferPlacement(
+                        plantBay * outletGardenOffersPerPlantBay +
+                            surfaceOffset +
+                            offset,
+                    );
+                    points.push({ x: placement.x, y: placement.y });
+                }
+            }
+        }
+    }
+
+    return points;
+}
+
+function outletGardenDecorationCandidates(
+    segment: OutletGardenPathSegment,
+    ordinal: number,
+) {
+    const leftNormal = {
+        x: -segment.direction.y,
+        y: segment.direction.x,
+    };
+    const rightNormal = { x: -leftNormal.x, y: -leftNormal.y };
+    const preferredNormal =
+        (segment.index + (ordinal === 0 ? 0 : 1)) % 2 === 0
+            ? leftNormal
+            : rightNormal;
+    const otherNormal = {
+        x: -preferredNormal.x,
+        y: -preferredNormal.y,
+    };
+    const preferredDistance = [8, 6, 9][ordinal] ?? 7;
+    const distances = Array.from(new Set([preferredDistance, 8, 6, 9, 7, 3]));
+
+    return [preferredNormal, otherNormal].flatMap((normal) =>
+        distances.map((distance) => {
+            const pathPoint = outletGardenPointAlongSegment(segment, distance);
+            return {
+                normal,
+                point: {
+                    x: pathPoint.x + normal.x * outletGardenDecorationDistance,
+                    y: pathPoint.y + normal.y * outletGardenDecorationDistance,
+                },
+            };
+        }),
+    );
+}
+
+function outletGardenPointIsClear(
+    point: OutletGardenPoint,
+    blockedPoints: readonly OutletGardenPoint[],
+) {
+    return blockedPoints.every(
+        (blockedPoint) =>
+            Math.max(
+                Math.abs(point.x - blockedPoint.x),
+                Math.abs(point.y - blockedPoint.y),
+            ) > 1,
+    );
+}
+
+function outletGardenDecorations(segmentCount: number) {
+    const futureSafeSegmentCount = segmentCount + 1;
+    const blockedPoints = [
+        ...outletGardenPathPoints(futureSafeSegmentCount),
+        ...outletGardenReservedDisplayPoints(futureSafeSegmentCount),
+    ];
+    const decorations: Array<{
+        name: OutletGardenDecorationName;
+        point: OutletGardenPoint;
+        rotation: number;
+        segmentIndex: number;
+    }> = [];
+
+    for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+        const segment = outletGardenPathSegment(segmentIndex);
+        const decorationNames: OutletGardenDecorationName[] = [
+            segmentIndex % 2 === 0 ? 'Tree' : 'Bush',
+        ];
+        if (segmentIndex % 3 === 0) {
+            decorationNames.push('StoneSmall');
+        }
+        if (segmentIndex % 4 === 0) {
+            decorationNames.push('WoodenBench');
+        }
+
+        for (const [ordinal, name] of decorationNames.entries()) {
+            const candidate = outletGardenDecorationCandidates(
+                segment,
+                ordinal,
+            ).find(({ point }) =>
+                outletGardenPointIsClear(point, [
+                    ...blockedPoints,
+                    ...decorations.map((decoration) => decoration.point),
+                ]),
+            );
+            if (!candidate) {
+                continue;
+            }
+
+            decorations.push({
+                name,
+                point: candidate.point,
+                rotation: outletGardenRotationFacingPath(candidate.normal),
+                segmentIndex,
+            });
+        }
+    }
+
+    return decorations;
 }
 
 export function buildOutletGardenStacks(
     offers: readonly OutletGardenLayoutOffer[],
     assignments: OutletGardenSlotAssignments,
 ) {
-    const { maxX, maxY, minX, minY } = outletGardenBounds(assignments);
+    const segmentCount = outletGardenPathSegmentCount(assignments);
+    const { maxX, maxY, minX, minY } = outletGardenBounds(segmentCount);
+    const pathPositionKeys = new Set(
+        outletGardenPathPoints(segmentCount).map((point) =>
+            stackKey(point.x, point.y),
+        ),
+    );
     const stacksByPosition = new Map<string, PublicGardenStack>();
 
     for (let y = minY; y <= maxY; y += 1) {
@@ -465,7 +755,7 @@ export function buildOutletGardenStacks(
                 rotation: 0,
             });
 
-            if (y < maxY && Math.abs(x) <= outletGardenPathHalfWidth) {
+            if (pathPositionKeys.has(stackKey(x, y))) {
                 addBlock(stacksByPosition, x, y, {
                     id: `outlet-path:${x.toString()}:${y.toString()}`,
                     name: 'MulchWood',
@@ -475,8 +765,7 @@ export function buildOutletGardenStacks(
 
             const atBoundary =
                 x === minX || x === maxX || y === minY || y === maxY;
-            const atFrontOpening =
-                y === minY && Math.abs(x) <= outletGardenPathHalfWidth;
+            const atFrontOpening = y === minY && x === 0;
             if (atBoundary && !atFrontOpening) {
                 addBlock(stacksByPosition, x, y, {
                     id: `outlet-fence:${x.toString()}:${y.toString()}`,
@@ -495,18 +784,13 @@ export function buildOutletGardenStacks(
         ),
     ).sort((left, right) => left - right);
     for (const plantBay of assignedPlantBays) {
-        const aisleRow = Math.floor(
-            plantBay / outletGardenPlantBaysPerAisleRow,
-        );
-        const side = plantBay % outletGardenPlantBaysPerAisleRow === 0 ? -1 : 1;
-        const tableX = side * outletGardenTableDistance;
-        const tableStartY = aisleRow * outletGardenAisleRowSpacing;
-
         for (let offset = 0; offset < 2; offset += 1) {
-            addBlock(stacksByPosition, tableX, tableStartY + offset, {
+            const slotIndex = plantBay * outletGardenOffersPerPlantBay + offset;
+            const placement = getOutletGardenOfferPlacement(slotIndex);
+            addBlock(stacksByPosition, placement.x, placement.y, {
                 id: `outlet-table:${plantBay.toString()}:${offset.toString()}`,
                 name: 'OutletDisplayTable',
-                rotation: 1,
+                rotation: outletGardenFacingRotation(slotIndex),
             });
         }
     }
@@ -533,16 +817,18 @@ export function buildOutletGardenStacks(
 
     for (const { assignment, display } of placedDisplays) {
         const position = getOutletGardenOfferPlacement(assignment.slotIndex);
-        const rotation =
-            position.surface === 'floor'
-                ? position.x < 0
-                    ? 1
-                    : 3
-                : ((display.plantSortId % 4) + 4) % 4;
         addBlock(stacksByPosition, position.x, position.y, {
             id: display.blockId,
             name: outletGardenPotName(display.plantSortId),
-            rotation,
+            rotation: outletGardenFacingRotation(assignment.slotIndex),
+        });
+    }
+
+    for (const decoration of outletGardenDecorations(segmentCount)) {
+        addBlock(stacksByPosition, decoration.point.x, decoration.point.y, {
+            id: `outlet-decor:${decoration.name}:${decoration.segmentIndex.toString()}`,
+            name: decoration.name,
+            rotation: decoration.rotation,
         });
     }
 
