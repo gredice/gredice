@@ -86,6 +86,17 @@ test('local sandbox exposes the display table as a stackable decoration', () => 
     assert.equal(displayTable.attributes.stackable, true);
 });
 
+test('local sandbox stool metadata matches the reduced model', () => {
+    const stool = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'Stool',
+    );
+
+    assert.equal(stool?.attributes.height, 0.39);
+    assert.equal(stool?.attributes.hitboxDepth, 0.66);
+    assert.equal(stool?.attributes.hitboxHeight, 0.39);
+    assert.equal(stool?.attributes.hitboxWidth, 0.66);
+});
+
 test('local sandbox exposes animal home blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

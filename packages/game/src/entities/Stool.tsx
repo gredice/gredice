@@ -24,7 +24,7 @@ export function Stool({ stack, block, rotation }: EntityInstanceProps) {
             >
                 <SnowOverlay
                     geometry={nodes.Stool.geometry}
-                    maxThickness={0.11}
+                    maxThickness={0.08}
                     slopeExponent={2.9}
                     noiseScale={3}
                 />

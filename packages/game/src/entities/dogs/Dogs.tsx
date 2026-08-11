@@ -196,7 +196,7 @@ const lowEntityYOffsets: Record<string, number> = {
     PotWideLippedCup: 0.49,
     StoneMedium: 0.35,
     StoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
 };
 
 function hashString(value: string) {

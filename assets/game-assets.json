@@ -74,6 +74,7 @@
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
+            "version": "4d4803a1804b",
             "preload": "primary",
             "objects": [
                 "Raised Bed O",
@@ -87,6 +88,7 @@
             "name": "GardenBox",
             "source": "GardenBox.blend",
             "output": "GardenBox.glb",
+            "version": "7de88b60a698",
             "preload": "primary",
             "objects": ["GardenBox_Body_Planks", "GardenBox_Lid_HingeOrigin"]
         },
@@ -424,6 +426,7 @@
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
+            "version": "801dc45abb7a",
             "preload": "lazy",
             "objects": ["Bucket", "Bucket - Handle"]
         },
@@ -744,6 +747,7 @@
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
+            "version": "9495a376201c",
             "preload": "lazy",
             "objects": [
                 "WaterWell_Stone_Mid",
@@ -758,6 +762,7 @@
             "name": "LemonadeStand",
             "source": "LemonadeStand.blend",
             "output": "LemonadeStand.glb",
+            "version": "82531711492b",
             "preload": "lazy",
             "objects": [
                 "LemonadeStand_cart_body_cream",
@@ -915,6 +920,7 @@
             "name": "IceCreamCart",
             "source": "IceCreamCart.blend",
             "output": "IceCreamCart.glb",
+            "version": "7cb720ecfd2d",
             "preload": "lazy",
             "objects": [
                 "IceCreamCart_cart_body_cream",
@@ -1122,6 +1128,7 @@
             "name": "BeachChair",
             "source": "BeachChair.blend",
             "output": "BeachChair.glb",
+            "version": "3fb1610f8bcd",
             "preload": "lazy",
             "objects": [
                 "BeachChair_FrameLeft",
@@ -1144,6 +1151,7 @@
             "name": "WoodenBench",
             "source": "WoodenBench.blend",
             "output": "WoodenBench.glb",
+            "version": "238606505a28",
             "preload": "lazy",
             "objects": [
                 "WoodenBench_SeatSlatFront",
@@ -1282,6 +1290,7 @@
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
+            "version": "af09f2de9968",
             "preload": "lazy",
             "objects": ["Composter"]
         },
@@ -1289,7 +1298,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "20bc83690473",
+            "version": "754399525eec",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
@@ -1330,6 +1339,7 @@
             "name": "DogHouse",
             "source": "DogHouse.blend",
             "output": "DogHouse.glb",
+            "version": "a72364bb6d31",
             "preload": "lazy",
             "objects": [
                 "DogHouse_Root",
@@ -1378,6 +1388,7 @@
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
+            "version": "aaea4d1cbe90",
             "preload": "lazy",
             "objects": [
                 "Fence Corner",
@@ -1414,6 +1425,7 @@
             "name": "Shade",
             "source": "Shade.blend",
             "output": "Shade.glb",
+            "version": "bab1221b1988",
             "preload": "lazy",
             "objects": [
                 "Shade E",
@@ -1512,6 +1524,7 @@
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",
+            "version": "d35a259cf31c",
             "preload": "lazy",
             "objects": ["Stool"]
         },

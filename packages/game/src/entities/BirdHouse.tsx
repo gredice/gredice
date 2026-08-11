@@ -6,9 +6,10 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { defaultGameWoodColor } from './woodPalette';
 
 const birdHouseWoodMaterial = {
-    color: '#956247',
+    color: defaultGameWoodColor,
     metalness: 0,
     roughness: 0.9,
     side: DoubleSide,

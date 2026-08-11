@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { GameAssetName } from '../data/models';
 import { EntityFactory } from '../entities/EntityFactory';
 import type { EntityName } from '../entities/entityNameMap';
+import { defaultGameWoodColor } from '../entities/woodPalette';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { MAX_PLANT_GENERATION } from '../generators/plant/lib/plant-definition-types';
@@ -523,11 +524,17 @@ function OperationCoverSupportStakeModel({
         >
             <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
                 <cylinderGeometry args={[radius, radius * 1.12, height, 10]} />
-                <meshStandardMaterial color="#7a4f2b" roughness={0.92} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.92}
+                />
             </mesh>
             <mesh position={[0, height + radius * 0.78, 0]} castShadow>
                 <coneGeometry args={[radius * 1.16, radius * 1.55, 10]} />
-                <meshStandardMaterial color="#6b4424" roughness={0.94} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.94}
+                />
             </mesh>
         </group>
     );
