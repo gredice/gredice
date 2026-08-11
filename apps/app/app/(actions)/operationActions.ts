@@ -1,5 +1,6 @@
 'use server';
 
+import { operationCanceledNotificationType } from '@gredice/js/notifications';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
@@ -49,6 +50,7 @@ import {
     canSwitchOperationTaskEntity,
     canUnacceptOperationTask,
 } from '../admin/schedule/scheduleShared';
+import { classifyOperationCompletionNotificationType } from './operationCompletionNotification';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 const MAX_COMPLETION_IMAGE_COUNT = 20;
@@ -928,6 +930,7 @@ async function buildOperationCompletionNotification(
         header,
         content,
         linkUrl,
+        visualReward: operationData?.attributes?.visualReward ?? null,
     };
 }
 
@@ -960,15 +963,31 @@ async function notifyVerifiedOperationCompletion(
             ? createNotification(
                   {
                       accountId: operation.accountId,
+                      category: 'garden',
                       gardenId: operation.gardenId,
                       raisedBedId: operation.raisedBedId,
                       header: completionNotification.header,
                       content: completionNotification.content,
                       imageUrl: operation.imageUrls?.[0],
                       linkUrl: completionNotification.linkUrl,
+                      metadata: {
+                          operationId: operation.id,
+                          operationEntityId: operation.entityId,
+                          raisedBedFieldId: operation.raisedBedFieldId ?? null,
+                          visualReward: completionNotification.visualReward,
+                      },
+                      priority: 'high',
                       timestamp: operation.verifiedAt,
+                      type: classifyOperationCompletionNotificationType({
+                          hasImage: Boolean(operation.imageUrls?.[0]),
+                          raisedBedFieldId: operation.raisedBedFieldId,
+                          visualReward: completionNotification.visualReward,
+                      }),
                   },
                   {
+                      compatibleExistingClassifications: [
+                          { category: 'general', type: 'general' },
+                      ],
                       idempotencyKey: `schedule-task:operation-completed:${operation.verificationEventId.toString()}`,
                   },
               )
@@ -1283,14 +1302,26 @@ export async function cancelOperationAction(formData: FormData) {
         const notificationId = await createNotification(
             {
                 accountId: cancellation.operation.accountId,
+                category: 'garden',
                 gardenId: cancellation.operation.gardenId,
                 raisedBedId: cancellation.operation.raisedBedId,
                 header,
                 content,
                 linkUrl,
+                metadata: {
+                    operationEntityId: cancellation.operation.entityId,
+                    operationId: cancellation.operation.id,
+                    raisedBedFieldId:
+                        cancellation.operation.raisedBedFieldId ?? null,
+                },
+                priority: 'high',
                 timestamp: cancellation.canceledAt,
+                type: operationCanceledNotificationType,
             },
             {
+                compatibleExistingClassifications: [
+                    { category: 'general', type: 'general' },
+                ],
                 idempotencyKey: `admin:operation-canceled:${cancellation.cancellationEventId.toString()}`,
             },
         );

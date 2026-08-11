@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    detailedRaisedBedInspectionNotificationType,
+    operationCompletedNotificationType,
+    raisedBedFieldPhotoCompletedNotificationType,
+    raisedBedPhotoCompletedNotificationType,
+} from '@gredice/js/notifications';
+import {
     accountUsers,
     backfillNotificationRolloutDefaults,
     cancelNotificationCampaign,
@@ -23,9 +29,11 @@ import {
     getNotificationDeliverySummary,
     getNotificationsByAccount,
     getNotificationsForCenter,
+    getUnreadRaisedBedNotificationsForGarden,
     getUser,
     markDeliveryLifecycleEmailAttemptFailed,
     markDeliveryLifecycleEmailAttemptSent,
+    maxGardenRaisedBedNotifications,
     maxNotificationReadBatchSize,
     notificationCampaigns,
     notificationDeliveryAttempts,
@@ -35,6 +43,7 @@ import {
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
     promoteDeferredWebPushDeliveryAttempts,
+    raisedBeds,
     recordNotificationDeliveryEvent,
     recordWebPushDeliveryFailure,
     revalidateQueuedWebPushDeliveryAttempt,
@@ -51,7 +60,9 @@ import {
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
     createTestAccount,
+    createTestBlock,
     createTestGarden,
+    createTestRaisedBed,
     ensureFarmId,
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -285,6 +296,58 @@ test('createNotification rejects empty or cross-target idempotency key reuse', a
         createNotification(
             { ...notification, accountId: secondAccountId },
             { idempotencyKey, routeDelivery: false },
+        ),
+        /different target/,
+    );
+});
+
+test('idempotent notification creation explicitly accepts a compatible legacy classification', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const otherAccountId = await createTestAccount();
+    const idempotencyKey = `operation-completed:${randomUUID()}`;
+    const legacyNotification = {
+        accountId,
+        content: 'Završena radnja na gredici.',
+        header: 'Završena radnja',
+        timestamp: new Date('2026-08-11T12:00:00.000Z'),
+    };
+
+    const legacyId = await createNotification(legacyNotification, {
+        idempotencyKey,
+        routeDelivery: false,
+    });
+    const reused = await createNotificationWithOutcome(
+        {
+            ...legacyNotification,
+            category: 'garden',
+            type: operationCompletedNotificationType,
+        },
+        {
+            compatibleExistingClassifications: [
+                { category: 'general', type: 'general' },
+            ],
+            idempotencyKey,
+            routeDelivery: false,
+        },
+    );
+
+    assert.deepEqual(reused, { notificationId: legacyId, outcome: 'reused' });
+    await assert.rejects(
+        createNotificationWithOutcome(
+            {
+                ...legacyNotification,
+                accountId: otherAccountId,
+                category: 'garden',
+                type: operationCompletedNotificationType,
+            },
+            {
+                compatibleExistingClassifications: [
+                    { category: 'general', type: 'general' },
+                ],
+                idempotencyKey,
+                routeDelivery: false,
+            },
         ),
         /different target/,
     );
@@ -1151,6 +1214,415 @@ test('notification center uses one account-safe globally ordered page', async ()
     );
     assert.equal(returnedIds.has(crossAccountId), false);
     assert.equal(returnedIds.has(foreignUserNotificationId), false);
+});
+
+test('garden raised-bed notifications are unread, target-scoped, and select one deterministic winner per bed', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `garden-raised-bed-notifications-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({ accountId, farmId });
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const otherGardenRaisedBedId = await createTestRaisedBed(
+        otherGardenId,
+        accountId,
+        await createTestBlock(otherGardenId, 'Raised_Bed'),
+    );
+
+    const foreignUserId = await createUserWithPassword(
+        `garden-raised-bed-notifications-foreign-${randomUUID()}@example.com`,
+        'password',
+    );
+    await storage()
+        .insert(accountUsers)
+        .values({ accountId, userId: foreignUserId });
+
+    const otherAccountId = await createTestAccount();
+    const otherAccountGardenId = await createTestGarden({
+        accountId: otherAccountId,
+        farmId,
+    });
+    const otherAccountRaisedBedId = await createTestRaisedBed(
+        otherAccountGardenId,
+        otherAccountId,
+        await createTestBlock(otherAccountGardenId, 'Raised_Bed'),
+    );
+
+    const idPrefix = `raised-bed-list-${randomUUID()}`;
+    const newestTimestamp = new Date('2026-08-11T12:00:00.000Z');
+    const newestCreatedAt = new Date('2026-08-11T12:01:00.000Z');
+    const visibleIds = {
+        newestZ: `${idPrefix}-visible-z`,
+        newestA: `${idPrefix}-visible-a`,
+        older: `${idPrefix}-visible-older`,
+    };
+    const notification = ({
+        id,
+        targetAccountId = accountId,
+        targetGardenId = gardenId,
+        targetRaisedBedId = raisedBedId,
+        targetUserId,
+        timestamp = new Date('2026-08-11T13:00:00.000Z'),
+        createdAt = timestamp,
+        readAt,
+    }: {
+        id: string;
+        targetAccountId?: string;
+        targetGardenId?: number;
+        targetRaisedBedId?: number | null;
+        targetUserId?: string;
+        timestamp?: Date;
+        createdAt?: Date;
+        readAt?: Date;
+    }) => ({
+        id,
+        accountId: targetAccountId,
+        content: id,
+        createdAt,
+        gardenId: targetGardenId,
+        header: id,
+        raisedBedId: targetRaisedBedId,
+        readAt,
+        timestamp,
+        userId: targetUserId,
+    });
+
+    await storage()
+        .insert(notifications)
+        .values([
+            notification({
+                id: visibleIds.newestZ,
+                targetUserId: userId,
+                timestamp: newestTimestamp,
+                createdAt: newestCreatedAt,
+            }),
+            notification({
+                id: visibleIds.newestA,
+                timestamp: newestTimestamp,
+                createdAt: newestCreatedAt,
+            }),
+            notification({
+                id: visibleIds.older,
+                timestamp: new Date('2026-08-11T11:00:00.000Z'),
+            }),
+            {
+                ...notification({
+                    id: `${idPrefix}-detailed-inspection`,
+                    timestamp: new Date('2026-08-11T14:00:00.000Z'),
+                }),
+                imageUrl: 'https://cdn.example.com/inspection.jpg',
+                type: detailedRaisedBedInspectionNotificationType,
+            },
+            notification({
+                id: `${idPrefix}-foreign-user`,
+                targetUserId: foreignUserId,
+            }),
+            notification({
+                id: `${idPrefix}-other-garden`,
+                targetGardenId: otherGardenId,
+                targetRaisedBedId: otherGardenRaisedBedId,
+            }),
+            notification({
+                id: `${idPrefix}-other-account`,
+                targetAccountId: otherAccountId,
+                targetGardenId: otherAccountGardenId,
+                targetRaisedBedId: otherAccountRaisedBedId,
+                targetUserId: userId,
+            }),
+            notification({
+                id: `${idPrefix}-without-raised-bed`,
+                targetRaisedBedId: null,
+            }),
+            notification({
+                id: `${idPrefix}-already-read`,
+                readAt: new Date('2026-08-11T13:01:00.000Z'),
+            }),
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId,
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [visibleIds.newestZ],
+    );
+});
+
+test('garden raised-bed notifications select visual kind before priority and recency', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const idPrefix = `raised-bed-priority-${randomUUID()}`;
+    const ids = {
+        fullBed: `${idPrefix}-full-bed`,
+        fieldPhoto: `${idPrefix}-field-photo`,
+        legacyImageHigh: `${idPrefix}-legacy-image-high`,
+        legacyImageLow: `${idPrefix}-legacy-image-low`,
+        legacyIcon: `${idPrefix}-legacy-icon`,
+        text: `${idPrefix}-text`,
+        blankPhoto: `${idPrefix}-blank-photo`,
+    };
+    const row = ({
+        id,
+        timestamp,
+        ...values
+    }: {
+        id: string;
+        timestamp: string;
+        iconUrl?: string;
+        imageUrl?: string;
+        priority?: 'critical' | 'high' | 'low' | 'normal';
+        type?: string;
+    }) => ({
+        id,
+        accountId,
+        content: id,
+        gardenId,
+        header: id,
+        raisedBedId,
+        timestamp: new Date(timestamp),
+        ...values,
+    });
+
+    await storage()
+        .insert(notifications)
+        .values([
+            row({
+                id: ids.fullBed,
+                imageUrl: 'https://cdn.example.com/full-bed.jpg',
+                priority: 'low',
+                timestamp: '2026-08-11T08:00:00.000Z',
+                type: raisedBedPhotoCompletedNotificationType,
+            }),
+            row({
+                id: ids.fieldPhoto,
+                imageUrl: 'https://cdn.example.com/field.jpg',
+                priority: 'critical',
+                timestamp: '2026-08-11T12:00:00.000Z',
+                type: raisedBedFieldPhotoCompletedNotificationType,
+            }),
+            row({
+                id: ids.legacyImageHigh,
+                imageUrl: 'https://cdn.example.com/legacy-high.jpg',
+                priority: 'high',
+                timestamp: '2026-08-11T09:00:00.000Z',
+            }),
+            row({
+                id: ids.legacyImageLow,
+                imageUrl: 'https://cdn.example.com/legacy-low.jpg',
+                priority: 'low',
+                timestamp: '2026-08-11T13:00:00.000Z',
+            }),
+            row({
+                iconUrl: 'https://cdn.example.com/icon.jpg',
+                id: ids.legacyIcon,
+                priority: 'normal',
+                timestamp: '2026-08-11T14:00:00.000Z',
+            }),
+            row({
+                id: ids.text,
+                priority: 'critical',
+                timestamp: '2026-08-11T15:00:00.000Z',
+            }),
+            row({
+                iconUrl: '   ',
+                id: ids.blankPhoto,
+                imageUrl: '   ',
+                priority: 'low',
+                timestamp: '2026-08-11T16:00:00.000Z',
+                type: raisedBedPhotoCompletedNotificationType,
+            }),
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [ids.fullBed],
+    );
+});
+
+test('garden raised-bed notifications select field updates before operation text', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const idPrefix = `raised-bed-field-before-operation-${randomUUID()}`;
+
+    await storage()
+        .insert(notifications)
+        .values([
+            {
+                id: `${idPrefix}-operation`,
+                accountId,
+                category: 'garden',
+                content: 'Operation completed',
+                gardenId,
+                header: 'Operation completed',
+                metadata: { raisedBedFieldId: 123 },
+                priority: 'high',
+                raisedBedId,
+                timestamp: new Date('2026-08-11T12:00:00.000Z'),
+                type: operationCompletedNotificationType,
+            },
+            {
+                id: `${idPrefix}-plant`,
+                accountId,
+                category: 'garden',
+                content: 'Plant sprouted',
+                gardenId,
+                header: 'Plant sprouted',
+                metadata: { raisedBedFieldId: 123 },
+                priority: 'normal',
+                raisedBedId,
+                timestamp: new Date('2026-08-10T12:00:00.000Z'),
+                type: 'plant_status_changed',
+            },
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [`${idPrefix}-plant`],
+    );
+});
+
+test('garden raised-bed notifications select per-bed winners before the response cap', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const dominantRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const secondaryRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const idPrefix = `raised-bed-per-bed-cap-${randomUUID()}`;
+
+    await storage()
+        .insert(notifications)
+        .values([
+            ...Array.from(
+                { length: maxGardenRaisedBedNotifications + 1 },
+                (_, index) => ({
+                    id: `${idPrefix}-dominant-${index.toString().padStart(4, '0')}`,
+                    accountId,
+                    content: `Dominant ${index.toString()}`,
+                    gardenId,
+                    header: `Dominant ${index.toString()}`,
+                    imageUrl: 'https://cdn.example.com/dominant.jpg',
+                    raisedBedId: dominantRaisedBedId,
+                    timestamp: new Date(Date.UTC(2026, 7, 11, 12, 0, 0, index)),
+                }),
+            ),
+            {
+                id: `${idPrefix}-secondary`,
+                accountId,
+                content: 'Secondary bed',
+                gardenId,
+                header: 'Secondary bed',
+                raisedBedId: secondaryRaisedBedId,
+                timestamp: new Date('2026-08-10T12:00:00.000Z'),
+            },
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [`${idPrefix}-dominant-0500`, `${idPrefix}-secondary`],
+    );
+});
+
+test('garden raised-bed notifications cap distinct bed winners at the safe maximum', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const idPrefix = `raised-bed-cap-${randomUUID()}`;
+    const rowCount = maxGardenRaisedBedNotifications + 1;
+    const createdRaisedBeds = await storage()
+        .insert(raisedBeds)
+        .values(
+            Array.from({ length: rowCount }, (_, index) => ({
+                accountId,
+                blockId,
+                gardenId,
+                name: `Cap bed ${index.toString()}`,
+                status: 'new',
+                updatedAt: new Date(),
+            })),
+        )
+        .returning({ id: raisedBeds.id });
+
+    await storage()
+        .insert(notifications)
+        .values(
+            createdRaisedBeds.map(({ id: raisedBedId }, index) => ({
+                id: `${idPrefix}-${index.toString().padStart(4, '0')}`,
+                accountId,
+                content: `Notification ${index.toString()}`,
+                gardenId,
+                header: `Notification ${index.toString()}`,
+                raisedBedId,
+                timestamp: new Date(Date.UTC(2026, 7, 11, 12, 0, 0, index)),
+            })),
+        );
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.equal(result.length, maxGardenRaisedBedNotifications);
+    assert.equal(result[0]?.id, `${idPrefix}-0500`);
+    assert.equal(result.at(-1)?.id, `${idPrefix}-0001`);
 });
 
 test('bulk notification reads reject oversized request batches', async () => {

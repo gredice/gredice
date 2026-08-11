@@ -19,6 +19,10 @@ import {
     getGardenOverview2DPreviewTrackPadding,
 } from './gardenOverview2DLayout';
 import type { CurrentGarden } from './hooks/useCurrentGarden';
+import {
+    RaisedBedNotificationBubbleContent,
+    useRaisedBedNotificationSurface,
+} from './hud/RaisedBedNotificationSurface';
 import { useGameState } from './useGameState';
 import { useSetRaisedBedCloseupParam } from './useRaisedBedCloseup';
 import { getRaisedBedBlockIds } from './utils/raisedBedBlocks';
@@ -66,6 +70,10 @@ export function GardenOverview2DMap({
     const activeView = useGameState((state) => state.view);
     const hudPlacementDrag = useGameState((state) => state.hudPlacementDrag);
     const { mutate: openRaisedBed } = useSetRaisedBedCloseupParam();
+    const {
+        notifications: raisedBedNotifications,
+        openNotification: openRaisedBedNotification,
+    } = useRaisedBedNotificationSurface(garden);
     const layout = useMemo(
         () =>
             createGardenOverview2DLayout({
@@ -134,6 +142,13 @@ export function GardenOverview2DMap({
                 ];
             }),
         [garden, layoutItemByBlockId],
+    );
+    const raisedBedTargetById = useMemo(
+        () =>
+            new Map(
+                raisedBedTargets.map((target) => [target.raisedBed.id, target]),
+            ),
+        [raisedBedTargets],
     );
     const pointerPosition = useMemo(() => {
         if (!hudPlacementDrag || typeof document === 'undefined') {
@@ -388,6 +403,35 @@ export function GardenOverview2DMap({
                             </button>
                         ),
                     )}
+                    {!activeHudPlacementDrag
+                        ? raisedBedNotifications.map((notification) => {
+                              const target = raisedBedTargetById.get(
+                                  notification.raisedBedId,
+                              );
+                              if (!target) {
+                                  return null;
+                              }
+
+                              return (
+                                  <div
+                                      key={notification.id}
+                                      className="pointer-events-none relative z-40 min-h-0 min-w-0 overflow-visible"
+                                      data-raised-bed-notification-anchor-2d
+                                      style={gridAreaStyle(
+                                          target.area,
+                                          previewTrackPadding,
+                                      )}
+                                  >
+                                      <div className="pointer-events-auto absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2">
+                                          <RaisedBedNotificationBubbleContent
+                                              notification={notification}
+                                              onOpen={openRaisedBedNotification}
+                                          />
+                                      </div>
+                                  </div>
+                              );
+                          })
+                        : null}
                     {placementArea && activeHudPlacementDrag ? (
                         <div
                             aria-hidden="true"

@@ -72,6 +72,7 @@ import {
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     getUnreadNotificationsByType,
+    getUnreadRaisedBedNotificationsForGarden,
     getUserLikedGardenIds,
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
@@ -159,6 +160,7 @@ import {
     streamRaisedBedImageAnalysis,
     validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
+import { serializeRaisedBedGardenNotification } from '../../../lib/garden/raisedBedNotifications';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     validateConnectedRaisedBedMove,
@@ -1312,6 +1314,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 nextCursor: operationsPage.nextCursor,
                 total: operationsPage.total,
             });
+        },
+    )
+    .get(
+        '/:gardenId/raised-bed-notifications',
+        describeRoute({
+            description:
+                'Get up to 500 unread raised-bed notifications for the current user in an owned garden, ordered by visual suitability, priority, and recency.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const notifications =
+                await getUnreadRaisedBedNotificationsForGarden({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    userId,
+                });
+
+            return context.json(
+                {
+                    notifications: notifications.map(
+                        serializeRaisedBedGardenNotification,
+                    ),
+                },
+                200,
+            );
         },
     )
     .get(

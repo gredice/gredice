@@ -1,3 +1,4 @@
+import { operationCanceledNotificationType } from '@gredice/js/notifications';
 import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { and, eq } from 'drizzle-orm';
@@ -784,14 +785,24 @@ export async function cancelGardenDiaryOperation(
         await cancelDependencies(dependencies).createNotification(
             {
                 accountId,
+                category: 'garden',
                 gardenId: operation.gardenId ?? gardenId,
                 raisedBedId: operation.raisedBedId,
                 header: 'Radnja je otkazana',
                 content,
                 linkUrl,
+                metadata: {
+                    operationEntityId: operation.entityId,
+                    operationId: operation.id,
+                    raisedBedFieldId: operation.raisedBedFieldId ?? null,
+                },
                 timestamp: result.canceledAt,
+                type: operationCanceledNotificationType,
             },
             {
+                compatibleExistingClassifications: [
+                    { category: 'general', type: 'general' },
+                ],
                 idempotencyKey: `garden-diary:operation-canceled:${result.cancellationEventId.toString()}`,
             },
         );
