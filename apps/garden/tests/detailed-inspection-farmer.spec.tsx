@@ -32,6 +32,8 @@ test('renders wider advice that still opens the inspection review', async ({
     });
     const bubbleBox = await bubble.boundingBox();
     expect(bubbleBox?.width).toBeGreaterThan(240);
-    await bubble.evaluate((element) => element.click());
+    await bubble.evaluate((element) => {
+        element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
     await expect(fixture).toHaveAttribute('data-opened', 'true');
 });
