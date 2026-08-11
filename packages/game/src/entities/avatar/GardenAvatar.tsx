@@ -38,7 +38,6 @@ import {
     createGardenAvatarCollisionWorld,
     findGardenAvatarRoute,
     findGardenAvatarSpawnPoint,
-    type GardenAvatarCollisionWorld,
     type GardenAvatarPoint,
     gardenAvatarCrouchingCollisionHeight,
     gardenAvatarMaxJumpClimbHeight,
@@ -47,8 +46,7 @@ import {
     getGardenAvatarCeilingY,
     getGardenAvatarGroundY,
     getGardenAvatarNextJumpCount,
-    getGardenAvatarRoamBlockedCells,
-    getGardenAvatarSurfaceY,
+    getGardenAvatarRoamTargets,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
 import {
@@ -363,28 +361,6 @@ export function animateGardenAvatarRig({
     }
 }
 
-function createRoamTargetCandidates(world: GardenAvatarCollisionWorld) {
-    const blocked = new Set(
-        getGardenAvatarRoamBlockedCells(world).map(
-            (cell) => `${Math.round(cell.x)}:${Math.round(cell.z)}`,
-        ),
-    );
-    return world.surfaces
-        .filter(
-            (surface) =>
-                surface.kind === 'ground' &&
-                surface.roamable !== false &&
-                !blocked.has(
-                    `${Math.round(surface.x)}:${Math.round(surface.z)}`,
-                ),
-        )
-        .map((surface) => ({
-            x: surface.x,
-            y: getGardenAvatarSurfaceY(surface, surface),
-            z: surface.z,
-        }));
-}
-
 function easeInOutCubic(value: number) {
     return value < 0.5
         ? 4 * value * value * value
@@ -661,7 +637,7 @@ export function GardenAvatar({
         [blockData, stacks],
     );
     const roamCandidates = useMemo(
-        () => createRoamTargetCandidates(world),
+        () => getGardenAvatarRoamTargets(world),
         [world],
     );
     const updateActorGroundingShadow = useActorGroundingShadow({
