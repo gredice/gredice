@@ -88,7 +88,8 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         undefined,
         operations,
     );
-    const plantUrl = `https://www.gredice.com${KnownPages.Plant(alias)}`;
+    const plantPath = KnownPages.Plant(plant.slug || plant.information.name);
+    const plantUrl = `https://www.gredice.com${plantPath}`;
     const plantPrice = plant.prices?.perPlant;
 
     // Map section IDs to their corresponding attribute cards
@@ -167,7 +168,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     overviewEditTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
                 />
                 <PlantSortsList
@@ -189,7 +190,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             )}
                             editEntityTypeName="plant"
                             editEntityId={plant.id}
-                            editPublicPath={KnownPages.Plant(alias)}
+                            editPublicPath={plantPath}
                             editSectionKey={section.id}
                         />
                     ))}
@@ -201,7 +202,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     editTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
                     relationships={plant.relationships}
                 />

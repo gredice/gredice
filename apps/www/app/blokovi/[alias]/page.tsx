@@ -94,7 +94,7 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     if (!entity) {
         notFound();
     }
-    const blockPath = KnownPages.Block(alias);
+    const blockPath = KnownPages.Block(entity.slug || entity.information.label);
 
     return (
         <div className="border-b">

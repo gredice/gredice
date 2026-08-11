@@ -186,7 +186,13 @@ export default async function PlantSortPage(
         }
     };
 
-    const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
+    const basePlantPath = KnownPages.Plant(
+        basePlantData.slug || basePlantData.information.name,
+    );
+    const sortPath = KnownPages.PlantSort(
+        basePlantData.slug || basePlantData.information.name,
+        sortData.slug || sortData.information.name,
+    );
     const sortUrl = `https://www.gredice.com${sortPath}`;
     const sowingPrice = resolvePlantSowingPrice(basePlantData, sortData);
     const pricedSowingOffer =
@@ -259,11 +265,11 @@ export default async function PlantSortPage(
                         { label: 'Biljke', href: KnownPages.Plants },
                         {
                             label: basePlantData.information.name,
-                            href: KnownPages.Plant(alias),
+                            href: basePlantPath,
                         },
                         {
                             label: 'Sorte',
-                            href: `${KnownPages.Plant(alias)}#sorte`,
+                            href: `${basePlantPath}#sorte`,
                         },
                         { label: sortData.information.name },
                     ]}
