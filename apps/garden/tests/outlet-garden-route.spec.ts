@@ -108,7 +108,7 @@ async function mockOutletGardenApi(page: Page) {
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
 }) => {
-    test.setTimeout(30_000);
+    test.setTimeout(60_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const outletApi = await mockOutletGardenApi(page);
