@@ -95,6 +95,19 @@ test('local sandbox exposes the small wooden bridge with its model bounds', () =
     assert.equal(bridge.attributes.placeableOnWater, true);
 });
 
+test('local sandbox exposes the wooden walkway with its model bounds', () => {
+    const walkway = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'WoodenWalkway',
+    );
+
+    assert.ok(walkway);
+    assert.equal(walkway.attributes.height, 0.1);
+    assert.equal(walkway.attributes.hitboxDepth, 1);
+    assert.equal(walkway.attributes.hitboxHeight, 0.1);
+    assert.equal(walkway.attributes.hitboxWidth, 0.86);
+    assert.equal(walkway.attributes.placeableOnWater, true);
+});
+
 test('local sandbox exposes flower decorations used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

@@ -40,6 +40,7 @@ export const localSandboxBlockNames = [
     'WoodenBench',
     'Fence',
     'SmallWoodenBridge',
+    'WoodenWalkway',
     'WaterWell',
     'LemonadeStand',
     'IceCreamCart',
@@ -131,6 +132,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
         SmallWoodenBridge: 0.38,
+        WoodenWalkway: 0.1,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
@@ -167,6 +169,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 1,
         hitboxHeight: 0.38,
         hitboxWidth: 0.84,
+    },
+    WoodenWalkway: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.1,
+        hitboxWidth: 0.86,
     },
     SummerHat: {
         hitboxDepth: 0.64,
@@ -206,7 +213,9 @@ function createLocalSandboxBlockData(
         },
         attributes: {
             height: getLocalSandboxStackHeight(name),
-            ...(name === 'SmallWoodenBridge' ? { placeableOnWater: true } : {}),
+            ...(['SmallWoodenBridge', 'WoodenWalkway'].includes(name)
+                ? { placeableOnWater: true }
+                : {}),
             stackable: isGroundBlock,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,

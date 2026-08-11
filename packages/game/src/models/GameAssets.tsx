@@ -881,6 +881,9 @@ export type GLTFResult = GLTF & {
         SmallWoodenBridge_PlanksWarm: THREE.Mesh;
         SmallWoodenBridge_Stringers: THREE.Mesh;
         SmallWoodenBridge_Pegs: THREE.Mesh;
+        WoodenWalkway_PlanksLight: THREE.Mesh;
+        WoodenWalkway_PlanksWarm: THREE.Mesh;
+        WoodenWalkway_Pegs: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -1311,6 +1314,9 @@ export type GLTFResult = GLTF & {
         'Material.WaterSprayKit.WandMetal': THREE.MeshStandardMaterial;
         'Material.WaterSprayKit.Water': THREE.MeshStandardMaterial;
         'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
+        'Material.WoodenWalkway.LightWood': THREE.MeshStandardMaterial;
+        'Material.WoodenWalkway.Pegs': THREE.MeshStandardMaterial;
+        'Material.WoodenWalkway.WarmWood': THREE.MeshStandardMaterial;
         metal: THREE.MeshStandardMaterial;
         mint: THREE.MeshStandardMaterial;
         PalmTree_Coconut: THREE.MeshStandardMaterial;

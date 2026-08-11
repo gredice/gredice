@@ -75,6 +75,7 @@ import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
 import { WoodenBench } from './WoodenBench';
+import { WoodenWalkway } from './WoodenWalkway';
 
 export const entityNameMap = {
     Block_Ground: BlockGround,
@@ -130,6 +131,7 @@ export const entityNameMap = {
     Cat_Pillow: CatPillow,
     DogHouse: DogHouse,
     SmallWoodenBridge: SmallWoodenBridge,
+    WoodenWalkway: WoodenWalkway,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
