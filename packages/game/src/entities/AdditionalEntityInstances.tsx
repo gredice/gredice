@@ -79,6 +79,7 @@ import {
     resolveWaterShoreDepthSamples,
     resolveWaterShoreDepths,
 } from './waterShoreDepth';
+import { defaultGameWoodColor } from './woodPalette';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -2326,7 +2327,7 @@ function BirdHouseInstances({
     const woodMaterial = useMemo(
         () => (
             <meshStandardMaterial
-                color="#956247"
+                color={defaultGameWoodColor}
                 metalness={0}
                 roughness={0.9}
                 side={DoubleSide}
@@ -2520,7 +2521,7 @@ function SimpleAdditionalInstances({
                 material={(gltf) => gltf.materials[planksMaterialName]}
                 renderRainWetOverlay
                 snow={{
-                    maxThickness: 0.11,
+                    maxThickness: 0.08,
                     slopeExponent: 2.9,
                     noiseScale: 3,
                 }}

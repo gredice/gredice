@@ -220,7 +220,7 @@ const visualPerchYOffsets: Record<string, number> = {
     DesertStoneLarge: 0.5,
     DesertStoneMedium: 0.35,
     DesertStoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
     Tulip: 0.5,
     WaterWell: 1.05,
     BaleHey: 0.5,

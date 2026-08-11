@@ -135,6 +135,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         SandcastleSmallA: 0.35,
         SmallWoodenBridge: 0.38,
         WoodenWalkway: 0.1,
+        Stool: 0.39,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
@@ -176,6 +177,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 1,
         hitboxHeight: 0.1,
         hitboxWidth: 0.86,
+    },
+    Stool: {
+        hitboxDepth: 0.66,
+        hitboxHeight: 0.39,
+        hitboxWidth: 0.66,
     },
     SummerHat: {
         hitboxDepth: 0.64,

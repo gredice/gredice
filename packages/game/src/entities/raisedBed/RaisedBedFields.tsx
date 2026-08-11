@@ -11,6 +11,7 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { resolveEntityNeighbors } from '../helpers/useEntityNeighbors';
+import { defaultGameWoodColor } from '../woodPalette';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
 import {
     hasActiveRaisedBedProtectiveCover,
@@ -492,7 +493,10 @@ function RaisedBedFieldSupportVisual({
         <group position={position}>
             <mesh castShadow position={[0, 0.39, 0]} renderOrder={8}>
                 <cylinderGeometry args={[0.018, 0.022, 0.78, 6]} />
-                <meshStandardMaterial color="#7a4f2b" roughness={0.9} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.9}
+                />
             </mesh>
         </group>
     );
