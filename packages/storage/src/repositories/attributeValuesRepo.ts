@@ -748,6 +748,18 @@ async function deleteTouchesAdvancedSowingAttribute(
     );
 }
 
+async function deleteTouchesOperationApplicationAttribute(
+    db: DatabaseClient,
+    id: number,
+) {
+    const existingValue = await db.query.attributeValues.findFirst({
+        where: eq(attributeValues.id, id),
+    });
+    return isOperationApplicationAttributeDefinition(
+        await getAttributeDefinitionForExistingValue(db, existingValue),
+    );
+}
+
 async function lockAdvancedSowingPlantMutations(
     db: DatabaseClient,
     entityIds: readonly number[],
@@ -996,7 +1008,10 @@ async function deleteAttributeValueInternal(
         options?.advancedSowingValidation !== 'deferred-by-batch'
     ) {
         const rootDb = storage();
-        if (await deleteTouchesAdvancedSowingAttribute(rootDb, id)) {
+        if (
+            (await deleteTouchesAdvancedSowingAttribute(rootDb, id)) ||
+            (await deleteTouchesOperationApplicationAttribute(rootDb, id))
+        ) {
             const sideEffects =
                 options?.sideEffects ??
                 createAttributeValueMutationSideEffects();
@@ -1049,6 +1064,21 @@ async function deleteAttributeValueInternal(
             existingValue.entityId,
         ).removedAttributeValueIds.add(existingValue.id);
         await lockAndValidateAdvancedSowingMutation(db, effects);
+    }
+
+    if (
+        existingValue &&
+        !existingValue.isDeleted &&
+        isOperationApplicationAttributeDefinition(definition)
+    ) {
+        await assertOperationDefinitionCanBecomePlantScoped(
+            existingValue.entityId,
+            db,
+            {
+                deletedAttributeValueId: existingValue.id,
+                entityId: existingValue.entityId,
+            },
+        );
     }
 
     await Promise.all([

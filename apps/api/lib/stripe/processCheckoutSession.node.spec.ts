@@ -5015,7 +5015,22 @@ describe('processItem', () => {
             },
         ] as const) {
             const calls: RecordedCall[] = [];
-            const dependencies = makeDependencies(calls);
+            const fulfillmentTransaction = {
+                transaction: `direct-${checkout.currency}`,
+            } as never;
+            const withPlantingScheduleTaskFootprintTransaction: ProcessCheckoutSessionDependencies['withPlantingScheduleTaskFootprintTransaction'] =
+                async (
+                    _raisedBedId,
+                    _positionIndices,
+                    callback,
+                    transaction,
+                ) => {
+                    assert.equal(transaction, fulfillmentTransaction);
+                    return callback(fulfillmentTransaction);
+                };
+            const dependencies = makeDependencies(calls, {
+                withPlantingScheduleTaskFootprintTransaction,
+            });
 
             await processItem(
                 {
@@ -5033,6 +5048,7 @@ describe('processItem', () => {
                     entityId: '101',
                     entityTypeName: 'plantSort',
                     gardenId: 200,
+                    fulfillmentTransaction,
                     positionIndex: 2,
                     raisedBedId: 300,
                 },

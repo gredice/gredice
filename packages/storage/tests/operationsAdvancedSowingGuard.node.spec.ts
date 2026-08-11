@@ -11,6 +11,7 @@ import {
     createLegacyRaisedBedPlantPlaceWithProjection,
     createOperation,
     createRaisedBedPlanting,
+    deleteAttributeValue,
     getBlockingPlantOperationsForRaisedBedFootprint,
     getOperationById,
     getRaisedBedFieldsWithEvents,
@@ -78,6 +79,27 @@ async function createOperationDefinition(application: OperationApplication) {
         value: application,
     });
     await updateEntity({ id: entityId, state: 'published' });
+    return entityId;
+}
+
+async function createChildOperationDefinition(input: {
+    application?: OperationApplication;
+    parentId: number;
+}) {
+    const entityId = await createEntity('operation');
+    if (input.application) {
+        await upsertAttributeValue({
+            attributeDefinitionId: await operationApplicationDefinitionId(),
+            entityTypeName: 'operation',
+            entityId,
+            value: input.application,
+        });
+    }
+    await updateEntity({
+        id: entityId,
+        parentId: input.parentId,
+        state: 'published',
+    });
     return entityId;
 }
 
@@ -355,6 +377,104 @@ test('editing an in-use operation application to plant scope rolls back', async 
         .from(attributeValues)
         .where(eq(attributeValues.id, applicationValue.id));
     assert.equal(persistedValue?.value, 'raisedBedFull');
+});
+
+test('editing a parent application guards operations that inherit it', async () => {
+    const fixture = await createFixture([0]);
+    const field = fixture.fields.get(0);
+    assert.ok(field);
+    await createSelectedPlanting({
+        fieldId: field.id,
+        positionIndex: 0,
+        raisedBedId: fixture.raisedBedId,
+        plantSortId: fixture.plantSortId,
+    });
+    const parentEntityId = await createOperationDefinition('raisedBedFull');
+    const childEntityId = await createChildOperationDefinition({
+        parentId: parentEntityId,
+    });
+    await createOperation(
+        operationInput({
+            ...fixture,
+            entityId: childEntityId,
+            fieldId: field.id,
+        }),
+    );
+    const definitionId = await operationApplicationDefinitionId();
+    const [parentApplication] = await storage()
+        .select()
+        .from(attributeValues)
+        .where(
+            and(
+                eq(attributeValues.entityId, parentEntityId),
+                eq(attributeValues.attributeDefinitionId, definitionId),
+                eq(attributeValues.isDeleted, false),
+            ),
+        )
+        .limit(1);
+    assert.ok(parentApplication);
+
+    await assert.rejects(
+        upsertAttributeValue({ ...parentApplication, value: 'plant' }),
+        (error) => {
+            assert.ok(error instanceof OperationTargetConflictError);
+            assert.equal(error.code, 'selected_planting_conflict');
+            return true;
+        },
+    );
+    const [persistedValue] = await storage()
+        .select({ value: attributeValues.value })
+        .from(attributeValues)
+        .where(eq(attributeValues.id, parentApplication.id));
+    assert.equal(persistedValue?.value, 'raisedBedFull');
+});
+
+test('deleting a child application override guards its inherited parent scope', async () => {
+    const fixture = await createFixture([0]);
+    const field = fixture.fields.get(0);
+    assert.ok(field);
+    await createSelectedPlanting({
+        fieldId: field.id,
+        positionIndex: 0,
+        raisedBedId: fixture.raisedBedId,
+        plantSortId: fixture.plantSortId,
+    });
+    const parentEntityId = await createOperationDefinition('plant');
+    const childEntityId = await createChildOperationDefinition({
+        application: 'raisedBedFull',
+        parentId: parentEntityId,
+    });
+    await createOperation(
+        operationInput({
+            ...fixture,
+            entityId: childEntityId,
+            fieldId: field.id,
+        }),
+    );
+    const definitionId = await operationApplicationDefinitionId();
+    const [childApplication] = await storage()
+        .select()
+        .from(attributeValues)
+        .where(
+            and(
+                eq(attributeValues.entityId, childEntityId),
+                eq(attributeValues.attributeDefinitionId, definitionId),
+                eq(attributeValues.isDeleted, false),
+            ),
+        )
+        .limit(1);
+    assert.ok(childApplication);
+
+    await assert.rejects(deleteAttributeValue(childApplication.id), (error) => {
+        assert.ok(error instanceof OperationTargetConflictError);
+        assert.equal(error.code, 'selected_planting_conflict');
+        return true;
+    });
+    const [persistedValue] = await storage()
+        .select({ isDeleted: attributeValues.isDeleted })
+        .from(attributeValues)
+        .where(eq(attributeValues.id, childApplication.id));
+    assert.equal(persistedValue?.isDeleted, false);
 });
 
 test('selected placement rejects a pre-existing unresolved plant operation', async () => {

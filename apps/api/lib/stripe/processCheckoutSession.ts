@@ -3255,6 +3255,7 @@ export async function processItem(
         amount_total: number; // Amount in cents or sunflowers
         checkoutSessionId?: string | null;
         paymentRewardAlreadyEnsured?: boolean;
+        fulfillmentTransaction?: ScheduleTaskTransaction;
         checkoutOperationMapping?: Awaited<
             ReturnType<typeof getCheckoutOperationMapping>
         >;
@@ -3787,6 +3788,7 @@ export async function processItem(
                       raisedBedId,
                       advancedSowingOccupiedPositionIndices ?? [],
                       placePlanting,
+                      itemData.fulfillmentTransaction,
                   )
                 : await dependencies.withPlantingScheduleTaskTransaction(
                       raisedBedId,

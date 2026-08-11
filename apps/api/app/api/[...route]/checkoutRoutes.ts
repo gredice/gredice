@@ -2,6 +2,7 @@ import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import {
     assignStripeCustomerIdIfUnchanged,
     bindStripeCheckoutAttempt,
+    bustRaisedBedPlantingReadCaches,
     cartContainsDeliverableItems,
     consumeInventoryItem,
     createStripeCheckoutAttempt,
@@ -901,9 +902,10 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 paymentKind,
             });
 
-            // Batch and fulfill direct checkout while one process lock covers
-            // the complete cart snapshot. Database locks are released before
-            // any fulfillment or notification work begins.
+            // Batch direct checkout while one process lock covers the complete
+            // cart snapshot. Selected Advanced Sowing placement commits with
+            // its direct debit/consumption; other fulfillment remains outside
+            // the short database transaction.
             if (!requiresStripePayment) {
                 const endNonStripeFulfillment = checkoutTiming.startPhase(
                     'non_stripe_fulfillment',
@@ -927,13 +929,94 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                             accountId,
                             allCheckoutItems: cartInfo.items,
                             cartId: cart.id,
+                            atomicOperation: async ({
+                                pendingCheckoutItems,
+                                resolvedAmountsByCartItemId,
+                                transaction,
+                            }) => {
+                                const fulfilledItemIds = new Set<number>();
+                                for (const item of pendingCheckoutItems) {
+                                    const advancedSowingAuthorization =
+                                        advancedSowingAuthorizationsByCartItemId.get(
+                                            item.id,
+                                        );
+                                    if (!advancedSowingAuthorization) {
+                                        continue;
+                                    }
+                                    const usesInventory =
+                                        item.currency === 'inventory' ||
+                                        item.usesInventory;
+                                    if (
+                                        usesInventory &&
+                                        (item.inventoryAvailable ?? 0) <
+                                            item.amount
+                                    ) {
+                                        continue;
+                                    }
+                                    if (usesInventory) {
+                                        await withInventoryAccountTransaction(
+                                            accountId,
+                                            (inventoryDb) =>
+                                                consumeInventoryItem(
+                                                    accountId,
+                                                    {
+                                                        entityTypeName:
+                                                            item.entityTypeName,
+                                                        entityId: item.entityId,
+                                                        amount: item.amount,
+                                                        source: `shoppingCartItem:${item.id.toString()}`,
+                                                    },
+                                                    inventoryDb,
+                                                ),
+                                            transaction,
+                                        );
+                                    }
+                                    const resolvedAmount = usesInventory
+                                        ? 0
+                                        : resolvedAmountsByCartItemId.get(
+                                              item.id,
+                                          );
+                                    if (resolvedAmount === undefined) {
+                                        throw new Error(
+                                            `Sunflower checkout amount is missing for cart item ${item.id.toString()}.`,
+                                        );
+                                    }
+                                    const fulfillment = await processItem({
+                                        accountId,
+                                        cartItemId: item.id,
+                                        ...item,
+                                        amount_total: resolvedAmount,
+                                        additionalData:
+                                            checkoutAdditionalDataByCartItemId.get(
+                                                item.id,
+                                            ) ?? {},
+                                        advancedSowingAuthorization,
+                                        fulfillmentTransaction: transaction,
+                                    });
+                                    assertCheckoutItemFulfilled(fulfillment);
+                                    await setCartItemPaid(item.id, transaction);
+                                    fulfilledItemIds.add(item.id);
+                                }
+                                return fulfilledItemIds;
+                            },
                             operation: async ({
+                                atomicallyFulfilledItemIds,
                                 pendingItems,
                                 resolvedAmountsByCartItemId,
                             }) => {
                                 processingStage = 'fulfillment';
                                 try {
+                                    if (atomicallyFulfilledItemIds.size > 0) {
+                                        await bustRaisedBedPlantingReadCaches();
+                                    }
                                     for (const item of pendingItems) {
+                                        if (
+                                            atomicallyFulfilledItemIds.has(
+                                                item.id,
+                                            )
+                                        ) {
+                                            continue;
+                                        }
                                         const resolvedAmount =
                                             resolvedAmountsByCartItemId.get(
                                                 item.id,
@@ -979,6 +1062,13 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                                     item.usesInventory),
                                         );
                                     for (const item of inventoryCartItems) {
+                                        if (
+                                            atomicallyFulfilledItemIds.has(
+                                                item.id,
+                                            )
+                                        ) {
+                                            continue;
+                                        }
                                         if (
                                             (item.inventoryAvailable ?? 0) <
                                             item.amount

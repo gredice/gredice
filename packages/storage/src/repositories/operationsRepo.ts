@@ -658,21 +658,59 @@ function operationDefinitionMutationLockKey(entityId: number) {
     return `operation-definition-application:${entityId.toString()}`;
 }
 
-async function lockOperationDefinitionApplication(
+async function getOperationEntityLineage(db: DatabaseClient, entityId: number) {
+    const lineage: number[] = [];
+    const visited = new Set<number>();
+    let currentEntityId: number | null = entityId;
+    while (currentEntityId !== null) {
+        if (visited.has(currentEntityId)) {
+            throw new Error('Cycle detected in operation entity hierarchy');
+        }
+        visited.add(currentEntityId);
+        const [entity] = await db
+            .select({ id: entities.id, parentId: entities.parentId })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.id, currentEntityId),
+                    eq(entities.entityTypeName, 'operation'),
+                    eq(entities.isDeleted, false),
+                ),
+            )
+            .limit(1);
+        if (!entity) {
+            break;
+        }
+        lineage.push(entity.id);
+        currentEntityId = entity.parentId;
+    }
+    return lineage;
+}
+
+async function lockOperationDefinitionApplications(
     db: DatabaseClient,
-    entityId: number,
+    entityIds: readonly number[],
 ) {
     if (!isPgliteTestDatabase()) {
-        await db.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${operationDefinitionMutationLockKey(entityId)}));`,
-        );
+        for (const entityId of Array.from(new Set(entityIds)).sort(
+            (left, right) => left - right,
+        )) {
+            await db.execute(
+                sql`select pg_advisory_xact_lock(hashtext(${operationDefinitionMutationLockKey(entityId)}));`,
+            );
+        }
     }
 }
+
+type ProspectiveOperationApplicationMutation =
+    | { entityId: number; value: string | null }
+    | { deletedAttributeValueId: number; entityId: number };
 
 async function getEffectiveOperationApplication(
     db: DatabaseClient,
     entityId: number,
     entityTypeName: string,
+    prospectiveMutation?: ProspectiveOperationApplicationMutation,
 ) {
     if (entityTypeName !== 'operation') {
         return null;
@@ -724,8 +762,16 @@ async function getEffectiveOperationApplication(
             return null;
         }
 
-        const [applicationValue] = await db
-            .select({ value: attributeValues.value })
+        if (
+            prospectiveMutation &&
+            currentEntityId === prospectiveMutation.entityId &&
+            'value' in prospectiveMutation
+        ) {
+            return prospectiveMutation.value;
+        }
+
+        const applicationValues = await db
+            .select({ id: attributeValues.id, value: attributeValues.value })
             .from(attributeValues)
             .where(
                 and(
@@ -738,8 +784,14 @@ async function getEffectiveOperationApplication(
                     eq(attributeValues.isDeleted, false),
                 ),
             )
-            .orderBy(asc(attributeValues.id))
-            .limit(1);
+            .orderBy(asc(attributeValues.id));
+        const applicationValue = applicationValues.find(
+            (value) =>
+                !prospectiveMutation ||
+                !('deletedAttributeValueId' in prospectiveMutation) ||
+                currentEntityId !== prospectiveMutation.entityId ||
+                value.id !== prospectiveMutation.deletedAttributeValueId,
+        );
         if (applicationValue) {
             return applicationValue.value;
         }
@@ -922,7 +974,10 @@ async function assertOperationTargetAllowsDefinition(
         return;
     }
 
-    await lockOperationDefinitionApplication(db, operation.entityId);
+    await lockOperationDefinitionApplications(
+        db,
+        await getOperationEntityLineage(db, operation.entityId),
+    );
     const application = await getEffectiveOperationApplication(
         db,
         operation.entityId,
@@ -953,14 +1008,24 @@ async function assertOperationTargetAllowsDefinition(
 export async function assertOperationDefinitionCanBecomePlantScoped(
     entityId: number,
     db: DatabaseClient,
+    prospectiveMutation: ProspectiveOperationApplicationMutation = {
+        entityId,
+        value: 'plant',
+    },
 ) {
-    await lockOperationDefinitionApplication(db, entityId);
+    await lockOperationDefinitionApplications(
+        db,
+        await getOperationEntityLineage(db, entityId),
+    );
     const operationRows = await db
-        .select({ raisedBedFieldId: operations.raisedBedFieldId })
+        .select({
+            entityId: operations.entityId,
+            entityTypeName: operations.entityTypeName,
+            raisedBedFieldId: operations.raisedBedFieldId,
+        })
         .from(operations)
         .where(
             and(
-                eq(operations.entityId, entityId),
                 eq(operations.entityTypeName, 'operation'),
                 eq(operations.isDeleted, false),
                 isNotNull(operations.raisedBedFieldId),
@@ -970,9 +1035,49 @@ export async function assertOperationDefinitionCanBecomePlantScoped(
             ),
         )
         .orderBy(asc(operations.raisedBedFieldId));
+    const currentApplicationByEntityId = new Map<number, string | null>();
+    const prospectiveApplicationByEntityId = new Map<number, string | null>();
+    const plantScopedOperationRows: typeof operationRows = [];
+    for (const operation of operationRows) {
+        let currentApplication = currentApplicationByEntityId.get(
+            operation.entityId,
+        );
+        if (currentApplication === undefined) {
+            currentApplication = await getEffectiveOperationApplication(
+                db,
+                operation.entityId,
+                operation.entityTypeName,
+            );
+            currentApplicationByEntityId.set(
+                operation.entityId,
+                currentApplication,
+            );
+        }
+        let prospectiveApplication = prospectiveApplicationByEntityId.get(
+            operation.entityId,
+        );
+        if (prospectiveApplication === undefined) {
+            prospectiveApplication = await getEffectiveOperationApplication(
+                db,
+                operation.entityId,
+                operation.entityTypeName,
+                prospectiveMutation,
+            );
+            prospectiveApplicationByEntityId.set(
+                operation.entityId,
+                prospectiveApplication,
+            );
+        }
+        if (
+            currentApplication !== 'plant' &&
+            prospectiveApplication === 'plant'
+        ) {
+            plantScopedOperationRows.push(operation);
+        }
+    }
     const lockedFields = await lockRaisedBedFieldsForOperationGuard(
         db,
-        operationRows.flatMap((operation) =>
+        plantScopedOperationRows.flatMap((operation) =>
             operation.raisedBedFieldId === null
                 ? []
                 : [operation.raisedBedFieldId],

@@ -166,6 +166,138 @@ test('direct checkout debits every pending sunflower in one short transaction', 
     });
 });
 
+test('direct checkout may atomically fulfill selected items before debit commit', async () => {
+    const selected = cartItem({ id: 1, price: 2 });
+    const legacy = cartItem({ id: 2, price: 3 });
+    const calls: string[] = [];
+    const transaction = { transaction: 'checkout-test' } as never;
+
+    const result = await withDirectSunflowerCheckoutBatch({
+        accountId: 'account-1',
+        allCheckoutItems: [selected, legacy],
+        cartId: 100,
+        dependencies: {
+            calculateSunflowerAmount: (item) =>
+                Math.round((item.shopData.price ?? 0) * 1000),
+            calculateSunflowerReplayAmount: () => 9_999,
+            getShoppingCart: async () => undefined,
+            lockShoppingCartForCheckout: async () => ({
+                accountId: 'account-1',
+                id: 100,
+                isDeleted: false,
+                items: [selected, legacy],
+                status: 'new',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            }),
+            spendSunflowersBatch: async () => {
+                calls.push('debit');
+                return {
+                    createdReasons: [
+                        'shoppingCartItem:1',
+                        'shoppingCartItem:2',
+                    ],
+                    existingReasons: [],
+                    resolvedAmountsByReason: {
+                        'shoppingCartItem:1': 2_000,
+                        'shoppingCartItem:2': 3_000,
+                    },
+                };
+            },
+            withCheckoutCartItemLocks: async (_ids, operation) => {
+                calls.push('transaction-started');
+                const value = await operation(transaction);
+                calls.push('transaction-committed');
+                return value;
+            },
+            withCheckoutCartItemProcessingLocks: async (_ids, operation) =>
+                operation(),
+        },
+        atomicOperation: async (batch) => {
+            calls.push('atomic-fulfillment');
+            assert.equal(batch.transaction, transaction);
+            assert.deepStrictEqual(
+                batch.pendingCheckoutItems.map((item) => item.id),
+                [1, 2],
+            );
+            assert.equal(batch.resolvedAmountsByCartItemId.get(1), 2_000);
+            return new Set([1]);
+        },
+        operation: async (payment) => {
+            calls.push('legacy-fulfillment');
+            assert.deepStrictEqual(
+                Array.from(payment.atomicallyFulfilledItemIds),
+                [1],
+            );
+            return 'fulfilled';
+        },
+    });
+
+    assert.deepStrictEqual(result, {
+        state: 'processed',
+        value: 'fulfilled',
+    });
+    assert.deepStrictEqual(calls, [
+        'transaction-started',
+        'debit',
+        'atomic-fulfillment',
+        'transaction-committed',
+        'legacy-fulfillment',
+    ]);
+});
+
+test('atomic fulfillment failure prevents commit and post-commit fulfillment', async () => {
+    const selected = cartItem({ id: 1, price: 2 });
+    const failure = new Error('selected placement conflict');
+    let committed = false;
+    let operationCalled = false;
+
+    await assert.rejects(
+        withDirectSunflowerCheckoutBatch({
+            accountId: 'account-1',
+            allCheckoutItems: [selected],
+            cartId: 100,
+            dependencies: {
+                calculateSunflowerAmount: () => 2_000,
+                calculateSunflowerReplayAmount: () => 2_000,
+                getShoppingCart: async () => undefined,
+                lockShoppingCartForCheckout: async () => ({
+                    accountId: 'account-1',
+                    id: 100,
+                    isDeleted: false,
+                    items: [selected],
+                    status: 'new',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                spendSunflowersBatch: async () => ({
+                    createdReasons: ['shoppingCartItem:1'],
+                    existingReasons: [],
+                    resolvedAmountsByReason: {
+                        'shoppingCartItem:1': 2_000,
+                    },
+                }),
+                withCheckoutCartItemLocks: async (_ids, operation) => {
+                    const value = await operation({} as never);
+                    committed = true;
+                    return value;
+                },
+                withCheckoutCartItemProcessingLocks: async (_ids, operation) =>
+                    operation(),
+            },
+            atomicOperation: async () => {
+                throw failure;
+            },
+            operation: async () => {
+                operationCalled = true;
+            },
+        }),
+        failure,
+    );
+    assert.equal(committed, false);
+    assert.equal(operationCalled, false);
+});
+
 test('direct checkout returns durable paid and pending amounts across catalog drift', async () => {
     const paid = cartItem({
         discountPrice: 0,
