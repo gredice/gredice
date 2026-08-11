@@ -9,7 +9,7 @@ import { getBlogPost } from '../../lib/news';
 export const alt = 'Gredice novosti';
 export const size = cmsOgImageSize;
 export const contentType = cmsOgImageContentType;
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default async function BlogPostOpenGraphImage({
     params,

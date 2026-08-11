@@ -142,3 +142,25 @@ test('english model planning without a Croatian answer uses the retry fallback',
     assert.doesNotMatch(sanitized, /I should|tool output/);
     assert.match(sanitized, /Pokušaj ponovno/);
 });
+
+test('internal operation and plant ids are hidden while field numbers remain visible', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        [
+            'Za to odaberi Zelenu rezidbu — radnja 320.',
+            'Primjenjuje se na biljku #741 na polju 5.',
+            'Drugi prijedlog ima ID radnje: 321 za polje 11.',
+        ].join('\n'),
+    );
+
+    assert.strictEqual(
+        sanitized,
+        [
+            'Za to odaberi Zelenu rezidbu.',
+            'Primjenjuje se na biljku na polju 5.',
+            'Drugi prijedlog ima radnju za polje 11.',
+        ].join('\n'),
+    );
+    assert.doesNotMatch(sanitized, /\b(?:320|321|741)\b/);
+    assert.match(sanitized, /polju 5/);
+    assert.match(sanitized, /polje 11/);
+});

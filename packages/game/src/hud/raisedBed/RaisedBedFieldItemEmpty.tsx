@@ -2,9 +2,11 @@ import { MoreHorizontal, ShoppingCart } from '@gredice/ui/icons';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { cx } from '@gredice/ui/utils';
+import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
+import { readAdvancedSowingCartItemSelectionSummary } from './advancedSowingSubmission';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
@@ -76,6 +78,7 @@ export function RaisedBedFieldItemEmpty({
     isDragging?: boolean;
 }) {
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
+    const { enableAdvancedSowingFlag = false } = useGameFlags();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const cartPlantSortId = cartPlantItem
         ? Number(cartPlantItem.entityId)
@@ -97,7 +100,13 @@ export function RaisedBedFieldItemEmpty({
         selectedPlantId: cartPlantId ?? null,
         selectedPlantOptions: cartPlantOptions,
         selectedSortId: cartPlantSortId,
+        selectedCartItemId: cartPlantItem?.id,
     };
+    const primaryPlantPickerProps =
+        enableAdvancedSowingFlag &&
+        readAdvancedSowingCartItemSelectionSummary(cartPlantItem)
+            ? { gardenId, positionIndex, raisedBedId }
+            : plantPickerProps;
     const visiblePlantHistory = plantHistory.slice(-2);
     const shouldShowAllPlantHistory = plantHistory.length > 2;
 
@@ -149,7 +158,7 @@ export function RaisedBedFieldItemEmpty({
                         )}
                     </RaisedBedFieldItemButton>
                 }
-                {...plantPickerProps}
+                {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
                 {shouldShowAllPlantHistory && (

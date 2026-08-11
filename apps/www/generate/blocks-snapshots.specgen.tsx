@@ -79,12 +79,14 @@ const CLOSEUP_ENTITIES = new Set<string>([
     'BeachBall',
     'SandcastleSmallA',
     'SmallWoodenBridge',
+    'WoodenWalkway',
 ]);
 const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['SummerHat', 105],
     ['BeachBall', 175],
     ['SandcastleSmallA', 145],
     ['SmallWoodenBridge', 125],
+    ['WoodenWalkway', 125],
 ]);
 const FAR_ENTITIES = new Set<string>(['PalmTree']);
 const gameAssetBaseUrl =

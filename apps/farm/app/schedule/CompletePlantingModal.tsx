@@ -9,6 +9,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { useRef, useState } from 'react';
 import {
     completeFarmPlanting,
+    completeFarmSelectedPlanting,
     refreshFarmScheduleAfterSubmission,
 } from './actions';
 import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
@@ -24,15 +25,27 @@ interface CompletePlantingModalProps {
     defaultOpen?: boolean;
 }
 
-export function CompletePlantingModal({
-    expectedPlantCycleEventId,
-    expectedPlantCycleVersionEventId,
-    expectedPlantSortId,
+interface CompleteSelectedPlantingModalProps {
+    expectedLifecycleVersionEventId: number;
+    expectedPlantSortId: number;
+    label: string;
+    plantingId: number;
+    defaultOpen?: boolean;
+}
+
+type CompletePlantingDialogProps = {
+    complete: () => Promise<Awaited<ReturnType<typeof completeFarmPlanting>>>;
+    defaultOpen: boolean;
+    label: string;
+    onFinished?: () => void;
+};
+
+function CompletePlantingDialog({
+    complete,
+    defaultOpen,
     label,
-    raisedBedId,
-    positionIndex,
-    defaultOpen = false,
-}: CompletePlantingModalProps) {
+    onFinished,
+}: CompletePlantingDialogProps) {
     const [open, setOpen] = useState(defaultOpen);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string>();
@@ -69,13 +82,7 @@ export function CompletePlantingModal({
             setIsSubmitting(true);
             setErrorMessage(undefined);
             setRequiresRefresh(false);
-            const result = await completeFarmPlanting(
-                raisedBedId,
-                positionIndex,
-                expectedPlantCycleEventId,
-                expectedPlantCycleVersionEventId,
-                expectedPlantSortId,
-            );
+            const result = await complete();
             if (!result.success) {
                 setErrorMessage(result.message);
                 setRequiresRefresh(!result.canRetry);
@@ -107,6 +114,7 @@ export function CompletePlantingModal({
         setErrorMessage(undefined);
         setRequiresRefresh(false);
         setOpen(false);
+        onFinished?.();
         void refreshFarmScheduleAfterSubmission().catch((error) => {
             console.error('Error refreshing completed planting:', error);
             window.location.reload();
@@ -201,6 +209,60 @@ export function CompletePlantingModal({
                 </Stack>
             )}
         </Modal>
+    );
+}
+
+export function CompletePlantingModal({
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
+    label,
+    raisedBedId,
+    positionIndex,
+    defaultOpen = false,
+}: CompletePlantingModalProps) {
+    return (
+        <CompletePlantingDialog
+            complete={() =>
+                completeFarmPlanting(
+                    raisedBedId,
+                    positionIndex,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
+                )
+            }
+            defaultOpen={defaultOpen}
+            label={label}
+        />
+    );
+}
+
+export function CompleteSelectedPlantingModal({
+    expectedLifecycleVersionEventId,
+    expectedPlantSortId,
+    label,
+    plantingId,
+    defaultOpen = false,
+}: CompleteSelectedPlantingModalProps) {
+    const commandIdRef = useRef(crypto.randomUUID());
+
+    return (
+        <CompletePlantingDialog
+            complete={() =>
+                completeFarmSelectedPlanting(
+                    plantingId,
+                    expectedLifecycleVersionEventId,
+                    expectedPlantSortId,
+                    commandIdRef.current,
+                )
+            }
+            defaultOpen={defaultOpen}
+            label={label}
+            onFinished={() => {
+                commandIdRef.current = crypto.randomUUID();
+            }}
+        />
     );
 }
 

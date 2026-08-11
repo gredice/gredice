@@ -1,5 +1,9 @@
 import 'server-only';
 import {
+    ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+    getAdvancedSowingFootprintPositions,
+} from '@gredice/js/plants';
+import {
     and,
     asc,
     count,
@@ -8,6 +12,7 @@ import {
     isNotNull,
     isNull,
     or,
+    sql,
 } from 'drizzle-orm';
 import { storage } from '..';
 import {
@@ -28,12 +33,15 @@ import {
     operations,
     type RaisedBedOrientation,
     raisedBeds,
+    shoppingCartItemAdvancedSowingAuthorizations,
     shoppingCartItems,
     type UpdateRaisedBed,
 } from '../schema';
 import {
     type InsertRaisedBedSensor,
     raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBedSensors,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
@@ -54,6 +62,10 @@ import {
     type RaisedBedFieldWithEvents,
     type RaisedBedWeedState,
 } from './raisedBedFieldsRepo';
+import {
+    getRaisedBedPlantingsForRaisedBeds,
+    type RaisedBedPlantingWithFields,
+} from './raisedBedPlantingsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
 import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
 import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
@@ -69,6 +81,7 @@ export type RaisedBedLatestPhotoOperation = {
 type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
     fields: RaisedBedFieldWithEvents[];
     latestPhotoOperation: RaisedBedLatestPhotoOperation | null;
+    plantings: RaisedBedPlantingWithFields[];
     weedState: RaisedBedWeedState | null;
 };
 
@@ -461,10 +474,12 @@ export async function getRaisedBedsForGardens(
         weedStatesByRaisedBedId,
         fieldsByRaisedBedId,
         latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
     ] = await Promise.all([
         getRaisedBedWeedStatesByIds(bedIds),
         getRaisedBedFieldsWithEventsForBeds(bedIds),
         getLatestRaisedBedPhotoOperationsByIds(bedIds),
+        getRaisedBedPlantingsForRaisedBeds(bedIds),
     ]);
 
     // For each raised bed, fetch and attach fields with event-sourced info
@@ -479,6 +494,7 @@ export async function getRaisedBedsForGardens(
             fields: fieldsByRaisedBedId.get(bed.id) ?? [],
             latestPhotoOperation:
                 latestPhotoOperationsByRaisedBedId.get(bed.id) ?? null,
+            plantings: plantingsByRaisedBedId.get(bed.id) ?? [],
             weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
         };
         if (gardenBeds) {
@@ -497,6 +513,7 @@ export async function getRaisedBed(raisedBedId: number) {
         fields,
         weedStatesByRaisedBedId,
         latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
     ] = await Promise.all([
         storage().query.raisedBeds.findFirst({
             where: and(
@@ -507,6 +524,7 @@ export async function getRaisedBed(raisedBedId: number) {
         getRaisedBedFieldsWithEvents(raisedBedId),
         getRaisedBedWeedStatesByIds([raisedBedId]),
         getLatestRaisedBedPhotoOperationsByIds([raisedBedId]),
+        getRaisedBedPlantingsForRaisedBeds([raisedBedId]),
     ]);
     if (!raisedBed) return null;
     // Attach raised bed fields with event-sourced info
@@ -515,6 +533,7 @@ export async function getRaisedBed(raisedBedId: number) {
         fields,
         latestPhotoOperation:
             latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
         weedState: weedStatesByRaisedBedId.get(raisedBed.id) ?? null,
     };
 }
@@ -757,6 +776,28 @@ export async function mergeRaisedBeds(
         }
         await lockAndAssertCartItemsMutable(expectedMutableCartItemIds, tx);
 
+        // Planting writers lock physical fields before the raised bed. Use the
+        // same order here so merge cannot deadlock with concurrent placement.
+        const mergeFields = await tx
+            .select()
+            .from(raisedBedFields)
+            .where(
+                inArray(raisedBedFields.raisedBedId, [
+                    targetRaisedBedId,
+                    sourceRaisedBedId,
+                ]),
+            )
+            .orderBy(asc(raisedBedFields.id))
+            .for('update');
+        await tx
+            .select({ id: raisedBeds.id })
+            .from(raisedBeds)
+            .where(
+                inArray(raisedBeds.id, [targetRaisedBedId, sourceRaisedBedId]),
+            )
+            .orderBy(asc(raisedBeds.id))
+            .for('update');
+
         const targetRaisedBed = await tx.query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, targetRaisedBedId),
@@ -781,18 +822,26 @@ export async function mergeRaisedBeds(
             throw new Error('Raised beds must belong to the same garden');
         }
 
-        const targetFields = await tx.query.raisedBedFields.findMany({
-            where: and(
-                eq(raisedBedFields.raisedBedId, targetRaisedBedId),
-                eq(raisedBedFields.isDeleted, false),
-            ),
-        });
-        const sourceFields = await tx.query.raisedBedFields.findMany({
-            where: and(
-                eq(raisedBedFields.raisedBedId, sourceRaisedBedId),
-                eq(raisedBedFields.isDeleted, false),
-            ),
-        });
+        const targetFields = mergeFields.filter(
+            (field) =>
+                field.raisedBedId === targetRaisedBedId && !field.isDeleted,
+        );
+        const allSourceFields = mergeFields.filter(
+            (field) => field.raisedBedId === sourceRaisedBedId,
+        );
+        const sourceFields = allSourceFields.filter(
+            (field) => !field.isDeleted,
+        );
+        const invalidHistoricalSourceFields = allSourceFields.filter(
+            (field) =>
+                field.positionIndex < 0 ||
+                field.positionIndex >= RAISED_BED_FIELDS_PER_BLOCK,
+        );
+        if (invalidHistoricalSourceFields.length > 0) {
+            throw new Error(
+                `Source raised bed ${sourceRaisedBedId.toString()} has historical fields outside the mergeable block.`,
+            );
+        }
 
         await normalizeRaisedBedFieldsForMerge(
             tx,
@@ -812,15 +861,82 @@ export async function mergeRaisedBeds(
                 field.positionIndex + RAISED_BED_FIELDS_PER_BLOCK,
         }));
 
-        for (const mapping of sourceFieldMappings) {
+        const lockedSourcePlantingRows = await tx
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(eq(raisedBedPlantings.raisedBedId, sourceRaisedBedId))
+            .orderBy(asc(raisedBedPlantings.id))
+            .for('update');
+        if (lockedSourcePlantingRows.length > 0) {
             await tx
-                .update(raisedBedFields)
-                .set({
-                    raisedBedId: targetRaisedBedId,
-                    positionIndex: mapping.nextPositionIndex,
-                })
-                .where(eq(raisedBedFields.id, mapping.fieldId));
+                .select({ id: raisedBedPlantingFields.id })
+                .from(raisedBedPlantingFields)
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        lockedSourcePlantingRows.map((row) => row.id),
+                    ),
+                )
+                .orderBy(asc(raisedBedPlantingFields.id))
+                .for('update');
         }
+        const sourcePlantings =
+            (
+                await getRaisedBedPlantingsForRaisedBeds(
+                    [sourceRaisedBedId],
+                    tx,
+                )
+            ).get(sourceRaisedBedId) ?? [];
+        for (const planting of sourcePlantings) {
+            if (
+                planting.configurationSource !== 'selected' ||
+                planting.isDeleted
+            ) {
+                continue;
+            }
+            const translatedAnchor =
+                planting.anchorPositionIndex + RAISED_BED_FIELDS_PER_BLOCK;
+            const expectedTranslatedPositions =
+                getAdvancedSowingFootprintPositions({
+                    anchorPositionIndex: translatedAnchor,
+                    bedFieldCount: ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+                    fieldSpanRows: planting.spanRows,
+                    fieldSpanColumns: planting.spanColumns,
+                });
+            for (const membership of planting.memberships) {
+                const expectedPosition =
+                    expectedTranslatedPositions[
+                        membership.relativeRow * planting.spanColumns +
+                            membership.relativeColumn
+                    ];
+                if (
+                    membership.raisedBedField.positionIndex +
+                        RAISED_BED_FIELDS_PER_BLOCK !==
+                    expectedPosition
+                ) {
+                    throw new Error(
+                        `Selected planting ${planting.id.toString()} cannot be translated to the merged raised-bed block.`,
+                    );
+                }
+            }
+        }
+
+        // Move every source field, including soft-deleted historical rows used
+        // by inactive legacy projections. Membership IDs remain stable.
+        await tx
+            .update(raisedBedFields)
+            .set({
+                raisedBedId: targetRaisedBedId,
+                positionIndex: sql`${raisedBedFields.positionIndex} + ${RAISED_BED_FIELDS_PER_BLOCK}`,
+            })
+            .where(eq(raisedBedFields.raisedBedId, sourceRaisedBedId));
+        await tx
+            .update(raisedBedPlantings)
+            .set({
+                raisedBedId: targetRaisedBedId,
+                anchorPositionIndex: sql`${raisedBedPlantings.anchorPositionIndex} + ${RAISED_BED_FIELDS_PER_BLOCK}`,
+            })
+            .where(eq(raisedBedPlantings.raisedBedId, sourceRaisedBedId));
 
         await tx
             .update(operations)
@@ -830,6 +946,16 @@ export async function mergeRaisedBeds(
             .update(notifications)
             .set({ raisedBedId: targetRaisedBedId })
             .where(eq(notifications.raisedBedId, sourceRaisedBedId));
+        if (expectedMutableCartItemIds.length > 0) {
+            await tx
+                .delete(shoppingCartItemAdvancedSowingAuthorizations)
+                .where(
+                    inArray(
+                        shoppingCartItemAdvancedSowingAuthorizations.cartItemId,
+                        expectedMutableCartItemIds,
+                    ),
+                );
+        }
         await tx
             .update(shoppingCartItems)
             .set({ isDeleted: true })
@@ -943,14 +1069,17 @@ async function getFarmUserRaisedBedsUncached(userId: string) {
         )
         .orderBy(asc(raisedBeds.id));
 
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        farmRaisedBeds.map((row) => row.raisedBed.id),
-    );
+    const raisedBedIds = farmRaisedBeds.map((row) => row.raisedBed.id);
+    const [fieldsByRaisedBedId, plantingsByRaisedBedId] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
 
     return farmRaisedBeds.map(({ farmId, raisedBed }) => ({
         ...raisedBed,
         farmId,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -977,16 +1106,21 @@ async function getAllRaisedBedsUncached() {
         .where(and(eq(raisedBeds.isDeleted, false), excludeSandboxRaisedBeds));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
     const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
-    const [fieldsByRaisedBedId, latestPhotoOperationsByRaisedBedId] =
-        await Promise.all([
-            getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
-            getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
-        ]);
+    const [
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
         latestPhotoOperation:
             latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -1009,17 +1143,22 @@ export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
     const allRaisedBeds = rows.map((row) => row.raisedBed);
 
     const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
-    const [fieldsByRaisedBedId, latestPhotoOperationsByRaisedBedId] =
-        await Promise.all([
-            getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
-            getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
-        ]);
+    const [
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
 
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
         latestPhotoOperation:
             latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 

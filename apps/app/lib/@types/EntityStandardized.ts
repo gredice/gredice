@@ -11,6 +11,8 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        seedingDistanceMin?: number; // in cm
+        seedingDistanceMax?: number; // in cm
         duration?: number | string;
         application?: string; // farm, garden, raisedBedFull, raisedBed1m, plant
         category?: {

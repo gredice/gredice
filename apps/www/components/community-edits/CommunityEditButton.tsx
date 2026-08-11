@@ -218,6 +218,8 @@ function communityEditFieldGroupLabel(
 function attributeFieldIcon(field: CommunityEditableField): ReactNode {
     switch (field.fieldKey) {
         case 'plant.seeding-distance':
+        case 'plant.seeding-distance-min':
+        case 'plant.seeding-distance-max':
             return <Ruler aria-hidden className={attributeIconClassName} />;
         case 'plant.seeding-depth':
             return (

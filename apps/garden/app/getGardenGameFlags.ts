@@ -1,5 +1,6 @@
 import type { GameFeatureFlags } from '@gredice/game';
 import {
+    enableAdvancedSowingFlag,
     enableDebugHudFlag,
     enableGardenAvatarFlag,
     enableOutletGardenFlag,
@@ -8,11 +9,13 @@ import {
 
 export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
     const [
+        enableAdvancedSowing,
         enableDebugHud,
         enableGardenAvatar,
         enableOutletGarden,
         enableSuncokretDebug,
     ] = await Promise.all([
+        enableAdvancedSowingFlag(),
         enableDebugHudFlag(),
         enableGardenAvatarFlag(),
         enableOutletGardenFlag(),
@@ -20,6 +23,7 @@ export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
     ]);
 
     return {
+        enableAdvancedSowingFlag: enableAdvancedSowing,
         enableDebugHudFlag: enableDebugHud,
         enableGardenAvatarFlag: enableGardenAvatar,
         enableOutletGardenFlag: enableOutletGarden,

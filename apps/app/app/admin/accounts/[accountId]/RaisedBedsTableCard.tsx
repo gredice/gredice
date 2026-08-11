@@ -97,6 +97,18 @@ export async function RaisedBedsTableCard({
                             const fields = Array.isArray(bed.fields)
                                 ? bed.fields
                                 : [];
+                            const plantings = Array.isArray(bed.plantings)
+                                ? bed.plantings
+                                : [];
+                            const activePlantingCount = plantings.filter(
+                                (planting) => planting.isActive,
+                            ).length;
+                            const unknownLegacyLayoutCount = plantings.filter(
+                                (planting) =>
+                                    planting.isActive &&
+                                    planting.configurationSource === 'legacy' &&
+                                    planting.layoutKey === null,
+                            ).length;
                             const statusItem = RaisedBedStatusItems.find(
                                 (item) => item.value === bed.status,
                             );
@@ -238,6 +250,27 @@ export async function RaisedBedsTableCard({
                                                         Broj polja
                                                     </span>
                                                 </Chip>
+                                                <Chip
+                                                    color="info"
+                                                    size="sm"
+                                                    variant="soft"
+                                                >
+                                                    Aktivne sadnje:{' '}
+                                                    {activePlantingCount}
+                                                </Chip>
+                                                {unknownLegacyLayoutCount >
+                                                0 ? (
+                                                    <Chip
+                                                        color="warning"
+                                                        size="sm"
+                                                        variant="soft"
+                                                    >
+                                                        Nepoznat raspored:{' '}
+                                                        {
+                                                            unknownLegacyLayoutCount
+                                                        }
+                                                    </Chip>
+                                                ) : null}
                                             </div>
 
                                             <Typography

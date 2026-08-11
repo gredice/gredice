@@ -75,6 +75,14 @@ const blockFixtures: Record<
         height: 0.67,
         stackable: true,
     },
+    WoodenWalkway: {
+        label: 'Drvena staza',
+        shortDescription:
+            'Ravne drvene daske za stazu preko tla ili uskog vodenog kanala.',
+        sunflowers: 40,
+        height: 0.1,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -156,6 +164,7 @@ const blockNames = [
     'OutletDisplayTable',
     'Fence',
     'SmallWoodenBridge',
+    'WoodenWalkway',
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',

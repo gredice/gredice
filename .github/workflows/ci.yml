@@ -49,7 +49,6 @@ jobs:
               - turbo.json
             app_news:
               - apps/news/**
-              - packages/client/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -468,6 +467,7 @@ jobs:
       [
         changes,
         ci_www,
+        ci_news,
         ci_garden,
         ci_farm,
         ci_delivery,

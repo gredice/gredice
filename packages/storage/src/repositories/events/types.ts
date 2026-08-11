@@ -317,6 +317,102 @@ export type RaisedBedFieldPlantEventsAnyPayload = Partial<
 >;
 
 // ============================================================================
+// Selected raised-bed planting event payload types
+// ============================================================================
+export const raisedBedPlantingLifecycleStatuses = [
+    'planned',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+    'cancelled',
+] as const;
+
+export type RaisedBedPlantingLifecycleStatus =
+    (typeof raisedBedPlantingLifecycleStatuses)[number];
+
+type RaisedBedPlantingCommandPayload = {
+    commandId: string;
+    expectedLifecycleVersionEventId: number;
+};
+
+export type RaisedBedPlantingLifecycleStartedPayload = {
+    commandId: string;
+    plantingId: number;
+    plantSortId: number;
+    status: 'planned';
+    scheduledDate: string | null;
+    sowingLocation: RaisedBedFieldSowingLocation;
+    purchase?: RaisedBedFieldPlantPurchase;
+    startedBy: string;
+};
+
+export type RaisedBedPlantingLifecycleStatusChangedPayload =
+    RaisedBedPlantingCommandPayload & {
+        changedBy: string;
+        effectiveAt?: string;
+        status: Exclude<
+            RaisedBedPlantingLifecycleStatus,
+            'cancelled' | 'pendingVerification'
+        >;
+    };
+
+export type RaisedBedPlantingTaskScheduledPayload =
+    RaisedBedPlantingCommandPayload & {
+        scheduledBy: string;
+        scheduledDate: string | null;
+        sowingLocation: RaisedBedFieldSowingLocation;
+    };
+
+export type RaisedBedPlantingTaskAssignedPayload =
+    RaisedBedPlantingCommandPayload & {
+        assignedBy: string;
+        assignedUserIds: string[];
+    };
+
+export type RaisedBedPlantingTaskBlockedPayload =
+    RaisedBedPlantingCommandPayload & ScheduleTaskBlockPayload;
+
+export type RaisedBedPlantingTaskCompletedPayload =
+    RaisedBedPlantingCommandPayload & {
+        completedBy: string;
+        images: string[];
+        notes?: string;
+        status: 'pendingVerification' | 'sowed';
+    };
+
+export type RaisedBedPlantingTaskVerifiedPayload =
+    RaisedBedPlantingCommandPayload & {
+        verifiedBy: string;
+        status: 'sowed';
+    };
+
+export type RaisedBedPlantingTaskCancelledPayload =
+    RaisedBedPlantingCommandPayload & {
+        cancelledBy: string;
+        effectiveAt?: string;
+        refundSunflowerAmount: number;
+        reason: string;
+        status: 'cancelled';
+    };
+
+export type RaisedBedPlantingEventsPayload =
+    | RaisedBedPlantingLifecycleStartedPayload
+    | RaisedBedPlantingLifecycleStatusChangedPayload
+    | RaisedBedPlantingTaskScheduledPayload
+    | RaisedBedPlantingTaskAssignedPayload
+    | RaisedBedPlantingTaskBlockedPayload
+    | RaisedBedPlantingTaskCompletedPayload
+    | RaisedBedPlantingTaskVerifiedPayload
+    | RaisedBedPlantingTaskCancelledPayload;
+
+// ============================================================================
 // Operation event payload types
 // ============================================================================
 export type OperationSchedulePayload = {

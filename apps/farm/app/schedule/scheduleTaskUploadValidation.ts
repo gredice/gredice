@@ -7,6 +7,9 @@ import {
     getFarmUserRaisedBeds,
     getOperationById,
     getRaisedBed,
+    getRaisedBedPlanting,
+    getSelectedRaisedBedPlantingTaskForActor,
+    ScheduleTaskSubmissionError,
 } from '@gredice/storage';
 import {
     getScheduleOperationCompletionRequirements,
@@ -179,6 +182,68 @@ export async function validateScheduleTaskBlockerUploadTarget({
             operationId: target.operationId,
             purpose: 'blocker',
         });
+    }
+
+    if (target.kind === 'selected') {
+        if (actor.role !== 'admin' && actor.role !== 'farmer') {
+            return uploadTargetFailure(
+                'not_authorized',
+                'Više nemaš pristup ovom sijanju. Osvježi zadatke za aktualno stanje.',
+            );
+        }
+
+        let task: Awaited<
+            ReturnType<typeof getSelectedRaisedBedPlantingTaskForActor>
+        >;
+        try {
+            task = await getSelectedRaisedBedPlantingTaskForActor({
+                actor: { role: actor.role, userId: actor.userId },
+                plantingId: target.plantingId,
+            });
+        } catch (error) {
+            if (error instanceof ScheduleTaskSubmissionError) {
+                return uploadTargetFailure(error.code, error.message);
+            }
+            throw error;
+        }
+        if (
+            task.identity.expectedLifecycleVersionEventId !==
+                target.expectedLifecycleVersionEventId ||
+            task.identity.expectedPlantSortId !== target.expectedPlantSortId
+        ) {
+            return uploadTargetFailure(
+                'task_changed',
+                'Sijanje se u međuvremenu promijenilo. Osvježi zadatke i pokušaj ponovno.',
+            );
+        }
+        const planting = await getRaisedBedPlanting(target.plantingId);
+        const raisedBed = planting
+            ? await getRaisedBed(planting.raisedBedId)
+            : null;
+        if (!raisedBed || raisedBed.status === 'abandoned') {
+            return uploadTargetFailure(
+                'invalid_status',
+                'Gredica više nije aktivna. Osvježi zadatke za aktualno stanje.',
+            );
+        }
+        if (
+            actor.role === 'farmer' &&
+            task.assignedUserIds.length > 0 &&
+            !task.assignedUserIds.includes(actor.userId)
+        ) {
+            return uploadTargetFailure(
+                'assignment_changed',
+                'Ovo je sijanje u međuvremenu dodijeljeno drugom korisniku.',
+            );
+        }
+        if (task.status !== 'planned') {
+            return uploadTargetFailure(
+                'invalid_status',
+                'Sijanje više nije dostupno za prijavu prepreke. Osvježi zadatke.',
+            );
+        }
+
+        return { success: true };
     }
 
     const raisedBeds =

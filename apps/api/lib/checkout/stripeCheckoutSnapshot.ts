@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { AdvancedSowingCartAuthorizationV1 } from '@gredice/js/plants';
 import {
     fingerprintStripeCheckoutValue,
     type StripeCheckoutAttempt,
@@ -139,6 +140,7 @@ function getPaymentAmount(
 }
 
 export function buildStripeCheckoutAttemptSnapshot({
+    advancedSowingAuthorizationsByCartItemId,
     cartId,
     checkoutAdditionalDataByCartItemId,
     customerId,
@@ -148,6 +150,10 @@ export function buildStripeCheckoutAttemptSnapshot({
     returnUrls,
     userId,
 }: {
+    advancedSowingAuthorizationsByCartItemId: ReadonlyMap<
+        number,
+        AdvancedSowingCartAuthorizationV1
+    >;
     cartId: number;
     checkoutAdditionalDataByCartItemId: ReadonlyMap<number, unknown>;
     customerId: string;
@@ -162,7 +168,12 @@ export function buildStripeCheckoutAttemptSnapshot({
 }): StripeCheckoutAttemptSnapshot {
     const snapshotItems = items.map((item) => {
         const paymentKind = getPaymentKind(item);
+        const advancedSowingAuthorization =
+            advancedSowingAuthorizationsByCartItemId.get(item.id);
         return {
+            ...(advancedSowingAuthorization
+                ? { advancedSowingAuthorization }
+                : {}),
             additionalDataFingerprint: fingerprintStripeCheckoutValue(
                 item.additionalData,
             ),
@@ -548,6 +559,18 @@ export function getStripeCheckoutSnapshotNonStripePaymentKinds(
         attempt.snapshot.items.flatMap((item) =>
             item.paymentKind === 'sunflower' || item.paymentKind === 'inventory'
                 ? [[item.id, item.paymentKind] as const]
+                : [],
+        ),
+    );
+}
+
+export function getStripeCheckoutSnapshotAdvancedSowingAuthorizations(
+    attempt: StripeCheckoutAttempt,
+) {
+    return new Map(
+        attempt.snapshot.items.flatMap((item) =>
+            item.advancedSowingAuthorization
+                ? [[item.id, item.advancedSowingAuthorization] as const]
                 : [],
         ),
     );

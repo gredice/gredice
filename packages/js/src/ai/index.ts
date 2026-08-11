@@ -111,9 +111,39 @@ const SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN =
     /^\s*(?:Confirmed\b|I(?:'|’)ll\b|I\s+(?:can|cannot|can't|found|must|need|should|will)\b|Let me\b|The user\b|We need\b)/iu;
 const SUNCOKRET_CROATIAN_ANSWER_START_PATTERN =
     /\b(?:Da|Evo|Gotovo|Mogu|Možeš|Nažalost|Naravno|Ne|Nisam|Prema|Radnja|Razumijem|U Gredicama|Za ovu|Za tu|Zalijevanje)\b/iu;
+const SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN =
+    /[ \t]+[—–-][ \t]*(?:radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN =
+    /\b(radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN =
+    /\bID\s+(radnje|operacije|biljke|sorte)\s*[:#-]?\s*\d+\b/giu;
 
 export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
     'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
+
+function internalEntityNameWithoutId(value: string) {
+    switch (value.toLocaleLowerCase('hr')) {
+        case 'radnje':
+            return 'radnju';
+        case 'operacije':
+            return 'operaciju';
+        case 'biljke':
+            return 'biljku';
+        case 'sorte':
+            return 'sortu';
+        default:
+            return value;
+    }
+}
+
+function stripSuncokretInternalEntityIds(value: string) {
+    return value
+        .replace(SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN, '')
+        .replace(SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN, '$1')
+        .replace(SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN, (_match, entity) =>
+            internalEntityNameWithoutId(entity),
+        );
+}
 
 export function sanitizeSuncokretAssistantText(value: string) {
     const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
@@ -127,16 +157,22 @@ export function sanitizeSuncokretAssistantText(value: string) {
                       : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
               })();
 
-    if (!SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN.test(protocolSafeText)) {
-        return protocolSafeText;
-    }
+    const answerText = SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN.test(
+        protocolSafeText,
+    )
+        ? (() => {
+              const answerStart =
+                  SUNCOKRET_CROATIAN_ANSWER_START_PATTERN.exec(
+                      protocolSafeText,
+                  );
 
-    const answerStart =
-        SUNCOKRET_CROATIAN_ANSWER_START_PATTERN.exec(protocolSafeText);
+              return answerStart?.index !== undefined
+                  ? protocolSafeText.slice(answerStart.index).trimStart()
+                  : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+          })()
+        : protocolSafeText;
 
-    return answerStart?.index !== undefined
-        ? protocolSafeText.slice(answerStart.index).trimStart()
-        : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+    return stripSuncokretInternalEntityIds(answerText);
 }
 
 function protectMarkdownLinkDestinations(value: string) {

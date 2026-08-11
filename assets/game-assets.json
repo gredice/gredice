@@ -1363,6 +1363,18 @@
             ]
         },
         {
+            "name": "WoodenWalkway",
+            "source": "WoodenWalkway.blend",
+            "output": "WoodenWalkway.glb",
+            "version": "b4345a9a9ca1",
+            "preload": "lazy",
+            "objects": [
+                "WoodenWalkway_PlanksLight",
+                "WoodenWalkway_PlanksWarm",
+                "WoodenWalkway_Pegs"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",

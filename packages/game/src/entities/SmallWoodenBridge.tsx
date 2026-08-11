@@ -8,7 +8,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { getSmallWoodenBridgeYOffset } from './smallWoodenBridgePlacement';
+import { getWaterSurfacePlacementYOffset } from './waterSurfacePlacement';
 
 type SmallWoodenBridgeNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -62,7 +62,7 @@ export function SmallWoodenBridge({
     const { materials, nodes } = useGameGLTF('SmallWoodenBridge');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const placementYOffset = getSmallWoodenBridgeYOffset(stack, block);
+    const placementYOffset = getWaterSurfacePlacementYOffset(stack, block);
 
     return (
         <animated.group
