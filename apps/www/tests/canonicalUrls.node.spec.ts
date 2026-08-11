@@ -5,7 +5,10 @@ import {
     blogArchiveMetadata,
     changelogArchiveMetadata,
 } from '../../news/lib/newsArchiveMetadata.ts';
-import { isKnownNewsFilter } from '../../news/lib/newsFilters.ts';
+import {
+    hasNewsFilterResults,
+    isKnownNewsFilter,
+} from '../../news/lib/newsFilters.ts';
 import { plantArchivePath } from '../app/biljke/plantArchivePath.ts';
 import {
     canonicalLegacyNewsQueryPath,
@@ -99,6 +102,9 @@ test('news filters reject stale and test-only values', () => {
     assert.equal(isKnownNewsFilter(['Biljke', 'Vrt'], ' biljke '), true);
     assert.equal(isKnownNewsFilter(['Biljke', 'Vrt'], undefined), true);
     assert.equal(isKnownNewsFilter(['Biljke', 'Vrt'], 'Unrelated'), false);
+    assert.equal(hasNewsFilterResults('older-valid-tag', 1), true);
+    assert.equal(hasNewsFilterResults('Unrelated', 0), false);
+    assert.equal(hasNewsFilterResults(undefined, 0), true);
 });
 
 test('news archives declare stable public canonicals', () => {

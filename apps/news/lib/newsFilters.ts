@@ -15,3 +15,10 @@ export function isKnownNewsFilter(
         )
     );
 }
+
+export function hasNewsFilterResults(
+    requestedValue: string | undefined,
+    resultCount: number,
+) {
+    return !normalizeNewsFilterValue(requestedValue) || resultCount > 0;
+}

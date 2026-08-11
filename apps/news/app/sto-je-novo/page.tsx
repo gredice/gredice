@@ -12,7 +12,7 @@ import {
     uniqueNewsValues,
 } from '../../lib/news';
 import { changelogArchiveMetadata } from '../../lib/newsArchiveMetadata';
-import { isKnownNewsFilter } from '../../lib/newsFilters';
+import { hasNewsFilterResults } from '../../lib/newsFilters';
 import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
@@ -169,7 +169,7 @@ export default async function WhatsNewPage({
         tag ? getChangelogEntries({ tag }) : getChangelogEntries(),
     ]);
     const tags = uniqueNewsValues(allEntries, (item) => item.tags);
-    if (!isKnownNewsFilter(tags, tag)) {
+    if (!hasNewsFilterResults(tag, entries.length)) {
         permanentRedirect('/sto-je-novo');
     }
     const primaryTags = getPrimaryNewsTags(allEntries);
