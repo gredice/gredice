@@ -57,6 +57,16 @@ export const knownEventTypes = {
         aiAnalysis: 'raisedBedField.aiAnalysis',
         weedStateSet: 'raisedBedField.weedState.set',
     },
+    raisedBedPlantings: {
+        lifecycleStarted: 'raisedBedPlanting.lifecycle.started',
+        lifecycleStatusChanged: 'raisedBedPlanting.lifecycle.statusChanged',
+        taskScheduled: 'raisedBedPlanting.task.scheduled',
+        taskAssigned: 'raisedBedPlanting.task.assigned',
+        taskBlocked: 'raisedBedPlanting.task.blocked',
+        taskCompleted: 'raisedBedPlanting.task.completed',
+        taskVerified: 'raisedBedPlanting.task.verified',
+        taskCancelled: 'raisedBedPlanting.task.cancelled',
+    },
     operations: {
         acceptance: 'operation.acceptance',
         assign: 'operation.assign',

@@ -24,9 +24,13 @@ export async function FarmSchedulePlantingsSectionContent({
     selectedDateKey,
     userId,
 }: FarmSchedulePlantingsSectionContentProps) {
-    const { raisedBeds, scheduledFields } = await dayDataPromise;
+    const { raisedBeds, scheduledFields, scheduledSelectedPlantings } =
+        await dayDataPromise;
 
-    if (scheduledFields.length === 0) {
+    if (
+        scheduledFields.length === 0 &&
+        scheduledSelectedPlantings.length === 0
+    ) {
         return null;
     }
 
@@ -38,6 +42,7 @@ export async function FarmSchedulePlantingsSectionContent({
         <FarmSchedulePlantingsSection
             raisedBeds={raisedBeds}
             scheduledFields={scheduledFields}
+            scheduledSelectedPlantings={scheduledSelectedPlantings}
             plantSorts={plantSorts}
             userId={userId}
             assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}

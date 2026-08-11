@@ -46,7 +46,11 @@ export type BulkOperationCreateModalProps = {
         physicalId?: string | null;
         accountId?: string | null;
         gardenId?: number | null;
-        fields: Array<{ id: number; positionIndex: number }>;
+        fields: Array<{
+            id: number;
+            positionIndex: number;
+            hasActiveSelectedPlanting: boolean;
+        }>;
     }>;
     assignableUsers: Array<{
         id: string;

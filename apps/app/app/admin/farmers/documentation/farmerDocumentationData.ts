@@ -1,8 +1,7 @@
 import 'server-only';
 
 import {
-    calculatePlantsPerField,
-    FIELD_SIZE_LABEL,
+    getAdvancedSowingLayoutOptions,
     getHarvestPlantRemovalDisclaimer,
 } from '@gredice/js/plants';
 import {
@@ -1476,10 +1475,8 @@ function plantSortAdditionalSection(
 
 function buildSowingRows(attributes: Record<string, unknown> | null) {
     const seedingDistance = numberProperty(attributes, 'seedingDistance');
-    const totalPlants =
-        seedingDistance == null
-            ? null
-            : calculatePlantsPerField(seedingDistance).totalPlants;
+    const seedingDistanceMin = numberProperty(attributes, 'seedingDistanceMin');
+    const seedingDistanceMax = numberProperty(attributes, 'seedingDistanceMax');
     const germinationTemperature = numberProperty(
         attributes,
         'gernimationTemperature',
@@ -1487,14 +1484,29 @@ function buildSowingRows(attributes: Record<string, unknown> | null) {
 
     return compactRows([
         [
-            `Broj biljaka na ${FIELD_SIZE_LABEL}`,
-            totalPlants == null ? null : formatInteger(totalPlants),
+            'Raspored za novu naprednu sjetvu/sadnju',
+            formatRecommendedSowingLayout({
+                attributes,
+                seedingDistance,
+            }),
         ],
         [
-            'Razmak sijanja/sadnje',
+            'Minimalni razmak sijanja/sadnje',
+            seedingDistanceMin == null
+                ? null
+                : `${formatNumber(seedingDistanceMin)} cm`,
+        ],
+        [
+            'Preporučeni razmak sijanja/sadnje',
             seedingDistance == null
                 ? null
                 : `${formatNumber(seedingDistance)} cm`,
+        ],
+        [
+            'Maksimalni razmak sijanja/sadnje',
+            seedingDistanceMax == null
+                ? null
+                : `${formatNumber(seedingDistanceMax)} cm`,
         ],
         [
             'Dubina sijanja',
@@ -1710,6 +1722,65 @@ function formatInteger(value: number) {
 
 function formatNumber(value: number) {
     return value.toLocaleString('hr-HR');
+}
+
+function formatPlantCount(value: number) {
+    const lastTwoDigits = value % 100;
+    const lastDigit = value % 10;
+    const noun =
+        value === 1
+            ? 'biljka'
+            : lastDigit >= 2 &&
+                lastDigit <= 4 &&
+                !(lastTwoDigits >= 12 && lastTwoDigits <= 14)
+              ? 'biljke'
+              : 'biljaka';
+
+    return `${formatInteger(value)} ${noun}`;
+}
+
+function withAdvancedSowingTaskGuidance(value: string) {
+    return `${value} Za postojeće zadatke slijedite raspored spremljen u zadatku.`;
+}
+
+function formatRecommendedSowingLayout({
+    attributes,
+    seedingDistance,
+}: {
+    attributes: Record<string, unknown> | null;
+    seedingDistance: number | null;
+}) {
+    if (seedingDistance == null) {
+        return null;
+    }
+
+    try {
+        const layout = getAdvancedSowingLayoutOptions({
+            optimalDistanceCm: seedingDistance,
+            minDistanceCm: numberProperty(attributes, 'seedingDistanceMin'),
+            maxDistanceCm: numberProperty(attributes, 'seedingDistanceMax'),
+        }).find((option) => option.isDefault);
+        if (!layout) {
+            throw new RangeError('Default sowing layout is missing.');
+        }
+        const plantCount = formatPlantCount(layout.plantCount);
+
+        return withAdvancedSowingTaskGuidance(
+            layout.footprintFieldCount === 1
+                ? `${plantCount} u jednom polju.`
+                : `${plantCount} preko ${formatInteger(layout.fieldSpanRows)} x ${formatInteger(layout.fieldSpanColumns)} polja.`,
+        );
+    } catch (error) {
+        if (error instanceof RangeError) {
+            return withAdvancedSowingTaskGuidance(
+                error.message.includes('raised bed geometry')
+                    ? 'Raspon razmaka nije podržan za gredicu 3 x 6 polja.'
+                    : 'Neispravna konfiguracija razmaka (min ≤ preporučeni ≤ max).',
+            );
+        }
+
+        throw error;
+    }
 }
 
 function formatDayRange(min: number | null, max: number | null) {

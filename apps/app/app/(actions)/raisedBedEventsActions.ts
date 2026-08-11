@@ -2,8 +2,11 @@
 
 import {
     deleteEventById,
+    deleteRaisedBedFieldEventById,
     getEventById,
+    RaisedBedFieldEventMutationError,
     updateEventCreatedAt,
+    updateRaisedBedFieldEventCreatedAt,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -24,12 +27,23 @@ export async function deleteRaisedBedEventAction(
 ) {
     await auth(['admin']);
 
-    const result = await runRaisedBedEventMutation({
-        eventId,
-        raisedBedId,
-        getEvent: getEventById,
-        mutate: () => deleteEventById(eventId),
-    });
+    let result: Awaited<ReturnType<typeof runRaisedBedEventMutation>>;
+    try {
+        result = await runRaisedBedEventMutation({
+            eventId,
+            raisedBedId,
+            getEvent: getEventById,
+            mutate: (event) =>
+                event.type.startsWith('raisedBedField.')
+                    ? deleteRaisedBedFieldEventById(eventId)
+                    : deleteEventById(eventId),
+        });
+    } catch (error) {
+        if (error instanceof RaisedBedFieldEventMutationError) {
+            return { success: false, error: error.code } as const;
+        }
+        throw error;
+    }
     if (!result.allowed) {
         return mutationActionResult(result);
     }
@@ -51,12 +65,23 @@ export async function updateRaisedBedEventDateAction(
         return { success: false, error: 'invalid_date' } as const;
     }
 
-    const result = await runRaisedBedEventMutation({
-        eventId,
-        raisedBedId,
-        getEvent: getEventById,
-        mutate: () => updateEventCreatedAt(eventId, parsed),
-    });
+    let result: Awaited<ReturnType<typeof runRaisedBedEventMutation>>;
+    try {
+        result = await runRaisedBedEventMutation({
+            eventId,
+            raisedBedId,
+            getEvent: getEventById,
+            mutate: (event) =>
+                event.type.startsWith('raisedBedField.')
+                    ? updateRaisedBedFieldEventCreatedAt(eventId, parsed)
+                    : updateEventCreatedAt(eventId, parsed),
+        });
+    } catch (error) {
+        if (error instanceof RaisedBedFieldEventMutationError) {
+            return { success: false, error: error.code } as const;
+        }
+        throw error;
+    }
     if (!result.allowed) {
         return mutationActionResult(result);
     }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { knownEventTypes } from '@gredice/storage';
 import {
+    activeSelectedPlantingPositionIndices,
     canMutateRaisedBedHistoryEvent,
     raisedBedEventMutationDecision,
     raisedBedFieldHistoryEventTypes,
@@ -12,6 +13,87 @@ import {
 const raisedBedId = 42;
 const raisedBedAggregateId = raisedBedId.toString();
 const fieldAggregateId = `${raisedBedAggregateId}|0`;
+
+test('selected-only and co-planted positions make field history read-only', () => {
+    const selectedOnly = activeSelectedPlantingPositionIndices([
+        {
+            configurationSource: 'selected',
+            isActive: true,
+            memberships: [{ raisedBedField: { positionIndex: 0 } }],
+        },
+    ]);
+    assert.deepEqual([...selectedOnly], [0]);
+
+    const coPlanted = activeSelectedPlantingPositionIndices([
+        {
+            configurationSource: 'legacy',
+            isActive: true,
+            memberships: [{ raisedBedField: { positionIndex: 1 } }],
+        },
+        {
+            configurationSource: 'selected',
+            isActive: true,
+            memberships: [{ raisedBedField: { positionIndex: 1 } }],
+        },
+        {
+            configurationSource: 'selected',
+            isActive: true,
+            memberships: [{ raisedBedField: { positionIndex: 1 } }],
+        },
+    ]);
+    assert.deepEqual([...coPlanted], [1]);
+
+    for (const type of raisedBedFieldHistoryEventTypes) {
+        assert.deepEqual(
+            raisedBedEventMutationDecision(
+                { aggregateId: fieldAggregateId, type },
+                raisedBedId,
+                {
+                    activeSelectedPlantingPositionIndices: selectedOnly,
+                },
+            ),
+            { allowed: false, reason: 'selected_planting_conflict' },
+        );
+    }
+    assert.deepEqual(
+        raisedBedEventMutationDecision(
+            {
+                aggregateId: raisedBedAggregateId,
+                type: knownEventTypes.raisedBeds.create,
+            },
+            raisedBedId,
+            { activeSelectedPlantingPositionIndices: selectedOnly },
+        ),
+        { allowed: true },
+    );
+});
+
+test('inactive selected and legacy-only positions keep history mutations available', () => {
+    const positionIndices = activeSelectedPlantingPositionIndices([
+        {
+            configurationSource: 'legacy',
+            isActive: true,
+            memberships: [{ raisedBedField: { positionIndex: 0 } }],
+        },
+        {
+            configurationSource: 'selected',
+            isActive: false,
+            memberships: [{ raisedBedField: { positionIndex: 1 } }],
+        },
+    ]);
+    assert.equal(positionIndices.size, 0);
+    assert.deepEqual(
+        raisedBedEventMutationDecision(
+            {
+                aggregateId: fieldAggregateId,
+                type: knownEventTypes.raisedBedFields.plantUpdate,
+            },
+            raisedBedId,
+            { activeSelectedPlantingPositionIndices: positionIndices },
+        ),
+        { allowed: true },
+    );
+});
 
 test('raised-bed history events shown in admin are mutable for the owning bed', () => {
     assert.ok(

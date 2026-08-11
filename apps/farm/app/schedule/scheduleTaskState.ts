@@ -1,4 +1,7 @@
-import type { OperationStatus } from '@gredice/storage';
+import type {
+    OperationStatus,
+    SelectedRaisedBedPlantingTaskStatus,
+} from '@gredice/storage';
 
 export type ScheduleTaskState =
     | 'actionable'
@@ -81,6 +84,23 @@ export function getPlantingTaskState(status: string | null | undefined) {
             return 'blocked';
         default:
             return null;
+    }
+}
+
+export function getSelectedPlantingTaskState(
+    status: SelectedRaisedBedPlantingTaskStatus,
+): ScheduleTaskState {
+    switch (status) {
+        case 'planned':
+            return 'actionable';
+        case 'pendingVerification':
+            return 'pendingVerification';
+        case 'completed':
+            return 'completed';
+        case 'blocked':
+            return 'blocked';
+        case 'cancelled':
+            return 'canceled';
     }
 }
 

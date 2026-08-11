@@ -48,7 +48,10 @@ import { KnownPages } from '../../../../src/KnownPages';
 import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
 import { OperationCompletionEvidenceEditModal } from '../../schedule/OperationCompletionEvidenceEditModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
-import { operationDefinitionMatchesTargetScope } from '../operationScope';
+import {
+    activeSelectedPlantingFieldIds,
+    operationDefinitionMatchesTargetScope,
+} from '../operationScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -206,6 +209,13 @@ export default async function OperationDetailsPage({
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
             : undefined;
+    const plantOperationTargetBlocked = Boolean(
+        raisedBed &&
+            operation.raisedBedFieldId &&
+            activeSelectedPlantingFieldIds(raisedBed.plantings).has(
+                operation.raisedBedFieldId,
+            ),
+    );
     const operationTitle =
         operationDetails?.information?.label ||
         operationDetails?.information?.name ||
@@ -679,6 +689,9 @@ export default async function OperationDetailsPage({
                                 operationStatus={operation.status}
                                 operationLabel={operationTitle}
                                 operationOptions={operationSwitchOptions}
+                                plantOperationTargetBlocked={
+                                    plantOperationTargetBlocked
+                                }
                             />
                             <OperationRescheduleButton
                                 operation={operationAction}

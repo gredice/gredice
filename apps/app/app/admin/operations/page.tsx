@@ -13,6 +13,7 @@ import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { BulkOperationCreateModal } from './BulkOperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
+import { activeSelectedPlantingFieldIds } from './operationScope';
 import {
     getOperationsListContext,
     listOperationsPageFromContext,
@@ -59,6 +60,25 @@ export default async function OperationsPage({
         userName: user.userName,
         displayName: user.displayName,
     }));
+    const operationTargetRaisedBeds = raisedBeds.map((raisedBed) => {
+        const selectedPlantingFieldIds = activeSelectedPlantingFieldIds(
+            raisedBed.plantings,
+        );
+        return {
+            id: raisedBed.id,
+            name: raisedBed.name,
+            physicalId: raisedBed.physicalId,
+            accountId: raisedBed.accountId,
+            gardenId: raisedBed.gardenId,
+            fields: raisedBed.fields.map((field) => ({
+                id: field.id,
+                positionIndex: field.positionIndex,
+                hasActiveSelectedPlanting: selectedPlantingFieldIds.has(
+                    field.id,
+                ),
+            })),
+        };
+    });
 
     const params = await searchParams;
     const fromFilter =
@@ -86,13 +106,13 @@ export default async function OperationsPage({
                         <SingleOperationCreateModal
                             farms={activeFarms}
                             gardens={gardens}
-                            raisedBeds={raisedBeds}
+                            raisedBeds={operationTargetRaisedBeds}
                             assignableUsers={assignableUsers}
                         />
                         <BulkOperationCreateModal
                             farms={activeFarms}
                             gardens={gardens}
-                            raisedBeds={raisedBeds}
+                            raisedBeds={operationTargetRaisedBeds}
                             assignableUsers={assignableUsers}
                         />
                     </div>

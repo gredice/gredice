@@ -25,11 +25,13 @@ import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
+import { buildAdvancedSowingGardenPlantingVisuals } from './advancedSowingGardenVisuals';
 import {
     getRaisedBedFieldRelationshipIndicators,
     type RaisedBedFieldRelationshipIndicator as RaisedBedFieldRelationshipIndicatorData,
     type RaisedBedFieldRelationshipIndicatorDirection,
 } from './plantRelationshipSignals';
+import { RaisedBedAdvancedSowingOverlay } from './RaisedBedAdvancedSowingOverlay';
 import { RaisedBedFieldAbandoned } from './RaisedBedFieldAbandoned';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
@@ -342,6 +344,15 @@ export function RaisedBedField({
             : 1;
     const totalRows = blockCount * 3;
     const totalColumns = 3;
+    const raisedBedSource: unknown = raisedBed;
+    const advancedSowingPlantings = buildAdvancedSowingGardenPlantingVisuals(
+        isRecord(raisedBedSource) ? raisedBedSource.plantings : null,
+        totalRows * totalColumns,
+    );
+    const advancedSowingPlantNames = (allSorts ?? []).map((sort) => ({
+        id: sort.id,
+        name: sort.information.name,
+    }));
 
     const rows = Array.from({ length: totalRows }, (_, index) => ({
         id: `row-${index.toString()}`,
@@ -504,6 +515,15 @@ export function RaisedBedField({
                     </span>
                 </RaisedBedFieldLayerToggle>
             </div>
+            {advancedSowingPlantings.length > 0 ? (
+                <RaisedBedAdvancedSowingOverlay
+                    bedFieldCount={totalRows * totalColumns}
+                    gardenId={gardenId}
+                    plantings={advancedSowingPlantings}
+                    plantNames={advancedSowingPlantNames}
+                    raisedBedId={raisedBedId}
+                />
+            ) : null}
             <DndContext
                 id={`raised-bed-field-${gardenId}-${raisedBedId}`}
                 sensors={sensors}

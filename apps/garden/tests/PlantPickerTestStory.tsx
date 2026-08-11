@@ -2,6 +2,7 @@ import type { FavoriteItem, PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useEffect, useMemo } from 'react';
+import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
@@ -216,12 +217,35 @@ type TestInventoryItem = {
     amount: number;
 };
 
+type TestAdvancedSowingRange = {
+    maxDistanceCm?: number;
+    minDistanceCm?: number;
+};
+
+export type TestShoppingCartItem = Record<string, unknown> & {
+    entityId: string;
+    entityTypeName: 'plantSort';
+    gardenId: number;
+    id: number;
+    positionIndex: number;
+    raisedBedId: number;
+    status: 'new';
+};
+
 function createPlantPickerQueryClient({
+    advancedSowingRange,
+    cartItems = [],
     favorites = [],
+    fieldPositionIndices = Array.from({ length: 18 }, (_, index) => index),
     inventoryItems = [],
+    plantings = [],
 }: {
+    advancedSowingRange?: TestAdvancedSowingRange;
+    cartItems?: TestShoppingCartItem[];
     favorites?: FavoriteItem[];
+    fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
+    plantings?: unknown[];
 } = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -241,9 +265,9 @@ function createPlantPickerQueryClient({
                 name: 'Mock gredica',
                 blockId: 'raised-bed-1',
                 physicalId: '1',
-                fields: Array.from({ length: 18 }, (_, index) => ({
-                    id: index + 1,
-                    positionIndex: index,
+                fields: fieldPositionIndices.map((positionIndex) => ({
+                    id: positionIndex + 1,
+                    positionIndex,
                     active: true,
                     plantSortId: null,
                     plantStatus: null,
@@ -258,6 +282,7 @@ function createPlantPickerQueryClient({
                     plantSowingLocation: 'direct',
                 })),
                 appliedOperations: [],
+                plantings,
                 status: 'new' as const,
                 abandonReason: null,
                 isValid: true,
@@ -275,33 +300,83 @@ function createPlantPickerQueryClient({
     );
     queryClient.setQueryData(['gardens', 'current', 'summer', 1], garden);
     queryClient.setQueryData(['shopping-cart'], {
+        allowPurchase: true,
+        hasDeliverableItems: false,
         id: 1,
-        items: [],
+        items: cartItems,
+        notes: [],
+        total: 0,
+        totalSunflowers: 0,
     });
     queryClient.setQueryData(['inventory'], {
         items: inventoryItems,
     });
     queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
     queryClient.setQueryData(favoritesQueryKey, favorites);
-    queryClient.setQueryData(['plants'], [tomatoPlant, basilPlant]);
-    queryClient.setQueryData(['sorts'], tomatoSorts);
+    const advancedSowingTomatoPlant = advancedSowingRange
+        ? {
+              ...tomatoPlant,
+              attributes: {
+                  ...tomatoPlant.attributes,
+                  seedingDistanceMax: advancedSowingRange.maxDistanceCm,
+                  seedingDistanceMin: advancedSowingRange.minDistanceCm,
+              },
+          }
+        : tomatoPlant;
+    const advancedSowingTomatoSorts = tomatoSorts.map((sort) => ({
+        ...sort,
+        information: {
+            ...sort.information,
+            plant: advancedSowingTomatoPlant,
+        },
+    }));
+    queryClient.setQueryData(
+        ['plants'],
+        [advancedSowingTomatoPlant, basilPlant],
+    );
+    queryClient.setQueryData(['sorts'], advancedSowingTomatoSorts);
 
     return queryClient;
 }
 
 function PlantPickerTestProviders({
+    advancedSowingRange,
+    cartItems = [],
     children,
+    enableAdvancedSowing = false,
     favorites = [],
+    fieldPositionIndices,
     inventoryItems = [],
+    plantings = [],
     searchParams,
 }: PropsWithChildren<{
+    advancedSowingRange?: TestAdvancedSowingRange;
+    cartItems?: TestShoppingCartItem[];
+    enableAdvancedSowing?: boolean;
     favorites?: FavoriteItem[];
+    fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
+    plantings?: unknown[];
     searchParams?: string;
 }>) {
     const queryClient = useMemo(
-        () => createPlantPickerQueryClient({ favorites, inventoryItems }),
-        [favorites, inventoryItems],
+        () =>
+            createPlantPickerQueryClient({
+                advancedSowingRange,
+                cartItems,
+                favorites,
+                fieldPositionIndices,
+                inventoryItems,
+                plantings,
+            }),
+        [
+            advancedSowingRange,
+            cartItems,
+            favorites,
+            fieldPositionIndices,
+            inventoryItems,
+            plantings,
+        ],
     );
     const gameStore = useMemo(
         () =>
@@ -318,7 +393,13 @@ function PlantPickerTestProviders({
         <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    {children}
+                    <GameFlagsContext.Provider
+                        value={{
+                            enableAdvancedSowingFlag: enableAdvancedSowing,
+                        }}
+                    >
+                        {children}
+                    </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -345,27 +426,56 @@ function OutletOfferRefetchTestHook() {
 }
 
 export function PlantPickerTestStory({
+    advancedSowingRange,
+    cartItems,
+    enableAdvancedSowing,
     favorites,
+    fieldPositionIndices,
+    inShoppingCart = false,
     inventoryItems,
+    plantings,
+    preselectedPlantId,
+    preselectedSortId,
     searchParams,
+    selectedCartItemId,
     showOutletRefetchControl = false,
+    positionIndex = 0,
 }: {
+    advancedSowingRange?: TestAdvancedSowingRange;
+    cartItems?: TestShoppingCartItem[];
+    enableAdvancedSowing?: boolean;
     favorites?: FavoriteItem[];
+    fieldPositionIndices?: number[];
+    inShoppingCart?: boolean;
     inventoryItems?: TestInventoryItem[];
+    plantings?: unknown[];
+    preselectedPlantId?: number;
+    preselectedSortId?: number;
     searchParams?: string;
+    selectedCartItemId?: number;
     showOutletRefetchControl?: boolean;
+    positionIndex?: number;
 } = {}) {
     return (
         <PlantPickerTestProviders
+            advancedSowingRange={advancedSowingRange}
+            cartItems={cartItems}
+            enableAdvancedSowing={enableAdvancedSowing}
             favorites={favorites}
+            fieldPositionIndices={fieldPositionIndices}
             inventoryItems={inventoryItems}
+            plantings={plantings}
             searchParams={searchParams}
         >
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}
+                inShoppingCart={inShoppingCart}
                 raisedBedId={1}
-                positionIndex={0}
+                positionIndex={positionIndex}
+                selectedCartItemId={selectedCartItemId}
+                selectedPlantId={preselectedPlantId}
+                selectedSortId={preselectedSortId}
                 trigger={<button type="button">Sijanje</button>}
             />
         </PlantPickerTestProviders>

@@ -246,6 +246,120 @@ test('builds insert, replace, and discard instructions from manual revisions', (
     );
 });
 
+test('documents advanced sowing ranges and recommended layouts', () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        operations: [],
+        plants: [
+            plantFixture({
+                id: 1014,
+                label: 'Gusta sadnja',
+                attributeOverrides: {
+                    seedingDistance: 15,
+                    seedingDistanceMin: 10,
+                    seedingDistanceMax: 30,
+                },
+            }),
+            plantFixture({
+                id: 2020,
+                label: 'Tikvica',
+                attributeOverrides: { seedingDistance: 60 },
+            }),
+            plantFixture({
+                id: 3030,
+                label: 'Nepodržana široka sadnja',
+                attributeOverrides: {
+                    seedingDistance: 30,
+                    seedingDistanceMax: 95,
+                },
+            }),
+            plantFixture({
+                id: 4040,
+                label: 'Neispravan razmak',
+                attributeOverrides: {
+                    seedingDistance: 25,
+                    seedingDistanceMin: 30,
+                },
+            }),
+        ],
+        plantSorts: [],
+        revisions: [],
+    });
+    const sowingRows = (plantId: number) =>
+        documentationPackage.currentPlants
+            .find((plant) => plant.id === plantId)
+            ?.sections.find((section) => section.title === 'Sjetva')
+            ?.attributes?.filter(
+                (row) =>
+                    row.label === 'Raspored za novu naprednu sjetvu/sadnju' ||
+                    row.label.includes('razmak sijanja/sadnje'),
+            );
+
+    assert.deepEqual(sowingRows(1014), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: '4 biljke u jednom polju. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Minimalni razmak sijanja/sadnje',
+            value: '10 cm',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '15 cm',
+        },
+        {
+            label: 'Maksimalni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(2020), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: '1 biljka preko 2 x 2 polja. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '60 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(3030), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: 'Raspon razmaka nije podržan za gredicu 3 x 6 polja. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+        {
+            label: 'Maksimalni razmak sijanja/sadnje',
+            value: '95 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(4040), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: 'Neispravna konfiguracija razmaka (min ≤ preporučeni ≤ max). Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Minimalni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '25 cm',
+        },
+    ]);
+});
+
 test('builds farmer payout price tables per farm', () => {
     const documentationPackage = buildFarmerDocumentationPackage({
         generatedAt,
@@ -943,6 +1057,7 @@ function plantSortFixture(
 }
 
 function plantFixture({
+    attributeOverrides,
     description = 'Opis biljke.',
     id = 1014,
     label = 'Rajčica',
@@ -950,6 +1065,7 @@ function plantFixture({
     prices,
     storage,
 }: {
+    attributeOverrides?: EntityStandardized['attributes'];
     description?: string;
     id?: number;
     label?: string;
@@ -983,6 +1099,7 @@ function plantFixture({
             yieldMax: 200,
             yieldType: 'perPlant',
             cleanHarvest: false,
+            ...attributeOverrides,
         },
         ...(prices === undefined ? {} : { prices }),
     };

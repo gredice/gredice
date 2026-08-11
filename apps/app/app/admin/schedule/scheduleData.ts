@@ -20,6 +20,7 @@ import {
     getDayDeliveryRequests,
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
+    getScheduledSelectedPlantingsForDay,
 } from './scheduleDayFilters';
 import { getScheduleCalendarDateKey } from './scheduleTimeZone';
 
@@ -130,6 +131,13 @@ const getScheduleDayDataByDateKey = cache(
                         raisedBeds,
                         timeZone,
                     ),
+                    scheduledSelectedPlantings:
+                        getScheduledSelectedPlantingsForDay(
+                            isToday,
+                            dateKey,
+                            raisedBeds,
+                            timeZone,
+                        ),
                     scheduledOperations: getScheduledOperationsForDay(
                         isToday,
                         dateKey,

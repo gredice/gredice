@@ -1,3 +1,7 @@
+import type {
+    RaisedBedPlantingWithFields,
+    SelectedRaisedBedPlantingTaskReadModel,
+} from '@gredice/storage';
 import {
     FIELD_STATUSES_TO_INCLUDE,
     isFieldBlocked,
@@ -9,7 +13,32 @@ import {
     OPERATION_STATUSES_TO_INCLUDE,
 } from './scheduleShared';
 import { getScheduleDateKey } from './scheduleTimeZone';
-import type { DeliveryRequest, Operation, RaisedBed } from './types';
+import type {
+    DeliveryRequest,
+    Operation,
+    RaisedBed,
+    ScheduledSelectedPlanting,
+} from './types';
+
+type SelectedPlantingFilterTask = Pick<
+    SelectedRaisedBedPlantingTaskReadModel,
+    'block' | 'completion' | 'scheduledDate' | 'status'
+>;
+
+export type SelectedPlantingScheduleFilterSource = Pick<
+    RaisedBedPlantingWithFields,
+    'configurationSource'
+> & {
+    selectedTask: SelectedPlantingFilterTask | null;
+};
+
+type SelectedPlantingFilterRaisedBed<
+    TPlanting extends SelectedPlantingScheduleFilterSource,
+> = {
+    id: number;
+    physicalId?: string | null;
+    plantings?: readonly TPlanting[];
+};
 
 export function getScheduledFieldsForDay(
     isToday: boolean,
@@ -83,6 +112,79 @@ export function getScheduledFieldsForDay(
                 (isToday && scheduledDateKey < dateKey)
             );
         });
+}
+
+export function getScheduledSelectedPlantingsForDay<
+    TPlanting extends SelectedPlantingScheduleFilterSource,
+>(
+    isToday: boolean,
+    dateKey: string,
+    raisedBeds: readonly SelectedPlantingFilterRaisedBed<TPlanting>[],
+    timeZone: string,
+): ScheduledSelectedPlanting<TPlanting>[] {
+    return raisedBeds
+        .filter((raisedBed) => Boolean(raisedBed.physicalId))
+        .flatMap((raisedBed) =>
+            (raisedBed.plantings ?? []).flatMap((planting) => {
+                const task = planting.selectedTask;
+                if (
+                    planting.configurationSource !== 'selected' ||
+                    !task ||
+                    task.status === 'cancelled'
+                ) {
+                    return [];
+                }
+
+                let visible = false;
+                if (task.status === 'blocked') {
+                    const blockedDateKey = task.block?.blockedAt
+                        ? getScheduleDateKey(task.block.blockedAt, timeZone)
+                        : task.scheduledDate
+                          ? getScheduleDateKey(
+                                new Date(task.scheduledDate),
+                                timeZone,
+                            )
+                          : undefined;
+                    visible = Boolean(
+                        blockedDateKey === dateKey ||
+                            (isToday &&
+                                blockedDateKey &&
+                                blockedDateKey < dateKey),
+                    );
+                } else if (task.status === 'pendingVerification') {
+                    const completedDateKey = task.completion?.completedAt
+                        ? getScheduleDateKey(
+                              task.completion.completedAt,
+                              timeZone,
+                          )
+                        : undefined;
+                    visible = completedDateKey
+                        ? completedDateKey === dateKey ||
+                          (isToday && completedDateKey < dateKey)
+                        : isToday;
+                } else if (task.status === 'completed') {
+                    visible = task.completion?.completedAt
+                        ? getScheduleDateKey(
+                              task.completion.completedAt,
+                              timeZone,
+                          ) === dateKey
+                        : false;
+                } else {
+                    const scheduledDateKey = task.scheduledDate
+                        ? getScheduleDateKey(
+                              new Date(task.scheduledDate),
+                              timeZone,
+                          )
+                        : undefined;
+                    visible = scheduledDateKey
+                        ? scheduledDateKey === dateKey ||
+                          (isToday && scheduledDateKey < dateKey)
+                        : isToday;
+                }
+
+                return visible ? [{ planting, raisedBedId: raisedBed.id }] : [];
+            }),
+        );
 }
 
 export function getScheduledOperationsForDay(

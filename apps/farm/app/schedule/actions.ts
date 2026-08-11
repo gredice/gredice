@@ -2,6 +2,8 @@
 
 import { notifyDetailedRaisedBedInspectionCompleted } from '@gredice/notifications';
 import {
+    blockSelectedRaisedBedPlantingTask,
+    completeSelectedRaisedBedPlantingTask,
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserPrintableHarvestTraceLinkIds,
@@ -733,11 +735,59 @@ export async function completeFarmPlanting(
     return actionResult(completionState(result.status), result.occurredAt);
 }
 
+export async function completeFarmSelectedPlanting(
+    plantingId: number,
+    expectedLifecycleVersionEventId: number,
+    expectedPlantSortId: number,
+    commandId: string,
+) {
+    const authorization = await getScheduleTaskAuthContext();
+    if (authorization.failure) {
+        return authorization.failure;
+    }
+    const {
+        user: { role },
+        userId,
+    } = authorization.context;
+
+    let result: Awaited<
+        ReturnType<typeof completeSelectedRaisedBedPlantingTask>
+    >;
+    try {
+        result = await completeSelectedRaisedBedPlantingTask({
+            actor: getTaskActor(userId, role),
+            commandId,
+            expectedLifecycleVersionEventId: assertPositiveSafeInteger(
+                expectedLifecycleVersionEventId,
+                'Verzija životnog ciklusa nije ispravna.',
+            ),
+            expectedPlantSortId: assertPositiveSafeInteger(
+                expectedPlantSortId,
+                'ID sorte biljke nije ispravan.',
+            ),
+            kind: 'selected',
+            plantingId: assertPositiveSafeInteger(
+                plantingId,
+                'ID sadnje nije ispravan.',
+            ),
+        });
+    } catch (error) {
+        const failure = submissionFailure(error);
+        if (failure) {
+            return failure;
+        }
+        throw error;
+    }
+
+    return actionResult(completionState(result.task.status), result.occurredAt);
+}
+
 export async function blockFarmScheduleTask(
     targetInput: ScheduleTaskBlockerTarget,
     reasonCodeInput: ScheduleTaskBlockerReasonCode,
     note?: string,
     imageUrls?: string[],
+    selectedCommandId?: string,
 ) {
     const authorization = await getScheduleTaskAuthContext();
     if (authorization.failure) {
@@ -779,33 +829,51 @@ export async function blockFarmScheduleTask(
 
     let result:
         | Awaited<ReturnType<typeof submitOperationTaskBlock>>
-        | Awaited<ReturnType<typeof submitPlantingTaskBlock>>;
+        | Awaited<ReturnType<typeof submitPlantingTaskBlock>>
+        | Awaited<ReturnType<typeof blockSelectedRaisedBedPlantingTask>>;
     try {
-        result =
-            target.kind === 'operation'
-                ? await submitOperationTaskBlock({
-                      actor,
-                      expectedEntityId: target.expectedEntityId,
-                      expectedTaskVersionEventId:
-                          target.expectedTaskVersionEventId,
-                      imageUrls: normalizedImageUrls,
-                      note: normalizedNote,
-                      operationId: target.operationId,
-                      reasonCode: reason.code,
-                  })
-                : await submitPlantingTaskBlock({
-                      actor,
-                      expectedPlantCycleEventId:
-                          target.expectedPlantCycleEventId,
-                      expectedPlantCycleVersionEventId:
-                          target.expectedPlantCycleVersionEventId,
-                      expectedPlantSortId: target.expectedPlantSortId,
-                      imageUrls: normalizedImageUrls,
-                      note: normalizedNote,
-                      positionIndex: target.positionIndex,
-                      raisedBedId: target.raisedBedId,
-                      reasonCode: reason.code,
-                  });
+        if (target.kind === 'operation') {
+            result = await submitOperationTaskBlock({
+                actor,
+                expectedEntityId: target.expectedEntityId,
+                expectedTaskVersionEventId: target.expectedTaskVersionEventId,
+                imageUrls: normalizedImageUrls,
+                note: normalizedNote,
+                operationId: target.operationId,
+                reasonCode: reason.code,
+            });
+        } else if (target.kind === 'selected') {
+            if (!selectedCommandId) {
+                return invalidSubmissionFailure(
+                    'ID pokušaja prijave prepreke nije ispravan.',
+                );
+            }
+            result = await blockSelectedRaisedBedPlantingTask({
+                actor,
+                commandId: selectedCommandId,
+                expectedLifecycleVersionEventId:
+                    target.expectedLifecycleVersionEventId,
+                expectedPlantSortId: target.expectedPlantSortId,
+                imageUrls: normalizedImageUrls,
+                kind: 'selected',
+                note: normalizedNote,
+                plantingId: target.plantingId,
+                reasonCode: reason.code,
+            });
+        } else {
+            result = await submitPlantingTaskBlock({
+                actor,
+                expectedPlantCycleEventId: target.expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId:
+                    target.expectedPlantCycleVersionEventId,
+                expectedPlantSortId: target.expectedPlantSortId,
+                imageUrls: normalizedImageUrls,
+                note: normalizedNote,
+                positionIndex: target.positionIndex,
+                raisedBedId: target.raisedBedId,
+                reasonCode: reason.code,
+            });
+        }
     } catch (error) {
         const failure = submissionFailure(error);
         if (failure) {
