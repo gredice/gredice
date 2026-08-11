@@ -239,6 +239,17 @@ jobs:
       testShardPrepareScript: "test:prepare:routes"
     secrets: inherit
 
+  ci_news:
+    name: "CI - news"
+    needs: changes
+    if: success() && needs.changes.outputs.app_news == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "news"
+      path: "apps/news"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_NEWS"
+    secrets: inherit
+
   ci_garden:
     name: "CI - garden"
     needs: changes

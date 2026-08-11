@@ -1,14 +1,16 @@
 import { Container } from '@gredice/ui/Container';
-import type { Route } from 'next';
+import type { Metadata, Route } from 'next';
 import { redirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
 import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
 import { NewsCard } from '../components/NewsCard';
 import { getBlogPosts, uniqueNewsValues } from '../lib/news';
+import { blogArchiveMetadata } from '../lib/newsArchiveMetadata';
 import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = blogArchiveMetadata;
 
 function normalizeFilterValue(value: string | undefined) {
     return value?.trim().toLocaleLowerCase('hr-HR');

@@ -6,10 +6,10 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { formatPrice } from '../../lib/formatPrice';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 const referralReward = 10000;
@@ -24,9 +24,11 @@ const formattedCombinedReferralReward = new Intl.NumberFormat('hr-HR').format(
 );
 const referralMetadataDescription = `Program preporuka za Gredice: podijeli ili iskoristi kod i saznaj kako jedna preporuka donosi ukupno ${formattedCombinedReferralReward} 🌻 nagrade.`;
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Preporuke',
     description: referralMetadataDescription,
+    path: KnownPages.Referrals,
+    eyebrow: 'Program preporuka',
     keywords: [
         'Gredice',
         'program preporuka',
@@ -34,12 +36,7 @@ export const metadata: Metadata = {
         'nagrade',
         'vrt aplikacija',
     ],
-    openGraph: {
-        title: 'Preporuke',
-        description: referralMetadataDescription,
-        url: KnownPages.Referrals,
-    },
-};
+});
 
 const referralFlows = [
     {

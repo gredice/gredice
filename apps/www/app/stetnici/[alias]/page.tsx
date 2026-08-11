@@ -8,6 +8,7 @@ import {
 } from '../../../components/plant-health/plantHealthIssueContent';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getPlantPestsData } from '../../../lib/plants/getPlantHealthIssuesData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 
@@ -23,20 +24,18 @@ export async function generateMetadata(
     );
 
     if (!issue) {
-        return {
-            title: 'Štetnik nije pronađen',
-            description: 'Štetnik biljke nije pronađen.',
-        };
+        notFound();
     }
 
     const title = plantHealthIssueTitle(issue);
-    return {
+    return createPublicMetadata({
         title,
-        description: plantHealthIssueShortDescription(issue),
-        alternates: {
-            canonical: KnownPages.PlantPest(issue.slug || title),
-        },
-    };
+        description:
+            plantHealthIssueShortDescription(issue) ||
+            `Saznaj više o štetniku biljaka ${title}.`,
+        path: KnownPages.PlantPest(issue.slug || title),
+        category: 'Štetnik biljaka',
+    });
 }
 
 export async function generateStaticParams() {

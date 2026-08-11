@@ -1,6 +1,6 @@
 import { Container } from '@gredice/ui/Container';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
-import type { Route } from 'next';
+import type { Metadata, Route } from 'next';
 import { EmptyNewsState } from '../../components/EmptyNewsState';
 import { NewsArchiveNavigation } from '../../components/NewsArchiveNavigation';
 import { NewsCard } from '../../components/NewsCard';
@@ -10,9 +10,11 @@ import {
     getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../../lib/news';
+import { changelogArchiveMetadata } from '../../lib/newsArchiveMetadata';
 import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = changelogArchiveMetadata;
 
 const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'long',

@@ -4,12 +4,16 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RecipeList } from '../../components/recipes/RecipeList';
 import { getRecipesData } from '../../lib/recipes/getRecipesData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
 import { recipesFlag } from '../flags';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Recepti',
     description: 'Ideje kako iskoristiti svoje povrće.',
-};
+    path: KnownPages.Recipes,
+    category: 'Iz vrta na stol',
+});
 
 export default async function RecipesPage() {
     const isRecipesEnabled = await recipesFlag();

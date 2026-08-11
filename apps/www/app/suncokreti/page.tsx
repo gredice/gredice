@@ -6,20 +6,22 @@ import { Navigate } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import {
     getPublicSunflowerPackages,
     type PublicSunflowerPackage,
 } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Suncokreti i Gredice saldo',
     description:
         'Suncokreti su prepaid Gredice bodovi za vrtne akcije. Pogledaj pakete, bonus suncokrete i pravila korištenja salda.',
-};
+    path: KnownPages.Sunflowers,
+    eyebrow: 'Gredice saldo',
+});
 
 const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
     maximumFractionDigits: 0,

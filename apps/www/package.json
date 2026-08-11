@@ -23,7 +23,7 @@
         "test:plant-operation-stages": "node --experimental-strip-types --test ./tests/plantOperationStageAvailability.node.spec.ts",
         "test:seeds": "node --experimental-strip-types --test ./app/sjeme/seedPresentation.node.spec.ts ./tests/directoryRevalidationPaths.node.spec.ts ./tests/plantSortSeeds.node.spec.ts",
         "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts",
-        "test:seo": "node --experimental-strip-types --test ./components/shared/seo/structuredDataValidation.node.spec.ts",
+        "test:seo": "node --experimental-strip-types --test ./components/shared/seo/structuredDataValidation.node.spec.ts ./lib/seo/publicMetadata.node.spec.ts ./lib/seo/publicOgSignature.node.spec.ts ./lib/seo/resolvePublicOgImage.node.spec.ts",
         "test:cms-pages": "node --experimental-strip-types --test ./tests/cmsPages.node.spec.ts ./lib/plants/qualityHarvestSafetyFaq.node.spec.ts",
         "test-ui": "pnpm run test:prepare && playwright test --project=chromium --ui",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
@@ -54,6 +54,7 @@
         "nuqs": "2.9.0",
         "react": "19.2.8",
         "react-dom": "19.2.8",
+        "sharp": "0.35.3",
         "server-only": "0.0.1"
     },
     "devDependencies": {
@@ -82,7 +83,6 @@
         "postcss": "8.5.16",
         "react-confetti-boom": "2.0.1",
         "react-markdown": "10.1.0",
-        "sharp": "0.35.3",
         "tailwindcss": "4.3.2",
         "tailwindcss-animate": "1.0.7",
         "tsx": "4.23.0",
