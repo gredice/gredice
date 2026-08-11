@@ -44,13 +44,24 @@ test('resolves the 2026 Zagreb eclipse from first contact until local sunset', (
 
     const atSunset = getSolarEclipseState(sunset, zagreb);
     const afterSunset = getSolarEclipseState(
-        new Date(sunset.getTime() + 1),
+        new Date(sunset.getTime() + 60_000),
         zagreb,
     );
 
     assert.ok(atSunset.obscuration > 0.75);
     assert.ok(atSunset.obscuration < 0.8);
     assert.equal(afterSunset.obscuration, 0);
+});
+
+test('uses the observer horizon across UTC solar-day boundaries', () => {
+    const eclipse = getSolarEclipseState(new Date('2028-07-22T03:30:00.000Z'), {
+        lat: -50,
+        lon: -170,
+    });
+
+    assert.ok(eclipse.sunPosition.altitude > 1.9);
+    assert.ok(eclipse.obscuration > 0.08);
+    assert.ok(eclipse.obscuration < 0.1);
 });
 
 test('predicts later partial eclipses in Zagreb without a hard-coded event list', () => {

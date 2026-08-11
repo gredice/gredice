@@ -4,6 +4,11 @@ import type { GameLocation } from '../utils/timeOfDay';
 const degreesToRadians = Math.PI / 180;
 const moonRadiusKm = 1_737.4;
 const meanSunAngularRadius = 0.2666 * degreesToRadians;
+// SunCalc returns refraction-corrected altitude. Its standard -0.833°
+// geometric sunset threshold is approximately -0.35° after that correction.
+// Checking the instant directly avoids selecting the wrong local solar day
+// for observers far from UTC.
+const standardSunsetApparentAltitude = -0.35;
 
 export type SolarEclipseState = {
     /** Fraction of the apparent Sun disc hidden by the Moon, from 0 to 1. */
@@ -99,23 +104,6 @@ function circleOverlapArea(
     );
 }
 
-function isSunAboveLocalHorizon(
-    date: Date,
-    location: GameLocation,
-    apparentSunAltitude: number,
-) {
-    const times = SunCalc.getTimes(date, location.lat, location.lon);
-    if (times.sunrise && times.sunset) {
-        const timestamp = date.getTime();
-        return (
-            timestamp >= times.sunrise.getTime() &&
-            timestamp <= times.sunset.getTime()
-        );
-    }
-
-    return apparentSunAltitude >= 0;
-}
-
 export function getSolarEclipseState(
     date: Date,
     location: GameLocation,
@@ -135,8 +123,7 @@ export function getSolarEclipseState(
         Number.isFinite(moonAngularRadius) &&
         moonAngularRadius > 0;
     const visible =
-        validGeometry &&
-        isSunAboveLocalHorizon(date, location, sunPosition.altitude);
+        validGeometry && sunPosition.altitude >= standardSunsetApparentAltitude;
     const overlapArea = visible
         ? circleOverlapArea(meanSunAngularRadius, moonAngularRadius, separation)
         : 0;
