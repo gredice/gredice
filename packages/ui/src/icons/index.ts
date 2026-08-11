@@ -33,6 +33,7 @@ export {
     ChevronDown as Select,
     ChevronLeft as Left,
     ChevronRight as Navigate,
+    ChevronsDown,
     ChevronsRight as Right,
     ChevronUp as Up,
     Circle as Empty,
@@ -57,6 +58,7 @@ export {
     FileText,
     Filter,
     Flame,
+    Footprints,
     Frown as SmileSad,
     GamepadDirectional,
     Ghost,
@@ -174,6 +176,7 @@ export {
     X as Clear,
     X as Close,
     Zap as Lightning,
+    ZoomIn,
 } from 'lucide-react';
 
 export { CompanyFacebook } from './CompanyFacebook';

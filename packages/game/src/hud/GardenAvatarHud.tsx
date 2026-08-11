@@ -1,7 +1,16 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
-import { Camera, Close, LogOut, UserCircle } from '@gredice/ui/icons';
+import {
+    ArrowUp,
+    Camera,
+    ChevronsDown,
+    Close,
+    Footprints,
+    LogOut,
+    UserCircle,
+    ZoomIn,
+} from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { type PointerEvent, useEffect } from 'react';
 import { useGameState } from '../useGameState';
@@ -10,6 +19,8 @@ import { useGardenAvatarTouchControls } from './gardenAvatarTouchControls';
 
 const avatarHudButtonClassName =
     'pointer-events-auto border border-border/60 bg-background/85 shadow-lg backdrop-blur-md hover:bg-muted active:scale-95 touch-none';
+const avatarTouchActionButtonClassName =
+    'pointer-events-auto size-14 touch-none rounded-full border border-border/60 bg-background/85 shadow-lg backdrop-blur-md active:scale-95';
 
 export function GardenAvatarHud() {
     const showTouchControls = useGardenAvatarTouchControls();
@@ -111,9 +122,11 @@ export function GardenAvatarHud() {
                     </div>
 
                     <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2">
-                        <button
+                        <IconButton
                             type="button"
-                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            aria-label="Čučni"
+                            variant="plain"
+                            className={avatarTouchActionButtonClassName}
                             onPointerDown={(event) =>
                                 startAction(event, setCrouchInput)
                             }
@@ -124,11 +137,16 @@ export function GardenAvatarHud() {
                                 stopAction(event, setCrouchInput)
                             }
                         >
-                            Čučni
-                        </button>
-                        <button
+                            <ChevronsDown
+                                aria-hidden="true"
+                                className="size-6"
+                            />
+                        </IconButton>
+                        <IconButton
                             type="button"
-                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            aria-label="Zum"
+                            variant="plain"
+                            className={avatarTouchActionButtonClassName}
                             onPointerDown={(event) =>
                                 startAction(event, setZoomInput)
                             }
@@ -139,11 +157,13 @@ export function GardenAvatarHud() {
                                 stopAction(event, setZoomInput)
                             }
                         >
-                            Zum
-                        </button>
-                        <button
+                            <ZoomIn aria-hidden="true" className="size-6" />
+                        </IconButton>
+                        <IconButton
                             type="button"
-                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/85 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            aria-label="Trči"
+                            variant="plain"
+                            className={avatarTouchActionButtonClassName}
                             onPointerDown={(event) =>
                                 startAction(event, setSprintInput)
                             }
@@ -154,18 +174,23 @@ export function GardenAvatarHud() {
                                 stopAction(event, setSprintInput)
                             }
                         >
-                            Trči
-                        </button>
-                        <button
+                            <Footprints aria-hidden="true" className="size-6" />
+                        </IconButton>
+                        <IconButton
                             type="button"
+                            aria-label="Skoči"
+                            variant="plain"
                             onPointerDown={(event) => {
                                 event.preventDefault();
                                 requestJump();
                             }}
-                            className="pointer-events-auto flex min-h-12 min-w-14 touch-none items-center justify-center rounded-full border border-border/60 bg-background/95 px-3 text-xs font-semibold shadow-lg backdrop-blur-md transition-transform active:scale-95"
+                            className={cx(
+                                avatarTouchActionButtonClassName,
+                                'bg-background/95',
+                            )}
                         >
-                            Skoči
-                        </button>
+                            <ArrowUp aria-hidden="true" className="size-6" />
+                        </IconButton>
                     </div>
                 </>
             ) : null}
