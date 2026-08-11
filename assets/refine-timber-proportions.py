@@ -7,10 +7,11 @@ import bpy
 
 ASSETS_DIR = Path(__file__).resolve().parent / "game-assets"
 RAISED_BED_PLANK_WIDTH = 0.08
-RAISED_BED_PLANK_EMISSION_STRENGTH = 0.15
+RAISED_BED_PLANK_EMISSION_STRENGTH = 0.45
 RAISED_BED_SOIL_COLOR = (0.09, 0.041, 0.022, 1.0)
 STOOL_SCALE = 0.8
 STOOL_BASE_LOCAL_Z = -1.0
+STOOL_BEVEL_GROUNDING_OFFSET = -0.002588
 
 
 def parse_args():
@@ -180,7 +181,12 @@ def refine_stool(check_only):
         group,
         "TimberScale",
         "Translation",
-        (0.0, 0.0, STOOL_BASE_LOCAL_Z * (1 - STOOL_SCALE)),
+        (
+            0.0,
+            0.0,
+            STOOL_BASE_LOCAL_Z * (1 - STOOL_SCALE)
+            + STOOL_BEVEL_GROUNDING_OFFSET,
+        ),
         drift,
     )
     set_input(group, "TimberScale", "Scale", (STOOL_SCALE,) * 3, drift)

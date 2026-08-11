@@ -74,7 +74,7 @@
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
-            "version": "4d4803a1804b",
+            "version": "cd53c8d77f10",
             "preload": "primary",
             "objects": [
                 "Raised Bed O",
@@ -88,7 +88,7 @@
             "name": "GardenBox",
             "source": "GardenBox.blend",
             "output": "GardenBox.glb",
-            "version": "7de88b60a698",
+            "version": "a98be6048614",
             "preload": "primary",
             "objects": ["GardenBox_Body_Planks", "GardenBox_Lid_HingeOrigin"]
         },
@@ -426,7 +426,7 @@
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
-            "version": "801dc45abb7a",
+            "version": "672e4f0e65e1",
             "preload": "lazy",
             "objects": ["Bucket", "Bucket - Handle"]
         },
@@ -747,7 +747,7 @@
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
-            "version": "9495a376201c",
+            "version": "a001fbfaed86",
             "preload": "lazy",
             "objects": [
                 "WaterWell_Stone_Mid",
@@ -1290,7 +1290,7 @@
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
-            "version": "af09f2de9968",
+            "version": "9b9efb9e8ccd",
             "preload": "lazy",
             "objects": ["Composter"]
         },
@@ -1388,7 +1388,7 @@
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
-            "version": "aaea4d1cbe90",
+            "version": "999369bfa7b5",
             "preload": "lazy",
             "objects": [
                 "Fence Corner",
@@ -1425,7 +1425,7 @@
             "name": "Shade",
             "source": "Shade.blend",
             "output": "Shade.glb",
-            "version": "bab1221b1988",
+            "version": "5298ac7b22f1",
             "preload": "lazy",
             "objects": [
                 "Shade E",
@@ -1524,7 +1524,7 @@
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",
-            "version": "d35a259cf31c",
+            "version": "d4cc9e3cda68",
             "preload": "lazy",
             "objects": ["Stool"]
         },

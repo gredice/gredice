@@ -146,7 +146,7 @@ describe('timber asset palette', () => {
     it('keeps raised-bed planks visibly warm on shadowed faces', () => {
         assertColorsEqual(
             readEmissiveColor(readMaterials('RaisedBed'), 'Material.Planks'),
-            referenceColor.slice(0, 3).map((channel) => channel * 0.15),
+            referenceColor.slice(0, 3).map((channel) => channel * 0.45),
         );
     });
 

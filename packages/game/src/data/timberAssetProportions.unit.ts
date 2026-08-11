@@ -73,6 +73,39 @@ function readBounds(
     };
 }
 
+function readMaterialVertexCount(
+    document: ReturnType<typeof readGlbDocument>,
+    materialName: string,
+) {
+    const materialIndex = document.materials.findIndex(
+        (material) => material.name === materialName,
+    );
+    assert.notEqual(materialIndex, -1, `Missing material ${materialName}`);
+
+    let count = 0;
+    for (const mesh of document.meshes) {
+        const primitives = readRecords(mesh.primitives, 'mesh primitives');
+        for (const primitive of primitives) {
+            if (primitive.material !== materialIndex) {
+                continue;
+            }
+            assert.ok(isRecord(primitive.attributes));
+            const positionAccessor = primitive.attributes.POSITION;
+            if (typeof positionAccessor !== 'number') {
+                assert.fail('POSITION accessor is not numeric');
+            }
+            const accessor = document.accessors[positionAccessor];
+            assert.ok(isRecord(accessor));
+            const accessorCount = accessor.count;
+            if (typeof accessorCount !== 'number') {
+                assert.fail('POSITION accessor count is not numeric');
+            }
+            count += accessorCount;
+        }
+    }
+    return count;
+}
+
 function readVector(value: unknown): [number, number, number] {
     assert.ok(Array.isArray(value));
     assert.equal(value.length, 3);
@@ -96,6 +129,32 @@ function assertVectorClose(
 }
 
 describe('timber asset proportions', () => {
+    it('keeps the approved low-poly bevel topology on older timber models', () => {
+        const expectedWoodVertexCounts = {
+            Bucket: 381,
+            Composter: 388,
+            Fence: 834,
+            GardenBox: 984,
+            RaisedBed: 425,
+            Shade: 2467,
+            Stool: 271,
+            WaterWell: 5005,
+        } satisfies Record<string, number>;
+
+        for (const [assetName, expectedCount] of Object.entries(
+            expectedWoodVertexCounts,
+        )) {
+            assert.equal(
+                readMaterialVertexCount(
+                    readGlbDocument(assetName),
+                    'Material.Planks',
+                ),
+                expectedCount,
+                `${assetName} bevel topology drifted`,
+            );
+        }
+    });
+
     it('keeps the raised-bed footprint while enlarging soil for narrower planks', () => {
         const document = readGlbDocument('RaisedBed');
         const outer = readBounds(document, 'Raised Bed O', 'Material.Planks');
@@ -136,6 +195,6 @@ describe('timber asset proportions', () => {
         const stool = readBounds(document, 'Stool', 'Material.Planks');
 
         assertVectorClose(stool.minimum, [-0.32, -1.02173, -0.32]);
-        assertVectorClose(stool.maximum, [0.32, -0.64, 0.32]);
+        assertVectorClose(stool.maximum, [0.32, -0.642588, 0.32]);
     });
 });
