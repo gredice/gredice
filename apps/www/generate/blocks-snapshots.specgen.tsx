@@ -80,6 +80,11 @@ const CLOSEUP_ENTITIES = new Set<string>([
     'SandcastleSmallA',
     'SmallWoodenBridge',
     'WoodenWalkway',
+    'StoneWalkway',
+    'RoofTileLantern',
+    'WickerGardenLantern',
+    'WoodenHandLantern',
+    'MoonRainBarrel',
 ]);
 const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['SummerHat', 105],
@@ -87,6 +92,11 @@ const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['SandcastleSmallA', 145],
     ['SmallWoodenBridge', 125],
     ['WoodenWalkway', 125],
+    ['StoneWalkway', 125],
+    ['RoofTileLantern', 145],
+    ['WickerGardenLantern', 130],
+    ['WoodenHandLantern', 145],
+    ['MoonRainBarrel', 120],
 ]);
 const FAR_ENTITIES = new Set<string>(['PalmTree']);
 const gameAssetBaseUrl =

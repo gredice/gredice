@@ -49,6 +49,7 @@ export const localSandboxBlockNames = [
     'Fence',
     'SmallWoodenBridge',
     'WoodenWalkway',
+    'StoneWalkway',
     'WaterWell',
     'LemonadeStand',
     'IceCreamCart',
@@ -61,6 +62,12 @@ export const localSandboxBlockNames = [
     'SandcastleSmallA',
     'BirdHouse',
     'FireflyJar',
+    'EnamelGardenLamp',
+    'HazelLightArch',
+    'RoofTileLantern',
+    'WickerGardenLantern',
+    'WoodenHandLantern',
+    'MoonRainBarrel',
     'CatPillow',
     'DogHouse',
     'Bush',
@@ -95,6 +102,46 @@ export const localSandboxBlockNames = [
 ] as const;
 
 export type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
+
+const localSandboxBlockMetadata: Partial<
+    Record<LocalSandboxBlockName, { label: string; shortDescription: string }>
+> = {
+    StoneWalkway: {
+        label: 'Kamena staza',
+        shortDescription:
+            'Niske vapnenačke ploče za stazu preko tla ili uskog vodenog kanala.',
+    },
+    EnamelGardenLamp: {
+        label: 'Emajlirana vrtna lampa',
+        shortDescription:
+            'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
+    },
+    HazelLightArch: {
+        label: 'Svjetleći luk od lijeske',
+        shortDescription:
+            'Luk od lijeskovih grana s visećim lampicama za osvjetljenje vrtnog prolaza.',
+    },
+    RoofTileLantern: {
+        label: 'Fenjer od starog crijepa',
+        shortDescription:
+            'Niski fenjer od starog crijepa koji stazu obasjava toplim svjetlom.',
+    },
+    WickerGardenLantern: {
+        label: 'Pleteni vrtni fenjer',
+        shortDescription:
+            'Zaobljeni fenjer od pruća koji kroz pletivo širi meko jantarno svjetlo.',
+    },
+    WoodenHandLantern: {
+        label: 'Drveni ručni fenjer',
+        shortDescription:
+            'Mali drveni ručni fenjer s toplim svjetlom za vrtne kutke.',
+    },
+    MoonRainBarrel: {
+        label: 'Mjesečeva bačva',
+        shortDescription:
+            'Ukrasna drvena bačva s plavom vodom koja noću svijetli poput mjesečine.',
+    },
+};
 
 const createdAt = new Date(0).toISOString();
 
@@ -154,6 +201,13 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         SmallWoodenBridge: 0.38,
         WoodenWalkway: 0.1,
         Stool: 0.39,
+        StoneWalkway: 0.1,
+        EnamelGardenLamp: 1.45,
+        HazelLightArch: 1.65,
+        RoofTileLantern: 0.4,
+        WickerGardenLantern: 0.7,
+        WoodenHandLantern: 0.66,
+        MoonRainBarrel: 1,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
@@ -211,6 +265,41 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.39,
         hitboxWidth: 0.66,
     },
+    StoneWalkway: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.1,
+        hitboxWidth: 0.86,
+    },
+    EnamelGardenLamp: {
+        hitboxDepth: 0.46,
+        hitboxHeight: 1.45,
+        hitboxWidth: 0.52,
+    },
+    HazelLightArch: {
+        hitboxDepth: 1.72,
+        hitboxHeight: 1.65,
+        hitboxWidth: 0.9,
+    },
+    RoofTileLantern: {
+        hitboxDepth: 0.48,
+        hitboxHeight: 0.4,
+        hitboxWidth: 0.48,
+    },
+    WickerGardenLantern: {
+        hitboxDepth: 0.62,
+        hitboxHeight: 0.7,
+        hitboxWidth: 0.62,
+    },
+    WoodenHandLantern: {
+        hitboxDepth: 0.4,
+        hitboxHeight: 0.66,
+        hitboxWidth: 0.44,
+    },
+    MoonRainBarrel: {
+        hitboxDepth: 0.84,
+        hitboxHeight: 1,
+        hitboxWidth: 0.76,
+    },
     SummerHat: {
         hitboxDepth: 0.64,
         hitboxHeight: 0.2,
@@ -233,6 +322,56 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
     },
 };
 
+type LocalSandboxPlacementAttributes = Partial<
+    Record<
+        LocalSandboxBlockName,
+        Pick<
+            BlockData['attributes'],
+            'placeableOnWater' | 'spanDepth' | 'spanWidth'
+        >
+    >
+>;
+
+const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
+    SmallWoodenBridge: { placeableOnWater: true },
+    WoodenWalkway: { placeableOnWater: true },
+    StoneWalkway: {
+        placeableOnWater: true,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    EnamelGardenLamp: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    HazelLightArch: {
+        placeableOnWater: false,
+        spanDepth: 2,
+        spanWidth: 1,
+    },
+    RoofTileLantern: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    WickerGardenLantern: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    WoodenHandLantern: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    MoonRainBarrel: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+};
+
 function getLocalSandboxStackHeight(name: LocalSandboxBlockName) {
     return localSandboxStackHeights[name] ?? 0.8;
 }
@@ -244,6 +383,7 @@ function createLocalSandboxBlockData(
     const isGroundBlock = name.startsWith('Block_');
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
+    const metadata = localSandboxBlockMetadata[name];
     return {
         id: index + 1,
         entityType: {
@@ -254,25 +394,29 @@ function createLocalSandboxBlockData(
         slug: name.toLowerCase().replaceAll('_', '-'),
         information: {
             name,
-            label: isOutletDisplayTable
-                ? 'Drveni izložbeni stol'
-                : name.replaceAll('_', ' '),
-            shortDescription: isOutletDisplayTable
-                ? 'Čvrst drveni stol za izlaganje tegli, biljaka i vrtnih ukrasa.'
-                : '',
-            fullDescription: isOutletDisplayTable
-                ? 'Izložbeni stol izrađen od toplih drvenih dasaka. Postavi ga uz gredice ili vrtnu stazu, a na njegovu plohu složi tegle i druge ukrase.'
-                : '',
+            label:
+                metadata?.label ??
+                (isOutletDisplayTable
+                    ? 'Drveni izložbeni stol'
+                    : name.replaceAll('_', ' ')),
+            shortDescription:
+                metadata?.shortDescription ??
+                (isOutletDisplayTable
+                    ? 'Čvrst drveni stol za izlaganje tegli, biljaka i vrtnih ukrasa.'
+                    : ''),
+            fullDescription:
+                metadata?.shortDescription ??
+                (isOutletDisplayTable
+                    ? 'Izložbeni stol izrađen od toplih drvenih dasaka. Postavi ga uz gredice ili vrtnu stazu, a na njegovu plohu složi tegle i druge ukrase.'
+                    : ''),
         },
         attributes: {
             height: getLocalSandboxStackHeight(name),
-            ...(name === 'SmallWoodenBridge' || name === 'WoodenWalkway'
-                ? { placeableOnWater: true }
-                : {}),
             stackable: isGroundBlock || isOutletDisplayTable,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,
             ...localSandboxHitboxAttributes[name],
+            ...localSandboxPlacementAttributes[name],
             ...(['LemonadeStand', 'IceCreamCart'].includes(name)
                 ? { spanDepth: 2, spanWidth: 3 }
                 : {}),

@@ -36,6 +36,7 @@ import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
+import { EnamelGardenLamp } from './EnamelGardenLamp';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
 import { GardenBox } from './GardenBox';
@@ -45,10 +46,12 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { HazelLightArch } from './HazelLightArch';
 import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
 import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
+import { MoonRainBarrel } from './MoonRainBarrel';
 import { OutletDisplayTable } from './OutletDisplayTable';
 import { PaintRoller } from './PaintRoller';
 import { PalmTree } from './PalmTree';
@@ -56,6 +59,7 @@ import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { Pot } from './Pot';
 import { RaisedBed } from './RaisedBed';
+import { RoofTileLantern } from './RoofTileLantern';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
 import { MulchWood } from './raisedBed/MulchWood';
@@ -69,6 +73,7 @@ import { Snowman } from './Snowman';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
+import { StoneWalkway } from './StoneWalkway';
 import { Stool } from './Stool';
 import { SummerHat } from './SummerHat';
 import { Sunflower } from './Sunflower';
@@ -76,7 +81,9 @@ import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
+import { WickerGardenLantern } from './WickerGardenLantern';
 import { WoodenBench } from './WoodenBench';
+import { WoodenHandLantern } from './WoodenHandLantern';
 import { WoodenSign } from './WoodenSign';
 import { WoodenWalkway } from './WoodenWalkway';
 
@@ -153,7 +160,14 @@ export const entityNameMap = {
     DogHouse: DogHouse,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
+    StoneWalkway: StoneWalkway,
     FireflyJar: FireflyJar,
+    EnamelGardenLamp: EnamelGardenLamp,
+    HazelLightArch: HazelLightArch,
+    RoofTileLantern: RoofTileLantern,
+    WickerGardenLantern: WickerGardenLantern,
+    WoodenHandLantern: WoodenHandLantern,
+    MoonRainBarrel: MoonRainBarrel,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
     GiftBox_BlueWhite: GiftBoxBlueWhite,

@@ -84,6 +84,70 @@ const blockFixtures: Record<
         height: 0.1,
         stackable: false,
     },
+    StoneWalkway: {
+        label: 'Kamena staza',
+        shortDescription:
+            'Niske vapnenačke ploče za stazu preko tla ili uskog vodenog kanala.',
+        sunflowers: 50,
+        height: 0.1,
+        stackable: false,
+    },
+    FireflyJar: {
+        label: 'Staklenka s krijesnicom',
+        shortDescription:
+            'Vrlo rijetka noćna dekoracija koja svijetli u vrtu i može se kupiti samo noću.',
+        sunflowers: 100,
+        height: 0.5,
+        stackable: true,
+    },
+    EnamelGardenLamp: {
+        label: 'Emajlirana vrtna lampa',
+        shortDescription:
+            'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
+        sunflowers: 80,
+        height: 1.45,
+        stackable: false,
+    },
+    HazelLightArch: {
+        label: 'Svjetleći luk od lijeske',
+        shortDescription:
+            'Luk od lijeskovih grana s visećim lampicama za osvjetljenje vrtnog prolaza.',
+        sunflowers: 120,
+        height: 1.65,
+        stackable: false,
+    },
+    RoofTileLantern: {
+        label: 'Fenjer od starog crijepa',
+        shortDescription:
+            'Niski fenjer od starog crijepa koji stazu obasjava toplim svjetlom.',
+        sunflowers: 40,
+        height: 0.4,
+        stackable: false,
+    },
+    WickerGardenLantern: {
+        label: 'Pleteni vrtni fenjer',
+        shortDescription:
+            'Zaobljeni fenjer od pruća koji kroz pletivo širi meko jantarno svjetlo.',
+        sunflowers: 60,
+        height: 0.7,
+        stackable: false,
+    },
+    WoodenHandLantern: {
+        label: 'Drveni ručni fenjer',
+        shortDescription:
+            'Mali drveni ručni fenjer s toplim svjetlom za vrtne kutke.',
+        sunflowers: 50,
+        height: 0.66,
+        stackable: false,
+    },
+    MoonRainBarrel: {
+        label: 'Mjesečeva bačva',
+        shortDescription:
+            'Ukrasna drvena bačva s plavom vodom koja noću svijetli poput mjesečine.',
+        sunflowers: 100,
+        height: 1,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -168,6 +232,7 @@ const blockNames = [
     'Fence',
     'SmallWoodenBridge',
     'WoodenWalkway',
+    'StoneWalkway',
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
@@ -189,6 +254,12 @@ const blockNames = [
     'DesertStoneLarge',
     'BirdHouse',
     'FireflyJar',
+    'EnamelGardenLamp',
+    'HazelLightArch',
+    'RoofTileLantern',
+    'WickerGardenLantern',
+    'WoodenHandLantern',
+    'MoonRainBarrel',
     'CatPillow',
     'DogHouse',
     'Bush',

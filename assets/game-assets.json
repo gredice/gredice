@@ -1385,6 +1385,101 @@
             ]
         },
         {
+            "name": "StoneWalkway",
+            "source": "StoneWalkway.blend",
+            "output": "StoneWalkway.glb",
+            "version": "fdf36debb5f3",
+            "preload": "lazy",
+            "objects": [
+                "StoneWalkway_StonesLight",
+                "StoneWalkway_StonesMid",
+                "StoneWalkway_StonesWarm",
+                "StoneWalkway_SupportRails"
+            ]
+        },
+        {
+            "name": "EnamelGardenLamp",
+            "source": "EnamelGardenLamp.blend",
+            "output": "EnamelGardenLamp.glb",
+            "version": "4b2a7c1c93dd",
+            "preload": "lazy",
+            "objects": [
+                "EnamelGardenLamp_WoodPost",
+                "EnamelGardenLamp_LimestoneFoot",
+                "EnamelGardenLamp_EnamelShade",
+                "EnamelGardenLamp_MetalTrim",
+                "EnamelGardenLamp_Bulb"
+            ]
+        },
+        {
+            "name": "HazelLightArch",
+            "source": "HazelLightArch.blend",
+            "output": "HazelLightArch.glb",
+            "version": "ee75ad25489e",
+            "preload": "lazy",
+            "objects": [
+                "HazelLightArch_Poles",
+                "HazelLightArch_TerracottaShades",
+                "HazelLightArch_Cords",
+                "HazelLightArch_Bulbs"
+            ]
+        },
+        {
+            "name": "RoofTileLantern",
+            "source": "RoofTileLantern.blend",
+            "output": "RoofTileLantern.glb",
+            "version": "07a3a01fb75b",
+            "preload": "lazy",
+            "objects": [
+                "RoofTileLantern_Tiles",
+                "RoofTileLantern_LimestoneCore",
+                "RoofTileLantern_Glow"
+            ]
+        },
+        {
+            "name": "WickerGardenLantern",
+            "source": "WickerGardenLantern.blend",
+            "output": "WickerGardenLantern.glb",
+            "version": "45c25b93f310",
+            "preload": "lazy",
+            "objects": [
+                "WickerGardenLantern_Wicker",
+                "WickerGardenLantern_TerracottaBase",
+                "WickerGardenLantern_LimestoneBase",
+                "WickerGardenLantern_Glow"
+            ]
+        },
+        {
+            "name": "WoodenHandLantern",
+            "source": "WoodenHandLantern.blend",
+            "output": "WoodenHandLantern.glb",
+            "version": "3efbdb200010",
+            "preload": "lazy",
+            "objects": [
+                "WoodenHandLantern_Frame",
+                "WoodenHandLantern_Handle",
+                "WoodenHandLantern_Metal",
+                "WoodenHandLantern_Glass",
+                "WoodenHandLantern_Glow"
+            ]
+        },
+        {
+            "name": "MoonRainBarrel",
+            "source": "MoonRainBarrel.blend",
+            "output": "MoonRainBarrel.glb",
+            "version": "9462827a992b",
+            "preload": "lazy",
+            "objects": [
+                "MoonRainBarrel_Staves",
+                "MoonRainBarrel_Bands",
+                "MoonRainBarrel_Tap",
+                "MoonRainBarrel_Lid",
+                "MoonRainBarrel_Water",
+                "MoonRainBarrel_Leaf",
+                "MoonRainBarrel_MoonStone"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",

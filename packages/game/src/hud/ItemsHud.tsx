@@ -94,6 +94,16 @@ const arrowSignItems: HudItemEntity[] = arrowSignNames.map((name) => ({
     name,
 }));
 
+const lightingItems: HudItemEntity[] = [
+    { type: 'entity', name: 'FireflyJar' },
+    { type: 'entity', name: 'EnamelGardenLamp' },
+    { type: 'entity', name: 'HazelLightArch' },
+    { type: 'entity', name: 'RoofTileLantern' },
+    { type: 'entity', name: 'WickerGardenLantern' },
+    { type: 'entity', name: 'WoodenHandLantern' },
+    { type: 'entity', name: 'MoonRainBarrel' },
+];
+
 const treeGroupEntityNames = new Set([
     ...treeItems.map((item) => item.name),
     'PineAdvent',
@@ -166,6 +176,13 @@ const items: HudItem[] = [
                 items: arrowSignItems,
             },
             { type: 'entity', name: 'WoodenSign' },
+            {
+                type: 'picker',
+                label: 'Rasvjeta',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/FireflyJar.webp',
+                items: lightingItems,
+            },
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'BeachUmbrella' },
             { type: 'entity', name: 'Stool' },
@@ -174,6 +191,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Fence' },
             { type: 'entity', name: 'SmallWoodenBridge' },
             { type: 'entity', name: 'WoodenWalkway' },
+            { type: 'entity', name: 'StoneWalkway' },
             { type: 'entity', name: 'WaterWell' },
             { type: 'entity', name: 'LemonadeStand' },
             { type: 'entity', name: 'IceCreamCart' },
@@ -184,7 +202,6 @@ const items: HudItem[] = [
             { type: 'entity', name: 'BeachBall' },
             { type: 'entity', name: 'SandcastleSmallA' },
             { type: 'entity', name: 'BirdHouse' },
-            { type: 'entity', name: 'FireflyJar' },
             { type: 'entity', name: 'CatPillow' },
             { type: 'entity', name: 'DogHouse' },
             { type: 'entity', name: 'Bush' },
