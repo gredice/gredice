@@ -24,7 +24,10 @@ import {
 import { Vector3 } from 'three';
 import { BlockInteractionLayer } from '../controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from '../controls/BlockInteractionRegistry';
-import { GameCameraRig } from '../controls/GameCameraRig';
+import {
+    type GameCameraCloseupFocus,
+    GameCameraRig,
+} from '../controls/GameCameraRig';
 import { GardenAvatar } from '../entities/avatar/GardenAvatar';
 import { GardenVisitorAvatar } from '../entities/avatar/GardenVisitorAvatar';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
@@ -128,6 +131,8 @@ export type PublicGardenCapture = {
     transparent?: boolean;
 };
 
+export type PublicGardenSelectedBlockFocus = GameCameraCloseupFocus;
+
 export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     garden?: PublicGardenDetail;
     stacks?: PublicGardenStack[];
@@ -138,6 +143,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     initialView?: PublicGardenInitialView;
     interactiveBlockIds?: ReadonlySet<string>;
     selectedBlockId?: string | null;
+    selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     onSelectBlock?: (blockId: string) => void;
     onSceneReady?: () => void;
     noWeather?: boolean;
@@ -415,6 +421,7 @@ function PublicGardenScene({
     onSceneReady,
     renderDetails,
     sceneChildren,
+    selectedBlockFocus,
     visitorPresence,
 }: {
     cameraMinZoom?: number;
@@ -433,6 +440,7 @@ function PublicGardenScene({
     onSceneReady?: () => void;
     renderDetails: boolean;
     sceneChildren?: ReactNode;
+    selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
@@ -634,6 +642,7 @@ function PublicGardenScene({
                                 </group>
                             </Suspense>
                             <GameCameraRig
+                                closeupFocus={selectedBlockFocus}
                                 minZoom={cameraMinZoom}
                                 controlsEnabled={
                                     !capture && !gardenAvatarActive
@@ -762,6 +771,7 @@ export function PublicGardenViewer({
     renderDetails: renderDetailsOverride,
     sceneChildren,
     selectedBlockId,
+    selectedBlockFocus,
     stacks,
     className,
     visitorPresence,
@@ -1025,6 +1035,7 @@ export function PublicGardenViewer({
                                     onSceneReady={onSceneReady}
                                     renderDetails={renderDetails}
                                     sceneChildren={sceneChildren}
+                                    selectedBlockFocus={selectedBlockFocus}
                                     visitorPresence={visitorPresence}
                                 />
                                 {gameGarden && !capture ? (
