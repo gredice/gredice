@@ -25,6 +25,7 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import { isInternalSceneBlockData } from '../internalSceneBlockData';
 import {
     itemsHudDropTargetActiveAttribute,
     itemsHudDropTargetAttribute,
@@ -155,6 +156,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'BeachUmbrella' },
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'WoodenBench' },
+            { type: 'entity', name: 'OutletDisplayTable' },
             { type: 'entity', name: 'Fence' },
             { type: 'entity', name: 'SmallWoodenBridge' },
             { type: 'entity', name: 'WoodenWalkway' },
@@ -232,7 +234,9 @@ function useHudEntityPlacementState(
     const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
     const isSandbox = useIsSandboxGarden();
     const block = blockData?.find((block) => block.information.name === name);
-    if (!block) {
+    // Scene-only fallbacks keep authored public/outlet scenes renderable before
+    // their catalog row is deployed, but they must never become a shop item.
+    if (!block || isInternalSceneBlockData(block)) {
         return null;
     }
 

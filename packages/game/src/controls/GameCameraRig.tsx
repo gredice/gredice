@@ -26,7 +26,7 @@ const closeupZoom = 300;
 const animationDurationSeconds = 1;
 const focusAnimationDurationSeconds = 0.65;
 const focusStopDistance = 0.01;
-const minZoom = 50;
+const defaultMinZoom = 50;
 const maxZoom = 500;
 const cameraDragThresholdPx = 4;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
@@ -167,6 +167,7 @@ export function GameCameraRig({
     initialTarget,
     initialViewKey,
     initialZoom,
+    minZoom = defaultMinZoom,
 }: {
     controlsEnabled: boolean;
     initialPosition?: Vector3;
@@ -174,6 +175,7 @@ export function GameCameraRig({
     initialTarget?: Vector3;
     initialViewKey?: string | number | null;
     initialZoom?: number;
+    minZoom?: number;
 }) {
     const { camera, gl, invalidate, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
@@ -202,6 +204,7 @@ export function GameCameraRig({
     );
     const { data: gardenData } = useCurrentGarden();
     const garden = useSceneCurrentGarden(gardenData);
+    const resolvedMinZoom = MathUtils.clamp(minZoom, 1, maxZoom);
     useSceneTimeInvalidation(
         isAnimating || isDragging || isKeyboardPanning,
         sceneFrameRates.interactive,
@@ -370,11 +373,17 @@ export function GameCameraRig({
                 return;
             }
 
-            camera.zoom = MathUtils.clamp(zoom, minZoom, maxZoom);
+            camera.zoom = MathUtils.clamp(zoom, resolvedMinZoom, maxZoom);
             applyCamera();
             saveNormalCamera();
         },
-        [applyCamera, camera, isOrthographicCamera, saveNormalCamera],
+        [
+            applyCamera,
+            camera,
+            isOrthographicCamera,
+            resolvedMinZoom,
+            saveNormalCamera,
+        ],
     );
 
     const panByWorldVector = useCallback(
@@ -458,7 +467,11 @@ export function GameCameraRig({
                 setIsAnimating(false);
                 camera.position.copy(endPosition);
                 targetRef.current.copy(endTarget);
-                camera.zoom = MathUtils.clamp(endZoom, minZoom, maxZoom);
+                camera.zoom = MathUtils.clamp(
+                    endZoom,
+                    resolvedMinZoom,
+                    maxZoom,
+                );
                 applyCamera();
                 onComplete?.();
                 return;
@@ -469,7 +482,7 @@ export function GameCameraRig({
                 elapsed: 0,
                 endPosition: endPosition.clone(),
                 endTarget: endTarget.clone(),
-                endZoom: MathUtils.clamp(endZoom, minZoom, maxZoom),
+                endZoom: MathUtils.clamp(endZoom, resolvedMinZoom, maxZoom),
                 startPosition: camera.position.clone(),
                 startTarget: targetRef.current.clone(),
                 startZoom: camera.zoom,
@@ -477,7 +490,7 @@ export function GameCameraRig({
             };
             setIsAnimating(true);
         },
-        [applyCamera, camera, isOrthographicCamera],
+        [applyCamera, camera, isOrthographicCamera, resolvedMinZoom],
     );
 
     const focusOnPosition = useCallback(
@@ -588,7 +601,7 @@ export function GameCameraRig({
             camera.position.copy(resolvedInitialView.position);
             camera.zoom = MathUtils.clamp(
                 resolvedInitialView.zoom,
-                minZoom,
+                resolvedMinZoom,
                 maxZoom,
             );
             targetRef.current.copy(resolvedInitialView.target);
@@ -620,6 +633,7 @@ export function GameCameraRig({
         initialViewKey,
         isOrthographicCamera,
         resolvedInitialView,
+        resolvedMinZoom,
         setCloseupCameraActive,
         setCloseupCameraSettled,
         setGameCamera,
@@ -790,7 +804,7 @@ export function GameCameraRig({
             event.preventDefault();
             const nextZoom = MathUtils.clamp(
                 camera.zoom * Math.exp(-event.deltaY * 0.001),
-                minZoom,
+                resolvedMinZoom,
                 maxZoom,
             );
             const changed = applyCursorAnchoredZoom({
@@ -833,6 +847,7 @@ export function GameCameraRig({
         cursorAnchoredZoomScratch,
         gl.domElement,
         panByScreenPixels,
+        resolvedMinZoom,
         saveNormalCamera,
         setCameraZoom,
         setIsDragging,

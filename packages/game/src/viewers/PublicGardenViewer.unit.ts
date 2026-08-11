@@ -167,6 +167,22 @@ describe('getPublicGardenCaptureInitialView', () => {
         assert.ok(elongated.cameraZoom < compact.cameraZoom);
         assert.ok(elongated.cameraZoom >= 24);
     });
+
+    it('supports a lower outlet-only floor for a large phone viewport scene', () => {
+        const view = getPublicGardenCaptureInitialView({
+            minimumZoom: 18,
+            stacks: normalizePublicGardenStacks(
+                Array.from({ length: 50 }, (_, index) => ({
+                    x: index,
+                    y: 0,
+                    blocks: [],
+                })),
+            ),
+            viewport: { height: 456, width: 390 },
+        });
+
+        assert.equal(view.cameraZoom, 18);
+    });
 });
 
 describe('getPublicGardenRaisedBedInteractionTargets', () => {

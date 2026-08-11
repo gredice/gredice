@@ -3,6 +3,7 @@ import {
     enableAdvancedSowingFlag,
     enableDebugHudFlag,
     enableGardenAvatarFlag,
+    enableOutletGardenFlag,
     enableSuncokretDebugFlag,
 } from './flags';
 
@@ -11,11 +12,13 @@ export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
         enableAdvancedSowing,
         enableDebugHud,
         enableGardenAvatar,
+        enableOutletGarden,
         enableSuncokretDebug,
     ] = await Promise.all([
         enableAdvancedSowingFlag(),
         enableDebugHudFlag(),
         enableGardenAvatarFlag(),
+        enableOutletGardenFlag(),
         enableSuncokretDebugFlag(),
     ]);
 
@@ -23,6 +26,7 @@ export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
         enableAdvancedSowingFlag: enableAdvancedSowing,
         enableDebugHudFlag: enableDebugHud,
         enableGardenAvatarFlag: enableGardenAvatar,
+        enableOutletGardenFlag: enableOutletGarden,
         enableSuncokretDebugFlag: enableSuncokretDebug,
     };
 }

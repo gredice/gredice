@@ -1,5 +1,6 @@
 import { directoriesClient } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { withInternalSceneBlockData } from '../internalSceneBlockData';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import { useGameState } from '../useGameState';
 
@@ -15,12 +16,12 @@ export function useBlockData() {
         queryKey: useLocalBlockData ? ['blocks', 'local'] : ['blocks'],
         queryFn: async () => {
             if (useLocalBlockData) {
-                return getLocalSandboxBlockData();
+                return withInternalSceneBlockData(getLocalSandboxBlockData());
             }
 
-            return (
-                (await directoriesClient().GET('/entities/block')).data ?? null
-            );
+            const blockData = (await directoriesClient().GET('/entities/block'))
+                .data;
+            return blockData ? withInternalSceneBlockData(blockData) : null;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
     });

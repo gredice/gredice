@@ -7,6 +7,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import { useOutletOffers } from '../hooks/useOutletOffers';
@@ -49,6 +50,7 @@ export function OutletHud() {
     const [, setOutletOfferSelectionParam] = useOutletOfferSelectionParam();
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { track } = useGameAnalytics();
+    const { enableOutletGardenFlag = false } = useGameFlags();
     const [pendingOfferId, setPendingOfferId] = useState<number | null>(null);
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
         number | null
@@ -179,6 +181,26 @@ export function OutletHud() {
                         Odaberi outlet sadnicu, gredicu i nastavi na prvo prazno
                         polje.
                     </Typography>
+                    {enableOutletGardenFlag ? (
+                        <Button
+                            href={
+                                selectedOfferId === null
+                                    ? '/outlet'
+                                    : `/outlet?ponuda=${selectedOfferId.toString()}`
+                            }
+                            onClick={() =>
+                                track('game_outlet_garden_entry_clicked', {
+                                    outlet_offer_count: offers?.length ?? 0,
+                                    outlet_offer_id:
+                                        selectedOfferId ?? undefined,
+                                })
+                            }
+                            startDecorator={<Navigate className="size-5" />}
+                            variant="soft"
+                        >
+                            Uđi u 3D Outlet vrt
+                        </Button>
+                    ) : null}
                     {isLoading ? (
                         <Typography level="body2">Učitavanje...</Typography>
                     ) : null}

@@ -48,6 +48,7 @@ import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
 import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
+import { OutletDisplayTable } from './OutletDisplayTable';
 import { PaintRoller } from './PaintRoller';
 import { PalmTree } from './PalmTree';
 import { Pine } from './Pine';
@@ -117,6 +118,7 @@ export const entityNameMap = {
     PaintRoller: PaintRoller,
     WaterWell: WaterWell,
     WoodenBench: WoodenBench,
+    OutletDisplayTable: OutletDisplayTable,
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
     SummerHat: SummerHat,

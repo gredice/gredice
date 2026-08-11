@@ -444,6 +444,9 @@ test('sandbox decoration picker includes special blocks', async ({
         page.getByRole('button', { name: 'Mali drveni most' }),
     ).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'Drveni izložbeni stol' }),
+    ).toBeVisible();
+    await expect(
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Poklon kutije' }),
@@ -495,6 +498,20 @@ test('small wooden bridge uses the published shop price', async ({
     ).toBeVisible();
 });
 
+test('stackable display table is offered at its catalog price', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Drveni izložbeni stol' }).click();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*40/u }),
+    ).toBeVisible();
+});
+
 test('local sandbox decoration picker includes sunflower and mulch', async ({
     mount,
     page,
@@ -507,6 +524,9 @@ test('local sandbox decoration picker includes sunflower and mulch', async ({
     await expect(page.getByRole('button', { name: 'Sunflower' })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'SmallWoodenBridge' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Drveni izložbeni stol' }),
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'WoodenWalkway' }),

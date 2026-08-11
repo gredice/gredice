@@ -38,6 +38,7 @@ export const localSandboxBlockNames = [
     'BeachUmbrella',
     'Stool',
     'WoodenBench',
+    'OutletDisplayTable',
     'Fence',
     'SmallWoodenBridge',
     'WoodenWalkway',
@@ -128,6 +129,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         InflatablePoolSmall: 0.35,
         BeachChair: 0.55,
         WoodenBench: 0.41,
+        OutletDisplayTable: 0.67,
         PalmTree: 1.5,
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
@@ -185,6 +187,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.41,
         hitboxWidth: 1.1,
     },
+    OutletDisplayTable: {
+        hitboxDepth: 0.75,
+        hitboxHeight: 0.67,
+        hitboxWidth: 0.9,
+    },
 };
 
 function getLocalSandboxStackHeight(name: LocalSandboxBlockName) {
@@ -197,6 +204,7 @@ function createLocalSandboxBlockData(
 ): BlockData {
     const isGroundBlock = name.startsWith('Block_');
     const isRaisedBed = name === 'Raised_Bed';
+    const isOutletDisplayTable = name === 'OutletDisplayTable';
     return {
         id: index + 1,
         entityType: {
@@ -207,16 +215,22 @@ function createLocalSandboxBlockData(
         slug: name.toLowerCase().replaceAll('_', '-'),
         information: {
             name,
-            label: name.replaceAll('_', ' '),
-            shortDescription: '',
-            fullDescription: '',
+            label: isOutletDisplayTable
+                ? 'Drveni izložbeni stol'
+                : name.replaceAll('_', ' '),
+            shortDescription: isOutletDisplayTable
+                ? 'Čvrst drveni stol za izlaganje tegli, biljaka i vrtnih ukrasa.'
+                : '',
+            fullDescription: isOutletDisplayTable
+                ? 'Izložbeni stol izrađen od toplih drvenih dasaka. Postavi ga uz gredice ili vrtnu stazu, a na njegovu plohu složi tegle i druge ukrase.'
+                : '',
         },
         attributes: {
             height: getLocalSandboxStackHeight(name),
-            ...(['SmallWoodenBridge', 'WoodenWalkway'].includes(name)
+            ...(name === 'SmallWoodenBridge' || name === 'WoodenWalkway'
                 ? { placeableOnWater: true }
                 : {}),
-            stackable: isGroundBlock,
+            stackable: isGroundBlock || isOutletDisplayTable,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,
             ...localSandboxHitboxAttributes[name],

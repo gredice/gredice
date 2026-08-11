@@ -67,6 +67,14 @@ const blockFixtures: Record<
         height: 0.38,
         stackable: false,
     },
+    OutletDisplayTable: {
+        label: 'Drveni izložbeni stol',
+        shortDescription:
+            'Čvrst drveni stol za izlaganje tegli, biljaka i vrtnih ukrasa.',
+        sunflowers: 40,
+        height: 0.67,
+        stackable: true,
+    },
     WoodenWalkway: {
         label: 'Drvena staza',
         shortDescription:
@@ -153,6 +161,7 @@ const blockNames = [
     'BeachUmbrella',
     'Stool',
     'WoodenBench',
+    'OutletDisplayTable',
     'Fence',
     'SmallWoodenBridge',
     'WoodenWalkway',

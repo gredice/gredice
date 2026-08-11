@@ -82,3 +82,38 @@ test('selected outlet offer starts collapsed from the URL', async ({
         2,
     );
 });
+
+test('outlet garden teleport stays hidden when its flag is disabled', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <OutletHudStory
+            enableOutletGardenFlag={false}
+            searchParams="vrt=1&outlet=302"
+        />,
+    );
+
+    const dialog = page.getByRole('dialog', { name: 'Outlet sadnica' });
+    await expect(
+        dialog.getByRole('link', { name: 'Uđi u 3D Outlet vrt' }),
+    ).toHaveCount(0);
+});
+
+test('outlet garden teleport preserves the selected offer when its flag is enabled', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <OutletHudStory
+            enableOutletGardenFlag
+            searchParams="vrt=1&outlet=302"
+        />,
+    );
+
+    const teleportLink = page
+        .getByRole('dialog', { name: 'Outlet sadnica' })
+        .getByRole('link', { name: 'Uđi u 3D Outlet vrt' });
+    await expect(teleportLink).toBeVisible();
+    await expect(teleportLink).toHaveAttribute('href', '/outlet?ponuda=302');
+});

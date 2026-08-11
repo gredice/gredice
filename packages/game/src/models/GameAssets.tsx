@@ -777,6 +777,9 @@ export type GLTFResult = GLTF & {
         WoodenBench_PinFrontRight: THREE.Mesh;
         WoodenBench_PinBackLeft: THREE.Mesh;
         WoodenBench_PinBackRight: THREE.Mesh;
+        OutletDisplayTable_TopPlanks: THREE.Mesh;
+        OutletDisplayTable_Frame: THREE.Mesh;
+        OutletDisplayTable_LowerShelf: THREE.Mesh;
         PalmTree_FrondBackTop: THREE.Mesh;
         PalmTree_TrunkSegment01: THREE.Mesh;
         PalmTree_TrunkSegment02: THREE.Mesh;
@@ -1263,6 +1266,9 @@ export type GLTFResult = GLTF & {
         'Material.LiquidPreparationBottleWeevilControl.Label': THREE.MeshStandardMaterial;
         'Material.LiquidPreparationBottleWeevilControl.NeckShadow': THREE.MeshStandardMaterial;
         'Material.Metal': THREE.MeshStandardMaterial;
+        'Material.OutletDisplayTable.DeepWood': THREE.MeshStandardMaterial;
+        'Material.OutletDisplayTable.GoldenWood': THREE.MeshStandardMaterial;
+        'Material.OutletDisplayTable.HoneyWood': THREE.MeshStandardMaterial;
         'Material.PaintRoller.Frame': THREE.MeshStandardMaterial;
         'Material.PaintRoller.Handle': THREE.MeshStandardMaterial;
         'Material.PaintRoller.Orange': THREE.MeshStandardMaterial;
