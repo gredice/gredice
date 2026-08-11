@@ -61,7 +61,7 @@ const outletOffers = [
             plant: { id: 1, name: 'Rajčica' },
         },
         sowingDate: '2026-06-04T00:00:00.000Z',
-        initialPlantStatus: 'sprouted',
+        initialPlantStatus: 'ready',
         imageUrls: [],
         outletPrice: 2.19,
         comparePrice: 3.99,
@@ -113,6 +113,7 @@ export function OutletGardenOfferBrowserStory({
     const [selectedOfferId, setSelectedOfferId] = useState<number | null>(
         initialSelectedOfferId,
     );
+    const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [retryCount, setRetryCount] = useState(0);
 
     return (
@@ -123,12 +124,16 @@ export function OutletGardenOfferBrowserStory({
                 isLoading={state === 'loading'}
                 offers={state === 'ready' ? outletOffers : []}
                 onExit={() => undefined}
+                onHoverOffer={setHoveredOfferId}
                 onRetry={() => setRetryCount((count) => count + 1)}
                 onSelectOffer={setSelectedOfferId}
                 selectedOfferId={selectedOfferId}
             />
             <output className="sr-only" data-retry-count>
                 {retryCount}
+            </output>
+            <output className="sr-only" data-hovered-offer-id>
+                {hoveredOfferId ?? 'none'}
             </output>
         </div>
     );

@@ -40,6 +40,23 @@ const hitboxIntersection = new Vector3();
 const hitboxBounds = new Box3();
 const closerIntersectionEpsilon = 0.0001;
 
+export const blockInteractionPassthroughUserDataKey =
+    'blockInteractionPassthrough';
+
+function isBlockInteractionPassthrough(object: Object3D) {
+    let candidate: Object3D | null = object;
+    while (candidate) {
+        if (
+            candidate.userData[blockInteractionPassthroughUserDataKey] === true
+        ) {
+            return true;
+        }
+        candidate = candidate.parent;
+    }
+
+    return false;
+}
+
 export function getBlockInteractionRotatedHitboxFootprint(
     target: BlockInteractionLayerTarget,
 ) {
@@ -158,6 +175,7 @@ export function hasCloserNonLayerIntersection({
     return intersections.some(
         (intersection) =>
             intersection.object !== layerObject &&
+            !isBlockInteractionPassthrough(intersection.object) &&
             intersection.distance + closerIntersectionEpsilon <
                 resolvedDistance,
     );

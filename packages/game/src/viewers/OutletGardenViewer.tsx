@@ -57,6 +57,7 @@ export function OutletGardenViewer() {
         'ponuda',
         parseAsInteger,
     );
+    const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneReadyTrackedRef = useRef(false);
@@ -151,6 +152,15 @@ export function OutletGardenViewer() {
     const selectedBlockId = selectedOffer
         ? outletOfferBlockId(selectedOffer.id)
         : null;
+
+    useEffect(() => {
+        if (
+            hoveredOfferId !== null &&
+            !offers.some((offer) => offer.id === hoveredOfferId)
+        ) {
+            setHoveredOfferId(null);
+        }
+    }, [hoveredOfferId, offers]);
 
     useEffect(() => {
         const element = sceneContainerRef.current;
@@ -292,6 +302,7 @@ export function OutletGardenViewer() {
             className={`relative grid h-[100dvh] grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] overflow-hidden bg-[#cfeaca] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1 ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-95 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-500'}`}
             data-outlet-garden
             data-outlet-garden-exiting={exitTarget ? true : undefined}
+            data-outlet-garden-hovered-offer={hoveredOfferId ?? undefined}
         >
             <main
                 className="relative min-h-0 overflow-hidden"
@@ -312,7 +323,8 @@ export function OutletGardenViewer() {
                         renderDetails={false}
                         sceneChildren={
                             <OutletGardenSeedlingMarkers
-                                offers={layoutOffers}
+                                highlightedOfferId={hoveredOfferId}
+                                offers={offers}
                                 stacks={outletGarden.stacks}
                             />
                         }
@@ -369,6 +381,7 @@ export function OutletGardenViewer() {
                 isLoading={isLoading}
                 offers={offers}
                 onExit={requestExit}
+                onHoverOffer={setHoveredOfferId}
                 onRetry={() => {
                     void refetch();
                 }}

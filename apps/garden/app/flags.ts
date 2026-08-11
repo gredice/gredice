@@ -1,5 +1,6 @@
 import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
+import { outletGardenEnabledByDefault } from './outletGardenFlagDefault';
 
 export const deliveryChargeAtCheckoutFlag = flag<boolean>({
     key: 'deliveryChargeAtCheckout',
@@ -48,8 +49,6 @@ export const enableOutletGardenFlag = flag<boolean>({
     key: 'enableOutletGarden',
     description:
         'Expose the read-only 3D Outlet garden validation route from the current Outlet flow.',
-    decide: () =>
-        process.env.NODE_ENV === 'development' ||
-        process.env.VERCEL_ENV === 'preview',
+    decide: () => outletGardenEnabledByDefault(process.env),
     options: booleanFlagOptions,
 });

@@ -1164,6 +1164,18 @@
             ]
         },
         {
+            "name": "OutletDisplayTable",
+            "source": "OutletDisplayTable.blend",
+            "output": "OutletDisplayTable.glb",
+            "version": "88f3aa524c7f",
+            "preload": "lazy",
+            "objects": [
+                "OutletDisplayTable_TopPlanks",
+                "OutletDisplayTable_Frame",
+                "OutletDisplayTable_LowerShelf"
+            ]
+        },
+        {
             "name": "PalmTree",
             "source": "PalmTree.blend",
             "output": "PalmTree.glb",

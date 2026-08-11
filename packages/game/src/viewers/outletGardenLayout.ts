@@ -32,8 +32,8 @@ const outletGardenOffersPerPlantBay = 4;
 const outletGardenPlantBaysPerAisleRow = 2;
 const outletGardenAisleRowSpacing = 3;
 const outletGardenTableDistance = 3;
-const outletGardenFloorDistance = 4;
-const outletGardenPathHalfWidth = 1;
+const outletGardenFloorDistance = 2;
+const outletGardenPathHalfWidth = 0;
 const outletGardenSideMargin = 2;
 const outletGardenFrontMargin = 3;
 const outletGardenBackMargin = 3;
@@ -59,7 +59,7 @@ export const outletGardenRegisteredBlockNames = [
     'Block_Grass',
     'Fence',
     'MulchWood',
-    'WoodenBench',
+    'OutletDisplayTable',
     ...outletGardenPotNames,
 ] as const;
 
@@ -259,10 +259,15 @@ function outletGardenBounds(assignments: OutletGardenSlotAssignments) {
     );
     const lastDisplayY = (aisleRowCount - 1) * outletGardenAisleRowSpacing + 1;
 
+    const displayDistance = Math.max(
+        outletGardenFloorDistance,
+        outletGardenTableDistance,
+    );
+
     return {
-        maxX: outletGardenFloorDistance + outletGardenSideMargin,
+        maxX: displayDistance + outletGardenSideMargin,
         maxY: lastDisplayY + outletGardenBackMargin,
-        minX: -outletGardenFloorDistance - outletGardenSideMargin,
+        minX: -displayDistance - outletGardenSideMargin,
         minY: -outletGardenFrontMargin,
     };
 }
@@ -322,7 +327,7 @@ export function buildOutletGardenStacks(
         for (let offset = 0; offset < 2; offset += 1) {
             addBlock(stacksByPosition, tableX, tableStartY + offset, {
                 id: `outlet-table:${plantBay.toString()}:${offset.toString()}`,
-                name: 'WoodenBench',
+                name: 'OutletDisplayTable',
                 rotation: 1,
             });
         }
@@ -350,10 +355,16 @@ export function buildOutletGardenStacks(
 
     for (const { assignment, offer } of placedOffers) {
         const position = getOutletGardenOfferPlacement(assignment.slotIndex);
+        const rotation =
+            position.surface === 'floor'
+                ? position.x < 0
+                    ? 1
+                    : 3
+                : ((offer.plantSortId % 4) + 4) % 4;
         addBlock(stacksByPosition, position.x, position.y, {
             id: outletOfferBlockId(offer.id),
             name: outletGardenPotName(offer.plantSortId),
-            rotation: offer.plantSortId % 4,
+            rotation,
         });
     }
 

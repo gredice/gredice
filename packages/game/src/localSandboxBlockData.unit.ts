@@ -72,6 +72,20 @@ test('local sandbox exposes the wooden bench with production dimensions', () => 
     assert.equal(woodenBench?.attributes.hitboxWidth, 1.1);
 });
 
+test('local sandbox exposes the display table as a stackable decoration', () => {
+    const displayTable = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'OutletDisplayTable',
+    );
+
+    assert.ok(displayTable);
+    assert.equal(displayTable.information.label, 'Drveni izložbeni stol');
+    assert.equal(displayTable.attributes.height, 0.67);
+    assert.equal(displayTable.attributes.hitboxDepth, 0.75);
+    assert.equal(displayTable.attributes.hitboxHeight, 0.67);
+    assert.equal(displayTable.attributes.hitboxWidth, 0.9);
+    assert.equal(displayTable.attributes.stackable, true);
+});
+
 test('local sandbox exposes animal home blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

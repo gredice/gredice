@@ -169,14 +169,14 @@ describe('getOutletGardenOfferPlacement', () => {
             aisleRow: 0,
             plantBay: 0,
             surface: 'floor',
-            x: -4,
+            x: -2,
             y: 0,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(4), {
             aisleRow: 0,
             plantBay: 1,
             surface: 'floor',
-            x: 4,
+            x: 2,
             y: 0,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(5), {
@@ -220,7 +220,7 @@ describe('buildOutletGardenStacks', () => {
         );
     });
 
-    it('places tabletop seedlings above a wooden table and floor seedlings directly on grass', () => {
+    it('places tabletop seedlings above the Outlet table and floor seedlings directly on grass', () => {
         const assignments = reconcileOutletGardenSlots(new Map(), offers);
         const stacks = buildOutletGardenStacks(offers, assignments);
         const tableStack = stackForOffer(stacks, 302);
@@ -228,15 +228,16 @@ describe('buildOutletGardenStacks', () => {
 
         assert.deepEqual(
             tableStack?.blocks.map((block) => block.name),
-            ['Block_Grass', 'WoodenBench', 'PotRoundedBowl'],
+            ['Block_Grass', 'OutletDisplayTable', 'PotRoundedBowl'],
         );
         assert.deepEqual(
             floorStack?.blocks.map((block) => block.name),
             ['Block_Grass', 'PotBulbousNeck'],
         );
         assert.equal(
-            tableStack?.blocks.find((block) => block.name === 'WoodenBench')
-                ?.rotation,
+            tableStack?.blocks.find(
+                (block) => block.name === 'OutletDisplayTable',
+            )?.rotation,
             1,
         );
         const emptyTableSegment = stacks.find(
@@ -244,41 +245,79 @@ describe('buildOutletGardenStacks', () => {
         );
         assert.deepEqual(
             emptyTableSegment?.blocks.map((block) => block.name),
-            ['Block_Grass', 'WoodenBench'],
+            ['Block_Grass', 'OutletDisplayTable'],
         );
     });
 
-    it('builds a continuous three-tile mulch aisle with a matching front entrance', () => {
+    it('builds a continuous one-tile mulch aisle with a matching front entrance', () => {
         const assignments = reconcileOutletGardenSlots(new Map(), offers);
         const stacks = buildOutletGardenStacks(offers, assignments);
 
-        for (const x of [-1, 0, 1]) {
-            const pathRows = stacks
-                .filter(
-                    (stack) =>
-                        stack.x === x &&
-                        stack.blocks.some((block) =>
-                            block.id.startsWith('outlet-path:'),
-                        ),
-                )
-                .map((stack) => stack.y);
-            assert.deepEqual(pathRows, [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]);
+        const pathStacks = stacks.filter((stack) =>
+            stack.blocks.some((block) => block.id.startsWith('outlet-path:')),
+        );
+        assert.deepEqual(
+            Array.from(new Set(pathStacks.map((stack) => stack.x))),
+            [0],
+        );
+        assert.deepEqual(
+            pathStacks.map((stack) => stack.y),
+            [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6],
+        );
 
-            const entrance = stacks.find(
-                (stack) => stack.x === x && stack.y === -3,
-            );
-            assert.equal(
-                entrance?.blocks.some((block) => block.name === 'Fence'),
-                false,
-            );
-        }
+        const entrance = stacks.find(
+            (stack) => stack.x === 0 && stack.y === -3,
+        );
+        assert.equal(
+            entrance?.blocks.some((block) => block.name === 'Fence'),
+            false,
+        );
 
         const frontFence = stacks.find(
-            (stack) => stack.x === -2 && stack.y === -3,
+            (stack) => stack.x === -1 && stack.y === -3,
         );
         assert.equal(
             frontFence?.blocks.some((block) => block.name === 'Fence'),
             true,
+        );
+    });
+
+    it('turns floor displays toward the center aisle without changing tabletop variation', () => {
+        const assignments = reconcileOutletGardenSlots(new Map(), offers);
+        const stacks = buildOutletGardenStacks(offers, assignments);
+        const leftFloor = stackForOffer(stacks, 301);
+        const rightFloor = stackForOffer(stacks, 303);
+        const leftTable = stackForOffer(stacks, 302);
+
+        assert.equal(leftFloor?.x, -2);
+        assert.equal(
+            leftFloor?.blocks.find((block) =>
+                block.id.startsWith('outlet-offer:'),
+            )?.rotation,
+            1,
+        );
+        assert.equal(rightFloor?.x, 2);
+        assert.equal(
+            rightFloor?.blocks.find((block) =>
+                block.id.startsWith('outlet-offer:'),
+            )?.rotation,
+            3,
+        );
+        assert.equal(
+            leftTable?.blocks.find((block) =>
+                block.id.startsWith('outlet-offer:'),
+            )?.rotation,
+            1,
+        );
+        assert.equal(
+            stacks.some(
+                (stack) =>
+                    stack.x === 0 &&
+                    stack.blocks.some((block) =>
+                        block.id.startsWith('outlet-offer:'),
+                    ),
+            ),
+            false,
         );
     });
 

@@ -138,7 +138,21 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     }
     await expect(canvas).toBeVisible();
 
-    await page.getByRole('button', { name: /Paprika Zlata Snack/u }).click();
+    const paprikaOffer = page.getByRole('button', {
+        name: /Paprika Zlata Snack/u,
+    });
+    await paprikaOffer.hover();
+    await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
+        'data-outlet-garden-hovered-offer',
+        '302',
+    );
+    await page.getByRole('heading', { name: 'Outlet vrt' }).hover();
+    await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
+        'data-outlet-garden-hovered-offer',
+        /.+/u,
+    );
+
+    await paprikaOffer.click();
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
@@ -161,6 +175,12 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
             },
         },
     ]);
+    // Exercise the same live-query reconciliation immediately through the
+    // production refetch-on-focus path; the 15-second interval remains the
+    // runtime fallback, while software WebGL CI stays within this test's guard.
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('visibilitychange'));
+    });
     await expect
         .poll(() => outletApi.getOutletOfferRequestCount(), {
             timeout: 18_000,

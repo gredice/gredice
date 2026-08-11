@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Object3D, Ray, Vector3 } from 'three';
 import {
     type BlockInteractionLayerTarget,
+    blockInteractionPassthroughUserDataKey,
     getBlockInteractionLayerBounds,
     getBlockInteractionRotatedHitboxFootprint,
     hasCloserNonLayerIntersection,
@@ -218,6 +219,30 @@ describe('hasCloserNonLayerIntersection', () => {
                     {
                         distance: 4,
                         object: backgroundObject,
+                    },
+                ],
+                layerObject,
+                ray,
+                resolvedHitPoint: new Vector3(0, 0, 3),
+            }),
+            false,
+        );
+    });
+
+    it('ignores a closer generated visual marked as interaction pass-through', () => {
+        const layerObject = new Object3D();
+        const visualRoot = new Object3D();
+        const generatedLeaf = new Object3D();
+        const ray = new Ray(new Vector3(0, 0, 0), new Vector3(0, 0, 1));
+        visualRoot.userData[blockInteractionPassthroughUserDataKey] = true;
+        visualRoot.add(generatedLeaf);
+
+        assert.equal(
+            hasCloserNonLayerIntersection({
+                intersections: [
+                    {
+                        distance: 1,
+                        object: generatedLeaf,
                     },
                 ],
                 layerObject,

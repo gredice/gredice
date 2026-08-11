@@ -86,20 +86,42 @@ function groupOutletGardenOffers(offers: readonly OutletOfferData[]) {
     return Array.from(plantGroups.values());
 }
 
-function countLabel(count: number, forms: [string, string, string]) {
-    if (count === 1) {
-        return `${count.toString()} ${forms[0]}`;
-    }
-
-    if (count >= 2 && count <= 4) {
-        return `${count.toString()} ${forms[1]}`;
-    }
-
-    return `${count.toString()} ${forms[2]}`;
-}
-
 function offerImageUrl(offer: OutletOfferData) {
     return offer.imageUrls[0] ?? offer.plantSort.imageUrl;
+}
+
+function outletPlantStatusShortLabel(status: string) {
+    return status === 'ready'
+        ? 'Spremna za presađivanje'
+        : plantFieldStatusLabel(status).shortLabel;
+}
+
+function sortGroupImageUrl(sortGroup: OutletGardenSortGroup) {
+    for (const offer of sortGroup.offers) {
+        if (offer.plantSort.imageUrl) {
+            return offer.plantSort.imageUrl;
+        }
+    }
+
+    for (const offer of sortGroup.offers) {
+        const imageUrl = offerImageUrl(offer);
+        if (imageUrl) {
+            return imageUrl;
+        }
+    }
+
+    return null;
+}
+
+function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
+    for (const sortGroup of plantGroup.sorts) {
+        const imageUrl = sortGroupImageUrl(sortGroup);
+        if (imageUrl) {
+            return imageUrl;
+        }
+    }
+
+    return null;
 }
 
 export type OutletGardenOfferBrowserProps = {
@@ -108,6 +130,7 @@ export type OutletGardenOfferBrowserProps = {
     isLoading: boolean;
     offers: readonly OutletOfferData[];
     onExit: (destination: 'existing_outlet' | 'garden', href: Route) => void;
+    onHoverOffer?: (offerId: number | null) => void;
     onRetry: () => void;
     onSelectOffer: (offerId: number | null) => void;
     selectedOfferId: number | null;
@@ -119,6 +142,7 @@ export function OutletGardenOfferBrowser({
     isLoading,
     offers,
     onExit,
+    onHoverOffer,
     onRetry,
     onSelectOffer,
     selectedOfferId,
@@ -276,12 +300,9 @@ export function OutletGardenOfferBrowser({
                             data-outlet-garden-offer-list
                         >
                             {plantGroups.map((plantGroup) => {
-                                const offerCount = plantGroup.sorts.reduce(
-                                    (count, sortGroup) =>
-                                        count + sortGroup.offers.length,
-                                    0,
-                                );
                                 const plantHeadingId = `outlet-garden-${plantGroup.key}-title`;
+                                const plantImageUrl =
+                                    plantGroupImageUrl(plantGroup);
 
                                 return (
                                     <section
@@ -292,31 +313,43 @@ export function OutletGardenOfferBrowser({
                                         }
                                         key={plantGroup.key}
                                     >
-                                        <div className="mb-3 flex items-baseline justify-between gap-3">
+                                        <div className="mb-3 flex items-center gap-3">
+                                            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-lime-100 text-lime-800 dark:bg-lime-950 dark:text-lime-300">
+                                                {plantImageUrl ? (
+                                                    <Image
+                                                        alt=""
+                                                        className="object-cover"
+                                                        data-outlet-garden-plant-image
+                                                        fill
+                                                        sizes="40px"
+                                                        src={plantImageUrl}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className="grid size-full place-items-center"
+                                                        data-outlet-garden-plant-image-fallback
+                                                    >
+                                                        <Sprout className="size-5" />
+                                                    </span>
+                                                )}
+                                            </div>
                                             <h3
                                                 className="text-sm font-bold"
                                                 id={plantHeadingId}
                                             >
                                                 {plantGroup.name}
                                             </h3>
-                                            <span className="text-[11px] text-muted-foreground">
-                                                {countLabel(
-                                                    plantGroup.sorts.length,
-                                                    ['sorta', 'sorte', 'sorti'],
-                                                )}{' '}
-                                                ·{' '}
-                                                {countLabel(offerCount, [
-                                                    'ponuda',
-                                                    'ponude',
-                                                    'ponuda',
-                                                ])}
-                                            </span>
                                         </div>
 
                                         <div className="space-y-3">
                                             {plantGroup.sorts.map(
                                                 (sortGroup) => {
                                                     const sortHeadingId = `outlet-garden-sort-${sortGroup.id.toString()}-title`;
+                                                    const sortImageUrl =
+                                                        sortGroupImageUrl(
+                                                            sortGroup,
+                                                        );
                                                     return (
                                                         <section
                                                             aria-labelledby={
@@ -327,14 +360,40 @@ export function OutletGardenOfferBrowser({
                                                             }
                                                             key={sortGroup.id}
                                                         >
-                                                            <h4
-                                                                className="mb-1.5 text-xs font-semibold text-muted-foreground"
-                                                                id={
-                                                                    sortHeadingId
-                                                                }
-                                                            >
-                                                                {sortGroup.name}
-                                                            </h4>
+                                                            <div className="mb-2 flex items-center gap-2">
+                                                                <div className="relative size-8 shrink-0 overflow-hidden rounded-md bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
+                                                                    {sortImageUrl ? (
+                                                                        <Image
+                                                                            alt=""
+                                                                            className="object-cover"
+                                                                            data-outlet-garden-sort-image
+                                                                            fill
+                                                                            sizes="32px"
+                                                                            src={
+                                                                                sortImageUrl
+                                                                            }
+                                                                        />
+                                                                    ) : (
+                                                                        <span
+                                                                            aria-hidden="true"
+                                                                            className="grid size-full place-items-center"
+                                                                            data-outlet-garden-sort-image-fallback
+                                                                        >
+                                                                            <Sprout className="size-4" />
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <h4
+                                                                    className="text-xs font-semibold text-muted-foreground"
+                                                                    id={
+                                                                        sortHeadingId
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        sortGroup.name
+                                                                    }
+                                                                </h4>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                                                                 {sortGroup.offers.map(
                                                                     (offer) => {
@@ -342,12 +401,17 @@ export function OutletGardenOfferBrowser({
                                                                             offer.id ===
                                                                             selectedOffer?.id;
                                                                         const status =
-                                                                            plantFieldStatusLabel(
+                                                                            outletPlantStatusShortLabel(
                                                                                 offer.initialPlantStatus,
-                                                                            ).shortLabel;
+                                                                            );
+                                                                        const comparePriceLabel =
+                                                                            offer.comparePrice !==
+                                                                            null
+                                                                                ? `, redovna cijena ${currencyFormatter.format(offer.comparePrice)}`
+                                                                                : '';
                                                                         return (
                                                                             <button
-                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, ${currencyFormatter.format(offer.outletPrice)}, preostalo ${offer.remainingQuantity}`}
+                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, outlet cijena ${currencyFormatter.format(offer.outletPrice)}${comparePriceLabel}, preostalo ${offer.remainingQuantity}`}
                                                                                 aria-pressed={
                                                                                     selected
                                                                                 }
@@ -368,6 +432,40 @@ export function OutletGardenOfferBrowser({
                                                                                         offer.id,
                                                                                     )
                                                                                 }
+                                                                                onBlur={() =>
+                                                                                    onHoverOffer?.(
+                                                                                        null,
+                                                                                    )
+                                                                                }
+                                                                                onFocus={() =>
+                                                                                    onHoverOffer?.(
+                                                                                        offer.id,
+                                                                                    )
+                                                                                }
+                                                                                onPointerEnter={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    if (
+                                                                                        event.pointerType !==
+                                                                                        'touch'
+                                                                                    ) {
+                                                                                        onHoverOffer?.(
+                                                                                            offer.id,
+                                                                                        );
+                                                                                    }
+                                                                                }}
+                                                                                onPointerLeave={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    if (
+                                                                                        event.pointerType !==
+                                                                                        'touch'
+                                                                                    ) {
+                                                                                        onHoverOffer?.(
+                                                                                            null,
+                                                                                        );
+                                                                                    }
+                                                                                }}
                                                                                 type="button"
                                                                             >
                                                                                 <span className="block truncate text-xs font-medium">
@@ -382,18 +480,28 @@ export function OutletGardenOfferBrowser({
                                                                                         status
                                                                                     }
                                                                                 </span>
-                                                                                <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 text-xs text-muted-foreground">
+                                                                                <span className="mt-1 flex flex-wrap items-end justify-between gap-x-2 text-xs text-muted-foreground">
                                                                                     <span>
                                                                                         preostalo{' '}
                                                                                         {
                                                                                             offer.remainingQuantity
                                                                                         }
                                                                                     </span>
-                                                                                    <strong className="text-sm text-foreground">
-                                                                                        {currencyFormatter.format(
-                                                                                            offer.outletPrice,
-                                                                                        )}
-                                                                                    </strong>
+                                                                                    <span className="shrink-0 text-right">
+                                                                                        <strong className="block text-base leading-tight text-lime-800 dark:text-lime-300">
+                                                                                            {currencyFormatter.format(
+                                                                                                offer.outletPrice,
+                                                                                            )}
+                                                                                        </strong>
+                                                                                        {offer.comparePrice !==
+                                                                                        null ? (
+                                                                                            <del className="block text-[11px] leading-tight text-muted-foreground">
+                                                                                                {currencyFormatter.format(
+                                                                                                    offer.comparePrice,
+                                                                                                )}
+                                                                                            </del>
+                                                                                        ) : null}
+                                                                                    </span>
                                                                                 </span>
                                                                             </button>
                                                                         );
@@ -489,11 +597,9 @@ export function OutletGardenOfferBrowser({
                                         Razvojna faza
                                     </dt>
                                     <dd className="font-medium">
-                                        {
-                                            plantFieldStatusLabel(
-                                                selectedOffer.initialPlantStatus,
-                                            ).shortLabel
-                                        }
+                                        {outletPlantStatusShortLabel(
+                                            selectedOffer.initialPlantStatus,
+                                        )}
                                     </dd>
                                 </div>
                                 <div>

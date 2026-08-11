@@ -53,6 +53,72 @@ test('selects a live offer and exposes truthful read-only details', async ({
     expect(mutationRequests).toEqual([]);
 });
 
+test('shows representative hierarchy imagery and complete offer pricing', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OutletGardenOfferBrowserStory />);
+
+    const offerList = page.locator('[data-outlet-garden-offer-list]');
+    const tomatoGroup = offerList.locator(
+        '[data-outlet-garden-plant-group="1"]',
+    );
+    await expect(
+        tomatoGroup.locator('[data-outlet-garden-plant-image]'),
+    ).toBeVisible();
+    await expect(
+        tomatoGroup
+            .locator('[data-outlet-garden-sort-group="101"]')
+            .locator('[data-outlet-garden-sort-image]'),
+    ).toBeVisible();
+    await expect(
+        tomatoGroup
+            .locator('[data-outlet-garden-sort-group="103"]')
+            .locator('[data-outlet-garden-sort-image-fallback]'),
+    ).toBeVisible();
+    await expect(tomatoGroup).not.toContainText('2 sorte · 3 ponude');
+
+    const discountedOffer = offerList.locator(
+        '[data-outlet-garden-offer-id="301"]',
+    );
+    await expect(discountedOffer).toContainText('2,49');
+    await expect(discountedOffer.locator('del')).toContainText('3,99');
+
+    const offerWithoutComparisonPrice = offerList.locator(
+        '[data-outlet-garden-offer-id="304"]',
+    );
+    await expect(offerWithoutComparisonPrice).toContainText('2,29');
+    await expect(offerWithoutComparisonPrice.locator('del')).toHaveCount(0);
+    await expect(
+        offerList.locator('[data-outlet-garden-offer-id="303"]'),
+    ).toContainText('Spremna za presađivanje');
+    await expect(
+        offerList.locator('[data-outlet-garden-offer-id="303"]'),
+    ).not.toContainText('Spremna za berbu');
+});
+
+test('previews the matching scene offer on pointer hover and keyboard focus', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OutletGardenOfferBrowserStory />);
+
+    const hoveredOffer = page.locator('[data-hovered-offer-id]');
+    const offer = page.locator('[data-outlet-garden-offer-id="303"]');
+
+    await offer.hover();
+    await expect(hoveredOffer).toHaveText('303');
+
+    await page.getByRole('heading', { name: 'Outlet vrt' }).hover();
+    await expect(hoveredOffer).toHaveText('none');
+
+    await offer.focus();
+    await expect(hoveredOffer).toHaveText('303');
+
+    await page.getByRole('link', { name: 'Povratak u moj vrt' }).focus();
+    await expect(hoveredOffer).toHaveText('none');
+});
+
 test('recovers from a stale deep link without hiding current offers', async ({
     mount,
     page,
