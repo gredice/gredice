@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    detailedRaisedBedInspectionNotificationType,
     operationCompletedNotificationType,
     raisedBedFieldPhotoCompletedNotificationType,
     raisedBedPhotoCompletedNotificationType,
@@ -42,6 +43,7 @@ import {
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
     promoteDeferredWebPushDeliveryAttempts,
+    raisedBeds,
     recordNotificationDeliveryEvent,
     recordWebPushDeliveryFailure,
     revalidateQueuedWebPushDeliveryAttempt,
@@ -1214,7 +1216,7 @@ test('notification center uses one account-safe globally ordered page', async ()
     assert.equal(returnedIds.has(foreignUserNotificationId), false);
 });
 
-test('garden raised-bed notifications are unread, target-scoped, and deterministically newest first', async () => {
+test('garden raised-bed notifications are unread, target-scoped, and select one deterministic winner per bed', async () => {
     createTestDb();
     const farmId = await ensureFarmId();
     const userId = await createUserWithPassword(
@@ -1315,6 +1317,14 @@ test('garden raised-bed notifications are unread, target-scoped, and determinist
                 id: visibleIds.older,
                 timestamp: new Date('2026-08-11T11:00:00.000Z'),
             }),
+            {
+                ...notification({
+                    id: `${idPrefix}-detailed-inspection`,
+                    timestamp: new Date('2026-08-11T14:00:00.000Z'),
+                }),
+                imageUrl: 'https://cdn.example.com/inspection.jpg',
+                type: detailedRaisedBedInspectionNotificationType,
+            },
             notification({
                 id: `${idPrefix}-foreign-user`,
                 targetUserId: foreignUserId,
@@ -1349,11 +1359,11 @@ test('garden raised-bed notifications are unread, target-scoped, and determinist
 
     assert.deepEqual(
         result.map(({ id }) => id),
-        [visibleIds.newestZ, visibleIds.newestA, visibleIds.older],
+        [visibleIds.newestZ],
     );
 });
 
-test('garden raised-bed notifications prioritize visual kind before priority and recency', async () => {
+test('garden raised-bed notifications select visual kind before priority and recency', async () => {
     createTestDb();
     const farmId = await ensureFarmId();
     const accountId = await createTestAccount();
@@ -1453,19 +1463,11 @@ test('garden raised-bed notifications prioritize visual kind before priority and
 
     assert.deepEqual(
         result.map(({ id }) => id),
-        [
-            ids.fullBed,
-            ids.fieldPhoto,
-            ids.legacyImageHigh,
-            ids.legacyImageLow,
-            ids.legacyIcon,
-            ids.text,
-            ids.blankPhoto,
-        ],
+        [ids.fullBed],
     );
 });
 
-test('garden raised-bed notifications cap one response at the safe maximum', async () => {
+test('garden raised-bed notifications select field updates before operation text', async () => {
     createTestDb();
     const farmId = await ensureFarmId();
     const accountId = await createTestAccount();
@@ -1475,13 +1477,133 @@ test('garden raised-bed notifications cap one response at the safe maximum', asy
         accountId,
         await createTestBlock(gardenId, 'Raised_Bed'),
     );
+    const idPrefix = `raised-bed-field-before-operation-${randomUUID()}`;
+
+    await storage()
+        .insert(notifications)
+        .values([
+            {
+                id: `${idPrefix}-operation`,
+                accountId,
+                category: 'garden',
+                content: 'Operation completed',
+                gardenId,
+                header: 'Operation completed',
+                metadata: { raisedBedFieldId: 123 },
+                priority: 'high',
+                raisedBedId,
+                timestamp: new Date('2026-08-11T12:00:00.000Z'),
+                type: operationCompletedNotificationType,
+            },
+            {
+                id: `${idPrefix}-plant`,
+                accountId,
+                category: 'garden',
+                content: 'Plant sprouted',
+                gardenId,
+                header: 'Plant sprouted',
+                metadata: { raisedBedFieldId: 123 },
+                priority: 'normal',
+                raisedBedId,
+                timestamp: new Date('2026-08-10T12:00:00.000Z'),
+                type: 'plant_status_changed',
+            },
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [`${idPrefix}-plant`],
+    );
+});
+
+test('garden raised-bed notifications select per-bed winners before the response cap', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const dominantRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const secondaryRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const idPrefix = `raised-bed-per-bed-cap-${randomUUID()}`;
+
+    await storage()
+        .insert(notifications)
+        .values([
+            ...Array.from(
+                { length: maxGardenRaisedBedNotifications + 1 },
+                (_, index) => ({
+                    id: `${idPrefix}-dominant-${index.toString().padStart(4, '0')}`,
+                    accountId,
+                    content: `Dominant ${index.toString()}`,
+                    gardenId,
+                    header: `Dominant ${index.toString()}`,
+                    imageUrl: 'https://cdn.example.com/dominant.jpg',
+                    raisedBedId: dominantRaisedBedId,
+                    timestamp: new Date(Date.UTC(2026, 7, 11, 12, 0, 0, index)),
+                }),
+            ),
+            {
+                id: `${idPrefix}-secondary`,
+                accountId,
+                content: 'Secondary bed',
+                gardenId,
+                header: 'Secondary bed',
+                raisedBedId: secondaryRaisedBedId,
+                timestamp: new Date('2026-08-10T12:00:00.000Z'),
+            },
+        ]);
+
+    const result = await getUnreadRaisedBedNotificationsForGarden({
+        accountId,
+        gardenId,
+        userId: 'account-wide-notification-reader',
+    });
+
+    assert.deepEqual(
+        result.map(({ id }) => id),
+        [`${idPrefix}-dominant-0500`, `${idPrefix}-secondary`],
+    );
+});
+
+test('garden raised-bed notifications cap distinct bed winners at the safe maximum', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const accountId = await createTestAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
     const idPrefix = `raised-bed-cap-${randomUUID()}`;
     const rowCount = maxGardenRaisedBedNotifications + 1;
+    const createdRaisedBeds = await storage()
+        .insert(raisedBeds)
+        .values(
+            Array.from({ length: rowCount }, (_, index) => ({
+                accountId,
+                blockId,
+                gardenId,
+                name: `Cap bed ${index.toString()}`,
+                status: 'new',
+                updatedAt: new Date(),
+            })),
+        )
+        .returning({ id: raisedBeds.id });
 
     await storage()
         .insert(notifications)
         .values(
-            Array.from({ length: rowCount }, (_, index) => ({
+            createdRaisedBeds.map(({ id: raisedBedId }, index) => ({
                 id: `${idPrefix}-${index.toString().padStart(4, '0')}`,
                 accountId,
                 content: `Notification ${index.toString()}`,

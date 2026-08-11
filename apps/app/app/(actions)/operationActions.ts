@@ -976,6 +976,7 @@ async function notifyVerifiedOperationCompletion(
                           raisedBedFieldId: operation.raisedBedFieldId ?? null,
                           visualReward: completionNotification.visualReward,
                       },
+                      priority: 'high',
                       timestamp: operation.verifiedAt,
                       type: classifyOperationCompletionNotificationType({
                           hasImage: Boolean(operation.imageUrls?.[0]),
@@ -1313,6 +1314,7 @@ export async function cancelOperationAction(formData: FormData) {
                     raisedBedFieldId:
                         cancellation.operation.raisedBedFieldId ?? null,
                 },
+                priority: 'high',
                 timestamp: cancellation.canceledAt,
                 type: operationCanceledNotificationType,
             },

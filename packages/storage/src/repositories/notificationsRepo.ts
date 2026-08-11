@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
+    detailedRaisedBedInspectionNotificationType,
+    operationCanceledNotificationType,
+    operationCompletedNotificationType,
     raisedBedFieldPhotoCompletedNotificationType,
     raisedBedPhotoCompletedNotificationType,
 } from '@gredice/js/notifications';
@@ -9,6 +12,7 @@ import {
     desc,
     eq,
     exists,
+    getTableColumns,
     gt,
     inArray,
     isNotNull,
@@ -76,13 +80,39 @@ export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
 export const maxNotificationReadBatchSize = 200;
 export const maxGardenRaisedBedNotifications = 500;
 
-const raisedBedNotificationVisualRank = sql<number>`case
+const raisedBedNotificationHasImage = sql<boolean>`
+    nullif(btrim(${notifications.imageUrl}), '') is not null
+`;
+const raisedBedNotificationHasIcon = sql<boolean>`
+    nullif(btrim(${notifications.iconUrl}), '') is not null
+`;
+const raisedBedNotificationHasFieldLinkTarget = sql<boolean>`
+    coalesce(${notifications.linkUrl}, '') ~ '[?&]polje=[1-9][0-9]*(&|$)'
+`;
+const raisedBedNotificationHasFieldMetadataTarget = sql<boolean>`
+    coalesce(${notifications.metadata}->>'raisedBedFieldId', '') ~ '^[1-9][0-9]*$'
+    or coalesce(${notifications.metadata}->>'positionIndex', '') ~ '^(0|[1-9][0-9]*)$'
+`;
+const raisedBedNotificationHasFieldOrPlantType = sql<boolean>`
+    ${notifications.type} ~ '(^|_)(field|plant|planting)(_|$)'
+`;
+const raisedBedNotificationKindRank = sql<number>`case
     when ${notifications.type} = ${raisedBedPhotoCompletedNotificationType}
-        and nullif(btrim(${notifications.imageUrl}), '') is not null then 5
-    when ${notifications.type} = ${raisedBedFieldPhotoCompletedNotificationType}
-        and nullif(btrim(${notifications.imageUrl}), '') is not null then 4
-    when nullif(btrim(${notifications.imageUrl}), '') is not null then 3
-    when nullif(btrim(${notifications.iconUrl}), '') is not null then 2
+        and ${raisedBedNotificationHasImage} then 6
+    when ${raisedBedNotificationHasImage}
+        and (
+            ${notifications.type} = ${raisedBedFieldPhotoCompletedNotificationType}
+            or ${raisedBedNotificationHasFieldLinkTarget}
+        ) then 5
+    when ${raisedBedNotificationHasImage} then 4
+    when ${raisedBedNotificationHasIcon} then 3
+    when ${notifications.type} <> ${operationCompletedNotificationType}
+        and ${notifications.type} <> ${operationCanceledNotificationType}
+        and (
+            ${raisedBedNotificationHasFieldMetadataTarget}
+            or ${raisedBedNotificationHasFieldLinkTarget}
+            or ${raisedBedNotificationHasFieldOrPlantType}
+        ) then 2
     else 1
 end`;
 
@@ -4314,23 +4344,68 @@ export async function getUnreadRaisedBedNotificationsForGarden({
     gardenId: number;
     userId: string;
 }): Promise<SelectNotification[]> {
-    return await storage().query.notifications.findMany({
-        where: and(
-            eq(notifications.accountId, accountId),
-            or(eq(notifications.userId, userId), isNull(notifications.userId)),
-            eq(notifications.gardenId, gardenId),
-            isNotNull(notifications.raisedBedId),
-            isNull(notifications.readAt),
-        ),
-        orderBy: [
-            desc(raisedBedNotificationVisualRank),
+    const topNotificationPerRaisedBed = storage()
+        .selectDistinctOn([notifications.raisedBedId], {
+            ...getTableColumns(notifications),
+            kindRank: raisedBedNotificationKindRank.as(
+                'raised_bed_notification_kind_rank',
+            ),
+            priorityRank: raisedBedNotificationPriorityRank.as(
+                'raised_bed_notification_priority_rank',
+            ),
+        })
+        .from(notifications)
+        .where(
+            and(
+                eq(notifications.accountId, accountId),
+                or(
+                    eq(notifications.userId, userId),
+                    isNull(notifications.userId),
+                ),
+                eq(notifications.gardenId, gardenId),
+                isNotNull(notifications.raisedBedId),
+                isNull(notifications.readAt),
+                ne(
+                    notifications.type,
+                    detailedRaisedBedInspectionNotificationType,
+                ),
+                or(
+                    eq(notifications.category, 'garden'),
+                    eq(notifications.category, 'general'),
+                    raisedBedNotificationHasImage,
+                    raisedBedNotificationHasIcon,
+                ),
+            ),
+        )
+        .orderBy(
+            asc(notifications.raisedBedId),
+            desc(raisedBedNotificationKindRank),
             desc(raisedBedNotificationPriorityRank),
             desc(notifications.timestamp),
             desc(notifications.createdAt),
             desc(notifications.id),
-        ],
-        limit: maxGardenRaisedBedNotifications,
-    });
+        )
+        .as('top_notification_per_raised_bed');
+
+    const rows = await storage()
+        .select()
+        .from(topNotificationPerRaisedBed)
+        .orderBy(
+            desc(topNotificationPerRaisedBed.kindRank),
+            desc(topNotificationPerRaisedBed.priorityRank),
+            desc(topNotificationPerRaisedBed.timestamp),
+            desc(topNotificationPerRaisedBed.createdAt),
+            desc(topNotificationPerRaisedBed.id),
+        )
+        .limit(maxGardenRaisedBedNotifications);
+
+    return rows.map(
+        ({
+            kindRank: _kindRank,
+            priorityRank: _priorityRank,
+            ...notification
+        }) => notification,
+    );
 }
 
 export function getNotifications(page: number, limit: number) {
