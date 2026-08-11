@@ -13,6 +13,7 @@ import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
+    isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
     type OutletGardenSlotAssignments,
     outletOfferBlockId,
@@ -156,6 +157,10 @@ export function OutletGardenViewer() {
 
     const displayUnits = useMemo(
         () => getOutletGardenDisplayUnits(layoutOffers),
+        [layoutOffers],
+    );
+    const displayLimited = useMemo(
+        () => isOutletGardenDisplayLimited(layoutOffers),
         [layoutOffers],
     );
     const layoutReady = displayUnits.every((display) =>
@@ -332,6 +337,7 @@ export function OutletGardenViewer() {
             className={`relative grid h-[100dvh] grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] overflow-hidden bg-[#cfeaca] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1 ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-95 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-500'}`}
             data-outlet-garden
             data-outlet-garden-display-count={displayUnits.length}
+            data-outlet-garden-display-limited={displayLimited || undefined}
             data-outlet-garden-exiting={exitTarget ? true : undefined}
             data-outlet-garden-hovered-offer={hoveredOfferId ?? undefined}
         >
@@ -408,6 +414,7 @@ export function OutletGardenViewer() {
             </main>
 
             <OutletGardenOfferBrowser
+                displayLimited={displayLimited}
                 isError={isError}
                 isLoading={isLoading}
                 offers={offers}

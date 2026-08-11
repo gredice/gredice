@@ -5,7 +5,11 @@ import {
     buildOutletGardenStacks,
     getOutletGardenDisplayUnits,
     getOutletGardenOfferPlacement,
+    isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
+    outletGardenMaxDisplayedUnitsPerOffer,
+    outletGardenMaxDisplayedUnitsTotal,
+    outletGardenMaxTrackedTombstones,
     outletGardenRegisteredBlockNames,
     outletOfferBlockId,
     outletOfferDisplayFromBlockId,
@@ -75,6 +79,74 @@ describe('outlet offer block IDs', () => {
         assert.equal(outletOfferIdFromBlockId('outlet-offer:302:01'), null);
         assert.equal(outletOfferIdFromBlockId('outlet-offer:302-extra'), null);
         assert.equal(outletOfferIdFromBlockId('raised-bed:302'), null);
+    });
+});
+
+describe('getOutletGardenDisplayUnits', () => {
+    it('bounds a single pathological stock value before expanding scene objects', () => {
+        const bulkOffer = {
+            id: 900,
+            plantId: 9,
+            plantSortId: 901,
+            remainingQuantity: 1_000_000_000,
+        };
+        const displays = getOutletGardenDisplayUnits([bulkOffer]);
+
+        assert.equal(displays.length, outletGardenMaxDisplayedUnitsPerOffer);
+        assert.equal(displays[0]?.blockId, outletOfferBlockId(900));
+        assert.equal(
+            displays.at(-1)?.blockId,
+            outletOfferBlockId(900, outletGardenMaxDisplayedUnitsPerOffer - 1),
+        );
+        assert.equal(isOutletGardenDisplayLimited([bulkOffer]), true);
+    });
+
+    it('shares the total scene budget fairly while preserving offer grouping', () => {
+        const bulkOffers = Array.from({ length: 6 }, (_, index) => ({
+            id: 910 + index,
+            plantId: index + 1,
+            plantSortId: 910 + index,
+            remainingQuantity: outletGardenMaxDisplayedUnitsPerOffer,
+        }));
+        const displays = getOutletGardenDisplayUnits(bulkOffers);
+        const counts = bulkOffers.map(
+            (offer) =>
+                displays.filter((display) => display.id === offer.id).length,
+        );
+
+        assert.equal(displays.length, outletGardenMaxDisplayedUnitsTotal);
+        assert.deepEqual(
+            getOutletGardenDisplayUnits([...bulkOffers].reverse()),
+            displays,
+        );
+        assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
+        assert.deepEqual(
+            Array.from(new Set(displays.map((display) => display.id))),
+            bulkOffers.map((offer) => offer.id),
+        );
+        assert.equal(isOutletGardenDisplayLimited(bulkOffers), true);
+        assert.equal(
+            isOutletGardenDisplayLimited(bulkOffers.slice(0, 5)),
+            false,
+        );
+        assert.equal(
+            isOutletGardenDisplayLimited([
+                ...bulkOffers.slice(0, 5),
+                { ...bulkOffers[5], remainingQuantity: 1 },
+            ]),
+            true,
+        );
+        assert.equal(
+            isOutletGardenDisplayLimited([
+                {
+                    ...bulkOffers[0],
+                    remainingQuantity:
+                        outletGardenMaxDisplayedUnitsPerOffer + 1,
+                },
+            ]),
+            true,
+        );
+        assert.equal(isOutletGardenDisplayLimited(offers), false);
     });
 });
 
@@ -203,6 +275,114 @@ describe('reconcileOutletGardenSlots', () => {
         assert.equal(reduced, initial);
         assert.equal(restored, initial);
         assert.equal(assignedSlot(restored, quantityOffer.id, 4), 2);
+    });
+
+    it('bounds historical tombstones and reuses fully released plant bays', () => {
+        const offerBatch = (idOffset: number, plantOffset: number) =>
+            Array.from({ length: 6 }, (_, index) => ({
+                id: idOffset + index,
+                plantId: plantOffset + index,
+                plantSortId: idOffset + index,
+                remainingQuantity: outletGardenMaxDisplayedUnitsPerOffer,
+            }));
+        const firstBatch = offerBatch(1_000, 1_000);
+        const secondBatch = offerBatch(2_000, 2_000);
+        const thirdBatch = offerBatch(3_000, 3_000);
+        const firstAssignments = reconcileOutletGardenSlots(
+            new Map(),
+            firstBatch,
+        );
+        const secondAssignments = reconcileOutletGardenSlots(
+            firstAssignments,
+            secondBatch,
+        );
+        const onlySecondTombstones = reconcileOutletGardenSlots(
+            secondAssignments,
+            [],
+        );
+        const thirdAssignments = reconcileOutletGardenSlots(
+            onlySecondTombstones,
+            thirdBatch,
+        );
+
+        assert.equal(firstAssignments.size, outletGardenMaxDisplayedUnitsTotal);
+        assert.equal(
+            secondAssignments.size,
+            outletGardenMaxDisplayedUnitsTotal +
+                outletGardenMaxTrackedTombstones,
+        );
+        assert.equal(
+            onlySecondTombstones.size,
+            outletGardenMaxTrackedTombstones,
+        );
+        assert.equal(
+            thirdAssignments.size,
+            outletGardenMaxDisplayedUnitsTotal +
+                outletGardenMaxTrackedTombstones,
+        );
+        assert.ok(
+            Math.max(
+                ...Array.from(
+                    thirdAssignments.values(),
+                    (assignment) => assignment.slotIndex,
+                ),
+            ) <
+                (outletGardenMaxDisplayedUnitsTotal +
+                    outletGardenMaxTrackedTombstones) *
+                    2,
+        );
+        assert.ok(
+            (assignedSlot(secondAssignments, 2_000) ?? -1) >
+                Math.max(
+                    ...Array.from(
+                        firstAssignments.values(),
+                        (assignment) => assignment.slotIndex,
+                    ),
+                ),
+        );
+        assert.equal(assignedSlot(thirdAssignments, 3_000), 0);
+    });
+
+    it('keeps capped survivor slots stable through repeated stock churn', () => {
+        const stableOffer = {
+            id: 4_000,
+            plantId: 4_000,
+            plantSortId: 4_000,
+            remainingQuantity: outletGardenMaxDisplayedUnitsPerOffer,
+        };
+        const rotatingOffers = (cycle: number) =>
+            Array.from({ length: 5 }, (_, index) => ({
+                id: 5_000 + cycle * 10 + index,
+                plantId: 5_000 + cycle * 10 + index,
+                plantSortId: 5_000 + cycle * 10 + index,
+                remainingQuantity: outletGardenMaxDisplayedUnitsPerOffer,
+            }));
+        const initialOffers = [stableOffer, ...rotatingOffers(0)];
+        let assignments = reconcileOutletGardenSlots(new Map(), initialOffers);
+        const stableSlots = new Map(
+            getOutletGardenDisplayUnits(initialOffers)
+                .filter((display) => display.id === stableOffer.id)
+                .map((display) => [
+                    display.blockId,
+                    assignments.get(display.blockId)?.slotIndex,
+                ]),
+        );
+
+        for (let cycle = 1; cycle <= 10; cycle += 1) {
+            assignments = reconcileOutletGardenSlots(assignments, [
+                stableOffer,
+                ...rotatingOffers(cycle),
+            ]);
+
+            assert.ok(
+                assignments.size <=
+                    outletGardenMaxDisplayedUnitsTotal +
+                        outletGardenMaxTrackedTombstones,
+            );
+            for (const [blockId, slotIndex] of stableSlots) {
+                assert.equal(assignments.get(blockId)?.slotIndex, slotIndex);
+            }
+        }
     });
 });
 

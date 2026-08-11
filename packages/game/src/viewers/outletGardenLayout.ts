@@ -48,6 +48,15 @@ const outletGardenBackMargin = 3;
 const outletGardenVirtualId = -1;
 const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
 
+/**
+ * Outlet tables and pots are individual scene objects. Keep the beta viewer
+ * bounded when an admin enters a bulk quantity or an accidental large value;
+ * the offer browser still shows the complete server-reported stock.
+ */
+export const outletGardenMaxDisplayedUnitsPerOffer = 100;
+export const outletGardenMaxDisplayedUnitsTotal = 500;
+export const outletGardenMaxTrackedTombstones = 500;
+
 const outletGardenPotNames = [
     'PotLowBowl',
     'PotRoundedBowl',
@@ -134,24 +143,81 @@ export function getOutletGardenDisplayUnits(
         }
     }
 
-    return Array.from(offersById.values())
+    const sortedOffers = Array.from(offersById.values())
         .sort(compareOutletGardenOffers)
-        .flatMap((offer) => {
-            const remainingQuantity = Number.isSafeInteger(
-                offer.remainingQuantity,
-            )
-                ? Math.max(0, offer.remainingQuantity)
-                : 0;
+        .map((offer) => ({
+            offer,
+            visualQuantity: Number.isSafeInteger(offer.remainingQuantity)
+                ? Math.min(
+                      outletGardenMaxDisplayedUnitsPerOffer,
+                      Math.max(0, offer.remainingQuantity),
+                  )
+                : 0,
+        }));
+    const displayedQuantityByOffer = new Map<number, number>();
+    let remainingDisplayBudget = outletGardenMaxDisplayedUnitsTotal;
 
-            return Array.from(
-                { length: remainingQuantity },
-                (_, unitIndex) => ({
-                    ...offer,
-                    blockId: outletOfferBlockId(offer.id, unitIndex),
-                    unitIndex,
-                }),
-            );
-        });
+    while (remainingDisplayBudget > 0) {
+        let allocatedInRound = false;
+        for (const { offer, visualQuantity } of sortedOffers) {
+            const displayedQuantity =
+                displayedQuantityByOffer.get(offer.id) ?? 0;
+            if (displayedQuantity >= visualQuantity) {
+                continue;
+            }
+
+            displayedQuantityByOffer.set(offer.id, displayedQuantity + 1);
+            remainingDisplayBudget -= 1;
+            allocatedInRound = true;
+            if (remainingDisplayBudget === 0) {
+                break;
+            }
+        }
+
+        if (!allocatedInRound) {
+            break;
+        }
+    }
+
+    return sortedOffers.flatMap(({ offer }) =>
+        Array.from(
+            { length: displayedQuantityByOffer.get(offer.id) ?? 0 },
+            (_, unitIndex) => ({
+                ...offer,
+                blockId: outletOfferBlockId(offer.id, unitIndex),
+                unitIndex,
+            }),
+        ),
+    );
+}
+
+export function isOutletGardenDisplayLimited(
+    offers: readonly OutletGardenLayoutOffer[],
+) {
+    const offersById = new Map<number, OutletGardenLayoutOffer>();
+    for (const offer of offers) {
+        if (!offersById.has(offer.id)) {
+            offersById.set(offer.id, offer);
+        }
+    }
+
+    let requestedDisplayCount = 0;
+
+    for (const offer of offersById.values()) {
+        const remainingQuantity = Number.isSafeInteger(offer.remainingQuantity)
+            ? Math.max(0, offer.remainingQuantity)
+            : 0;
+        if (remainingQuantity > outletGardenMaxDisplayedUnitsPerOffer) {
+            return true;
+        }
+
+        requestedDisplayCount += remainingQuantity;
+        if (requestedDisplayCount > outletGardenMaxDisplayedUnitsTotal) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function outletGardenPlantBay(slotIndex: number) {
@@ -159,23 +225,45 @@ function outletGardenPlantBay(slotIndex: number) {
 }
 
 /**
- * Keeps every allocated seedling slot, including stock tombstones. Initial
- * units receive plant-grouped bays with all tabletops filled before floor
- * positions. Later stock fills never-used room in an owned plant bay or a new
- * bay. Existing displays therefore never move during the mounted session.
+ * Initial units receive plant-grouped bays with all tabletops filled before
+ * floor positions. Recent stock tombstones retain their slots up to a bounded
+ * history budget; fully released, pruned bays can then be reused. Existing
+ * visible displays never move during the mounted session.
  */
 export function reconcileOutletGardenSlots(
     previousAssignments: OutletGardenSlotAssignments,
     offers: readonly OutletGardenLayoutOffer[],
 ) {
-    const unseenDisplays = getOutletGardenDisplayUnits(offers).filter(
-        (display) => !previousAssignments.has(display.blockId),
+    const displays = getOutletGardenDisplayUnits(offers);
+    const liveBlockIds = new Set(displays.map((display) => display.blockId));
+    const previousTombstoneIds = Array.from(previousAssignments.keys()).filter(
+        (blockId) => !liveBlockIds.has(blockId),
+    );
+    const excessTombstoneCount = Math.max(
+        0,
+        previousTombstoneIds.length - outletGardenMaxTrackedTombstones,
+    );
+    const retainedAssignments =
+        excessTombstoneCount === 0
+            ? previousAssignments
+            : (() => {
+                  const prunedAssignments = new Map(previousAssignments);
+                  for (const blockId of previousTombstoneIds.slice(
+                      0,
+                      excessTombstoneCount,
+                  )) {
+                      prunedAssignments.delete(blockId);
+                  }
+                  return prunedAssignments;
+              })();
+    const unseenDisplays = displays.filter(
+        (display) => !retainedAssignments.has(display.blockId),
     );
     if (unseenDisplays.length === 0) {
-        return previousAssignments;
+        return retainedAssignments;
     }
 
-    const assignments = new Map(previousAssignments);
+    const assignments = new Map(retainedAssignments);
     const usedSlots = new Set(
         Array.from(assignments.values(), (assignment) => assignment.slotIndex),
     );
@@ -188,13 +276,22 @@ export function reconcileOutletGardenSlots(
         existingPlantBays.set(plantKey, plantBays);
     }
 
-    let nextPlantBay =
-        Math.max(
-            -1,
-            ...Array.from(assignments.values(), (assignment) =>
-                outletGardenPlantBay(assignment.slotIndex),
-            ),
-        ) + 1;
+    const reservedPlantBays = new Set(
+        Array.from(assignments.values(), (assignment) =>
+            outletGardenPlantBay(assignment.slotIndex),
+        ),
+    );
+    let nextPlantBay = 0;
+    const reserveNextPlantBay = () => {
+        while (reservedPlantBays.has(nextPlantBay)) {
+            nextPlantBay += 1;
+        }
+
+        const reservedPlantBay = nextPlantBay;
+        reservedPlantBays.add(reservedPlantBay);
+        nextPlantBay += 1;
+        return reservedPlantBay;
+    };
     const unseenDisplaysByPlant = new Map<string, OutletGardenDisplayUnit[]>();
     for (const display of unseenDisplays) {
         const plantKey = outletGardenPlantKey(display);
@@ -221,8 +318,7 @@ export function reconcileOutletGardenSlots(
                 outletGardenOffersPerPlantBay,
         );
         for (let index = 0; index < newPlantBayCount; index += 1) {
-            plantBays.push(nextPlantBay);
-            nextPlantBay += 1;
+            plantBays.push(reserveNextPlantBay());
         }
 
         const availableSlots = plantBays
@@ -260,6 +356,17 @@ export function reconcileOutletGardenSlots(
             });
             usedSlots.add(slotIndex);
         }
+    }
+
+    const currentTombstoneIds = Array.from(assignments.keys()).filter(
+        (blockId) => !liveBlockIds.has(blockId),
+    );
+    const tombstonesToPrune = Math.max(
+        0,
+        currentTombstoneIds.length - outletGardenMaxTrackedTombstones,
+    );
+    for (const blockId of currentTombstoneIds.slice(0, tombstonesToPrune)) {
+        assignments.delete(blockId);
     }
 
     return assignments;

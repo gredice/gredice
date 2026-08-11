@@ -7,6 +7,10 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
+import {
+    outletGardenMaxDisplayedUnitsPerOffer,
+    outletGardenMaxDisplayedUnitsTotal,
+} from './outletGardenLayout';
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
     style: 'currency',
@@ -125,6 +129,7 @@ function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
 
 export type OutletGardenOfferBrowserProps = {
     className?: string;
+    displayLimited?: boolean;
     isError: boolean;
     isLoading: boolean;
     offers: readonly OutletOfferData[];
@@ -137,6 +142,7 @@ export type OutletGardenOfferBrowserProps = {
 
 export function OutletGardenOfferBrowser({
     className,
+    displayLimited = false,
     isError,
     isLoading,
     offers,
@@ -206,8 +212,9 @@ export function OutletGardenOfferBrowser({
                     </Button>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno
-                    dostupnu količinu svake ponude.
+                    {displayLimited
+                        ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
+                        : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
                 </p>
             </header>
 
