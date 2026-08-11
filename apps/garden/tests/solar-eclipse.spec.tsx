@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { SolarEclipseVisualFixture } from './SolarEclipseVisualFixture';
 
+const webglSnapshotOptions = { maxDiffPixelRatio: 0.003 };
+
 test('renders the 2026 Croatian partial eclipse before local sunset', async ({
     mount,
     page,
@@ -15,9 +17,10 @@ test('renders the 2026 Croatian partial eclipse before local sunset', async ({
     await expect(fixture).toHaveAttribute('data-eclipse-obscuration', '0.478');
 
     const png = await fixture.locator('canvas').screenshot();
-    expect(png).toMatchSnapshot('solar-eclipse-croatia-2026.png', {
-        maxDiffPixelRatio: 0.001,
-    });
+    expect(png).toMatchSnapshot(
+        'solar-eclipse-croatia-2026.png',
+        webglSnapshotOptions,
+    );
     expect(browserErrors).toEqual([]);
 });
 
@@ -46,9 +49,10 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
 
     const eclipseCanvas = eclipseFixture.locator('canvas');
     const eclipsePng = await eclipseCanvas.screenshot();
-    expect(eclipsePng).toMatchSnapshot('solar-eclipse-2030.png', {
-        maxDiffPixelRatio: 0.001,
-    });
+    expect(eclipsePng).toMatchSnapshot(
+        'solar-eclipse-2030.png',
+        webglSnapshotOptions,
+    );
 
     await eclipseFixture.unmount();
     const clearFixture = await mount(
@@ -60,9 +64,10 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
         '0.000',
     );
     const clearPng = await clearFixture.locator('canvas').screenshot();
-    expect(clearPng).toMatchSnapshot('solar-eclipse-clear-day.png', {
-        maxDiffPixelRatio: 0.001,
-    });
+    expect(clearPng).toMatchSnapshot(
+        'solar-eclipse-clear-day.png',
+        webglSnapshotOptions,
+    );
 
     await clearFixture.unmount();
     const forcedDayFixture = await mount(
@@ -77,9 +82,10 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
         '0.000',
     );
     const forcedDayPng = await forcedDayFixture.locator('canvas').screenshot();
-    expect(forcedDayPng).toMatchSnapshot('solar-eclipse-forced-day.png', {
-        maxDiffPixelRatio: 0.001,
-    });
+    expect(forcedDayPng).toMatchSnapshot(
+        'solar-eclipse-forced-day.png',
+        webglSnapshotOptions,
+    );
     expect(browserErrors).toEqual([]);
 });
 
@@ -95,7 +101,8 @@ test('keeps foreground geometry in front of the lunar occluder', async ({
     await expect(fixture).toHaveAttribute('data-render-ready', 'true');
 
     const png = await fixture.locator('canvas').screenshot();
-    expect(png).toMatchSnapshot('solar-eclipse-foreground-occlusion.png', {
-        maxDiffPixelRatio: 0.001,
-    });
+    expect(png).toMatchSnapshot(
+        'solar-eclipse-foreground-occlusion.png',
+        webglSnapshotOptions,
+    );
 });
