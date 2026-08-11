@@ -116,6 +116,10 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await page.goto('/outlet');
 
     await expect(page.locator('[data-outlet-garden]')).toBeVisible();
+    await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
+        'data-outlet-garden-display-count',
+        '5',
+    );
     await expect(page.locator('canvas')).toBeVisible();
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
@@ -195,6 +199,10 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.getByRole('button', { name: /Bosiljak Genovese/u }),
     ).toBeVisible();
+    await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
+        'data-outlet-garden-display-count',
+        '3',
+    );
     if (canvasElement) {
         expect(
             await canvas.evaluate(

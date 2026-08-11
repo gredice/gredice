@@ -1,6 +1,20 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OutletGardenOfferBrowserStory } from './OutletGardenOfferBrowserStory';
 
+test('explains when extreme stock is summarized in 3D', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OutletGardenOfferBrowserStory displayLimited />);
+
+    await expect(
+        page.getByText(/najviše 100 sadnica po ponudi i 500 ukupno/u),
+    ).toBeVisible();
+    await expect(
+        page.getByText(/kartice uvijek pokazuju punu dostupnu količinu/u),
+    ).toBeVisible();
+});
+
 test('selects a live offer and exposes truthful read-only details', async ({
     mount,
     page,

@@ -12,9 +12,12 @@ import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
     buildOutletGardenDetail,
+    getOutletGardenDisplayUnits,
+    isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
     type OutletGardenSlotAssignments,
     outletOfferBlockId,
+    outletOfferDisplayFromBlockId,
     outletOfferIdFromBlockId,
     reconcileOutletGardenSlots,
 } from './outletGardenLayout';
@@ -27,6 +30,7 @@ import {
 } from './PublicGardenViewer';
 
 const outletGardenPreviewTime = new Date('2026-06-21T10:00:00.000Z');
+const outletGardenCameraMinZoom = 10;
 
 function OutletGardenScenePlaceholder({ label }: { label: string }) {
     return (
@@ -58,6 +62,7 @@ export function OutletGardenViewer() {
         parseAsInteger,
     );
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
+    const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneReadyTrackedRef = useRef(false);
@@ -82,13 +87,22 @@ export function OutletGardenViewer() {
                             id: offer.id,
                             plantId: offer.plantSort.plant?.id ?? null,
                             plantSortId: offer.plantSort.id,
+                            remainingQuantity: Math.max(
+                                0,
+                                Math.trunc(offer.remainingQuantity),
+                            ),
                         },
                     ]),
                 ).values(),
             )
                 .sort((left, right) => left.id - right.id)
                 .map((offer) =>
-                    [offer.id, offer.plantId ?? 0, offer.plantSortId].join(':'),
+                    [
+                        offer.id,
+                        offer.plantId ?? 0,
+                        offer.plantSortId,
+                        offer.remainingQuantity,
+                    ].join(':'),
                 )
                 .join(','),
         [offers],
@@ -99,16 +113,21 @@ export function OutletGardenViewer() {
         }
 
         return layoutOffersKey.split(',').flatMap((encodedOffer) => {
-            const [offerIdValue, plantIdValue, plantSortIdValue] = encodedOffer
-                .split(':')
-                .map(Number);
+            const [
+                offerIdValue,
+                plantIdValue,
+                plantSortIdValue,
+                remainingQuantityValue,
+            ] = encodedOffer.split(':').map(Number);
             if (
                 !Number.isSafeInteger(offerIdValue) ||
                 !Number.isSafeInteger(plantIdValue) ||
                 !Number.isSafeInteger(plantSortIdValue) ||
+                !Number.isSafeInteger(remainingQuantityValue) ||
                 offerIdValue <= 0 ||
                 plantIdValue < 0 ||
-                plantSortIdValue <= 0
+                plantSortIdValue <= 0 ||
+                remainingQuantityValue < 0
             ) {
                 return [];
             }
@@ -118,6 +137,7 @@ export function OutletGardenViewer() {
                     id: offerIdValue,
                     plantId: plantIdValue === 0 ? null : plantIdValue,
                     plantSortId: plantSortIdValue,
+                    remainingQuantity: remainingQuantityValue,
                 } satisfies OutletGardenLayoutOffer,
             ];
         });
@@ -135,22 +155,35 @@ export function OutletGardenViewer() {
         }
     }, [reconciledSlotAssignments, slotAssignments]);
 
-    const layoutReady = layoutOffers.every((offer) =>
-        reconciledSlotAssignments.has(offer.id),
+    const displayUnits = useMemo(
+        () => getOutletGardenDisplayUnits(layoutOffers),
+        [layoutOffers],
+    );
+    const displayLimited = useMemo(
+        () => isOutletGardenDisplayLimited(layoutOffers),
+        [layoutOffers],
+    );
+    const layoutReady = displayUnits.every((display) =>
+        reconciledSlotAssignments.has(display.blockId),
     );
     const outletGarden = useMemo(
         () => buildOutletGardenDetail(layoutOffers, reconciledSlotAssignments),
         [layoutOffers, reconciledSlotAssignments],
     );
     const interactiveBlockIds = useMemo(
-        () =>
-            new Set(layoutOffers.map((offer) => outletOfferBlockId(offer.id))),
-        [layoutOffers],
+        () => new Set(displayUnits.map((display) => display.blockId)),
+        [displayUnits],
     );
     const selectedOffer =
         offers.find((offer) => offer.id === selectedOfferId) ?? null;
+    const focusedDisplay = focusedBlockId
+        ? outletOfferDisplayFromBlockId(focusedBlockId)
+        : null;
     const selectedBlockId = selectedOffer
-        ? outletOfferBlockId(selectedOffer.id)
+        ? focusedDisplay?.offerId === selectedOffer.id &&
+          interactiveBlockIds.has(focusedBlockId ?? '')
+            ? focusedBlockId
+            : outletOfferBlockId(selectedOffer.id)
         : null;
 
     useEffect(() => {
@@ -202,7 +235,7 @@ export function OutletGardenViewer() {
 
         setSceneInitialView(
             getPublicGardenCaptureInitialView({
-                minimumZoom: 18,
+                minimumZoom: outletGardenCameraMinZoom,
                 stacks: normalizePublicGardenStacks(
                     publicGardenStacksFromResponse(outletGarden.stacks),
                 ),
@@ -272,12 +305,14 @@ export function OutletGardenViewer() {
     }, [exitTarget, router]);
 
     const selectOffer = useCallback(
-        (offerId: number | null) => {
+        (offerId: number | null, blockId?: string) => {
             void setSelectedOfferId(offerId);
             if (offerId === null) {
+                setFocusedBlockId(null);
                 return;
             }
 
+            setFocusedBlockId(blockId ?? outletOfferBlockId(offerId));
             const offer = offers.find((candidate) => candidate.id === offerId);
             track('game_outlet_garden_offer_viewed', {
                 outlet_offer_id: offerId,
@@ -291,7 +326,7 @@ export function OutletGardenViewer() {
         (blockId: string) => {
             const offerId = outletOfferIdFromBlockId(blockId);
             if (offerId !== null) {
-                selectOffer(offerId);
+                selectOffer(offerId, blockId);
             }
         },
         [selectOffer],
@@ -301,6 +336,8 @@ export function OutletGardenViewer() {
         <div
             className={`relative grid h-[100dvh] grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] overflow-hidden bg-[#cfeaca] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1 ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-95 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-500'}`}
             data-outlet-garden
+            data-outlet-garden-display-count={displayUnits.length}
+            data-outlet-garden-display-limited={displayLimited || undefined}
             data-outlet-garden-exiting={exitTarget ? true : undefined}
             data-outlet-garden-hovered-offer={hoveredOfferId ?? undefined}
         >
@@ -311,7 +348,7 @@ export function OutletGardenViewer() {
                 {layoutReady && offers.length > 0 && sceneInitialView ? (
                     <PublicGardenViewer
                         appBaseUrl=""
-                        cameraMinZoom={18}
+                        cameraMinZoom={outletGardenCameraMinZoom}
                         className="size-full"
                         fixedTime={outletGardenPreviewTime}
                         garden={outletGarden}
@@ -377,6 +414,7 @@ export function OutletGardenViewer() {
             </main>
 
             <OutletGardenOfferBrowser
+                displayLimited={displayLimited}
                 isError={isError}
                 isLoading={isLoading}
                 offers={offers}

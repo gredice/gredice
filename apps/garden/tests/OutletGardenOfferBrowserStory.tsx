@@ -104,9 +104,11 @@ export type OutletGardenOfferBrowserStoryState =
     | 'ready';
 
 export function OutletGardenOfferBrowserStory({
+    displayLimited = false,
     initialSelectedOfferId = null,
     state = 'ready',
 }: {
+    displayLimited?: boolean;
     initialSelectedOfferId?: number | null;
     state?: OutletGardenOfferBrowserStoryState;
 }) {
@@ -120,6 +122,7 @@ export function OutletGardenOfferBrowserStory({
         <div className="h-[100dvh] bg-muted">
             <OutletGardenOfferBrowser
                 className="h-full w-full max-w-md"
+                displayLimited={displayLimited}
                 isError={state === 'error'}
                 isLoading={state === 'loading'}
                 offers={state === 'ready' ? outletOffers : []}

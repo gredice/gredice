@@ -7,17 +7,25 @@ export type OutletGardenLayoutOffer = {
     id: number;
     plantId: number | null;
     plantSortId: number;
+    remainingQuantity: number;
 };
 
 export type OutletGardenSlotAssignment = {
+    offerId: number;
     plantKey: string;
     slotIndex: number;
+    unitIndex: number;
 };
 
 export type OutletGardenSlotAssignments = ReadonlyMap<
-    number,
+    string,
     OutletGardenSlotAssignment
 >;
+
+export type OutletGardenDisplayUnit = OutletGardenLayoutOffer & {
+    blockId: string;
+    unitIndex: number;
+};
 
 export type OutletGardenOfferPlacement = {
     aisleRow: number;
@@ -39,6 +47,15 @@ const outletGardenFrontMargin = 3;
 const outletGardenBackMargin = 3;
 const outletGardenVirtualId = -1;
 const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
+
+/**
+ * Outlet tables and pots are individual scene objects. Keep the beta viewer
+ * bounded when an admin enters a bulk quantity or an accidental large value;
+ * the offer browser still shows the complete server-reported stock.
+ */
+export const outletGardenMaxDisplayedUnitsPerOffer = 100;
+export const outletGardenMaxDisplayedUnitsTotal = 500;
+export const outletGardenMaxTrackedTombstones = 500;
 
 const outletGardenPotNames = [
     'PotLowBowl',
@@ -63,22 +80,37 @@ export const outletGardenRegisteredBlockNames = [
     ...outletGardenPotNames,
 ] as const;
 
-export function outletOfferBlockId(offerId: number) {
-    return `${outletOfferBlockIdPrefix}${offerId.toString()}`;
+export function outletOfferBlockId(offerId: number, unitIndex = 0) {
+    const suffix = unitIndex === 0 ? '' : `:${unitIndex.toString()}`;
+    return `${outletOfferBlockIdPrefix}${offerId.toString()}${suffix}`;
 }
 
-export function outletOfferIdFromBlockId(blockId: string) {
+export function outletOfferDisplayFromBlockId(blockId: string) {
     if (!blockId.startsWith(outletOfferBlockIdPrefix)) {
         return null;
     }
 
-    const rawOfferId = blockId.slice(outletOfferBlockIdPrefix.length);
-    if (!/^[1-9]\d*$/u.test(rawOfferId)) {
+    const encodedDisplay = blockId.slice(outletOfferBlockIdPrefix.length);
+    const match = /^([1-9]\d*)(?::([1-9]\d*))?$/u.exec(encodedDisplay);
+    if (!match) {
         return null;
     }
 
-    const offerId = Number(rawOfferId);
-    return Number.isSafeInteger(offerId) ? offerId : null;
+    const offerId = Number(match[1]);
+    const unitIndex = match[2] ? Number(match[2]) : 0;
+    if (
+        !Number.isSafeInteger(offerId) ||
+        !Number.isSafeInteger(unitIndex) ||
+        unitIndex < 0
+    ) {
+        return null;
+    }
+
+    return { offerId, unitIndex };
+}
+
+export function outletOfferIdFromBlockId(blockId: string) {
+    return outletOfferDisplayFromBlockId(blockId)?.offerId ?? null;
 }
 
 function compareOutletGardenOffers(
@@ -101,18 +133,7 @@ function outletGardenPlantKey(offer: OutletGardenLayoutOffer) {
         : `plant:${offer.plantId.toString()}`;
 }
 
-function outletGardenPlantBay(slotIndex: number) {
-    return Math.floor(slotIndex / outletGardenOffersPerPlantBay);
-}
-
-/**
- * Keeps every allocated slot, including removed-offer tombstones. Initial
- * offers receive plant-grouped bays; later offers fill a never-used slot in an
- * existing plant bay when possible, otherwise they get a new bay. Existing
- * displays therefore never move during the mounted session.
- */
-export function reconcileOutletGardenSlots(
-    previousAssignments: OutletGardenSlotAssignments,
+export function getOutletGardenDisplayUnits(
     offers: readonly OutletGardenLayoutOffer[],
 ) {
     const offersById = new Map<number, OutletGardenLayoutOffer>();
@@ -122,14 +143,127 @@ export function reconcileOutletGardenSlots(
         }
     }
 
-    const unseenOffers = Array.from(offersById.values())
-        .filter((offer) => !previousAssignments.has(offer.id))
-        .sort(compareOutletGardenOffers);
-    if (unseenOffers.length === 0) {
-        return previousAssignments;
+    const sortedOffers = Array.from(offersById.values())
+        .sort(compareOutletGardenOffers)
+        .map((offer) => ({
+            offer,
+            visualQuantity: Number.isSafeInteger(offer.remainingQuantity)
+                ? Math.min(
+                      outletGardenMaxDisplayedUnitsPerOffer,
+                      Math.max(0, offer.remainingQuantity),
+                  )
+                : 0,
+        }));
+    const displayedQuantityByOffer = new Map<number, number>();
+    let remainingDisplayBudget = outletGardenMaxDisplayedUnitsTotal;
+
+    while (remainingDisplayBudget > 0) {
+        let allocatedInRound = false;
+        for (const { offer, visualQuantity } of sortedOffers) {
+            const displayedQuantity =
+                displayedQuantityByOffer.get(offer.id) ?? 0;
+            if (displayedQuantity >= visualQuantity) {
+                continue;
+            }
+
+            displayedQuantityByOffer.set(offer.id, displayedQuantity + 1);
+            remainingDisplayBudget -= 1;
+            allocatedInRound = true;
+            if (remainingDisplayBudget === 0) {
+                break;
+            }
+        }
+
+        if (!allocatedInRound) {
+            break;
+        }
     }
 
-    const assignments = new Map(previousAssignments);
+    return sortedOffers.flatMap(({ offer }) =>
+        Array.from(
+            { length: displayedQuantityByOffer.get(offer.id) ?? 0 },
+            (_, unitIndex) => ({
+                ...offer,
+                blockId: outletOfferBlockId(offer.id, unitIndex),
+                unitIndex,
+            }),
+        ),
+    );
+}
+
+export function isOutletGardenDisplayLimited(
+    offers: readonly OutletGardenLayoutOffer[],
+) {
+    const offersById = new Map<number, OutletGardenLayoutOffer>();
+    for (const offer of offers) {
+        if (!offersById.has(offer.id)) {
+            offersById.set(offer.id, offer);
+        }
+    }
+
+    let requestedDisplayCount = 0;
+
+    for (const offer of offersById.values()) {
+        const remainingQuantity = Number.isSafeInteger(offer.remainingQuantity)
+            ? Math.max(0, offer.remainingQuantity)
+            : 0;
+        if (remainingQuantity > outletGardenMaxDisplayedUnitsPerOffer) {
+            return true;
+        }
+
+        requestedDisplayCount += remainingQuantity;
+        if (requestedDisplayCount > outletGardenMaxDisplayedUnitsTotal) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function outletGardenPlantBay(slotIndex: number) {
+    return Math.floor(slotIndex / outletGardenOffersPerPlantBay);
+}
+
+/**
+ * Initial units receive plant-grouped bays with all tabletops filled before
+ * floor positions. Recent stock tombstones retain their slots up to a bounded
+ * history budget; fully released, pruned bays can then be reused. Existing
+ * visible displays never move during the mounted session.
+ */
+export function reconcileOutletGardenSlots(
+    previousAssignments: OutletGardenSlotAssignments,
+    offers: readonly OutletGardenLayoutOffer[],
+) {
+    const displays = getOutletGardenDisplayUnits(offers);
+    const liveBlockIds = new Set(displays.map((display) => display.blockId));
+    const previousTombstoneIds = Array.from(previousAssignments.keys()).filter(
+        (blockId) => !liveBlockIds.has(blockId),
+    );
+    const excessTombstoneCount = Math.max(
+        0,
+        previousTombstoneIds.length - outletGardenMaxTrackedTombstones,
+    );
+    const retainedAssignments =
+        excessTombstoneCount === 0
+            ? previousAssignments
+            : (() => {
+                  const prunedAssignments = new Map(previousAssignments);
+                  for (const blockId of previousTombstoneIds.slice(
+                      0,
+                      excessTombstoneCount,
+                  )) {
+                      prunedAssignments.delete(blockId);
+                  }
+                  return prunedAssignments;
+              })();
+    const unseenDisplays = displays.filter(
+        (display) => !retainedAssignments.has(display.blockId),
+    );
+    if (unseenDisplays.length === 0) {
+        return retainedAssignments;
+    }
+
+    const assignments = new Map(retainedAssignments);
     const usedSlots = new Set(
         Array.from(assignments.values(), (assignment) => assignment.slotIndex),
     );
@@ -142,24 +276,35 @@ export function reconcileOutletGardenSlots(
         existingPlantBays.set(plantKey, plantBays);
     }
 
-    let nextPlantBay =
-        Math.max(
-            -1,
-            ...Array.from(assignments.values(), (assignment) =>
-                outletGardenPlantBay(assignment.slotIndex),
-            ),
-        ) + 1;
-    const unseenOffersByPlant = new Map<string, OutletGardenLayoutOffer[]>();
-    for (const offer of unseenOffers) {
-        const plantKey = outletGardenPlantKey(offer);
-        const plantOffers = unseenOffersByPlant.get(plantKey) ?? [];
-        plantOffers.push(offer);
-        unseenOffersByPlant.set(plantKey, plantOffers);
+    const reservedPlantBays = new Set(
+        Array.from(assignments.values(), (assignment) =>
+            outletGardenPlantBay(assignment.slotIndex),
+        ),
+    );
+    let nextPlantBay = 0;
+    const reserveNextPlantBay = () => {
+        while (reservedPlantBays.has(nextPlantBay)) {
+            nextPlantBay += 1;
+        }
+
+        const reservedPlantBay = nextPlantBay;
+        reservedPlantBays.add(reservedPlantBay);
+        nextPlantBay += 1;
+        return reservedPlantBay;
+    };
+    const unseenDisplaysByPlant = new Map<string, OutletGardenDisplayUnit[]>();
+    for (const display of unseenDisplays) {
+        const plantKey = outletGardenPlantKey(display);
+        const plantDisplays = unseenDisplaysByPlant.get(plantKey) ?? [];
+        plantDisplays.push(display);
+        unseenDisplaysByPlant.set(plantKey, plantDisplays);
     }
 
-    for (const [plantKey, plantOffers] of unseenOffersByPlant) {
-        const availableSlots = Array.from(existingPlantBays.get(plantKey) ?? [])
-            .sort((left, right) => left - right)
+    for (const [plantKey, plantDisplays] of unseenDisplaysByPlant) {
+        const plantBays = Array.from(
+            existingPlantBays.get(plantKey) ?? [],
+        ).sort((left, right) => left - right);
+        const availableExistingSlotCount = plantBays
             .flatMap((plantBay) =>
                 Array.from(
                     { length: outletGardenOffersPerPlantBay },
@@ -167,25 +312,61 @@ export function reconcileOutletGardenSlots(
                         plantBay * outletGardenOffersPerPlantBay + offset,
                 ),
             )
-            .filter((slotIndex) => !usedSlots.has(slotIndex));
+            .filter((slotIndex) => !usedSlots.has(slotIndex)).length;
+        const newPlantBayCount = Math.ceil(
+            Math.max(0, plantDisplays.length - availableExistingSlotCount) /
+                outletGardenOffersPerPlantBay,
+        );
+        for (let index = 0; index < newPlantBayCount; index += 1) {
+            plantBays.push(reserveNextPlantBay());
+        }
 
-        for (const offer of plantOffers) {
-            let slotIndex = availableSlots.shift();
+        const availableSlots = plantBays
+            .flatMap((plantBay) =>
+                Array.from(
+                    { length: outletGardenOffersPerPlantBay },
+                    (_, offset) =>
+                        plantBay * outletGardenOffersPerPlantBay + offset,
+                ),
+            )
+            .filter((slotIndex) => !usedSlots.has(slotIndex))
+            .sort((left, right) => {
+                const leftOffset = left % outletGardenOffersPerPlantBay;
+                const rightOffset = right % outletGardenOffersPerPlantBay;
+                const leftSurface = leftOffset < 2 ? 0 : 1;
+                const rightSurface = rightOffset < 2 ? 0 : 1;
+                return (
+                    leftSurface - rightSurface ||
+                    outletGardenPlantBay(left) - outletGardenPlantBay(right) ||
+                    leftOffset - rightOffset
+                );
+            });
+
+        for (const display of plantDisplays) {
+            const slotIndex = availableSlots.shift();
             if (slotIndex === undefined) {
-                slotIndex = nextPlantBay * outletGardenOffersPerPlantBay;
-                nextPlantBay += 1;
-                for (
-                    let offset = 1;
-                    offset < outletGardenOffersPerPlantBay;
-                    offset += 1
-                ) {
-                    availableSlots.push(slotIndex + offset);
-                }
+                continue;
             }
 
-            assignments.set(offer.id, { plantKey, slotIndex });
+            assignments.set(display.blockId, {
+                offerId: display.id,
+                plantKey,
+                slotIndex,
+                unitIndex: display.unitIndex,
+            });
             usedSlots.add(slotIndex);
         }
+    }
+
+    const currentTombstoneIds = Array.from(assignments.keys()).filter(
+        (blockId) => !liveBlockIds.has(blockId),
+    );
+    const tombstonesToPrune = Math.max(
+        0,
+        currentTombstoneIds.length - outletGardenMaxTrackedTombstones,
+    );
+    for (const blockId of currentTombstoneIds.slice(0, tombstonesToPrune)) {
+        assignments.delete(blockId);
     }
 
     return assignments;
@@ -203,11 +384,8 @@ export function getOutletGardenOfferPlacement(
     const aisleRow = Math.floor(plantBay / outletGardenPlantBaysPerAisleRow);
     const side = plantBay % outletGardenPlantBaysPerAisleRow === 0 ? -1 : 1;
     const slotInPlantBay = slotIndex % outletGardenOffersPerPlantBay;
-    const y =
-        aisleRow * outletGardenAisleRowSpacing + Math.floor(slotInPlantBay / 2);
-    const startsOnTable = side < 0;
-    const surface =
-        (slotInPlantBay % 2 === 0) === startsOnTable ? 'table' : 'floor';
+    const y = aisleRow * outletGardenAisleRowSpacing + (slotInPlantBay % 2);
+    const surface = slotInPlantBay < 2 ? 'table' : 'floor';
     const distance =
         surface === 'table'
             ? outletGardenTableDistance
@@ -333,37 +511,37 @@ export function buildOutletGardenStacks(
         }
     }
 
-    const offersById = new Map(offers.map((offer) => [offer.id, offer]));
-    const placedOffers = Array.from(offersById.values())
-        .map((offer) => ({
-            assignment: assignments.get(offer.id),
-            offer,
+    const placedDisplays = getOutletGardenDisplayUnits(offers)
+        .map((display) => ({
+            assignment: assignments.get(display.blockId),
+            display,
         }))
         .filter(
             (
                 entry,
             ): entry is {
                 assignment: OutletGardenSlotAssignment;
-                offer: OutletGardenLayoutOffer;
+                display: OutletGardenDisplayUnit;
             } => entry.assignment !== undefined,
         )
         .sort(
             (left, right) =>
                 left.assignment.slotIndex - right.assignment.slotIndex ||
-                left.offer.id - right.offer.id,
+                left.display.id - right.display.id ||
+                left.display.unitIndex - right.display.unitIndex,
         );
 
-    for (const { assignment, offer } of placedOffers) {
+    for (const { assignment, display } of placedDisplays) {
         const position = getOutletGardenOfferPlacement(assignment.slotIndex);
         const rotation =
             position.surface === 'floor'
                 ? position.x < 0
                     ? 1
                     : 3
-                : ((offer.plantSortId % 4) + 4) % 4;
+                : ((display.plantSortId % 4) + 4) % 4;
         addBlock(stacksByPosition, position.x, position.y, {
-            id: outletOfferBlockId(offer.id),
-            name: outletGardenPotName(offer.plantSortId),
+            id: display.blockId,
+            name: outletGardenPotName(display.plantSortId),
             rotation,
         });
     }
