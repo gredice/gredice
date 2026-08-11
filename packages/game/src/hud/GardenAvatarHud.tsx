@@ -3,9 +3,9 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import {
     ArrowUp,
-    Camera,
     ChevronsDown,
     Close,
+    Eye,
     Footprints,
     LogOut,
     UserCircle,
@@ -86,7 +86,7 @@ export function GardenAvatarHud() {
                     title={
                         view === 'first-person'
                             ? 'Prikaži pogled iz trećeg lica'
-                            : 'Prikaži POV pogled'
+                            : 'Prikaži pogled iz prvog lica'
                     }
                     variant="plain"
                     className={avatarHudButtonClassName}
@@ -101,7 +101,7 @@ export function GardenAvatarHud() {
                     {view === 'first-person' ? (
                         <UserCircle className="size-5" />
                     ) : (
-                        <Camera className="size-5" />
+                        <Eye className="size-5" />
                     )}
                 </IconButton>
                 <IconButton

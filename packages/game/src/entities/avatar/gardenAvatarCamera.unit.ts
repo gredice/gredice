@@ -6,7 +6,46 @@ import {
     PerspectiveCamera,
     Vector3,
 } from 'three';
-import { getGardenAvatarPerspectiveEntryPosition } from './gardenAvatarCamera';
+import {
+    getGardenAvatarPerspectiveEntryPosition,
+    getGardenAvatarThirdPersonCameraDistance,
+    getGardenAvatarThirdPersonCameraTargetHeight,
+} from './gardenAvatarCamera';
+
+test('keeps the third-person camera farther back on portrait screens', () => {
+    const landscapeDistance = getGardenAvatarThirdPersonCameraDistance({
+        aspect: 16 / 9,
+        crouchAmount: 0,
+    });
+    const portraitDistance = getGardenAvatarThirdPersonCameraDistance({
+        aspect: 9 / 16,
+        crouchAmount: 0,
+    });
+
+    assert.equal(landscapeDistance, 3.05);
+    assert.ok(Math.abs(portraitDistance - 3.6) < 0.000_001);
+    assert.ok(portraitDistance > landscapeDistance);
+});
+
+test('clamps third-person camera framing inputs', () => {
+    assert.ok(
+        Math.abs(
+            getGardenAvatarThirdPersonCameraDistance({
+                aspect: 9 / 16,
+                crouchAmount: 2,
+            }) - 3.35,
+        ) < 0.000_001,
+    );
+    assert.equal(
+        getGardenAvatarThirdPersonCameraDistance({
+            aspect: 0,
+            crouchAmount: -1,
+        }),
+        3.05,
+    );
+    assert.equal(getGardenAvatarThirdPersonCameraTargetHeight(-1), 1.08);
+    assert.equal(getGardenAvatarThirdPersonCameraTargetHeight(2), 0.82);
+});
 
 test('matches the overview framing when entering the perspective camera', () => {
     const aspect = 16 / 9;

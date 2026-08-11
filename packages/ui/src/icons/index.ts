@@ -52,6 +52,7 @@ export {
     EqualNot,
     Euro,
     ExternalLink,
+    Eye,
     Fence,
     File,
     FileInput,
