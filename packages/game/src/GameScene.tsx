@@ -60,6 +60,7 @@ import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundP
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
 import { DetailedRaisedBedInspectionModal } from './hud/DetailedRaisedBedInspectionModal';
+import { RaisedBedNotificationBubbles } from './hud/RaisedBedNotificationBubbles';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
@@ -677,6 +678,15 @@ export function GameScene({
                                                 }
                                             />
                                         </Suspense>
+                                    )}
+                                {!hideHud &&
+                                    renderDetails &&
+                                    zoom !== 'far' &&
+                                    !openedDetailedInspectionForCurrentGarden && (
+                                        <RaisedBedNotificationBubbles
+                                            blockData={blockData}
+                                            garden={garden}
+                                        />
                                     )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>

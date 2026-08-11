@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
+    raisedBedFieldPhotoCompletedNotificationType,
+    raisedBedPhotoCompletedNotificationType,
+} from '@gredice/js/notifications';
+import {
     and,
     asc,
     desc,
@@ -70,6 +74,25 @@ type NotificationDatabaseClient = StorageClient | TransactionClient;
 // Croatian fallback label for legacy web-push subscriptions without client device metadata.
 export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
 export const maxNotificationReadBatchSize = 200;
+export const maxGardenRaisedBedNotifications = 500;
+
+const raisedBedNotificationVisualRank = sql<number>`case
+    when ${notifications.type} = ${raisedBedPhotoCompletedNotificationType}
+        and nullif(btrim(${notifications.imageUrl}), '') is not null then 5
+    when ${notifications.type} = ${raisedBedFieldPhotoCompletedNotificationType}
+        and nullif(btrim(${notifications.imageUrl}), '') is not null then 4
+    when nullif(btrim(${notifications.imageUrl}), '') is not null then 3
+    when nullif(btrim(${notifications.iconUrl}), '') is not null then 2
+    else 1
+end`;
+
+const raisedBedNotificationPriorityRank = sql<number>`case ${notifications.priority}
+    when 'critical' then 4
+    when 'high' then 3
+    when 'normal' then 2
+    when 'low' then 1
+    else 0
+end`;
 
 export type NotificationDeliveryDecision = {
     accountId: string;
@@ -158,6 +181,10 @@ export type NotificationRolloutDiagnostics = {
 };
 
 export type CreateNotificationOptions = {
+    compatibleExistingClassifications?: readonly {
+        category: string;
+        type: string;
+    }[];
     idempotencyKey?: string;
     now?: Date;
     routeDelivery?: boolean;
@@ -1433,12 +1460,21 @@ async function createNotificationWithDatabase(
 
     if (!insertedId) {
         const existing = await getNotificationWithDatabase(db, notificationId);
+        const expectedCategory = notification.category ?? 'general';
+        const expectedType = notification.type ?? 'general';
+        const hasCompatibleExistingClassification =
+            options.compatibleExistingClassifications?.some(
+                (classification) =>
+                    existing?.category === classification.category &&
+                    existing.type === classification.type,
+            ) ?? false;
         if (
             !existing ||
             existing.accountId !== notification.accountId ||
             existing.userId !== (notification.userId ?? null) ||
-            existing.category !== (notification.category ?? 'general') ||
-            existing.type !== (notification.type ?? 'general')
+            (!hasCompatibleExistingClassification &&
+                (existing.category !== expectedCategory ||
+                    existing.type !== expectedType))
         ) {
             throw new Error(
                 'Notification idempotency key was reused for a different target.',
@@ -4266,6 +4302,34 @@ export async function getUnreadNotificationsByType({
             desc(notifications.id),
         ],
         limit: boundedLimit,
+    });
+}
+
+export async function getUnreadRaisedBedNotificationsForGarden({
+    accountId,
+    gardenId,
+    userId,
+}: {
+    accountId: string;
+    gardenId: number;
+    userId: string;
+}): Promise<SelectNotification[]> {
+    return await storage().query.notifications.findMany({
+        where: and(
+            eq(notifications.accountId, accountId),
+            or(eq(notifications.userId, userId), isNull(notifications.userId)),
+            eq(notifications.gardenId, gardenId),
+            isNotNull(notifications.raisedBedId),
+            isNull(notifications.readAt),
+        ),
+        orderBy: [
+            desc(raisedBedNotificationVisualRank),
+            desc(raisedBedNotificationPriorityRank),
+            desc(notifications.timestamp),
+            desc(notifications.createdAt),
+            desc(notifications.id),
+        ],
+        limit: maxGardenRaisedBedNotifications,
     });
 }
 

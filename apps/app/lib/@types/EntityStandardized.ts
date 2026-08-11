@@ -15,6 +15,7 @@ export type EntityStandardized = {
         seedingDistanceMax?: number; // in cm
         duration?: number | string;
         application?: string; // farm, garden, raisedBedFull, raisedBed1m, plant
+        visualReward?: string;
         category?: {
             information?: {
                 name?: string | null;
