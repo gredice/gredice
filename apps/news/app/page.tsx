@@ -1,20 +1,20 @@
 import { Container } from '@gredice/ui/Container';
 import type { Metadata, Route } from 'next';
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
 import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
 import { NewsCard } from '../components/NewsCard';
 import { getBlogPosts, uniqueNewsValues } from '../lib/news';
 import { blogArchiveMetadata } from '../lib/newsArchiveMetadata';
+import {
+    isKnownNewsFilter,
+    normalizeNewsFilterValue,
+} from '../lib/newsFilters';
 import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = blogArchiveMetadata;
-
-function normalizeFilterValue(value: string | undefined) {
-    return value?.trim().toLocaleLowerCase('hr-HR');
-}
 
 function changelogTagRedirectPath(tag: string): Route {
     return `/sto-je-novo?tag=${encodeURIComponent(tag)}` as Route;
@@ -35,25 +35,28 @@ export default async function NewsHomePage({
     const { category, tag, type } = await searchParams;
     const requestedTag = tag?.trim();
     if (requestedTag) {
-        redirect(changelogTagRedirectPath(requestedTag));
+        permanentRedirect(changelogTagRedirectPath(requestedTag));
     }
 
     if (type === 'changelog') {
-        redirect('/sto-je-novo');
+        permanentRedirect('/sto-je-novo');
     }
     if (type) {
-        redirect(blogArchivePath(category));
+        permanentRedirect(blogArchivePath(category));
     }
 
-    const activeCategory = category;
-    const normalizedCategory = normalizeFilterValue(activeCategory);
+    const activeCategory = category?.trim() || undefined;
+    const normalizedCategory = normalizeNewsFilterValue(activeCategory);
     const allPosts = await getBlogPosts();
     const currentFilters = { category: activeCategory };
     const categories = uniqueNewsValues(allPosts, (item) => item.category);
+    if (!isKnownNewsFilter(categories, activeCategory)) {
+        permanentRedirect('/');
+    }
     const visiblePosts = allPosts.filter((post) => {
         if (
             normalizedCategory &&
-            normalizeFilterValue(post.category ?? undefined) !==
+            normalizeNewsFilterValue(post.category ?? undefined) !==
                 normalizedCategory
         ) {
             return false;

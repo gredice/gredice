@@ -20,6 +20,7 @@ import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
+import { plantArchivePath } from './plantArchivePath';
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
@@ -97,7 +98,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'popis',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
@@ -112,7 +117,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'kalendar',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
