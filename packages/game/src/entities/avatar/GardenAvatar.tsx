@@ -33,7 +33,11 @@ import {
 } from '../animals/ActorSpeechBubble';
 import { playerSpeechMessages } from '../animals/actorSpeechMessages';
 import { GardenAvatarCollisionDebug } from './GardenAvatarCollisionDebug';
-import { getGardenAvatarPerspectiveEntryPosition } from './gardenAvatarCamera';
+import {
+    getGardenAvatarPerspectiveEntryPosition,
+    getGardenAvatarThirdPersonCameraDistance,
+    getGardenAvatarThirdPersonCameraTargetHeight,
+} from './gardenAvatarCamera';
 import {
     createGardenAvatarCollisionWorld,
     findGardenAvatarRoute,
@@ -465,14 +469,18 @@ function GardenAvatarCamera({
             );
             lookTargetRef.current.set(
                 actor.position.x,
-                actor.position.y + MathUtils.lerp(0.89, 0.64, crouchAmount),
+                actor.position.y +
+                    getGardenAvatarThirdPersonCameraTargetHeight(crouchAmount),
                 actor.position.z,
             );
             desiredPositionRef.current
                 .copy(lookTargetRef.current)
                 .addScaledVector(
                     orbitDirection,
-                    -MathUtils.lerp(2.45, 2.2, crouchAmount),
+                    -getGardenAvatarThirdPersonCameraDistance({
+                        aspect: camera.aspect,
+                        crouchAmount,
+                    }),
                 );
             desiredPositionRef.current.y = Math.max(
                 desiredPositionRef.current.y,
