@@ -9,18 +9,20 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { formatPrice } from '../../lib/formatPrice';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
 import { DeliveryZoneMap } from './DeliveryZoneMap';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Dostava',
     description: 'Sve informacije o dostavi povrća iz tvojih gredica.',
-};
+    path: KnownPages.Delivery,
+    eyebrow: 'Dostava uroda',
+});
 
 const deliveryLocations = [
     { name: 'Velika Gorica', distance: 20 },

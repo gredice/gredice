@@ -12,6 +12,7 @@ import { StructuredDataScript } from '../../../components/shared/seo/StructuredD
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -38,15 +39,16 @@ export async function generateMetadata(
         matchesPageAlias(plant.information.name, alias),
     );
     if (!plant) {
-        return {
-            title: 'Biljka nije pronađena',
-            description: 'Biljka nije pronađena',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: plant.information.name,
         description: plant.information.description,
-    };
+        path: KnownPages.Plant(plant.slug || plant.information.name),
+        category: 'Biljka',
+        imageUrl: plant.image?.cover?.url,
+        imageAlt: `Fotografija biljke ${plant.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -86,7 +88,8 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         undefined,
         operations,
     );
-    const plantUrl = `https://www.gredice.com${KnownPages.Plant(alias)}`;
+    const plantPath = KnownPages.Plant(plant.slug || plant.information.name);
+    const plantUrl = `https://www.gredice.com${plantPath}`;
     const plantPrice = plant.prices?.perPlant;
 
     // Map section IDs to their corresponding attribute cards
@@ -165,7 +168,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     overviewEditTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
                 />
                 <PlantSortsList
@@ -187,7 +190,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             )}
                             editEntityTypeName="plant"
                             editEntityId={plant.id}
-                            editPublicPath={KnownPages.Plant(alias)}
+                            editPublicPath={plantPath}
                             editSectionKey={section.id}
                         />
                     ))}
@@ -199,7 +202,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     editTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
                     relationships={plant.relationships}
                 />

@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getSeedBrandsData } from '../../../lib/seeds/getSeedBrandsData';
 import { getSeedsData } from '../../../lib/seeds/getSeedsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { SeedBrandsGallery } from './SeedBrandsGallery';
 
@@ -15,29 +16,16 @@ const pageDescription =
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: pageTitle,
     description: pageDescription,
-    alternates: {
-        canonical: KnownPages.SeedBrands,
-    },
-    openGraph: {
-        type: 'website',
-        locale: 'hr_HR',
-        title: pageTitle,
-        description: pageDescription,
-        url: KnownPages.SeedBrands,
-    },
-    twitter: {
-        card: 'summary',
-        title: pageTitle,
-        description: pageDescription,
-    },
+    path: KnownPages.SeedBrands,
+    category: 'Katalog sjemena',
     robots: {
         index: true,
         follow: true,
     },
-};
+});
 
 export default async function SeedBrandsPage() {
     const [brands, seeds] = await Promise.all([

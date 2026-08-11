@@ -11,6 +11,7 @@ import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { createPublicMetadata } from '../lib/seo/publicMetadata';
 import { LayoutContainer } from './LayoutContainer';
 
 const montserrat = Montserrat({
@@ -29,15 +30,27 @@ const gardenModelPreloadUrls = [
     'BlockTerrainReverseCorner',
 ].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
 
+const homepageDescription =
+    'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.';
+
 export function generateMetadata(): Metadata {
+    const publicMetadata = createPublicMetadata({
+        title: 'Gredice - vrt po tvom',
+        description: homepageDescription,
+        path: '/',
+        eyebrow: 'Tvoj digitalni vrt',
+        imageUrl: 'https://www.gredice.com/seo-fallback.png',
+        imageAlt: 'Digitalni vrt Gredice s podignutom gredicom',
+    });
+
     return {
+        ...publicMetadata,
         metadataBase: new URL('https://www.gredice.com'),
         title: {
             template: '%s | Gredice',
             default: 'Gredice - vrt po tvom',
         },
-        description:
-            'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.',
+        description: homepageDescription,
         keywords: [
             'gredice',
             'gredica',
@@ -65,12 +78,6 @@ export function generateMetadata(): Metadata {
             'virtualni vrt',
             'virtualno',
         ],
-        openGraph: {
-            type: 'website',
-            title: 'Gredice - vrt po tvom',
-            url: 'https://www.gredice.com',
-            siteName: 'Gredice - vrt po tvom',
-        },
     };
 }
 

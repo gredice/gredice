@@ -4,6 +4,7 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { PublicGardenLikeButton } from './PublicGardenLikeButton';
 import { PublicGardenPreviewBackfill } from './PublicGardenPreviewBackfill';
@@ -18,18 +19,12 @@ const pageDescription =
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Vrtovi',
     description: pageDescription,
-    alternates: {
-        canonical: KnownPages.PublicGardens,
-    },
-    openGraph: {
-        title: 'Vrtovi',
-        description: pageDescription,
-        url: KnownPages.PublicGardens,
-    },
-};
+    path: KnownPages.PublicGardens,
+    category: 'Javni vrtovi',
+});
 
 export default async function PublicGardensPage() {
     const gardens = await getPublicGardensForWww();

@@ -7,6 +7,7 @@ import { SectionsView } from '@gredice/ui/cms';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
@@ -24,6 +25,12 @@ import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+    alternates: {
+        canonical: KnownPages.Landing,
+    },
+};
 
 const sectionsData: SectionData[] = [
     {

@@ -12,6 +12,8 @@ test('news pages read CMS data from storage without API fallbacks', () => {
     );
 
     assert.match(source, /getCmsPages/u);
+    assert.match(source, /unstable_cache/u);
+    assert.match(source, /revalidate: 3600/u);
     assert.doesNotMatch(source, httpDataSourcePattern);
     assert.doesNotMatch(source, /return \[\];/u);
 });

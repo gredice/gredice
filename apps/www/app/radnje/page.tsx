@@ -11,6 +11,7 @@ import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getOperationPriceAvailability } from '../../lib/operationPricing';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { OperationsList } from './OperationsList';
@@ -21,10 +22,12 @@ import {
 
 const pageDescription = `Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`;
 export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Radnje',
     description: pageDescription,
-};
+    path: KnownPages.Operations,
+    category: 'Vrtlarske radnje',
+});
 
 export default async function OperationsPage({
     searchParams,

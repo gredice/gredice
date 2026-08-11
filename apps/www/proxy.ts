@@ -13,6 +13,10 @@ import {
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
 } from './lib/posthog-server';
+import {
+    canonicalLegacyNewsQueryPath,
+    canonicalPlantArchiveQueryPath,
+} from './src/canonicalQueryRedirects';
 import { canonicalLegacyNewsPathname } from './src/newsPaths';
 import { toPageAlias } from './src/pageAliases';
 
@@ -126,9 +130,26 @@ const proxyHandler: NextProxy = async (
     request: NextRequest,
     event: NextFetchEvent,
 ) => {
+    const canonicalQueryPath =
+        canonicalLegacyNewsQueryPath(
+            request.nextUrl.pathname,
+            request.nextUrl.searchParams,
+        ) ??
+        canonicalPlantArchiveQueryPath(
+            request.nextUrl.pathname,
+            request.nextUrl.searchParams,
+        );
     const canonicalPathname = getCanonicalPathname(request.nextUrl.pathname);
     let response: Response;
-    if (canonicalPathname && canonicalPathname !== request.nextUrl.pathname) {
+    if (canonicalQueryPath) {
+        response = NextResponse.redirect(
+            new URL(canonicalQueryPath, request.nextUrl),
+            308,
+        );
+    } else if (
+        canonicalPathname &&
+        canonicalPathname !== request.nextUrl.pathname
+    ) {
         const url = request.nextUrl.clone();
         // Next derives implicit cache tags from the pathname.
         // Redirect slug-backed routes before rendering so headers stay ASCII-safe.

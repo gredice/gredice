@@ -3,13 +3,16 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Uvjeti korištenja',
     description:
         'Uvjeti korištenja web stranice Gredice, uključujući pravila za suncokrete i Gredice saldo.',
-};
+    path: KnownPages.LegalTerms,
+    eyebrow: 'Pravni dokument',
+});
 
 export default function UvjetiKoristenjaPage() {
     return (

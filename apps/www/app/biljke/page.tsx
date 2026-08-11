@@ -14,17 +14,21 @@ import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoS
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
+import { plantArchivePath } from './plantArchivePath';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
     description:
         'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
-};
+    path: KnownPages.Plants,
+    category: 'Katalog biljaka',
+});
 
 export default async function PlantsPage({
     searchParams,
@@ -94,7 +98,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'popis',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
@@ -109,7 +117,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'kalendar',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">

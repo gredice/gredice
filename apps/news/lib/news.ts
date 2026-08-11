@@ -7,6 +7,7 @@ import {
     parseCmsPageContent,
     type SelectCmsPage,
 } from '@gredice/storage';
+import { unstable_cache } from 'next/cache';
 
 type SelectCmsNewsPage = Omit<SelectCmsPage, 'contentKind' | 'publishedAt'> & {
     contentKind: CmsNewsContentKind;
@@ -131,13 +132,24 @@ function newsPageSummary(page: SelectCmsNewsPage) {
     };
 }
 
-function newsPageDetail(page: SelectCmsNewsPage) {
+function newsPageSourceEntry(page: SelectCmsNewsPage) {
     const content = pageContent(page);
     return {
-        ...newsPageSummary(page),
+        summary: newsPageSummary(page),
         content: content.sections,
         renderMode: content.renderMode,
         renderMaxWidth: content.renderMaxWidth,
+    };
+}
+
+type NewsPageSourceEntry = ReturnType<typeof newsPageSourceEntry>;
+
+function newsPageDetail(entry: NewsPageSourceEntry) {
+    return {
+        ...entry.summary,
+        content: entry.content,
+        renderMode: entry.renderMode,
+        renderMaxWidth: entry.renderMaxWidth,
     };
 }
 
@@ -156,15 +168,28 @@ function isPublishedNewsPage(
     return page.contentKind === contentKind && page.publishedAt !== null;
 }
 
-async function getPublishedNewsSourcePages(contentKind: CmsNewsContentKind) {
-    const pages = await getCmsPages({ state: 'published' });
-    return pages
-        .filter((page) => isPublishedNewsPage(page, contentKind))
-        .sort(
-            (left, right) =>
-                publishedTime(right) - publishedTime(left) ||
-                right.id - left.id,
-        );
+const getPublishedNewsSourceEntries = unstable_cache(
+    async () => {
+        const pages = await getCmsPages({ state: 'published' });
+        return pages
+            .filter(
+                (page) =>
+                    isPublishedNewsPage(page, 'blog') ||
+                    isPublishedNewsPage(page, 'changelog'),
+            )
+            .sort(
+                (left, right) =>
+                    publishedTime(right) - publishedTime(left) ||
+                    right.id - left.id,
+            )
+            .map(newsPageSourceEntry);
+    },
+    ['news-published-source-pages-v2'],
+    { revalidate: 3600 },
+);
+
+function sourceEntryPublishedTime(entry: NewsPageSourceEntry) {
+    return Date.parse(entry.summary.publishedAt);
 }
 
 async function getNewsEntries(
@@ -176,34 +201,48 @@ async function getNewsEntries(
     const since = query.since ? new Date(query.since) : null;
     const publishedAfter =
         since && !Number.isNaN(since.getTime()) ? since.getTime() : null;
-    const pages = await getPublishedNewsSourcePages(contentKind);
-    const items = pages.filter((page) => {
-        if (category && normalizedTaxonomyValue(page.category) !== category) {
+    const entries = await getPublishedNewsSourceEntries();
+    const items = entries.filter((entry) => {
+        if (entry.summary.contentKind !== contentKind) {
+            return false;
+        }
+
+        if (
+            category &&
+            normalizedTaxonomyValue(entry.summary.category) !== category
+        ) {
             return false;
         }
 
         if (
             tag &&
-            !page.tags.some(
+            !entry.summary.tags.some(
                 (pageTag) => normalizedTaxonomyValue(pageTag) === tag,
             )
         ) {
             return false;
         }
 
-        return publishedAfter === null || publishedTime(page) > publishedAfter;
+        return (
+            publishedAfter === null ||
+            sourceEntryPublishedTime(entry) > publishedAfter
+        );
     });
     const limit = query.limit
         ? Math.max(1, Math.min(query.limit, 50))
         : items.length;
 
-    return items.slice(0, limit).map(newsPageSummary);
+    return items.slice(0, limit).map((entry) => entry.summary);
 }
 
 async function getNewsEntry(contentKind: CmsNewsContentKind, slug: string) {
-    const pages = await getPublishedNewsSourcePages(contentKind);
-    const page = pages.find((candidate) => newsEntrySlug(candidate) === slug);
-    return page ? newsPageDetail(page) : null;
+    const entries = await getPublishedNewsSourceEntries();
+    const entry = entries.find(
+        (candidate) =>
+            candidate.summary.contentKind === contentKind &&
+            candidate.summary.slug === slug,
+    );
+    return entry ? newsPageDetail(entry) : null;
 }
 
 export function getBlogPosts(query: NewsListQuery = {}) {
