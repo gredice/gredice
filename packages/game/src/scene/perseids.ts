@@ -7,6 +7,12 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 export const PERSEIDS_DENSITY_MULTIPLIER = 6;
 export const PERSEIDS_REAL_EDGE_RATE_PER_HOUR = 1;
 export const PERSEIDS_REAL_PEAK_ZHR = 100;
+export const PERSEIDS_RENDERING = {
+    backgroundNdcDepth: 1,
+    depthTest: true,
+    depthWrite: false,
+    renderOrder: 29,
+};
 
 const PERSEIDS_START_MONTH_INDEX = 6;
 const PERSEIDS_START_DAY = 17;
