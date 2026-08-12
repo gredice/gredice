@@ -2,7 +2,6 @@
 
 import {
     countWoodenSignMessageGraphemes,
-    getWoodenSignMessageGraphemeLimit,
     normalizeWoodenSignMessage,
     sanitizeWoodenSignDraft,
     woodenSignBlockName,
@@ -31,7 +30,6 @@ function WoodenSignEditor({
     const updateMessage = useBlockMessage();
     const { track } = useGameAnalytics();
     const characterCount = countWoodenSignMessageGraphemes(draft);
-    const characterLimit = getWoodenSignMessageGraphemeLimit(draft);
 
     const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -69,20 +67,6 @@ function WoodenSignEditor({
                         updateMessage.reset();
                     }}
                 />
-                <div className="flex items-start justify-between gap-4">
-                    <Typography id="wooden-sign-help" level="body2" secondary>
-                        Upiši najviše 12 znakova po redu, u najviše dva reda.
-                        Natpis će vidjeti svi koji mogu vidjeti vrt.
-                    </Typography>
-                    <Typography
-                        id="wooden-sign-counter"
-                        level="body2"
-                        className="shrink-0 tabular-nums"
-                        aria-live="polite"
-                    >
-                        {characterCount}/{characterLimit}
-                    </Typography>
-                </div>
                 {errorMessage ? (
                     <Typography
                         level="body2"
@@ -101,11 +85,7 @@ function WoodenSignEditor({
                     >
                         Odustani
                     </Button>
-                    <Button
-                        type="submit"
-                        variant="solid"
-                        loading={updateMessage.isPending}
-                    >
+                    <Button type="submit" loading={updateMessage.isPending}>
                         Spremi natpis
                     </Button>
                 </div>
@@ -142,7 +122,6 @@ export function WoodenSignModal() {
             title="Uredi drveni natpis"
             description="Upiši tekst koji će se prikazati na drvenom natpisu u vrtu."
             className="md:max-w-xl"
-            showHeader
         >
             {block?.name === woodenSignBlockName ? (
                 <WoodenSignEditor
