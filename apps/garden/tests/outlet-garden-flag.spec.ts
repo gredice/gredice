@@ -82,7 +82,7 @@ test('authenticated discovery endpoint exposes every Garden flag', async ({
     request,
 }) => {
     const accessProof = await createAccessProof(
-        outletGardenTestFlagsSecret,
+        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
         '1h',
     );
     const response = await request.get('/.well-known/vercel/flags', {
