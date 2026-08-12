@@ -3,12 +3,15 @@ import type { BlockData } from '@gredice/client';
 export const outletDisplayTableBlockName = 'OutletDisplayTable';
 export const outletDisplayTableHeight = 0.67;
 export const outletDisplayTableSunflowerPrice = 40;
+export const enamelGardenLampBlockName = 'EnamelGardenLamp';
+export const enamelGardenLampHeight = 1.45;
 
 const epoch = new Date(0).toISOString();
-const internalSceneBlockId = -10_001;
+const outletDisplayTableBlockId = -10_001;
+const enamelGardenLampBlockId = -10_002;
 
 const outletDisplayTableBlockData = {
-    id: internalSceneBlockId,
+    id: outletDisplayTableBlockId,
     entityType: {
         id: 8,
         name: 'block',
@@ -45,24 +48,74 @@ const outletDisplayTableBlockData = {
     updatedAt: epoch,
 } satisfies BlockData;
 
+const enamelGardenLampBlockData = {
+    id: enamelGardenLampBlockId,
+    entityType: {
+        id: 8,
+        name: 'block',
+        label: 'Blok',
+    },
+    slug: 'enamel-garden-lamp',
+    information: {
+        name: enamelGardenLampBlockName,
+        label: 'Emajlirana vrtna lampa',
+        shortDescription:
+            'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
+        fullDescription:
+            'Vrtna lampa s drvenim stupom i emajliranim sjenilom koja noću toplim svjetlom osvjetljava stazu i obližnje biljke.',
+    },
+    attributes: {
+        height: enamelGardenLampHeight,
+        hitboxDepth: 0.46,
+        hitboxHeight: enamelGardenLampHeight,
+        hitboxWidth: 0.52,
+        nightOnlyPurchase: false,
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+        stackable: false,
+        type: 'decoration',
+    },
+    prices: {
+        sunflowers: 0,
+    },
+    functions: {
+        recycler: false,
+        raisedBed: false,
+    },
+    createdAt: epoch,
+    updatedAt: epoch,
+} satisfies BlockData;
+
+const internalSceneBlockData = [
+    outletDisplayTableBlockData,
+    enamelGardenLampBlockData,
+];
+const internalSceneBlockIds = new Set(
+    internalSceneBlockData.map((block) => block.id),
+);
+
 export function isInternalSceneBlockData(block: BlockData) {
-    return block.id === internalSceneBlockId;
+    return internalSceneBlockIds.has(block.id);
 }
 
 export function getInternalSceneBlockData(): BlockData[] {
-    return [outletDisplayTableBlockData];
+    return internalSceneBlockData;
 }
 
 export function withInternalSceneBlockData(
     blockData: BlockData[],
 ): BlockData[] {
-    if (
-        blockData.some(
-            (block) => block.information.name === outletDisplayTableBlockName,
-        )
-    ) {
+    const directoryBlockNames = new Set(
+        blockData.map((block) => block.information.name),
+    );
+    const missingInternalBlocks = internalSceneBlockData.filter(
+        (block) => !directoryBlockNames.has(block.information.name),
+    );
+
+    if (missingInternalBlocks.length === 0) {
         return blockData;
     }
 
-    return [...blockData, outletDisplayTableBlockData];
+    return [...blockData, ...missingInternalBlocks];
 }

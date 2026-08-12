@@ -1,10 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    groupOutletGardenTargetsByRaisedBed,
     hasOutletGardenAuthenticationExpired,
     outletGardenOfferFromHeldCartItem,
     resolveOutletGardenCommerceState,
+    resolveOutletGardenTargetSelection,
 } from './OutletGardenCommerce';
+
+const target = (
+    raisedBedId: number,
+    raisedBedName: string,
+    positionIndex: number,
+) => ({
+    positionIndex,
+    raisedBedId,
+    raisedBedName,
+});
 
 const readyStateInput = {
     authenticated: true,
@@ -82,6 +94,81 @@ test('preserves mutation errors and shows loading while retrying queries', () =>
         }),
         'loading',
     );
+});
+
+test('groups free positions by raised bed in source order', () => {
+    assert.deepEqual(
+        groupOutletGardenTargetsByRaisedBed([
+            target(22, 'Zapadna gredica', 3),
+            target(22, 'Zapadna gredica', 7),
+            target(11, 'Ulazna gredica', 0),
+            target(11, 'Ulazna gredica', 2),
+        ]),
+        [
+            { id: 22, name: 'Zapadna gredica' },
+            { id: 11, name: 'Ulazna gredica' },
+        ],
+    );
+});
+
+test('preselects the first raised bed with its first free position', () => {
+    const selection = resolveOutletGardenTargetSelection({
+        selectedRaisedBedId: null,
+        selectedTargetKey: null,
+        targets: [
+            target(22, 'Zapadna gredica', 3),
+            target(22, 'Zapadna gredica', 7),
+            target(11, 'Ulazna gredica', 0),
+        ],
+    });
+
+    assert.equal(selection.selectedRaisedBedId, 22);
+    assert.equal(selection.selectedTargetKey, '22:3');
+    assert.deepEqual(selection.fieldTargets, [
+        target(22, 'Zapadna gredica', 3),
+        target(22, 'Zapadna gredica', 7),
+    ]);
+});
+
+test('limits positions to the selected raised bed and preselects its first free one', () => {
+    const selection = resolveOutletGardenTargetSelection({
+        selectedRaisedBedId: 11,
+        selectedTargetKey: '22:7',
+        targets: [
+            target(22, 'Zapadna gredica', 3),
+            target(22, 'Zapadna gredica', 7),
+            target(11, 'Ulazna gredica', 0),
+            target(11, 'Ulazna gredica', 2),
+        ],
+    });
+
+    assert.equal(selection.selectedRaisedBedId, 11);
+    assert.equal(selection.selectedTargetKey, '11:0');
+    assert.deepEqual(selection.fieldTargets, [
+        target(11, 'Ulazna gredica', 0),
+        target(11, 'Ulazna gredica', 2),
+    ]);
+});
+
+test('reselects a free position after a target conflict refresh', () => {
+    const sameRaisedBed = resolveOutletGardenTargetSelection({
+        selectedRaisedBedId: 22,
+        selectedTargetKey: '22:3',
+        targets: [
+            target(22, 'Zapadna gredica', 7),
+            target(11, 'Ulazna gredica', 0),
+        ],
+    });
+    assert.equal(sameRaisedBed.selectedRaisedBedId, 22);
+    assert.equal(sameRaisedBed.selectedTargetKey, '22:7');
+
+    const nextRaisedBed = resolveOutletGardenTargetSelection({
+        selectedRaisedBedId: 22,
+        selectedTargetKey: '22:7',
+        targets: [target(11, 'Ulazna gredica', 0)],
+    });
+    assert.equal(nextRaisedBed.selectedRaisedBedId, 11);
+    assert.equal(nextRaisedBed.selectedTargetKey, '11:0');
 });
 
 test('builds the receipt offer from the authoritative held cart snapshot', () => {

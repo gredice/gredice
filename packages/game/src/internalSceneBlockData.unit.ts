@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    enamelGardenLampBlockName,
+    enamelGardenLampHeight,
     getInternalSceneBlockData,
     isInternalSceneBlockData,
     outletDisplayTableBlockName,
@@ -11,7 +13,9 @@ import {
 
 describe('internal scene block data', () => {
     it('defines the outlet table fallback with its catalog metadata and footprint', () => {
-        const [table] = getInternalSceneBlockData();
+        const table = getInternalSceneBlockData().find(
+            (block) => block.information.name === outletDisplayTableBlockName,
+        );
 
         assert.ok(table);
         assert.equal(table.information.name, outletDisplayTableBlockName);
@@ -27,25 +31,48 @@ describe('internal scene block data', () => {
         assert.equal(isInternalSceneBlockData(table), true);
     });
 
+    it('defines a private metadata fallback for the Outlet night lamp', () => {
+        const lamp = getInternalSceneBlockData().find(
+            (block) => block.information.name === enamelGardenLampBlockName,
+        );
+
+        assert.ok(lamp);
+        assert.equal(lamp.attributes.height, enamelGardenLampHeight);
+        assert.equal(lamp.attributes.hitboxDepth, 0.46);
+        assert.equal(lamp.attributes.hitboxHeight, enamelGardenLampHeight);
+        assert.equal(lamp.attributes.hitboxWidth, 0.52);
+        assert.equal(lamp.attributes.spanDepth, 1);
+        assert.equal(lamp.attributes.spanWidth, 1);
+        assert.equal(lamp.attributes.stackable, false);
+        assert.equal(isInternalSceneBlockData(lamp), true);
+    });
+
     it('adds the internal fallback without mutating directory data', () => {
-        const directoryData = getInternalSceneBlockData().map((table) => ({
-            ...table,
+        const directoryData = getInternalSceneBlockData().map((block) => ({
+            ...block,
             id: 42,
             information: {
-                ...table.information,
-                name: 'ExistingBlock',
+                ...block.information,
+                name: `ExistingBlock-${block.information.name}`,
             },
         }));
         const merged = withInternalSceneBlockData(directoryData);
 
-        assert.equal(directoryData.length, 1);
-        assert.equal(merged.length, 2);
+        assert.equal(directoryData.length, 2);
+        assert.equal(merged.length, 4);
         assert.equal(merged[0], directoryData[0]);
-        assert.equal(merged[1]?.information.name, outletDisplayTableBlockName);
+        assert.deepEqual(
+            merged
+                .slice(directoryData.length)
+                .map((block) => block.information.name),
+            [outletDisplayTableBlockName, enamelGardenLampBlockName],
+        );
     });
 
     it('lets a future live directory row override the fallback', () => {
-        const [fallback] = getInternalSceneBlockData();
+        const fallback = getInternalSceneBlockData().find(
+            (block) => block.information.name === outletDisplayTableBlockName,
+        );
         assert.ok(fallback);
         const liveTable = {
             ...fallback,
@@ -57,9 +84,10 @@ describe('internal scene block data', () => {
         };
         const merged = withInternalSceneBlockData([liveTable]);
 
-        assert.equal(merged.length, 1);
+        assert.equal(merged.length, 2);
         assert.equal(merged[0], liveTable);
         assert.equal(merged[0]?.attributes.height, 0.69);
         assert.equal(isInternalSceneBlockData(liveTable), false);
+        assert.equal(merged[1]?.information.name, enamelGardenLampBlockName);
     });
 });

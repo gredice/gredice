@@ -414,42 +414,42 @@ describe('getOutletGardenOfferPlacement', () => {
             aisleRow: 0,
             plantBay: 0,
             surface: 'table',
-            x: -3,
+            x: -2,
             y: 1,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(1), {
             aisleRow: 0,
             plantBay: 0,
             surface: 'table',
-            x: -3,
+            x: -2,
             y: 2,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(4), {
             aisleRow: 0,
             plantBay: 1,
             surface: 'table',
-            x: 3,
+            x: 2,
             y: 1,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(5), {
             aisleRow: 0,
             plantBay: 1,
             surface: 'table',
-            x: 3,
+            x: 2,
             y: 2,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(6), {
             aisleRow: 0,
             plantBay: 1,
             surface: 'floor',
-            x: 2,
+            x: 1,
             y: 1,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(8), {
             aisleRow: 1,
             plantBay: 2,
             surface: 'table',
-            x: -3,
+            x: -2,
             y: 4,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(16), {
@@ -457,13 +457,13 @@ describe('getOutletGardenOfferPlacement', () => {
             plantBay: 4,
             surface: 'table',
             x: 1,
-            y: 13,
+            y: 12,
         });
         assert.deepEqual(getOutletGardenOfferPlacement(32), {
             aisleRow: 4,
             plantBay: 8,
             surface: 'table',
-            x: 13,
+            x: 12,
             y: 9,
         });
     });
@@ -578,8 +578,8 @@ describe('buildOutletGardenStacks', () => {
             )?.rotation,
             1,
         );
-        assert.equal(tableStack?.x, -3);
-        assert.equal(floorStack?.x, -2);
+        assert.equal(tableStack?.x, -2);
+        assert.equal(floorStack?.x, -1);
     });
 
     it('turns after eight tables while keeping one connected one-tile mulch path', () => {
@@ -733,7 +733,7 @@ describe('buildOutletGardenStacks', () => {
         );
         for (const slotIndex of facingSlots) {
             const placement = getOutletGardenOfferPlacement(slotIndex);
-            const pathDistance = placement.surface === 'table' ? 3 : 2;
+            const pathDistance = placement.surface === 'table' ? 2 : 1;
             assert.ok(
                 [
                     { x: placement.x - pathDistance, y: placement.y },
@@ -745,12 +745,12 @@ describe('buildOutletGardenStacks', () => {
         }
     });
 
-    it('adds restrained registered decor away from the path and every display position', () => {
+    it('adds deterministic lighting and decor without blocking the path or displays', () => {
         const decoratedOffer = {
             id: 890,
             plantId: 8,
             plantSortId: 891,
-            remainingQuantity: 64,
+            remainingQuantity: 100,
         };
         const assignments = reconcileOutletGardenSlots(new Map(), [
             decoratedOffer,
@@ -769,10 +769,10 @@ describe('buildOutletGardenStacks', () => {
         const registeredNames = new Set<string>(
             outletGardenRegisteredBlockNames,
         );
-        const protectedPositions = [
-            ...positionsForBlocks(stacks, (block) =>
-                block.id.startsWith('outlet-path:'),
-            ),
+        const pathPositions = positionsForBlocks(stacks, (block) =>
+            block.id.startsWith('outlet-path:'),
+        );
+        const displayPositions = [
             ...positionsForBlocks(stacks, (block) =>
                 block.id.startsWith('outlet-table:'),
             ),
@@ -784,6 +784,7 @@ describe('buildOutletGardenStacks', () => {
 
         assert.deepEqual(decorationNames, [
             'Bush',
+            'EnamelGardenLamp',
             'StoneSmall',
             'Tree',
             'WoodenBench',
@@ -801,7 +802,7 @@ describe('buildOutletGardenStacks', () => {
         );
         assert.ok(
             decorations.every(({ x, y }) =>
-                protectedPositions.every(
+                displayPositions.every(
                     (position) =>
                         Math.max(
                             Math.abs(x - position.x),
@@ -810,6 +811,52 @@ describe('buildOutletGardenStacks', () => {
                 ),
             ),
         );
+        assert.ok(
+            decorations.every(({ x, y }) =>
+                pathPositions.every(
+                    (position) => x !== position.x || y !== position.y,
+                ),
+            ),
+        );
+
+        const benches = decorations.filter(
+            ({ block }) => block.name === 'WoodenBench',
+        );
+        assert.equal(benches.length, 7);
+        assert.ok(
+            benches.every(({ x, y }) =>
+                pathPositions.some(
+                    (position) =>
+                        Math.abs(x - position.x) + Math.abs(y - position.y) ===
+                        1,
+                ),
+            ),
+        );
+
+        const lights = decorations.filter(
+            ({ block }) => block.name === 'EnamelGardenLamp',
+        );
+        const tablePositions = positionsForBlocks(stacks, (block) =>
+            block.id.startsWith('outlet-table:'),
+        );
+        assert.equal(lights.length, 4);
+        assert.ok(
+            lights.every(({ x, y }) =>
+                tablePositions.some(
+                    (position) =>
+                        Math.max(
+                            Math.abs(x - position.x),
+                            Math.abs(y - position.y),
+                        ) <= 2,
+                ),
+            ),
+        );
+        for (const name of ['Bush', 'StoneSmall', 'Tree']) {
+            assert.equal(
+                decorations.filter(({ block }) => block.name === name).length,
+                7,
+            );
+        }
     });
 
     it('keeps existing decor and offer coordinates stable as the route grows and stock churns', () => {
@@ -826,7 +873,7 @@ describe('buildOutletGardenStacks', () => {
             [stockOffer],
             initialAssignments,
         );
-        const expandedOffer = { ...stockOffer, remainingQuantity: 48 };
+        const expandedOffer = { ...stockOffer, remainingQuantity: 100 };
         const expandedAssignments = reconcileOutletGardenSlots(
             initialAssignments,
             [expandedOffer],

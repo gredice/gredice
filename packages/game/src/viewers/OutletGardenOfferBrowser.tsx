@@ -2,11 +2,12 @@
 
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
-import { ArrowLeft, Reset, Sprout } from '@gredice/ui/icons';
+import { IconButton } from '@gredice/ui/IconButton';
+import { ArrowLeft, Close, Reset, Sprout } from '@gredice/ui/icons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import {
     type OutletGardenCommerceController,
@@ -141,13 +142,16 @@ export type OutletGardenOfferBrowserProps = {
     isError: boolean;
     isLoading: boolean;
     offers: readonly OutletOfferData[];
+    onClose?: () => void;
     onExit: (destination: 'existing_outlet' | 'garden', href: Route) => void;
     onHoverOffer?: (offerId: number | null) => void;
     onAuthenticationRequired?: () => void;
     onRetry: () => void;
     onSelectOffer: (offerId: number | null) => void;
+    onShowOfferList?: () => void;
     renderer?: OutletGardenRenderer;
     selectedOfferId: number | null;
+    view?: 'combined' | 'details' | 'list';
 };
 
 export function OutletGardenOfferBrowser({
@@ -158,13 +162,16 @@ export function OutletGardenOfferBrowser({
     isError,
     isLoading,
     offers,
+    onClose,
     onExit,
     onHoverOffer,
     onAuthenticationRequired,
     onRetry,
     onSelectOffer,
+    onShowOfferList,
     renderer = 'webgl',
     selectedOfferId,
+    view = 'combined',
 }: OutletGardenOfferBrowserProps) {
     const plantGroups = groupOutletGardenOffers(offers);
     const selectedOffer =
@@ -174,6 +181,9 @@ export function OutletGardenOfferBrowser({
             : null);
     const selectedOfferMissing =
         selectedOfferId !== null && !selectedOffer && !isLoading && !isError;
+    const showOfferList = view !== 'details';
+    const showSelectedOffer = view !== 'list';
+    const selectedOfferIdForFocus = selectedOffer?.id ?? null;
     const state = isLoading
         ? 'loading'
         : isError
@@ -182,9 +192,16 @@ export function OutletGardenOfferBrowser({
             ? 'empty'
             : selectedOfferMissing
               ? 'missing'
-              : selectedOffer
+              : selectedOffer && showSelectedOffer
                 ? 'selected'
                 : 'ready';
+    const selectedDetailsRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        if (view === 'details' && selectedOfferIdForFocus !== null) {
+            selectedDetailsRef.current?.focus({ preventScroll: true });
+        }
+    }, [selectedOfferIdForFocus, view]);
 
     return (
         <aside
@@ -195,6 +212,7 @@ export function OutletGardenOfferBrowser({
             )}
             data-outlet-garden-browser
             data-outlet-garden-state={state}
+            id="outlet-garden-browser"
         >
             <header className="border-b px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex items-center justify-between gap-3">
@@ -218,27 +236,45 @@ export function OutletGardenOfferBrowser({
                             Outlet vrt
                         </h1>
                     </div>
-                    <Button
-                        aria-label="Povratak u moj vrt"
-                        href="/"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            onExit('garden', '/');
-                        }}
-                        size="lg"
-                        startDecorator={<ArrowLeft className="size-4" />}
-                        variant="soft"
-                    >
-                        Povratak
-                    </Button>
+                    {onClose ? (
+                        <IconButton
+                            aria-label={
+                                view === 'details'
+                                    ? 'Zatvori detalje sadnice'
+                                    : 'Zatvori popis Outlet ponuda'
+                            }
+                            className="shrink-0 rounded-full"
+                            onClick={onClose}
+                            size="lg"
+                            variant="plain"
+                        >
+                            <Close aria-hidden className="size-4" />
+                        </IconButton>
+                    ) : (
+                        <Button
+                            aria-label="Povratak u moj vrt"
+                            href="/"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                onExit('garden', '/');
+                            }}
+                            size="lg"
+                            startDecorator={<ArrowLeft className="size-4" />}
+                            variant="soft"
+                        >
+                            Povratak
+                        </Button>
+                    )}
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    {renderer === 'list'
-                        ? 'Razgledaj aktualne ponude, njihove cijene i punu dostupnu količinu.'
-                        : displayLimited
-                          ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
-                          : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
-                </p>
+                {view !== 'details' ? (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        {renderer === 'list'
+                            ? 'Razgledaj aktualne ponude, njihove cijene i punu dostupnu količinu.'
+                            : displayLimited
+                              ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
+                              : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
+                    </p>
+                ) : null}
                 {headerAction ? (
                     <div className="mt-3">{headerAction}</div>
                 ) : null}
@@ -312,7 +348,14 @@ export function OutletGardenOfferBrowser({
                             </p>
                             <Button
                                 className="mt-3"
-                                onClick={() => onSelectOffer(null)}
+                                onClick={() => {
+                                    if (onShowOfferList) {
+                                        onShowOfferList();
+                                        return;
+                                    }
+
+                                    onSelectOffer(null);
+                                }}
                                 size="lg"
                                 variant="outlined"
                             >
@@ -322,7 +365,7 @@ export function OutletGardenOfferBrowser({
                     ) : null}
                 </div>
 
-                {offers.length > 0 ? (
+                {offers.length > 0 && showOfferList ? (
                     <section aria-labelledby="outlet-garden-list-title">
                         <h2
                             className="mb-2 text-sm font-semibold"
@@ -557,11 +600,16 @@ export function OutletGardenOfferBrowser({
                     </section>
                 ) : null}
 
-                {selectedOffer ? (
+                {selectedOffer && showSelectedOffer ? (
                     <article
                         aria-labelledby="outlet-garden-selected-title"
-                        className="mt-4 overflow-hidden rounded-2xl border bg-card shadow-sm"
+                        className={cx(
+                            'overflow-hidden rounded-2xl border bg-card shadow-sm outline-hidden',
+                            showOfferList ? 'mt-4' : null,
+                        )}
                         data-outlet-garden-selected-offer={selectedOffer.id}
+                        ref={selectedDetailsRef}
+                        tabIndex={-1}
                     >
                         <div className="relative aspect-[16/9] bg-lime-50 dark:bg-lime-950/30">
                             {offerImageUrl(selectedOffer) ? (
@@ -658,12 +706,9 @@ export function OutletGardenOfferBrowser({
                                 </div>
                             </dl>
 
-                            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                                Fotografija može prikazivati konkretnu ponudu
-                                ili pripadajuću sortu; 3D model je
-                                reprezentativan. Pregled i odabir sadnice ne
-                                rezerviraju zalihu; rezervacija nastaje tek
-                                nakon potvrde polja.
+                            <p className="mt-3 text-[10px] leading-4 text-muted-foreground/70">
+                                Fotografija i 3D prikaz su reprezentativni.
+                                Zaliha se rezervira tek nakon potvrde polja.
                             </p>
 
                             {commerce ? (
@@ -674,35 +719,24 @@ export function OutletGardenOfferBrowser({
                                     }
                                     onChooseAnother={() => {
                                         commerce.close();
+                                        if (onShowOfferList) {
+                                            onShowOfferList();
+                                            return;
+                                        }
                                         onSelectOffer(null);
                                     }}
                                 />
                             ) : null}
 
-                            {commerce?.state !== 'success' &&
-                            commerce?.state !== 'expired' ? (
-                                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                                    <Button
-                                        href={`/?outlet=${selectedOffer.id.toString()}`}
-                                        fullWidth
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            onExit(
-                                                'existing_outlet',
-                                                `/?outlet=${selectedOffer.id.toString()}`,
-                                            );
-                                        }}
-                                    >
-                                        Nastavi u postojećem Outletu
-                                    </Button>
-                                    <Button
-                                        fullWidth
-                                        onClick={() => onSelectOffer(null)}
-                                        variant="outlined"
-                                    >
-                                        Zatvori detalje
-                                    </Button>
-                                </div>
+                            {view === 'combined' ? (
+                                <Button
+                                    className="mt-4"
+                                    fullWidth
+                                    onClick={() => onSelectOffer(null)}
+                                    variant="outlined"
+                                >
+                                    Zatvori detalje
+                                </Button>
                             ) : null}
                         </div>
                     </article>

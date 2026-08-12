@@ -70,23 +70,32 @@ type OutletGardenCommerceGarden = {
     name: string;
 };
 
+export type OutletGardenCommerceRaisedBed = {
+    id: number;
+    name: string;
+};
+
 export type OutletGardenCommerceController = {
     cartHref: `/?vrt=${number}&kosarica=true` | null;
     close: () => void;
     continueToCart: () => void;
     enabled: boolean;
     errorMessage: string | null;
+    fieldTargets: readonly EmptyRaisedBedFieldTarget[];
     gardens: readonly OutletGardenCommerceGarden[];
     open: () => void;
     opened: boolean;
+    raisedBeds: readonly OutletGardenCommerceRaisedBed[];
     receipt: OutletGardenCommerceReceipt | null;
     refreshAuthentication: () => Promise<void>;
     reserve: () => Promise<void>;
     retryQueries: () => Promise<void>;
     selectGarden: (gardenId: number) => void;
+    selectRaisedBed: (raisedBedId: number) => void;
     selectTarget: (targetKey: string) => void;
     selectedGardenId: number | null;
     selectedOffer: OutletOfferData | null;
+    selectedRaisedBedId: number | null;
     selectedTargetKey: string | null;
     state: OutletGardenCommerceState;
     targets: readonly EmptyRaisedBedFieldTarget[];
@@ -179,6 +188,61 @@ export function resolveOutletGardenCommerceState({
 
 function targetKey(target: EmptyRaisedBedFieldTarget) {
     return `${target.raisedBedId.toString()}:${target.positionIndex.toString()}`;
+}
+
+export function groupOutletGardenTargetsByRaisedBed(
+    targets: readonly EmptyRaisedBedFieldTarget[],
+) {
+    const seenRaisedBedIds = new Set<number>();
+    const raisedBeds: OutletGardenCommerceRaisedBed[] = [];
+
+    for (const target of targets) {
+        if (seenRaisedBedIds.has(target.raisedBedId)) {
+            continue;
+        }
+        seenRaisedBedIds.add(target.raisedBedId);
+        raisedBeds.push({
+            id: target.raisedBedId,
+            name: target.raisedBedName,
+        });
+    }
+
+    return raisedBeds;
+}
+
+export function resolveOutletGardenTargetSelection({
+    selectedRaisedBedId,
+    selectedTargetKey,
+    targets,
+}: {
+    selectedRaisedBedId: number | null;
+    selectedTargetKey: string | null;
+    targets: readonly EmptyRaisedBedFieldTarget[];
+}) {
+    const raisedBeds = groupOutletGardenTargetsByRaisedBed(targets);
+    const selectedRaisedBed =
+        raisedBeds.find((raisedBed) => raisedBed.id === selectedRaisedBedId) ??
+        raisedBeds[0] ??
+        null;
+    const fieldTargets = selectedRaisedBed
+        ? targets.filter(
+              (target) => target.raisedBedId === selectedRaisedBed.id,
+          )
+        : [];
+    const selectedTarget =
+        fieldTargets.find(
+            (target) => targetKey(target) === selectedTargetKey,
+        ) ??
+        fieldTargets[0] ??
+        null;
+
+    return {
+        fieldTargets,
+        raisedBeds,
+        selectedRaisedBedId: selectedRaisedBed?.id ?? null,
+        selectedTarget,
+        selectedTargetKey: selectedTarget ? targetKey(selectedTarget) : null,
+    };
 }
 
 function isHeldOutletCartItem(
@@ -313,6 +377,9 @@ export function useOutletGardenCommerce({
     const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
         null,
     );
+    const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
+        number | null
+    >(null);
     const [selectedTargetKey, setSelectedTargetKey] = useState<string | null>(
         null,
     );
@@ -362,10 +429,22 @@ export function useOutletGardenCommerce({
             ),
         [shoppingCart.data?.items, targetGarden.data],
     );
-    const selectedTarget =
-        targets.find((target) => targetKey(target) === selectedTargetKey) ??
-        targets[0] ??
-        null;
+    const targetSelection = useMemo(
+        () =>
+            resolveOutletGardenTargetSelection({
+                selectedRaisedBedId,
+                selectedTargetKey,
+                targets,
+            }),
+        [selectedRaisedBedId, selectedTargetKey, targets],
+    );
+    const {
+        fieldTargets,
+        raisedBeds,
+        selectedTarget,
+        selectedRaisedBedId: resolvedRaisedBedId,
+        selectedTargetKey: resolvedTargetKey,
+    } = targetSelection;
     const mutation = useSetShoppingCartItem(
         shouldLoadAuthenticated && authenticated && !authenticationExpired,
     );
@@ -404,6 +483,7 @@ export function useOutletGardenCommerce({
         setOpened(requested && enabled && selectedOfferId !== null);
         setReceipt(null);
         setErrorMessage(null);
+        setSelectedRaisedBedId(null);
         setSelectedTargetKey(null);
     }, [enabled, requested, selectedOfferId]);
 
@@ -413,15 +493,24 @@ export function useOutletGardenCommerce({
             !eligibleGardens.some((garden) => garden.id === selectedGardenId)
         ) {
             setSelectedGardenId(eligibleGardens[0]?.id ?? null);
+            setSelectedRaisedBedId(null);
             setSelectedTargetKey(null);
         }
     }, [eligibleGardens, selectedGardenId]);
 
     useEffect(() => {
-        if (selectedTarget && selectedTargetKey !== targetKey(selectedTarget)) {
-            setSelectedTargetKey(targetKey(selectedTarget));
+        if (selectedRaisedBedId !== resolvedRaisedBedId) {
+            setSelectedRaisedBedId(resolvedRaisedBedId);
         }
-    }, [selectedTarget, selectedTargetKey]);
+        if (selectedTargetKey !== resolvedTargetKey) {
+            setSelectedTargetKey(resolvedTargetKey);
+        }
+    }, [
+        resolvedRaisedBedId,
+        resolvedTargetKey,
+        selectedRaisedBedId,
+        selectedTargetKey,
+    ]);
 
     useEffect(() => {
         if (!receipt) {
@@ -573,9 +662,10 @@ export function useOutletGardenCommerce({
                 return;
             }
             setSelectedGardenId(gardenId);
+            setSelectedRaisedBedId(null);
             setSelectedTargetKey(null);
             setErrorMessage(null);
-            track('game_outlet_garden_field_selected', {
+            track('game_outlet_garden_garden_selected', {
                 garden_id: gardenId,
                 outlet_offer_id: selectedOfferId ?? undefined,
                 renderer,
@@ -584,9 +674,41 @@ export function useOutletGardenCommerce({
         [eligibleGardens, renderer, selectedOfferId, track],
     );
 
+    const selectRaisedBed = useCallback(
+        (raisedBedId: number) => {
+            if (!raisedBeds.some((raisedBed) => raisedBed.id === raisedBedId)) {
+                return;
+            }
+            const firstTarget = targets.find(
+                (target) => target.raisedBedId === raisedBedId,
+            );
+            if (!firstTarget) {
+                return;
+            }
+            setSelectedRaisedBedId(raisedBedId);
+            setSelectedTargetKey(targetKey(firstTarget));
+            setErrorMessage(null);
+            track('game_outlet_garden_field_selected', {
+                garden_id: selectedGardenId ?? undefined,
+                outlet_offer_id: selectedOfferId ?? undefined,
+                position_index: firstTarget.positionIndex,
+                raised_bed_id: firstTarget.raisedBedId,
+                renderer,
+            });
+        },
+        [
+            raisedBeds,
+            renderer,
+            selectedGardenId,
+            selectedOfferId,
+            targets,
+            track,
+        ],
+    );
+
     const selectTarget = useCallback(
         (nextTargetKey: string) => {
-            const target = targets.find(
+            const target = fieldTargets.find(
                 (candidate) => targetKey(candidate) === nextTargetKey,
             );
             if (!target) {
@@ -602,7 +724,7 @@ export function useOutletGardenCommerce({
                 renderer,
             });
         },
-        [renderer, selectedGardenId, selectedOfferId, targets, track],
+        [fieldTargets, renderer, selectedGardenId, selectedOfferId, track],
     );
 
     const reserve = useCallback(async () => {
@@ -776,18 +898,22 @@ export function useOutletGardenCommerce({
         continueToCart,
         enabled,
         errorMessage,
+        fieldTargets,
         gardens: eligibleGardens,
         open,
         opened,
+        raisedBeds,
         receipt,
         refreshAuthentication,
         reserve,
         retryQueries,
         selectGarden,
+        selectRaisedBed,
         selectTarget,
         selectedGardenId,
         selectedOffer: selectedLiveOffer ?? receipt?.offer ?? null,
-        selectedTargetKey: selectedTarget ? targetKey(selectedTarget) : null,
+        selectedRaisedBedId: resolvedRaisedBedId,
+        selectedTargetKey: resolvedTargetKey,
         state,
         targets,
     };
@@ -890,28 +1016,55 @@ export function OutletGardenReservationPanel({
                 <div>
                     <h3 className="font-semibold">Odaberi mjesto za sadnicu</h3>
                     <div className="mt-3 grid gap-3">
+                        {commerce.gardens.length > 1 ? (
+                            <label className="grid gap-1 text-sm">
+                                <span className="font-medium">Vrt</span>
+                                <select
+                                    className="min-h-11 rounded-lg border bg-background px-3"
+                                    disabled={commerce.state === 'reserving'}
+                                    onChange={(event) =>
+                                        commerce.selectGarden(
+                                            Number(event.currentTarget.value),
+                                        )
+                                    }
+                                    value={commerce.selectedGardenId ?? ''}
+                                >
+                                    {commerce.gardens.map((garden) => (
+                                        <option
+                                            key={garden.id}
+                                            value={garden.id}
+                                        >
+                                            {garden.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        ) : null}
                         <label className="grid gap-1 text-sm">
-                            <span className="font-medium">Vrt</span>
+                            <span className="font-medium">Gredica</span>
                             <select
                                 className="min-h-11 rounded-lg border bg-background px-3"
                                 disabled={commerce.state === 'reserving'}
                                 onChange={(event) =>
-                                    commerce.selectGarden(
+                                    commerce.selectRaisedBed(
                                         Number(event.currentTarget.value),
                                     )
                                 }
-                                value={commerce.selectedGardenId ?? ''}
+                                value={commerce.selectedRaisedBedId ?? ''}
                             >
-                                {commerce.gardens.map((garden) => (
-                                    <option key={garden.id} value={garden.id}>
-                                        {garden.name}
+                                {commerce.raisedBeds.map((raisedBed) => (
+                                    <option
+                                        key={raisedBed.id}
+                                        value={raisedBed.id}
+                                    >
+                                        {raisedBed.name}
                                     </option>
                                 ))}
                             </select>
                         </label>
                         <label className="grid gap-1 text-sm">
                             <span className="font-medium">
-                                Mjesto u gredici
+                                Polje / pozicija
                             </span>
                             <select
                                 className="min-h-11 rounded-lg border bg-background px-3"
@@ -923,12 +1076,12 @@ export function OutletGardenReservationPanel({
                                 }
                                 value={commerce.selectedTargetKey ?? ''}
                             >
-                                {commerce.targets.map((target) => (
+                                {commerce.fieldTargets.map((target) => (
                                     <option
                                         key={targetKey(target)}
                                         value={targetKey(target)}
                                     >
-                                        {target.raisedBedName} · polje{' '}
+                                        Polje{' '}
                                         {(target.positionIndex + 1).toString()}
                                     </option>
                                 ))}

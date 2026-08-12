@@ -85,6 +85,7 @@ export function OutletGardenViewer({
     );
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+    const [offerListOpen, setOfferListOpen] = useState(false);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneFailureTrackedRef = useRef(false);
@@ -352,15 +353,6 @@ export function OutletGardenViewer({
         reportSceneFailure('context_lost');
     }, [reportSceneFailure]);
 
-    const requestListFallback = useCallback(() => {
-        track('game_outlet_garden_fallback_requested', {
-            fallback_reason: 'user',
-            renderer: 'webgl',
-            scene_ready: sceneReadyTrackedRef.current,
-        });
-        onUseListFallback?.();
-    }, [onUseListFallback, track]);
-
     const requestExit = useCallback(
         (destination: 'existing_outlet' | 'garden', href: Route) => {
             if (exitTarget) {
@@ -399,6 +391,8 @@ export function OutletGardenViewer({
     const selectOffer = useCallback(
         (offerId: number | null, blockId?: string) => {
             void setSelectedOfferId(offerId);
+            setOfferListOpen(false);
+            setHoveredOfferId(null);
             if (offerId === null) {
                 setFocusedBlockId(null);
                 return;
@@ -415,6 +409,39 @@ export function OutletGardenViewer({
         [offers, setSelectedOfferId, track],
     );
 
+    const openOfferList = useCallback(() => {
+        setFocusedBlockId(null);
+        setHoveredOfferId(null);
+        setOfferListOpen(true);
+        track('game_outlet_garden_offer_list_opened', {
+            outlet_offer_count: offers.length,
+            renderer: 'webgl',
+        });
+    }, [offers.length, track]);
+
+    const requestListFallback = useCallback(() => {
+        track('game_outlet_garden_fallback_requested', {
+            fallback_reason: 'user',
+            renderer: 'webgl',
+            scene_ready: sceneReadyTrackedRef.current,
+        });
+        onUseListFallback?.();
+    }, [onUseListFallback, track]);
+
+    const closeOfferBrowser = useCallback(() => {
+        void setSelectedOfferId(null);
+        setFocusedBlockId(null);
+        setHoveredOfferId(null);
+        setOfferListOpen(false);
+        window.requestAnimationFrame(() => {
+            sceneContainerRef.current
+                ?.querySelector<HTMLButtonElement>(
+                    '[data-outlet-garden-list-trigger]',
+                )
+                ?.focus({ preventScroll: true });
+        });
+    }, [setSelectedOfferId]);
+
     const selectBlock = useCallback(
         (blockId: string) => {
             const offerId = outletOfferIdFromBlockId(blockId);
@@ -427,7 +454,7 @@ export function OutletGardenViewer({
 
     return (
         <div
-            className={`relative grid h-[100dvh] grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] overflow-hidden bg-[#cfeaca] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1 ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-95 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-500'}`}
+            className={`relative grid h-[100dvh] overflow-hidden bg-[#cfeaca] ${offerListOpen || selectedOfferId !== null ? 'grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1' : 'grid-cols-1 grid-rows-1'} ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
             data-outlet-garden
             data-outlet-garden-display-count={displayUnits.length}
             data-outlet-garden-display-limited={displayLimited || undefined}
@@ -492,19 +519,18 @@ export function OutletGardenViewer({
                         Moj vrt
                     </Button>
                     <div className="pointer-events-auto flex items-start gap-2">
-                        {onUseListFallback ? (
-                            <Button
-                                aria-label="Prikaži Outlet ponude bez 3D prikaza"
-                                onClick={requestListFallback}
-                                size="lg"
-                                startDecorator={
-                                    <LayoutList className="size-4" />
-                                }
-                                variant="outlined"
-                            >
-                                Popis ponuda
-                            </Button>
-                        ) : null}
+                        <Button
+                            aria-controls="outlet-garden-browser"
+                            aria-expanded={offerListOpen}
+                            aria-label="Prikaži popis Outlet ponuda"
+                            data-outlet-garden-list-trigger
+                            onClick={openOfferList}
+                            size="lg"
+                            startDecorator={<LayoutList className="size-4" />}
+                            variant="outlined"
+                        >
+                            Popis ponuda
+                        </Button>
                         <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
                             <p className="font-semibold">
                                 Razgledaj Outlet vrt
@@ -527,21 +553,41 @@ export function OutletGardenViewer({
                 ) : null}
             </main>
 
-            <OutletGardenOfferBrowser
-                commerce={commerce}
-                displayLimited={displayLimited}
-                isError={isError}
-                isLoading={isLoading}
-                offers={offers}
-                onExit={requestExit}
-                onAuthenticationRequired={onAuthenticationRequired}
-                onHoverOffer={setHoveredOfferId}
-                onRetry={() => {
-                    void refetch();
-                }}
-                onSelectOffer={selectOffer}
-                selectedOfferId={selectedOfferId}
-            />
+            {offerListOpen || selectedOfferId !== null ? (
+                <OutletGardenOfferBrowser
+                    commerce={commerce}
+                    displayLimited={displayLimited}
+                    headerAction={
+                        offerListOpen && onUseListFallback ? (
+                            <Button
+                                aria-label="Prikaži Outlet ponude bez 3D prikaza"
+                                onClick={requestListFallback}
+                                size="lg"
+                                startDecorator={
+                                    <LayoutList className="size-4" />
+                                }
+                                variant="plain"
+                            >
+                                Lagani prikaz bez 3D-a
+                            </Button>
+                        ) : undefined
+                    }
+                    isError={isError}
+                    isLoading={isLoading}
+                    offers={offers}
+                    onClose={closeOfferBrowser}
+                    onExit={requestExit}
+                    onAuthenticationRequired={onAuthenticationRequired}
+                    onHoverOffer={setHoveredOfferId}
+                    onRetry={() => {
+                        void refetch();
+                    }}
+                    onSelectOffer={selectOffer}
+                    onShowOfferList={openOfferList}
+                    selectedOfferId={selectedOfferId}
+                    view={offerListOpen ? 'list' : 'details'}
+                />
+            ) : null}
         </div>
     );
 }

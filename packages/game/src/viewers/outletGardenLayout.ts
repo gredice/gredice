@@ -42,9 +42,12 @@ const outletGardenAisleRowsPerPathSegment = 2;
 const outletGardenAisleRowSpacing = 3;
 const outletGardenFirstAisleRowOffset = 1;
 const outletGardenPathSegmentLength = 10;
-const outletGardenTableDistance = 3;
-const outletGardenFloorDistance = 2;
+const outletGardenTableDistance = 2;
+const outletGardenFloorDistance = 1;
 const outletGardenDecorationDistance = 5;
+const outletGardenLightDistance = 4;
+const outletGardenBenchDistance = 1;
+const outletGardenMaxLightCount = 4;
 const outletGardenMapMargin = 2;
 const outletGardenEntranceY =
     -outletGardenDecorationDistance - outletGardenMapMargin;
@@ -78,6 +81,7 @@ type OutletGardenPotName = (typeof outletGardenPotNames)[number];
 export const outletGardenRegisteredBlockNames = [
     'Block_Grass',
     'Bush',
+    'EnamelGardenLamp',
     'Fence',
     'MulchWood',
     'OutletDisplayTable',
@@ -100,6 +104,7 @@ type OutletGardenPathSegment = {
 
 type OutletGardenDecorationName =
     | 'Bush'
+    | 'EnamelGardenLamp'
     | 'StoneSmall'
     | 'Tree'
     | 'WoodenBench';
@@ -639,6 +644,8 @@ function outletGardenReservedDisplayPoints(segmentCount: number) {
 function outletGardenDecorationCandidates(
     segment: OutletGardenPathSegment,
     ordinal: number,
+    normalDistance: number,
+    preferredDistances: readonly number[],
 ) {
     const leftNormal = {
         x: -segment.direction.y,
@@ -646,15 +653,14 @@ function outletGardenDecorationCandidates(
     };
     const rightNormal = { x: -leftNormal.x, y: -leftNormal.y };
     const preferredNormal =
-        (segment.index + (ordinal === 0 ? 0 : 1)) % 2 === 0
-            ? leftNormal
-            : rightNormal;
+        (segment.index + ordinal) % 2 === 0 ? leftNormal : rightNormal;
     const otherNormal = {
         x: -preferredNormal.x,
         y: -preferredNormal.y,
     };
-    const preferredDistance = [8, 6, 9][ordinal] ?? 7;
-    const distances = Array.from(new Set([preferredDistance, 8, 6, 9, 7, 3]));
+    const distances = Array.from(
+        new Set([...preferredDistances, 8, 6, 9, 7, 3, 1, 4, 5, 2]),
+    );
 
     return [preferredNormal, otherNormal].flatMap((normal) =>
         distances.map((distance) => {
@@ -662,8 +668,8 @@ function outletGardenDecorationCandidates(
             return {
                 normal,
                 point: {
-                    x: pathPoint.x + normal.x * outletGardenDecorationDistance,
-                    y: pathPoint.y + normal.y * outletGardenDecorationDistance,
+                    x: pathPoint.x + normal.x * normalDistance,
+                    y: pathPoint.y + normal.y * normalDistance,
                 },
             };
         }),
@@ -685,10 +691,13 @@ function outletGardenPointIsClear(
 
 function outletGardenDecorations(segmentCount: number) {
     const futureSafeSegmentCount = segmentCount + 1;
-    const blockedPoints = [
-        ...outletGardenPathPoints(futureSafeSegmentCount),
-        ...outletGardenReservedDisplayPoints(futureSafeSegmentCount),
-    ];
+    const pathPoints = outletGardenPathPoints(futureSafeSegmentCount);
+    const pathPositionKeys = new Set(
+        pathPoints.map((point) => stackKey(point.x, point.y)),
+    );
+    const reservedDisplayPoints = outletGardenReservedDisplayPoints(
+        futureSafeSegmentCount,
+    );
     const decorations: Array<{
         name: OutletGardenDecorationName;
         point: OutletGardenPoint;
@@ -698,28 +707,37 @@ function outletGardenDecorations(segmentCount: number) {
 
     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
         const segment = outletGardenPathSegment(segmentIndex);
-        const decorationNames: OutletGardenDecorationName[] = [
-            segmentIndex % 2 === 0 ? 'Tree' : 'Bush',
-        ];
-        if (segmentIndex % 3 === 0) {
-            decorationNames.push('StoneSmall');
-        }
-        if (segmentIndex % 4 === 0) {
-            decorationNames.push('WoodenBench');
-        }
-
-        for (const [ordinal, name] of decorationNames.entries()) {
+        const existingDecorationPoints = () =>
+            decorations.map((decoration) => decoration.point);
+        const addDecoration = (
+            name: OutletGardenDecorationName,
+            ordinal: number,
+            normalDistance: number,
+            preferredDistances: readonly number[],
+            allowNextToPath: boolean,
+        ) => {
             const candidate = outletGardenDecorationCandidates(
                 segment,
                 ordinal,
-            ).find(({ point }) =>
-                outletGardenPointIsClear(point, [
-                    ...blockedPoints,
-                    ...decorations.map((decoration) => decoration.point),
-                ]),
-            );
+                normalDistance,
+                preferredDistances,
+            ).find(({ point }) => {
+                const isOffPath = !pathPositionKeys.has(
+                    stackKey(point.x, point.y),
+                );
+                const isClearOfPath =
+                    allowNextToPath ||
+                    outletGardenPointIsClear(point, pathPoints);
+
+                return (
+                    isOffPath &&
+                    isClearOfPath &&
+                    outletGardenPointIsClear(point, reservedDisplayPoints) &&
+                    outletGardenPointIsClear(point, existingDecorationPoints())
+                );
+            });
             if (!candidate) {
-                continue;
+                return;
             }
 
             decorations.push({
@@ -728,7 +746,39 @@ function outletGardenDecorations(segmentCount: number) {
                 rotation: outletGardenRotationFacingPath(candidate.normal),
                 segmentIndex,
             });
+        };
+
+        // A bounded number of the tall registered lamps illuminate the offer
+        // rows at night. They sit behind the tables, outside their interaction
+        // clearance, and existing segment IDs never move as the route grows.
+        if (segmentIndex < outletGardenMaxLightCount) {
+            addDecoration(
+                'EnamelGardenLamp',
+                0,
+                outletGardenLightDistance,
+                [3, 6],
+                false,
+            );
         }
+
+        // Seating belongs beside the aisle, while trees, bushes, and stones
+        // fill the outer verge without competing with seedlings for clicks.
+        addDecoration(
+            'WoodenBench',
+            1,
+            outletGardenBenchDistance,
+            [7, 8, 6, 9],
+            true,
+        );
+        addDecoration('Tree', 2, outletGardenDecorationDistance, [8, 6], false);
+        addDecoration('Bush', 3, outletGardenDecorationDistance, [6, 9], false);
+        addDecoration(
+            'StoneSmall',
+            4,
+            outletGardenDecorationDistance,
+            [9, 6, 3],
+            false,
+        );
     }
 
     return decorations;
