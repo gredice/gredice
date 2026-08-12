@@ -172,6 +172,22 @@ const blockFixtures: Record<
         height: 0.1,
         stackable: false,
     },
+    Fence: {
+        label: 'Ograda',
+        shortDescription:
+            'Drvena ograda koja se povezuje sa susjednim dijelovima.',
+        sunflowers: 5,
+        height: 0.58,
+        stackable: false,
+    },
+    WhiteFence: {
+        label: 'Bijela ograda',
+        shortDescription:
+            'Tanka bijela ograda sa širokim šiljastim daskama koja se povezuje sa susjednim dijelovima.',
+        sunflowers: 5,
+        height: 0.72,
+        stackable: false,
+    },
     StoneWalkway: {
         label: 'Kamena staza',
         shortDescription:
@@ -318,6 +334,7 @@ const blockNames = [
     'WoodenSign',
     'OutletDisplayTable',
     'Fence',
+    'WhiteFence',
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',

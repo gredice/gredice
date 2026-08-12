@@ -104,6 +104,11 @@ const lightingItems: HudItemEntity[] = [
     { type: 'entity', name: 'MoonRainBarrel' },
 ];
 
+const fenceItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Fence' },
+    { type: 'entity', name: 'WhiteFence' },
+];
+
 const treeGroupEntityNames = new Set([
     ...treeItems.map((item) => item.name),
     'PineAdvent',
@@ -188,7 +193,12 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'WoodenBench' },
             { type: 'entity', name: 'OutletDisplayTable' },
-            { type: 'entity', name: 'Fence' },
+            {
+                type: 'picker',
+                label: 'Ograde',
+                imageSrc: 'https://www.gredice.com/assets/blocks/Fence.webp',
+                items: fenceItems,
+            },
             { type: 'entity', name: 'SmallWoodenBridge' },
             { type: 'entity', name: 'WoodenWalkway' },
             { type: 'entity', name: 'StoneWalkway' },

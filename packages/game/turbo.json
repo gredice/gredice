@@ -6,6 +6,7 @@
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "$TURBO_ROOT$/apps/garden/public/assets/models/SmallWoodenBridge.glb",
+                "$TURBO_ROOT$/apps/garden/public/assets/models/WhiteFence.glb",
                 "$TURBO_ROOT$/apps/garden/public/assets/models/WoodenWalkway.glb",
                 "$TURBO_ROOT$/assets/game-assets.json"
             ]

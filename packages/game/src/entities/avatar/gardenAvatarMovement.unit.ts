@@ -460,6 +460,128 @@ test('adds narrow rails only between connected fence posts', () => {
     );
 });
 
+test('models an isolated white fence as three pointed pickets', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'white-fence', name: 'WhiteFence', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+
+    assert.equal(world.surfaces.length, 4);
+    assert.deepEqual(
+        world.surfaces
+            .filter(
+                (surface) =>
+                    surface.halfWidth === 0.1075 &&
+                    surface.halfDepth === 0.0225,
+            )
+            .map((surface) => surface.x)
+            .sort((left, right) => left - right),
+        [-0.25, 0, 0.25],
+    );
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.25 && surface.halfDepth === 0.02,
+        ).length,
+        1,
+    );
+
+    const rotatedWorld = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    {
+                        id: 'white-fence-rotated',
+                        name: 'WhiteFence',
+                        rotation: 1,
+                    },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    assert.equal(
+        rotatedWorld.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.0225 && surface.halfDepth === 0.1075,
+        ).length,
+        3,
+    );
+});
+
+test('uses repeated plank pickets and rails for connected white fences', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'white-fence-a', name: 'WhiteFence', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [
+                    { id: 'white-fence-b', name: 'WhiteFence', rotation: 0 },
+                ],
+                position: new Vector3(1, 0, 0),
+            },
+        ],
+    });
+
+    assert.equal(world.surfaces.length, 8);
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.1075 &&
+                surface.halfDepth === 0.0225 &&
+                surface.y === 0.72,
+        ).length,
+        6,
+    );
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.19625 && surface.halfDepth === 0.02,
+        ).length,
+        2,
+    );
+});
+
+test('does not connect white fence rails to the brown fence', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'white-fence', name: 'WhiteFence', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [{ id: 'brown-fence', name: 'Fence', rotation: 0 }],
+                position: new Vector3(1, 0, 0),
+            },
+        ],
+    });
+
+    assert.equal(world.surfaces.length, 5);
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.19625 && surface.halfDepth === 0.02,
+        ).length,
+        0,
+    );
+});
+
 test('centers multi-cell collisions and blocks their complete roaming footprint', () => {
     const decorationWorld = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),

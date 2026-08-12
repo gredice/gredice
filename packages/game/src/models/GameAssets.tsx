@@ -943,6 +943,12 @@ export type GLTFResult = GLTF & {
         Fence_Single: THREE.Mesh;
         Fence_Solo: THREE.Mesh;
         Fence_T: THREE.Mesh;
+        WhiteFence_Solo: THREE.Mesh;
+        WhiteFence_Single: THREE.Mesh;
+        WhiteFence_Middle: THREE.Mesh;
+        WhiteFence_Corner: THREE.Mesh;
+        WhiteFence_T: THREE.Mesh;
+        WhiteFence_Cross: THREE.Mesh;
         Tunnel_Half: THREE.Mesh;
         Greenhouse_Tunnel_Stick: THREE.Mesh;
         Greenhouse_Tunnel_Stick_Middle: THREE.Mesh;
@@ -1408,6 +1414,7 @@ export type GLTFResult = GLTF & {
         'Material.WaterSprayKit.WandMetal': THREE.MeshStandardMaterial;
         'Material.WaterSprayKit.Water': THREE.MeshStandardMaterial;
         'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
+        'Material.WhitePaint': THREE.MeshStandardMaterial;
         'Material.WickerGardenLantern.Glow': THREE.MeshStandardMaterial;
         'Material.WickerGardenLantern.Limestone': THREE.MeshStandardMaterial;
         'Material.WickerGardenLantern.Terracotta': THREE.MeshStandardMaterial;
