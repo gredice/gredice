@@ -1388,7 +1388,7 @@
             "name": "StoneWalkway",
             "source": "StoneWalkway.blend",
             "output": "StoneWalkway.glb",
-            "version": "fdf36debb5f3",
+            "version": "994228a946f3",
             "preload": "lazy",
             "objects": [
                 "StoneWalkway_StonesLight",

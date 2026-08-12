@@ -202,6 +202,55 @@ function getPositionAccessors(document: Record<string, unknown>) {
     });
 }
 
+function getNodePositionBounds(
+    document: Record<string, unknown>,
+    nodeName: string,
+) {
+    assert.ok(Array.isArray(document.nodes));
+    assert.ok(Array.isArray(document.meshes));
+    assert.ok(Array.isArray(document.accessors));
+
+    const node = document.nodes.find(
+        (candidate) => isRecord(candidate) && candidate.name === nodeName,
+    );
+    assert.ok(isRecord(node));
+    assert.ok(typeof node.mesh === 'number');
+
+    const mesh = document.meshes[node.mesh];
+    assert.ok(isRecord(mesh));
+    assert.ok(Array.isArray(mesh.primitives));
+    assert.equal(mesh.primitives.length, 1);
+
+    const primitive = mesh.primitives[0];
+    assert.ok(isRecord(primitive));
+    assert.ok(isRecord(primitive.attributes));
+    const positionIndex = primitive.attributes.POSITION;
+    assert.ok(typeof positionIndex === 'number');
+
+    const accessor = document.accessors[positionIndex];
+    assert.ok(isRecord(accessor));
+    assert.ok(isNumberArray(accessor.min));
+    assert.ok(isNumberArray(accessor.max));
+
+    return { maximum: accessor.max, minimum: accessor.min };
+}
+
+function getMaterialBaseColor(
+    document: Record<string, unknown>,
+    materialName: string,
+) {
+    assert.ok(Array.isArray(document.materials));
+    const material = document.materials.find(
+        (candidate) => isRecord(candidate) && candidate.name === materialName,
+    );
+    assert.ok(isRecord(material));
+    assert.ok(isRecord(material.pbrMetallicRoughness));
+    const color = material.pbrMetallicRoughness.baseColorFactor;
+    assert.ok(isNumberArray(color));
+    assert.equal(color.length, 4);
+    return color;
+}
+
 function sortedNames(value: unknown) {
     assert.ok(Array.isArray(value));
     return value
@@ -291,4 +340,71 @@ describe('garden lighting and stone walkway assets', () => {
             assert.ok(vertexCount <= spec.vertexLimit);
         });
     }
+
+    it('joins the StoneWalkway paving at both ends of its tile', () => {
+        const modelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/StoneWalkway.glb',
+                import.meta.url,
+            ),
+        );
+        const document = readGlbDocument(readFileSync(modelPath));
+        const light = getNodePositionBounds(
+            document,
+            'StoneWalkway_StonesLight',
+        );
+        const middle = getNodePositionBounds(
+            document,
+            'StoneWalkway_StonesMid',
+        );
+        const warm = getNodePositionBounds(document, 'StoneWalkway_StonesWarm');
+
+        assert.ok(light.maximum[2] >= 0.499_99);
+        assert.ok(middle.maximum[2] >= 0.499_99);
+        assert.ok(middle.minimum[2] <= -0.499_99);
+        assert.ok(warm.minimum[2] <= -0.499_99);
+    });
+
+    it('keeps the StoneWalkway palette close to the existing gray stones', () => {
+        const walkwayModelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/StoneWalkway.glb',
+                import.meta.url,
+            ),
+        );
+        const referenceModelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/StoneSmall.glb',
+                import.meta.url,
+            ),
+        );
+        const walkway = readGlbDocument(readFileSync(walkwayModelPath));
+        const reference = readGlbDocument(readFileSync(referenceModelPath));
+        const referenceColor = getMaterialBaseColor(
+            reference,
+            'Material.Stone',
+        ).slice(0, 3);
+        const referenceLightness =
+            referenceColor.reduce((total, channel) => total + channel, 0) /
+            referenceColor.length;
+
+        for (const materialName of [
+            'Material.StoneWalkway.LightStone',
+            'Material.StoneWalkway.MidStone',
+            'Material.StoneWalkway.WarmStone',
+        ]) {
+            const color = getMaterialBaseColor(walkway, materialName).slice(
+                0,
+                3,
+            );
+            const darkestChannel = Math.min(...color);
+            const lightestChannel = Math.max(...color);
+            const lightness =
+                color.reduce((total, channel) => total + channel, 0) /
+                color.length;
+
+            assert.ok(Math.abs(lightness - referenceLightness) <= 0.05);
+            assert.ok(lightestChannel - darkestChannel <= 0.03);
+        }
+    });
 });
