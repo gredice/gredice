@@ -544,7 +544,16 @@ test('uses repeated plank pickets and rails for connected white fences', () => {
                 surface.halfDepth === 0.0225 &&
                 surface.y === 0.72,
         ).length,
-        6,
+        4,
+    );
+    assert.equal(
+        world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.0225 &&
+                surface.halfDepth === 0.1075 &&
+                surface.y === 0.72,
+        ).length,
+        2,
     );
     assert.equal(
         world.surfaces.filter(
@@ -553,6 +562,51 @@ test('uses repeated plank pickets and rails for connected white fences', () => {
         ).length,
         2,
     );
+});
+
+test('rotates a white fence center picket with its resolved corner', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    {
+                        id: 'white-fence-center',
+                        name: 'WhiteFence',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [
+                    {
+                        id: 'white-fence-south',
+                        name: 'WhiteFence',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(-1, 0, 0),
+            },
+            {
+                blocks: [
+                    { id: 'white-fence-east', name: 'WhiteFence', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, -1),
+            },
+        ],
+    });
+    const centerPicket = world.surfaces.find(
+        (surface) =>
+            surface.x === 0 &&
+            surface.z === 0 &&
+            surface.roamBlockedCells?.some(
+                (cell) => cell.x === 0 && cell.z === 0,
+            ),
+    );
+
+    assert.equal(centerPicket?.halfWidth, 0.0225);
+    assert.equal(centerPicket?.halfDepth, 0.1075);
 });
 
 test('does not connect white fence rails to the brown fence', () => {

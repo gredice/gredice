@@ -11,6 +11,7 @@ import {
     isAnimalWaterBlockName,
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
+import { resolveFenceConnection } from '../fenceConnections';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 
 export type GardenAvatarPoint = {
@@ -478,9 +479,25 @@ function createFenceCollisionSurfaces({
         return fenceLayers.has(fenceLayerKey(neighbor, blockIndex, blockName));
     });
     const fallbackAlongX = rotation % 2 === 0;
-    const centerAlongX = connectedDirections[0]
-        ? connectedDirections[0].x !== 0
-        : fallbackAlongX;
+    const connection = resolveFenceConnection(
+        {
+            e: connectedDirections.some(
+                (direction) => direction.x === 0 && direction.z === -1,
+            ),
+            n: connectedDirections.some(
+                (direction) => direction.x === 1 && direction.z === 0,
+            ),
+            s: connectedDirections.some(
+                (direction) => direction.x === -1 && direction.z === 0,
+            ),
+            total: connectedDirections.length,
+            w: connectedDirections.some(
+                (direction) => direction.x === 0 && direction.z === 1,
+            ),
+        },
+        rotation,
+    );
+    const centerAlongX = connection.rotation % 2 === 0;
     const surfaces: GardenAvatarMovementSurface[] = [];
     const addPicket = (
         x: number,

@@ -1524,7 +1524,7 @@ const fenceKeys = [
     fenceVariantNames.Cross,
 ] satisfies FenceKey[];
 
-function WhiteFenceInstances({
+function LoadedWhiteFenceInstances({
     stacks,
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
@@ -1564,6 +1564,24 @@ function WhiteFenceInstances({
                 />
             ))}
         </>
+    );
+}
+
+function WhiteFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, 'WhiteFence');
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedWhiteFenceInstances stacks={stacks} {...commonSnowProps} />
+        </Suspense>
     );
 }
 
