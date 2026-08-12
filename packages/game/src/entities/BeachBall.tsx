@@ -2,6 +2,7 @@ import { animated } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
+import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSuppression';
 import { useBlockData } from '../hooks/useBlockData';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -233,16 +234,22 @@ export function BeachBall({
         motionGroup.rotation.z -= movementX / beachBallCollisionRadius;
     });
 
-    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+    function handlePointerUp(event: ThreeEvent<PointerEvent>) {
         if (event.button !== 0) {
             return;
         }
 
+        // Pickup starts in the parent on pointer down. Keep pointer up from
+        // also turning a beach-ball tap into the parent's rotate gesture.
         event.stopPropagation();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
+
+        if (areBlockInteractionsSuppressed()) {
+            return;
+        }
 
         const currentState = bounceStateRef.current;
         if (
@@ -308,9 +315,9 @@ export function BeachBall({
                 <group
                     ref={motionGroupRef}
                     onClick={handleClick}
-                    onPointerDown={handlePointerDown}
                     onPointerEnter={handlePointerEnter}
                     onPointerLeave={handlePointerLeave}
+                    onPointerUp={handlePointerUp}
                 >
                     <group scale={beachBallScale}>
                         {beachBallNodeNames.map((nodeName) => (
