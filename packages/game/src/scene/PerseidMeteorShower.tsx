@@ -18,9 +18,9 @@ import {
     Vector2,
     Vector3,
 } from 'three';
-import { useGameState } from '../useGameState';
 import {
     createPerseidsMeteor,
+    PERSEIDS_RENDERING,
     type PerseidsMeteorDefinition,
     samplePerseidsIntervalSeconds,
 } from './perseids';
@@ -139,7 +139,6 @@ export function Perseids({
     visibility: number;
 }) {
     const camera = useThree((state) => state.camera);
-    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const meshRef = useRef<Mesh>(null);
     const rateRef = useRef(meteorsPerHour);
     const activeMeteorRef = useRef<ActiveMeteor | null>(null);
@@ -160,8 +159,8 @@ export function Perseids({
         () =>
             new ShaderMaterial({
                 blending: AdditiveBlending,
-                depthTest: true,
-                depthWrite: false,
+                depthTest: PERSEIDS_RENDERING.depthTest,
+                depthWrite: PERSEIDS_RENDERING.depthWrite,
                 fragmentShader: meteorFragmentShader,
                 side: DoubleSide,
                 toneMapped: false,
@@ -193,10 +192,6 @@ export function Perseids({
             Math.max(0, visibility),
         );
     }, [material, visibility]);
-
-    useLayoutEffect(() => {
-        material.depthTest = gardenAvatarView !== 'overview';
-    }, [gardenAvatarView, material]);
 
     useEffect(() => {
         const previousRate = rateRef.current;
@@ -340,7 +335,7 @@ export function Perseids({
             geometry={geometry}
             material={material}
             name="Environment:Perseids"
-            renderOrder={29}
+            renderOrder={PERSEIDS_RENDERING.renderOrder}
         />
     );
 }

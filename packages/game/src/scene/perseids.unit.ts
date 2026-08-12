@@ -8,9 +8,15 @@ import {
     PERSEIDS_DENSITY_MULTIPLIER,
     PERSEIDS_REAL_EDGE_RATE_PER_HOUR,
     PERSEIDS_REAL_PEAK_ZHR,
+    PERSEIDS_RENDERING,
     samplePerseidsIntervalSeconds,
     shouldRenderPerseids,
 } from './perseids';
+
+test('keeps meteors behind depth-writing garden geometry in every camera mode', () => {
+    assert.equal(PERSEIDS_RENDERING.depthTest, true);
+    assert.equal(PERSEIDS_RENDERING.depthWrite, false);
+});
 
 test('uses the recurring July 17 through August 24 activity window', () => {
     assert.equal(
