@@ -8,13 +8,15 @@ import {
     canAnimalSettleAt,
     createAnimalBlockedCells,
     createAnimalMovementSurfaces,
+    getAnimalMovementSurfaceAt,
+    getAnimalMovementYAt,
     isAnimalGroundBlockName,
     isAnimalSwimmingAt,
     isAnimalWaterBlockName,
 } from './animalMovementTerrain';
 
-function block(id: string, name: string): Block {
-    return { id, name, rotation: 0 };
+function block(id: string, name: string, rotation = 0): Block {
+    return { id, name, rotation };
 }
 
 function stack(x: number, z: number, blocks: Block[]): Stack {
@@ -113,5 +115,94 @@ describe('animal movement terrain', () => {
         assert.equal(surfaces[0]?.x, 3);
         assert.equal(Number(surfaces[0]?.y.toFixed(6)), 0.42);
         assert.equal(surfaces[0]?.z, 4);
+    });
+
+    it('keeps half-stair animal surfaces on the rendered edge at every rotation', () => {
+        for (const rotation of [0, 1, 2, 3]) {
+            const surfaces = createAnimalMovementSurfaces({
+                blockData: getLocalSandboxBlockData(),
+                groundLift: 0.02,
+                stacks: [
+                    stack(0, 0, [
+                        block(
+                            `half-stairs-${rotation}`,
+                            'Block_Stone_Stairs_Half',
+                            rotation,
+                        ),
+                    ]),
+                ],
+                swimDepth: 0.12,
+            });
+            const angle = rotation * (Math.PI / 2);
+            const worldPoint = (localX: number, localZ: number) => ({
+                x: localX * Math.cos(angle) + localZ * Math.sin(angle),
+                z: -localX * Math.sin(angle) + localZ * Math.cos(angle),
+            });
+
+            assert.equal(surfaces.length, 1, `rotation ${rotation}`);
+            assert.equal(
+                Number(
+                    getAnimalMovementYAt(
+                        worldPoint(-0.25, -0.25),
+                        surfaces,
+                    ).toFixed(6),
+                ),
+                0.22,
+                `middle tread at rotation ${rotation}`,
+            );
+            assert.equal(
+                Number(
+                    getAnimalMovementYAt(
+                        worldPoint(0.25, -0.25),
+                        surfaces,
+                    ).toFixed(6),
+                ),
+                0.42,
+                `top tread at rotation ${rotation}`,
+            );
+            assert.equal(
+                getAnimalMovementYAt(worldPoint(0.25, 0.25), surfaces),
+                0,
+                `empty half at rotation ${rotation}`,
+            );
+            assert.equal(
+                getAnimalMovementSurfaceAt(worldPoint(0.25, 0.25), surfaces),
+                null,
+                `no stair surface on empty half at rotation ${rotation}`,
+            );
+        }
+    });
+
+    it('falls back to the supporting terrain on a half-stair empty side', () => {
+        const surfaces = createAnimalMovementSurfaces({
+            blockData: getLocalSandboxBlockData(),
+            groundLift: 0.02,
+            stacks: [
+                stack(2, 3, [
+                    block('grass', 'Block_Grass'),
+                    block('half-stairs', 'Block_Stone_Stairs_Half'),
+                ]),
+            ],
+            swimDepth: 0.12,
+        });
+
+        assert.equal(
+            Number(
+                getAnimalMovementYAt({ x: 1.75, z: 2.75 }, surfaces).toFixed(6),
+            ),
+            0.62,
+        );
+        assert.equal(
+            Number(
+                getAnimalMovementYAt({ x: 2.25, z: 2.75 }, surfaces).toFixed(6),
+            ),
+            0.82,
+        );
+        assert.equal(
+            Number(
+                getAnimalMovementYAt({ x: 2.25, z: 3.25 }, surfaces).toFixed(6),
+            ),
+            0.42,
+        );
     });
 });

@@ -1,6 +1,7 @@
 import type { BlockData } from '@gredice/client';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
+import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import { getWaterBlockColumnSurfaceY } from '../waterBlockDepth';
 import { isWaterBlockName } from '../waterBlockNames';
 
@@ -10,7 +11,12 @@ export type AnimalMovementCell = {
 };
 
 export type AnimalMovementSurface = AnimalMovementCell & {
+    bottomY?: number;
+    halfDepth?: number;
+    halfWidth?: number;
     kind: 'ground' | 'water';
+    rotation?: number;
+    slopeBlockName?: string;
     y: number;
 };
 
@@ -77,6 +83,52 @@ function getGroundSurfaceY({
     return height > 0 ? height + groundLift : 0;
 }
 
+function createHalfStairMovementSurfaces({
+    blockData,
+    groundLift,
+    stack,
+    y,
+}: {
+    blockData: BlockData[] | null | undefined;
+    groundLift: number;
+    stack: Stack;
+    y: number;
+}) {
+    const topBlock = stack.blocks.at(-1);
+    if (
+        topBlock?.name !== 'Block_Stone_Stairs_Half' ||
+        !stack.blocks.every((block) => isAnimalGroundBlockName(block.name))
+    ) {
+        return null;
+    }
+
+    const bottomHeight = getStackHeight(blockData, stack, topBlock);
+    const rotation = topBlock.rotation * (Math.PI / 2);
+    const localZ = -0.25;
+
+    const surfaces: AnimalMovementSurface[] = [];
+    if (bottomHeight > 0) {
+        surfaces.push({
+            kind: 'ground',
+            x: stack.position.x,
+            y: bottomHeight + groundLift,
+            z: stack.position.z,
+        });
+    }
+    surfaces.push({
+        bottomY: bottomHeight + groundLift,
+        halfDepth: 0.25,
+        halfWidth: 0.5,
+        kind: 'ground',
+        rotation,
+        slopeBlockName: topBlock.name,
+        x: stack.position.x + Math.sin(rotation) * localZ,
+        y,
+        z: stack.position.z + Math.cos(rotation) * localZ,
+    });
+    return surfaces;
+}
+
 export function createAnimalMovementSurfaces({
     blockData,
     groundLift,
@@ -115,6 +167,17 @@ export function createAnimalMovementSurfaces({
 
         const y = getGroundSurfaceY({ blockData, groundLift, stack });
         if (y !== null) {
+            const halfStairSurfaces = createHalfStairMovementSurfaces({
+                blockData,
+                groundLift,
+                stack,
+                y,
+            });
+            if (halfStairSurfaces) {
+                surfaces.push(...halfStairSurfaces);
+                continue;
+            }
+
             surfaces.push({
                 kind: 'ground',
                 x: stack.position.x,
@@ -156,17 +219,40 @@ export function getAnimalMovementSurfaceAt(
     let selectedSurface: AnimalMovementSurface | null = null;
 
     for (const surface of surfaces) {
+        const rotation = surface.rotation ?? 0;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        const dx = position.x - surface.x;
+        const dz = position.z - surface.z;
+        const localX = dx * cos - dz * sin;
+        const localZ = dx * sin + dz * cos;
         const insideSurface =
-            Math.abs(position.x - surface.x) <=
-                movementSurfaceHalfSize + movementSurfaceEpsilon &&
-            Math.abs(position.z - surface.z) <=
-                movementSurfaceHalfSize + movementSurfaceEpsilon;
+            Math.abs(localX) <=
+                (surface.halfWidth ?? movementSurfaceHalfSize) +
+                    movementSurfaceEpsilon &&
+            Math.abs(localZ) <=
+                (surface.halfDepth ?? movementSurfaceHalfSize) +
+                    movementSurfaceEpsilon;
+
+        const normalizedHeight = surface.slopeBlockName
+            ? getSlopedGroundNormalizedHeight(
+                  surface.slopeBlockName,
+                  localX,
+                  localZ,
+              )
+            : null;
+        const surfaceY =
+            normalizedHeight === null || surface.bottomY === undefined
+                ? surface.y
+                : surface.bottomY +
+                  (surface.y - surface.bottomY) * normalizedHeight;
 
         if (
             insideSurface &&
-            (!selectedSurface || surface.y > selectedSurface.y)
+            (!selectedSurface || surfaceY > selectedSurface.y)
         ) {
-            selectedSurface = surface;
+            selectedSurface =
+                surfaceY === surface.y ? surface : { ...surface, y: surfaceY };
         }
     }
 
