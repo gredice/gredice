@@ -15,16 +15,20 @@ const notificationImage =
     'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22200%22 viewBox=%220 0 280 200%22%3E%3Crect width=%22280%22 height=%22200%22 fill=%22%23589b47%22/%3E%3Cpath d=%22M20 145L90 80l45 42 38-30 87 67H20z%22 fill=%22%23d9efad%22/%3E%3C/svg%3E';
 
 function fixtureNotification({
+    content,
     imageUrl = notificationImage,
 }: {
+    content?: string;
     imageUrl?: string | null;
 } = {}): SelectedRaisedBedGardenNotification {
     const timestamp = new Date('2026-08-11T12:00:00.000Z');
     return {
         category: 'garden',
-        content: imageUrl
-            ? 'Stigla je nova fotografija gredice.'
-            : 'Danas je na gredici **Sjever** odrađena **Održavajuća rezidba**.',
+        content:
+            content ??
+            (imageUrl
+                ? 'Stigla je nova fotografija gredice.'
+                : 'Danas je na gredici **Sjever** odrađena **Održavajuća rezidba**.'),
         createdAt: timestamp,
         gardenId: 8,
         header: imageUrl
@@ -47,8 +51,10 @@ function fixtureNotification({
 }
 
 export function RaisedBedNotificationBubbleFixture({
+    content,
     imageUrl,
 }: {
+    content?: string;
     imageUrl?: string | null;
 }) {
     const [ready, setReady] = useState(false);
@@ -60,7 +66,7 @@ export function RaisedBedNotificationBubbleFixture({
     const [visible, setVisible] = useState(true);
     const [viewerImage, setViewerImage] =
         useState<RaisedBedNotificationViewerImage | null>(null);
-    const notification = fixtureNotification({ imageUrl });
+    const notification = fixtureNotification({ content, imageUrl });
 
     return (
         <div

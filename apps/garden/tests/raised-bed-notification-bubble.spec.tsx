@@ -93,6 +93,41 @@ test('shows operation context and dismisses from the small close control without
     await expect(bubble).toHaveCount(0);
 });
 
+test('bounds long operation context so the dismiss control stays on screen', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 400, height: 320 });
+    const fixture = await mount(
+        <RaisedBedNotificationBubbleFixture
+            content={`Danas je na gredici Sjever odrađena Održavajuća rezidba. ${'Vrlo duga napomena uz otkazivanje operacije. '.repeat(20)}`}
+            imageUrl={null}
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+
+    const bubble = fixture.locator('[data-raised-bed-notification-bubble]');
+    const dismissButton = fixture.getByRole('button', {
+        name: 'Odbaci obavijest: Održavajuća rezidba',
+    });
+    const content = bubble.locator('.line-clamp-3');
+
+    await expect(content).toHaveCSS('-webkit-line-clamp', '3');
+    const bubbleBox = await bubble.boundingBox();
+    const dismissBox = await dismissButton.boundingBox();
+    expect(bubbleBox).not.toBeNull();
+    expect(dismissBox).not.toBeNull();
+    if (!bubbleBox || !dismissBox) {
+        return;
+    }
+
+    expect(bubbleBox.height).toBeLessThan(130);
+    expect(dismissBox.y).toBeGreaterThanOrEqual(bubbleBox.y);
+    expect(dismissBox.y + dismissBox.height).toBeLessThanOrEqual(
+        bubbleBox.y + bubbleBox.height,
+    );
+});
+
 test('falls back to a readable text bubble when notification media fails', async ({
     mount,
 }) => {

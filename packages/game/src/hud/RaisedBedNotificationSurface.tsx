@@ -142,11 +142,11 @@ export function RaisedBedNotificationBubbleContent({
                     </span>
                 ) : (
                     <span className="block px-3 py-2.5 pr-9">
-                        <span className="block font-semibold">
+                        <span className="line-clamp-2 break-words font-semibold">
                             {notification.header}
                         </span>
                         {showContent ? (
-                            <span className="mt-1 block text-xs font-normal text-emerald-900/80 dark:text-emerald-100/80">
+                            <span className="mt-1 line-clamp-3 break-words text-xs font-normal text-emerald-900/80 dark:text-emerald-100/80">
                                 {content}
                             </span>
                         ) : null}
