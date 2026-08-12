@@ -59,6 +59,7 @@ import {
     assertAdvancedSowingPlanAvailable,
     assertLegacySowingCartTargetsAvailable,
     assertNoBlockingLegacyPlantOperations,
+    DuplicateDirectSowingCartTargetError,
     LegacySowingSelectedPlantingConflictError,
 } from '../../../lib/checkout/advancedSowingAvailability';
 import {
@@ -302,6 +303,15 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     return context.json(
                         {
                             code: 'LEGACY_SOWING_SELECTED_PLANTING_CONFLICT',
+                            error: error.message,
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof DuplicateDirectSowingCartTargetError) {
+                    return context.json(
+                        {
+                            code: 'DUPLICATE_SOWING_CART_TARGET',
                             error: error.message,
                         },
                         409,

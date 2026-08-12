@@ -35,6 +35,7 @@ import {
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useGameFlags } from '../../GameFlagsContext';
+import { buildOutletCartItemPayload } from '../../hooks/shoppingCartItemMutation';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardens } from '../../hooks/useGardens';
 import { useInventory } from '../../hooks/useInventory';
@@ -492,37 +493,49 @@ export function PlantPicker({
         showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
         try {
-            await setCartItem.mutateAsync({
-                entityTypeName: 'plantSort',
-                entityId: selectedSortId?.toString(),
-                id: existingItemCanBeUpdated ? existingItem.id : undefined,
-                amount: 1,
-                gardenId,
-                raisedBedId,
-                positionIndex,
-                additionalData: JSON.stringify({
-                    ...(useOutletOffer && selectedOutletOffer
-                        ? { outletOfferId: selectedOutletOffer.id }
-                        : {
+            await setCartItem.mutateAsync(
+                useOutletOffer && selectedOutletOffer
+                    ? buildOutletCartItemPayload({
+                          cartItemId: existingItemCanBeUpdated
+                              ? existingItem.id
+                              : undefined,
+                          currency:
+                              existingItemCanBeUpdated &&
+                              existingItem.currency === 'inventory'
+                                  ? 'eur'
+                                  : undefined,
+                          gardenId,
+                          outletOfferId: selectedOutletOffer.id,
+                          plantSortId: selectedSortId,
+                          positionIndex,
+                          raisedBedId,
+                      })
+                    : {
+                          entityTypeName: 'plantSort',
+                          entityId: selectedSortId.toString(),
+                          id: existingItemCanBeUpdated
+                              ? existingItem.id
+                              : undefined,
+                          amount: 1,
+                          gardenId,
+                          raisedBedId,
+                          positionIndex,
+                          additionalData: JSON.stringify({
                               scheduledDate:
                                   plantOptions?.scheduledDate?.toISOString(),
                               ...(sowInGreenhouse
                                   ? { sowingLocation: 'greenhouse' }
                                   : {}),
                           }),
-                }),
-                currency: useInventoryItem ? 'inventory' : undefined,
-                outletOfferId:
-                    useOutletOffer && selectedOutletOffer
-                        ? selectedOutletOffer.id
-                        : undefined,
-                ...(advancedSowingSelection
-                    ? {
-                          advancedSowingSelection,
-                          forceCreate: !existingItemCanBeUpdated,
-                      }
-                    : {}),
-            });
+                          currency: useInventoryItem ? 'inventory' : undefined,
+                          ...(advancedSowingSelection
+                              ? {
+                                    advancedSowingSelection,
+                                    forceCreate: !existingItemCanBeUpdated,
+                                }
+                              : {}),
+                      },
+            );
             await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
         } finally {
             scheduleHideShoppingCartTransientHub();

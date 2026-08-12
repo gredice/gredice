@@ -799,6 +799,59 @@ test('outlet sowing sends the selected outlet offer', async ({
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
+test('outlet sowing converts an existing inventory row to euros', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+    const inventoryCartItem = {
+        additionalData: JSON.stringify({
+            scheduledDate: '2026-05-14T00:00:00.000Z',
+        }),
+        amount: 1,
+        currency: 'inventory',
+        entityId: '101',
+        entityTypeName: 'plantSort',
+        gardenId: 1,
+        id: 41,
+        positionIndex: 0,
+        raisedBedId: 1,
+        shopData: {
+            discountPrice: null,
+            price: 1.5,
+        },
+        status: 'new',
+    } satisfies TestShoppingCartItem;
+
+    await mount(
+        <PlantPickerTestStory
+            cartItems={[inventoryCartItem]}
+            inShoppingCart
+            preselectedPlantId={1}
+            preselectedSortId={101}
+            selectedCartItemId={inventoryCartItem.id}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.id).toBe(41);
+    expect(post.currency).toBe('eur');
+    expect(post.outletOfferId).toBe(302);
+    expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
+});
+
 test('outlet selection param opens the selected outlet offer', async ({
     mount,
     page,

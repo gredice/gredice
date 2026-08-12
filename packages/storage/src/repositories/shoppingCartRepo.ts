@@ -1,5 +1,5 @@
 import type { AdvancedSowingCartAuthorizationV1 } from '@gredice/js/plants';
-import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
 import {
     events,
     notifications,
@@ -31,6 +31,7 @@ import {
 import { getCheckoutOperationMappings } from './operationsRepo';
 import {
     getOutletOfferReservationForCartItem,
+    OutletReservationUnavailableError,
     releaseOutletReservationForCartItem,
     releaseOutletReservationsForCart,
     reserveOutletOffer,
@@ -66,6 +67,18 @@ export class CheckoutCartItemFulfillmentStartedError extends Error {
 export class AdvancedSowingCartItemExplicitIdentityRequiredError extends Error {
     override readonly name =
         'AdvancedSowingCartItemExplicitIdentityRequiredError';
+}
+
+export class OutletCartTargetUnavailableError extends Error {
+    override readonly name = 'OutletCartTargetUnavailableError';
+
+    constructor() {
+        super('Another live cart item already uses the Outlet target.');
+    }
+}
+
+class OutletCartTargetChangedDuringMutationError extends Error {
+    override readonly name = 'OutletCartTargetChangedDuringMutationError';
 }
 
 class CheckoutCartChangedDuringDeleteError extends Error {
@@ -996,6 +1009,17 @@ export async function upsertOrRemoveCartItem(
         if (!activeCart) {
             throw new Error('Cannot add an item to an inactive shopping cart');
         }
+        if (
+            entityTypeName === 'plantSort' &&
+            typeof gardenId === 'number' &&
+            typeof raisedBedId === 'number' &&
+            typeof positionIndex === 'number'
+        ) {
+            await assertNoOutletReservationAtDirectTarget(
+                { cartId, gardenId, positionIndex, raisedBedId },
+                db,
+            );
+        }
 
         return (
             await db
@@ -1098,6 +1122,39 @@ export async function upsertOrRemoveCartItemWithAdvancedSowingAuthorization({
                     'Advanced Sowing cannot replace an outlet-reserved cart item.',
                 );
             }
+            if (
+                typeof gardenId !== 'number' ||
+                typeof raisedBedId !== 'number'
+            ) {
+                throw new AdvancedSowingCartAuthorizationPersistenceError(
+                    'Advanced Sowing target is incomplete.',
+                );
+            }
+            const bedItems = await getLivePlantCartItemsForBed(
+                { cartId, gardenId, raisedBedId },
+                tx,
+                true,
+            );
+            for (const targetItem of bedItems) {
+                if (
+                    targetItem.id === cartItemId ||
+                    targetItem.positionIndex === null ||
+                    !authorization.plan.occupiedPositionIndices.includes(
+                        targetItem.positionIndex,
+                    )
+                ) {
+                    continue;
+                }
+                const reservation = await getOutletOfferReservationForCartItem(
+                    targetItem.id,
+                    tx,
+                );
+                if (reservation?.status === 'held') {
+                    throw new AdvancedSowingCartAuthorizationPersistenceError(
+                        'Advanced Sowing target overlaps an Outlet reservation.',
+                    );
+                }
+            }
             await persistShoppingCartItemAdvancedSowingAuthorization(
                 cartItemId,
                 authorization,
@@ -1118,6 +1175,546 @@ export async function upsertOrRemoveCartItemWithAdvancedSowingAuthorization({
         }
         return cartItemId;
     });
+}
+
+type IdlessOutletCartItemMutation = {
+    accountId: string;
+    additionalData?: string | null;
+    amount: number;
+    cartId: number;
+    currency?: string | null;
+    entityId: string;
+    entityTypeName: string;
+    gardenId: number;
+    holdMinutes?: number;
+    now: Date;
+    outletOfferId: number;
+    positionIndex: number;
+    raisedBedId: number;
+};
+
+type ExplicitOutletCartItemMutation = IdlessOutletCartItemMutation & {
+    id: number;
+};
+
+function isSupportedOutletCartCurrency(
+    currency: string | null | undefined,
+): currency is 'eur' | 'sunflower' {
+    return currency === 'eur' || currency === 'sunflower';
+}
+
+async function getLivePlantCartItemsForBed(
+    {
+        cartId,
+        gardenId,
+        raisedBedId,
+    }: Pick<
+        IdlessOutletCartItemMutation,
+        'cartId' | 'gardenId' | 'raisedBedId'
+    >,
+    db: DatabaseClient,
+    lockRows = false,
+) {
+    const query = db
+        .select()
+        .from(shoppingCartItems)
+        .where(
+            and(
+                eq(shoppingCartItems.cartId, cartId),
+                eq(shoppingCartItems.entityTypeName, 'plantSort'),
+                eq(shoppingCartItems.gardenId, gardenId),
+                eq(shoppingCartItems.raisedBedId, raisedBedId),
+                eq(shoppingCartItems.isDeleted, false),
+                gt(shoppingCartItems.amount, 0),
+            ),
+        )
+        .orderBy(asc(shoppingCartItems.id));
+
+    return lockRows ? query.for('update') : query;
+}
+
+function getPlantCartItemsAtPosition<
+    T extends { id: number; positionIndex: number | null },
+>(items: readonly T[], positionIndex: number): T[] {
+    return items.filter((item) => item.positionIndex === positionIndex);
+}
+
+function sameCartItemIds(
+    expectedIds: readonly number[],
+    items: readonly { id: number }[],
+) {
+    return (
+        expectedIds.length === items.length &&
+        expectedIds.every((id, index) => id === items[index]?.id)
+    );
+}
+
+async function assertNoPendingAdvancedSowingFootprintAtTarget(
+    items: readonly { id: number; status: string }[],
+    positionIndex: number,
+    db: TransactionClient,
+    excludedCartItemId?: number,
+) {
+    const pendingItemIds = items
+        .filter(
+            (item) => item.status === 'new' && item.id !== excludedCartItemId,
+        )
+        .map((item) => item.id);
+    let authorizations: Awaited<
+        ReturnType<typeof getShoppingCartItemAdvancedSowingAuthorizations>
+    >;
+    try {
+        authorizations = await getShoppingCartItemAdvancedSowingAuthorizations(
+            pendingItemIds,
+            db,
+        );
+    } catch (error) {
+        if (error instanceof AdvancedSowingCartAuthorizationPersistenceError) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        throw error;
+    }
+    if (
+        Array.from(authorizations.values()).some((authorization) =>
+            authorization.plan.occupiedPositionIndices.includes(positionIndex),
+        )
+    ) {
+        throw new OutletCartTargetUnavailableError();
+    }
+}
+
+async function lockCartForOutletMutation(
+    {
+        accountId,
+        cartId,
+    }: Pick<IdlessOutletCartItemMutation, 'accountId' | 'cartId'>,
+    db: TransactionClient,
+) {
+    const [cart] = await db
+        .select({
+            accountId: shoppingCarts.accountId,
+            id: shoppingCarts.id,
+            isDeleted: shoppingCarts.isDeleted,
+            status: shoppingCarts.status,
+        })
+        .from(shoppingCarts)
+        .where(eq(shoppingCarts.id, cartId))
+        .for('update')
+        .limit(1);
+    if (
+        !cart ||
+        cart.accountId !== accountId ||
+        cart.isDeleted ||
+        cart.status !== 'new'
+    ) {
+        throw new OutletReservationUnavailableError(
+            'Outlet reservation cart is no longer mutable.',
+        );
+    }
+    await assertNoActiveStripeCheckoutAttempt(cartId, db);
+}
+
+async function applyIdlessOutletCartItemMutation(
+    mutation: IdlessOutletCartItemMutation,
+    discoveredBedItemIds: readonly number[],
+    db: TransactionClient,
+) {
+    await lockCartForOutletMutation(mutation, db);
+    const bedItems = await getLivePlantCartItemsForBed(mutation, db, true);
+    if (!sameCartItemIds(discoveredBedItemIds, bedItems)) {
+        throw new OutletCartTargetChangedDuringMutationError();
+    }
+    await assertNoPendingAdvancedSowingFootprintAtTarget(
+        bedItems,
+        mutation.positionIndex,
+        db,
+    );
+    const targetItems = getPlantCartItemsAtPosition(
+        bedItems,
+        mutation.positionIndex,
+    );
+
+    const normalizedAdditionalData =
+        mutation.additionalData === undefined
+            ? undefined
+            : normalizeScheduledDateAdditionalData(mutation.additionalData);
+    const existingItem = targetItems[0];
+    if (existingItem) {
+        if (targetItems.length !== 1) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        const reservation = await getOutletOfferReservationForCartItem(
+            existingItem.id,
+            db,
+        );
+        const isExactRetry =
+            existingItem.entityId === mutation.entityId &&
+            existingItem.entityTypeName === mutation.entityTypeName &&
+            existingItem.amount === mutation.amount &&
+            reservation?.accountId === mutation.accountId &&
+            reservation.cartId === mutation.cartId &&
+            reservation.cartItemId === existingItem.id &&
+            reservation.outletOfferId === mutation.outletOfferId &&
+            reservation.status === 'held';
+        if (!isExactRetry) {
+            throw new OutletCartTargetUnavailableError();
+        }
+
+        const fulfillmentStartedItemIds =
+            await getCheckoutFulfillmentStartedCartItemIds(
+                mutation.accountId,
+                [existingItem],
+                db,
+            );
+        if (fulfillmentStartedItemIds.has(existingItem.id)) {
+            throw new CheckoutCartItemFulfillmentStartedError(existingItem.id);
+        }
+
+        const finalCurrency = mutation.currency ?? existingItem.currency;
+        if (!isSupportedOutletCartCurrency(finalCurrency)) {
+            throw new OutletReservationUnavailableError(
+                'Outlet cart item has an unsupported currency.',
+            );
+        }
+        if (existingItem.currency !== finalCurrency) {
+            await db
+                .update(shoppingCartItems)
+                .set({ currency: finalCurrency })
+                .where(eq(shoppingCartItems.id, existingItem.id));
+        }
+        await clearShoppingCartItemAdvancedSowingAuthorization(
+            existingItem.id,
+            db,
+        );
+        await reserveOutletOffer({
+            offerId: mutation.outletOfferId,
+            accountId: mutation.accountId,
+            cartId: mutation.cartId,
+            cartItemId: existingItem.id,
+            quantity: mutation.amount,
+            now: mutation.now,
+            holdMinutes: mutation.holdMinutes,
+            db,
+        });
+        return existingItem.id;
+    }
+
+    const finalCurrency = mutation.currency ?? 'eur';
+    if (!isSupportedOutletCartCurrency(finalCurrency)) {
+        throw new OutletReservationUnavailableError(
+            'Outlet cart item has an unsupported currency.',
+        );
+    }
+    const [createdItem] = await db
+        .insert(shoppingCartItems)
+        .values({
+            cartId: mutation.cartId,
+            entityId: mutation.entityId,
+            entityTypeName: mutation.entityTypeName,
+            amount: mutation.amount,
+            gardenId: mutation.gardenId,
+            raisedBedId: mutation.raisedBedId,
+            positionIndex: mutation.positionIndex,
+            additionalData: normalizedAdditionalData,
+            currency: finalCurrency,
+        })
+        .returning({ id: shoppingCartItems.id });
+    if (!createdItem) {
+        throw new OutletReservationUnavailableError(
+            'Outlet cart item could not be created.',
+        );
+    }
+    await reserveOutletOffer({
+        offerId: mutation.outletOfferId,
+        accountId: mutation.accountId,
+        cartId: mutation.cartId,
+        cartItemId: createdItem.id,
+        quantity: mutation.amount,
+        now: mutation.now,
+        holdMinutes: mutation.holdMinutes,
+        db,
+    });
+    return createdItem.id;
+}
+
+async function assertNoOutletReservationAtDirectTarget(
+    {
+        cartId,
+        gardenId,
+        positionIndex,
+        raisedBedId,
+    }: {
+        cartId: number;
+        gardenId: number;
+        positionIndex: number;
+        raisedBedId: number;
+    },
+    db: TransactionClient,
+    excludedCartItemId?: number,
+) {
+    const bedItems = await getLivePlantCartItemsForBed(
+        { cartId, gardenId, raisedBedId },
+        db,
+        true,
+    );
+    const targetItems = getPlantCartItemsAtPosition(bedItems, positionIndex);
+    for (const targetItem of targetItems) {
+        if (targetItem.id === excludedCartItemId) {
+            continue;
+        }
+        const reservation = await getOutletOfferReservationForCartItem(
+            targetItem.id,
+            db,
+        );
+        if (reservation?.status === 'held') {
+            throw new OutletCartTargetUnavailableError();
+        }
+    }
+}
+
+async function applyExplicitOutletCartItemMutation(
+    mutation: ExplicitOutletCartItemMutation,
+    discoveredBedItemIds: readonly number[],
+    db: TransactionClient,
+) {
+    await lockCartForOutletMutation(mutation, db);
+    const bedItems = await getLivePlantCartItemsForBed(mutation, db, true);
+    if (!sameCartItemIds(discoveredBedItemIds, bedItems)) {
+        throw new OutletCartTargetChangedDuringMutationError();
+    }
+
+    const [existingItem] = await db
+        .select()
+        .from(shoppingCartItems)
+        .where(
+            and(
+                eq(shoppingCartItems.id, mutation.id),
+                eq(shoppingCartItems.isDeleted, false),
+            ),
+        )
+        .for('update')
+        .limit(1);
+    if (!existingItem || existingItem.cartId !== mutation.cartId) {
+        throw new OutletReservationUnavailableError(
+            'Outlet cart item is no longer available.',
+        );
+    }
+    if (existingItem.status === 'paid') {
+        throw new Error('Cannot update paid shopping cart item via API');
+    }
+
+    const fulfillmentStartedItemIds =
+        await getCheckoutFulfillmentStartedCartItemIds(
+            mutation.accountId,
+            [existingItem],
+            db,
+        );
+    if (fulfillmentStartedItemIds.has(existingItem.id)) {
+        throw new CheckoutCartItemFulfillmentStartedError(existingItem.id);
+    }
+    await assertNoPendingAdvancedSowingFootprintAtTarget(
+        bedItems,
+        mutation.positionIndex,
+        db,
+        existingItem.id,
+    );
+    const targetItems = getPlantCartItemsAtPosition(
+        bedItems,
+        mutation.positionIndex,
+    );
+
+    const reservation = await getOutletOfferReservationForCartItem(
+        existingItem.id,
+        db,
+    );
+    const hasMatchingHeldReservation =
+        reservation?.accountId === mutation.accountId &&
+        reservation.cartId === mutation.cartId &&
+        reservation.cartItemId === existingItem.id &&
+        reservation.outletOfferId === mutation.outletOfferId &&
+        reservation.quantity === mutation.amount &&
+        reservation.status === 'held';
+    const hasMatchingStaticTarget =
+        existingItem.entityId === mutation.entityId &&
+        existingItem.entityTypeName === mutation.entityTypeName &&
+        existingItem.gardenId === mutation.gardenId &&
+        existingItem.raisedBedId === mutation.raisedBedId;
+    const isPureHeldReservationPositionMove =
+        hasMatchingHeldReservation &&
+        hasMatchingStaticTarget &&
+        existingItem.amount === mutation.amount &&
+        existingItem.positionIndex !== mutation.positionIndex;
+
+    if (
+        !hasMatchingStaticTarget ||
+        (existingItem.positionIndex !== mutation.positionIndex &&
+            !isPureHeldReservationPositionMove)
+    ) {
+        throw new OutletCartTargetUnavailableError();
+    }
+    const otherTargetItems = targetItems.filter(
+        (item) => item.id !== existingItem.id,
+    );
+    if (otherTargetItems.length > 0) {
+        if (
+            !isPureHeldReservationPositionMove ||
+            otherTargetItems.length !== 1 ||
+            existingItem.positionIndex === null
+        ) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        const swapItem = otherTargetItems[0];
+        if (swapItem?.status !== 'new') {
+            throw new OutletCartTargetUnavailableError();
+        }
+        let swapItemAuthorizations: Awaited<
+            ReturnType<typeof getShoppingCartItemAdvancedSowingAuthorizations>
+        >;
+        try {
+            swapItemAuthorizations =
+                await getShoppingCartItemAdvancedSowingAuthorizations(
+                    [swapItem.id],
+                    db,
+                );
+        } catch (error) {
+            if (
+                error instanceof AdvancedSowingCartAuthorizationPersistenceError
+            ) {
+                throw new OutletCartTargetUnavailableError();
+            }
+            throw error;
+        }
+        if (swapItemAuthorizations.has(swapItem.id)) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        const swapItemFulfillmentStartedIds =
+            await getCheckoutFulfillmentStartedCartItemIds(
+                mutation.accountId,
+                [swapItem],
+                db,
+            );
+        if (swapItemFulfillmentStartedIds.has(swapItem.id)) {
+            throw new CheckoutCartItemFulfillmentStartedError(swapItem.id);
+        }
+        await assertNoPendingAdvancedSowingFootprintAtTarget(
+            bedItems,
+            existingItem.positionIndex,
+            db,
+            existingItem.id,
+        );
+        const oldPositionItems = getPlantCartItemsAtPosition(
+            bedItems,
+            existingItem.positionIndex,
+        ).filter((item) => item.id !== existingItem.id);
+        if (oldPositionItems.length > 0) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        await db
+            .update(shoppingCartItems)
+            .set({ positionIndex: existingItem.positionIndex })
+            .where(eq(shoppingCartItems.id, swapItem.id));
+    }
+
+    const finalCurrency = mutation.currency ?? existingItem.currency;
+    if (!isSupportedOutletCartCurrency(finalCurrency)) {
+        throw new OutletReservationUnavailableError(
+            'Outlet cart item has an unsupported currency.',
+        );
+    }
+    const normalizedAdditionalData =
+        mutation.additionalData === undefined
+            ? undefined
+            : normalizeScheduledDateAdditionalData(mutation.additionalData);
+    await db
+        .update(shoppingCartItems)
+        .set({
+            additionalData: normalizedAdditionalData,
+            amount: mutation.amount,
+            currency: finalCurrency,
+            positionIndex: mutation.positionIndex,
+        })
+        .where(eq(shoppingCartItems.id, existingItem.id));
+    await clearShoppingCartItemAdvancedSowingAuthorization(existingItem.id, db);
+    await reserveOutletOffer({
+        offerId: mutation.outletOfferId,
+        accountId: mutation.accountId,
+        cartId: mutation.cartId,
+        cartItemId: existingItem.id,
+        quantity: mutation.amount,
+        now: mutation.now,
+        holdMinutes: mutation.holdMinutes,
+        db,
+    });
+    return existingItem.id;
+}
+
+async function upsertIdlessOutletCartItemWithReservation(
+    mutation: IdlessOutletCartItemMutation,
+) {
+    const retryLimit = 4;
+    for (let attempt = 0; attempt < retryLimit; attempt += 1) {
+        const discoveredItems = await getLivePlantCartItemsForBed(
+            mutation,
+            storage(),
+        );
+        const discoveredItemIds = discoveredItems.map((item) => item.id);
+        try {
+            return await withCheckoutCartItemLocks(discoveredItemIds, (db) =>
+                applyIdlessOutletCartItemMutation(
+                    mutation,
+                    discoveredItemIds,
+                    db,
+                ),
+            );
+        } catch (error) {
+            if (
+                error instanceof OutletCartTargetChangedDuringMutationError &&
+                attempt + 1 < retryLimit
+            ) {
+                continue;
+            }
+            if (error instanceof OutletCartTargetChangedDuringMutationError) {
+                throw new OutletCartTargetUnavailableError();
+            }
+            throw error;
+        }
+    }
+    throw new OutletCartTargetUnavailableError();
+}
+
+async function upsertExplicitOutletCartItemWithReservation(
+    mutation: ExplicitOutletCartItemMutation,
+) {
+    const retryLimit = 4;
+    for (let attempt = 0; attempt < retryLimit; attempt += 1) {
+        const discoveredBedItems = await getLivePlantCartItemsForBed(
+            mutation,
+            storage(),
+        );
+        const discoveredBedItemIds = discoveredBedItems.map((item) => item.id);
+        const lockItemIds = [...discoveredBedItemIds, mutation.id];
+        try {
+            return await withCheckoutCartItemLocks(lockItemIds, (db) =>
+                applyExplicitOutletCartItemMutation(
+                    mutation,
+                    discoveredBedItemIds,
+                    db,
+                ),
+            );
+        } catch (error) {
+            if (
+                error instanceof OutletCartTargetChangedDuringMutationError &&
+                attempt + 1 < retryLimit
+            ) {
+                continue;
+            }
+            if (error instanceof OutletCartTargetChangedDuringMutationError) {
+                throw new OutletCartTargetUnavailableError();
+            }
+            throw error;
+        }
+    }
+    throw new OutletCartTargetUnavailableError();
 }
 
 export async function upsertOrRemoveCartItemWithOutletReservation({
@@ -1155,6 +1752,52 @@ export async function upsertOrRemoveCartItemWithOutletReservation({
     now?: Date;
     holdMinutes?: number;
 }) {
+    if (amount > 0 && amount !== 1) {
+        throw new OutletReservationUnavailableError(
+            'Outlet cart items require exactly one plant.',
+        );
+    }
+    if (amount > 0) {
+        if (
+            typeof gardenId !== 'number' ||
+            !Number.isSafeInteger(gardenId) ||
+            gardenId <= 0 ||
+            typeof raisedBedId !== 'number' ||
+            !Number.isSafeInteger(raisedBedId) ||
+            raisedBedId <= 0 ||
+            typeof positionIndex !== 'number' ||
+            !Number.isSafeInteger(positionIndex) ||
+            positionIndex < 0
+        ) {
+            throw new OutletCartTargetUnavailableError();
+        }
+        const mutation = {
+            accountId,
+            additionalData,
+            amount,
+            cartId,
+            currency,
+            entityId,
+            entityTypeName,
+            gardenId,
+            holdMinutes,
+            now,
+            outletOfferId,
+            positionIndex,
+            raisedBedId,
+        };
+        if (id == null) {
+            return upsertIdlessOutletCartItemWithReservation(mutation);
+        }
+        if (forceCreate) {
+            throw new Error('Cannot create an item with an existing ID');
+        }
+        return upsertExplicitOutletCartItemWithReservation({
+            ...mutation,
+            id,
+        });
+    }
+
     return storage().transaction(async (tx) => {
         const cartItemId = await upsertOrRemoveCartItem(
             id,
@@ -1173,6 +1816,19 @@ export async function upsertOrRemoveCartItemWithOutletReservation({
         );
 
         if (amount > 0 && cartItemId) {
+            const persistedCartItem =
+                await tx.query.shoppingCartItems.findFirst({
+                    columns: { currency: true },
+                    where: eq(shoppingCartItems.id, cartItemId),
+                });
+            if (
+                !persistedCartItem ||
+                !isSupportedOutletCartCurrency(persistedCartItem.currency)
+            ) {
+                throw new OutletReservationUnavailableError(
+                    'Outlet cart item has an unsupported currency.',
+                );
+            }
             await clearShoppingCartItemAdvancedSowingAuthorization(
                 cartItemId,
                 tx,
