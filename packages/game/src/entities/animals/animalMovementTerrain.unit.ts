@@ -10,6 +10,7 @@ import {
     createAnimalMovementSurfaces,
     isAnimalGroundBlockName,
     isAnimalSwimmingAt,
+    isAnimalWaterBlockName,
 } from './animalMovementTerrain';
 
 function block(id: string, name: string): Block {
@@ -32,6 +33,20 @@ describe('animal movement terrain', () => {
             isAnimalGroundBlockName('Block_Ground_Reverse_Corner'),
             true,
         );
+        for (const name of [
+            'Block_Dry_Ground',
+            'Block_Dry_Ground_Angle',
+            'Block_Swamp_Ground',
+            'Block_Swamp_Ground_Angle',
+            'Block_Stone',
+            'Block_Stone_Angle',
+            'Block_Gravel',
+            'Block_Gravel_Angle',
+            'Block_Stone_Stairs',
+            'Block_Stone_Stairs_Half',
+        ]) {
+            assert.equal(isAnimalGroundBlockName(name), true, name);
+        }
         assert.equal(isAnimalGroundBlockName('Raised_Bed'), false);
     });
 
@@ -58,6 +73,24 @@ describe('animal movement terrain', () => {
         ]);
         assert.equal(isAnimalSwimmingAt({ x: 1, z: 2 }, surfaces), true);
         assert.equal(canAnimalSettleAt({ x: 1, z: 2 }, surfaces), false);
+    });
+
+    it('treats swamp water as a swimming surface', () => {
+        const waterStack = stack(1, 2, [
+            block('grass', 'Block_Grass'),
+            block('water', 'Block_Swamp_Water'),
+        ]);
+        const surfaces = createAnimalMovementSurfaces({
+            blockData: getLocalSandboxBlockData(),
+            groundLift: 0.02,
+            stacks: [waterStack],
+            swimDepth: 0.12,
+        });
+
+        assert.equal(isAnimalWaterBlockName('Block_Swamp_Water'), true);
+        assert.equal(createAnimalBlockedCells([waterStack]).length, 0);
+        assert.equal(surfaces[0]?.kind, 'water');
+        assert.equal(isAnimalSwimmingAt({ x: 1, z: 2 }, surfaces), true);
     });
 
     it('blocks occupied cells while preserving the ground below them', () => {

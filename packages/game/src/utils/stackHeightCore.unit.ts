@@ -45,6 +45,19 @@ describe('getStackHeight', () => {
         );
     });
 
+    it('collapses swamp water directly above shaped terrain', () => {
+        const sandEdge = block('sand-edge', 'Block_Sand_Angle');
+        const swampWater = block('water-bottom', 'Block_Swamp_Water');
+        const currentStack = stack([sandEdge, swampWater]);
+        const blockData = getLocalSandboxBlockData();
+
+        assert.equal(
+            getStackBlockHeight(blockData, currentStack, swampWater),
+            0,
+        );
+        assert.equal(getStackHeight(blockData, currentStack), localBlockHeight);
+    });
+
     it('keeps normal water height above a flat terrain block', () => {
         const sand = block('sand', 'Block_Sand');
         const bottomWater = block('water-bottom', 'Block_Water');

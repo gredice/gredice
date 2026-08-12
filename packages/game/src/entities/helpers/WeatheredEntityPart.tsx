@@ -24,7 +24,7 @@ export function WeatheredEntityPart({
 }: {
     castShadow?: boolean;
     children?: ReactNode;
-    material?: Material;
+    material?: Material | Material[];
     node: Mesh;
     rain?: RainOptions | false;
     receiveShadow?: boolean;

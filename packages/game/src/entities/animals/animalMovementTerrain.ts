@@ -2,7 +2,7 @@ import type { BlockData } from '@gredice/client';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getWaterBlockColumnSurfaceY } from '../waterBlockDepth';
-import { waterBlockName } from '../waterBlockFoam';
+import { isWaterBlockName } from '../waterBlockNames';
 
 export type AnimalMovementCell = {
     x: number;
@@ -22,6 +22,8 @@ const groundBlockNames = new Set([
     'Block_Ground_Angle',
     'Block_Ground_Corner',
     'Block_Ground_Reverse_Corner',
+    'Block_Dry_Ground',
+    'Block_Dry_Ground_Angle',
     'Block_Grass',
     'Block_Grass_Angle',
     'Block_Grass_Corner',
@@ -35,6 +37,14 @@ const groundBlockNames = new Set([
     'Block_Snow_Corner',
     'Block_Snow_Reverse_Corner',
     'Block_Snow_Falling',
+    'Block_Gravel',
+    'Block_Gravel_Angle',
+    'Block_Stone',
+    'Block_Stone_Angle',
+    'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Half',
+    'Block_Swamp_Ground',
+    'Block_Swamp_Ground_Angle',
 ]);
 
 export function isAnimalGroundBlockName(name: string) {
@@ -42,7 +52,7 @@ export function isAnimalGroundBlockName(name: string) {
 }
 
 export function isAnimalWaterBlockName(name: string) {
-    return name === waterBlockName;
+    return isWaterBlockName(name);
 }
 
 function getGroundSurfaceY({

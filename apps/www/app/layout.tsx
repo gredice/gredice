@@ -29,6 +29,12 @@ const gardenModelPreloadUrls = [
     'BlockSandAngle',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
+    'BlockStone',
+    'BlockStoneAngle',
+    'BlockGravel',
+    'BlockGravelAngle',
+    'BlockStoneStairs',
+    'BlockStoneStairsHalf',
 ].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
 
 const homepageDescription =

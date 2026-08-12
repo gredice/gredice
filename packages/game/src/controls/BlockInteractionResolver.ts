@@ -73,6 +73,31 @@ export function getBlockInteractionRotatedHitboxFootprint(
           };
 }
 
+export function getBlockInteractionHitboxCenter(
+    target: BlockInteractionLayerTarget,
+) {
+    const center = {
+        x: target.stack.position.x,
+        z: target.stack.position.z,
+    };
+
+    if (target.block.name !== 'Block_Stone_Stairs_Half') {
+        return center;
+    }
+
+    // The half stair occupies local Z=-0.5..0 instead of straddling the tile
+    // center. Rotate that local center with the model so the shared instanced
+    // interaction layer follows the visible edge at every quarter turn.
+    const angle = target.block.rotation * (Math.PI / 2);
+    const localZ = -0.25;
+    const offsetX = Math.sin(angle) * localZ;
+    const offsetZ = Math.cos(angle) * localZ;
+    return {
+        x: center.x + (Math.abs(offsetX) < 1e-12 ? 0 : offsetX),
+        z: center.z + (Math.abs(offsetZ) < 1e-12 ? 0 : offsetZ),
+    };
+}
+
 export function getBlockInteractionLayerBounds(
     targets: BlockInteractionLayerTarget[],
 ): BlockInteractionLayerBounds {
@@ -96,12 +121,13 @@ export function getBlockInteractionLayerBounds(
 
     for (const target of targets) {
         const footprint = getBlockInteractionRotatedHitboxFootprint(target);
-        minX = Math.min(minX, target.stack.position.x - footprint.width / 2);
-        maxX = Math.max(maxX, target.stack.position.x + footprint.width / 2);
+        const center = getBlockInteractionHitboxCenter(target);
+        minX = Math.min(minX, center.x - footprint.width / 2);
+        maxX = Math.max(maxX, center.x + footprint.width / 2);
         minY = Math.min(minY, target.stackHeight);
         maxY = Math.max(maxY, target.stackHeight + target.hitbox.height);
-        minZ = Math.min(minZ, target.stack.position.z - footprint.depth / 2);
-        maxZ = Math.max(maxZ, target.stack.position.z + footprint.depth / 2);
+        minZ = Math.min(minZ, center.z - footprint.depth / 2);
+        maxZ = Math.max(maxZ, center.z + footprint.depth / 2);
     }
 
     const margin = 0.05;
@@ -126,15 +152,16 @@ export function resolveBlockInteractionLayerTarget(
 
     for (const target of targets) {
         const footprint = getBlockInteractionRotatedHitboxFootprint(target);
+        const center = getBlockInteractionHitboxCenter(target);
         hitboxMin.set(
-            target.stack.position.x - footprint.width / 2,
+            center.x - footprint.width / 2,
             target.stackHeight,
-            target.stack.position.z - footprint.depth / 2,
+            center.z - footprint.depth / 2,
         );
         hitboxMax.set(
-            target.stack.position.x + footprint.width / 2,
+            center.x + footprint.width / 2,
             target.stackHeight + target.hitbox.height,
-            target.stack.position.z + footprint.depth / 2,
+            center.z + footprint.depth / 2,
         );
         hitboxBounds.set(hitboxMin, hitboxMax);
 

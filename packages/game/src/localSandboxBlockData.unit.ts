@@ -37,6 +37,44 @@ test('local sandbox shaped terrain uses the rendered surface height', () => {
     }
 });
 
+test('local sandbox exposes every terrain variation with offer dimensions', () => {
+    const blockData = getLocalSandboxBlockData();
+    const names = [
+        'Block_Stone',
+        'Block_Stone_Angle',
+        'Block_Gravel',
+        'Block_Gravel_Angle',
+        'Block_Dry_Ground',
+        'Block_Dry_Ground_Angle',
+        'Block_Swamp_Ground',
+        'Block_Swamp_Ground_Angle',
+        'Block_Swamp_Water',
+        'Block_Stone_Stairs',
+        'Block_Stone_Stairs_Half',
+    ];
+
+    for (const name of names) {
+        const block = blockData.find(
+            (candidate) => candidate.information.name === name,
+        );
+
+        assert.ok(block, `Missing local sandbox terrain ${name}`);
+        assert.equal(block.attributes.height, 0.4);
+        assert.equal(block.attributes.stackable, true);
+        assert.equal(block.prices.sunflowers, 0);
+    }
+
+    const halfStairs = blockData.find(
+        (block) => block.information.name === 'Block_Stone_Stairs_Half',
+    );
+    const swampWater = blockData.find(
+        (block) => block.information.name === 'Block_Swamp_Water',
+    );
+    assert.equal(halfStairs?.attributes.hitboxDepth, 0.5);
+    assert.equal(halfStairs?.attributes.hitboxWidth, 1);
+    assert.equal(swampWater?.attributes.placeableOnWater, true);
+});
+
 test('local sandbox exposes special seasonal blocks', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(

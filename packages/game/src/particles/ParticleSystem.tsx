@@ -8,6 +8,7 @@ import {
     useRef,
 } from 'react';
 import { Euler, type InstancedMesh, Object3D, Vector3 } from 'three';
+import { isWaterBlockName } from '../entities/waterBlockNames';
 
 export enum ParticleType {
     Default = 'default',
@@ -42,6 +43,10 @@ const ParticleContext = createContext<ParticleContextValue | null>(null);
 export function resolveBlockParticleType(
     blockName: string,
 ): ParticleType | null {
+    if (isWaterBlockName(blockName)) {
+        return ParticleType.Water;
+    }
+
     switch (blockName) {
         case 'BaleHey':
         case 'MulchHey':
@@ -57,9 +62,13 @@ export function resolveBlockParticleType(
         case 'DesertStoneSmall':
         case 'DesertStoneMedium':
         case 'DesertStoneLarge':
+        case 'Block_Stone':
+        case 'Block_Stone_Angle':
+        case 'Block_Stone_Stairs':
+        case 'Block_Stone_Stairs_Half':
+        case 'Block_Gravel':
+        case 'Block_Gravel_Angle':
             return ParticleType.Stone;
-        case 'Block_Water':
-            return ParticleType.Water;
         default:
             return null;
     }

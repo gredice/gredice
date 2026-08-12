@@ -1,4 +1,4 @@
-export type GroundDecorationSurface = 'grass' | 'sand';
+export type GroundDecorationSurface = 'grass' | 'sand' | 'swamp';
 
 type GroundFlowerOptions = {
     clusterChance: number;
@@ -32,6 +32,7 @@ const spriteNumbers = Array.from({ length: 8 }, (_, index) =>
 
 export const groundDecorationAtlasBasePath =
     '/assets/sprites/decorations/ground-cover-v2.atlas';
+export const swampGroundDecorationTint = '#98613d';
 
 export const groundDecorationOptions: Record<
     GroundDecorationSurface,
@@ -75,11 +76,25 @@ export const groundDecorationOptions: Record<
         positionRange: 0.26,
         spawnChance: 1,
     },
+    swamp: {
+        angleLiftPerUnit: 0.4,
+        baseY: 0.2,
+        clusterChance: 0.34,
+        heightRange: [0.15, 0.28],
+        maxCount: 4,
+        minDistance: 0.16,
+        opacityRange: [0.82, 0.94],
+        positionRange: 0.27,
+        spawnChance: 1,
+    },
 };
 
 const groundDecorationSprites = {
     grass: spriteNumbers.map((value) => `grass__${value}`),
     sand: spriteNumbers.map((value) => `desert__${value}`),
+    // The desert atlas sprites are naturally straw-gold/light brown, which
+    // gives swamp soil sparse dry reeds without introducing another atlas.
+    swamp: spriteNumbers.map((value) => `desert__${value}`),
 } satisfies Record<GroundDecorationSurface, string[]>;
 
 export function getGroundDecorationSprites(surface: GroundDecorationSurface) {
@@ -100,6 +115,9 @@ export function resolveGroundDecorationSurface(
         case 'Block_Sand_Corner':
         case 'Block_Sand_Reverse_Corner':
             return 'sand';
+        case 'Block_Swamp_Ground':
+        case 'Block_Swamp_Ground_Angle':
+            return 'swamp';
         default:
             return null;
     }

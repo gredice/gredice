@@ -3,6 +3,8 @@ import {
     getGardenBlockFootprintOffsets,
 } from '@gredice/js/gardenBlocks';
 import type { Stack } from '../types/Stack';
+import { isAnimalGroundBlockName } from './animals/animalMovementTerrain';
+import { isWaterBlockName } from './waterBlockNames';
 
 export type BeachBallBounceObstacle = {
     x: number;
@@ -56,23 +58,6 @@ const surfaceCellEpsilon = 0.0001;
 
 export const beachBallCollisionRadius = 0.24;
 const maxMotionSubstepDistance = beachBallCollisionRadius / 2;
-
-const passableTerrainBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Grass_Corner',
-    'Block_Grass_Reverse_Corner',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Sand_Corner',
-    'Block_Sand_Reverse_Corner',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-    'Block_Water',
-]);
 
 function cellKey(position: { x: number; z: number }) {
     return `${position.x}|${position.z}`;
@@ -257,7 +242,7 @@ function resolveAxisMotion({
 }
 
 export function isBeachBallPassableTerrainBlockName(name: string) {
-    return passableTerrainBlockNames.has(name);
+    return isWaterBlockName(name) || isAnimalGroundBlockName(name);
 }
 
 export function createBeachBallBounceState(): BeachBallBounceState {

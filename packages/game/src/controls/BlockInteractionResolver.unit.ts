@@ -4,6 +4,7 @@ import { Object3D, Ray, Vector3 } from 'three';
 import {
     type BlockInteractionLayerTarget,
     blockInteractionPassthroughUserDataKey,
+    getBlockInteractionHitboxCenter,
     getBlockInteractionLayerBounds,
     getBlockInteractionRotatedHitboxFootprint,
     hasCloserNonLayerIntersection,
@@ -88,6 +89,57 @@ describe('resolveBlockInteractionLayerTarget', () => {
             resolveBlockInteractionLayerTarget([rotatedTarget], ray)?.target
                 .key,
             'rotated',
+        );
+    });
+
+    it('edge-aligns the half-stair hitbox with its rotated model', () => {
+        const halfStair = createTarget({
+            block: {
+                id: 'half-stair',
+                name: 'Block_Stone_Stairs_Half',
+                rotation: 0,
+            },
+            hitbox: {
+                depth: 0.5,
+                height: 0.4,
+                width: 1,
+            },
+            key: 'half-stair',
+        });
+        const visibleEdgeRay = new Ray(
+            new Vector3(-2, 0.2, -0.45),
+            new Vector3(1, 0, 0),
+        );
+        const emptyHalfRay = new Ray(
+            new Vector3(-2, 0.2, 0.2),
+            new Vector3(1, 0, 0),
+        );
+
+        assert.deepEqual(getBlockInteractionHitboxCenter(halfStair), {
+            x: 0,
+            z: -0.25,
+        });
+        assert.equal(
+            resolveBlockInteractionLayerTarget([halfStair], visibleEdgeRay)
+                ?.target.key,
+            'half-stair',
+        );
+        assert.equal(
+            resolveBlockInteractionLayerTarget([halfStair], emptyHalfRay),
+            null,
+        );
+
+        halfStair.block.rotation = 1;
+        assert.deepEqual(
+            {
+                x: Number(
+                    getBlockInteractionHitboxCenter(halfStair).x.toFixed(6),
+                ),
+                z: Number(
+                    getBlockInteractionHitboxCenter(halfStair).z.toFixed(6),
+                ),
+            },
+            { x: -0.25, z: 0 },
         );
     });
 

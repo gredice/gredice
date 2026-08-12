@@ -83,14 +83,25 @@ export const localSandboxBlockNames = [
     'CactusPricklyPear',
     'Block_Grass',
     'Block_Ground',
+    'Block_Dry_Ground',
+    'Block_Swamp_Ground',
+    'Block_Stone',
+    'Block_Gravel',
     'Block_Sand',
     'Block_Snow',
     'Block_Snow_Falling',
     'Block_Water',
+    'Block_Swamp_Water',
     'Block_Grass_Angle',
     'Block_Ground_Angle',
+    'Block_Dry_Ground_Angle',
+    'Block_Swamp_Ground_Angle',
+    'Block_Stone_Angle',
+    'Block_Gravel_Angle',
     'Block_Sand_Angle',
     'Block_Snow_Angle',
+    'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Half',
     'Block_Grass_Corner',
     'Block_Ground_Corner',
     'Block_Sand_Corner',
@@ -106,6 +117,61 @@ export type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
 const localSandboxBlockMetadata: Partial<
     Record<LocalSandboxBlockName, { label: string; shortDescription: string }>
 > = {
+    Block_Stone: {
+        label: 'Kamen',
+        shortDescription:
+            'Veliki kameni blok sa zakošenim bridovima za čvrste vrtne površine i zidove.',
+    },
+    Block_Stone_Angle: {
+        label: 'Kamen rub',
+        shortDescription:
+            'Kosi kameni rub sa zakošenim bridovima za završetke kamenih površina.',
+    },
+    Block_Gravel: {
+        label: 'Šljunak',
+        shortDescription:
+            'Sivi šljunčani blok sa sitnim kamenčićima za staze i suhe vrtne površine.',
+    },
+    Block_Gravel_Angle: {
+        label: 'Šljunak rub',
+        shortDescription:
+            'Kosi rub od sivog šljunka za prirodne prijelaze uz staze i nasipe.',
+    },
+    Block_Dry_Ground: {
+        label: 'Suha zemlja',
+        shortDescription:
+            'Svijetla suha zemlja bez raslinja za osunčane i ogoljene dijelove vrta.',
+    },
+    Block_Dry_Ground_Angle: {
+        label: 'Suha zemlja rub',
+        shortDescription:
+            'Kosi rub svijetle suhe zemlje za blage prijelaze između terenskih razina.',
+    },
+    Block_Swamp_Ground: {
+        label: 'Močvarna zemlja',
+        shortDescription:
+            'Smeđesiva vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
+    },
+    Block_Swamp_Ground_Angle: {
+        label: 'Močvarna zemlja rub',
+        shortDescription:
+            'Kosi rub smeđesive močvarne zemlje sa svijetlosmeđim raslinjem.',
+    },
+    Block_Swamp_Water: {
+        label: 'Močvarna voda',
+        shortDescription:
+            'Zelenkasta močvarna voda sa zelenim algama na mirnoj površini.',
+    },
+    Block_Stone_Stairs: {
+        label: 'Kamene stube',
+        shortDescription:
+            'Pune kamene stube s dvije razine za povezivanje nižih i viših površina.',
+    },
+    Block_Stone_Stairs_Half: {
+        label: 'Kamene polustube',
+        shortDescription:
+            'Kamene stube pola širine za završetke, rubove i uske prijelaze.',
+    },
     StoneWalkway: {
         label: 'Kamena staza',
         shortDescription:
@@ -159,14 +225,25 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         ),
         Block_Grass: 0.4,
         Block_Ground: 0.4,
+        Block_Dry_Ground: 0.4,
+        Block_Swamp_Ground: 0.4,
+        Block_Stone: 0.4,
+        Block_Gravel: 0.4,
         Block_Sand: 0.4,
         Block_Snow: 0.4,
         Block_Snow_Falling: 0.4,
         Block_Water: 0.4,
+        Block_Swamp_Water: 0.4,
         Block_Grass_Angle: 0.4,
         Block_Ground_Angle: 0.4,
+        Block_Dry_Ground_Angle: 0.4,
+        Block_Swamp_Ground_Angle: 0.4,
+        Block_Stone_Angle: 0.4,
+        Block_Gravel_Angle: 0.4,
         Block_Sand_Angle: 0.4,
         Block_Snow_Angle: 0.4,
+        Block_Stone_Stairs: 0.4,
+        Block_Stone_Stairs_Half: 0.4,
         Block_Grass_Corner: 0.4,
         Block_Ground_Corner: 0.4,
         Block_Sand_Corner: 0.4,
@@ -249,6 +326,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 0.96,
         hitboxHeight: 0.08,
         hitboxWidth: 0.96,
+    },
+    Block_Stone_Stairs_Half: {
+        hitboxDepth: 0.5,
+        hitboxHeight: 0.4,
+        hitboxWidth: 1,
     },
     SmallWoodenBridge: {
         hitboxDepth: 1,
@@ -333,6 +415,7 @@ type LocalSandboxPlacementAttributes = Partial<
 >;
 
 const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
+    Block_Swamp_Water: { placeableOnWater: true },
     SmallWoodenBridge: { placeableOnWater: true },
     WoodenWalkway: { placeableOnWater: true },
     StoneWalkway: {

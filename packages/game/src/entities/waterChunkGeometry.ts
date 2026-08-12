@@ -23,9 +23,9 @@ export type WaterTopChunkInstance = ChunkedMeshInstance & {
 
 const waterBlockHalfSize = 0.5;
 
-export function chunkWaterTopInstances(
-    instances: WaterTopChunkInstance[],
-): MeshInstanceChunk<WaterTopChunkInstance>[] {
+export function chunkWaterTopInstances<TInstance extends WaterTopChunkInstance>(
+    instances: TInstance[],
+): MeshInstanceChunk<TInstance>[] {
     return chunkMeshInstances(instances);
 }
 

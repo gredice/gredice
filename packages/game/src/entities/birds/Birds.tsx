@@ -22,7 +22,8 @@ import {
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { birdSpeechMessages } from '../animals/actorSpeechMessages';
-import { waterBlockName } from '../waterBlockFoam';
+import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
     getBirdActivityRange,
@@ -187,18 +188,6 @@ const birdBeakColor = '#d76516';
 const birdLegColor = '#c65f17';
 const animalDisturbanceReactionWindowMs = 2500;
 
-const groundBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-]);
-
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
 
 const visualPerchYOffsets: Record<string, number> = {
@@ -257,15 +246,11 @@ function createRandom(seed: number) {
 }
 
 function isGroundBlockName(name: string) {
-    return groundBlockNames.has(name);
+    return isAnimalGroundBlockName(name);
 }
 
 function isTreeBlockName(name: string) {
     return treeBlockNames.has(name);
-}
-
-function isWaterBlockName(name: string) {
-    return name === waterBlockName;
 }
 
 function getBlockHeight(

@@ -6,6 +6,8 @@ import { BeachChair } from './BeachChair';
 import { BeachTowelStriped } from './BeachTowelStriped';
 import { BeachUmbrella } from './BeachUmbrella';
 import { BirdHouse } from './BirdHouse';
+import { BlockDryGround } from './BlockDryGround';
+import { BlockDryGroundAngle } from './BlockDryGroundAngle';
 import { BlockGrass } from './BlockGrass';
 import { BlockGrassAngle } from './BlockGrassAngle';
 import { BlockGround } from './BlockGround';
@@ -15,6 +17,8 @@ import { BlockSandAngle } from './BlockSandAngle';
 import { BlockSnow } from './BlockSnow';
 import { BlockSnowAngle } from './BlockSnowAngle';
 import { BlockSnowFalling } from './BlockSnowFalling';
+import { BlockSwampGround } from './BlockSwampGround';
+import { BlockSwampGroundAngle } from './BlockSwampGroundAngle';
 import {
     BlockGrassCorner,
     BlockGroundCorner,
@@ -27,6 +31,7 @@ import {
     BlockSandReverseCorner,
     BlockSnowReverseCorner,
 } from './BlockTerrainReverseCorner';
+import { BlockTerrainVariationAsset } from './BlockTerrainVariationAsset';
 import { BlockWater } from './BlockWater';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
@@ -92,6 +97,17 @@ export const entityNameMap = {
     Block_Grass: BlockGrass,
     Block_Sand: BlockSand,
     Block_Water: BlockWater,
+    Block_Swamp_Water: BlockWater,
+    Block_Dry_Ground: BlockDryGround,
+    Block_Dry_Ground_Angle: BlockDryGroundAngle,
+    Block_Swamp_Ground: BlockSwampGround,
+    Block_Swamp_Ground_Angle: BlockSwampGroundAngle,
+    Block_Stone: BlockTerrainVariationAsset,
+    Block_Stone_Angle: BlockTerrainVariationAsset,
+    Block_Gravel: BlockTerrainVariationAsset,
+    Block_Gravel_Angle: BlockTerrainVariationAsset,
+    Block_Stone_Stairs: BlockTerrainVariationAsset,
+    Block_Stone_Stairs_Half: BlockTerrainVariationAsset,
     Block_Ground_Angle: BlockGroundAngle,
     Block_Grass_Angle: BlockGrassAngle,
     Block_Sand_Angle: BlockSandAngle,

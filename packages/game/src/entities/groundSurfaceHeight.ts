@@ -5,14 +5,21 @@ function clampUnit(value: number) {
 }
 
 /**
- * Returns the normalized surface height for the garden's wedge-shaped terrain
- * blocks. A value of 0 is the low edge and 1 is the raised edge/corner.
+ * Returns the normalized surface height for shaped garden terrain. A value of
+ * 0 is the base plane and 1 is the raised edge, corner, or top stair.
  */
 export function getSlopedGroundNormalizedHeight(
     blockName: string,
     localX: number,
     localZ: number,
 ) {
+    if (
+        blockName === 'Block_Stone_Stairs' ||
+        blockName === 'Block_Stone_Stairs_Half'
+    ) {
+        return localX < 0 ? 0.5 : 1;
+    }
+
     if (blockName.endsWith('_Reverse_Corner')) {
         return clampUnit(Math.max(localX, localZ) + terrainHalfSize);
     }

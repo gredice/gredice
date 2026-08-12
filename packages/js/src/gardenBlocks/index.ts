@@ -58,6 +58,14 @@ export type GardenBlockPlacementResult =
 const CANDIDATE_BLOCK_ID = '__candidate_block__';
 const MAX_SPIRAL_STEPS = 1000;
 export const WATER_BLOCK_NAME = 'Block_Water';
+export const WATER_BLOCK_NAMES = [
+    WATER_BLOCK_NAME,
+    'Block_Swamp_Water',
+] as const;
+
+export function isWaterBlockName(blockName: string) {
+    return WATER_BLOCK_NAMES.some((name) => name === blockName);
+}
 
 function toPositiveGridSpan(value: number | null | undefined) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -233,7 +241,7 @@ function getTopOccupiedCell(
 }
 
 function isGroundBlock(blockName: string) {
-    return blockName.startsWith('Block') && blockName !== WATER_BLOCK_NAME;
+    return blockName.startsWith('Block') && !isWaterBlockName(blockName);
 }
 
 function isWaterPlacement(params: {
@@ -253,9 +261,10 @@ function isWaterPlacement(params: {
             y: placement.y + offset.y,
         });
 
-        return stack?.blocks.some(
-            (blockId) => blockNameById.get(blockId) === WATER_BLOCK_NAME,
-        );
+        return stack?.blocks.some((blockId) => {
+            const candidateName = blockNameById.get(blockId);
+            return candidateName ? isWaterBlockName(candidateName) : false;
+        });
     });
 }
 
@@ -267,8 +276,7 @@ export function isBlockPlaceableOnWater({
     blockName: string;
 }) {
     return (
-        blockData?.attributes?.placeableOnWater ??
-        blockName === WATER_BLOCK_NAME
+        blockData?.attributes?.placeableOnWater ?? isWaterBlockName(blockName)
     );
 }
 
@@ -287,7 +295,7 @@ export function canStackBlockOnBlock({
         return false;
     }
 
-    if (belowBlockName !== WATER_BLOCK_NAME) {
+    if (!isWaterBlockName(belowBlockName)) {
         return true;
     }
 

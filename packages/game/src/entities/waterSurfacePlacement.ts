@@ -1,8 +1,7 @@
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { waterBlockBottomOverlap } from './waterBlockGeometry';
-
-const waterBlockName = 'Block_Water';
+import { isWaterBlockName } from './waterBlockNames';
 
 export function getWaterSurfacePlacementYOffset(
     stack: Stack | undefined,
@@ -15,5 +14,7 @@ export function getWaterSurfacePlacementYOffset(
     const blockIndex = stack.blocks.indexOf(block);
     const supportBlock = stack.blocks[blockIndex - 1];
 
-    return supportBlock?.name === waterBlockName ? -waterBlockBottomOverlap : 0;
+    return isWaterBlockName(supportBlock?.name ?? '')
+        ? -waterBlockBottomOverlap
+        : 0;
 }

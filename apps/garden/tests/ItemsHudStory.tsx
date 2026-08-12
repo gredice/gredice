@@ -36,6 +36,94 @@ const blockFixtures: Record<
         stackable: boolean;
     }
 > = {
+    Block_Stone: {
+        label: 'Kamen',
+        shortDescription:
+            'Veliki kameni blok sa zakošenim bridovima za čvrste vrtne površine i zidove.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Stone_Angle: {
+        label: 'Kamen rub',
+        shortDescription:
+            'Kosi kameni rub sa zakošenim bridovima za završetke kamenih površina.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Gravel: {
+        label: 'Šljunak',
+        shortDescription:
+            'Sivi šljunčani blok sa sitnim kamenčićima za staze i suhe vrtne površine.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Gravel_Angle: {
+        label: 'Šljunak rub',
+        shortDescription:
+            'Kosi rub od sivog šljunka za prirodne prijelaze uz staze i nasipe.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Dry_Ground: {
+        label: 'Suha zemlja',
+        shortDescription:
+            'Svijetla suha zemlja bez raslinja za osunčane i ogoljene dijelove vrta.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Dry_Ground_Angle: {
+        label: 'Suha zemlja rub',
+        shortDescription:
+            'Kosi rub svijetle suhe zemlje za blage prijelaze između terenskih razina.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Swamp_Ground: {
+        label: 'Močvarna zemlja',
+        shortDescription:
+            'Smeđesiva vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Swamp_Ground_Angle: {
+        label: 'Močvarna zemlja rub',
+        shortDescription:
+            'Kosi rub smeđesive močvarne zemlje sa svijetlosmeđim raslinjem.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Swamp_Water: {
+        label: 'Močvarna voda',
+        shortDescription:
+            'Zelenkasta močvarna voda sa zelenim algama na mirnoj površini.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Stone_Stairs: {
+        label: 'Kamene stube',
+        shortDescription:
+            'Pune kamene stube s dvije razine za povezivanje nižih i viših površina.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Stone_Stairs_Half: {
+        label: 'Kamene polustube',
+        shortDescription:
+            'Kamene stube pola širine za završetke, rubove i uske prijelaze.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
     MulchWood: {
         label: 'Malč - kora drveta',
         shortDescription:
@@ -283,14 +371,25 @@ const blockNames = [
     'Snowman',
     'Block_Grass',
     'Block_Ground',
+    'Block_Dry_Ground',
+    'Block_Swamp_Ground',
+    'Block_Stone',
+    'Block_Gravel',
     'Block_Sand',
     'Block_Snow',
     'Block_Snow_Falling',
     'Block_Water',
+    'Block_Swamp_Water',
     'Block_Grass_Angle',
     'Block_Ground_Angle',
+    'Block_Dry_Ground_Angle',
+    'Block_Swamp_Ground_Angle',
+    'Block_Stone_Angle',
+    'Block_Gravel_Angle',
     'Block_Sand_Angle',
     'Block_Snow_Angle',
+    'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Half',
     'Block_Grass_Corner',
     'Block_Ground_Corner',
     'Block_Sand_Corner',

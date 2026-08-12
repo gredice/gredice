@@ -275,6 +275,64 @@ test('matches corner and reverse-corner terrain silhouettes', () => {
     );
 });
 
+test('follows the middle and top levels of two-step stone stairs', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    {
+                        id: 'stone-stairs',
+                        name: 'Block_Stone_Stairs',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const stairs = world.surfaces[0];
+
+    assert.ok(stairs);
+    assert.equal(getGardenAvatarSurfaceY({ x: -0.5, z: 0 }, stairs), 0.2);
+    assert.equal(getGardenAvatarSurfaceY({ x: -0.01, z: 0 }, stairs), 0.2);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0, z: 0 }, stairs), 0.4);
+    assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0 }, stairs), 0.4);
+});
+
+test('keeps half stairs on the rendered tile edge after rotation', () => {
+    const createWorld = (rotation: number) =>
+        createGardenAvatarCollisionWorld({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [
+                {
+                    blocks: [
+                        {
+                            id: `half-stairs-${rotation}`,
+                            name: 'Block_Stone_Stairs_Half',
+                            rotation,
+                        },
+                    ],
+                    position: new Vector3(0, 0, 0),
+                },
+            ],
+        }).surfaces[0];
+    const unrotated = createWorld(0);
+    const quarterTurn = createWorld(1);
+
+    assert.ok(unrotated);
+    assert.equal(unrotated.halfWidth, 0.5);
+    assert.equal(unrotated.halfDepth, 0.25);
+    assert.equal(unrotated.x, 0);
+    assert.equal(unrotated.z, -0.25);
+
+    assert.ok(quarterTurn);
+    assert.equal(quarterTurn.halfWidth, 0.5);
+    assert.equal(quarterTurn.halfDepth, 0.25);
+    assert.equal(quarterTurn.x, -0.25);
+    assert.ok(Math.abs(quarterTurn.z) < 0.000_001);
+});
+
 test('allows one grounded jump and one airborne jump', () => {
     assert.equal(
         getGardenAvatarNextJumpCount({ grounded: true, jumpsUsed: 0 }),

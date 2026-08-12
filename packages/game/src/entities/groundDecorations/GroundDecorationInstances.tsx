@@ -36,6 +36,7 @@ export type GroundDecorationInstance = {
     position: [number, number, number];
     rotationZ: number;
     spriteName: string;
+    tint?: string;
 };
 
 export type GroundDecorationWeather = {
@@ -50,6 +51,7 @@ type GroundDecorationBatch = {
     atlasPageIndex: number;
     instances: GroundDecorationBatchInstance[];
     key: string;
+    tint?: string;
 };
 
 type GroundDecorationBatchInstance = GroundDecorationInstance & {
@@ -374,10 +376,17 @@ export function GroundDecorationInstances({
         assetPaths.manifestUrl,
     );
 
-    const instancesByPage = useMemo(() => {
-        const byPage = new Map<number, GroundDecorationInstance[]>();
+    const instanceGroups = useMemo(() => {
+        const groups = new Map<
+            string,
+            {
+                instances: GroundDecorationInstance[];
+                pageIndex: number;
+                tint?: string;
+            }
+        >();
         if (!manifest) {
-            return byPage;
+            return groups;
         }
 
         for (const instance of instances) {
@@ -386,15 +395,20 @@ export function GroundDecorationInstances({
                 continue;
             }
             const pageIndex = sprite.page ?? 0;
-            const pageInstances = byPage.get(pageIndex);
-            if (pageInstances) {
-                pageInstances.push(instance);
+            const groupKey = `${pageIndex}:${instance.tint ?? 'default'}`;
+            const group = groups.get(groupKey);
+            if (group) {
+                group.instances.push(instance);
                 continue;
             }
-            byPage.set(pageIndex, [instance]);
+            groups.set(groupKey, {
+                instances: [instance],
+                pageIndex,
+                tint: instance.tint,
+            });
         }
 
-        return byPage;
+        return groups;
     }, [instances, manifest]);
     const groundDecorationAtlasEstimatedGpuBytes = useMemo(() => {
         if (!manifest) {
@@ -402,7 +416,10 @@ export function GroundDecorationInstances({
         }
 
         let bytes = 0;
-        for (const pageIndex of instancesByPage.keys()) {
+        const pageIndexes = new Set(
+            [...instanceGroups.values()].map((group) => group.pageIndex),
+        );
+        for (const pageIndex of pageIndexes) {
             const page = resolveAtlasPage(
                 manifest.pages,
                 pageIndex,
@@ -416,7 +433,7 @@ export function GroundDecorationInstances({
             }
         }
         return bytes;
-    }, [instancesByPage, manifest]);
+    }, [instanceGroups, manifest]);
 
     useLayoutEffect(() => {
         updateGameProfileMetadata({
@@ -450,8 +467,8 @@ export function GroundDecorationInstances({
 
     return (
         <>
-            {[...instancesByPage.entries()].map(
-                ([pageIndex, pageInstances]) => {
+            {[...instanceGroups.entries()].map(
+                ([groupKey, { instances: pageInstances, pageIndex, tint }]) => {
                     const page = resolveAtlasPage(
                         manifest.pages,
                         pageIndex,
@@ -464,12 +481,13 @@ export function GroundDecorationInstances({
 
                     return (
                         <GroundDecorationPageInstances
-                            key={pageIndex}
+                            key={groupKey}
                             atlasPage={page}
                             farmId={farmId}
                             instances={pageInstances}
                             manifestSprites={manifest.sprites}
                             recordProfileBatch={recordProfileBatch}
+                            tint={tint}
                             weather={weather}
                         />
                     );
@@ -485,6 +503,7 @@ function GroundDecorationPageInstances({
     instances,
     manifestSprites,
     recordProfileBatch,
+    tint,
     weather,
 }: {
     atlasPage: SpriteAtlasPage;
@@ -492,6 +511,7 @@ function GroundDecorationPageInstances({
     instances: GroundDecorationInstance[];
     manifestSprites: Record<string, SpriteAtlasSprite>;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
+    tint?: string;
     weather?: GroundDecorationWeather;
 }) {
     const pageAssetPaths = useMemo(
@@ -527,9 +547,10 @@ function GroundDecorationPageInstances({
         return {
             atlasPageIndex: atlasPage.index,
             instances: batchInstances,
-            key: `page:${atlasPage.index}`,
+            key: `page:${atlasPage.index}:tint:${tint ?? 'default'}`,
+            tint,
         };
-    }, [atlasPage, instances, manifestSprites]);
+    }, [atlasPage, instances, manifestSprites, tint]);
 
     if (textureError) {
         console.error(
@@ -635,8 +656,8 @@ function GroundDecorationInstancedBatch({
     }, [texture, timeUniform]);
 
     useLayoutEffect(() => {
-        material.color.setScalar(brightness);
-    }, [brightness, material]);
+        material.color.set(batch.tint ?? 'white').multiplyScalar(brightness);
+    }, [batch.tint, brightness, material]);
 
     useLayoutEffect(() => {
         const uniforms = material.userData.groundDecorationShader?.uniforms as

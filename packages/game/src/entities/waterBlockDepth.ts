@@ -6,12 +6,12 @@ import {
     getStackHeight,
     isEdgeOrCornerTerrainBlockName,
 } from '../utils/stackHeightCore';
-import { waterBlockName } from './waterBlockFoam';
 import {
     defaultWaterBlockVisualHeight,
     waterBlockBottomOverlap,
 } from './waterBlockGeometry';
 import { getWaterBlockVerticalRange } from './waterBlockHeight';
+import { getWaterBlockStyle, isWaterBlockName } from './waterBlockNames';
 
 export type WaterBlockDepthSamples = [number, number, number, number];
 
@@ -29,7 +29,8 @@ function getWaterBlockColumnBounds({
     block: Block;
     stack: Stack;
 }) {
-    if (block.name !== waterBlockName) {
+    const waterStyle = getWaterBlockStyle(block.name);
+    if (!waterStyle) {
         return null;
     }
 
@@ -42,11 +43,17 @@ function getWaterBlockColumnBounds({
     let bottomIndex = waterBlockIndex;
     let topIndex = waterBlockIndex;
 
-    while (stack.blocks[bottomIndex - 1]?.name === waterBlockName) {
+    while (
+        getWaterBlockStyle(stack.blocks[bottomIndex - 1]?.name ?? '') ===
+        waterStyle
+    ) {
         bottomIndex -= 1;
     }
 
-    while (stack.blocks[topIndex + 1]?.name === waterBlockName) {
+    while (
+        getWaterBlockStyle(stack.blocks[topIndex + 1]?.name ?? '') ===
+        waterStyle
+    ) {
         topIndex += 1;
     }
 
@@ -158,7 +165,7 @@ export function getWaterBlockColumnDepth({
     block: Block;
     stack: Stack;
 }) {
-    if (block.name !== waterBlockName) {
+    if (!isWaterBlockName(block.name)) {
         return 0;
     }
 
