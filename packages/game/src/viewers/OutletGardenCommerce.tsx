@@ -693,6 +693,9 @@ export function useOutletGardenCommerce({
                 renderer,
             });
         } catch (error) {
+            const targetUnavailable =
+                error instanceof ShoppingCartMutationError &&
+                error.code === 'OUTLET_TARGET_UNAVAILABLE';
             if (
                 error instanceof ShoppingCartMutationError &&
                 error.status === 401
@@ -714,6 +717,7 @@ export function useOutletGardenCommerce({
                 queryClient.invalidateQueries({
                     queryKey: useOutletOffersQueryKey,
                 }),
+                ...(targetUnavailable ? [targetGarden.refetch()] : []),
             ]);
             track('game_outlet_garden_hold_failed', {
                 error_code:
@@ -737,6 +741,7 @@ export function useOutletGardenCommerce({
         selectedGardenId,
         selectedLiveOffer,
         selectedTarget,
+        targetGarden,
         track,
     ]);
 
@@ -748,7 +753,7 @@ export function useOutletGardenCommerce({
             (selectedGardenId !== null && targetGarden.isPending),
         enabled,
         hasEligibleTarget: eligibleGardens.length > 0 && targets.length > 0,
-        hasMutationError: Boolean(errorMessage),
+        hasMutationError: Boolean(errorMessage) && targets.length > 0,
         hasQueryError:
             currentUser.isError ||
             (authenticated &&
@@ -963,9 +968,30 @@ export function OutletGardenReservationPanel({
                 <div>
                     <h3 className="font-semibold">Nema slobodnog mjesta</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Dodaj ili oslobodi mjesto u aktivnoj gredici pa pokušaj
-                        ponovno.
+                        U odabranom vrtu nema slobodnog mjesta. Odaberi drugi
+                        vrt ili dodaj odnosno oslobodi mjesto u aktivnoj
+                        gredici.
                     </p>
+                    {commerce.gardens.length > 1 ? (
+                        <label className="mt-3 grid gap-1 text-sm">
+                            <span className="font-medium">Vrt</span>
+                            <select
+                                className="min-h-11 rounded-lg border bg-background px-3"
+                                onChange={(event) =>
+                                    commerce.selectGarden(
+                                        Number(event.currentTarget.value),
+                                    )
+                                }
+                                value={commerce.selectedGardenId ?? ''}
+                            >
+                                {commerce.gardens.map((garden) => (
+                                    <option key={garden.id} value={garden.id}>
+                                        {garden.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : null}
                     <Button
                         className="mt-3"
                         fullWidth

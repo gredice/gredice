@@ -134,6 +134,18 @@ const outletTargetGardenListItem = {
     name: outletTargetGarden.name,
 };
 
+const secondOutletTargetGarden = {
+    ...outletTargetGarden,
+    id: 2,
+    name: 'Drugi testni vrt',
+};
+
+const secondOutletTargetGardenListItem = {
+    ...outletTargetGardenListItem,
+    id: secondOutletTargetGarden.id,
+    name: secondOutletTargetGarden.name,
+};
+
 const emptyShoppingCart = {
     allowPurchase: true,
     hasDeliverableItems: false,
@@ -204,8 +216,14 @@ async function mockOutletGardenApi(page: Page) {
 async function mockOutletGardenCommerceApi(
     page: Page,
     {
+        defaultGardenHasNoTargets = false,
         gardensUnauthorized: initiallyGardensUnauthorized = false,
-    }: { gardensUnauthorized?: boolean } = {},
+        targetUnavailableOnce = false,
+    }: {
+        defaultGardenHasNoTargets?: boolean;
+        gardensUnauthorized?: boolean;
+        targetUnavailableOnce?: boolean;
+    } = {},
 ) {
     const finalUnitOffer = {
         ...outletOffers[1],
@@ -218,6 +236,8 @@ async function mockOutletGardenCommerceApi(
     let outletOfferRequestCount = 0;
     let cartItems: Array<Record<string, unknown>> = [];
     let gardensUnauthorized = initiallyGardensUnauthorized;
+    let occupiedPositionIndex: number | null = null;
+    let targetGardenRequestCount = 0;
 
     await page.route('**/api/gredice/**', async (route) => {
         const request = route.request();
@@ -261,9 +281,33 @@ async function mockOutletGardenCommerceApi(
             return;
         }
 
-        if (pathname.endsWith('/api/gardens/1')) {
+        const targetGardenIdMatch = pathname.match(/\/api\/gardens\/(1|2)$/u);
+        if (targetGardenIdMatch) {
+            targetGardenRequestCount += 1;
+            const gardenId = Number(targetGardenIdMatch[1]);
+            const baseGarden =
+                gardenId === secondOutletTargetGarden.id
+                    ? secondOutletTargetGarden
+                    : outletTargetGarden;
+            const raisedBeds =
+                defaultGardenHasNoTargets && gardenId === outletTargetGarden.id
+                    ? []
+                    : baseGarden.raisedBeds.map((raisedBed) => ({
+                          ...raisedBed,
+                          fields:
+                              occupiedPositionIndex === null
+                                  ? raisedBed.fields
+                                  : [
+                                        {
+                                            active: true,
+                                            plantSortId: 999,
+                                            positionIndex:
+                                                occupiedPositionIndex,
+                                        },
+                                    ],
+                      }));
             await route.fulfill({
-                body: JSON.stringify(outletTargetGarden),
+                body: JSON.stringify({ ...baseGarden, raisedBeds }),
                 contentType: 'application/json',
                 status: 200,
             });
@@ -278,7 +322,12 @@ async function mockOutletGardenCommerceApi(
                 body: JSON.stringify(
                     gardensUnauthorized
                         ? { error: 'Unauthorized' }
-                        : [outletTargetGardenListItem],
+                        : [
+                              outletTargetGardenListItem,
+                              ...(defaultGardenHasNoTargets
+                                  ? [secondOutletTargetGardenListItem]
+                                  : []),
+                          ],
                 ),
                 contentType: 'application/json',
                 status: gardensUnauthorized ? 401 : 200,
@@ -288,7 +337,39 @@ async function mockOutletGardenCommerceApi(
 
         if (pathname.endsWith('/api/shopping-cart')) {
             if (request.method() === 'POST') {
-                shoppingCartPosts.push(request.postDataJSON());
+                const requestBody: unknown = request.postDataJSON();
+                shoppingCartPosts.push(requestBody);
+                const positionIndex = Number(
+                    requestBody && typeof requestBody === 'object'
+                        ? Reflect.get(requestBody, 'positionIndex')
+                        : Number.NaN,
+                );
+                const raisedBedId = Number(
+                    requestBody && typeof requestBody === 'object'
+                        ? Reflect.get(requestBody, 'raisedBedId')
+                        : Number.NaN,
+                );
+                const gardenId = Number(
+                    requestBody && typeof requestBody === 'object'
+                        ? Reflect.get(requestBody, 'gardenId')
+                        : Number.NaN,
+                );
+                if (
+                    targetUnavailableOnce &&
+                    shoppingCartPosts.length === 1 &&
+                    Number.isSafeInteger(positionIndex)
+                ) {
+                    occupiedPositionIndex = positionIndex;
+                    await route.fulfill({
+                        body: JSON.stringify({
+                            code: 'OUTLET_TARGET_UNAVAILABLE',
+                            error: 'Outlet target is unavailable',
+                        }),
+                        contentType: 'application/json',
+                        status: 409,
+                    });
+                    return;
+                }
                 cartItems = [
                     {
                         additionalData: JSON.stringify({
@@ -304,7 +385,7 @@ async function mockOutletGardenCommerceApi(
                         },
                         entityId: finalUnitOffer.plantSort.id.toString(),
                         entityTypeName: 'plantSort',
-                        gardenId: outletTargetGarden.id,
+                        gardenId,
                         id: 901,
                         outlet: {
                             comparePrice: finalUnitOffer.comparePrice,
@@ -319,8 +400,8 @@ async function mockOutletGardenCommerceApi(
                             sowingDate: finalUnitOffer.sowingDate,
                             status: 'held',
                         },
-                        positionIndex: 0,
-                        raisedBedId: 10,
+                        positionIndex,
+                        raisedBedId,
                         shopData: {
                             discountDescription: 'Outlet sadnica',
                             discountPrice: finalUnitOffer.outletPrice,
@@ -371,6 +452,7 @@ async function mockOutletGardenCommerceApi(
     return {
         finalUnitOffer,
         getOutletOfferRequestCount: () => outletOfferRequestCount,
+        getTargetGardenRequestCount: () => targetGardenRequestCount,
         holdExpiresAt,
         shoppingCartPosts,
     };
@@ -739,6 +821,99 @@ test('signed-in list fallback holds the final unit and keeps its verified receip
     await expect(
         page.getByRole('link', { name: 'Nastavi u košaricu' }),
     ).toHaveAttribute('href', '/?vrt=1&kosarica=true');
+});
+
+test('switches gardens when the default garden has no free targets', async ({
+    page,
+}, testInfo) => {
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+
+    await disableWebGL(page);
+    await enableOutletGardenCommerce(page, baseURL);
+    await mockOutletGardenCommerceApi(page, {
+        defaultGardenHasNoTargets: true,
+    });
+
+    await page.goto('/outlet?ponuda=302');
+    await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
+
+    await expect(page.locator('[data-outlet-garden-commerce]')).toHaveAttribute(
+        'data-outlet-garden-commerce-state',
+        'no-targets',
+    );
+    const gardenSelect = page.getByRole('combobox', {
+        name: 'Vrt',
+        exact: true,
+    });
+    await expect(gardenSelect).toHaveValue('1');
+    await expect(gardenSelect.locator('option')).toHaveCount(2);
+
+    await gardenSelect.selectOption('2');
+
+    await expect(page.locator('[data-outlet-garden-commerce]')).toHaveAttribute(
+        'data-outlet-garden-commerce-state',
+        'ready',
+    );
+    await expect(gardenSelect).toHaveValue('2');
+    await expect(
+        page
+            .getByRole('combobox', {
+                name: 'Mjesto u gredici',
+                exact: true,
+            })
+            .locator('option'),
+    ).toHaveCount(18);
+});
+
+test('refreshes the selected garden and moves off a rejected target', async ({
+    page,
+}, testInfo) => {
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+
+    await disableWebGL(page);
+    await enableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenCommerceApi(page, {
+        targetUnavailableOnce: true,
+    });
+
+    await page.goto('/outlet?ponuda=302');
+    await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
+    const targetSelect = page.getByRole('combobox', {
+        name: 'Mjesto u gredici',
+        exact: true,
+    });
+    await expect(targetSelect).toHaveValue('10:0');
+
+    await page.getByRole('button', { name: 'Rezerviraj sadnicu' }).click();
+
+    await expect.poll(() => outletApi.shoppingCartPosts.length).toBe(1);
+    await expect
+        .poll(() => outletApi.getTargetGardenRequestCount())
+        .toBeGreaterThan(1);
+    await expect(targetSelect).toHaveValue('10:1');
+    await expect(targetSelect.locator('option')).toHaveCount(17);
+    await expect(
+        page.getByText(
+            'Odabrano mjesto više nije slobodno. Odaberi drugo mjesto i pokušaj ponovno.',
+        ),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+
+    await expect.poll(() => outletApi.shoppingCartPosts.length).toBe(2);
+    expect(outletApi.shoppingCartPosts).toMatchObject([
+        { positionIndex: 0, raisedBedId: 10 },
+        { positionIndex: 1, raisedBedId: 10 },
+    ]);
+    await expect(
+        page.getByRole('heading', { name: 'Sadnica je rezervirana' }),
+    ).toBeVisible();
 });
 
 test('expired cached authentication returns to sign-in instead of reporting no fields', async ({
