@@ -11,7 +11,29 @@ import {
     normalizePublicGardenStacks,
     type PublicGardenCapturePhase,
     type PublicGardenStack,
+    shouldRenderPublicGardenGroundDecorations,
 } from './PublicGardenViewer';
+
+describe('shouldRenderPublicGardenGroundDecorations', () => {
+    it('keeps the normal detail default while allowing an isolated foliage override', () => {
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(true, undefined),
+            true,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(false, undefined),
+            false,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(false, true),
+            true,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(true, false),
+            false,
+        );
+    });
+});
 
 describe('getPublicGardenCapturePhaseDate', () => {
     it('resolves stable renderer times for every wallpaper phase', () => {

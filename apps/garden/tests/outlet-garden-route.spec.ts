@@ -511,6 +511,46 @@ async function disableWebGL(page: Page) {
     });
 }
 
+async function expectOutletCanvasToFillScene(page: Page) {
+    await expect
+        .poll(async () => {
+            return page
+                .locator('[data-outlet-garden]')
+                .evaluate((outletGarden) => {
+                    const main = outletGarden.querySelector('main');
+                    const canvas = main?.querySelector('canvas');
+                    if (!main || !canvas) {
+                        return false;
+                    }
+
+                    const rootBounds = outletGarden.getBoundingClientRect();
+                    const mainBounds = main.getBoundingClientRect();
+                    const canvasBounds = canvas.getBoundingClientRect();
+                    const edgeTolerance = 0.5;
+                    const fillsViewport =
+                        Math.abs(rootBounds.left) <= edgeTolerance &&
+                        Math.abs(rootBounds.top) <= edgeTolerance &&
+                        Math.abs(rootBounds.right - window.innerWidth) <=
+                            edgeTolerance &&
+                        Math.abs(rootBounds.bottom - window.innerHeight) <=
+                            edgeTolerance;
+                    const fillsScene =
+                        Math.abs(canvasBounds.left - mainBounds.left) <=
+                            edgeTolerance &&
+                        Math.abs(canvasBounds.top - mainBounds.top) <=
+                            edgeTolerance &&
+                        Math.abs(canvasBounds.right - mainBounds.right) <=
+                            edgeTolerance &&
+                        Math.abs(canvasBounds.bottom - mainBounds.bottom) <=
+                            edgeTolerance;
+
+                    return fillsViewport && fillsScene;
+                })
+                .catch(() => false);
+        })
+        .toBe(true);
+}
+
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
 }, testInfo) => {
@@ -532,6 +572,7 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         '5',
     );
     await expect(page.locator('canvas')).toBeVisible();
+    await expectOutletCanvasToFillScene(page);
     await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
@@ -539,6 +580,7 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
     ).toHaveCount(2);
+    await expectOutletCanvasToFillScene(page);
     await expect(page.locator('[data-nextjs-dialog]')).toHaveCount(0);
 
     const canvas = page.locator('canvas');
@@ -715,6 +757,42 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await page.getByRole('link', { name: 'Povratak u moj vrt' }).click();
     await page.waitForURL((url) => url.pathname === '/');
 
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('3D Outlet opens the normal garden in a fresh renderer document', async ({
+    page,
+}, testInfo) => {
+    test.setTimeout(60_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden Playwright base URL is required.');
+    }
+    await disableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenApi(page);
+
+    await page.goto('/outlet');
+    await expect(
+        page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
+    ).toBeVisible();
+    await page.evaluate(() => {
+        Reflect.set(window, '__outletGardenDocumentSentinel', true);
+    });
+
+    await page.getByRole('link', { name: 'Moj vrt' }).click();
+    await page.waitForURL((url) => url.pathname === '/');
+    await expect(page.locator('[data-outlet-garden]')).toHaveCount(0);
+    await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('canvas')).toHaveCount(1);
+
+    expect(
+        await page.evaluate(() =>
+            Reflect.get(window, '__outletGardenDocumentSentinel'),
+        ),
+    ).toBeUndefined();
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
 });
