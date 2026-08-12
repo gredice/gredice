@@ -33,6 +33,7 @@
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
                 "SLACK_BOT_TOKEN",
+                "VERCEL",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

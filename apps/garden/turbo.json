@@ -40,6 +40,7 @@
                 "POSTHOG_SERVER_HOST",
                 "RESEND_API_KEY",
                 "STRIPE_SECRETKEY",
+                "VERCEL",
                 "VERCEL_OIDC_TOKEN"
             ]
         }
