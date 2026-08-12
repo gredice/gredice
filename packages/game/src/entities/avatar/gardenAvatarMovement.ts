@@ -12,6 +12,12 @@ import {
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
+import {
+    getStackedOnWalkwayPlacementYOffset,
+    getWalkwayVisualTopOffset,
+    isWalkwayBlockName,
+    isWaterCoveredByWalkway,
+} from '../walkwayPlacement';
 
 export type GardenAvatarPoint = {
     x: number;
@@ -357,6 +363,9 @@ const fencePostSize = 0.15;
 const fenceHeight = 0.55;
 const fenceRailHalfLength = 0.2125;
 const fenceRailCenterOffset = 0.2875;
+const hazelLightArchName = 'HazelLightArch';
+const hazelLightArchPostOffset = 0.443;
+const hazelLightArchPostHalfSize = 0.052;
 
 function positiveDimension(value: unknown, fallback: number) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -476,6 +485,40 @@ function createFenceCollisionSurfaces({
     return surfaces;
 }
 
+function createHazelLightArchCollisionSurfaces({
+    block,
+    bottomY,
+    height,
+    stack,
+}: {
+    block: Stack['blocks'][number];
+    bottomY: number;
+    height: number;
+    stack: Stack;
+}) {
+    const rotation = block.rotation * (Math.PI / 2);
+    const sin = Math.sin(rotation);
+    const cos = Math.cos(rotation);
+    const renderedBottomY =
+        bottomY + getStackedOnWalkwayPlacementYOffset(stack, block);
+
+    return [-hazelLightArchPostOffset, hazelLightArchPostOffset].map(
+        (offset, index) => ({
+            bottomY: renderedBottomY,
+            debugLabel: `${hazelLightArchName}.Post.${index + 1}`,
+            halfDepth: hazelLightArchPostHalfSize,
+            halfWidth: hazelLightArchPostHalfSize,
+            kind: 'ground' as const,
+            roamable: false,
+            roamBlockedCells: [],
+            rotation: 0,
+            x: stack.position.x + offset * sin,
+            y: renderedBottomY + height,
+            z: stack.position.z + offset * cos,
+        }),
+    );
+}
+
 function getAvatarCollisionPlacement({
     block,
     rotation,
@@ -575,15 +618,19 @@ export function createGardenAvatarCollisionWorld({
 
             if (isAnimalWaterBlockName(block.name)) {
                 waterSupportY ??= bottomY;
+                const coveredByWalkway = isWaterCoveredByWalkway(
+                    stack,
+                    blockIndex,
+                );
                 surfaces.push({
                     bottomY: waterSupportY,
                     halfDepth: terrainHalfSize,
                     halfWidth: terrainHalfSize,
                     kind: 'water',
                     roamable: false,
-                    roamBlockedCells: [
-                        { x: stack.position.x, z: stack.position.z },
-                    ],
+                    roamBlockedCells: coveredByWalkway
+                        ? []
+                        : [{ x: stack.position.x, z: stack.position.z }],
                     rotation: 0,
                     x: stack.position.x,
                     y: waterSupportY,
@@ -605,8 +652,41 @@ export function createGardenAvatarCollisionWorld({
                 continue;
             }
 
-            const isTerrain = isAnimalGroundBlockName(block.name);
             const blockDefinition = blockDataByName.get(block.name);
+            if (block.name === hazelLightArchName) {
+                surfaces.push(
+                    ...createHazelLightArchCollisionSurfaces({
+                        block,
+                        bottomY,
+                        height: positiveDimension(
+                            blockDefinition?.attributes.hitboxHeight,
+                            positiveDimension(
+                                blockDefinition?.attributes.height,
+                                1.65,
+                            ),
+                        ),
+                        stack,
+                    }),
+                );
+                continue;
+            }
+
+            if (isWalkwayBlockName(block.name)) {
+                surfaces.push({
+                    bottomY,
+                    halfDepth: terrainHalfSize,
+                    halfWidth: terrainHalfSize,
+                    kind: 'ground',
+                    roamable: true,
+                    rotation: 0,
+                    x: stack.position.x,
+                    y: bottomY + getWalkwayVisualTopOffset(stack, block),
+                    z: stack.position.z,
+                });
+                continue;
+            }
+
+            const isTerrain = isAnimalGroundBlockName(block.name);
             const footprint = isTerrain
                 ? getTerrainCollisionFootprint(
                       block.name,

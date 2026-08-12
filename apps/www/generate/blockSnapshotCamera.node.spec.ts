@@ -76,3 +76,18 @@ test('orthographic camera centers the default single-cell placement', () => {
         },
     );
 });
+
+test('orthographic labels honor an entity-specific front rotation', () => {
+    assert.deepEqual(
+        [0, 1, 2, 3].map(
+            (rotation) =>
+                getOrthographicSnapshotCamera({
+                    frontRotation: 1,
+                    height: 1.65,
+                    rotation,
+                    span: { depth: 1, width: 1 },
+                }).label,
+        ),
+        ['left', 'front', 'right', 'back'],
+    );
+});

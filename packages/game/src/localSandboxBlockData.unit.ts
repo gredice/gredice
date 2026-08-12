@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
 import { arrowSignConfigs, arrowSignNames } from './entities/signageConfig';
 import { getLocalSandboxBlockData } from './localSandboxBlockData';
 
@@ -238,11 +239,11 @@ test('local sandbox exposes the new walkway and lighting blocks with catalog dim
             name: 'HazelLightArch',
             label: 'Svjetleći luk od lijeske',
             height: 1.65,
-            hitboxDepth: 1.72,
+            hitboxDepth: 1,
             hitboxHeight: 1.65,
-            hitboxWidth: 0.9,
+            hitboxWidth: 0.24,
             placeableOnWater: false,
-            spanDepth: 2,
+            spanDepth: 1,
             spanWidth: 1,
         },
         {
@@ -310,6 +311,20 @@ test('local sandbox exposes the new walkway and lighting blocks with catalog dim
         assert.equal(block.attributes.spanWidth, expected.spanWidth);
         assert.equal(block.attributes.stackable, false);
         assert.equal(block.attributes.nightOnlyPurchase, false);
+    }
+});
+
+test('HazelLightArch keeps one-cell occupancy through every rotation', () => {
+    const arch = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'HazelLightArch',
+    );
+
+    assert.ok(arch);
+    for (const rotation of [0, 1, 2, 3]) {
+        assert.deepEqual(getGardenBlockSpan(arch, rotation), {
+            depth: 1,
+            width: 1,
+        });
     }
 });
 

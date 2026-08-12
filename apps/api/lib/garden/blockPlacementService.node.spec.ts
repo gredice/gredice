@@ -37,6 +37,9 @@ const blockDataByName = new Map([
             },
         },
     ],
+    ['HazelLightArch', { attributes: { stackable: false, height: 1.65 } }],
+    ['StoneWalkway', { attributes: { stackable: false, height: 0.1 } }],
+    ['WoodenWalkway', { attributes: { stackable: false, height: 0.1 } }],
 ]);
 
 const maxSpiralSteps = 1000;
@@ -260,6 +263,34 @@ describe('resolveGardenBlockPlacement', () => {
             },
         });
     });
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`places HazelLightArch on a requested ${walkwayName} stack`, () => {
+            const placement = resolveGardenBlockPlacement({
+                blockName: 'HazelLightArch',
+                requestedPosition: { x: 0, y: 0 },
+                stacks: [
+                    {
+                        positionX: 0,
+                        positionY: 0,
+                        blocks: ['walkway-origin'],
+                    },
+                ],
+                blockNameById: new Map([['walkway-origin', walkwayName]]),
+                blockDataByName,
+            });
+
+            assert.deepStrictEqual(placement, {
+                valid: true,
+                placement: {
+                    x: 0,
+                    y: 0,
+                    index: 1,
+                    existingBlocks: ['walkway-origin'],
+                },
+            });
+        });
+    }
 
     it('rejects multi-block placement on uneven footprint support', () => {
         const placement = resolveGardenBlockPlacement({

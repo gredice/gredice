@@ -358,9 +358,9 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxWidth: 0.52,
     },
     HazelLightArch: {
-        hitboxDepth: 1.72,
+        hitboxDepth: 1,
         hitboxHeight: 1.65,
-        hitboxWidth: 0.9,
+        hitboxWidth: 0.24,
     },
     RoofTileLantern: {
         hitboxDepth: 0.48,
@@ -430,7 +430,7 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     },
     HazelLightArch: {
         placeableOnWater: false,
-        spanDepth: 2,
+        spanDepth: 1,
         spanWidth: 1,
     },
     RoofTileLantern: {

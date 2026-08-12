@@ -622,14 +622,13 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
         emission_strength=2.6,
     )
 
-    # One gateway in the local long-axis (Y/Z) plane.  The previous source
-    # built a complete arch at both ends of the footprint and joined them with
-    # rails, which read as a four-legged tunnel from the game camera.
+    # One gateway in the local Y/Z plane. Its outer posts span almost the full
+    # tile so the arch reads as a passage while retaining a 1x1 footprint.
     poles: list[bpy.types.Object] = []
     for side_index, sign in enumerate((-1, 1)):
-        y = 0.76 * sign
-        knee_y = 0.72 * sign
-        shoulder_y = 0.64 * sign
+        y = 0.443 * sign
+        knee_y = 0.423 * sign
+        shoulder_y = 0.373 * sign
         poles.extend(
             [
                 tube_between(
@@ -660,10 +659,10 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
         )
     poles.extend(
         [
-            tube_between("top_rod_upper", (0, -0.69, 1.50), (0, 0.69, 1.50), 0.047, hazel, vertices=9),
-            tube_between("top_rod_lower", (0, -0.69, 1.37), (0, 0.69, 1.37), 0.044, hazel, vertices=9),
-            tube_between("left_top_join", (0, -0.64, 1.36), (0, -0.69, 1.50), 0.044, hazel, vertices=9),
-            tube_between("right_top_join", (0, 0.64, 1.36), (0, 0.69, 1.50), 0.044, hazel, vertices=9),
+            tube_between("top_rod_upper", (0, -0.415, 1.50), (0, 0.415, 1.50), 0.047, hazel, vertices=9),
+            tube_between("top_rod_lower", (0, -0.415, 1.37), (0, 0.415, 1.37), 0.044, hazel, vertices=9),
+            tube_between("left_top_join", (0, -0.373, 1.36), (0, -0.415, 1.50), 0.044, hazel, vertices=9),
+            tube_between("right_top_join", (0, 0.373, 1.36), (0, 0.415, 1.50), 0.044, hazel, vertices=9),
         ]
     )
 
@@ -672,13 +671,13 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
     bulbs: list[bpy.types.Object] = []
     # Broad rope loops visibly bind the paired rods at both shoulders and in
     # the middle; the three lamp cords hang from the lower rod.
-    for index, y in enumerate((-0.61, 0, 0.61)):
+    for index, y in enumerate((-0.22, 0, 0.22)):
         cords.extend(
             [
                 torus(
                     f"top_lashing_{index}_a",
-                    0.082,
-                    0.010,
+                    0.066,
+                    0.009,
                     (0, y - 0.012, 1.435),
                     cord,
                     rotation=(math.pi / 2, 0, 0),
@@ -687,8 +686,8 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
                 ),
                 torus(
                     f"top_lashing_{index}_b",
-                    0.082,
-                    0.010,
+                    0.066,
+                    0.009,
                     (0, y + 0.012, 1.435),
                     cord,
                     rotation=(math.pi / 2, 0, 0),
@@ -698,31 +697,31 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
             ]
         )
         cords.append(
-            tube_between(f"cord_{index}", (0, y, 1.37), (0, y, 1.245), 0.007, cord, vertices=6)
+            tube_between(f"cord_{index}", (0, y, 1.37), (0, y, 1.325), 0.007, cord, vertices=6)
         )
         shades.extend(
             [
                 cone(
                     f"shade_{index}",
-                    0.12,
-                    0.042,
-                    0.085,
-                    (0, y, 1.205),
+                    0.095,
+                    0.036,
+                    0.075,
+                    (0, y, 1.285),
                     terracotta,
                     vertices=12,
                 ),
-                torus(f"shade_rim_{index}", 0.121, 0.009, (0, y, 1.162), terracotta),
+                torus(f"shade_rim_{index}", 0.096, 0.008, (0, y, 1.247), terracotta),
             ]
         )
-        bulbs.append(sphere(f"bulb_{index}", (0.052, 0.052, 0.065), (0, y, 1.102), glow))
+        bulbs.append(sphere(f"bulb_{index}", (0.052, 0.052, 0.045), (0, y, 1.205), glow))
 
-    for side_index, y in enumerate((-0.78, 0.78)):
+    for side_index, y in enumerate((-0.443, 0.443)):
         cords.extend(
             [
                 torus(
                     f"foot_lashing_{side_index}_a",
-                    0.055,
-                    0.011,
+                    0.047,
+                    0.009,
                     (0, y, 0.105),
                     cord,
                     major_segments=10,
@@ -730,8 +729,8 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
                 ),
                 torus(
                     f"foot_lashing_{side_index}_b",
-                    0.055,
-                    0.011,
+                    0.047,
+                    0.009,
                     (0, y, 0.135),
                     cord,
                     major_segments=10,

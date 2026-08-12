@@ -114,7 +114,7 @@ export const gameAssetModels = {
     EnamelGardenLamp: {
         url: '/assets/models/EnamelGardenLamp.glb?v=c945af2c0198',
     },
-    HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=c8f9daebfbd2' },
+    HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=6718c29e0a75' },
     RoofTileLantern: {
         url: '/assets/models/RoofTileLantern.glb?v=0a51dad18321',
     },
