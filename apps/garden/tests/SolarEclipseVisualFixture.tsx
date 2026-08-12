@@ -21,17 +21,70 @@ function AimCamera() {
     return null;
 }
 
-function MarkFixtureReady({ onReady }: { onReady: () => void }) {
+type EnvironmentLightIntensities = {
+    ambient: number;
+    directional: number;
+    hemisphere: number;
+};
+
+function readLightIntensity(
+    scene: { getObjectByName: (name: string) => unknown },
+    name: string,
+) {
+    const light = scene.getObjectByName(name);
+    return light !== null &&
+        typeof light === 'object' &&
+        'intensity' in light &&
+        typeof light.intensity === 'number'
+        ? light.intensity
+        : 0;
+}
+
+function MarkFixtureReady({
+    onReady,
+}: {
+    onReady: (intensities: EnvironmentLightIntensities) => void;
+}) {
     const frameCount = useRef(0);
+    const scene = useThree((state) => state.scene);
 
     useFrame(() => {
         frameCount.current += 1;
         if (frameCount.current === 45) {
-            onReady();
+            onReady({
+                ambient: readLightIntensity(scene, 'Environment:AmbientLight'),
+                directional: readLightIntensity(
+                    scene,
+                    'Environment:SunDirectionalLight',
+                ),
+                hemisphere: readLightIntensity(
+                    scene,
+                    'Environment:HemisphereLight',
+                ),
+            });
         }
     });
 
     return null;
+}
+
+function EnvironmentLightProbe() {
+    return (
+        <group name="EnvironmentLightProbe">
+            <mesh position={[0, -0.8, 0]} receiveShadow>
+                <boxGeometry args={[6, 0.3, 6]} />
+                <meshStandardMaterial color="#7da85d" roughness={0.9} />
+            </mesh>
+            <mesh castShadow position={[-0.9, 0.1, 0]}>
+                <boxGeometry args={[1.25, 1.5, 1.25]} />
+                <meshStandardMaterial color="#d39b43" roughness={0.72} />
+            </mesh>
+            <mesh position={[1, 0.12, 0.45]}>
+                <sphereGeometry args={[0.82, 24, 16]} />
+                <meshBasicMaterial color="#cbd5e1" toneMapped={false} />
+            </mesh>
+        </group>
+    );
 }
 
 function ForegroundOcclusionProbe() {
@@ -59,13 +112,18 @@ function ForegroundOcclusionProbe() {
 export function SolarEclipseVisualFixture({
     dayNightCycleDisabled = false,
     foregroundOcclusionProbe = false,
+    lightingProbe = false,
+    noBackground = false,
     time,
 }: {
     dayNightCycleDisabled?: boolean;
     foregroundOcclusionProbe?: boolean;
+    lightingProbe?: boolean;
+    noBackground?: boolean;
     time: string;
 }) {
-    const [ready, setReady] = useState(false);
+    const [lightIntensities, setLightIntensities] =
+        useState<EnvironmentLightIntensities | null>(null);
     const frozenTime = useMemo(() => new Date(time), [time]);
     const eclipse = useMemo(
         () =>
@@ -96,8 +154,15 @@ export function SolarEclipseVisualFixture({
 
     return (
         <div
+            data-ambient-light-intensity={lightIntensities?.ambient.toFixed(3)}
+            data-directional-light-intensity={lightIntensities?.directional.toFixed(
+                3,
+            )}
             data-eclipse-obscuration={(eclipse?.obscuration ?? 0).toFixed(3)}
-            data-render-ready={ready ? 'true' : 'false'}
+            data-hemisphere-light-intensity={lightIntensities?.hemisphere.toFixed(
+                3,
+            )}
+            data-render-ready={lightIntensities ? 'true' : 'false'}
             data-testid="solar-eclipse-visual-fixture"
             style={{ height: 400, overflow: 'hidden', width: 640 }}
         >
@@ -107,18 +172,23 @@ export function SolarEclipseVisualFixture({
                         fixedTimeSeconds={1}
                         position={[-100, 100, -100]}
                         rendererOptions={{
-                            alpha: false,
+                            alpha: noBackground,
                             antialias: false,
                             preserveDrawingBuffer: true,
                         }}
                         zoom={90}
                     >
                         <AimCamera />
-                        <Environment noSound noWeather />
+                        <Environment
+                            noBackground={noBackground}
+                            noSound
+                            noWeather
+                        />
+                        {lightingProbe ? <EnvironmentLightProbe /> : null}
                         {foregroundOcclusionProbe ? (
                             <ForegroundOcclusionProbe />
                         ) : null}
-                        <MarkFixtureReady onReady={() => setReady(true)} />
+                        <MarkFixtureReady onReady={setLightIntensities} />
                     </Scene>
                 </GameStateContext.Provider>
             </QueryClientProvider>

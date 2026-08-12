@@ -305,13 +305,12 @@ export function resolveSkyGradientColors({
     const overcast = clamp01(cloudy + foggy * 0.7 + rainy * 0.25);
     const visibleMoonlight = clamp01(moonlight);
     const eclipseObscuration = clamp01(solarEclipseObscuration);
-    const eclipseDarkness = eclipseObscuration ** 3;
     const eclipseScales = getSolarEclipseVisualScales(eclipseObscuration);
     const eclipseSkyColor = colorFromHex('#26364d');
     const applyEclipseTone = (color: Color) =>
         color
-            .multiplyScalar(1 - eclipseDarkness * 0.08)
-            .lerp(eclipseSkyColor, eclipseDarkness * 0.18);
+            .lerp(eclipseSkyColor, eclipseObscuration * 0.18)
+            .multiplyScalar(eclipseScales.sky);
     const twilightWarmth = dusk > 0.5 ? '#ff9f7c' : '#ffd59c';
     const nightFloorDarkening = Math.max(
         night,

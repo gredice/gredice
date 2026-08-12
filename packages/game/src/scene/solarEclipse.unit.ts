@@ -115,20 +115,29 @@ test('maps obscuration to clamped visual scales', () => {
     assert.deepEqual(getSolarEclipseVisualScales(0), {
         direct: 1,
         ambient: 1,
+        scene: 1,
         sky: 1,
         sunGlow: 1,
     });
     assert.deepEqual(getSolarEclipseVisualScales(-1), {
         direct: 1,
         ambient: 1,
+        scene: 1,
         sky: 1,
         sunGlow: 1,
     });
 
+    const partial = getSolarEclipseVisualScales(0.5);
     const total = getSolarEclipseVisualScales(1);
     const aboveRange = getSolarEclipseVisualScales(2);
+    assertClose(partial.direct, 0.515);
+    assertClose(partial.ambient, 0.59);
+    assertClose(partial.scene, 0.85);
+    assertClose(partial.sky, 0.64);
+    assertClose(partial.sunGlow, 0.54);
     assertClose(total.direct, 0.03);
     assertClose(total.ambient, 0.18);
+    assertClose(total.scene, 0.7);
     assertClose(total.sky, 0.28);
     assertClose(total.sunGlow, 0.08);
     assert.deepEqual(aboveRange, total);
@@ -137,7 +146,13 @@ test('maps obscuration to clamped visual scales', () => {
 test('darkens every visual scale monotonically as obscuration increases', () => {
     const samples = [0, 0.25, 0.5, 0.75, 1].map(getSolarEclipseVisualScales);
 
-    for (const key of ['direct', 'ambient', 'sky', 'sunGlow'] as const) {
+    for (const key of [
+        'direct',
+        'ambient',
+        'scene',
+        'sky',
+        'sunGlow',
+    ] as const) {
         for (let index = 1; index < samples.length; index += 1) {
             const previous = samples[index - 1]?.[key];
             const current = samples[index]?.[key];

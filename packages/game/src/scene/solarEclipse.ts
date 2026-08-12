@@ -28,6 +28,7 @@ export type SolarEclipseState = {
 export type SolarEclipseVisualScales = {
     direct: number;
     ambient: number;
+    scene: number;
     sky: number;
     sunGlow: number;
 };
@@ -149,12 +150,12 @@ export function getSolarEclipseVisualScales(
     obscuration: number,
 ): SolarEclipseVisualScales {
     const amount = clamp01(obscuration);
-    const cubicAmount = amount * amount * amount;
 
     return {
         direct: 1 - 0.97 * amount,
-        ambient: 1 - 0.82 * cubicAmount,
-        sky: 1 - 0.72 * cubicAmount,
+        ambient: 1 - 0.82 * amount,
+        scene: 1 - 0.3 * amount,
+        sky: 1 - 0.72 * amount,
         sunGlow: 1 - 0.92 * amount,
     };
 }
