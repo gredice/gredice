@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    doubleGardenLightPoleBlockName,
+    doubleGardenLightPoleHeight,
     enamelGardenLampBlockName,
     enamelGardenLampHeight,
     getInternalSceneBlockData,
@@ -47,6 +49,23 @@ describe('internal scene block data', () => {
         assert.equal(isInternalSceneBlockData(lamp), true);
     });
 
+    it('defines a private metadata fallback for the double Outlet light pole', () => {
+        const pole = getInternalSceneBlockData().find(
+            (block) =>
+                block.information.name === doubleGardenLightPoleBlockName,
+        );
+
+        assert.ok(pole);
+        assert.equal(pole.attributes.height, doubleGardenLightPoleHeight);
+        assert.equal(pole.attributes.hitboxDepth, 0.38);
+        assert.equal(pole.attributes.hitboxHeight, doubleGardenLightPoleHeight);
+        assert.equal(pole.attributes.hitboxWidth, 0.94);
+        assert.equal(pole.attributes.spanDepth, 1);
+        assert.equal(pole.attributes.spanWidth, 1);
+        assert.equal(pole.attributes.stackable, false);
+        assert.equal(isInternalSceneBlockData(pole), true);
+    });
+
     it('adds the internal fallback without mutating directory data', () => {
         const directoryData = getInternalSceneBlockData().map((block) => ({
             ...block,
@@ -58,14 +77,18 @@ describe('internal scene block data', () => {
         }));
         const merged = withInternalSceneBlockData(directoryData);
 
-        assert.equal(directoryData.length, 2);
-        assert.equal(merged.length, 4);
+        assert.equal(directoryData.length, 3);
+        assert.equal(merged.length, 6);
         assert.equal(merged[0], directoryData[0]);
         assert.deepEqual(
             merged
                 .slice(directoryData.length)
                 .map((block) => block.information.name),
-            [outletDisplayTableBlockName, enamelGardenLampBlockName],
+            [
+                outletDisplayTableBlockName,
+                enamelGardenLampBlockName,
+                doubleGardenLightPoleBlockName,
+            ],
         );
     });
 
@@ -84,7 +107,7 @@ describe('internal scene block data', () => {
         };
         const merged = withInternalSceneBlockData([liveTable]);
 
-        assert.equal(merged.length, 2);
+        assert.equal(merged.length, 3);
         assert.equal(merged[0], liveTable);
         assert.equal(merged[0]?.attributes.height, 0.69);
         assert.equal(isInternalSceneBlockData(liveTable), false);

@@ -5,10 +5,13 @@ export const outletDisplayTableHeight = 0.67;
 export const outletDisplayTableSunflowerPrice = 40;
 export const enamelGardenLampBlockName = 'EnamelGardenLamp';
 export const enamelGardenLampHeight = 1.45;
+export const doubleGardenLightPoleBlockName = 'DoubleGardenLightPole';
+export const doubleGardenLightPoleHeight = 2.2;
 
 const epoch = new Date(0).toISOString();
 const outletDisplayTableBlockId = -10_001;
 const enamelGardenLampBlockId = -10_002;
+const doubleGardenLightPoleBlockId = -10_003;
 
 const outletDisplayTableBlockData = {
     id: outletDisplayTableBlockId,
@@ -87,9 +90,49 @@ const enamelGardenLampBlockData = {
     updatedAt: epoch,
 } satisfies BlockData;
 
+const doubleGardenLightPoleBlockData = {
+    id: doubleGardenLightPoleBlockId,
+    entityType: {
+        id: 8,
+        name: 'block',
+        label: 'Blok',
+    },
+    slug: 'double-garden-light-pole',
+    information: {
+        name: doubleGardenLightPoleBlockName,
+        label: 'Dvostruki drveni rasvjetni stup',
+        shortDescription:
+            'Visoki drveni stup s dvije nasuprotne svjetiljke za osvjetljenje staza i biljaka.',
+        fullDescription:
+            'Vitki drveni rasvjetni stup s dvije nasuprotne svjetiljke usmjerene prema tlu. Postavi ga između stolova ili uz stazu kako bi noću osvijetlio prolaz i obližnje biljke.',
+    },
+    attributes: {
+        height: doubleGardenLightPoleHeight,
+        hitboxDepth: 0.38,
+        hitboxHeight: doubleGardenLightPoleHeight,
+        hitboxWidth: 0.94,
+        nightOnlyPurchase: false,
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+        stackable: false,
+        type: 'decoration',
+    },
+    prices: {
+        sunflowers: 0,
+    },
+    functions: {
+        recycler: false,
+        raisedBed: false,
+    },
+    createdAt: epoch,
+    updatedAt: epoch,
+} satisfies BlockData;
+
 const internalSceneBlockData = [
     outletDisplayTableBlockData,
     enamelGardenLampBlockData,
+    doubleGardenLightPoleBlockData,
 ];
 const internalSceneBlockIds = new Set(
     internalSceneBlockData.map((block) => block.id),

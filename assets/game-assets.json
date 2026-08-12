@@ -1483,6 +1483,21 @@
             ]
         },
         {
+            "name": "DoubleGardenLightPole",
+            "source": "DoubleGardenLightPole.blend",
+            "output": "DoubleGardenLightPole.glb",
+            "version": "fe31962c9b22",
+            "preload": "lazy",
+            "objects": [
+                "DoubleGardenLightPole_LimestoneBase",
+                "DoubleGardenLightPole_Wood",
+                "DoubleGardenLightPole_Shades",
+                "DoubleGardenLightPole_DarkMetal",
+                "DoubleGardenLightPole_BulbLeft",
+                "DoubleGardenLightPole_BulbRight"
+            ]
+        },
+        {
             "name": "HazelLightArch",
             "source": "HazelLightArch.blend",
             "output": "HazelLightArch.glb",

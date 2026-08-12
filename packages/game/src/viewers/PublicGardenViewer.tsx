@@ -30,6 +30,7 @@ import {
 } from '../controls/GameCameraRig';
 import { GardenAvatar } from '../entities/avatar/GardenAvatar';
 import { GardenVisitorAvatar } from '../entities/avatar/GardenVisitorAvatar';
+import type { GardenAvatarPoint } from '../entities/avatar/gardenAvatarMovement';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
@@ -62,6 +63,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    type GardenAvatarView,
     useDisposeGameStateStore,
     useGameState,
 } from '../useGameState';
@@ -142,9 +144,12 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     fixedTime?: Date;
     initialView?: PublicGardenInitialView;
     interactiveBlockIds?: ReadonlySet<string>;
+    localVisitorActivationRequest?: number;
+    localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     selectedBlockId?: string | null;
     selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     onSelectBlock?: (blockId: string) => void;
+    onLocalVisitorViewChange?: (view: GardenAvatarView) => void;
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
     noWeather?: boolean;
@@ -176,6 +181,20 @@ function PublicGardenSceneReady({ onReady }: { onReady: () => void }) {
     useEffect(() => {
         onReady();
     }, [onReady]);
+
+    return null;
+}
+
+function PublicGardenAvatarViewReporter({
+    onChange,
+}: {
+    onChange: (view: GardenAvatarView) => void;
+}) {
+    const view = useGameState((state) => state.gardenAvatarView);
+
+    useEffect(() => {
+        onChange(view);
+    }, [onChange, view]);
 
     return null;
 }
@@ -424,6 +443,8 @@ function PublicGardenScene({
     interactiveBlockIds,
     initialSnapshot,
     loadPlantSorts,
+    localVisitorActivationRequest,
+    localVisitorSpawnPoint,
     noWeather,
     normalizedStacks,
     onSelectBlock,
@@ -445,6 +466,8 @@ function PublicGardenScene({
     interactiveBlockIds?: ReadonlySet<string>;
     initialSnapshot?: PublicGardenHomeCamera;
     loadPlantSorts: boolean;
+    localVisitorActivationRequest?: number;
+    localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     noWeather: boolean;
     normalizedStacks: Stack[];
     onSelectBlock?: (blockId: string) => void;
@@ -634,6 +657,12 @@ function PublicGardenScene({
                                     {visitorPresence ? (
                                         <Suspense fallback={null}>
                                             <GardenAvatar
+                                                activationRequest={
+                                                    localVisitorActivationRequest
+                                                }
+                                                initialSpawnPoint={
+                                                    localVisitorSpawnPoint
+                                                }
                                                 key={
                                                     visitorPresence.localVisitorId
                                                 }
@@ -642,6 +671,10 @@ function PublicGardenScene({
                                                 }
                                                 roamSeed={
                                                     visitorPresence.localVisitorId
+                                                }
+                                                showActivationPrompt={
+                                                    localVisitorActivationRequest ===
+                                                    undefined
                                                 }
                                                 stacks={normalizedStacks}
                                             />
@@ -781,7 +814,10 @@ export function PublicGardenViewer({
     garden,
     initialView: initialViewOverride,
     interactiveBlockIds,
+    localVisitorActivationRequest,
+    localVisitorSpawnPoint,
     noWeather = false,
+    onLocalVisitorViewChange,
     onSelectBlock,
     onSceneContextLost,
     onSceneReady,
@@ -1044,6 +1080,12 @@ export function PublicGardenViewer({
                                             : (garden?.homeCamera ?? undefined)
                                     }
                                     loadPlantSorts={loadPlantSorts}
+                                    localVisitorActivationRequest={
+                                        localVisitorActivationRequest
+                                    }
+                                    localVisitorSpawnPoint={
+                                        localVisitorSpawnPoint
+                                    }
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
                                     onSelectBlock={openInteractiveBlock}
@@ -1069,6 +1111,11 @@ export function PublicGardenViewer({
                                         visitorPresenceEnabled={Boolean(
                                             visitorPresence,
                                         )}
+                                    />
+                                ) : null}
+                                {onLocalVisitorViewChange ? (
+                                    <PublicGardenAvatarViewReporter
+                                        onChange={onLocalVisitorViewChange}
                                     />
                                 ) : null}
                             </div>

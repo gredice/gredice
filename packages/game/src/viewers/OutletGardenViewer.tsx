@@ -1,23 +1,35 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { ArrowLeft, LayoutList, Sprout } from '@gredice/ui/icons';
+import { ArrowLeft, Footprints, LayoutList, Sprout } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import type { GardenAvatarView } from '../useGameState';
 import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
+import { OutletGardenProductSigns } from './OutletGardenProductSigns';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
     getOutletGardenOfferPlacement,
+    getOutletGardenProductSignPlacements,
     isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
     type OutletGardenSlotAssignments,
+    outletGardenVisitorSpawnPoint,
     outletOfferBlockId,
     outletOfferDisplayFromBlockId,
     outletOfferIdFromBlockId,
@@ -35,6 +47,11 @@ import {
 
 const outletGardenCameraMinZoom = 10;
 const outletGardenCloseupZoom = 210;
+const outletLocalVisitorPresence = {
+    localVisitorId: 'outlet-local-visitor',
+    onLocalPresenceChange: () => {},
+    visitors: [],
+} satisfies GardenVisitorPresenceController;
 
 export type OutletGardenViewerProps = {
     commerce?: OutletGardenCommerceController;
@@ -86,6 +103,9 @@ export function OutletGardenViewer({
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
     const [offerListOpen, setOfferListOpen] = useState(false);
+    const [avatarView, setAvatarView] = useState<GardenAvatarView>('overview');
+    const avatarViewRef = useRef<GardenAvatarView>('overview');
+    const [avatarActivationRequest, setAvatarActivationRequest] = useState(0);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneFailureTrackedRef = useRef(false);
@@ -106,7 +126,20 @@ export function OutletGardenViewer({
         () => Math.max(0, Date.now() - sceneStartedAtRef.current),
         [],
     );
+    const handleLocalVisitorViewChange = useCallback(
+        (nextView: GardenAvatarView) => {
+            if (avatarViewRef.current === nextView) {
+                return;
+            }
 
+            avatarViewRef.current = nextView;
+            if (nextView !== 'overview') {
+                setHoveredOfferId(null);
+            }
+            setAvatarView(nextView);
+        },
+        [],
+    );
     useEffect(() => {
         if (focusOnMount) {
             sceneContainerRef.current?.focus({ preventScroll: true });
@@ -201,8 +234,30 @@ export function OutletGardenViewer({
     const layoutReady = displayUnits.every((display) =>
         reconciledSlotAssignments.has(display.blockId),
     );
+    const sceneAvailable =
+        layoutReady && offers.length > 0 && sceneInitialView !== null;
+    const visibleAvatarView = sceneAvailable ? avatarView : 'overview';
+    const avatarWalking = visibleAvatarView !== 'overview';
+
+    useEffect(() => {
+        if (sceneAvailable || avatarView === 'overview') {
+            return;
+        }
+
+        avatarViewRef.current = 'overview';
+        setAvatarView('overview');
+    }, [avatarView, sceneAvailable]);
+
     const outletGarden = useMemo(
         () => buildOutletGardenDetail(layoutOffers, reconciledSlotAssignments),
+        [layoutOffers, reconciledSlotAssignments],
+    );
+    const productSignPlacements = useMemo(
+        () =>
+            getOutletGardenProductSignPlacements(
+                layoutOffers,
+                reconciledSlotAssignments,
+            ),
         [layoutOffers, reconciledSlotAssignments],
     );
     const interactiveBlockIds = useMemo(
@@ -472,13 +527,15 @@ export function OutletGardenViewer({
 
     return (
         <div
-            className={`relative grid h-[100dvh] overflow-hidden bg-[#cfeaca] ${offerListOpen || selectedOfferId !== null ? 'grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1' : 'grid-cols-1 grid-rows-1'} ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
+            className={`relative grid h-[100dvh] overflow-hidden bg-[#cfeaca] ${!avatarWalking && (offerListOpen || selectedOfferId !== null) ? 'grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1' : 'grid-cols-1 grid-rows-1'} ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
             data-outlet-garden
+            data-outlet-garden-avatar-view={visibleAvatarView}
             data-outlet-garden-display-count={displayUnits.length}
             data-outlet-garden-display-limited={displayLimited || undefined}
             data-outlet-garden-exiting={exitTarget ? true : undefined}
             data-outlet-garden-hovered-offer={hoveredOfferId ?? undefined}
             data-outlet-garden-renderer="webgl"
+            data-outlet-garden-walking={avatarWalking || undefined}
         >
             <main
                 aria-label="Interaktivni 3D prikaz Outlet vrta"
@@ -486,30 +543,47 @@ export function OutletGardenViewer({
                 ref={sceneContainerRef}
                 tabIndex={focusOnMount ? -1 : undefined}
             >
-                {layoutReady && offers.length > 0 && sceneInitialView ? (
+                {sceneAvailable ? (
                     <PublicGardenViewer
                         appBaseUrl=""
                         cameraMinZoom={outletGardenCameraMinZoom}
                         className="size-full"
                         garden={outletGarden}
                         initialView={sceneInitialView}
-                        interactiveBlockIds={interactiveBlockIds}
+                        interactiveBlockIds={
+                            avatarWalking ? undefined : interactiveBlockIds
+                        }
+                        localVisitorActivationRequest={avatarActivationRequest}
+                        localVisitorSpawnPoint={outletGardenVisitorSpawnPoint}
                         noWeather
-                        onSelectBlock={selectBlock}
+                        onLocalVisitorViewChange={handleLocalVisitorViewChange}
+                        onSelectBlock={avatarWalking ? undefined : selectBlock}
                         onSceneContextLost={reportSceneContextLost}
                         onSceneReady={trackSceneReady}
                         renderDetails={false}
                         renderGroundDecorations
                         sceneChildren={
-                            <OutletGardenSeedlingMarkers
-                                highlightedOfferId={hoveredOfferId}
-                                offers={offers}
-                                stacks={outletGarden.stacks}
-                            />
+                            <>
+                                <OutletGardenSeedlingMarkers
+                                    highlightedOfferId={hoveredOfferId}
+                                    offers={offers}
+                                    stacks={outletGarden.stacks}
+                                />
+                                <Suspense fallback={null}>
+                                    <OutletGardenProductSigns
+                                        offers={offers}
+                                        placements={productSignPlacements}
+                                        stacks={outletGarden.stacks}
+                                    />
+                                </Suspense>
+                            </>
                         }
                         selectedBlockId={selectedBlockId}
-                        selectedBlockFocus={selectedBlockFocus}
+                        selectedBlockFocus={
+                            avatarWalking ? undefined : selectedBlockFocus
+                        }
                         spriteBaseUrl=""
+                        visitorPresence={outletLocalVisitorPresence}
                     />
                 ) : (
                     <OutletGardenScenePlaceholder
@@ -523,46 +597,68 @@ export function OutletGardenViewer({
                     />
                 )}
 
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-linear-to-b from-black/25 to-transparent p-3 pb-10 sm:p-4">
-                    <Button
-                        className="pointer-events-auto border-white/60 bg-white/85 shadow-lg backdrop-blur"
-                        href="/"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            requestExit('garden', '/');
-                        }}
-                        size="lg"
-                        startDecorator={<ArrowLeft className="size-4" />}
-                        variant="outlined"
-                    >
-                        Moj vrt
-                    </Button>
-                    <div className="pointer-events-auto flex items-start gap-2">
+                {!avatarWalking ? (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-linear-to-b from-black/25 to-transparent p-3 pb-10 sm:p-4">
                         <Button
-                            aria-controls="outlet-garden-browser"
-                            aria-expanded={offerListOpen}
-                            aria-label="Prikaži popis Outlet ponuda"
-                            data-outlet-garden-list-trigger
-                            onClick={openOfferList}
+                            className="pointer-events-auto border-white/60 bg-white/85 shadow-lg backdrop-blur"
+                            href="/"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                requestExit('garden', '/');
+                            }}
                             size="lg"
-                            startDecorator={<LayoutList className="size-4" />}
+                            startDecorator={<ArrowLeft className="size-4" />}
                             variant="outlined"
                         >
-                            Popis ponuda
+                            Moj vrt
                         </Button>
-                        <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
-                            <p className="font-semibold">
-                                Razgledaj Outlet vrt
-                            </p>
-                            <p className="mt-0.5 text-white/80">
-                                Povuci za zakretanje · kotačić ili dva prsta za
-                                približavanje
-                            </p>
+                        <div className="pointer-events-auto flex items-start gap-2">
+                            <Button
+                                aria-label="Prošetaj Outlet vrtom"
+                                onClick={() => {
+                                    setAvatarActivationRequest(
+                                        (currentRequest) => currentRequest + 1,
+                                    );
+                                }}
+                                size="lg"
+                                startDecorator={
+                                    <Footprints className="size-4" />
+                                }
+                                variant="outlined"
+                            >
+                                <span className="hidden sm:inline">
+                                    Prošetaj vrtom
+                                </span>
+                            </Button>
+                            <Button
+                                aria-controls="outlet-garden-browser"
+                                aria-expanded={offerListOpen}
+                                aria-label="Prikaži popis Outlet ponuda"
+                                data-outlet-garden-list-trigger
+                                onClick={openOfferList}
+                                size="lg"
+                                startDecorator={
+                                    <LayoutList className="size-4" />
+                                }
+                                variant="outlined"
+                            >
+                                Popis ponuda
+                            </Button>
+                            <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
+                                <p className="font-semibold">
+                                    Razgledaj Outlet vrt
+                                </p>
+                                <p className="mt-0.5 text-white/80">
+                                    Odaberi posjetitelja za šetnju · povuci za
+                                    zakretanje · približi kotačićem ili s dva
+                                    prsta
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                ) : null}
 
-                {selectedOffer ? (
+                {selectedOffer && !avatarWalking ? (
                     <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
                         <div className="flex items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-medium shadow-lg backdrop-blur">
                             <Sprout className="size-4 text-lime-800" />
@@ -572,7 +668,7 @@ export function OutletGardenViewer({
                 ) : null}
             </main>
 
-            {offerListOpen || selectedOfferId !== null ? (
+            {!avatarWalking && (offerListOpen || selectedOfferId !== null) ? (
                 <OutletGardenOfferBrowser
                     commerce={commerce}
                     displayLimited={displayLimited}

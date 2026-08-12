@@ -549,12 +549,18 @@ function GardenAvatarCamera({
 }
 
 export function GardenAvatar({
+    activationRequest = 0,
+    initialSpawnPoint,
     onPresenceChange,
     roamSeed = 'garden-avatar',
+    showActivationPrompt = true,
     stacks,
 }: {
+    activationRequest?: number;
+    initialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
     roamSeed?: string;
+    showActivationPrompt?: boolean;
     stacks: Stack[] | undefined;
 }) {
     const gltf = useGameGLTF('FarmerAvatar');
@@ -585,6 +591,7 @@ export function GardenAvatar({
     const jumpQueuedRef = useRef(false);
     const jumpsUsedRef = useRef(0);
     const previousJumpRequestRef = useRef(jumpRequest);
+    const previousActivationRequestRef = useRef(0);
     const previousViewRef = useRef(view);
     const avatarViewRef = useRef(view);
     avatarViewRef.current = view;
@@ -697,7 +704,10 @@ export function GardenAvatar({
         if (!actor) {
             return;
         }
-        const defaultSpawn = findGardenAvatarSpawnPoint(world);
+        const defaultSpawn = findGardenAvatarSpawnPoint(
+            world,
+            initialSpawnPoint,
+        );
         if (!defaultSpawn) {
             actor.visible = false;
             return;
@@ -712,10 +722,12 @@ export function GardenAvatar({
             }))
             .sort((left, right) => left.distance - right.distance)
             .slice(0, 12);
-        const spawn =
-            nearbySpawnCandidates[
-                roamSeedRef.current % Math.max(nearbySpawnCandidates.length, 1)
-            ]?.candidate ?? defaultSpawn;
+        const spawn = initialSpawnPoint
+            ? defaultSpawn
+            : (nearbySpawnCandidates[
+                  roamSeedRef.current %
+                      Math.max(nearbySpawnCandidates.length, 1)
+              ]?.candidate ?? defaultSpawn);
         actor.visible = true;
         const currentGroundY = getGardenAvatarGroundY({
             currentGroundY: groundYRef.current,
@@ -729,7 +741,7 @@ export function GardenAvatar({
         } else {
             groundYRef.current = currentGroundY;
         }
-    }, [roamCandidates, world]);
+    }, [initialSpawnPoint, roamCandidates, world]);
 
     useEffect(() => {
         if (jumpRequest !== previousJumpRequestRef.current) {
@@ -911,7 +923,7 @@ export function GardenAvatar({
         }
     }, [finishTemporaryZoom, setView, touchZoomInput, view]);
 
-    function activateAvatarView() {
+    const activateAvatarView = useCallback(() => {
         const actor = actorRef.current;
         if (!actor || view !== 'overview') {
             return;
@@ -928,7 +940,19 @@ export function GardenAvatar({
         roamRef.current.route = [];
         dismissSpeechMessage();
         setView('third-person');
-    }
+    }, [camera, dismissSpeechMessage, setView, view]);
+
+    useEffect(() => {
+        if (
+            activationRequest <= previousActivationRequestRef.current ||
+            view !== 'overview'
+        ) {
+            return;
+        }
+
+        previousActivationRequestRef.current = activationRequest;
+        activateAvatarView();
+    }, [activationRequest, activateAvatarView, view]);
 
     function enterAvatarView(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
@@ -1297,7 +1321,7 @@ export function GardenAvatar({
                 <group scale={avatarModelScale}>
                     <primitive object={model.scene} />
                 </group>
-                {view === 'overview' ? (
+                {view === 'overview' && showActivationPrompt ? (
                     <Html center position={[0, 1.43, 0]} zIndexRange={[30, 20]}>
                         <button
                             type="button"
