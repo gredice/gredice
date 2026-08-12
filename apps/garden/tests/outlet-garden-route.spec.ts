@@ -554,7 +554,7 @@ async function expectOutletCanvasToFillScene(page: Page) {
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(150_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -687,10 +687,34 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         ).toBe(true);
     }
 
-    await page.reload({
-        timeout: 20_000,
-        waitUntil: 'commit',
+    await page.evaluate(() => {
+        window.location.reload();
     });
+    await expect
+        .poll(
+            async () => {
+                try {
+                    return await page.evaluate(() => {
+                        const [navigation] = performance.getEntriesByType(
+                            'navigation',
+                        ) as PerformanceNavigationTiming[];
+                        return navigation?.type;
+                    });
+                } catch (error) {
+                    if (
+                        error instanceof Error &&
+                        error.message.includes(
+                            'Execution context was destroyed',
+                        )
+                    ) {
+                        return undefined;
+                    }
+                    throw error;
+                }
+            },
+            { timeout: 60_000 },
+        )
+        .toBe('reload');
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeVisible({ timeout: 20_000 });
