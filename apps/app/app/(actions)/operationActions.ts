@@ -117,7 +117,9 @@ function buildRaisedBedNotificationLink(
 
     return getRaisedBedCloseupUrl(
         raisedBedName,
-        typeof positionIndex === 'number' ? { positionIndex } : undefined,
+        typeof positionIndex === 'number'
+            ? { fieldTab: 'diary', positionIndex }
+            : undefined,
     );
 }
 

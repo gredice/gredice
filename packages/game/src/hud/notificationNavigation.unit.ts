@@ -60,6 +60,18 @@ test('falls back to the raised-bed closeup for a blank notification link', () =>
     );
 });
 
+test('adds the diary tab to operation field links while preserving the target', () => {
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            fieldTab: 'diary',
+            linkUrl: 'https://vrt.gredice.com/?gredica=Moja%20gredica&polje=3',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/?gredica=Moja+gredica&polje=3&polje-kartica=diary',
+    );
+});
+
 test('uses router navigation for relative and absolute same-origin links', () => {
     const harness = createHarness();
 

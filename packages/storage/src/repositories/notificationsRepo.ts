@@ -4408,6 +4408,53 @@ export async function getUnreadRaisedBedNotificationsForGarden({
     );
 }
 
+export async function getUnreadRaisedBedImageNotificationIdsForGarden({
+    accountId,
+    gardenId,
+    limit = maxNotificationReadBatchSize,
+    raisedBedId,
+    userId,
+}: {
+    accountId: string;
+    gardenId: number;
+    limit?: number;
+    raisedBedId: number;
+    userId: string;
+}) {
+    const boundedLimit = Math.min(
+        Math.max(Number.isSafeInteger(limit) ? limit : 1, 1),
+        maxNotificationReadBatchSize,
+    );
+    const rows = await storage()
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(
+            and(
+                eq(notifications.accountId, accountId),
+                or(
+                    eq(notifications.userId, userId),
+                    isNull(notifications.userId),
+                ),
+                eq(notifications.gardenId, gardenId),
+                eq(notifications.raisedBedId, raisedBedId),
+                isNull(notifications.readAt),
+                ne(
+                    notifications.type,
+                    detailedRaisedBedInspectionNotificationType,
+                ),
+                raisedBedNotificationHasImage,
+            ),
+        )
+        .orderBy(
+            desc(notifications.timestamp),
+            desc(notifications.createdAt),
+            desc(notifications.id),
+        )
+        .limit(boundedLimit);
+
+    return rows.map(({ id }) => id);
+}
+
 export function getNotifications(page: number, limit: number) {
     return storage().query.notifications.findMany({
         orderBy: desc(notifications.timestamp),

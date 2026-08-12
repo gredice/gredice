@@ -29,6 +29,7 @@ import {
     getNotificationDeliverySummary,
     getNotificationsByAccount,
     getNotificationsForCenter,
+    getUnreadRaisedBedImageNotificationIdsForGarden,
     getUnreadRaisedBedNotificationsForGarden,
     getUser,
     markDeliveryLifecycleEmailAttemptFailed,
@@ -1464,6 +1465,106 @@ test('garden raised-bed notifications select visual kind before priority and rec
     assert.deepEqual(
         result.map(({ id }) => id),
         [ids.fullBed],
+    );
+});
+
+test('garden raised-bed image notification dismissal targets only unread images for one bed and recipient', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const userId = await createUserWithPassword(
+        `raised-bed-image-dismiss-${randomUUID()}@example.com`,
+        'password',
+    );
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const foreignUserId = await createUserWithPassword(
+        `raised-bed-image-dismiss-foreign-${randomUUID()}@example.com`,
+        'password',
+    );
+    await storage()
+        .insert(accountUsers)
+        .values({ accountId, userId: foreignUserId });
+
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const raisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const otherRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        await createTestBlock(gardenId, 'Raised_Bed'),
+    );
+    const idPrefix = `raised-bed-image-dismiss-${randomUUID()}`;
+    const visibleAccountImageId = `${idPrefix}-account-image`;
+    const visibleUserImageId = `${idPrefix}-user-image`;
+    const row = ({
+        id,
+        imageUrl = 'https://cdn.example.com/raised-bed.jpg',
+        readAt,
+        targetRaisedBedId = raisedBedId,
+        targetUserId,
+        type,
+    }: {
+        id: string;
+        imageUrl?: string | null;
+        readAt?: Date;
+        targetRaisedBedId?: number;
+        targetUserId?: string;
+        type?: string;
+    }) => ({
+        id,
+        accountId,
+        category: 'garden',
+        content: id,
+        gardenId,
+        header: id,
+        imageUrl,
+        raisedBedId: targetRaisedBedId,
+        readAt,
+        timestamp: new Date('2026-08-12T10:00:00.000Z'),
+        type,
+        userId: targetUserId,
+    });
+
+    await storage()
+        .insert(notifications)
+        .values([
+            row({ id: visibleAccountImageId }),
+            row({ id: visibleUserImageId, targetUserId: userId }),
+            row({ id: `${idPrefix}-text`, imageUrl: null }),
+            row({
+                id: `${idPrefix}-other-bed`,
+                targetRaisedBedId: otherRaisedBedId,
+            }),
+            row({
+                id: `${idPrefix}-foreign-user`,
+                targetUserId: foreignUserId,
+            }),
+            row({
+                id: `${idPrefix}-read`,
+                readAt: new Date('2026-08-12T10:01:00.000Z'),
+            }),
+            row({
+                id: `${idPrefix}-inspection`,
+                type: detailedRaisedBedInspectionNotificationType,
+            }),
+            row({ id: `${idPrefix}-blank`, imageUrl: '   ' }),
+        ]);
+
+    const result = await getUnreadRaisedBedImageNotificationIdsForGarden({
+        accountId,
+        gardenId,
+        raisedBedId,
+        userId,
+    });
+
+    assert.deepEqual(
+        new Set(result),
+        new Set([visibleAccountImageId, visibleUserImageId]),
     );
 });
 

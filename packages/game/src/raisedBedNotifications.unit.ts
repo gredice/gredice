@@ -9,8 +9,20 @@ import {
 } from '@gredice/js/notifications';
 import {
     type RaisedBedGardenNotification,
+    raisedBedNotificationDisplayContent,
     selectRaisedBedGardenNotifications,
 } from './raisedBedNotifications';
+
+describe('raisedBedNotificationDisplayContent', () => {
+    it('shows compact context without exposing markdown syntax', () => {
+        assert.equal(
+            raisedBedNotificationDisplayContent(
+                'Danas je na **gredici Sjever** odrađena [rezidba](https://example.com).',
+            ),
+            'Danas je na gredici Sjever odrađena rezidba.',
+        );
+    });
+});
 
 const baseTimestamp = new Date('2026-08-11T08:00:00.000Z');
 

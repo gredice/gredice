@@ -14,6 +14,9 @@ test('renders notification media edge-to-edge and follows its raised-bed anchor'
     await expect(image).toBeVisible();
     await expect(bubble).toHaveCSS('padding', '0px');
     await expect(image).toHaveCSS('object-fit', 'cover');
+    await expect(
+        fixture.locator('[data-raised-bed-notification-arrow] path'),
+    ).toHaveAttribute('d', 'M1 0.5h18L10 9.5Z');
 
     const bubbleBox = await bubble.boundingBox();
     const imageBox = await image.boundingBox();
@@ -32,7 +35,7 @@ test('renders notification media edge-to-edge and follows its raised-bed anchor'
         .toBeGreaterThan(bubbleBox.x + 40);
 });
 
-test('keeps the bubble tappable and dismisses only after opening it', async ({
+test('opens notification images in the viewer, clears the bubble, and does not activate the bed', async ({
     mount,
     page,
 }) => {
@@ -45,19 +48,47 @@ test('keeps the bubble tappable and dismisses only after opening it', async ({
 
     const topElementIsBubble = await bubble.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
-        return (
+        return Boolean(
             document
                 .elementFromPoint(
                     bounds.left + bounds.width / 2,
                     bounds.top + bounds.height / 2,
                 )
-                ?.closest('[data-raised-bed-notification-bubble]') === element
+                ?.closest('[data-raised-bed-notification-bubble]'),
         );
     });
     expect(topElementIsBubble).toBe(true);
 
     await bubble.click();
-    await expect(fixture).toHaveAttribute('data-bubble-open-count', '1');
+    await expect(fixture).toHaveAttribute('data-image-open-count', '1');
+    await expect(fixture).toHaveAttribute('data-bubble-open-count', '0');
+    await expect(fixture).toHaveAttribute('data-raised-bed-click-count', '0');
+    await expect(bubble).toHaveCount(0);
+    await expect(
+        page.getByRole('dialog', { name: 'Pregled slike' }),
+    ).toBeVisible();
+});
+
+test('shows operation context and dismisses from the small close control without opening', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 400, height: 320 });
+    const fixture = await mount(
+        <RaisedBedNotificationBubbleFixture imageUrl={null} />,
+    );
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+    const bubble = fixture.locator('[data-raised-bed-notification-bubble]');
+    await expect(bubble).toContainText('Održavajuća rezidba');
+    await expect(bubble).toContainText('Danas je na gredici Sjever odrađena');
+
+    const dismissButton = fixture.getByRole('button', {
+        name: 'Odbaci obavijest: Održavajuća rezidba',
+    });
+    await dismissButton.click();
+
+    await expect(fixture).toHaveAttribute('data-dismiss-count', '1');
+    await expect(fixture).toHaveAttribute('data-bubble-open-count', '0');
     await expect(fixture).toHaveAttribute('data-raised-bed-click-count', '0');
     await expect(bubble).toHaveCount(0);
 });

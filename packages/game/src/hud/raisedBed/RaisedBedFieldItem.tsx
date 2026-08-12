@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
-import { useRaisedBedFieldDetailsParam } from '../../useUrlState';
+import {
+    normalizeRaisedBedFieldTab,
+    useRaisedBedCloseupParams,
+} from '../../useUrlState';
 import {
     findRaisedBedOccupiedField,
     getRaisedBedFieldPlantHistory,
@@ -28,8 +31,9 @@ export function RaisedBedFieldItem({
     isDragging?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
-    const [fieldDetailsParam, setFieldDetailsParam] =
-        useRaisedBedFieldDetailsParam();
+    const [fieldDetailsParams, setFieldDetailsParams] =
+        useRaisedBedCloseupParams();
+    const fieldDetailsParam = fieldDetailsParams.polje;
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
 
     const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
@@ -59,18 +63,24 @@ export function RaisedBedFieldItem({
             return;
         }
 
-        void setFieldDetailsParam(null);
+        void setFieldDetailsParams({
+            polje: null,
+            'polje-kartica': null,
+        });
     }, [
         focusedHistoryEntry,
         hasField,
         isFieldDetailsFocused,
         isGardenLoading,
-        setFieldDetailsParam,
+        setFieldDetailsParams,
     ]);
 
     function handleFieldDetailsOpenChange(open: boolean) {
         if (!open && isFieldDetailsFocused) {
-            void setFieldDetailsParam(null);
+            void setFieldDetailsParams({
+                polje: null,
+                'polje-kartica': null,
+            });
         }
     }
 
@@ -105,6 +115,9 @@ export function RaisedBedFieldItem({
                         isHistorical
                         onOpenChange={handleFieldDetailsOpenChange}
                         open
+                        requestedTab={normalizeRaisedBedFieldTab(
+                            fieldDetailsParams['polje-kartica'],
+                        )}
                         positionIndex={positionIndex}
                         raisedBedId={raisedBedId}
                         triggerOverride={null}
@@ -121,6 +134,13 @@ export function RaisedBedFieldItem({
                 isFieldDetailsFocused ? handleFieldDetailsOpenChange : undefined
             }
             open={isFieldDetailsFocused ? true : undefined}
+            requestedTab={
+                isFieldDetailsFocused
+                    ? normalizeRaisedBedFieldTab(
+                          fieldDetailsParams['polje-kartica'],
+                      )
+                    : undefined
+            }
             plantHistory={visiblePlantHistory}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}

@@ -45,6 +45,15 @@ export type SelectedRaisedBedGardenNotification = Omit<
     raisedBedId: number;
 };
 
+export function raisedBedNotificationDisplayContent(content: string) {
+    return content
+        .replace(/!\[([^\]]*)\]\([^)]*\)/gu, '$1')
+        .replace(/\[([^\]]+)\]\([^)]*\)/gu, '$1')
+        .replace(/[*_`#]+/gu, '')
+        .replace(/\s+/gu, ' ')
+        .trim();
+}
+
 const kindPriority: Record<RaisedBedGardenNotificationKind, number> = {
     raisedBedPhoto: 0,
     raisedBedFieldPhoto: 1,

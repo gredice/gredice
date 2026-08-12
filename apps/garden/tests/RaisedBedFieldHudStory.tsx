@@ -168,12 +168,14 @@ function createScenarioQueryClient(
 type ProvidersProps = PropsWithChildren<{
     favorites?: FavoriteItem[];
     scenario: RaisedBedScenario;
+    searchParams?: string;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
     scenario,
     favorites = [],
+    searchParams,
 }: ProvidersProps) {
     const queryClient = useMemo(
         () => createScenarioQueryClient(scenario, favorites),
@@ -191,7 +193,7 @@ function RaisedBedHudTestProviders({
     );
 
     return (
-        <NuqsTestingAdapter>
+        <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider value={{}}>
@@ -226,18 +228,24 @@ export function RaisedBedFieldHudStory({
     positionIndex,
     favorites = [],
     cellSize = 80,
+    searchParams,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     favorites?: FavoriteItem[];
     cellSize?: number;
+    searchParams?: string;
 }) {
     const cartItem =
         scenario.cartItems?.find(
             (item) => item.positionIndex === positionIndex,
         ) ?? null;
     return (
-        <RaisedBedHudTestProviders scenario={scenario} favorites={favorites}>
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            favorites={favorites}
+            searchParams={searchParams}
+        >
             <div
                 data-testid="hud-cell"
                 className="relative"

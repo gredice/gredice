@@ -4,7 +4,11 @@ import {
 } from '@gredice/js/notifications';
 import { Canvas } from '@react-three/fiber';
 import { useState } from 'react';
-import { RaisedBedNotificationBubble } from '../../../packages/game/src/hud/RaisedBedNotificationBubbles';
+import {
+    RaisedBedNotificationBubble,
+    RaisedBedNotificationImageViewer,
+} from '../../../packages/game/src/hud/RaisedBedNotificationBubbles';
+import type { RaisedBedNotificationViewerImage } from '../../../packages/game/src/hud/RaisedBedNotificationSurface';
 import type { SelectedRaisedBedGardenNotification } from '../../../packages/game/src/raisedBedNotifications';
 
 const notificationImage =
@@ -18,10 +22,14 @@ function fixtureNotification({
     const timestamp = new Date('2026-08-11T12:00:00.000Z');
     return {
         category: 'garden',
-        content: 'Stigla je nova fotografija gredice.',
+        content: imageUrl
+            ? 'Stigla je nova fotografija gredice.'
+            : 'Danas je na gredici **Sjever** odrađena **Održavajuća rezidba**.',
         createdAt: timestamp,
         gardenId: 8,
-        header: 'Nova fotografija gredice Sjever',
+        header: imageUrl
+            ? 'Nova fotografija gredice Sjever'
+            : 'Održavajuća rezidba',
         iconUrl: null,
         id: 'raised-bed-photo-notification',
         imageUrl,
@@ -45,14 +53,20 @@ export function RaisedBedNotificationBubbleFixture({
 }) {
     const [ready, setReady] = useState(false);
     const [bubbleOpenCount, setBubbleOpenCount] = useState(0);
+    const [dismissCount, setDismissCount] = useState(0);
+    const [imageOpenCount, setImageOpenCount] = useState(0);
     const [raisedBedClickCount, setRaisedBedClickCount] = useState(0);
     const [positionX, setPositionX] = useState(0);
     const [visible, setVisible] = useState(true);
+    const [viewerImage, setViewerImage] =
+        useState<RaisedBedNotificationViewerImage | null>(null);
     const notification = fixtureNotification({ imageUrl });
 
     return (
         <div
             data-bubble-open-count={bubbleOpenCount}
+            data-dismiss-count={dismissCount}
+            data-image-open-count={imageOpenCount}
             data-position-x={positionX}
             data-raised-bed-click-count={raisedBedClickCount}
             data-render-ready={ready ? 'true' : 'false'}
@@ -85,14 +99,30 @@ export function RaisedBedNotificationBubbleFixture({
                 {visible ? (
                     <RaisedBedNotificationBubble
                         notification={notification}
+                        onDismiss={() => {
+                            setDismissCount((count) => count + 1);
+                            setVisible(false);
+                        }}
                         onOpen={() => {
                             setBubbleOpenCount((count) => count + 1);
+                            setVisible(false);
+                        }}
+                        onOpenImage={(_, imageUrl) => {
+                            setImageOpenCount((count) => count + 1);
+                            setViewerImage({
+                                alt: notification.header,
+                                src: imageUrl,
+                            });
                             setVisible(false);
                         }}
                         position={[positionX, 0.25, 0]}
                     />
                 ) : null}
             </Canvas>
+            <RaisedBedNotificationImageViewer
+                image={viewerImage}
+                onClose={() => setViewerImage(null)}
+            />
         </div>
     );
 }
