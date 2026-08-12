@@ -556,10 +556,10 @@ async function expectOutletCanvasToFillScene(page: Page) {
         .toBe(true);
 }
 
-test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
+test('guest Outlet garden renders its WebGL layout and selects an offer', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(150_000);
+    test.setTimeout(90_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -646,6 +646,37 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }),
     ).toHaveCount(0);
 
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('guest Outlet garden reconciles live offers without replacing its canvas', async ({
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+    await disableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenApi(page);
+
+    await page.goto('/outlet?ponuda=302');
+
+    const outlet = page.locator('[data-outlet-garden]');
+    const canvas = page.locator('[data-outlet-garden-renderer="webgl"] canvas');
+    const productSigns = page.locator('[data-outlet-garden-product-sign]');
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    await expectOutletCanvasToFillScene(page);
+    await expect(productSigns).toHaveCount(2, { timeout: 30_000 });
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toContainText('3 sadnica');
+    const canvasElement = await canvas.elementHandle();
+    expect(canvasElement).not.toBeNull();
+
     const requestCountBeforeRefresh = outletApi.getOutletOfferRequestCount();
     outletApi.setOffers([
         {
@@ -676,10 +707,16 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         .toBeGreaterThan(requestCountBeforeRefresh);
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
-    ).toContainText('1 sadnica');
+    ).toContainText('1 sadnica', { timeout: 30_000 });
+    await expect(
+        productSigns.filter({ hasText: 'Bosiljak Genovese' }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+        productSigns.filter({ hasText: 'Rajčica mini red cherry' }),
+    ).toHaveCount(0);
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
-        .click();
+        .click({ timeout: 30_000 });
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
     ).toHaveCount(2);
@@ -687,19 +724,15 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         page.getByRole('button', { name: /Bosiljak Genovese/u }),
     ).toBeVisible();
     await expect(productSigns).toHaveCount(2);
-    await expect(
-        productSigns.filter({ hasText: 'Bosiljak Genovese' }),
-    ).toBeVisible();
-    await expect(
-        productSigns.filter({ hasText: 'Rajčica mini red cherry' }),
-    ).toHaveCount(0);
-    await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
+    await expect(outlet).toHaveAttribute(
         'data-outlet-garden-display-count',
         '3',
     );
-    await page.getByRole('button', { name: /Paprika Zlata Snack/u }).click();
+    await page
+        .getByRole('button', { name: /Paprika Zlata Snack/u })
+        .click({ timeout: 30_000 });
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
-    await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
+    await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
         /.+/u,
     );
@@ -713,9 +746,32 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         ).toBe(true);
     }
 
-    await page.evaluate(() => {
-        window.location.reload();
-    });
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('guest Outlet garden preserves its deep link through reload, fallback, and context loss', async ({
+    page,
+}, testInfo) => {
+    test.setTimeout(120_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+    await disableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenApi(page);
+
+    await page.goto('/outlet?ponuda=302');
+    await expect(
+        page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toBeVisible();
+
+    await page.reload({ timeout: 60_000, waitUntil: 'domcontentloaded' });
     await expect
         .poll(
             async () => {
@@ -750,12 +806,12 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
 
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
-        .click();
+        .click({ timeout: 30_000 });
     await page
         .getByRole('button', {
             name: 'Prikaži Outlet ponude bez 3D prikaza',
         })
-        .click();
+        .click({ timeout: 30_000 });
     await expect(
         page.locator('[data-outlet-garden-renderer="list"]'),
     ).toBeVisible();
@@ -769,7 +825,7 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         .getByRole('button', {
             name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
         })
-        .click();
+        .click({ timeout: 30_000 });
     await expect(
         page.locator('[data-outlet-garden-renderer="webgl"]'),
     ).toBeVisible();
@@ -874,9 +930,24 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     }
     await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
+    const avatarModelLoaded = page.waitForResponse(
+        (response) =>
+            /\/assets\/models\/FarmerAvatar\.glb(?:\?|$)/u.test(
+                response.url(),
+            ) && response.ok(),
+        { timeout: 30_000 },
+    );
 
     await page.goto('/outlet?ponuda=302');
     const outlet = page.locator('[data-outlet-garden]');
+    await avatarModelLoaded;
+    await expect(
+        page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-outlet-garden-product-sign]')).toHaveCount(
+        2,
+        { timeout: 30_000 },
+    );
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
@@ -888,10 +959,15 @@ test('Outlet visitor walks in third and first person without mutating or losing 
         page.getByRole('button', { name: 'Prošetaj vrtom', exact: true }),
     ).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }).click();
+    const walkButton = page.getByRole('button', {
+        name: 'Prošetaj Outlet vrtom',
+    });
+    await expect(walkButton).toBeVisible({ timeout: 30_000 });
+    await walkButton.click({ timeout: 30_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
+        { timeout: 30_000 },
     );
     await expect(outlet).toHaveAttribute('data-outlet-garden-walking', 'true');
     await expect(
@@ -899,21 +975,25 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     ).toHaveCount(0);
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
 
-    await page.keyboard.down('KeyW');
-    await page.waitForTimeout(300);
-    await page.keyboard.up('KeyW');
-    await page
-        .getByRole('button', { name: 'Prikaži pogled iz prvog lica' })
-        .click();
+    await page.keyboard.press('KeyW', { delay: 300 });
+    const firstPersonButton = page.getByRole('button', {
+        name: 'Prikaži pogled iz prvog lica',
+    });
+    await expect(firstPersonButton).toBeVisible({ timeout: 30_000 });
+    await firstPersonButton.click({ timeout: 30_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'first-person',
+        { timeout: 30_000 },
     );
 
-    await page.getByRole('button', { name: 'Izađi iz šetnje' }).click();
+    await page
+        .getByRole('button', { name: 'Izađi iz šetnje' })
+        .click({ timeout: 30_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
+        { timeout: 30_000 },
     );
     await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-walking',
@@ -929,10 +1009,12 @@ test('Outlet visitor walks in third and first person without mutating or losing 
 
     const offerRequestCountBeforeSceneLoss =
         outletApi.getOutletOfferRequestCount();
-    await page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }).click();
+    await expect(walkButton).toBeVisible({ timeout: 30_000 });
+    await walkButton.click({ timeout: 30_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
+        { timeout: 30_000 },
     );
     outletApi.setOffers([]);
     await page.evaluate(() => {
@@ -943,17 +1025,18 @@ test('Outlet visitor walks in third and first person without mutating or losing 
             timeout: 18_000,
         })
         .toBeGreaterThan(offerRequestCountBeforeSceneLoss);
+    await expect(
+        page.getByText('Nove sadnice uskoro stižu u Outlet vrt.'),
+    ).toBeVisible({ timeout: 30_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
+        { timeout: 30_000 },
     );
     await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-walking',
         /.+/u,
     );
-    await expect(
-        page.getByText('Nove sadnice uskoro stižu u Outlet vrt.'),
-    ).toBeVisible();
     await expect(
         page.getByRole('link', { name: 'Moj vrt', exact: true }),
     ).toBeVisible();
