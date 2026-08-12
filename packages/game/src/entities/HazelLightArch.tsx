@@ -11,7 +11,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 const archLightColor = '#ffd58a';
-const archLightPosition = [0, 1.17, 0] as const;
+const archLightPosition = [0, 1.1, 0] as const;
 const archRain = {
     darkness: 0.7,
     glossiness: 0.65,

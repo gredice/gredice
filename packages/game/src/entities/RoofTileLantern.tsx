@@ -10,7 +10,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 const roofTileGlowColor = '#ff9a4f';
-const roofTileLightPosition = [0, 0.25, 0] as const;
+const roofTileLightPosition = [0, 0.23, 0] as const;
 const tileRain = {
     darkness: 0.82,
     glossiness: 0.68,

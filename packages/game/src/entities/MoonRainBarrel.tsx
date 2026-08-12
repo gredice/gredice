@@ -10,11 +10,11 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const moonWaterColor = '#74c8ed';
-const moonWaterEmissive = '#3f83c5';
-const moonStoneColor = '#dbeaf2';
-const moonStoneEmissive = '#75a9ce';
-const moonLightPosition = [0, 0.82, 0] as const;
+const moonWaterColor = '#4aaac4';
+const moonWaterEmissive = '#2b6e9b';
+const moonStoneColor = '#d9d0b8';
+const moonStoneEmissive = '#6b94ad';
+const moonLightPosition = [0, 0.72, 0] as const;
 const barrelRain = {
     darkness: 0.76,
     glossiness: 0.72,
@@ -66,6 +66,12 @@ export function MoonRainBarrel({
                 snow={snowPresets.tool}
             />
             <WeatheredEntityPart
+                material={materials['Material.MoonRainBarrel.Limestone']}
+                node={nodes.MoonRainBarrel_LimestoneFeet}
+                rain={barrelRain}
+                snow={snowPresets.stone}
+            />
+            <WeatheredEntityPart
                 material={materials['Material.MoonRainBarrel.Wood']}
                 node={nodes.MoonRainBarrel_Lid}
                 rain={barrelRain}
@@ -79,7 +85,7 @@ export function MoonRainBarrel({
                 <meshStandardMaterial
                     color={moonStoneColor}
                     emissive={moonStoneEmissive}
-                    emissiveIntensity={0.22}
+                    emissiveIntensity={0.14}
                     metalness={0}
                     ref={moonStoneMaterialRef}
                     roughness={0.48}
@@ -95,11 +101,11 @@ export function MoonRainBarrel({
                     depthWrite={false}
                     distort={0.1}
                     emissive={moonWaterEmissive}
-                    emissiveIntensity={0.22}
-                    metalness={0.22}
-                    opacity={0.7}
+                    emissiveIntensity={0.12}
+                    metalness={0.08}
+                    opacity={0.82}
                     ref={waterMaterialRef}
-                    roughness={0.24}
+                    roughness={0.3}
                     side={DoubleSide}
                     speed={0.55}
                     transparent
@@ -113,7 +119,7 @@ export function MoonRainBarrel({
                 color={moonWaterColor}
                 decay={1.9}
                 distance={4.2}
-                emissiveBaseIntensity={0.22}
+                emissiveBaseIntensity={0.12}
                 emissiveMaterialRefs={emissiveMaterialRefs}
                 emissivePeakIntensity={2.1}
                 lightIntensity={1.35}

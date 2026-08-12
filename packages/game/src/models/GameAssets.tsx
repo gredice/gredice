@@ -918,6 +918,7 @@ export type GLTFResult = GLTF & {
         MoonRainBarrel_Water: THREE.Mesh;
         MoonRainBarrel_Leaf: THREE.Mesh;
         MoonRainBarrel_MoonStone: THREE.Mesh;
+        MoonRainBarrel_LimestoneFeet: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -1318,6 +1319,7 @@ export type GLTFResult = GLTF & {
         'Material.Metal': THREE.MeshStandardMaterial;
         'Material.MoonRainBarrel.Brass': THREE.MeshStandardMaterial;
         'Material.MoonRainBarrel.Leaf': THREE.MeshStandardMaterial;
+        'Material.MoonRainBarrel.Limestone': THREE.MeshStandardMaterial;
         'Material.MoonRainBarrel.MoonStone': THREE.MeshStandardMaterial;
         'Material.MoonRainBarrel.Water': THREE.MeshStandardMaterial;
         'Material.MoonRainBarrel.Wood': THREE.MeshStandardMaterial;

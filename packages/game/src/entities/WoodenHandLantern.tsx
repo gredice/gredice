@@ -10,7 +10,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 const handLanternGlowColor = '#ffd27f';
-const handLanternLightPosition = [0, 0.3, 0] as const;
+const handLanternLightPosition = [0, 0.2475, 0] as const;
 const handLanternRain = {
     darkness: 0.72,
     glossiness: 0.7,
@@ -57,11 +57,11 @@ export function WoodenHandLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color="#dff3f2"
+                    color="#f2dcad"
                     depthWrite={false}
                     metalness={0}
-                    opacity={0.3}
-                    roughness={0.1}
+                    opacity={0.68}
+                    roughness={0.48}
                     side={DoubleSide}
                     transparent
                 />

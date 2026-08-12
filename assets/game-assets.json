@@ -1388,7 +1388,7 @@
             "name": "StoneWalkway",
             "source": "StoneWalkway.blend",
             "output": "StoneWalkway.glb",
-            "version": "9a02593e2b26",
+            "version": "075166e14408",
             "preload": "lazy",
             "objects": [
                 "StoneWalkway_StonesLight",
@@ -1400,7 +1400,7 @@
             "name": "EnamelGardenLamp",
             "source": "EnamelGardenLamp.blend",
             "output": "EnamelGardenLamp.glb",
-            "version": "4b2a7c1c93dd",
+            "version": "c945af2c0198",
             "preload": "lazy",
             "objects": [
                 "EnamelGardenLamp_WoodPost",
@@ -1414,7 +1414,7 @@
             "name": "HazelLightArch",
             "source": "HazelLightArch.blend",
             "output": "HazelLightArch.glb",
-            "version": "ee75ad25489e",
+            "version": "c8f9daebfbd2",
             "preload": "lazy",
             "objects": [
                 "HazelLightArch_Poles",
@@ -1427,7 +1427,7 @@
             "name": "RoofTileLantern",
             "source": "RoofTileLantern.blend",
             "output": "RoofTileLantern.glb",
-            "version": "07a3a01fb75b",
+            "version": "0a51dad18321",
             "preload": "lazy",
             "objects": [
                 "RoofTileLantern_Tiles",
@@ -1439,7 +1439,7 @@
             "name": "WickerGardenLantern",
             "source": "WickerGardenLantern.blend",
             "output": "WickerGardenLantern.glb",
-            "version": "45c25b93f310",
+            "version": "b7a3c7c8a4fe",
             "preload": "lazy",
             "objects": [
                 "WickerGardenLantern_Wicker",
@@ -1452,7 +1452,7 @@
             "name": "WoodenHandLantern",
             "source": "WoodenHandLantern.blend",
             "output": "WoodenHandLantern.glb",
-            "version": "3efbdb200010",
+            "version": "583d3ee52834",
             "preload": "lazy",
             "objects": [
                 "WoodenHandLantern_Frame",
@@ -1466,7 +1466,7 @@
             "name": "MoonRainBarrel",
             "source": "MoonRainBarrel.blend",
             "output": "MoonRainBarrel.glb",
-            "version": "9462827a992b",
+            "version": "7425319b60fc",
             "preload": "lazy",
             "objects": [
                 "MoonRainBarrel_Staves",
@@ -1475,7 +1475,8 @@
                 "MoonRainBarrel_Lid",
                 "MoonRainBarrel_Water",
                 "MoonRainBarrel_Leaf",
-                "MoonRainBarrel_MoonStone"
+                "MoonRainBarrel_MoonStone",
+                "MoonRainBarrel_LimestoneFeet"
             ]
         },
         {
