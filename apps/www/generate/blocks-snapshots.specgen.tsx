@@ -189,6 +189,11 @@ test.describe('block screenshots', async () => {
                             cameraTarget={cameraTarget}
                             itemPosition={itemPosition}
                             entityName={entity.information.name}
+                            message={
+                                entity.information.name === 'WoodenSign'
+                                    ? 'MOJ\nVRT'
+                                    : undefined
+                            }
                             appBaseUrl={gameAssetBaseUrl}
                             quality={snapshotQuality}
                             noControl

@@ -15,6 +15,12 @@ import {
     RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
     RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
 } from '@gredice/js/raisedBeds';
+import {
+    isValidWoodenSignMessage,
+    normalizeWoodenSignMessage,
+    woodenSignBlockName,
+    woodenSignMessageMaxGraphemes,
+} from '@gredice/js/woodenSign';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
@@ -50,6 +56,7 @@ import {
     getAppliedRaisedBedOperationsForGarden,
     getEntitiesFormatted,
     getGarden,
+    getGardenBlock,
     getGardenBlocks,
     getGardenLikeCounts,
     getGardenPreview,
@@ -183,6 +190,26 @@ const gardenLikeBodySchema = z
         liked: z.boolean(),
     })
     .strict();
+
+const woodenSignMessageSchema = z
+    .union([z.string(), z.null()])
+    .refine(isValidWoodenSignMessage, {
+        message: `Sign message must contain at most ${woodenSignMessageMaxGraphemes.toString()} characters across one or two rows and no control characters`,
+    })
+    .transform((message) =>
+        message === null ? null : normalizeWoodenSignMessage(message),
+    );
+
+const updateGardenBlockBodySchema = z
+    .object({
+        rotation: z.number().nullable().optional(),
+        variant: z.number().nullable().optional(),
+        message: woodenSignMessageSchema.optional(),
+    })
+    .strict()
+    .refine((body) => Object.keys(body).length > 0, {
+        message: 'At least one block field is required',
+    });
 
 const detailedInspectionReportsSeenBodySchema = z
     .object({
@@ -744,6 +771,7 @@ function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
 
                     return {
                         id: blockId,
+                        message: block.message,
                         name: block.name,
                         rotation: block.rotation ?? 0,
                         variant: block.variant,
@@ -751,6 +779,7 @@ function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
                 })
                 .filter(Boolean) as {
                 id: string;
+                message?: string | null;
                 name: string;
                 rotation?: number | null;
                 variant?: number | null;
@@ -763,6 +792,7 @@ function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
                 string,
                 {
                     id: string;
+                    message?: string | null;
                     name: string;
                     rotation?: number | null;
                     variant?: number | null;
@@ -3053,6 +3083,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Block not found' }, 404);
             }
 
+            if (block.name === woodenSignBlockName && block.message) {
+                return context.json(
+                    {
+                        error: 'Prije spremanja ploče u vrtnu kutiju obriši njezin natpis.',
+                    },
+                    400,
+                );
+            }
+
             const gardenBox = gardenBlocks.find(
                 (candidate) => candidate.id === gardenBoxBlockId,
             );
@@ -3400,13 +3439,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockId: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                rotation: z.number().nullable().optional(),
-                variant: z.number().nullable().optional(),
-            }),
-        ),
+        zValidator('json', updateGardenBlockBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
@@ -3427,13 +3460,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { rotation, variant } = context.req.valid('json');
+            const block = await getGardenBlock(gardenIdNumber, blockId);
+            if (!block) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
 
-            await updateGardenBlock({
+            const { message, rotation, variant } = context.req.valid('json');
+            if (message !== undefined && block.name !== woodenSignBlockName) {
+                return context.json(
+                    { error: 'Only wooden signs can have a message' },
+                    400,
+                );
+            }
+
+            const updated = await updateGardenBlock(gardenIdNumber, {
                 id: blockId,
+                message,
                 rotation,
                 variant,
             });
+
+            if (!updated) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
 
             return context.json(null, 200);
         },

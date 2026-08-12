@@ -45,3 +45,41 @@ export function rotateBlocksInStacks({
 
     return changed ? nextStacks : stacks;
 }
+
+export function updateBlockMessageInStacks({
+    blockId,
+    message,
+    stacks,
+}: {
+    blockId: string;
+    message: string | null;
+    stacks: GardenStack[];
+}) {
+    let changed = false;
+    const nextStacks = stacks.map((stack) => {
+        const blockIndex = stack.blocks.findIndex(
+            (block) => block.id === blockId,
+        );
+        if (blockIndex === -1) {
+            return stack;
+        }
+
+        const block = stack.blocks[blockIndex];
+        if (!block || (block.message ?? null) === message) {
+            return stack;
+        }
+
+        const nextBlocks = [...stack.blocks];
+        nextBlocks[blockIndex] = {
+            ...block,
+            message,
+        };
+        changed = true;
+        return {
+            ...stack,
+            blocks: nextBlocks,
+        };
+    });
+
+    return changed ? nextStacks : stacks;
+}

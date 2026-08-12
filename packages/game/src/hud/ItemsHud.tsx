@@ -21,6 +21,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { arrowSignNames } from '../entities/signageConfig';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -88,6 +89,11 @@ const treeItems: HudItemEntity[] = [
     { type: 'entity', name: 'DeadTreeStump' },
 ];
 
+const arrowSignItems: HudItemEntity[] = arrowSignNames.map((name) => ({
+    type: 'entity',
+    name,
+}));
+
 const treeGroupEntityNames = new Set([
     ...treeItems.map((item) => item.name),
     'PineAdvent',
@@ -152,6 +158,14 @@ const items: HudItem[] = [
                 imageSrc: treePickerImageSrc,
                 items: treeItems,
             },
+            {
+                type: 'picker',
+                label: 'Putokazi',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/ArrowSignWhiteRight.webp',
+                items: arrowSignItems,
+            },
+            { type: 'entity', name: 'WoodenSign' },
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'BeachUmbrella' },
             { type: 'entity', name: 'Stool' },

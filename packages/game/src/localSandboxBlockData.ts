@@ -1,4 +1,9 @@
 import type { BlockData } from '@gredice/client';
+import {
+    type ArrowSignDirection,
+    arrowSignConfigs,
+    arrowSignNames,
+} from './entities/signageConfig';
 
 export const localSandboxBlockNames = [
     'Raised_Bed',
@@ -38,6 +43,8 @@ export const localSandboxBlockNames = [
     'BeachUmbrella',
     'Stool',
     'WoodenBench',
+    ...arrowSignNames,
+    'WoodenSign',
     'OutletDisplayTable',
     'Fence',
     'SmallWoodenBridge',
@@ -91,8 +98,18 @@ export type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
 
 const createdAt = new Date(0).toISOString();
 
+function getArrowSignHeight(direction: ArrowSignDirection) {
+    return direction === 'Up' || direction === 'Down' ? 1.32 : 1.18;
+}
+
 const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
     {
+        ...Object.fromEntries(
+            arrowSignConfigs.map((config) => [
+                config.name,
+                getArrowSignHeight(config.direction),
+            ]),
+        ),
         Block_Grass: 0.4,
         Block_Ground: 0.4,
         Block_Sand: 0.4,
@@ -129,6 +146,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         InflatablePoolSmall: 0.35,
         BeachChair: 0.55,
         WoodenBench: 0.41,
+        WoodenSign: 1.16,
         OutletDisplayTable: 0.67,
         PalmTree: 1.5,
         BeachBall: 0.32,
@@ -153,6 +171,16 @@ type LocalSandboxHitboxAttributes = Partial<
 >;
 
 const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
+    ...Object.fromEntries(
+        arrowSignConfigs.map((config) => [
+            config.name,
+            {
+                hitboxDepth: 0.12,
+                hitboxHeight: getArrowSignHeight(config.direction),
+                hitboxWidth: 0.8,
+            },
+        ]),
+    ),
     MulchCoconut: {
         hitboxDepth: 0.96,
         hitboxHeight: 0.08,
@@ -192,6 +220,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 0.36,
         hitboxHeight: 0.41,
         hitboxWidth: 1.1,
+    },
+    WoodenSign: {
+        hitboxDepth: 0.12,
+        hitboxHeight: 1.16,
+        hitboxWidth: 0.88,
     },
     OutletDisplayTable: {
         hitboxDepth: 0.75,

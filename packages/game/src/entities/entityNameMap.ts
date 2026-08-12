@@ -1,4 +1,5 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { ArrowSign } from './ArrowSign';
 import { BaleHey } from './BaleHey';
 import { BeachBall } from './BeachBall';
 import { BeachChair } from './BeachChair';
@@ -76,6 +77,7 @@ import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
 import { WoodenBench } from './WoodenBench';
+import { WoodenSign } from './WoodenSign';
 import { WoodenWalkway } from './WoodenWalkway';
 
 export const entityNameMap = {
@@ -129,6 +131,23 @@ export const entityNameMap = {
     BeachBall: BeachBall,
     SandcastleSmallA: SandcastleSmallA,
     BirdHouse: BirdHouse,
+    ArrowSignWhiteLeft: ArrowSign,
+    ArrowSignRedLeft: ArrowSign,
+    ArrowSignBlueLeft: ArrowSign,
+    ArrowSignGreenLeft: ArrowSign,
+    ArrowSignWhiteRight: ArrowSign,
+    ArrowSignRedRight: ArrowSign,
+    ArrowSignBlueRight: ArrowSign,
+    ArrowSignGreenRight: ArrowSign,
+    ArrowSignWhiteUp: ArrowSign,
+    ArrowSignRedUp: ArrowSign,
+    ArrowSignBlueUp: ArrowSign,
+    ArrowSignGreenUp: ArrowSign,
+    ArrowSignWhiteDown: ArrowSign,
+    ArrowSignRedDown: ArrowSign,
+    ArrowSignBlueDown: ArrowSign,
+    ArrowSignGreenDown: ArrowSign,
+    WoodenSign: WoodenSign,
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,
     DogHouse: DogHouse,

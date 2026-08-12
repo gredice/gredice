@@ -106,6 +106,34 @@ describe('shareCurrentGardenData', () => {
         );
     });
 
+    it('replaces a block when its editable sign message changes', () => {
+        const previousBlock = createBlock({
+            id: 'wooden-sign',
+            name: 'WoodenSign',
+            message: 'MOJ VRT',
+        });
+        const previousGarden = createGarden({
+            stacks: [createStack(0, 0, [previousBlock])],
+        });
+        const nextGarden = createGarden({
+            stacks: [
+                createStack(0, 0, [
+                    createBlock({
+                        id: 'wooden-sign',
+                        name: 'WoodenSign',
+                        message: 'BILJE',
+                    }),
+                ]),
+            ],
+        });
+
+        const sharedGarden = shareCurrentGardenData(previousGarden, nextGarden);
+
+        assert.notEqual(sharedGarden, previousGarden);
+        assert.notEqual(sharedGarden?.stacks[0]?.blocks[0], previousBlock);
+        assert.equal(sharedGarden?.stacks[0]?.blocks[0]?.message, 'BILJE');
+    });
+
     it('returns new data when garden metadata changes', () => {
         const previousGarden = createGarden();
         const nextGarden = createGarden({ name: 'Renamed garden' });

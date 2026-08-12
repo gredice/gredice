@@ -26,6 +26,8 @@ const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
+    /** Optional per-placement message used by editable sign previews. */
+    message?: string | null;
     appBaseUrl?: string;
     className?: string;
     noControl?: boolean;
@@ -81,6 +83,7 @@ function CameraLookAt({
 export function EntityViewer({
     appBaseUrl,
     entityName,
+    message,
     zoom,
     itemPosition,
     className,
@@ -117,6 +120,7 @@ export function EntityViewer({
     const block: Block = {
         id: uuidv4(),
         name: entityName,
+        message,
         rotation: normalizedRotation,
         variant: variant,
     };

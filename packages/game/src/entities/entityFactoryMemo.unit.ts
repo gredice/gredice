@@ -84,6 +84,21 @@ describe('areEntityFactoryPropsEqual', () => {
         assert.equal(areEntityFactoryPropsEqual(previous, next), false);
     });
 
+    it('rerenders when editable per-block text changes', () => {
+        const previousBlock = createBlock({ message: 'MOJ VRT' });
+        const nextBlock = createBlock({ message: 'BILJE' });
+        const previous = createProps({
+            block: previousBlock,
+            stack: createStack({ blocks: [previousBlock] }),
+        });
+        const next = createProps({
+            block: nextBlock,
+            stack: createStack({ blocks: [nextBlock] }),
+        });
+
+        assert.equal(areEntityFactoryPropsEqual(previous, next), false);
+    });
+
     it('keeps non-instanced entities on strict stack identity', () => {
         const previousBlock = createBlock({ name: 'Tree' });
         const nextBlock = createBlock({ name: 'Tree' });
