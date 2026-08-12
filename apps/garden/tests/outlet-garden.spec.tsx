@@ -59,12 +59,54 @@ test('selects a live offer and exposes truthful read-only details', async ({
     await expect(details).toContainText('Prvi cvjetovi');
     await expect(details).toContainText('21. kolovoza 2026.');
     await expect(details).toContainText(
-        'Pregled i odabir sadnice ne rezerviraju zalihu; rezervacija nastaje tek nakon potvrde polja.',
+        'Fotografija i 3D prikaz su reprezentativni. Zaliha se rezervira tek nakon potvrde polja.',
     );
     await expect(
         details.getByRole('link', { name: 'Nastavi u postojećem Outletu' }),
-    ).toHaveAttribute('href', '/?outlet=302');
+    ).toHaveCount(0);
     expect(mutationRequests).toEqual([]);
+});
+
+test('keeps the 3D sidebar closed until the list or a seedling is selected', async ({
+    mount,
+    page,
+}) => {
+    await mount(<OutletGardenOfferBrowserStory selectionDriven />);
+
+    const browser = page.locator('[data-outlet-garden-browser]');
+    await expect(browser).toHaveCount(0);
+
+    const listTrigger = page.getByRole('button', { name: 'Popis ponuda' });
+    await expect(listTrigger).toHaveAttribute('aria-expanded', 'false');
+    await listTrigger.click();
+
+    await expect(browser).toBeVisible();
+    await expect(listTrigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(
+        browser.locator('[data-outlet-garden-offer-list]'),
+    ).toBeVisible();
+    await expect(
+        browser.locator('[data-outlet-garden-selected-offer]'),
+    ).toHaveCount(0);
+
+    await browser.getByRole('button', { name: /Paprika Zlata Snack/u }).click();
+
+    const details = browser.locator(
+        '[data-outlet-garden-selected-offer="302"]',
+    );
+    await expect(details).toBeVisible();
+    await expect(details).toBeFocused();
+    await expect(
+        browser.locator('[data-outlet-garden-offer-list]'),
+    ).toHaveCount(0);
+    await expect(page.locator('[data-selected-offer-id]')).toHaveText('302');
+    await expect(browser).not.toContainText('Nastavi u postojećem Outletu');
+
+    await browser
+        .getByRole('button', { name: 'Zatvori detalje sadnice' })
+        .click();
+    await expect(browser).toHaveCount(0);
+    await expect(page.locator('[data-selected-offer-id]')).toHaveText('none');
 });
 
 test('shows representative hierarchy imagery and complete offer pricing', async ({

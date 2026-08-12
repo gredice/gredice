@@ -532,6 +532,10 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         '5',
     );
     await expect(page.locator('canvas')).toBeVisible();
+    await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
+    await page
+        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .click();
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
     ).toHaveCount(2);
@@ -561,7 +565,11 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         'data-outlet-garden-hovered-offer',
         '302',
     );
-    await page.getByRole('heading', { name: 'Outlet vrt' }).hover();
+    await page
+        .getByRole('main', {
+            name: 'Interaktivni 3D prikaz Outlet vrta',
+        })
+        .hover({ position: { x: 20, y: 200 } });
     await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
         /.+/u,
@@ -608,6 +616,9 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toContainText('1 sadnica');
+    await page
+        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .click();
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
     ).toHaveCount(2);
@@ -617,6 +628,12 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
         'data-outlet-garden-display-count',
         '3',
+    );
+    await page.getByRole('button', { name: /Paprika Zlata Snack/u }).click();
+    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+    await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
+        'data-outlet-garden-hovered-offer',
+        /.+/u,
     );
     if (canvasElement) {
         expect(
@@ -632,10 +649,13 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeVisible();
-    await expect(
-        page.locator('[data-outlet-garden-offer-id="302"]'),
-    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-outlet-garden-offer-list]')).toHaveCount(
+        0,
+    );
 
+    await page
+        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .click();
     await page
         .getByRole('button', {
             name: 'Prikaži Outlet ponude bez 3D prikaza',
@@ -727,7 +747,7 @@ test('guest Outlet garden falls back to the semantic offer list without WebGL', 
         page.getByRole('link', {
             name: 'Nastavi u postojećem Outletu',
         }),
-    ).toHaveAttribute('href', '/?outlet=302');
+    ).toHaveCount(0);
     await expect(
         page.getByRole('button', {
             name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
@@ -761,13 +781,13 @@ test('signed-in list fallback holds the final unit and keeps its verified receip
 
     await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
 
-    const gardenSelect = page.getByRole('combobox', {
-        name: 'Vrt',
+    const raisedBedSelect = page.getByRole('combobox', {
+        name: 'Gredica',
         exact: true,
     });
-    await expect(gardenSelect).toHaveValue('1');
+    await expect(raisedBedSelect).toHaveValue('10');
     const targetSelect = page.getByRole('combobox', {
-        name: 'Mjesto u gredici',
+        name: 'Polje / pozicija',
         exact: true,
     });
     await expect(targetSelect.locator('option')).toHaveCount(18);
@@ -861,7 +881,7 @@ test('switches gardens when the default garden has no free targets', async ({
     await expect(
         page
             .getByRole('combobox', {
-                name: 'Mjesto u gredici',
+                name: 'Polje / pozicija',
                 exact: true,
             })
             .locator('option'),
@@ -885,7 +905,7 @@ test('refreshes the selected garden and moves off a rejected target', async ({
     await page.goto('/outlet?ponuda=302');
     await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
     const targetSelect = page.getByRole('combobox', {
-        name: 'Mjesto u gredici',
+        name: 'Polje / pozicija',
         exact: true,
     });
     await expect(targetSelect).toHaveValue('10:0');

@@ -2,6 +2,7 @@ import {
     OutletGardenOfferBrowser,
     type OutletGardenOfferBrowserProps,
 } from '@gredice/game/outlet-garden-browser';
+import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
 
 type OutletOffer = OutletGardenOfferBrowserProps['offers'][number];
@@ -106,10 +107,12 @@ export type OutletGardenOfferBrowserStoryState =
 export function OutletGardenOfferBrowserStory({
     displayLimited = false,
     initialSelectedOfferId = null,
+    selectionDriven = false,
     state = 'ready',
 }: {
     displayLimited?: boolean;
     initialSelectedOfferId?: number | null;
+    selectionDriven?: boolean;
     state?: OutletGardenOfferBrowserStoryState;
 }) {
     const [selectedOfferId, setSelectedOfferId] = useState<number | null>(
@@ -117,26 +120,75 @@ export function OutletGardenOfferBrowserStory({
     );
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [offerListOpen, setOfferListOpen] = useState(false);
+    const browserOpen =
+        !selectionDriven || offerListOpen || selectedOfferId !== null;
 
     return (
         <div className="h-[100dvh] bg-muted">
-            <OutletGardenOfferBrowser
-                className="h-full w-full max-w-md"
-                displayLimited={displayLimited}
-                isError={state === 'error'}
-                isLoading={state === 'loading'}
-                offers={state === 'ready' ? outletOffers : []}
-                onExit={() => undefined}
-                onHoverOffer={setHoveredOfferId}
-                onRetry={() => setRetryCount((count) => count + 1)}
-                onSelectOffer={setSelectedOfferId}
-                selectedOfferId={selectedOfferId}
-            />
+            {selectionDriven ? (
+                <Button
+                    aria-controls="outlet-garden-browser"
+                    aria-expanded={offerListOpen}
+                    onClick={() => {
+                        setSelectedOfferId(null);
+                        setOfferListOpen(true);
+                    }}
+                    variant="outlined"
+                >
+                    Popis ponuda
+                </Button>
+            ) : null}
+            {browserOpen ? (
+                <OutletGardenOfferBrowser
+                    className="h-full w-full max-w-md"
+                    displayLimited={displayLimited}
+                    isError={state === 'error'}
+                    isLoading={state === 'loading'}
+                    offers={state === 'ready' ? outletOffers : []}
+                    onClose={
+                        selectionDriven
+                            ? () => {
+                                  setSelectedOfferId(null);
+                                  setOfferListOpen(false);
+                              }
+                            : undefined
+                    }
+                    onExit={() => undefined}
+                    onHoverOffer={setHoveredOfferId}
+                    onRetry={() => setRetryCount((count) => count + 1)}
+                    onSelectOffer={(offerId) => {
+                        setSelectedOfferId(offerId);
+                        if (selectionDriven) {
+                            setOfferListOpen(false);
+                        }
+                    }}
+                    onShowOfferList={
+                        selectionDriven
+                            ? () => {
+                                  setSelectedOfferId(null);
+                                  setOfferListOpen(true);
+                              }
+                            : undefined
+                    }
+                    selectedOfferId={selectedOfferId}
+                    view={
+                        selectionDriven
+                            ? offerListOpen
+                                ? 'list'
+                                : 'details'
+                            : 'combined'
+                    }
+                />
+            ) : null}
             <output className="sr-only" data-retry-count>
                 {retryCount}
             </output>
             <output className="sr-only" data-hovered-offer-id>
                 {hoveredOfferId ?? 'none'}
+            </output>
+            <output className="sr-only" data-selected-offer-id>
+                {selectedOfferId ?? 'none'}
             </output>
         </div>
     );
