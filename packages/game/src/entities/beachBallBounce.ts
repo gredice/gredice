@@ -57,6 +57,7 @@ const maxMotionSeconds = 5.4;
 const surfaceCellEpsilon = 0.0001;
 
 export const beachBallCollisionRadius = 0.24;
+const beachBallRollableSurfaceMaxHeight = 0.1;
 const maxMotionSubstepDistance = beachBallCollisionRadius / 2;
 
 function cellKey(position: { x: number; z: number }) {
@@ -120,6 +121,22 @@ function getBlockHeight(
         : null;
 }
 
+function isBeachBallRollableSurfaceBlock(
+    blockDataByName: Map<string, BeachBallBlockDataLike>,
+    blockName: string,
+) {
+    if (isBeachBallPassableTerrainBlockName(blockName)) {
+        return true;
+    }
+
+    const blockHeight = getBlockHeight(blockDataByName, blockName);
+    return (
+        blockHeight !== null &&
+        blockHeight >= 0 &&
+        blockHeight <= beachBallRollableSurfaceMaxHeight
+    );
+}
+
 function getStackSurfaceHeight({
     blockDataByName,
     movingBlockId,
@@ -137,7 +154,7 @@ function getStackSurfaceHeight({
             return height;
         }
 
-        if (!isBeachBallPassableTerrainBlockName(block.name)) {
+        if (!isBeachBallRollableSurfaceBlock(blockDataByName, block.name)) {
             break;
         }
 
@@ -299,7 +316,7 @@ export function createBeachBallBounceEnvironment({
         for (const block of stack.blocks) {
             if (
                 block.id === movingBlockId ||
-                isBeachBallPassableTerrainBlockName(block.name)
+                isBeachBallRollableSurfaceBlock(blockDataByName, block.name)
             ) {
                 continue;
             }
