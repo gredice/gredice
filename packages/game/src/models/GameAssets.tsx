@@ -890,7 +890,6 @@ export type GLTFResult = GLTF & {
         StoneWalkway_StonesLight: THREE.Mesh;
         StoneWalkway_StonesMid: THREE.Mesh;
         StoneWalkway_StonesWarm: THREE.Mesh;
-        StoneWalkway_SupportRails: THREE.Mesh;
         EnamelGardenLamp_WoodPost: THREE.Mesh;
         EnamelGardenLamp_LimestoneFoot: THREE.Mesh;
         EnamelGardenLamp_EnamelShade: THREE.Mesh;
@@ -1364,7 +1363,6 @@ export type GLTFResult = GLTF & {
         'Material.Stone.002': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.LightStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.MidStone': THREE.MeshStandardMaterial;
-        'Material.StoneWalkway.SupportStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.WarmStone': THREE.MeshStandardMaterial;
         'Material.VeggieGreen': THREE.MeshStandardMaterial;
         'Material.VeggieGreenDark': THREE.MeshStandardMaterial;
