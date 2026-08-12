@@ -41,6 +41,9 @@ const beachBallBounceDurationSeconds = 0.58;
 const beachBallGroundLift = 0.008;
 const beachBallMinBounceLift = 0.026;
 const beachBallMaxBounceLift = 0.16;
+// The exported mesh spans Y=0.0025..2.0475. Roll around its scaled center
+// instead of the ground-level model origin so rotation cannot bury the ball.
+const beachBallVisualCenterY = 1.025 * beachBallScale;
 
 const beachBallNodeNames = [
     'BeachBall_Cap',
@@ -147,6 +150,7 @@ export function BeachBall({
         .clone()
         .setY(currentStackHeight + beachBallGroundLift);
     const motionGroupRef = useRef<Group>(null);
+    const rollingGroupRef = useRef<Group>(null);
     const bounceStateRef = useRef(createBeachBallBounceState());
     const visualBounceRef = useRef(createBeachBallVisualBounce());
     const clickCountRef = useRef(0);
@@ -172,17 +176,19 @@ export function BeachBall({
         visualBounceRef.current = createBeachBallVisualBounce();
 
         const motionGroup = motionGroupRef.current;
-        if (!motionGroup) {
+        const rollingGroup = rollingGroupRef.current;
+        if (!motionGroup || !rollingGroup) {
             return;
         }
 
         motionGroup.position.set(0, 0, 0);
-        motionGroup.rotation.set(0, 0, 0);
+        rollingGroup.rotation.set(0, 0, 0);
     }, [block.id, stack.position.x, stack.position.z]);
 
     useFrame((_, deltaSeconds) => {
         const motionGroup = motionGroupRef.current;
-        if (!motionGroup) {
+        const rollingGroup = rollingGroupRef.current;
+        if (!motionGroup || !rollingGroup) {
             return;
         }
 
@@ -244,8 +250,8 @@ export function BeachBall({
         const movementZ = nextState.offsetZ - previousOffsetZ;
 
         setMotionPosition(nextState, bounceY);
-        motionGroup.rotation.x += movementZ / beachBallCollisionRadius;
-        motionGroup.rotation.z -= movementX / beachBallCollisionRadius;
+        rollingGroup.rotation.x += movementZ / beachBallCollisionRadius;
+        rollingGroup.rotation.z -= movementX / beachBallCollisionRadius;
     });
 
     function handlePointerUp(event: ThreeEvent<PointerEvent>) {
@@ -328,24 +334,32 @@ export function BeachBall({
                     onPointerLeave={handlePointerLeave}
                     onPointerUp={handlePointerUp}
                 >
-                    <animated.group
-                        rotation={
-                            animatedRotation as unknown as [
-                                number,
-                                number,
-                                number,
-                            ]
-                        }
+                    <group
+                        ref={rollingGroupRef}
+                        position={[0, beachBallVisualCenterY, 0]}
                     >
-                        <group scale={beachBallScale}>
-                            {beachBallNodeNames.map((nodeName) => (
-                                <BeachBallPart
-                                    key={nodeName}
-                                    node={nodes[nodeName]}
-                                />
-                            ))}
-                        </group>
-                    </animated.group>
+                        <animated.group
+                            rotation={
+                                animatedRotation as unknown as [
+                                    number,
+                                    number,
+                                    number,
+                                ]
+                            }
+                        >
+                            <group
+                                position={[0, -beachBallVisualCenterY, 0]}
+                                scale={beachBallScale}
+                            >
+                                {beachBallNodeNames.map((nodeName) => (
+                                    <BeachBallPart
+                                        key={nodeName}
+                                        node={nodes[nodeName]}
+                                    />
+                                ))}
+                            </group>
+                        </animated.group>
+                    </group>
                 </group>
             </group>
         </HoverOutline>
