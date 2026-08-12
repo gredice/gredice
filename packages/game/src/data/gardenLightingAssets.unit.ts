@@ -151,6 +151,36 @@ const assetSpecs = [
         heightRange: [0.85, 1],
         vertexLimit: 7_000,
     },
+    {
+        name: 'FishingBoat',
+        objects: [
+            'FishingBoat_HullWoodDark',
+            'FishingBoat_HullWood',
+            'FishingBoat_InteriorWood',
+            'FishingBoat_Benches',
+            'FishingBoat_Oars',
+            'FishingBoat_Rope',
+            'FishingBoat_Net',
+            'FishingBoat_Floats',
+            'FishingBoat_Metal',
+            'FishingBoat_Ripples',
+        ],
+        materials: [
+            'Material.FishingBoat.DarkWarmWood',
+            'Material.FishingBoat.DarkMetal',
+            'Material.FishingBoat.FloatGold',
+            'Material.FishingBoat.HullWood',
+            'Material.FishingBoat.InteriorWood',
+            'Material.FishingBoat.Net',
+            'Material.FishingBoat.Ripple',
+            'Material.FishingBoat.Rope',
+            'Material.FishingBoat.WarmWood',
+        ],
+        horizontalLimit: 0.48,
+        depthLimit: 0.96,
+        heightRange: [0.59, 0.63],
+        vertexLimit: 5_100,
+    },
 ] as const;
 
 const manifestPath = fileURLToPath(
@@ -290,7 +320,7 @@ function getNodeBounds(document: Record<string, unknown>, nodeName: string) {
     };
 }
 
-describe('garden lighting and stone walkway assets', () => {
+describe('generated garden decoration assets', () => {
     const manifestDocument: unknown = JSON.parse(
         readFileSync(manifestPath, 'utf8'),
     );

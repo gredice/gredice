@@ -192,6 +192,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'SmallWoodenBridge' },
             { type: 'entity', name: 'WoodenWalkway' },
             { type: 'entity', name: 'StoneWalkway' },
+            { type: 'entity', name: 'FishingBoat' },
             { type: 'entity', name: 'WaterWell' },
             { type: 'entity', name: 'LemonadeStand' },
             { type: 'entity', name: 'IceCreamCart' },

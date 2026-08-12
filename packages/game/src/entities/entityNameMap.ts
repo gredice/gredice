@@ -44,6 +44,7 @@ import { DogHouse } from './DogHouse';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
+import { FishingBoat } from './FishingBoat';
 import { GardenBox } from './GardenBox';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
@@ -181,6 +182,7 @@ export const entityNameMap = {
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,
+    FishingBoat: FishingBoat,
     FireflyJar: FireflyJar,
     EnamelGardenLamp: EnamelGardenLamp,
     HazelLightArch: HazelLightArch,

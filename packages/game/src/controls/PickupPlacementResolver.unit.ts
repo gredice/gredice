@@ -166,6 +166,14 @@ const blockData = [
         id: 13,
         name: 'Block_Grass',
     }),
+    createBlockData({
+        id: 14,
+        name: 'FishingBoat',
+        placeableOnWater: true,
+        spanDepth: 2,
+        spanWidth: 1,
+        stackable: false,
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -492,6 +500,46 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
 
         assert.equal(preview?.nextIsBlocked, false);
         assert.equal(preview?.targetOffsets[0]?.hoverHeight, 1);
+    });
+
+    it('only allows the fishing boat when both footprint cells are water', () => {
+        const boat = createBlock('FishingBoat', 'boat');
+        const sourceStack = createStack(0, 0, [boat]);
+        const firstWaterStack = createStack(1, 0, [
+            createBlock('Block_Water', 'water-a'),
+        ]);
+        const secondWaterStack = createStack(1, 1, [
+            createBlock('Block_Water', 'water-b'),
+        ]);
+
+        const fullySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack, secondWaterStack],
+        });
+        const partiallySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack],
+        });
+        const unsupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(2, 0, 0),
+            stacks: [sourceStack],
+        });
+
+        assert.equal(fullySupported?.nextIsBlocked, false);
+        assert.equal(partiallySupported?.nextIsBlocked, true);
+        assert.equal(unsupported?.nextIsBlocked, true);
     });
 
     it('matches the single-resolution path when reusing prepared placement state', () => {

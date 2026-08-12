@@ -83,4 +83,21 @@ describe('canStackBlockOnBlock', () => {
             false,
         );
     });
+
+    for (const swampGroundName of [
+        'Block_Swamp_Ground',
+        'Block_Swamp_Ground_Angle',
+    ]) {
+        it(`keeps ordinary decorations stackable on ${swampGroundName}`, () => {
+            assert.equal(
+                canStackBlockOnBlock({
+                    aboveBlockData: nonStackable,
+                    aboveBlockName: 'EnamelGardenLamp',
+                    belowBlockData: { attributes: { stackable: true } },
+                    belowBlockName: swampGroundName,
+                }),
+                true,
+            );
+        });
+    }
 });

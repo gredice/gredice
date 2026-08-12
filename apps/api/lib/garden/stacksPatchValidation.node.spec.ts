@@ -24,6 +24,16 @@ const blockDataByName = new Map([
             },
         },
     ],
+    [
+        'FishingBoat',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.62,
+                placeableOnWater: true,
+            },
+        },
+    ],
     ['Tree', { attributes: { stackable: true, height: 1 } }],
     ['HazelLightArch', { attributes: { stackable: false, height: 1.65 } }],
     ['StoneWalkway', { attributes: { stackable: false, height: 0.1 } }],
@@ -87,4 +97,32 @@ describe('validateStackPlacement', () => {
             assert.deepEqual(validation, { valid: true });
         });
     }
+
+    it('requires the fishing boat to have water or swamp support', () => {
+        const unsupported = validateStackPlacement({
+            blockIds: ['boat-a'],
+            blockNameById: new Map([['boat-a', 'FishingBoat']]),
+            blockDataByName,
+        });
+        const onLand = validateStackPlacement({
+            blockIds: ['grass-a', 'boat-a'],
+            blockNameById: new Map([
+                ['grass-a', 'Block_Grass'],
+                ['boat-a', 'FishingBoat'],
+            ]),
+            blockDataByName,
+        });
+        const onWater = validateStackPlacement({
+            blockIds: ['water-a', 'boat-a'],
+            blockNameById: new Map([
+                ['water-a', 'Block_Water'],
+                ['boat-a', 'FishingBoat'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.equal(unsupported.valid, false);
+        assert.equal(onLand.valid, false);
+        assert.deepEqual(onWater, { valid: true });
+    });
 });
