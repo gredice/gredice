@@ -55,6 +55,7 @@ const maxMotionSeconds = 5.4;
 const surfaceCellEpsilon = 0.0001;
 
 export const beachBallCollisionRadius = 0.24;
+const maxMotionSubstepDistance = beachBallCollisionRadius / 2;
 
 const passableTerrainBlockNames = new Set([
     'Block_Ground',
@@ -388,38 +389,47 @@ export function advanceBeachBallBounce(
     let velocityZ = state.velocityZ;
     let collisionCount = state.collisionCount;
 
-    const xMotion = resolveAxisMotion({
-        axis: 'x',
-        baseX: options.baseX,
-        baseZ: options.baseZ,
-        currentOffsetX: offsetX,
-        currentOffsetZ: offsetZ,
-        deltaSeconds,
-        environment,
-        nextOffset: offsetX + velocityX * deltaSeconds,
-        velocity: velocityX,
-    });
-    offsetX = xMotion.offset;
-    velocityX = xMotion.velocity;
-    if (xMotion.collided) {
-        collisionCount += 1;
-    }
+    const motionDistance = Math.hypot(velocityX, velocityZ) * deltaSeconds;
+    const motionStepCount = Math.max(
+        1,
+        Math.ceil(motionDistance / maxMotionSubstepDistance),
+    );
+    const motionStepSeconds = deltaSeconds / motionStepCount;
 
-    const zMotion = resolveAxisMotion({
-        axis: 'z',
-        baseX: options.baseX,
-        baseZ: options.baseZ,
-        currentOffsetX: offsetX,
-        currentOffsetZ: offsetZ,
-        deltaSeconds,
-        environment,
-        nextOffset: offsetZ + velocityZ * deltaSeconds,
-        velocity: velocityZ,
-    });
-    offsetZ = zMotion.offset;
-    velocityZ = zMotion.velocity;
-    if (zMotion.collided) {
-        collisionCount += 1;
+    for (let step = 0; step < motionStepCount; step += 1) {
+        const xMotion = resolveAxisMotion({
+            axis: 'x',
+            baseX: options.baseX,
+            baseZ: options.baseZ,
+            currentOffsetX: offsetX,
+            currentOffsetZ: offsetZ,
+            deltaSeconds: motionStepSeconds,
+            environment,
+            nextOffset: offsetX + velocityX * motionStepSeconds,
+            velocity: velocityX,
+        });
+        offsetX = xMotion.offset;
+        velocityX = xMotion.velocity;
+        if (xMotion.collided) {
+            collisionCount += 1;
+        }
+
+        const zMotion = resolveAxisMotion({
+            axis: 'z',
+            baseX: options.baseX,
+            baseZ: options.baseZ,
+            currentOffsetX: offsetX,
+            currentOffsetZ: offsetZ,
+            deltaSeconds: motionStepSeconds,
+            environment,
+            nextOffset: offsetZ + velocityZ * motionStepSeconds,
+            velocity: velocityZ,
+        });
+        offsetZ = zMotion.offset;
+        velocityZ = zMotion.velocity;
+        if (zMotion.collided) {
+            collisionCount += 1;
+        }
     }
 
     const damping = velocityDampingPerSecond ** deltaSeconds;
