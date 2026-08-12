@@ -110,6 +110,34 @@ describe('beach ball bounce', () => {
         assert.equal(nextState.collisionCount, 1);
     });
 
+    it('cannot tunnel through an occupied cell during a fast frame', () => {
+        const environment = createBeachBallBounceEnvironment({
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [
+                    block('Block_Grass'),
+                    block('Raised_Bed', 'raised-bed'),
+                ]),
+                stack(2, 0, [block('Block_Grass')]),
+            ],
+        });
+
+        const nextState = advanceBeachBallBounce(
+            activeState({ velocityX: 40 }),
+            environment,
+            {
+                baseX: 0,
+                baseZ: 0,
+                deltaSeconds: 0.2,
+            },
+        );
+
+        assert.ok(nextState.offsetX < 0.25);
+        assert.ok(nextState.velocityX < 0);
+        assert.ok(nextState.collisionCount >= 1);
+    });
+
     it('uses multi-block footprint spans for obstacle cells', () => {
         const environment = createBeachBallBounceEnvironment({
             blockData: [

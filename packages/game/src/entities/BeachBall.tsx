@@ -10,6 +10,7 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useActorGroundingShadow } from './animals/ActorGroundingShadows';
 import {
     advanceBeachBallBounce,
     beachBallCollisionRadius,
@@ -57,7 +58,7 @@ const beachBallNodeNames = [
 function BeachBallPart({ node }: { node: BeachBallNode }) {
     return (
         <mesh
-            castShadow
+            castShadow={false}
             receiveShadow
             geometry={node.geometry}
             material={node.material}
@@ -150,6 +151,11 @@ export function BeachBall({
     const visualBounceRef = useRef(createBeachBallVisualBounce());
     const clickCountRef = useRef(0);
     const [hovered, setHovered] = useState(false);
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `beach-ball:${block.id}`,
+        primaryCasterCount: 0,
+        species: 'beachBall',
+    });
     const bounceEnvironment = useMemo(
         () =>
             createBeachBallBounceEnvironment({
@@ -195,6 +201,14 @@ export function BeachBall({
                 surfaceHeight - currentStackHeight + bounceY,
                 state.offsetZ,
             );
+            updateGroundingShadow?.({
+                actorY: surfaceHeight + bounceY,
+                receiverY: surfaceHeight,
+                visible: motionGroup.visible,
+                x: stack.position.x + state.offsetX,
+                yaw: 0,
+                z: stack.position.z + state.offsetZ,
+            });
         };
 
         if (!currentState.active) {
@@ -305,12 +319,7 @@ export function BeachBall({
 
     return (
         <HoverOutline color="white" hovered={hovered} thickness={7}>
-            <animated.group
-                position={position}
-                rotation={
-                    animatedRotation as unknown as [number, number, number]
-                }
-            >
+            <group position={position}>
                 {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js group uses raycast picking for the clickable beach ball. */}
                 <group
                     ref={motionGroupRef}
@@ -319,16 +328,26 @@ export function BeachBall({
                     onPointerLeave={handlePointerLeave}
                     onPointerUp={handlePointerUp}
                 >
-                    <group scale={beachBallScale}>
-                        {beachBallNodeNames.map((nodeName) => (
-                            <BeachBallPart
-                                key={nodeName}
-                                node={nodes[nodeName]}
-                            />
-                        ))}
-                    </group>
+                    <animated.group
+                        rotation={
+                            animatedRotation as unknown as [
+                                number,
+                                number,
+                                number,
+                            ]
+                        }
+                    >
+                        <group scale={beachBallScale}>
+                            {beachBallNodeNames.map((nodeName) => (
+                                <BeachBallPart
+                                    key={nodeName}
+                                    node={nodes[nodeName]}
+                                />
+                            ))}
+                        </group>
+                    </animated.group>
                 </group>
-            </animated.group>
+            </group>
         </HoverOutline>
     );
 }
