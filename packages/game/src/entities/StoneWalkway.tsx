@@ -44,12 +44,6 @@ export function StoneWalkway({ stack, block, rotation }: EntityInstanceProps) {
                 rain={stoneRain}
                 snow={snowPresets.stone}
             />
-            <WeatheredEntityPart
-                material={materials['Material.StoneWalkway.SupportStone']}
-                node={nodes.StoneWalkway_SupportRails}
-                rain={stoneRain}
-                snow={{ ...snowPresets.stone, maxThickness: 0.025 }}
-            />
         </animated.group>
     );
 }

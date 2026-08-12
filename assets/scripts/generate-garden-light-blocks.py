@@ -379,38 +379,25 @@ def save_asset(
 def generate_stone_walkway(output_dir: Path) -> None:
     name = "StoneWalkway"
     reset_scene(name)
-    light = material("Material.StoneWalkway.LightStone", "#51585C", roughness=0.9)
-    middle = material("Material.StoneWalkway.MidStone", "#434B50", roughness=0.92)
-    warm = material("Material.StoneWalkway.WarmStone", "#4D4A45", roughness=0.92)
-    support = material("Material.StoneWalkway.SupportStone", "#303638", roughness=0.95)
-
-    rails = [
-        box(
-            f"support_{index}",
-            (0.105, 1.0, 0.036),
-            (x, 0, 0.018),
-            support,
-            bevel_width=0.012,
-        )
-        for index, x in enumerate((-0.235, 0.235))
-    ]
+    light = material("Material.StoneWalkway.LightStone", "#504C46", roughness=0.9)
+    middle = material("Material.StoneWalkway.MidStone", "#484A46", roughness=0.92)
+    warm = material("Material.StoneWalkway.WarmStone", "#4D463F", roughness=0.92)
 
     positions = (
-        (-0.208, -0.333),
-        (0.208, -0.333),
-        (-0.208, 0),
-        (0.208, 0),
-        (-0.208, 0.333),
-        (0.208, 0.333),
+        (-0.27, -0.333),
+        (0.23, -0.333),
+        (-0.23, 0),
+        (0.27, 0),
+        (-0.26, 0.333),
+        (0.24, 0.333),
     )
-    rotations = (0, 0, 0.018, -0.022, 0, 0)
     sizes = (
-        (0.4, 0.334),
-        (0.404, 0.334),
-        (0.408, 0.312),
-        (0.396, 0.312),
-        (0.404, 0.334),
-        (0.4, 0.334),
+        (0.46, 0.334),
+        (0.54, 0.334),
+        (0.54, 0.332),
+        (0.46, 0.332),
+        (0.48, 0.334),
+        (0.52, 0.334),
     )
     roles: dict[str, list[bpy.types.Object]] = {"light": [], "middle": [], "warm": []}
     role_materials = {"light": light, "middle": middle, "warm": warm}
@@ -423,10 +410,9 @@ def generate_stone_walkway(output_dir: Path) -> None:
             box(
                 f"stone_{index}",
                 (width, depth, height),
-                (x, y, 0.036 + height / 2),
+                (x, y, height / 2),
                 role_materials[role],
-                rotation=(0, 0, rotations[index]),
-                bevel_width=0.024,
+                bevel_width=0.018,
             )
         )
 
@@ -434,7 +420,6 @@ def generate_stone_walkway(output_dir: Path) -> None:
         join_objects(roles["light"], "StoneWalkway_StonesLight", light),
         join_objects(roles["middle"], "StoneWalkway_StonesMid", middle),
         join_objects(roles["warm"], "StoneWalkway_StonesWarm", warm),
-        join_objects(rails, "StoneWalkway_SupportRails", support),
     ]
     save_asset(name, output_dir, final)
 

@@ -16,17 +16,15 @@ const assetSpecs = [
             'StoneWalkway_StonesLight',
             'StoneWalkway_StonesMid',
             'StoneWalkway_StonesWarm',
-            'StoneWalkway_SupportRails',
         ],
         materials: [
             'Material.StoneWalkway.LightStone',
             'Material.StoneWalkway.MidStone',
-            'Material.StoneWalkway.SupportStone',
             'Material.StoneWalkway.WarmStone',
         ],
         horizontalLimit: 0.5,
         depthLimit: 0.5,
-        heightRange: [0.099, 0.101],
+        heightRange: [0.063, 0.065],
         vertexLimit: 1_000,
     },
     {
@@ -341,7 +339,7 @@ describe('garden lighting and stone walkway assets', () => {
         });
     }
 
-    it('joins the StoneWalkway paving at both ends of its tile', () => {
+    it('joins the StoneWalkway paving at all four edges of its tile', () => {
         const modelPath = fileURLToPath(
             new URL(
                 '../../../../apps/garden/public/assets/models/StoneWalkway.glb',
@@ -359,10 +357,20 @@ describe('garden lighting and stone walkway assets', () => {
         );
         const warm = getNodePositionBounds(document, 'StoneWalkway_StonesWarm');
 
-        assert.ok(light.maximum[2] >= 0.499_99);
-        assert.ok(middle.maximum[2] >= 0.499_99);
-        assert.ok(middle.minimum[2] <= -0.499_99);
-        assert.ok(warm.minimum[2] <= -0.499_99);
+        const bounds = [light, middle, warm];
+
+        assert.ok(
+            Math.min(...bounds.map(({ minimum }) => minimum[0])) <= -0.499_99,
+        );
+        assert.ok(
+            Math.max(...bounds.map(({ maximum }) => maximum[0])) >= 0.499_99,
+        );
+        assert.ok(
+            Math.min(...bounds.map(({ minimum }) => minimum[2])) <= -0.499_99,
+        );
+        assert.ok(
+            Math.max(...bounds.map(({ maximum }) => maximum[2])) >= 0.499_99,
+        );
     });
 
     it('keeps the StoneWalkway palette close to the existing gray stones', () => {
@@ -404,7 +412,8 @@ describe('garden lighting and stone walkway assets', () => {
                 color.length;
 
             assert.ok(Math.abs(lightness - referenceLightness) <= 0.05);
-            assert.ok(lightestChannel - darkestChannel <= 0.03);
+            assert.ok(color[0] >= color[2]);
+            assert.ok(lightestChannel - darkestChannel <= 0.045);
         }
     });
 });
