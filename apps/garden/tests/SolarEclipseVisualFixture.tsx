@@ -113,11 +113,13 @@ export function SolarEclipseVisualFixture({
     dayNightCycleDisabled = false,
     foregroundOcclusionProbe = false,
     lightingProbe = false,
+    noBackground = false,
     time,
 }: {
     dayNightCycleDisabled?: boolean;
     foregroundOcclusionProbe?: boolean;
     lightingProbe?: boolean;
+    noBackground?: boolean;
     time: string;
 }) {
     const [lightIntensities, setLightIntensities] =
@@ -170,14 +172,18 @@ export function SolarEclipseVisualFixture({
                         fixedTimeSeconds={1}
                         position={[-100, 100, -100]}
                         rendererOptions={{
-                            alpha: false,
+                            alpha: noBackground,
                             antialias: false,
                             preserveDrawingBuffer: true,
                         }}
                         zoom={90}
                     >
                         <AimCamera />
-                        <Environment noSound noWeather />
+                        <Environment
+                            noBackground={noBackground}
+                            noSound
+                            noWeather
+                        />
                         {lightingProbe ? <EnvironmentLightProbe /> : null}
                         {foregroundOcclusionProbe ? (
                             <ForegroundOcclusionProbe />

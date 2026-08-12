@@ -26,6 +26,39 @@ async function readLightIntensities(fixture: {
     return { ambient, directional, hemisphere };
 }
 
+async function inspectCanvasAlpha(canvas: HTMLCanvasElement) {
+    const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+            if (result) resolve(result);
+            else reject(new Error('Could not encode eclipse canvas.'));
+        }, 'image/png');
+    });
+    const bitmap = await createImageBitmap(blob);
+
+    try {
+        const sampleCanvas = document.createElement('canvas');
+        sampleCanvas.width = 60;
+        sampleCanvas.height = 32;
+        const context = sampleCanvas.getContext('2d', {
+            willReadFrequently: true,
+        });
+        if (!context) throw new Error('Canvas alpha sampler is unavailable.');
+        context.drawImage(bitmap, 0, 0, 60, 32);
+        const pixels = context.getImageData(0, 0, 60, 32).data;
+        let opaquePixels = 0;
+        let transparentPixels = 0;
+
+        for (let index = 3; index < pixels.length; index += 4) {
+            if (pixels[index] === 0) transparentPixels += 1;
+            if (pixels[index] === 255) opaquePixels += 1;
+        }
+
+        return { opaquePixels, transparentPixels, type: blob.type };
+    } finally {
+        bitmap.close();
+    }
+}
+
 test('renders the 2026 Croatian partial eclipse before local sunset', async ({
     mount,
     page,
@@ -144,4 +177,23 @@ test('keeps foreground geometry in front of the lunar occluder', async ({
         'solar-eclipse-foreground-occlusion.png',
         celestialSnapshotOptions,
     );
+});
+
+test('preserves transparent capture pixels while dimming an eclipse scene', async ({
+    mount,
+}) => {
+    const fixture = await mount(
+        <SolarEclipseVisualFixture
+            lightingProbe
+            noBackground
+            time="2030-06-01T05:10:24.000Z"
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+    await expect(fixture).toHaveAttribute('data-eclipse-obscuration', '0.696');
+
+    const alpha = await fixture.locator('canvas').evaluate(inspectCanvasAlpha);
+    expect(alpha.type).toBe('image/png');
+    expect(alpha.transparentPixels).toBeGreaterThan(60 * 32 * 0.25);
+    expect(alpha.opaquePixels).toBeGreaterThan(0);
 });

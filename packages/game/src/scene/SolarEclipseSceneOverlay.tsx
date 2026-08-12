@@ -3,7 +3,16 @@
 import { ScreenQuad } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
-import { Color, ShaderMaterial } from 'three';
+import {
+    AddEquation,
+    Color,
+    CustomBlending,
+    OneFactor,
+    OneMinusSrcAlphaFactor,
+    ShaderMaterial,
+    SrcAlphaFactor,
+    ZeroFactor,
+} from 'three';
 import { getSolarEclipseVisualScales } from './solarEclipse';
 
 const overlayVertexShader = /* glsl */ `
@@ -33,6 +42,13 @@ export function SolarEclipseSceneOverlay({
     const material = useMemo(
         () =>
             new ShaderMaterial({
+                blendDst: OneMinusSrcAlphaFactor,
+                blendDstAlpha: OneFactor,
+                blendEquation: AddEquation,
+                blendEquationAlpha: AddEquation,
+                blending: CustomBlending,
+                blendSrc: SrcAlphaFactor,
+                blendSrcAlpha: ZeroFactor,
                 depthTest: false,
                 depthWrite: false,
                 fragmentShader: overlayFragmentShader,
