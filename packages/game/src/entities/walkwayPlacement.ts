@@ -15,7 +15,9 @@ export function getWalkwayPlacementYOffset(
     const walkwayIndex = stack.blocks.indexOf(block);
     const supportBlock = stack.blocks[walkwayIndex - 1];
 
-    return supportBlock?.name.startsWith(terrainBlockPrefix)
-        ? -waterBlockBottomOverlap
-        : 0;
+    if (!supportBlock?.name.startsWith(terrainBlockPrefix)) {
+        return 0;
+    }
+
+    return block.name === 'WoodenWalkway' ? -waterBlockBottomOverlap : 0;
 }

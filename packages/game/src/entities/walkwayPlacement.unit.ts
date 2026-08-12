@@ -15,27 +15,34 @@ function stack(blocks: Block[]): Stack {
 }
 
 describe('getWalkwayPlacementYOffset', () => {
+    for (const terrainName of [
+        'Block_Grass',
+        'Block_Ground',
+        'Block_Snow',
+        'Block_Water',
+    ]) {
+        it(`keeps WoodenWalkway supports embedded in ${terrainName}`, () => {
+            const terrain = block('terrain', terrainName);
+            const walkway = block('walkway', 'WoodenWalkway');
+
+            assert.equal(
+                getWalkwayPlacementYOffset(stack([terrain, walkway]), walkway),
+                -waterBlockBottomOverlap,
+            );
+        });
+
+        it(`keeps StoneWalkway above the ${terrainName} surface`, () => {
+            const terrain = block('terrain', terrainName);
+            const walkway = block('walkway', 'StoneWalkway');
+
+            assert.equal(
+                getWalkwayPlacementYOffset(stack([terrain, walkway]), walkway),
+                0,
+            );
+        });
+    }
+
     for (const walkwayName of ['WoodenWalkway', 'StoneWalkway']) {
-        for (const terrainName of [
-            'Block_Grass',
-            'Block_Ground',
-            'Block_Snow',
-            'Block_Water',
-        ]) {
-            it(`keeps ${walkwayName} continuous on ${terrainName}`, () => {
-                const terrain = block('terrain', terrainName);
-                const walkway = block('walkway', walkwayName);
-
-                assert.equal(
-                    getWalkwayPlacementYOffset(
-                        stack([terrain, walkway]),
-                        walkway,
-                    ),
-                    -waterBlockBottomOverlap,
-                );
-            });
-        }
-
         it(`keeps the ${walkwayName} origin unchanged without terrain support`, () => {
             const walkway = block('walkway', walkwayName);
 
