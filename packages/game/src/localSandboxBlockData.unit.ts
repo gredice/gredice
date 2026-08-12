@@ -79,7 +79,7 @@ test('local sandbox exposes every arrow sign with direction-specific bounds', ()
         blockData.map((block) => block.information.name),
     );
 
-    assert.equal(arrowSignNames.length, 16);
+    assert.equal(arrowSignNames.length, 20);
     for (const config of arrowSignConfigs) {
         const arrowSign = blockData.find(
             (block) => block.information.name === config.name,
