@@ -1388,13 +1388,12 @@
             "name": "StoneWalkway",
             "source": "StoneWalkway.blend",
             "output": "StoneWalkway.glb",
-            "version": "994228a946f3",
+            "version": "9a02593e2b26",
             "preload": "lazy",
             "objects": [
                 "StoneWalkway_StonesLight",
                 "StoneWalkway_StonesMid",
-                "StoneWalkway_StonesWarm",
-                "StoneWalkway_SupportRails"
+                "StoneWalkway_StonesWarm"
             ]
         },
         {
