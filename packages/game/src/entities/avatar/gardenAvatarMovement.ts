@@ -504,6 +504,41 @@ function getAvatarCollisionPlacement({
     };
 }
 
+function getTerrainCollisionFootprint(blockName: string, height: number) {
+    return blockName === 'Block_Stone_Stairs_Half'
+        ? { depth: 0.5, height, width: 1 }
+        : { depth: 1, height, width: 1 };
+}
+
+function getTerrainCollisionPlacement({
+    blockName,
+    rotation,
+    stack,
+}: {
+    blockName: string;
+    rotation: number;
+    stack: Stack;
+}) {
+    if (blockName !== 'Block_Stone_Stairs_Half') {
+        return {
+            roamBlockedCells: undefined,
+            x: stack.position.x,
+            z: stack.position.z,
+        };
+    }
+
+    // The half stair occupies the local -Z edge (z=-0.5..0). Rotate that
+    // center offset with the rendered block so its walkable footprint matches
+    // the visible edge at every quarter turn.
+    const angle = rotation * (Math.PI / 2);
+    const localZ = -0.25;
+    return {
+        roamBlockedCells: undefined,
+        x: stack.position.x + Math.sin(angle) * localZ,
+        z: stack.position.z + Math.cos(angle) * localZ,
+    };
+}
+
 export function createGardenAvatarCollisionWorld({
     blockData,
     stacks,
@@ -573,14 +608,17 @@ export function createGardenAvatarCollisionWorld({
             const isTerrain = isAnimalGroundBlockName(block.name);
             const blockDefinition = blockDataByName.get(block.name);
             const footprint = isTerrain
-                ? { depth: 1, height: stackHeight - bottomY, width: 1 }
+                ? getTerrainCollisionFootprint(
+                      block.name,
+                      stackHeight - bottomY,
+                  )
                 : getAvatarCollisionFootprint(blockDefinition);
             const placement = isTerrain
-                ? {
-                      roamBlockedCells: undefined,
-                      x: stack.position.x,
-                      z: stack.position.z,
-                  }
+                ? getTerrainCollisionPlacement({
+                      blockName: block.name,
+                      rotation: block.rotation,
+                      stack,
+                  })
                 : getAvatarCollisionPlacement({
                       block: blockDefinition,
                       rotation: block.rotation,

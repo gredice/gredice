@@ -25,6 +25,16 @@ describe('getWaterSurfacePlacementYOffset', () => {
         );
     });
 
+    it('rests the bridge on the visible surface of swamp water', () => {
+        const water = block('water', 'Block_Swamp_Water');
+        const bridge = block('bridge', 'SmallWoodenBridge');
+
+        assert.equal(
+            getWaterSurfacePlacementYOffset(stack([water, bridge]), bridge),
+            -waterBlockBottomOverlap,
+        );
+    });
+
     it('keeps the bridge at the standard position on solid support', () => {
         const grass = block('grass', 'Block_Grass');
         const bridge = block('bridge', 'SmallWoodenBridge');

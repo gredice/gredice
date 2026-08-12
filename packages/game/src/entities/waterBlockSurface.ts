@@ -1,6 +1,6 @@
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { waterBlockName } from './waterBlockFoam';
+import { isWaterBlockName } from './waterBlockNames';
 
 export function isWaterBlockTopSurfaceVisible({
     block,
@@ -15,5 +15,5 @@ export function isWaterBlockTopSurfaceVisible({
         return true;
     }
 
-    return stack.blocks[waterBlockIndex + 1]?.name !== waterBlockName;
+    return !isWaterBlockName(stack.blocks[waterBlockIndex + 1]?.name ?? '');
 }

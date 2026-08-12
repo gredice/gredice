@@ -1,8 +1,7 @@
 import type { BlockData } from '@gredice/client';
+import { isWaterBlockName } from '../entities/waterBlockNames';
 import type { Block } from '../types/Block';
 import type { GardenStack } from '../types/Stack';
-
-const waterBlockName = 'Block_Water';
 
 export function isEdgeOrCornerTerrainBlockName(blockName: string) {
     return (
@@ -27,7 +26,7 @@ function isWaterBlockCollapsedIntoSupport(
     block: Block,
     blockIndex: number,
 ) {
-    if (block.name !== waterBlockName) {
+    if (!isWaterBlockName(block.name)) {
         return false;
     }
 

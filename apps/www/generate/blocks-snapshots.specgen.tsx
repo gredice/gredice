@@ -83,7 +83,32 @@ test.beforeEach(async ({ page }) => {
             },
         );
     }
+
+    await page.route(
+        '**/assets/sprites/decorations/ground-cover-v2.atlas.*',
+        async (route) => {
+            const assetName = new URL(route.request().url()).pathname
+                .split('/')
+                .at(-1);
+            if (!assetName) {
+                await route.abort();
+                return;
+            }
+            await route.fulfill({
+                path: resolve(
+                    `../garden/public/assets/sprites/decorations/${assetName}`,
+                ),
+            });
+        },
+    );
 });
+
+function shouldRenderSnapshotDetails(entityName: string) {
+    return (
+        entityName === 'Block_Swamp_Ground' ||
+        entityName === 'Block_Swamp_Ground_Angle'
+    );
+}
 
 type SnapshotView = 'normal' | 'far' | 'closeup';
 
@@ -299,7 +324,9 @@ test.describe('block screenshots', async () => {
                             quality={snapshotQuality}
                             noControl
                             rotation={rotation}
-                            renderDetails={false}
+                            renderDetails={shouldRenderSnapshotDetails(
+                                entity.information.name,
+                            )}
                             staticEnvironment
                         />
                     </div>,

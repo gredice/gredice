@@ -1,6 +1,6 @@
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { waterBlockName } from '../waterBlockFoam';
+import { isWaterBlockName } from '../waterBlockNames';
 import {
     type GroundDecorationSurface,
     resolveGroundDecorationSurface,
@@ -15,7 +15,7 @@ export type GroundDecorationBlock = {
 
 function hasWaterBlockAbove(stack: Stack, blockIndex: number) {
     for (let index = blockIndex + 1; index < stack.blocks.length; index += 1) {
-        if (stack.blocks[index]?.name === waterBlockName) {
+        if (isWaterBlockName(stack.blocks[index]?.name ?? '')) {
             return true;
         }
     }

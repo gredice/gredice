@@ -64,6 +64,14 @@ describe('beach ball bounce', () => {
         });
 
         assert.equal(isBeachBallPassableTerrainBlockName('Block_Water'), true);
+        assert.equal(
+            isBeachBallPassableTerrainBlockName('Block_Swamp_Water'),
+            true,
+        );
+        assert.equal(
+            isBeachBallPassableTerrainBlockName('Block_Stone_Stairs_Half'),
+            true,
+        );
         assert.deepEqual(environment.obstacles, []);
 
         const nextState = advanceBeachBallBounce(

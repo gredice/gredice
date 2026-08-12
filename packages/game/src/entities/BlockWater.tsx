@@ -16,6 +16,7 @@ import {
     getWaterBlockCenterY,
     getWaterBlockVisualHeight,
 } from './waterBlockHeight';
+import { getWaterBlockStyle, type WaterBlockStyle } from './waterBlockNames';
 import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
 
 const waterVertexShader = `
@@ -90,6 +91,8 @@ uniform float uTime;
 uniform vec3 uDeepColor;
 uniform vec3 uShallowColor;
 uniform vec3 uFoamColor;
+uniform vec3 uAlgaeColor;
+uniform float uAlgaeStrength;
 uniform vec4 uFoamEdges;
 uniform vec4 uFoamCorners;
 uniform float uDiscardInnerEdges;
@@ -251,10 +254,28 @@ void main() {
 
     float foamBlend = foam * mix(0.22, 1.0, topness) * (1.0 + shoreInfluence * 0.18);
     vec3 color = mix(water, uFoamColor, foamBlend);
+
+    // Swamp water grows broad, broken algae rafts on the exposed top only.
+    // Keeping this procedural avoids a repeated texture seam between blocks.
+    vec2 algaeDrift = vec2(uTime * 0.008, -uTime * 0.006);
+    float algaeBroad = valueNoise(topUv * 1.45 + algaeDrift + vec2(5.2, -3.7));
+    float algaeDetail = valueNoise(topUv * 4.6 - algaeDrift * 1.4 + vec2(-1.8, 6.1));
+    float algaeBreakup = valueNoise(topUv * 8.3 + algaeDrift * 0.7);
+    float algaeField = algaeBroad * 0.68 + algaeDetail * 0.32;
+    float algaeRafts = smoothstep(0.43, 0.65, algaeField);
+    float algaeFlecks = smoothstep(0.58, 0.82, algaeBreakup) * 0.46;
+    float algae =
+        (0.16 + max(algaeRafts, algaeFlecks) * 0.84) *
+        mix(0.68, 1.0, smoothstep(0.28, 0.7, algaeBreakup)) *
+        uAlgaeStrength *
+        topness *
+        (1.0 - foam * 0.22);
+    color = mix(color, uAlgaeColor, clamp(algae * 0.94, 0.0, 0.9));
+
     float topAlpha = mix(0.48, 1.0, smoothstep(0.06, 0.72, depth01));
     float baseAlpha = mix(0.58, topAlpha, topness);
     float surfaceAlpha = surfacePattern * 0.008;
-    float alpha = clamp(baseAlpha + surfaceAlpha + foam * 0.055 + sideness * 0.04, 0.36, 1.0);
+    float alpha = clamp(baseAlpha + surfaceAlpha + foam * 0.055 + algae * 0.045 + sideness * 0.04, 0.36, 1.0);
 
     gl_FragColor = vec4(color, alpha);
     #include <colorspace_fragment>
@@ -262,8 +283,39 @@ void main() {
 `;
 
 const emptyWaterFoamCorners = new Vector4(0, 0, 0, 0);
+const swampWaterPalette = {
+    algae: '#477425',
+    deep: '#294a35',
+    foam: '#d5dfb6',
+    shallow: '#789357',
+};
+
+function setWaterPaletteUniforms({
+    material,
+    style,
+    waterColors,
+}: {
+    material: ShaderMaterial;
+    style: WaterBlockStyle;
+    waterColors: typeof defaultWaterColors;
+}) {
+    const deepColor = new Color(waterColors.deep);
+    const shallowColor = new Color(waterColors.shallow);
+    const foamColor = new Color(waterColors.foam);
+
+    if (style === 'swamp') {
+        deepColor.lerp(new Color(swampWaterPalette.deep), 0.76);
+        shallowColor.lerp(new Color(swampWaterPalette.shallow), 0.78);
+        foamColor.lerp(new Color(swampWaterPalette.foam), 0.68);
+    }
+
+    material.uniforms.uDeepColor.value.copy(deepColor);
+    material.uniforms.uShallowColor.value.copy(shallowColor);
+    material.uniforms.uFoamColor.value.copy(foamColor);
+}
 
 type WaterBlockMaterialOptions = {
+    style?: WaterBlockStyle;
     useFoamAttributes?: boolean;
     useLocalPositionAttribute?: boolean;
     useWaterDepthAttribute?: boolean;
@@ -285,7 +337,10 @@ export function useWaterBlockMaterial(
     const useWaterDepthAttribute = options.useWaterDepthAttribute === true;
     const useShoreDepthAttribute = options.useShoreDepthAttribute === true;
     const waterDepth = options.waterDepth ?? 0;
+    const style = options.style ?? 'standard';
     const material = useMemo(() => {
+        const initialPalette =
+            style === 'swamp' ? swampWaterPalette : defaultWaterColors;
         const waterMaterial = new ShaderMaterial({
             vertexShader: waterVertexShader,
             fragmentShader: waterFragmentShader,
@@ -307,11 +362,13 @@ export function useWaterBlockMaterial(
             side: DoubleSide,
             uniforms: {
                 uTime: timeUniform,
-                uDeepColor: { value: new Color(defaultWaterColors.deep) },
+                uDeepColor: { value: new Color(initialPalette.deep) },
                 uShallowColor: {
-                    value: new Color(defaultWaterColors.shallow),
+                    value: new Color(initialPalette.shallow),
                 },
-                uFoamColor: { value: new Color(defaultWaterColors.foam) },
+                uFoamColor: { value: new Color(initialPalette.foam) },
+                uAlgaeColor: { value: new Color(swampWaterPalette.algae) },
+                uAlgaeStrength: { value: style === 'swamp' ? 1 : 0 },
                 uFoamEdges: { value: foamEdges.clone() },
                 uFoamCorners: { value: foamCorners.clone() },
                 uDiscardInnerEdges: { value: discardInnerEdges ? 1 : 0 },
@@ -326,6 +383,7 @@ export function useWaterBlockMaterial(
         discardInnerEdges,
         foamCorners,
         foamEdges,
+        style,
         timeUniform,
         useFoamAttributes,
         useLocalPositionAttribute,
@@ -342,10 +400,8 @@ export function useWaterBlockMaterial(
     }, [discardInnerEdges, foamCorners, foamEdges, material, waterDepth]);
 
     useEffect(() => {
-        material.uniforms.uDeepColor.value.set(waterColors.deep);
-        material.uniforms.uShallowColor.value.set(waterColors.shallow);
-        material.uniforms.uFoamColor.value.set(waterColors.foam);
-    }, [material, waterColors.deep, waterColors.foam, waterColors.shallow]);
+        setWaterPaletteUniforms({ material, style, waterColors });
+    }, [material, style, waterColors]);
 
     useEffect(() => () => material.dispose(), [material]);
 
@@ -385,6 +441,7 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
         [foamEdges, includeTop, waterHeight],
     );
     const material = useWaterBlockMaterial(foamEdges, true, foamCorners, {
+        style: getWaterBlockStyle(block.name) ?? 'standard',
         waterDepth,
     });
 

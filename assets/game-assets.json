@@ -47,6 +47,78 @@
             "objects": ["Block Sand Angle 1"]
         },
         {
+            "name": "BlockStone",
+            "source": "BlockStone.blend",
+            "output": "BlockStone.glb",
+            "version": "e0e17e7af407",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Large",
+                "Block_Stone_Mid",
+                "Block_Stone_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneAngle",
+            "source": "BlockStoneAngle.blend",
+            "output": "BlockStoneAngle.glb",
+            "version": "998e0f9fb62b",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Angle_Large",
+                "Block_Stone_Angle_Mid",
+                "Block_Stone_Angle_Dark"
+            ]
+        },
+        {
+            "name": "BlockGravel",
+            "source": "BlockGravel.blend",
+            "output": "BlockGravel.glb",
+            "version": "d25eff067d31",
+            "preload": "ground",
+            "objects": [
+                "Block_Gravel_Base",
+                "Block_Gravel_Pieces_Light",
+                "Block_Gravel_Pieces_Dark"
+            ]
+        },
+        {
+            "name": "BlockGravelAngle",
+            "source": "BlockGravelAngle.blend",
+            "output": "BlockGravelAngle.glb",
+            "version": "c7fe62b258fc",
+            "preload": "ground",
+            "objects": [
+                "Block_Gravel_Angle_Base",
+                "Block_Gravel_Angle_Pieces_Light",
+                "Block_Gravel_Angle_Pieces_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneStairs",
+            "source": "BlockStoneStairs.blend",
+            "output": "BlockStoneStairs.glb",
+            "version": "0590228ac5fe",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Stairs_Large",
+                "Block_Stone_Stairs_Mid",
+                "Block_Stone_Stairs_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneStairsHalf",
+            "source": "BlockStoneStairsHalf.blend",
+            "output": "BlockStoneStairsHalf.glb",
+            "version": "3afc2f86586e",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Stairs_Half_Large",
+                "Block_Stone_Stairs_Half_Mid",
+                "Block_Stone_Stairs_Half_Dark"
+            ]
+        },
+        {
             "name": "BlockTerrainCorner",
             "source": "BlockTerrainCorner.blend",
             "output": "BlockTerrainCorner.glb",
