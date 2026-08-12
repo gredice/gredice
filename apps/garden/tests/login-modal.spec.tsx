@@ -154,6 +154,7 @@ test('animates login providers into the email form and focuses email', async ({
     const dialog = page.getByRole('dialog', { name: 'Prijava' });
     const content = page.getByTestId('auth-content-transition');
     await expect(dialog).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zatvori' })).toHaveCount(0);
     await expect(content).toHaveAttribute('data-auth-content', 'providers');
     await expect(
         page.getByRole('button', { name: 'Google prijava' }),
@@ -310,3 +311,92 @@ test('uses opacity-only 120 ms transitions with reduced motion in both direction
         initialTranslateY: 0,
     });
 });
+
+test('supports a controlled dismissible mode without changing the legacy default', async ({
+    mount,
+    page,
+}) => {
+    await mount(<LoginModalStory controlled dismissible />);
+
+    await page.getByRole('button', { name: 'Zatvori' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeHidden();
+    await expect(page.getByTestId('login-modal-open-state')).toHaveText(
+        'closed',
+    );
+    await expect(page.getByTestId('login-modal-open-change-count')).toHaveText(
+        '1',
+    );
+    await expect(page.locator('a[href="https://www.gredice.com"]')).toHaveCount(
+        0,
+    );
+});
+
+test('closes controlled mode and reports successful password authentication once', async ({
+    mount,
+    page,
+}) => {
+    await page.unrouteAll({ behavior: 'wait' });
+    const recorded = await mockAuthApi(page);
+    await mount(<LoginModalStory controlled dismissible />);
+
+    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByLabel('Email').fill('vrtlar@example.com');
+    await page.getByLabel('Zaporka').fill('sigurna-zaporka');
+    await page.getByRole('button', { name: 'Prijava' }).click();
+
+    await expect(page.getByTestId('login-modal-open-state')).toHaveText(
+        'closed',
+    );
+    await expect(page.getByTestId('login-modal-open-change-count')).toHaveText(
+        '1',
+    );
+    await expect(
+        page.getByTestId('login-modal-authenticated-count'),
+    ).toHaveText('1');
+    expect(recorded.loginRequests).toEqual([
+        { email: 'vrtlar@example.com', password: 'sigurna-zaporka' },
+    ]);
+});
+
+for (const provider of ['google', 'facebook'] as const) {
+    test(`starts ${provider} OAuth with a provider-matched Outlet continuation`, async ({
+        mount,
+        page,
+    }) => {
+        let requestedUrl: string | undefined;
+        const gardenOrigin = new URL(page.url()).origin;
+        await page.route(`**/api/auth/${provider}**`, async (route) => {
+            requestedUrl = route.request().url();
+            await route.abort('aborted');
+        });
+        await mount(
+            <LoginModalStory
+                controlled
+                dismissible
+                returnTo="/outlet?rezervacija=1&ponuda=302"
+            />,
+        );
+
+        await page
+            .getByRole('button', {
+                name: new RegExp(`^${provider}`, 'iu'),
+            })
+            .click();
+        await expect.poll(() => requestedUrl).not.toBeUndefined();
+
+        const authUrl = new URL(requestedUrl ?? 'https://invalid.local');
+        const callbackUrl = new URL(
+            authUrl.searchParams.get('redirect') ?? 'https://invalid.local',
+        );
+        expect(authUrl.pathname).toBe(`/api/auth/${provider}`);
+        expect(callbackUrl.origin).toBe(gardenOrigin);
+        expect(callbackUrl.pathname).toBe(
+            `/prijava/${provider}-prijava/povratak`,
+        );
+        expect(callbackUrl.searchParams.getAll('returnTo')).toEqual([
+            '/outlet?ponuda=302&rezervacija=1',
+        ]);
+        expect(callbackUrl.hash).toBe('');
+    });
+}

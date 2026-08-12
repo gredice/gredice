@@ -16,6 +16,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { consumeOutletGardenCommerceAttribution } from '../analytics/outletGardenCommerceAttribution';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useHarvestSchedule } from '../hooks/useHarvestSchedule';
@@ -147,6 +148,9 @@ export function ShoppingCart({
             }),
         };
 
+        const outletAttribution = consumeOutletGardenCommerceAttribution(
+            cart.items,
+        );
         track('game_cart_checkout_clicked', {
             has_delivery_selection:
                 isCompleteDeliverySelection(deliverySelection),
@@ -154,7 +158,14 @@ export function ShoppingCart({
             item_count: cart.items.length,
             total: cart.total,
             total_sunflowers: cart.totalSunflowers,
+            source: outletAttribution ? 'outlet_garden' : undefined,
         });
+        if (outletAttribution) {
+            track('game_outlet_garden_checkout_continued', {
+                cart_item_id: outletAttribution.cartItemId,
+                outlet_offer_id: outletAttribution.outletOfferId,
+            });
+        }
         checkout.mutate(checkoutData);
     }
 

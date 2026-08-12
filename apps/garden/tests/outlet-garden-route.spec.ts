@@ -1,5 +1,19 @@
 import { expect, type Page, test } from '@playwright/test';
+import { encryptOverrides } from 'flags';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
+import { outletGardenTestFlagsSecret } from '../playwright/outletGardenFlagTestSupport';
+
+const currentUser = {
+    avatarUrl: null,
+    birthday: null,
+    birthdayLastRewardAt: null,
+    birthdayLastUpdatedAt: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    displayName: 'Test User',
+    email: 'test@example.com',
+    id: 'test-user',
+    userName: 'test-user',
+};
 
 const outletOffers = [
     {
@@ -47,6 +61,88 @@ const outletOffers = [
         url: 'https://www.gredice.test/outlet?offer=302',
     },
 ];
+
+const outletTargetGarden = {
+    backgroundPalette: 'current',
+    createdAt: '2026-07-01T00:00:00.000Z',
+    farmId: 1,
+    homeCamera: null,
+    id: 1,
+    isPublic: false,
+    isSandbox: false,
+    latitude: 45.739,
+    longitude: 16.572,
+    name: 'Testni vrt',
+    previewImage: null,
+    previewSourceRevision: null,
+    raisedBeds: [
+        {
+            abandonReason: null,
+            appliedOperations: [],
+            blockId: 'raised-bed-primary',
+            createdAt: '2026-07-01T00:00:00.000Z',
+            fields: [],
+            id: 10,
+            isValid: true,
+            name: 'Testna gredica',
+            orientation: 'vertical',
+            physicalId: null,
+            plantings: [],
+            status: 'active',
+            updatedAt: '2026-07-01T00:00:00.000Z',
+            weedState: null,
+        },
+    ],
+    stacks: {
+        '0': {
+            '0': [
+                {
+                    id: 'grass-0-0',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                {
+                    id: 'raised-bed-primary',
+                    name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+            '1': [
+                {
+                    id: 'grass-0-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                {
+                    id: 'raised-bed-secondary',
+                    name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+        },
+    },
+    updatedAt: '2026-07-01T00:00:00.000Z',
+};
+
+const outletTargetGardenListItem = {
+    backgroundPalette: outletTargetGarden.backgroundPalette,
+    createdAt: outletTargetGarden.createdAt,
+    homeCamera: outletTargetGarden.homeCamera,
+    id: outletTargetGarden.id,
+    isPublic: outletTargetGarden.isPublic,
+    isSandbox: outletTargetGarden.isSandbox,
+    name: outletTargetGarden.name,
+};
+
+const emptyShoppingCart = {
+    allowPurchase: true,
+    hasDeliverableItems: false,
+    id: 500,
+    items: [],
+    notes: [],
+    total: 0,
+    totalSunflowers: 0,
+};
 
 async function mockOutletGardenApi(page: Page) {
     const mutationRequests: string[] = [];
@@ -105,6 +201,211 @@ async function mockOutletGardenApi(page: Page) {
     };
 }
 
+async function mockOutletGardenCommerceApi(
+    page: Page,
+    {
+        gardensUnauthorized: initiallyGardensUnauthorized = false,
+    }: { gardensUnauthorized?: boolean } = {},
+) {
+    const finalUnitOffer = {
+        ...outletOffers[1],
+        remainingQuantity: 1,
+        reservedQuantity: 2,
+    };
+    const holdExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const shoppingCartPosts: unknown[] = [];
+    let currentOffers = [finalUnitOffer];
+    let outletOfferRequestCount = 0;
+    let cartItems: Array<Record<string, unknown>> = [];
+    let gardensUnauthorized = initiallyGardensUnauthorized;
+
+    await page.route('**/api/gredice/**', async (route) => {
+        const request = route.request();
+        const { pathname } = new URL(request.url());
+
+        if (pathname.endsWith('/api/auth/login')) {
+            gardensUnauthorized = false;
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/auth/current-claims')) {
+            await route.fulfill({
+                body: JSON.stringify(currentUser),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/users/current')) {
+            await route.fulfill({
+                body: JSON.stringify(currentUser),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/outlet/offers')) {
+            outletOfferRequestCount += 1;
+            await route.fulfill({
+                body: JSON.stringify({ items: currentOffers }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/gardens/1')) {
+            await route.fulfill({
+                body: JSON.stringify(outletTargetGarden),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/gardens')) {
+            if (initiallyGardensUnauthorized && !gardensUnauthorized) {
+                await new Promise((resolve) => setTimeout(resolve, 150));
+            }
+            await route.fulfill({
+                body: JSON.stringify(
+                    gardensUnauthorized
+                        ? { error: 'Unauthorized' }
+                        : [outletTargetGardenListItem],
+                ),
+                contentType: 'application/json',
+                status: gardensUnauthorized ? 401 : 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/shopping-cart')) {
+            if (request.method() === 'POST') {
+                shoppingCartPosts.push(request.postDataJSON());
+                cartItems = [
+                    {
+                        additionalData: JSON.stringify({
+                            outletOfferId: finalUnitOffer.id,
+                        }),
+                        amount: 1,
+                        currency: 'eur',
+                        entityData: {
+                            id: finalUnitOffer.plantSort.id,
+                            information: {
+                                name: finalUnitOffer.plantSort.name,
+                            },
+                        },
+                        entityId: finalUnitOffer.plantSort.id.toString(),
+                        entityTypeName: 'plantSort',
+                        gardenId: outletTargetGarden.id,
+                        id: 901,
+                        outlet: {
+                            comparePrice: finalUnitOffer.comparePrice,
+                            endAt: finalUnitOffer.endAt,
+                            expired: false,
+                            holdExpiresAt,
+                            initialPlantStatus:
+                                finalUnitOffer.initialPlantStatus,
+                            offerId: finalUnitOffer.id,
+                            outletPrice: finalUnitOffer.outletPrice,
+                            reservationId: 801,
+                            sowingDate: finalUnitOffer.sowingDate,
+                            status: 'held',
+                        },
+                        positionIndex: 0,
+                        raisedBedId: 10,
+                        shopData: {
+                            discountDescription: 'Outlet sadnica',
+                            discountPrice: finalUnitOffer.outletPrice,
+                            name: finalUnitOffer.plantSort.name,
+                            price: finalUnitOffer.comparePrice,
+                        },
+                        status: 'new',
+                    },
+                ];
+                currentOffers = [];
+                await route.fulfill({
+                    body: JSON.stringify({ success: true }),
+                    contentType: 'application/json',
+                    status: 200,
+                });
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify({
+                    ...emptyShoppingCart,
+                    items: cartItems,
+                    total:
+                        cartItems.length > 0 ? finalUnitOffer.outletPrice : 0,
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/api/directories/entities/block')) {
+            await route.fulfill({
+                body: JSON.stringify(getLocalSandboxBlockData()),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.fulfill({
+            body: JSON.stringify({ error: `Unexpected request: ${pathname}` }),
+            contentType: 'application/json',
+            status: 404,
+        });
+    });
+
+    return {
+        finalUnitOffer,
+        getOutletOfferRequestCount: () => outletOfferRequestCount,
+        holdExpiresAt,
+        shoppingCartPosts,
+    };
+}
+
+async function enableOutletGardenCommerce(page: Page, baseURL: string) {
+    const override = await encryptOverrides(
+        { enableOutletGardenCommerce: true },
+        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
+        '1h',
+    );
+    await page.context().addCookies([
+        {
+            name: 'vercel-flag-overrides',
+            url: baseURL,
+            value: override,
+        },
+    ]);
+}
+
+async function disableOutletGardenCommerce(page: Page, baseURL: string) {
+    const override = await encryptOverrides(
+        { enableOutletGardenCommerce: false },
+        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
+        '1h',
+    );
+    await page.context().addCookies([
+        {
+            name: 'vercel-flag-overrides',
+            url: baseURL,
+            value: override,
+        },
+    ]);
+}
+
 async function disableWebGL(page: Page) {
     await page.addInitScript(() => {
         const originalGetContext = HTMLCanvasElement.prototype.getContext;
@@ -130,10 +431,15 @@ async function disableWebGL(page: Page) {
 
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
-}) => {
+}, testInfo) => {
     test.setTimeout(60_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
 
     await page.goto('/outlet');
@@ -184,6 +490,10 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toContainText('3 sadnica');
+    await expect(page.locator('[data-outlet-garden-commerce]')).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }),
+    ).toHaveCount(0);
 
     const requestCountBeforeRefresh = outletApi.getOutletOfferRequestCount();
     outletApi.setOffers([
@@ -344,4 +654,125 @@ test('guest Outlet garden falls back to the semantic offer list without WebGL', 
 
     expect(modelRequests).toEqual([]);
     expect(outletApi.mutationRequests).toEqual([]);
+});
+
+test('signed-in list fallback holds the final unit and keeps its verified receipt', async ({
+    page,
+}, testInfo) => {
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+
+    await disableWebGL(page);
+    await enableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenCommerceApi(page);
+
+    await page.goto('/outlet?ponuda=302');
+
+    await expect(
+        page.locator('[data-outlet-garden-renderer="list"]'),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toContainText('1 sadnica');
+
+    await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
+
+    const gardenSelect = page.getByRole('combobox', {
+        name: 'Vrt',
+        exact: true,
+    });
+    await expect(gardenSelect).toHaveValue('1');
+    const targetSelect = page.getByRole('combobox', {
+        name: 'Mjesto u gredici',
+        exact: true,
+    });
+    await expect(targetSelect.locator('option')).toHaveCount(18);
+    await targetSelect.selectOption('10:0');
+
+    await page.getByRole('button', { name: 'Rezerviraj sadnicu' }).click();
+
+    await expect.poll(() => outletApi.shoppingCartPosts.length).toBe(1);
+    expect(outletApi.shoppingCartPosts[0]).toEqual({
+        additionalData: JSON.stringify({ outletOfferId: 302 }),
+        amount: 1,
+        cartId: 500,
+        entityId: '102',
+        entityTypeName: 'plantSort',
+        gardenId: 1,
+        outletOfferId: 302,
+        positionIndex: 0,
+        raisedBedId: 10,
+    });
+
+    await expect
+        .poll(() => outletApi.getOutletOfferRequestCount())
+        .toBeGreaterThan(1);
+    await expect(page.locator('[data-outlet-garden-empty]')).toBeVisible();
+    await expect(page.locator('[data-outlet-garden-commerce]')).toHaveAttribute(
+        'data-outlet-garden-commerce-state',
+        'success',
+    );
+    await expect(
+        page.getByRole('heading', { name: 'Sadnica je rezervirana' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Nastavi u košaricu' }),
+    ).toHaveAttribute('href', '/?vrt=1&kosarica=true');
+
+    const storedReceipt = await page.evaluate(() =>
+        sessionStorage.getItem('gredice-outlet-garden-commerce-attribution-v1'),
+    );
+    expect(storedReceipt).not.toBeNull();
+    expect(JSON.parse(storedReceipt ?? 'null')).toEqual({
+        cartItemId: 901,
+        holdExpiresAt: outletApi.holdExpiresAt,
+        outletOfferId: outletApi.finalUnitOffer.id,
+    });
+
+    await page.reload();
+    await expect(page.locator('[data-outlet-garden-empty]')).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Sadnica je rezervirana' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Nastavi u košaricu' }),
+    ).toHaveAttribute('href', '/?vrt=1&kosarica=true');
+});
+
+test('expired cached authentication returns to sign-in instead of reporting no fields', async ({
+    page,
+}, testInfo) => {
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden route test requires a Playwright base URL');
+    }
+
+    await disableWebGL(page);
+    await enableOutletGardenCommerce(page, baseURL);
+    await mockOutletGardenCommerceApi(page, { gardensUnauthorized: true });
+
+    await page.goto('/outlet?ponuda=302');
+    await page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }).click();
+
+    await expect(
+        page.getByRole('heading', { name: 'Prijavi se za rezervaciju' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Nema slobodnog mjesta' }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
+    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByLabel('Email').fill('vrtlar@example.com');
+    await page.getByLabel('Zaporka').fill('sigurna-zaporka');
+    await page.getByRole('button', { name: 'Prijava', exact: true }).click();
+
+    await expect(
+        page.getByRole('heading', { name: 'Odaberi mjesto za sadnicu' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Prijavi se za rezervaciju' }),
+    ).toHaveCount(0);
 });

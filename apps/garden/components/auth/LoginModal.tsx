@@ -3,6 +3,7 @@
 import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import {
+    authCurrentUserQueryKeys,
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
@@ -16,10 +17,22 @@ import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
+import {
+    type GardenOAuthProvider,
+    getGardenOAuthStartUrl,
+} from '../../lib/auth/gardenAuthContinuation';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
 type AuthTab = 'login' | 'register';
+
+export type LoginModalProps = {
+    dismissible?: boolean;
+    onAuthenticated?: () => void;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    returnTo?: string;
+};
 
 const authContentTransitionClassName =
     'w-full animate-in fade-in-0 duration-200 ease-out motion-reduce:duration-[120ms]';
@@ -28,7 +41,13 @@ const authContentDirectionClassNames = {
     providers: 'motion-safe:slide-in-from-top-2',
 };
 
-export default function LoginModal() {
+export default function LoginModal({
+    dismissible = false,
+    onAuthenticated,
+    onOpenChange,
+    open = true,
+    returnTo = '/',
+}: LoginModalProps = {}) {
     const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -58,7 +77,14 @@ export default function LoginModal() {
 
         if (response.status === 200) {
             await response.json();
-            await queryClient.invalidateQueries();
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: authCurrentUserQueryKeys,
+                }),
+                queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
+            ]);
+            handleOpenChange(false);
+            onAuthenticated?.();
             return;
         } else {
             const json = await response.json();
@@ -147,17 +173,28 @@ export default function LoginModal() {
         router.push('/prijava/registracija-uspijesna');
     };
 
-    const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+    const handleOAuthLogin = (provider: GardenOAuthProvider) => {
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'garden',
         });
-        const authUrl = new URL(
-            `/api/auth/${provider}`,
-            getBrowserGrediceAppOrigin('api'),
-        );
-        window.location.href = authUrl.toString();
+        window.location.href = getGardenOAuthStartUrl({
+            apiOrigin: getBrowserGrediceAppOrigin('api'),
+            gardenOrigin: window.location.origin,
+            provider,
+            returnTo,
+        });
     };
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (!nextOpen) {
+            setActiveTab('login');
+            setEmailExpanded(false);
+            setError(undefined);
+            setShouldAnimateAuthContent(false);
+        }
+        onOpenChange?.(nextOpen);
+    }
 
     const handleTabChange = (value: string) => {
         if (value === 'login' || value === 'register') {
@@ -178,12 +215,13 @@ export default function LoginModal() {
 
     return (
         <>
-            <LoginBanner />
+            {open ? <LoginBanner /> : null}
             <Modal
-                open
+                open={open}
                 title="Prijava"
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
-                dismissible={false}
+                dismissible={dismissible}
+                onOpenChange={handleOpenChange}
             >
                 <Tabs
                     value={activeTab}
