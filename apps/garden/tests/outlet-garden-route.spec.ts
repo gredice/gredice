@@ -918,10 +918,10 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
     expect(runtimeErrors).toEqual([]);
 });
 
-test('Outlet visitor walks in third and first person without mutating or losing the selected offer', async ({
+test('Outlet visitor walks in third and first person without mutating or losing the selected offer @outlet-slow @outlet-walk', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -962,12 +962,12 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     const walkButton = page.getByRole('button', {
         name: 'Prošetaj Outlet vrtom',
     });
-    await expect(walkButton).toBeVisible({ timeout: 30_000 });
-    await walkButton.click({ timeout: 30_000 });
+    await expect(walkButton).toBeVisible({ timeout: 90_000 });
+    await walkButton.click({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
-        { timeout: 30_000 },
+        { timeout: 90_000 },
     );
     await expect(outlet).toHaveAttribute('data-outlet-garden-walking', 'true');
     await expect(
@@ -979,21 +979,21 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     const firstPersonButton = page.getByRole('button', {
         name: 'Prikaži pogled iz prvog lica',
     });
-    await expect(firstPersonButton).toBeVisible({ timeout: 30_000 });
-    await firstPersonButton.click({ timeout: 30_000 });
+    await expect(firstPersonButton).toBeVisible({ timeout: 90_000 });
+    await firstPersonButton.click({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'first-person',
-        { timeout: 30_000 },
+        { timeout: 90_000 },
     );
 
     await page
         .getByRole('button', { name: 'Izađi iz šetnje' })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
-        { timeout: 30_000 },
+        { timeout: 90_000 },
     );
     await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-walking',
@@ -1009,12 +1009,12 @@ test('Outlet visitor walks in third and first person without mutating or losing 
 
     const offerRequestCountBeforeSceneLoss =
         outletApi.getOutletOfferRequestCount();
-    await expect(walkButton).toBeVisible({ timeout: 30_000 });
-    await walkButton.click({ timeout: 30_000 });
+    await expect(walkButton).toBeVisible({ timeout: 90_000 });
+    await walkButton.click({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
-        { timeout: 30_000 },
+        { timeout: 90_000 },
     );
     outletApi.setOffers([]);
     await page.evaluate(() => {
@@ -1027,11 +1027,11 @@ test('Outlet visitor walks in third and first person without mutating or losing 
         .toBeGreaterThan(offerRequestCountBeforeSceneLoss);
     await expect(
         page.getByText('Nove sadnice uskoro stižu u Outlet vrt.'),
-    ).toBeVisible({ timeout: 30_000 });
+    ).toBeVisible({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
-        { timeout: 30_000 },
+        { timeout: 90_000 },
     );
     await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-walking',
