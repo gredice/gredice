@@ -217,6 +217,66 @@ describe('beach ball bounce', () => {
         );
     });
 
+    it('rolls over low ground coverings and follows their surface height', () => {
+        const environment = createBeachBallBounceEnvironment({
+            blockData: [
+                blockData('Block_Grass', 0.4),
+                blockData('MulchWood', 0.01),
+                blockData('StoneWalkway', 0.1),
+                blockData('LowBorder', 0.1001),
+            ],
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [
+                    block('Block_Grass'),
+                    block('MulchWood', 'mulch'),
+                ]),
+                stack(2, 0, [
+                    block('Block_Grass'),
+                    block('StoneWalkway', 'walkway'),
+                ]),
+                stack(3, 0, [
+                    block('Block_Grass'),
+                    block('LowBorder', 'border'),
+                ]),
+            ],
+        });
+
+        assert.deepEqual(environment.obstacles, [{ x: 3, z: 0 }]);
+        assert.ok(
+            Math.abs(
+                getBeachBallSurfaceHeight(environment, {
+                    fallbackHeight: 0.4,
+                    worldX: 1,
+                    worldZ: 0,
+                }) - 0.41,
+            ) < 0.000_001,
+        );
+        assert.equal(
+            getBeachBallSurfaceHeight(environment, {
+                fallbackHeight: 0.4,
+                worldX: 2,
+                worldZ: 0,
+            }),
+            0.5,
+        );
+
+        const nextState = advanceBeachBallBounce(
+            activeState({ offsetX: 0.25, velocityX: 3 }),
+            environment,
+            {
+                baseX: 0,
+                baseZ: 0,
+                deltaSeconds: 0.2,
+            },
+        );
+
+        assert.ok(nextState.offsetX > 0.25);
+        assert.ok(nextState.velocityX > 0);
+        assert.equal(nextState.collisionCount, 0);
+    });
+
     it('does not use non-terrain block height as a beach ball surface', () => {
         const environment = createBeachBallBounceEnvironment({
             blockData: [
