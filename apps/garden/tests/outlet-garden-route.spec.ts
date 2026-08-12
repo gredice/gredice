@@ -105,6 +105,29 @@ async function mockOutletGardenApi(page: Page) {
     };
 }
 
+async function disableWebGL(page: Page) {
+    await page.addInitScript(() => {
+        const originalGetContext = HTMLCanvasElement.prototype.getContext;
+        Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+            configurable: true,
+            value(
+                this: HTMLCanvasElement,
+                contextId: string,
+                ...args: unknown[]
+            ) {
+                if (contextId === 'webgl' || contextId === 'webgl2') {
+                    return null;
+                }
+
+                return Reflect.apply(originalGetContext, this, [
+                    contextId,
+                    ...args,
+                ]);
+            },
+        });
+    });
+}
+
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
 }) => {
@@ -220,13 +243,105 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.locator('[data-outlet-garden-offer-id="302"]'),
     ).toHaveAttribute('aria-pressed', 'true');
+
+    await page
+        .getByRole('button', {
+            name: 'Prikaži Outlet ponude bez 3D prikaza',
+        })
+        .click();
     await expect(
-        page.getByRole('link', { name: 'Moj vrt', exact: true }),
+        page.locator('[data-outlet-garden-renderer="list"]'),
+    ).toBeVisible();
+    await expect(
+        page.getByText(/Pregledavaš sve aktualne ponude/u),
+    ).toBeFocused();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+
+    await page
+        .getByRole('button', {
+            name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
+        })
+        .click();
+    await expect(
+        page.locator('[data-outlet-garden-renderer="webgl"]'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('main', {
+            name: 'Interaktivni 3D prikaz Outlet vrta',
+        }),
+    ).toBeFocused();
+    await expect(page.locator('canvas')).toBeVisible();
+
+    const contextLossRequested = await page
+        .locator('canvas')
+        .evaluate((currentCanvas) => {
+            if (!(currentCanvas instanceof HTMLCanvasElement)) {
+                return false;
+            }
+            const context =
+                currentCanvas.getContext('webgl2') ??
+                currentCanvas.getContext('webgl');
+            const extension = context?.getExtension('WEBGL_lose_context');
+            extension?.loseContext();
+            return Boolean(extension);
+        });
+    expect(contextLossRequested).toBe(true);
+    await expect(
+        page.locator('[data-outlet-garden-renderer="list"]'),
+    ).toBeVisible();
+    await expect(page.getByText(/3D prikaz je prekinut/u)).toBeFocused();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+    await expect(
+        page.getByRole('link', { name: 'Povratak u moj vrt' }),
     ).toHaveAttribute('href', '/');
 
-    await page.getByRole('link', { name: 'Moj vrt', exact: true }).click();
+    await page.getByRole('link', { name: 'Povratak u moj vrt' }).click();
     await page.waitForURL((url) => url.pathname === '/');
 
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
+});
+
+test('guest Outlet garden falls back to the semantic offer list without WebGL', async ({
+    page,
+}) => {
+    const modelRequests: string[] = [];
+    page.on('request', (request) => {
+        if (/\.glb(?:\?|$)/u.test(request.url())) {
+            modelRequests.push(request.url());
+        }
+    });
+    await disableWebGL(page);
+    const outletApi = await mockOutletGardenApi(page);
+
+    await page.goto('/outlet?ponuda=302');
+
+    await expect(
+        page.locator('[data-outlet-garden-renderer="list"]'),
+    ).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expect(
+        page.getByText('Ovaj uređaj ne podržava 3D prikaz.'),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Ovaj uređaj ne podržava 3D prikaz.'),
+    ).toBeFocused();
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toContainText('3 sadnica');
+    await expect(
+        page.getByRole('link', {
+            name: 'Nastavi u postojećem Outletu',
+        }),
+    ).toHaveAttribute('href', '/?outlet=302');
+    await expect(
+        page.getByRole('button', {
+            name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
+        }),
+    ).toHaveCount(0);
+
+    expect(modelRequests).toEqual([]);
+    expect(outletApi.mutationRequests).toEqual([]);
 });

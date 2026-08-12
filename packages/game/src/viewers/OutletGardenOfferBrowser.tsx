@@ -6,11 +6,13 @@ import { ArrowLeft, Reset, Sprout } from '@gredice/ui/icons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
+import type { ReactNode } from 'react';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import {
     outletGardenMaxDisplayedUnitsPerOffer,
     outletGardenMaxDisplayedUnitsTotal,
 } from './outletGardenLayout';
+import type { OutletGardenRenderer } from './outletGardenRenderer';
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
     style: 'currency',
@@ -130,6 +132,7 @@ function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
 export type OutletGardenOfferBrowserProps = {
     className?: string;
     displayLimited?: boolean;
+    headerAction?: ReactNode;
     isError: boolean;
     isLoading: boolean;
     offers: readonly OutletOfferData[];
@@ -137,12 +140,14 @@ export type OutletGardenOfferBrowserProps = {
     onHoverOffer?: (offerId: number | null) => void;
     onRetry: () => void;
     onSelectOffer: (offerId: number | null) => void;
+    renderer?: OutletGardenRenderer;
     selectedOfferId: number | null;
 };
 
 export function OutletGardenOfferBrowser({
     className,
     displayLimited = false,
+    headerAction,
     isError,
     isLoading,
     offers,
@@ -150,6 +155,7 @@ export function OutletGardenOfferBrowser({
     onHoverOffer,
     onRetry,
     onSelectOffer,
+    renderer = 'webgl',
     selectedOfferId,
 }: OutletGardenOfferBrowserProps) {
     const plantGroups = groupOutletGardenOffers(offers);
@@ -184,10 +190,14 @@ export function OutletGardenOfferBrowser({
                     <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-2">
                             <span className="rounded-full bg-lime-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-lime-900 uppercase dark:bg-lime-950 dark:text-lime-100">
-                                3D pregled
+                                {renderer === 'webgl'
+                                    ? '3D pregled'
+                                    : 'Popis ponuda'}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                                Faza 1
+                                {renderer === 'webgl'
+                                    ? 'Interaktivni prikaz'
+                                    : 'Bez 3D prikaza'}
                             </span>
                         </div>
                         <h1
@@ -204,7 +214,7 @@ export function OutletGardenOfferBrowser({
                             event.preventDefault();
                             onExit('garden', '/');
                         }}
-                        size="sm"
+                        size="lg"
                         startDecorator={<ArrowLeft className="size-4" />}
                         variant="soft"
                     >
@@ -212,10 +222,15 @@ export function OutletGardenOfferBrowser({
                     </Button>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    {displayLimited
-                        ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
-                        : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
+                    {renderer === 'list'
+                        ? 'Razgledaj aktualne ponude, njihove cijene i punu dostupnu količinu.'
+                        : displayLimited
+                          ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
+                          : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
                 </p>
+                {headerAction ? (
+                    <div className="mt-3">{headerAction}</div>
+                ) : null}
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
@@ -225,7 +240,10 @@ export function OutletGardenOfferBrowser({
                             className="grid min-h-32 place-items-center gap-2 text-sm text-muted-foreground"
                             data-outlet-garden-loading
                         >
-                            <Spinner loadingLabel="Učitavanje outlet ponuda" />
+                            <Spinner
+                                className="motion-reduce:animate-none"
+                                loadingLabel="Učitavanje outlet ponuda"
+                            />
                             <span>Učitavamo današnje sadnice...</span>
                         </div>
                     ) : null}
@@ -244,7 +262,7 @@ export function OutletGardenOfferBrowser({
                             <Button
                                 className="mt-3"
                                 onClick={onRetry}
-                                size="sm"
+                                size="lg"
                                 startDecorator={<Reset className="size-4" />}
                                 variant="outlined"
                             >
@@ -284,7 +302,7 @@ export function OutletGardenOfferBrowser({
                             <Button
                                 className="mt-3"
                                 onClick={() => onSelectOffer(null)}
-                                size="sm"
+                                size="lg"
                                 variant="outlined"
                             >
                                 Prikaži dostupne ponude
@@ -419,7 +437,7 @@ export function OutletGardenOfferBrowser({
                                                                                 : '';
                                                                         return (
                                                                             <button
-                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, outlet cijena ${currencyFormatter.format(offer.outletPrice)}${comparePriceLabel}, preostalo ${offer.remainingQuantity}`}
+                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, outlet cijena ${currencyFormatter.format(offer.outletPrice)}${comparePriceLabel}, preostalo ${offer.remainingQuantity}, ponuda vrijedi do ${dateFormatter.format(new Date(offer.endAt))}`}
                                                                                 aria-pressed={
                                                                                     selected
                                                                                 }

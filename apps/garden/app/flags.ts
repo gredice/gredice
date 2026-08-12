@@ -1,3 +1,4 @@
+import { vercelAdapter } from '@flags-sdk/vercel';
 import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
 import { outletGardenEnabledByDefault } from './outletGardenFlagDefault';
@@ -48,8 +49,9 @@ export const enableGardenAvatarFlag = flag<boolean>({
 export const enableOutletGardenFlag = flag<boolean>({
     key: 'enableOutletGarden',
     description:
-        'Expose the read-only 3D Outlet garden validation route from the current Outlet flow.',
-    decide: () => outletGardenEnabledByDefault(process.env),
+        'Expose the 3D Outlet garden from the current Outlet flow; disabling restores the classic Outlet flow.',
+    adapter: vercelAdapter,
+    defaultValue: outletGardenEnabledByDefault(process.env),
     options: booleanFlagOptions,
 });
 

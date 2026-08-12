@@ -158,7 +158,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         size="sm"
                         className="w-fit shrink-0"
                     >
-                        Sadi u vrtu
+                        Razgledaj u 3D vrtu
                     </NavigatingButton>
                 </div>
             </div>

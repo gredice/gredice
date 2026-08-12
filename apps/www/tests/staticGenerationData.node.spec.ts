@@ -102,3 +102,20 @@ test('legacy changelog paths redirect below the canonical news base path', () =>
         null,
     );
 });
+
+test('public Outlet cards enter the selected offer in the 3D garden', () => {
+    const outletDataSource = readFileSync(
+        new URL('../app/outlet/outletData.ts', import.meta.url),
+        'utf8',
+    );
+    const outletCardSource = readFileSync(
+        new URL('../app/outlet/OutletOfferCard.tsx', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(
+        outletDataSource,
+        /https:\/\/vrt\.gredice\.com\/outlet\?ponuda=/u,
+    );
+    assert.match(outletCardSource, /Razgledaj u 3D vrtu/u);
+});
