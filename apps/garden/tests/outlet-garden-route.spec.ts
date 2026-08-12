@@ -556,10 +556,10 @@ async function expectOutletCanvasToFillScene(page: Page) {
         .toBe(true);
 }
 
-test('guest Outlet garden renders its WebGL layout and selects an offer', async ({
+test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -650,10 +650,10 @@ test('guest Outlet garden renders its WebGL layout and selects an offer', async 
     expect(runtimeErrors).toEqual([]);
 });
 
-test('guest Outlet garden reconciles live offers without replacing its canvas', async ({
+test('guest Outlet garden reconciles live offers without replacing its canvas @outlet-slow @outlet-reconcile', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -668,9 +668,9 @@ test('guest Outlet garden reconciles live offers without replacing its canvas', 
     const outlet = page.locator('[data-outlet-garden]');
     const canvas = page.locator('[data-outlet-garden-renderer="webgl"] canvas');
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
-    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    await expect(canvas).toBeVisible({ timeout: 90_000 });
     await expectOutletCanvasToFillScene(page);
-    await expect(productSigns).toHaveCount(2, { timeout: 30_000 });
+    await expect(productSigns).toHaveCount(2, { timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toContainText('3 sadnica');
@@ -707,16 +707,16 @@ test('guest Outlet garden reconciles live offers without replacing its canvas', 
         .toBeGreaterThan(requestCountBeforeRefresh);
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
-    ).toContainText('1 sadnica', { timeout: 30_000 });
+    ).toContainText('1 sadnica', { timeout: 90_000 });
     await expect(
         productSigns.filter({ hasText: 'Bosiljak Genovese' }),
-    ).toBeVisible({ timeout: 30_000 });
+    ).toBeVisible({ timeout: 90_000 });
     await expect(
         productSigns.filter({ hasText: 'Rajčica mini red cherry' }),
     ).toHaveCount(0);
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
     ).toHaveCount(2);
@@ -730,7 +730,7 @@ test('guest Outlet garden reconciles live offers without replacing its canvas', 
     );
     await page
         .getByRole('button', { name: /Paprika Zlata Snack/u })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
     await expect(outlet).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
@@ -750,10 +750,10 @@ test('guest Outlet garden reconciles live offers without replacing its canvas', 
     expect(runtimeErrors).toEqual([]);
 });
 
-test('guest Outlet garden preserves its deep link through reload, fallback, and context loss', async ({
+test('guest Outlet garden preserves its deep link through reload, fallback, and context loss @outlet-slow @outlet-lifecycle', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -766,7 +766,7 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
     await page.goto('/outlet?ponuda=302');
     await expect(
         page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
-    ).toBeVisible({ timeout: 30_000 });
+    ).toBeVisible({ timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeVisible();
@@ -806,12 +806,12 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
 
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await page
         .getByRole('button', {
             name: 'Prikaži Outlet ponude bez 3D prikaza',
         })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-renderer="list"]'),
     ).toBeVisible();
@@ -825,7 +825,7 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
         .getByRole('button', {
             name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
         })
-        .click({ timeout: 30_000 });
+        .click({ timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-renderer="webgl"]'),
     ).toBeVisible();

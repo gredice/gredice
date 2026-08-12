@@ -262,8 +262,11 @@ jobs:
         [
           {"name":"chromium 1/2","args":"--project=chromium --shard=1/2"},
           {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
-          {"name":"webgl 1/2","args":"--project=chromium-webgl --shard=1/2"},
-          {"name":"webgl 2/2","args":"--project=chromium-webgl --shard=2/2"}
+          {"name":"webgl components","args":"--project=chromium-webgl"},
+          {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
+          {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
+          {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
+          {"name":"outlet rest","args":"--project=chromium-webgl-outlet --grep-invert @outlet-slow"}
         ]
       testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
