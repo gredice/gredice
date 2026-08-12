@@ -59,7 +59,7 @@ test('selects a live offer and exposes truthful read-only details', async ({
     await expect(details).toContainText('Prvi cvjetovi');
     await expect(details).toContainText('21. kolovoza 2026.');
     await expect(details).toContainText(
-        'Pregled i odabir ovdje ne rezerviraju zalihu.',
+        'Pregled i odabir sadnice ne rezerviraju zalihu; rezervacija nastaje tek nakon potvrde polja.',
     );
     await expect(
         details.getByRole('link', { name: 'Nastavi u postojećem Outletu' }),

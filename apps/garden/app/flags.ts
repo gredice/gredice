@@ -55,6 +55,15 @@ export const enableOutletGardenFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
+export const enableOutletGardenCommerceFlag = flag<boolean>({
+    key: 'enableOutletGardenCommerce',
+    description:
+        'Allow signed-in customers to choose a garden field and hold an Outlet seedling directly from the 3D or list experience.',
+    adapter: vercelAdapter,
+    defaultValue: false,
+    options: booleanFlagOptions,
+});
+
 export const enableAdvancedSowingFlag = flag<boolean>({
     key: 'enableAdvancedSowing',
     description:

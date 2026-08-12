@@ -1,9 +1,15 @@
 'use client';
 
 import { useGameAnalytics } from '@gredice/game/analytics';
+import {
+    type OutletGardenCommerceController,
+    useOutletGardenCommerce,
+} from '@gredice/game/outlet-garden-commerce';
 import type { OutletGardenFallbackReason } from '@gredice/game/outlet-garden-list';
 import dynamic from 'next/dynamic';
+import { parseAsInteger, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoginModal from '../auth/LoginModal';
 import { GardenRouteLoading } from './GardenRouteLoading';
 import { OutletGardenSceneErrorBoundary } from './OutletGardenSceneErrorBoundary';
 
@@ -72,7 +78,11 @@ function setListPreference(enabled: boolean) {
     }
 }
 
-export function OutletGardenRenderer() {
+export function OutletGardenRenderer({
+    commerceEnabled,
+}: {
+    commerceEnabled: boolean;
+}) {
     const { track } = useGameAnalytics();
     const [mode, setMode] = useState<OutletGardenRendererMode>('checking');
     const [fallbackReason, setFallbackReason] =
@@ -83,6 +93,40 @@ export function OutletGardenRenderer() {
     const sceneReadyRef = useRef(false);
     const failureHandledRef = useRef(false);
     const sceneStartedAtRef = useRef(Date.now());
+    const [selectedOfferId] = useQueryState('ponuda', parseAsInteger);
+    const [reservationIntent, setReservationIntent] = useQueryState(
+        'rezervacija',
+        parseAsInteger,
+    );
+    const [loginOpen, setLoginOpen] = useState(false);
+    const renderer = mode === 'list' ? 'list' : 'webgl';
+    const updateReservationIntent = useCallback(
+        (requested: boolean) => {
+            void setReservationIntent(requested ? 1 : null);
+        },
+        [setReservationIntent],
+    );
+    const commerce: OutletGardenCommerceController = useOutletGardenCommerce({
+        enabled: commerceEnabled,
+        onReservationIntentChange: updateReservationIntent,
+        renderer,
+        requested: reservationIntent === 1,
+        selectedOfferId,
+    });
+
+    useEffect(() => {
+        if (selectedOfferId === null && reservationIntent !== null) {
+            void setReservationIntent(null);
+        }
+    }, [reservationIntent, selectedOfferId, setReservationIntent]);
+
+    const requestAuthentication = useCallback(() => {
+        if (selectedOfferId === null) {
+            return;
+        }
+        void setReservationIntent(1);
+        setLoginOpen(true);
+    }, [selectedOfferId, setReservationIntent]);
 
     const showList = useCallback(
         (reason: OutletGardenFallbackReason, remember: boolean) => {
@@ -169,14 +213,13 @@ export function OutletGardenRenderer() {
         return () => window.clearTimeout(timeout);
     }, [mode, showList]);
 
-    if (mode === 'checking') {
-        return <GardenRouteLoading />;
-    }
-
+    let content = <GardenRouteLoading />;
     if (mode === 'list') {
-        return (
+        content = (
             <OutletGardenBrowserViewer
+                commerce={commerce}
                 fallbackReason={fallbackReason}
+                onAuthenticationRequired={requestAuthentication}
                 onUse3D={
                     fallbackReason === 'unsupported_webgl'
                         ? undefined
@@ -184,21 +227,46 @@ export function OutletGardenRenderer() {
                 }
             />
         );
+    } else if (mode === 'three-dimensional') {
+        content = (
+            <OutletGardenSceneErrorBoundary
+                onError={() => showList('scene_load_error', false)}
+            >
+                <OutletGardenViewer
+                    commerce={commerce}
+                    focusOnMount={focusThreeDimensionalOnMount}
+                    onAuthenticationRequired={requestAuthentication}
+                    onSceneFailure={(reason) => showList(reason, false)}
+                    onSceneReady={() => {
+                        sceneReadyRef.current = true;
+                    }}
+                    onUseListFallback={() => showList('user', true)}
+                    sceneStartedAt={sceneStartedAtRef.current}
+                />
+            </OutletGardenSceneErrorBoundary>
+        );
     }
 
+    const returnTo =
+        selectedOfferId === null
+            ? '/outlet'
+            : `/outlet?ponuda=${selectedOfferId.toString()}&rezervacija=1`;
+
     return (
-        <OutletGardenSceneErrorBoundary
-            onError={() => showList('scene_load_error', false)}
-        >
-            <OutletGardenViewer
-                focusOnMount={focusThreeDimensionalOnMount}
-                onSceneFailure={(reason) => showList(reason, false)}
-                onSceneReady={() => {
-                    sceneReadyRef.current = true;
+        <>
+            {content}
+            <LoginModal
+                dismissible
+                onAuthenticated={() => {
+                    setLoginOpen(false);
+                    void commerce.refreshAuthentication();
                 }}
-                onUseListFallback={() => showList('user', true)}
-                sceneStartedAt={sceneStartedAtRef.current}
+                onOpenChange={(open) => {
+                    setLoginOpen(open);
+                }}
+                open={loginOpen}
+                returnTo={returnTo}
             />
-        </OutletGardenSceneErrorBoundary>
+        </>
     );
 }

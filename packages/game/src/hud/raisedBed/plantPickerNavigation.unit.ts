@@ -87,3 +87,65 @@ test('findEmptyRaisedBedFieldTargets includes not-yet-active beds for outlet pla
         ],
     );
 });
+
+test('findEmptyRaisedBedFieldTargets can return every eligible field', () => {
+    assert.deepEqual(
+        findEmptyRaisedBedFieldTargets(garden, null, {
+            includeAllFields: true,
+        }).map((target) => target.positionIndex),
+        [1, 2, 3, 4, 5, 6, 7, 8],
+    );
+});
+
+test('findEmptyRaisedBedFieldTargets excludes a pending Advanced Sowing footprint', () => {
+    const cartItems = [
+        {
+            advancedSowingSelection: {
+                fieldSpanColumns: 2,
+                fieldSpanRows: 1,
+                kind: 'advanced-sowing-selection-summary',
+                layoutKey: 'v1:fields:1x2:plants:1x2',
+                occupiedPositionIndices: [1, 2],
+                plantCount: 2,
+                selectedDistanceCm: 20,
+                version: 1,
+            },
+            entityTypeName: 'plantSort',
+            gardenId: 1,
+            positionIndex: 1,
+            raisedBedId: 11,
+            status: 'new',
+        },
+    ] satisfies RaisedBedFieldTargetCartItem[];
+
+    assert.deepEqual(
+        findEmptyRaisedBedFieldTargets(garden, cartItems, {
+            includeAllFields: true,
+        }).map((target) => target.positionIndex),
+        [3, 4, 5, 6, 7, 8],
+    );
+});
+
+test('findEmptyRaisedBedFieldTargets excludes active selected planting memberships', () => {
+    const selectedPlantingGarden: RaisedBedFieldTargetGarden = {
+        ...garden,
+        raisedBeds: [
+            {
+                ...garden.raisedBeds[0],
+                plantings: [
+                    {
+                        configurationSource: 'selected',
+                        isActive: true,
+                        isDeleted: false,
+                        memberships: [{ positionIndex: 1 }],
+                    },
+                ],
+            },
+        ],
+    };
+
+    assert.equal(
+        findFirstEmptyRaisedBedField(selectedPlantingGarden)?.positionIndex,
+        2,
+    );
+});

@@ -9,6 +9,10 @@ import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
 import {
+    type OutletGardenCommerceController,
+    OutletGardenReservationPanel,
+} from './OutletGardenCommerce';
+import {
     outletGardenMaxDisplayedUnitsPerOffer,
     outletGardenMaxDisplayedUnitsTotal,
 } from './outletGardenLayout';
@@ -131,6 +135,7 @@ function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
 
 export type OutletGardenOfferBrowserProps = {
     className?: string;
+    commerce?: OutletGardenCommerceController;
     displayLimited?: boolean;
     headerAction?: ReactNode;
     isError: boolean;
@@ -138,6 +143,7 @@ export type OutletGardenOfferBrowserProps = {
     offers: readonly OutletOfferData[];
     onExit: (destination: 'existing_outlet' | 'garden', href: Route) => void;
     onHoverOffer?: (offerId: number | null) => void;
+    onAuthenticationRequired?: () => void;
     onRetry: () => void;
     onSelectOffer: (offerId: number | null) => void;
     renderer?: OutletGardenRenderer;
@@ -146,6 +152,7 @@ export type OutletGardenOfferBrowserProps = {
 
 export function OutletGardenOfferBrowser({
     className,
+    commerce,
     displayLimited = false,
     headerAction,
     isError,
@@ -153,6 +160,7 @@ export function OutletGardenOfferBrowser({
     offers,
     onExit,
     onHoverOffer,
+    onAuthenticationRequired,
     onRetry,
     onSelectOffer,
     renderer = 'webgl',
@@ -160,7 +168,10 @@ export function OutletGardenOfferBrowser({
 }: OutletGardenOfferBrowserProps) {
     const plantGroups = groupOutletGardenOffers(offers);
     const selectedOffer =
-        offers.find((offer) => offer.id === selectedOfferId) ?? null;
+        offers.find((offer) => offer.id === selectedOfferId) ??
+        (commerce?.receipt?.offer.id === selectedOfferId
+            ? commerce.receipt.offer
+            : null);
     const selectedOfferMissing =
         selectedOfferId !== null && !selectedOffer && !isLoading && !isError;
     const state = isLoading
@@ -611,11 +622,18 @@ export function OutletGardenOfferBrowser({
                                 </div>
                                 <div>
                                     <dt className="text-xs text-muted-foreground">
-                                        Preostalo
+                                        {commerce?.receipt?.offer.id ===
+                                            selectedOffer.id &&
+                                        commerce.state === 'success'
+                                            ? 'Rezervirano'
+                                            : 'Preostalo'}
                                     </dt>
                                     <dd className="font-medium">
-                                        {selectedOffer.remainingQuantity}{' '}
-                                        sadnica
+                                        {commerce?.receipt?.offer.id ===
+                                            selectedOffer.id &&
+                                        commerce.state === 'success'
+                                            ? '1 sadnica'
+                                            : `${selectedOffer.remainingQuantity.toString()} sadnica`}
                                     </dd>
                                 </div>
                                 <div>
@@ -643,32 +661,49 @@ export function OutletGardenOfferBrowser({
                             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                                 Fotografija može prikazivati konkretnu ponudu
                                 ili pripadajuću sortu; 3D model je
-                                reprezentativan. Pregled i odabir ovdje ne
-                                rezerviraju zalihu.
+                                reprezentativan. Pregled i odabir sadnice ne
+                                rezerviraju zalihu; rezervacija nastaje tek
+                                nakon potvrde polja.
                             </p>
 
-                            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                                <Button
-                                    href={`/?outlet=${selectedOffer.id.toString()}`}
-                                    fullWidth
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        onExit(
-                                            'existing_outlet',
-                                            `/?outlet=${selectedOffer.id.toString()}`,
-                                        );
+                            {commerce ? (
+                                <OutletGardenReservationPanel
+                                    commerce={commerce}
+                                    onAuthenticationRequired={() =>
+                                        onAuthenticationRequired?.()
+                                    }
+                                    onChooseAnother={() => {
+                                        commerce.close();
+                                        onSelectOffer(null);
                                     }}
-                                >
-                                    Nastavi u postojećem Outletu
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    onClick={() => onSelectOffer(null)}
-                                    variant="outlined"
-                                >
-                                    Zatvori detalje
-                                </Button>
-                            </div>
+                                />
+                            ) : null}
+
+                            {commerce?.state !== 'success' &&
+                            commerce?.state !== 'expired' ? (
+                                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                    <Button
+                                        href={`/?outlet=${selectedOffer.id.toString()}`}
+                                        fullWidth
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            onExit(
+                                                'existing_outlet',
+                                                `/?outlet=${selectedOffer.id.toString()}`,
+                                            );
+                                        }}
+                                    >
+                                        Nastavi u postojećem Outletu
+                                    </Button>
+                                    <Button
+                                        fullWidth
+                                        onClick={() => onSelectOffer(null)}
+                                        variant="outlined"
+                                    >
+                                        Zatvori detalje
+                                    </Button>
+                                </div>
+                            ) : null}
                         </div>
                     </article>
                 ) : null}

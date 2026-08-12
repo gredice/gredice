@@ -8,6 +8,7 @@ import { parseAsInteger, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import type { OutletGardenFallbackReason } from './outletGardenRenderer';
 
@@ -27,12 +28,16 @@ function fallbackMessage(reason: OutletGardenFallbackReason) {
 }
 
 export type OutletGardenBrowserViewerProps = {
+    commerce?: OutletGardenCommerceController;
     fallbackReason?: OutletGardenFallbackReason;
+    onAuthenticationRequired?: () => void;
     onUse3D?: () => void;
 };
 
 export function OutletGardenBrowserViewer({
+    commerce,
     fallbackReason = 'user',
+    onAuthenticationRequired,
     onUse3D,
 }: OutletGardenBrowserViewerProps = {}) {
     const router = useRouter();
@@ -118,6 +123,7 @@ export function OutletGardenBrowserViewer({
 
             <OutletGardenOfferBrowser
                 className="border-t-0 lg:border-l"
+                commerce={commerce}
                 headerAction={
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-lime-300 bg-lime-50 p-3 text-sm text-lime-950 dark:border-lime-900 dark:bg-lime-950/40 dark:text-lime-50">
                         <p
@@ -147,6 +153,7 @@ export function OutletGardenBrowserViewer({
                 isLoading={isLoading}
                 offers={offers}
                 onExit={requestExit}
+                onAuthenticationRequired={onAuthenticationRequired}
                 onRetry={retryOffers}
                 onSelectOffer={selectOffer}
                 renderer="list"

@@ -8,6 +8,7 @@ import { parseAsInteger, useQueryState } from 'nuqs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import {
@@ -36,7 +37,9 @@ const outletGardenCameraMinZoom = 10;
 const outletGardenCloseupZoom = 210;
 
 export type OutletGardenViewerProps = {
+    commerce?: OutletGardenCommerceController;
     focusOnMount?: boolean;
+    onAuthenticationRequired?: () => void;
     onSceneFailure?: (reason: OutletGardenSceneFailureReason) => void;
     onSceneReady?: () => void;
     onUseListFallback?: () => void;
@@ -61,7 +64,9 @@ function OutletGardenScenePlaceholder({ label }: { label: string }) {
 }
 
 export function OutletGardenViewer({
+    commerce,
     focusOnMount = false,
+    onAuthenticationRequired,
     onSceneFailure,
     onSceneReady,
     onUseListFallback,
@@ -523,11 +528,13 @@ export function OutletGardenViewer({
             </main>
 
             <OutletGardenOfferBrowser
+                commerce={commerce}
                 displayLimited={displayLimited}
                 isError={isError}
                 isLoading={isLoading}
                 offers={offers}
                 onExit={requestExit}
+                onAuthenticationRequired={onAuthenticationRequired}
                 onHoverOffer={setHoveredOfferId}
                 onRetry={() => {
                     void refetch();

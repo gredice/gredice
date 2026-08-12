@@ -4,7 +4,11 @@ import { GameAnalyticsProvider } from '@gredice/game/analytics';
 import { usePostHog } from '@posthog/next';
 import { OutletGardenRenderer } from './OutletGardenRenderer';
 
-export function OutletGardenWithAnalytics() {
+export function OutletGardenWithAnalytics({
+    commerceEnabled,
+}: {
+    commerceEnabled: boolean;
+}) {
     const posthog = usePostHog();
 
     return (
@@ -16,7 +20,7 @@ export function OutletGardenWithAnalytics() {
                 });
             }}
         >
-            <OutletGardenRenderer />
+            <OutletGardenRenderer commerceEnabled={commerceEnabled} />
         </GameAnalyticsProvider>
     );
 }

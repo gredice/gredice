@@ -3,7 +3,10 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { GardenRouteLoading } from '../../components/game/GardenRouteLoading';
 import { OutletGardenWithAnalytics } from '../../components/game/OutletGardenWithAnalytics';
-import { enableOutletGardenFlag } from '../flags';
+import {
+    enableOutletGardenCommerceFlag,
+    enableOutletGardenFlag,
+} from '../flags';
 
 export const metadata: Metadata = {
     title: 'Outlet vrt | Gredice',
@@ -25,8 +28,9 @@ async function OutletGardenGate({
 }: {
     searchParams: Promise<{ ponuda?: string | string[] }>;
 }) {
-    const [enabled, params] = await Promise.all([
+    const [enabled, commerceEnabled, params] = await Promise.all([
         enableOutletGardenFlag(),
+        enableOutletGardenCommerceFlag(),
         searchParams,
     ]);
     if (!enabled) {
@@ -40,7 +44,7 @@ async function OutletGardenGate({
         redirect(`/?outlet=${outletParam}`);
     }
 
-    return <OutletGardenWithAnalytics />;
+    return <OutletGardenWithAnalytics commerceEnabled={commerceEnabled} />;
 }
 
 export default function OutletGardenPage({

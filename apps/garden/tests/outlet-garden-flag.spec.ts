@@ -34,4 +34,13 @@ test('flag discovery resolves managed Vercel provider metadata', () => {
     expect(discoverySource).toContain(
         "import { createFlagsDiscoveryEndpoint } from 'flags/next';",
     );
+
+    const flagsSource = readFileSync(
+        new URL('../app/flags.ts', import.meta.url),
+        'utf8',
+    );
+    expect(flagsSource).toContain("key: 'enableOutletGardenCommerce'");
+    expect(flagsSource).toMatch(
+        /enableOutletGardenCommerceFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
+    );
 });

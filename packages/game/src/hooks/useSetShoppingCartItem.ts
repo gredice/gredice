@@ -146,9 +146,9 @@ function applyOptimisticShoppingCartItem(
     );
 }
 
-export function useSetShoppingCartItem() {
+export function useSetShoppingCartItem(enabled = true) {
     const queryClient = useQueryClient();
-    const { data: cart } = useShoppingCart();
+    const { data: cart } = useShoppingCart(enabled);
     return useMutation({
         mutationFn: async (item: SetShoppingCartItemInput) => {
             if (!cart) {
