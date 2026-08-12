@@ -1,3 +1,4 @@
+import { shouldLogPostHogProxyRequest } from '@gredice/js/observability';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { SeverityNumber } from '@opentelemetry/api-logs';
 import { postHogMiddleware } from '@posthog/next';
@@ -159,15 +160,22 @@ const proxyHandler: NextProxy = async (
         response =
             (await baseProxyHandler(request, event)) ?? NextResponse.next();
     }
+    const proxyAttributes = getProxyAttributes(response);
 
-    if (isPostHogLoggingEnabled()) {
+    if (
+        isPostHogLoggingEnabled() &&
+        shouldLogPostHogProxyRequest({
+            pathname: request.nextUrl.pathname,
+            proxyResult: proxyAttributes['next.proxy_result'],
+        })
+    ) {
         requestLogger.emit({
             attributes: {
                 'http.method': request.method,
                 'posthog.log_type': 'request',
                 'server.address': request.nextUrl.hostname,
                 'url.path': request.nextUrl.pathname,
-                ...getProxyAttributes(response),
+                ...proxyAttributes,
                 ...(request.headers.get('referer')
                     ? {
                           'http.request.header.referer':
@@ -196,6 +204,6 @@ export default proxyHandler;
 
 export const config = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|assets|api/gredice).*)',
+        '/((?!_next/static|_next/image|_vercel|favicon.ico|assets|api/gredice).*)',
     ],
 };

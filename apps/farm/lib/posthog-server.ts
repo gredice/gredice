@@ -1,3 +1,4 @@
+import { shouldForwardPostHogConsoleMethod } from '@gredice/js/observability';
 import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -144,6 +145,10 @@ export function registerPostHogConsoleForwarding(): void {
         severityNumber: SeverityNumber,
         severityText: string,
     ) => {
+        if (!shouldForwardPostHogConsoleMethod(method)) {
+            return;
+        }
+
         const originalMethod = originalConsole[method];
 
         console[method] = (...args: unknown[]) => {

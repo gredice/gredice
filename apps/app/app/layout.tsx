@@ -1,3 +1,4 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
@@ -31,6 +32,9 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
             ? undefined
@@ -46,7 +50,7 @@ export default function RootLayout({
                 <ImpersonationBanner />
                 {children}
             </ClientAppProvider>
-            <Analytics />
+            {injectVercelAnalytics && <Analytics />}
         </>
     );
 
