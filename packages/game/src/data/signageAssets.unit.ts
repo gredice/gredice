@@ -310,4 +310,29 @@ describe('Signage assets', () => {
         assert.ok(Math.abs(localMinimum[1] + localMaximum[1]) < 0.000_01);
         assert.ok(Math.abs(localMinimum[2] + localMaximum[2]) < 0.000_01);
     });
+
+    it('keeps the wooden sign post below the writing board', () => {
+        const document = readGlbDocument(
+            readFileSync(getModelPath('WoodenSign')),
+        );
+        assert.ok(isRecord(document));
+        const positionAccessors = getPositionAccessors(document);
+        const postAccessors = positionAccessors.filter(
+            (accessor) => accessor.nodeName === 'WoodenSign_Post',
+        );
+        const boardAccessors = positionAccessors.filter(
+            (accessor) => accessor.nodeName === 'WoodenSign_Board',
+        );
+        assert.ok(postAccessors.length > 0);
+        assert.ok(boardAccessors.length > 0);
+
+        const postTop = Math.max(
+            ...postAccessors.map((accessor) => accessor.maximum[1]),
+        );
+        const boardBottom = Math.min(
+            ...boardAccessors.map((accessor) => accessor.minimum[1]),
+        );
+
+        assert.ok(postTop <= boardBottom + 0.000_01);
+    });
 });
