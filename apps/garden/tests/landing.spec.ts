@@ -304,6 +304,10 @@ async function mockGardenApi(
             body = { devices: [] };
         } else if (pathname.endsWith('/api/notifications/push-status')) {
             body = { hasDevices: false, status: 'unsubscribed' };
+        } else if (
+            /\/api\/gardens\/\d+\/raised-bed-notifications$/u.test(pathname)
+        ) {
+            body = { notifications: [] };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
         }
