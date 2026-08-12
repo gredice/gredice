@@ -706,6 +706,155 @@ test('centers multi-cell collisions and blocks their complete roaming footprint'
     );
 });
 
+test('keeps HazelLightArch centered in one cell and lets the avatar pass between its posts', () => {
+    const blockData = getLocalSandboxBlockData();
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        for (const rotation of [0, 1, 2, 3]) {
+            const world = createGardenAvatarCollisionWorld({
+                blockData,
+                stacks: [
+                    {
+                        blocks: [
+                            {
+                                id: 'grass',
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                            {
+                                id: 'walkway',
+                                name: walkwayName,
+                                rotation: 0,
+                            },
+                            {
+                                id: 'arch',
+                                name: 'HazelLightArch',
+                                rotation,
+                            },
+                        ],
+                        position: new Vector3(2, 0, -1),
+                    },
+                ],
+            });
+            const posts = world.surfaces.filter((surface) =>
+                surface.debugLabel?.startsWith('HazelLightArch.Post.'),
+            );
+            const walkway = world.surfaces.find(
+                (surface) => surface.roamable === true && surface.y > 0.4,
+            );
+            const archAxisIsZ = rotation % 2 === 0;
+            const postCoordinates = posts
+                .map((surface) => (archAxisIsZ ? surface.z + 1 : surface.x - 2))
+                .toSorted((left, right) => left - right);
+
+            assert.equal(posts.length, 2);
+            assert.ok(Math.abs(postCoordinates[0] + 0.443) < 0.000_001);
+            assert.ok(Math.abs(postCoordinates[1] - 0.443) < 0.000_001);
+            assert.ok(posts.every((surface) => surface.halfWidth === 0.052));
+            assert.ok(posts.every((surface) => surface.halfDepth === 0.052));
+            assert.deepEqual(getGardenAvatarRoamBlockedCells(world), []);
+            assert.ok(walkway?.roamable);
+
+            const throughCenter = resolveGardenAvatarHorizontalMovement({
+                deltaX: archAxisIsZ ? 1.4 : 0,
+                deltaZ: archAxisIsZ ? 0 : 1.4,
+                position: {
+                    x: archAxisIsZ ? 1.3 : 2,
+                    y: walkway?.y ?? 0,
+                    z: archAxisIsZ ? -1 : -1.7,
+                },
+                world,
+            });
+
+            assert.equal(throughCenter.collided, false);
+            assert.ok(
+                archAxisIsZ
+                    ? Math.abs(throughCenter.position.x - 2.7) < 0.000_001
+                    : Math.abs(throughCenter.position.z + 0.3) < 0.000_001,
+            );
+        }
+    }
+});
+
+test('HazelLightArch posts remain solid while its center passage stays open', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'grass', name: 'Block_Grass', rotation: 0 },
+                    { id: 'arch', name: 'HazelLightArch', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const aimedAtPost = resolveGardenAvatarHorizontalMovement({
+        deltaX: 1.4,
+        deltaZ: 0,
+        position: { x: -0.7, y: 0.4, z: 0.443 },
+        world,
+    });
+
+    assert.equal(aimedAtPost.collided, true);
+    assert.ok(aimedAtPost.position.x < 0);
+});
+
+for (const supportName of ['Block_Grass', 'Block_Water', 'Block_Swamp_Water']) {
+    test(`routes autonomously across a ${supportName} walkway beneath HazelLightArch`, () => {
+        const world = createGardenAvatarCollisionWorld({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [-1, 0, 1].map((x) => ({
+                blocks: [
+                    {
+                        id: `grass-${x}`,
+                        name: 'Block_Grass',
+                        rotation: 0,
+                    },
+                    ...(supportName !== 'Block_Grass'
+                        ? [
+                              {
+                                  id: `water-${x}`,
+                                  name: supportName,
+                                  rotation: 0,
+                              },
+                          ]
+                        : []),
+                    {
+                        id: `walkway-${x}`,
+                        name: 'StoneWalkway',
+                        rotation: 0,
+                    },
+                    ...(x === 0
+                        ? [
+                              {
+                                  id: 'arch',
+                                  name: 'HazelLightArch',
+                                  rotation: 0,
+                              },
+                          ]
+                        : []),
+                ],
+                position: new Vector3(x, 0, 0),
+            })),
+        });
+        const route = findGardenAvatarRoute({
+            from: { x: -1, y: 0.4, z: 0 },
+            to: { x: 1, y: 0.4, z: 0 },
+            world,
+        });
+
+        assert.deepEqual(
+            route.map(({ x, z }) => ({ x, z })),
+            [
+                { x: -1, z: 0 },
+                { x: 0, z: 0 },
+                { x: 1, z: 0 },
+            ],
+        );
+    });
+}
+
 test('lets the shorter crouching collider pass under overhead geometry', () => {
     const world: GardenAvatarCollisionWorld = {
         blockedCells: [],

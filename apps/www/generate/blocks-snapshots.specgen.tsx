@@ -266,6 +266,8 @@ function getViewOptions(
     }
 
     const orthographicCamera = getOrthographicSnapshotCamera({
+        frontRotation:
+            entity.information.name === 'HazelLightArch' ? 1 : undefined,
         height: entity.attributes.height,
         itemPosition: options.itemPosition,
         rotation,

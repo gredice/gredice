@@ -6,6 +6,7 @@ type GridSpan = {
 };
 
 type OrthographicSnapshotCameraOptions = {
+    frontRotation?: number;
     height: number;
     itemPosition?: [number, number, number];
     rotation: number;
@@ -37,8 +38,9 @@ export function parseBlockSnapshotCameraView(
 
 function getOrthographicViewLabel(
     rotation: number,
+    frontRotation = 0,
 ): OrthographicSnapshotCamera['label'] {
-    const normalizedRotation = ((rotation % 4) + 4) % 4;
+    const normalizedRotation = (((rotation - frontRotation) % 4) + 4) % 4;
     switch (normalizedRotation) {
         case 0:
             return 'front';
@@ -52,6 +54,7 @@ function getOrthographicViewLabel(
 }
 
 export function getOrthographicSnapshotCamera({
+    frontRotation,
     height,
     itemPosition = [0.5, 0, 0.5],
     rotation,
@@ -73,6 +76,6 @@ export function getOrthographicSnapshotCamera({
         ],
         cameraTarget,
         cameraUp: [0, 1, 0],
-        label: getOrthographicViewLabel(rotation),
+        label: getOrthographicViewLabel(rotation, frontRotation),
     };
 }

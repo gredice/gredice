@@ -1486,7 +1486,7 @@
             "name": "HazelLightArch",
             "source": "HazelLightArch.blend",
             "output": "HazelLightArch.glb",
-            "version": "c8f9daebfbd2",
+            "version": "6718c29e0a75",
             "preload": "lazy",
             "objects": [
                 "HazelLightArch_Poles",

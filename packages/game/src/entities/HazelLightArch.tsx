@@ -5,13 +5,13 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
-import { getHazelLightArchFootprintCenterOffset } from './hazelLightArchPlacement';
 import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
+import { getStackedOnWalkwayPlacementYOffset } from './walkwayPlacement';
 
 const archLightColor = '#ffd58a';
-const archLightPosition = [0, 1.1, 0] as const;
+const archLightPosition = [0, 1.2, 0] as const;
 const archRain = {
     darkness: 0.7,
     glossiness: 0.65,
@@ -28,10 +28,10 @@ export function HazelLightArch({
     const currentStackHeight = useStackHeight(stack, block);
     const glowMaterialRef = useRef<MeshStandardMaterial>(null);
     const emissiveMaterialRefs = useMemo(() => [glowMaterialRef], []);
+    const placementYOffset = getStackedOnWalkwayPlacementYOffset(stack, block);
     const position = stack.position
         .clone()
-        .add(getHazelLightArchFootprintCenterOffset(rotation))
-        .setY(currentStackHeight);
+        .setY(currentStackHeight + placementYOffset);
 
     return (
         <animated.group
