@@ -96,7 +96,7 @@ export const gameAssetModels = {
         url: '/assets/models/SmallWoodenBridge.glb?v=3f5e5e39b5e4',
     },
     WoodenWalkway: { url: '/assets/models/WoodenWalkway.glb?v=b4345a9a9ca1' },
-    StoneWalkway: { url: '/assets/models/StoneWalkway.glb?v=fdf36debb5f3' },
+    StoneWalkway: { url: '/assets/models/StoneWalkway.glb?v=994228a946f3' },
     EnamelGardenLamp: {
         url: '/assets/models/EnamelGardenLamp.glb?v=4b2a7c1c93dd',
     },
