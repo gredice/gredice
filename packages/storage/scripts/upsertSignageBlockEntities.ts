@@ -5,6 +5,7 @@ import {
     createEntity,
     entities,
     getAttributeDefinitions,
+    imageAttributeValueFromUrl,
     type SelectAttributeDefinition,
     storage,
     updateEntity,
@@ -234,7 +235,9 @@ function commonBlockAttributes({
         'attributes.type': 'decoration',
         'functions.raisedBed': 'false',
         'functions.recycler': 'false',
-        'image.cover': `https://www.gredice.com/assets/blocks/${name}.webp`,
+        'image.cover': imageAttributeValueFromUrl(
+            `https://www.gredice.com/assets/blocks/${name}.webp`,
+        ),
         'information.fullDescription': fullDescription,
         'information.label': label,
         'information.name': name,
