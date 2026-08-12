@@ -145,6 +145,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     selectedBlockId?: string | null;
     selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     onSelectBlock?: (blockId: string) => void;
+    onSceneContextLost?: () => void;
     onSceneReady?: () => void;
     noWeather?: boolean;
     renderDetails?: boolean;
@@ -419,6 +420,7 @@ function PublicGardenScene({
     normalizedStacks,
     onSelectBlock,
     onSelectRaisedBedBlock,
+    onSceneContextLost,
     onSceneReady,
     renderDetails,
     sceneChildren,
@@ -438,6 +440,7 @@ function PublicGardenScene({
     normalizedStacks: Stack[];
     onSelectBlock?: (blockId: string) => void;
     onSelectRaisedBedBlock: (blockId: string) => void;
+    onSceneContextLost?: () => void;
     onSceneReady?: () => void;
     renderDetails: boolean;
     sceneChildren?: ReactNode;
@@ -490,6 +493,7 @@ function PublicGardenScene({
                     pixelRatio={capture ? 1 : undefined}
                     position={initialView.cameraPosition}
                     quality={qualityProfile}
+                    onContextLost={onSceneContextLost}
                     rendererOptions={
                         capture
                             ? {
@@ -768,6 +772,7 @@ export function PublicGardenViewer({
     interactiveBlockIds,
     noWeather = false,
     onSelectBlock,
+    onSceneContextLost,
     onSceneReady,
     renderDetails: renderDetailsOverride,
     sceneChildren,
@@ -1033,6 +1038,7 @@ export function PublicGardenViewer({
                                     onSelectRaisedBedBlock={
                                         openRaisedBedByBlockId
                                     }
+                                    onSceneContextLost={onSceneContextLost}
                                     onSceneReady={onSceneReady}
                                     renderDetails={renderDetails}
                                     sceneChildren={sceneChildren}

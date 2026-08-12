@@ -32,6 +32,7 @@
         "test:local": "pnpm run test:prepare && pnpm run test:run"
     },
     "dependencies": {
+        "@flags-sdk/vercel": "1.4.6",
         "@opentelemetry/api-logs": "0.220.0",
         "@opentelemetry/exporter-logs-otlp-http": "0.220.0",
         "@opentelemetry/resources": "2.9.0",

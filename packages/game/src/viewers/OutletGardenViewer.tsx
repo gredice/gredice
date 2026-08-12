@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { ArrowLeft, Sprout } from '@gredice/ui/icons';
+import { ArrowLeft, LayoutList, Sprout } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
@@ -22,6 +22,7 @@ import {
     outletOfferIdFromBlockId,
     reconcileOutletGardenSlots,
 } from './outletGardenLayout';
+import type { OutletGardenSceneFailureReason } from './outletGardenRenderer';
 import {
     getPublicGardenCaptureInitialView,
     normalizePublicGardenStacks,
@@ -33,6 +34,14 @@ import {
 
 const outletGardenCameraMinZoom = 10;
 const outletGardenCloseupZoom = 210;
+
+export type OutletGardenViewerProps = {
+    focusOnMount?: boolean;
+    onSceneFailure?: (reason: OutletGardenSceneFailureReason) => void;
+    onSceneReady?: () => void;
+    onUseListFallback?: () => void;
+    sceneStartedAt?: number;
+};
 
 function OutletGardenScenePlaceholder({ label }: { label: string }) {
     return (
@@ -51,7 +60,13 @@ function OutletGardenScenePlaceholder({ label }: { label: string }) {
     );
 }
 
-export function OutletGardenViewer() {
+export function OutletGardenViewer({
+    focusOnMount = false,
+    onSceneFailure,
+    onSceneReady,
+    onUseListFallback,
+    sceneStartedAt,
+}: OutletGardenViewerProps = {}) {
     const router = useRouter();
     const {
         data: offers = [],
@@ -67,7 +82,9 @@ export function OutletGardenViewer() {
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
+    const sceneFailureTrackedRef = useRef(false);
     const sceneReadyTrackedRef = useRef(false);
+    const sceneStartedAtRef = useRef(sceneStartedAt ?? Date.now());
     const sceneContainerRef = useRef<HTMLElement>(null);
     const [initialSceneViewport, setInitialSceneViewport] = useState<{
         height: number;
@@ -79,6 +96,16 @@ export function OutletGardenViewer() {
         destination: 'existing_outlet' | 'garden';
         href: Route;
     } | null>(null);
+    const sceneElapsedMs = useCallback(
+        () => Math.max(0, Date.now() - sceneStartedAtRef.current),
+        [],
+    );
+
+    useEffect(() => {
+        if (focusOnMount) {
+            sceneContainerRef.current?.focus({ preventScroll: true });
+        }
+    }, [focusOnMount]);
     const layoutOffersKey = useMemo(
         () =>
             Array.from(
@@ -283,6 +310,7 @@ export function OutletGardenViewer() {
         openedTrackedRef.current = true;
         track('game_outlet_garden_opened', {
             outlet_offer_count: offers.length,
+            renderer: 'webgl',
             selected_offer_id: selectedOfferId,
         });
     }, [isLoading, offers.length, selectedOfferId, track]);
@@ -294,9 +322,39 @@ export function OutletGardenViewer() {
 
         sceneReadyTrackedRef.current = true;
         track('game_outlet_garden_scene_ready', {
+            device_class: window.innerWidth < 768 ? 'mobile' : 'desktop',
+            input_mode: navigator.maxTouchPoints > 0 ? 'touch' : 'pointer',
             outlet_offer_count: offers.length,
+            renderer: 'webgl',
+            scene_ready_duration_ms: sceneElapsedMs(),
         });
-    }, [offers.length, track]);
+        onSceneReady?.();
+    }, [offers.length, onSceneReady, sceneElapsedMs, track]);
+
+    const reportSceneFailure = useCallback(
+        (reason: OutletGardenSceneFailureReason) => {
+            if (sceneFailureTrackedRef.current) {
+                return;
+            }
+
+            sceneFailureTrackedRef.current = true;
+            onSceneFailure?.(reason);
+        },
+        [onSceneFailure],
+    );
+
+    const reportSceneContextLost = useCallback(() => {
+        reportSceneFailure('context_lost');
+    }, [reportSceneFailure]);
+
+    const requestListFallback = useCallback(() => {
+        track('game_outlet_garden_fallback_requested', {
+            fallback_reason: 'user',
+            renderer: 'webgl',
+            scene_ready: sceneReadyTrackedRef.current,
+        });
+        onUseListFallback?.();
+    }, [onUseListFallback, track]);
 
     const requestExit = useCallback(
         (destination: 'existing_outlet' | 'garden', href: Route) => {
@@ -304,7 +362,11 @@ export function OutletGardenViewer() {
                 return;
             }
 
-            track('game_outlet_garden_exited', { destination });
+            track('game_outlet_garden_exited', {
+                destination,
+                renderer: 'webgl',
+                scene_ready: sceneReadyTrackedRef.current,
+            });
             setExitTarget({ destination, href });
         },
         [exitTarget, track],
@@ -342,6 +404,7 @@ export function OutletGardenViewer() {
             track('game_outlet_garden_offer_viewed', {
                 outlet_offer_id: offerId,
                 plant_sort_id: offer?.plantSort.id,
+                renderer: 'webgl',
             });
         },
         [offers, setSelectedOfferId, track],
@@ -365,10 +428,13 @@ export function OutletGardenViewer() {
             data-outlet-garden-display-limited={displayLimited || undefined}
             data-outlet-garden-exiting={exitTarget ? true : undefined}
             data-outlet-garden-hovered-offer={hoveredOfferId ?? undefined}
+            data-outlet-garden-renderer="webgl"
         >
             <main
+                aria-label="Interaktivni 3D prikaz Outlet vrta"
                 className="relative min-h-0 overflow-hidden"
                 ref={sceneContainerRef}
+                tabIndex={focusOnMount ? -1 : undefined}
             >
                 {layoutReady && offers.length > 0 && sceneInitialView ? (
                     <PublicGardenViewer
@@ -380,6 +446,7 @@ export function OutletGardenViewer() {
                         interactiveBlockIds={interactiveBlockIds}
                         noWeather
                         onSelectBlock={selectBlock}
+                        onSceneContextLost={reportSceneContextLost}
                         onSceneReady={trackSceneReady}
                         renderDetails={false}
                         sceneChildren={
@@ -413,18 +480,35 @@ export function OutletGardenViewer() {
                             event.preventDefault();
                             requestExit('garden', '/');
                         }}
-                        size="sm"
+                        size="lg"
                         startDecorator={<ArrowLeft className="size-4" />}
                         variant="outlined"
                     >
                         Moj vrt
                     </Button>
-                    <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
-                        <p className="font-semibold">Razgledaj Outlet vrt</p>
-                        <p className="mt-0.5 text-white/80">
-                            Povuci za zakretanje · kotačić ili dva prsta za
-                            približavanje
-                        </p>
+                    <div className="pointer-events-auto flex items-start gap-2">
+                        {onUseListFallback ? (
+                            <Button
+                                aria-label="Prikaži Outlet ponude bez 3D prikaza"
+                                onClick={requestListFallback}
+                                size="lg"
+                                startDecorator={
+                                    <LayoutList className="size-4" />
+                                }
+                                variant="outlined"
+                            >
+                                Popis ponuda
+                            </Button>
+                        ) : null}
+                        <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
+                            <p className="font-semibold">
+                                Razgledaj Outlet vrt
+                            </p>
+                            <p className="mt-0.5 text-white/80">
+                                Povuci za zakretanje · kotačić ili dva prsta za
+                                približavanje
+                            </p>
+                        </div>
                     </div>
                 </div>
 
