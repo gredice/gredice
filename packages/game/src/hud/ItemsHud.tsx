@@ -758,9 +758,6 @@ function PlaceEntityButton({
 
     if (!isPlaceable && simple) return null;
 
-    const errorMessage =
-        placeBlock.error instanceof Error ? placeBlock.error.message : null;
-
     return (
         <Stack spacing={1}>
             <Button
@@ -802,11 +799,6 @@ function PlaceEntityButton({
             {insufficientSunflowersMessage && !simple && (
                 <Typography level="body3" className="text-muted-foreground">
                     {insufficientSunflowersMessage}
-                </Typography>
-            )}
-            {errorMessage && (
-                <Typography level="body3" className="text-red-600">
-                    {errorMessage}
                 </Typography>
             )}
         </Stack>
