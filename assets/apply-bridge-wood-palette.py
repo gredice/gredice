@@ -6,11 +6,23 @@ import bpy
 
 
 ASSETS_DIR = Path(__file__).resolve().parent / "game-assets"
-REFERENCE_ASSET = "SmallWoodenBridge.blend"
 REFERENCE_MATERIALS = {
-    "deep": "Material.SmallWoodenBridge.DeepWood",
-    "light": "Material.SmallWoodenBridge.LightWood",
-    "warm": "Material.SmallWoodenBridge.WarmWood",
+    "bridge_deep": (
+        "SmallWoodenBridge.blend",
+        "Material.SmallWoodenBridge.DeepWood",
+    ),
+    "bridge_light": (
+        "SmallWoodenBridge.blend",
+        "Material.SmallWoodenBridge.LightWood",
+    ),
+    "bridge_warm": (
+        "SmallWoodenBridge.blend",
+        "Material.SmallWoodenBridge.WarmWood",
+    ),
+    "default": (
+        "WoodenWalkway.blend",
+        "Material.WoodenWalkway.WarmWood",
+    ),
 }
 REFERENCE_PROFILE_INPUTS = (
     "Base Color",
@@ -24,8 +36,48 @@ REFERENCE_PROFILE_INPUTS = (
     "Emission Strength",
     "Alpha",
 )
-# The bridge's warm middle plank is the default in-game brown.
-DEFAULT_WOOD_ROLE = "warm"
+# The walkway's warm plank is the default in-game brown.
+DEFAULT_WOOD_ROLE = "default"
+DOGHOUSE_WOOD_PROFILES = {
+    # Keep the doghouse's original three-tone palette. These values predate the
+    # shared-palette migration and intentionally remain distinct from default.
+    "doghouse_dark": {
+        "Base Color": (0.3, 0.18, 0.1, 1.0),
+        "Metallic": 0.0,
+        "Roughness": 0.94,
+        "IOR": 1.5,
+        "Specular IOR Level": 0.5,
+        "Coat Weight": 0.0,
+        "Coat Roughness": 0.03,
+        "Emission Color": (1.0, 1.0, 1.0, 1.0),
+        "Emission Strength": 0.0,
+        "Alpha": 1.0,
+    },
+    "doghouse_wall": {
+        "Base Color": (0.48, 0.31, 0.17, 1.0),
+        "Metallic": 0.0,
+        "Roughness": 0.92,
+        "IOR": 1.5,
+        "Specular IOR Level": 0.5,
+        "Coat Weight": 0.0,
+        "Coat Roughness": 0.03,
+        "Emission Color": (1.0, 1.0, 1.0, 1.0),
+        "Emission Strength": 0.0,
+        "Alpha": 1.0,
+    },
+    "doghouse_trim": {
+        "Base Color": (0.72, 0.47, 0.24, 1.0),
+        "Metallic": 0.0,
+        "Roughness": 0.86,
+        "IOR": 1.5,
+        "Specular IOR Level": 0.5,
+        "Coat Weight": 0.0,
+        "Coat Roughness": 0.03,
+        "Emission Color": (1.0, 1.0, 1.0, 1.0),
+        "Emission Strength": 0.0,
+        "Alpha": 1.0,
+    },
+}
 TARGET_MATERIALS = {
     "BeachChair.blend": {
         "BeachChair_LightWood": DEFAULT_WOOD_ROLE,
@@ -39,9 +91,9 @@ TARGET_MATERIALS = {
     "Bucket.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "Composter.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "DogHouse.blend": {
-        "Material.DogHouse.WarmTrim": DEFAULT_WOOD_ROLE,
-        "Material.DogHouse.RedWood": DEFAULT_WOOD_ROLE,
-        "Material.DogHouse.DarkRedWood": DEFAULT_WOOD_ROLE,
+        "Material.DogHouse.WarmTrim": "doghouse_trim",
+        "Material.DogHouse.RedWood": "doghouse_wall",
+        "Material.DogHouse.DarkRedWood": "doghouse_dark",
     },
     "Fence.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "GardenBox.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
@@ -60,16 +112,16 @@ TARGET_MATERIALS = {
     "Stool.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "WaterWell.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "WoodenBench.blend": {
-        "WoodenBench_LightWood": "light",
-        "WoodenBench_WarmWood": "warm",
-        "WoodenBench_DarkWood": "deep",
+        "WoodenBench_LightWood": "bridge_light",
+        "WoodenBench_WarmWood": "bridge_warm",
+        "WoodenBench_DarkWood": "bridge_deep",
     },
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Apply the SmallWoodenBridge wood palette to timber props.",
+        description="Apply the shared wood profiles to timber props.",
     )
     parser.add_argument(
         "--check",
@@ -92,12 +144,17 @@ def get_principled_node(material):
 
 
 def load_reference_palette():
-    bpy.ops.wm.open_mainfile(filepath=str(ASSETS_DIR / REFERENCE_ASSET), load_ui=False)
     palette = {}
-    for role, material_name in REFERENCE_MATERIALS.items():
+    for role, (filename, material_name) in REFERENCE_MATERIALS.items():
+        bpy.ops.wm.open_mainfile(
+            filepath=str(ASSETS_DIR / filename),
+            load_ui=False,
+        )
         material = bpy.data.materials.get(material_name)
         if material is None:
-            raise RuntimeError(f"Missing reference material {material_name}")
+            raise RuntimeError(
+                f"Missing reference material {material_name} in {filename}",
+            )
         principled = get_principled_node(material)
         palette[role] = {}
         for input_name in REFERENCE_PROFILE_INPUTS:
@@ -107,6 +164,7 @@ def load_reference_palette():
             except TypeError:
                 pass
             palette[role][input_name] = value
+    palette.update(DOGHOUSE_WOOD_PROFILES)
     return palette
 
 

@@ -9,7 +9,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
-import { defaultGameWoodColor } from './woodPalette';
+import { dogHouseWoodColors } from './woodPalette';
 
 type DogHouseNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -20,28 +20,28 @@ type DogHouseNode = GLTFResult['nodes'][DogHouseNodeName];
 const dogHouseScale = 0.72;
 
 const wallMaterial = {
-    color: defaultGameWoodColor,
+    color: dogHouseWoodColors.wall,
     metalness: 0,
     roughness: 0.9,
     side: DoubleSide,
 };
 
 const darkWallMaterial = {
-    color: defaultGameWoodColor,
+    color: dogHouseWoodColors.darkWall,
     metalness: 0,
     roughness: 0.92,
     side: DoubleSide,
 };
 
 const roofMaterial = {
-    color: defaultGameWoodColor,
+    color: dogHouseWoodColors.roof,
     metalness: 0,
     roughness: 0.82,
     side: DoubleSide,
 };
 
 const trimMaterial = {
-    color: defaultGameWoodColor,
+    color: dogHouseWoodColors.trim,
     metalness: 0,
     roughness: 0.78,
     side: DoubleSide,
