@@ -8,6 +8,7 @@ export const PERSEIDS_DENSITY_MULTIPLIER = 6;
 export const PERSEIDS_REAL_EDGE_RATE_PER_HOUR = 1;
 export const PERSEIDS_REAL_PEAK_ZHR = 100;
 export const PERSEIDS_RENDERING = {
+    backgroundNdcDepth: 1,
     depthTest: true,
     depthWrite: false,
     renderOrder: 29,

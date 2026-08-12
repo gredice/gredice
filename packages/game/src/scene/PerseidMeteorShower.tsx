@@ -38,7 +38,11 @@ const meteorVertexShader = /* glsl */ `
 
     void main() {
         vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 clipPosition = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        // Meteors are sky background: keep their screen projection while
+        // placing their depth behind every depth-writing garden surface.
+        clipPosition.z = clipPosition.w * ${PERSEIDS_RENDERING.backgroundNdcDepth.toFixed(1)};
+        gl_Position = clipPosition;
     }
 `;
 

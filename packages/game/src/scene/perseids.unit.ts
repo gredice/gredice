@@ -14,6 +14,7 @@ import {
 } from './perseids';
 
 test('keeps meteors behind depth-writing garden geometry in every camera mode', () => {
+    assert.equal(PERSEIDS_RENDERING.backgroundNdcDepth, 1);
     assert.equal(PERSEIDS_RENDERING.depthTest, true);
     assert.equal(PERSEIDS_RENDERING.depthWrite, false);
 });
