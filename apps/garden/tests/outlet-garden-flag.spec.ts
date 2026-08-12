@@ -43,4 +43,7 @@ test('flag discovery resolves managed Vercel provider metadata', () => {
     expect(flagsSource).toMatch(
         /enableOutletGardenCommerceFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
     );
+    expect(flagsSource).toMatch(
+        /enableRaisedBedNotificationBubblesFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
+    );
 });
