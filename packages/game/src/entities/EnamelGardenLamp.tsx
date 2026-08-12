@@ -10,7 +10,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 const enamelLightColor = '#ffe6a8';
-const enamelLightPosition = [0.075, 1.08, 0] as const;
+const enamelLightPosition = [0.13, 0.965, 0] as const;
 const lampRain = {
     darkness: 0.72,
     glossiness: 0.82,

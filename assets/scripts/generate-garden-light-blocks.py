@@ -14,6 +14,7 @@ Runtime point lights, animated water, glass, and weather overlays stay in React.
 from __future__ import annotations
 
 import argparse
+import bmesh
 import math
 import sys
 from collections.abc import Callable, Iterable
@@ -133,6 +134,15 @@ def assign_material(obj: bpy.types.Object, value: bpy.types.Material) -> None:
     obj.data.materials.append(value)
     for polygon in obj.data.polygons:
         polygon.material_index = 0
+
+
+def recalculate_outside_normals(obj: bpy.types.Object) -> None:
+    editable_mesh = bmesh.new()
+    editable_mesh.from_mesh(obj.data)
+    bmesh.ops.recalc_face_normals(editable_mesh, faces=editable_mesh.faces)
+    editable_mesh.to_mesh(obj.data)
+    editable_mesh.free()
+    obj.data.update()
 
 
 def box(
@@ -317,6 +327,102 @@ def extruded_polygon(
     return obj
 
 
+def ribbon_along_points(
+    name: str,
+    points: Iterable[tuple[float, float, float]],
+    width: float,
+    thickness: float,
+    value: bpy.types.Material,
+) -> bpy.types.Object:
+    """Create a broad, closed low-poly band along a domed centerline."""
+    centers = [Vector(point) for point in points]
+    if len(centers) < 2:
+        raise ValueError(f"Expected at least two ribbon points for {name}")
+    vertices: list[tuple[float, float, float]] = []
+    for index, center in enumerate(centers):
+        previous = centers[max(0, index - 1)]
+        following = centers[min(len(centers) - 1, index + 1)]
+        tangent = (following - previous).normalized()
+        radial = Vector((center.x, center.y, 0))
+        normal = Vector((radial.x / 0.25**2, radial.y / 0.25**2, (center.z - 0.17) / 0.48**2))
+        if normal.length < 1e-6:
+            normal = Vector((0, 0, 1))
+        normal.normalize()
+        side = normal.cross(tangent).normalized()
+        for surface_offset in (-thickness / 2, thickness / 2):
+            for side_offset in (-width / 2, width / 2):
+                vertex = center + normal * surface_offset + side * side_offset
+                vertices.append(tuple(vertex))
+
+    faces: list[tuple[int, ...]] = []
+    for index in range(len(centers) - 1):
+        current = index * 4
+        following = current + 4
+        faces.extend(
+            [
+                (current, following, following + 1, current + 1),
+                (current + 2, current + 3, following + 3, following + 2),
+                (current, current + 2, following + 2, following),
+                (current + 1, following + 1, following + 3, current + 3),
+            ]
+        )
+    last = len(vertices) - 4
+    faces.extend([(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)])
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, value)
+    recalculate_outside_normals(obj)
+    return obj
+
+
+def cylindrical_ribbon_along_points(
+    name: str,
+    points: Iterable[tuple[float, float, float]],
+    width: float,
+    thickness: float,
+    value: bpy.types.Material,
+) -> bpy.types.Object:
+    """Create a closed helical band kept tangent to a cylindrical cage."""
+    centers = [Vector(point) for point in points]
+    if len(centers) < 2:
+        raise ValueError(f"Expected at least two ribbon points for {name}")
+    vertices: list[tuple[float, float, float]] = []
+    for center in centers:
+        normal = Vector((center.x, center.y, 0)).normalized()
+        side = Vector((-normal.y, normal.x, 0))
+        for surface_offset in (-thickness / 2, thickness / 2):
+            for side_offset in (-width / 2, width / 2):
+                vertices.append(
+                    tuple(center + normal * surface_offset + side * side_offset)
+                )
+
+    faces: list[tuple[int, ...]] = []
+    for index in range(len(centers) - 1):
+        current = index * 4
+        following = current + 4
+        faces.extend(
+            [
+                (current, following, following + 1, current + 1),
+                (current + 2, current + 3, following + 3, following + 2),
+                (current, current + 2, following + 2, following),
+                (current + 1, following + 1, following + 3, current + 3),
+            ]
+        )
+    last = len(vertices) - 4
+    faces.extend([(0, 2, 3, 1), (last, last + 1, last + 3, last + 2)])
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, value)
+    recalculate_outside_normals(obj)
+    return obj
+
+
 def join_objects(
     objects: Iterable[bpy.types.Object],
     final_name: str,
@@ -379,9 +485,11 @@ def save_asset(
 def generate_stone_walkway(output_dir: Path) -> None:
     name = "StoneWalkway"
     reset_scene(name)
-    light = material("Material.StoneWalkway.LightStone", "#504C46", roughness=0.9)
-    middle = material("Material.StoneWalkway.MidStone", "#484A46", roughness=0.92)
-    warm = material("Material.StoneWalkway.WarmStone", "#4D463F", roughness=0.92)
+    # The catalog environment is intentionally bright, so these source colors
+    # are considerably deeper than the desired on-screen honey limestone.
+    light = material("Material.StoneWalkway.LightStone", "#A77D45", roughness=0.88)
+    middle = material("Material.StoneWalkway.MidStone", "#9E713C", roughness=0.9)
+    warm = material("Material.StoneWalkway.WarmStone", "#936333", roughness=0.9)
 
     positions = (
         (-0.27, -0.333),
@@ -401,7 +509,10 @@ def generate_stone_walkway(output_dir: Path) -> None:
     )
     roles: dict[str, list[bpy.types.Object]] = {"light": [], "middle": [], "warm": []}
     role_materials = {"light": light, "middle": middle, "warm": warm}
-    role_order = ("light", "middle", "warm", "light", "middle", "warm")
+    # Keep adjacent pavers close in value and avoid a checkerboard read from the
+    # catalog camera.  The three limestone mixes still remain separately
+    # addressable for subtle material variation.
+    role_order = ("light", "middle", "middle", "warm", "warm", "middle")
     for index, (x, y) in enumerate(positions):
         width, depth = sizes[index]
         height = 0.058 + (index % 3) * 0.003
@@ -427,10 +538,10 @@ def generate_stone_walkway(output_dir: Path) -> None:
 def generate_enamel_garden_lamp(output_dir: Path) -> None:
     name = "EnamelGardenLamp"
     reset_scene(name)
-    wood = material("Material.EnamelGardenLamp.Wood", "#8A5B32", roughness=0.86)
+    wood = material("Material.EnamelGardenLamp.Wood", "#71431F", roughness=0.86)
     enamel = material(
         "Material.EnamelGardenLamp.BlueEnamel",
-        "#497A88",
+        "#2F5E83",
         metallic=0.08,
         roughness=0.32,
     )
@@ -451,32 +562,35 @@ def generate_enamel_garden_lamp(output_dir: Path) -> None:
     )
 
     wood_parts = [
-        cylinder("post", 0.044, 0.97, (-0.07, 0, 0.585), wood, vertices=10),
-        tube_between("arm", (-0.07, 0, 1.04), (0.075, 0, 1.27), 0.032, wood),
+        box("post", (0.125, 0.125, 1.08), (-0.08, 0, 0.65), wood, bevel_width=0.017),
+        cone("post_cap", 0.086, 0.065, 0.07, (-0.08, 0, 1.225), wood, vertices=8),
     ]
     limestone_parts = [
         box(
             "limestone_foot",
-            (0.22, 0.22, 0.10),
-            (-0.07, 0, 0.05),
+            (0.265, 0.265, 0.12),
+            (-0.08, 0, 0.06),
             limestone,
             rotation=(0, 0, 0.08),
             bevel_width=0.028,
         ),
-        cylinder("limestone_socket", 0.075, 0.055, (-0.07, 0, 0.115), limestone, vertices=10),
+        cone("limestone_socket", 0.10, 0.075, 0.075, (-0.08, 0, 0.155), limestone, vertices=8),
     ]
     shade_parts = [
-        cone("shade", 0.175, 0.068, 0.12, (0.075, 0, 1.20), enamel, vertices=14),
-        cylinder("shade_neck", 0.07, 0.04, (0.075, 0, 1.28), enamel, vertices=14),
+        cone("shade", 0.17, 0.068, 0.13, (0.13, 0, 1.15), enamel, vertices=14),
+        cylinder("shade_neck", 0.068, 0.04, (0.13, 0, 1.235), enamel, vertices=14),
     ]
     trim_parts = [
-        torus("shade_rim", 0.177, 0.012, (0.075, 0, 1.14), metal),
-        cylinder("shade_cap", 0.035, 0.055, (0.075, 0, 1.325), metal, vertices=10),
-        sphere("shade_finial", (0.025, 0.025, 0.035), (0.075, 0, 1.375), metal),
+        tube_between("hook_rise", (-0.08, 0, 1.16), (-0.025, 0, 1.34), 0.027, metal, vertices=9),
+        tube_between("hook_curve_a", (-0.025, 0, 1.34), (0.085, 0, 1.39), 0.027, metal, vertices=9),
+        tube_between("hook_curve_b", (0.085, 0, 1.39), (0.13, 0, 1.31), 0.027, metal, vertices=9),
+        tube_between("hook_drop", (0.13, 0, 1.31), (0.13, 0, 1.255), 0.027, metal, vertices=9),
+        torus("shade_rim", 0.173, 0.012, (0.13, 0, 1.085), metal),
+        cylinder("shade_cap", 0.040, 0.045, (0.13, 0, 1.272), metal, vertices=10),
     ]
     bulb_parts = [
-        sphere("bulb", (0.065, 0.065, 0.078), (0.075, 0, 1.075), glow),
-        cylinder("bulb_neck", 0.027, 0.035, (0.075, 0, 1.145), glow, vertices=10),
+        sphere("bulb", (0.078, 0.078, 0.105), (0.13, 0, 0.945), glow),
+        cylinder("bulb_neck", 0.032, 0.055, (0.13, 0, 1.037), glow, vertices=10),
     ]
 
     final = [
@@ -496,11 +610,11 @@ def generate_enamel_garden_lamp(output_dir: Path) -> None:
 def generate_hazel_light_arch(output_dir: Path) -> None:
     name = "HazelLightArch"
     reset_scene(name)
-    hazel = material("Material.HazelLightArch.HazelWood", "#8B5A32", roughness=0.9)
+    hazel = material("Material.HazelLightArch.HazelWood", "#754A25", roughness=0.9)
     terracotta = material(
         "Material.HazelLightArch.Terracotta", "#B75D3E", roughness=0.84
     )
-    cord = material("Material.HazelLightArch.DarkCord", "#3A2A20", roughness=0.92)
+    cord = material("Material.HazelLightArch.DarkCord", "#C8AA72", roughness=0.92)
     glow = material(
         "Material.HazelLightArch.Glow",
         "#FFD582",
@@ -508,45 +622,83 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
         emission_strength=2.6,
     )
 
+    # One gateway in the local long-axis (Y/Z) plane.  The previous source
+    # built a complete arch at both ends of the footprint and joined them with
+    # rails, which read as a four-legged tunnel from the game camera.
     poles: list[bpy.types.Object] = []
-    arch_points = (
-        (-0.36, 0.0),
-        (-0.36, 0.94),
-        (-0.30, 1.18),
-        (-0.16, 1.39),
-        (0.0, 1.50),
-        (0.16, 1.39),
-        (0.30, 1.18),
-        (0.36, 0.94),
-        (0.36, 0.0),
-    )
-    for frame_index, y in enumerate((-0.82, 0.82)):
-        for segment_index, ((x1, z1), (x2, z2)) in enumerate(
-            zip(arch_points, arch_points[1:])
-        ):
-            poles.append(
+    for side_index, sign in enumerate((-1, 1)):
+        y = 0.76 * sign
+        knee_y = 0.72 * sign
+        shoulder_y = 0.64 * sign
+        poles.extend(
+            [
                 tube_between(
-                    f"arch_{frame_index}_{segment_index}",
-                    (x1, y, z1),
-                    (x2, y, z2),
-                    0.031 if segment_index in (0, 7) else 0.027,
+                    f"leg_{side_index}",
+                    (0, y, 0),
+                    (0, y, 0.82),
+                    0.052,
                     hazel,
-                )
-            )
+                    vertices=9,
+                ),
+                tube_between(
+                    f"bent_knee_{side_index}",
+                    (0, y, 0.82),
+                    (0, knee_y, 1.10),
+                    0.050,
+                    hazel,
+                    vertices=9,
+                ),
+                tube_between(
+                    f"bent_shoulder_{side_index}",
+                    (0, knee_y, 1.10),
+                    (0, shoulder_y, 1.36),
+                    0.047,
+                    hazel,
+                    vertices=9,
+                ),
+            ]
+        )
     poles.extend(
         [
-            tube_between("ridge", (0, -0.82, 1.50), (0, 0.82, 1.50), 0.03, hazel),
-            tube_between("left_rail", (-0.36, -0.82, 0.94), (-0.36, 0.82, 0.94), 0.025, hazel),
-            tube_between("right_rail", (0.36, -0.82, 0.94), (0.36, 0.82, 0.94), 0.025, hazel),
+            tube_between("top_rod_upper", (0, -0.69, 1.50), (0, 0.69, 1.50), 0.047, hazel, vertices=9),
+            tube_between("top_rod_lower", (0, -0.69, 1.37), (0, 0.69, 1.37), 0.044, hazel, vertices=9),
+            tube_between("left_top_join", (0, -0.64, 1.36), (0, -0.69, 1.50), 0.044, hazel, vertices=9),
+            tube_between("right_top_join", (0, 0.64, 1.36), (0, 0.69, 1.50), 0.044, hazel, vertices=9),
         ]
     )
 
     cords: list[bpy.types.Object] = []
     shades: list[bpy.types.Object] = []
     bulbs: list[bpy.types.Object] = []
-    for index, y in enumerate((-0.56, 0, 0.56)):
+    # Broad rope loops visibly bind the paired rods at both shoulders and in
+    # the middle; the three lamp cords hang from the lower rod.
+    for index, y in enumerate((-0.61, 0, 0.61)):
+        cords.extend(
+            [
+                torus(
+                    f"top_lashing_{index}_a",
+                    0.082,
+                    0.010,
+                    (0, y - 0.012, 1.435),
+                    cord,
+                    rotation=(math.pi / 2, 0, 0),
+                    major_segments=10,
+                    minor_segments=5,
+                ),
+                torus(
+                    f"top_lashing_{index}_b",
+                    0.082,
+                    0.010,
+                    (0, y + 0.012, 1.435),
+                    cord,
+                    rotation=(math.pi / 2, 0, 0),
+                    major_segments=10,
+                    minor_segments=5,
+                ),
+            ]
+        )
         cords.append(
-            tube_between(f"cord_{index}", (0, y, 1.48), (0, y, 1.285), 0.007, cord, vertices=6)
+            tube_between(f"cord_{index}", (0, y, 1.37), (0, y, 1.245), 0.007, cord, vertices=6)
         )
         shades.extend(
             [
@@ -555,14 +707,38 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
                     0.12,
                     0.042,
                     0.085,
-                    (0, y, 1.245),
+                    (0, y, 1.205),
                     terracotta,
                     vertices=12,
                 ),
-                torus(f"shade_rim_{index}", 0.121, 0.009, (0, y, 1.202), terracotta),
+                torus(f"shade_rim_{index}", 0.121, 0.009, (0, y, 1.162), terracotta),
             ]
         )
-        bulbs.append(sphere(f"bulb_{index}", (0.048, 0.048, 0.06), (0, y, 1.145), glow))
+        bulbs.append(sphere(f"bulb_{index}", (0.052, 0.052, 0.065), (0, y, 1.102), glow))
+
+    for side_index, y in enumerate((-0.78, 0.78)):
+        cords.extend(
+            [
+                torus(
+                    f"foot_lashing_{side_index}_a",
+                    0.055,
+                    0.011,
+                    (0, y, 0.105),
+                    cord,
+                    major_segments=10,
+                    minor_segments=5,
+                ),
+                torus(
+                    f"foot_lashing_{side_index}_b",
+                    0.055,
+                    0.011,
+                    (0, y, 0.135),
+                    cord,
+                    major_segments=10,
+                    minor_segments=5,
+                ),
+            ]
+        )
 
     final = [
         join_objects(poles, "HazelLightArch_Poles", hazel),
@@ -575,48 +751,75 @@ def generate_hazel_light_arch(output_dir: Path) -> None:
 
 def tile_with_leaf_opening(
     name: str,
-    normal_axis: str,
-    sign: int,
+    radial_angle: float,
     value: bpy.types.Material,
 ) -> bpy.types.Object:
-    width = 0.30
-    height = 0.29
-    thickness = 0.038
-    center_height = 0.205
-    radius = 0.185
-    lean = 0.045
+    height = 0.315
+    thickness = 0.026
     outer = (
-        (-width / 2, -height / 2),
-        (width / 2, -height / 2),
-        (width / 2, height / 2),
-        (-width / 2, height / 2),
+        (0.000, 0.000),
+        (0.087, 0.035),
+        (0.111, 0.095),
+        (0.120, 0.205),
+        (0.108, 0.270),
+        (0.077, 0.315),
+        (0.000, 0.294),
+        (-0.077, 0.315),
+        (-0.108, 0.270),
+        (-0.120, 0.205),
+        (-0.111, 0.095),
+        (-0.087, 0.035),
     )
-    inner = ((0, -0.065), (0.06, 0), (0, 0.075), (-0.06, 0))
+    inner = (
+        (0.000, 0.100),
+        (0.014, 0.113),
+        (0.027, 0.140),
+        (0.034, 0.166),
+        (0.029, 0.194),
+        (0.016, 0.218),
+        (0.000, 0.235),
+        (-0.016, 0.218),
+        (-0.029, 0.194),
+        (-0.034, 0.166),
+        (-0.027, 0.140),
+        (-0.014, 0.113),
+    )
     profile = outer + inner
 
     def point(u: float, v: float, shell_side: float) -> tuple[float, float, float]:
-        normalized_u = 2 * u / width
-        convex_bulge = 0.018 * max(0, 1 - normalized_u * normalized_u)
-        outward = sign * (
-            radius
-            + convex_bulge
-            - (v / height) * lean
+        t = max(0.0, min(1.0, v / height))
+        smooth_t = t * t * (3 - 2 * t)
+        transverse_crown = 0.012 * max(0, 1 - (u / 0.120) ** 2)
+        radial = (
+            0.128
+            + 0.029 * smooth_t
+            + 0.010 * t**3
+            + transverse_crown
             + shell_side * thickness / 2
         )
-        if normal_axis == "y":
-            return (u, outward, center_height + v)
-        return (outward, u, center_height + v)
+        # Place the four petals on diagonal radial axes. Their narrow tangent
+        # profiles leave genuine corner seams instead of intersecting into a
+        # square shell while preserving a scooped/flared terracotta silhouette.
+        cosine = math.cos(radial_angle)
+        sine = math.sin(radial_angle)
+        return (
+            radial * cosine - u * sine,
+            radial * sine + u * cosine,
+            0.06 + v,
+        )
 
     vertices = [point(u, v, shell_side) for shell_side in (-1, 1) for u, v in profile]
     faces: list[tuple[int, ...]] = []
-    for current in range(4):
-        following = (current + 1) % 4
-        inner_current = 4 + current
-        inner_following = 4 + following
-        back_outer_current = 8 + current
-        back_outer_following = 8 + following
-        back_inner_current = 12 + current
-        back_inner_following = 12 + following
+    count = len(outer)
+    shell_stride = len(profile)
+    for current in range(count):
+        following = (current + 1) % count
+        inner_current = count + current
+        inner_following = count + following
+        back_outer_current = shell_stride + current
+        back_outer_following = shell_stride + following
+        back_inner_current = shell_stride + count + current
+        back_inner_following = shell_stride + count + following
 
         # Four non-overlapping annular quads on each shell preserve the opening.
         faces.append((current, following, inner_following, inner_current))
@@ -652,6 +855,7 @@ def tile_with_leaf_opening(
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     assign_material(obj, value)
+    recalculate_outside_normals(obj)
     bevel(obj, 0.004)
     return obj
 
@@ -673,17 +877,14 @@ def generate_roof_tile_lantern(output_dir: Path) -> None:
     )
 
     tiles = [
-        tile_with_leaf_opening("tile_front", "y", -1, terracotta),
-        tile_with_leaf_opening("tile_back", "y", 1, terracotta),
-        tile_with_leaf_opening("tile_left", "x", -1, terracotta),
-        tile_with_leaf_opening("tile_right", "x", 1, terracotta),
+        tile_with_leaf_opening(f"tile_{index}", index * math.pi / 2, terracotta)
+        for index in range(4)
     ]
     core = [
-        box("stone_base", (0.36, 0.36, 0.065), (0, 0, 0.0325), limestone, bevel_width=0.022),
-        cylinder("stone_core", 0.135, 0.235, (0, 0, 0.175), limestone, vertices=8),
-        box("stone_cap", (0.25, 0.25, 0.045), (0, 0, 0.3375), limestone, bevel_width=0.015),
+        box("stone_base", (0.44, 0.44, 0.065), (0, 0, 0.0325), limestone, bevel_width=0.022),
+        cylinder("stone_core", 0.040, 0.17, (0, 0, 0.15), limestone, vertices=8),
     ]
-    glow_parts = [sphere("ember_core", (0.105, 0.105, 0.13), (0, 0, 0.19), glow)]
+    glow_parts = [sphere("ember_core", (0.047, 0.047, 0.09), (0, 0, 0.16), glow)]
 
     final = [
         join_objects(tiles, "RoofTileLantern_Tiles", terracotta),
@@ -711,32 +912,46 @@ def generate_wicker_garden_lantern(output_dir: Path) -> None:
     )
 
     wicker_parts: list[bpy.types.Object] = []
-    profile = ((0.17, 0.155), (0.245, 0.25), (0.238, 0.40), (0.19, 0.545), (0.07, 0.635))
-    for rib_index in range(8):
-        angle = rib_index * math.tau / 8
-        points = [
-            (radius * math.cos(angle), radius * math.sin(angle), z)
-            for radius, z in profile
-        ]
-        for segment_index, (start, end) in enumerate(zip(points, points[1:])):
+    bands_per_direction = 6
+    angular_spacing = math.tau / bands_per_direction
+    twist = 2.25
+    for hand in (-1, 1):
+        for band_index in range(bands_per_direction):
+            phase_start = (
+                band_index * angular_spacing
+                + (angular_spacing / 2 if hand < 0 else 0)
+            )
+            points: list[tuple[float, float, float]] = []
+            for sample_index in range(61):
+                progress = sample_index / 60
+                phase = phase_start + hand * twist * progress
+                dome_progress = math.sin(progress * math.pi / 2)
+                radius = 0.225 + (0.100 - 0.225) * dome_progress**1.35
+                # Both families share deterministic crossing levels. Equal-
+                # height centerlines remain separated radially to suggest an
+                # alternating woven over/under order without mesh collisions.
+                crossing_wave = math.cos(
+                    math.pi * (2 * twist * progress / angular_spacing - 0.5)
+                )
+                radial_relief = 0.014 * hand * crossing_wave
+                radius += radial_relief
+                points.append(
+                    (
+                        radius * math.cos(phase),
+                        radius * math.sin(phase),
+                        0.17 + 0.485 * dome_progress,
+                    )
+                )
             wicker_parts.append(
-                tube_between(
-                    f"rib_{rib_index}_{segment_index}",
-                    start,
-                    end,
-                    0.0135,
+                cylindrical_ribbon_along_points(
+                    f"woven_band_{hand}_{band_index}",
+                    points,
+                    0.027,
+                    0.008,
                     wicker,
-                    vertices=7,
                 )
             )
-    wicker_parts.extend(
-        [
-            torus("weave_low", 0.252, 0.013, (0, 0, 0.245), wicker),
-            torus("weave_mid", 0.245, 0.013, (0, 0, 0.405), wicker),
-            torus("weave_high", 0.198, 0.013, (0, 0, 0.548), wicker),
-            sphere("wicker_cap", (0.055, 0.055, 0.035), (0, 0, 0.655), wicker),
-        ]
-    )
+    wicker_parts.append(torus("weave_anchor", 0.247, 0.014, (0, 0, 0.17), wicker))
     terracotta_parts = [
         cylinder("terracotta_base", 0.19, 0.11, (0, 0, 0.055), terracotta, vertices=12),
     ]
@@ -744,7 +959,10 @@ def generate_wicker_garden_lantern(output_dir: Path) -> None:
         cylinder("limestone_plinth", 0.205, 0.05, (0, 0, 0.135), limestone, vertices=12),
         torus("limestone_rim", 0.207, 0.014, (0, 0, 0.16), limestone),
     ]
-    glow_parts = [sphere("honey_core", (0.115, 0.115, 0.16), (0, 0, 0.35), glow)]
+    glow_parts = [
+        cylinder("frosted_core", 0.115, 0.31, (0, 0, 0.355), glow, vertices=12, bevel_width=0.018),
+        sphere("frosted_cap", (0.112, 0.112, 0.085), (0, 0, 0.50), glow),
+    ]
 
     final = [
         join_objects(wicker_parts, "WickerGardenLantern_Wicker", wicker),
@@ -758,12 +976,12 @@ def generate_wicker_garden_lantern(output_dir: Path) -> None:
 def generate_wooden_hand_lantern(output_dir: Path) -> None:
     name = "WoodenHandLantern"
     reset_scene(name)
-    wood = material("Material.WoodenHandLantern.Wood", "#7B4D2B", roughness=0.88)
+    wood = material("Material.WoodenHandLantern.Wood", "#663A1D", roughness=0.88)
     metal = material(
-        "Material.WoodenHandLantern.DarkMetal", "#343536", metallic=0.5, roughness=0.42
+        "Material.WoodenHandLantern.DarkMetal", "#5E4B37", metallic=0.25, roughness=0.55
     )
     glass = material(
-        "Material.WoodenHandLantern.Glass", "#CBE5E6", alpha=0.28, roughness=0.12
+        "Material.WoodenHandLantern.Glass", "#F2DCAD", alpha=0.68, roughness=0.48
     )
     glow = material(
         "Material.WoodenHandLantern.Glow",
@@ -771,36 +989,84 @@ def generate_wooden_hand_lantern(output_dir: Path) -> None:
         roughness=0.28,
         emission_strength=2.8,
     )
+    body_drop = 0.0425
 
     frame = [
-        box("base", (0.40, 0.34, 0.07), (0, 0, 0.035), wood, bevel_width=0.018),
-        box("top", (0.33, 0.28, 0.055), (0, 0, 0.405), wood, bevel_width=0.014),
-        cone("roof", 0.22, 0.085, 0.11, (0, 0, 0.485), wood, vertices=4, rotation=(0, 0, math.pi / 4)),
+        box("base", (0.38, 0.32, 0.065), (0, 0, 0.075 - body_drop), wood, bevel_width=0.016),
+        box("lower_crossbar_front", (0.35, 0.045, 0.065), (0, -0.139, 0.12 - body_drop), wood, bevel_width=0.009),
+        box("lower_crossbar_back", (0.35, 0.045, 0.065), (0, 0.139, 0.12 - body_drop), wood, bevel_width=0.009),
+        box("lower_crossbar_left", (0.045, 0.24, 0.065), (-0.164, 0, 0.12 - body_drop), wood, bevel_width=0.009),
+        box("lower_crossbar_right", (0.045, 0.24, 0.065), (0.164, 0, 0.12 - body_drop), wood, bevel_width=0.009),
+        box("top", (0.35, 0.29, 0.07), (0, 0, 0.405 - body_drop), wood, bevel_width=0.014),
+        cone("roof", 0.215, 0.09, 0.12, (0, 0, 0.50 - body_drop), wood, vertices=4, rotation=(0, 0, math.pi / 4)),
     ]
-    for x in (-0.17, 0.17):
-        for y in (-0.14, 0.14):
-            frame.append(box(f"post_{x}_{y}", (0.032, 0.032, 0.34), (x, y, 0.235), wood, bevel_width=0.006))
+    for x in (-0.164, 0.164):
+        for y in (-0.139, 0.139):
+            frame.extend(
+                [
+                    box(
+                        f"post_{x}_{y}",
+                        (0.045, 0.045, 0.33),
+                        (x, y, 0.25 - body_drop),
+                        wood,
+                        bevel_width=0.007,
+                    ),
+                    box(
+                        f"foot_{x}_{y}",
+                        (0.075, 0.075, 0.105),
+                        (x, y, 0.0975 - body_drop),
+                        wood,
+                        bevel_width=0.010,
+                    ),
+                ]
+            )
 
-    handle_points = ((-0.14, 0, 0.515), (-0.17, 0, 0.565), (-0.09, 0, 0.625), (0, 0, 0.645), (0.09, 0, 0.625), (0.17, 0, 0.565), (0.14, 0, 0.515))
+    handle_points = tuple(
+        (x, y, z - body_drop)
+        for x, y, z in (
+            (-0.14, 0, 0.465),
+            (-0.18, 0, 0.535),
+            (-0.12, 0, 0.600),
+            (0, 0, 0.632),
+            (0.12, 0, 0.600),
+            (0.18, 0, 0.535),
+            (0.14, 0, 0.465),
+        )
+    )
     handle = [
-        tube_between(f"handle_{index}", start, end, 0.013, wood, vertices=8)
+        tube_between(f"handle_{index}", start, end, 0.026, wood, vertices=8)
         for index, (start, end) in enumerate(zip(handle_points, handle_points[1:]))
     ]
 
     glass_parts = [
-        box("glass_front", (0.285, 0.008, 0.27), (0, -0.139, 0.235), glass, bevel_width=0.003),
-        box("glass_back", (0.285, 0.008, 0.27), (0, 0.139, 0.235), glass, bevel_width=0.003),
-        box("glass_left", (0.008, 0.235, 0.27), (-0.169, 0, 0.235), glass, bevel_width=0.003),
-        box("glass_right", (0.008, 0.235, 0.27), (0.169, 0, 0.235), glass, bevel_width=0.003),
+        box("glass_front", (0.275, 0.010, 0.235), (0, -0.138, 0.255 - body_drop), glass, bevel_width=0.003),
+        box("glass_back", (0.275, 0.010, 0.235), (0, 0.138, 0.255 - body_drop), glass, bevel_width=0.003),
+        box("glass_left", (0.010, 0.225, 0.235), (-0.163, 0, 0.255 - body_drop), glass, bevel_width=0.003),
+        box("glass_right", (0.010, 0.225, 0.235), (0.163, 0, 0.255 - body_drop), glass, bevel_width=0.003),
     ]
     metal_parts = [
-        cylinder("candle_cup", 0.066, 0.035, (0, 0, 0.095), metal, vertices=10),
-        cylinder("roof_vent", 0.045, 0.035, (0, 0, 0.552), metal, vertices=10),
-        box("latch", (0.028, 0.012, 0.09), (0.185, -0.145, 0.32), metal, bevel_width=0.003),
+        box("latch", (0.025, 0.012, 0.075), (0.180, -0.145, 0.30 - body_drop), metal, bevel_width=0.003),
+        cylinder(
+            "handle_socket_left",
+            0.040,
+            0.060,
+            (-0.14, 0, 0.485 - body_drop),
+            metal,
+            vertices=10,
+            rotation=(math.pi / 2, 0, 0),
+        ),
+        cylinder(
+            "handle_socket_right",
+            0.040,
+            0.060,
+            (0.14, 0, 0.485 - body_drop),
+            metal,
+            vertices=10,
+            rotation=(math.pi / 2, 0, 0),
+        ),
     ]
     glow_parts = [
-        sphere("lamp_glow", (0.075, 0.075, 0.125), (0, 0, 0.245), glow),
-        cylinder("wick", 0.013, 0.045, (0, 0, 0.34), glow, vertices=8),
+        cylinder("lamp_glow", 0.10, 0.225, (0, 0, 0.255 - body_drop), glow, vertices=12, bevel_width=0.018),
     ]
 
     final = [
@@ -816,17 +1082,17 @@ def generate_wooden_hand_lantern(output_dir: Path) -> None:
 def generate_moon_rain_barrel(output_dir: Path) -> None:
     name = "MoonRainBarrel"
     reset_scene(name)
-    wood = material("Material.MoonRainBarrel.Wood", "#765034", roughness=0.9)
+    wood = material("Material.MoonRainBarrel.Wood", "#86562C", roughness=0.9)
     zinc = material(
-        "Material.MoonRainBarrel.Zinc", "#7E8B8A", metallic=0.45, roughness=0.5
+        "Material.MoonRainBarrel.Zinc", "#777570", metallic=0.28, roughness=0.62
     )
     brass = material(
         "Material.MoonRainBarrel.Brass", "#A67A38", metallic=0.55, roughness=0.4
     )
     water = material(
         "Material.MoonRainBarrel.Water",
-        "#6BAFCA",
-        alpha=0.64,
+        "#42B7D5",
+        alpha=0.76,
         metallic=0.05,
         roughness=0.18,
         emission_strength=0.35,
@@ -838,86 +1104,143 @@ def generate_moon_rain_barrel(output_dir: Path) -> None:
         roughness=0.72,
         emission_strength=0.18,
     )
-    lid_location = Vector((-0.145, 0.145, 0.845))
-    lid_rotation = (-0.32, -0.32, 0.08)
+    limestone = material(
+        "Material.MoonRainBarrel.Limestone", "#D8C9A7", roughness=0.9
+    )
+    lid_location = Vector((0.0, 0.25, 0.73))
+    lid_rotation = (1.22, 0.0, 0.0)
     lid_normal = Euler(lid_rotation).to_matrix() @ Vector((0, 0, 1))
     grip_location = lid_location + lid_normal * 0.045
 
-    staves = [
-        cone("barrel_lower", 0.27, 0.31, 0.26, (0, 0, 0.13), wood, vertices=16),
-        cylinder("barrel_middle", 0.31, 0.30, (0, 0, 0.41), wood, vertices=16),
-        cone("barrel_upper", 0.31, 0.27, 0.22, (0, 0, 0.67), wood, vertices=16),
-    ]
-    for index in range(16):
-        angle = index * math.tau / 16
-        staves.append(
-            box(
-                f"stave_seam_{index}",
-                (0.018, 0.022, 0.70),
-                (0.302 * math.cos(angle), 0.302 * math.sin(angle), 0.40),
-                wood,
-                rotation=(0, 0, angle),
-                bevel_width=0.004,
+    staves: list[bpy.types.Object] = []
+    half_angle = math.pi / 8 - 0.018
+    stave_layers = ((0.08, 0.265), (0.39, 0.31), (0.78, 0.272))
+    for index in range(8):
+        angle = index * math.tau / 8
+        vertices: list[tuple[float, float, float]] = []
+        for z, outer_radius in stave_layers:
+            inner_radius = outer_radius - 0.065
+            vertices.extend(
+                [
+                    (outer_radius * math.cos(angle - half_angle), outer_radius * math.sin(angle - half_angle), z),
+                    (outer_radius * math.cos(angle + half_angle), outer_radius * math.sin(angle + half_angle), z),
+                    (inner_radius * math.cos(angle + half_angle), inner_radius * math.sin(angle + half_angle), z),
+                    (inner_radius * math.cos(angle - half_angle), inner_radius * math.sin(angle - half_angle), z),
+                ]
             )
-        )
+        faces: list[tuple[int, ...]] = [(0, 3, 2, 1), (8, 9, 10, 11)]
+        for layer in range(len(stave_layers) - 1):
+            current = layer * 4
+            following = current + 4
+            faces.extend(
+                [
+                    (current, current + 1, following + 1, following),
+                    (current + 3, following + 3, following + 2, current + 2),
+                    (current, following, following + 3, current + 3),
+                    (current + 1, current + 2, following + 2, following + 1),
+                ]
+            )
+        mesh = bpy.data.meshes.new(f"barrel_stave_{index}_Mesh")
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        stave = bpy.data.objects.new(f"barrel_stave_{index}", mesh)
+        bpy.context.collection.objects.link(stave)
+        assign_material(stave, wood)
+        bevel(stave, 0.006)
+        staves.append(stave)
 
-    bands = [
-        torus(f"band_{index}", 0.327, 0.019, (0, 0, z), zinc)
-        for index, z in enumerate((0.14, 0.42, 0.70))
-    ]
-    bands.append(
-        torus(
-            "lid_band",
-            0.293,
-            0.014,
-            tuple(lid_location),
-            zinc,
-            rotation=lid_rotation,
-        )
-    )
+    bands: list[bpy.types.Object] = []
+    # Two restrained zinc hoops let the warm, bulged staves dominate.  Each
+    # hoop remains eight discrete flat panels with a visible fastening bolt.
+    for band_index, z in enumerate((0.22, 0.59)):
+        for panel_index in range(8):
+            angle = panel_index * math.tau / 8
+            bands.append(
+                box(
+                    f"band_{band_index}_{panel_index}",
+                    (0.032, 0.225, 0.032),
+                    (0.304 * math.cos(angle), 0.304 * math.sin(angle), z),
+                    zinc,
+                    rotation=(0, 0, angle),
+                    bevel_width=0.006,
+                )
+            )
+            bands.append(
+                sphere(
+                    f"band_bolt_{band_index}_{panel_index}",
+                    (0.009, 0.009, 0.009),
+                    (0.322 * math.cos(angle), 0.322 * math.sin(angle), z),
+                    zinc,
+                )
+            )
 
-    lid_parts = [
-        cylinder(
-            "tilted_lid",
-            0.285,
-            0.045,
-            tuple(lid_location),
+    lid_parts: list[bpy.types.Object] = []
+    lid_tangent_x = Euler(lid_rotation).to_matrix() @ Vector((1, 0, 0))
+    lid_tangent_y = Euler(lid_rotation).to_matrix() @ Vector((0, 1, 0))
+    for lid_index, x in enumerate((-0.21, -0.15, -0.09, -0.03, 0.03, 0.09, 0.15, 0.21)):
+        half_width = 0.033
+        half_length = math.sqrt(max(0.0, 0.25**2 - x**2))
+        center = lid_location + lid_tangent_x * x
+        plank = box(
+            f"lid_plank_{lid_index}",
+            (half_width * 2, half_length * 2, 0.045),
+            tuple(center),
             wood,
-            vertices=16,
             rotation=lid_rotation,
-        ),
+            bevel_width=0.008,
+        )
+        lid_parts.append(plank)
+    lid_parts.extend(
+        [
+            box(
+                "lid_batten_left",
+                (0.032, 0.36, 0.030),
+                tuple(lid_location - lid_tangent_x * 0.125 + lid_normal * 0.034),
+                wood,
+                rotation=lid_rotation,
+                bevel_width=0.006,
+            ),
+            box(
+                "lid_batten_right",
+                (0.032, 0.36, 0.030),
+                tuple(lid_location + lid_tangent_x * 0.125 + lid_normal * 0.034),
+                wood,
+                rotation=lid_rotation,
+                bevel_width=0.006,
+            ),
         box(
             "lid_grip",
-            (0.10, 0.035, 0.035),
+            (0.11, 0.040, 0.035),
             tuple(grip_location),
             wood,
             rotation=lid_rotation,
             bevel_width=0.008,
         ),
-    ]
+        ]
+    )
 
     tap_parts = [
-        tube_between("tap_body", (0, -0.295, 0.35), (0, -0.385, 0.35), 0.025, brass, vertices=10),
-        tube_between("tap_spout", (0, -0.385, 0.35), (0, -0.385, 0.285), 0.021, brass, vertices=10),
-        cylinder("tap_knob", 0.052, 0.018, (0, -0.35, 0.405), brass, vertices=8, rotation=(math.pi / 2, 0, 0)),
-        tube_between("tap_stem", (0, -0.34, 0.35), (0, -0.34, 0.405), 0.012, brass, vertices=8),
+        tube_between("tap_body", (0, -0.30, 0.34), (0, -0.39, 0.34), 0.027, brass, vertices=10),
+        tube_between("tap_spout", (0, -0.39, 0.34), (0, -0.39, 0.27), 0.023, brass, vertices=10),
+        cylinder("tap_knob", 0.055, 0.020, (0, -0.355, 0.405), brass, vertices=8, rotation=(math.pi / 2, 0, 0)),
+        tube_between("tap_stem", (0, -0.345, 0.34), (0, -0.345, 0.405), 0.013, brass, vertices=8),
     ]
 
     water_parts = [
-        cylinder("water_surface", 0.255, 0.009, (0, 0, 0.795), water, vertices=24, bevel_width=0),
+        cylinder("water_surface", 0.238, 0.008, (0, 0, 0.705), water, vertices=24, bevel_width=0),
     ]
     leaf_parts = [
         sphere(
             "floating_leaf",
             (0.090, 0.045, 0.010),
-            (0.12, -0.10, 0.807),
+            (0.10, -0.07, 0.714),
             leaf,
             rotation=(0, 0, -0.35),
         ),
         tube_between(
             "leaf_stem",
-            (0.075, -0.105, 0.81),
-            (0.02, -0.14, 0.812),
+            (0.055, -0.075, 0.717),
+            (0.00, -0.11, 0.719),
             0.006,
             leaf,
             vertices=6,
@@ -942,9 +1265,13 @@ def generate_moon_rain_barrel(output_dir: Path) -> None:
             "submerged_crescent",
             (*outer_arc, *inner_arc),
             0.018,
-            (0.075, -0.075, 0.778),
+            (-0.09, -0.08, 0.707),
             moon_stone,
         )
+    ]
+    limestone_parts = [
+        box("support_left", (0.16, 0.18, 0.10), (-0.22, -0.08, 0.05), limestone, rotation=(0, 0, -0.08), bevel_width=0.025),
+        box("support_right", (0.16, 0.18, 0.10), (0.22, -0.08, 0.05), limestone, rotation=(0, 0, 0.08), bevel_width=0.025),
     ]
 
     final = [
@@ -958,6 +1285,11 @@ def generate_moon_rain_barrel(output_dir: Path) -> None:
             moon_stone_parts,
             "MoonRainBarrel_MoonStone",
             moon_stone,
+        ),
+        join_objects(
+            limestone_parts,
+            "MoonRainBarrel_LimestoneFeet",
+            limestone,
         ),
     ]
     save_asset(name, output_dir, final)

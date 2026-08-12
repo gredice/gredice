@@ -59,7 +59,11 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     cameraTarget?: [number, number, number];
     /** Sets a stable screen-up direction for vertical and near-vertical views. */
     cameraUp?: [number, number, number];
+    /** Optional deterministic scene time for visual verification captures. */
+    freezeTime?: Date;
 };
+
+const defaultEntityViewerFreezeTime = new Date(2024, 5, 21, 12, 0, 0);
 
 function CameraLookAt({
     target,
@@ -97,6 +101,7 @@ export function EntityViewer({
     cameraPosition,
     cameraTarget,
     cameraUp,
+    freezeTime = defaultEntityViewerFreezeTime,
     ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -104,12 +109,16 @@ export function EntityViewer({
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
             dayNightCycleDisabled: false,
-            freezeTime: new Date(2024, 5, 21, 12, 0, 0),
+            freezeTime,
             isMock: true,
             winterMode: 'summer',
         });
     }
     useDisposeGameStateStore(storeRef.current);
+
+    useEffect(() => {
+        storeRef.current?.getState().setFreezeTime(freezeTime);
+    }, [freezeTime]);
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;

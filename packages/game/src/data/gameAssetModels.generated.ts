@@ -96,21 +96,21 @@ export const gameAssetModels = {
         url: '/assets/models/SmallWoodenBridge.glb?v=3f5e5e39b5e4',
     },
     WoodenWalkway: { url: '/assets/models/WoodenWalkway.glb?v=b4345a9a9ca1' },
-    StoneWalkway: { url: '/assets/models/StoneWalkway.glb?v=9a02593e2b26' },
+    StoneWalkway: { url: '/assets/models/StoneWalkway.glb?v=075166e14408' },
     EnamelGardenLamp: {
-        url: '/assets/models/EnamelGardenLamp.glb?v=4b2a7c1c93dd',
+        url: '/assets/models/EnamelGardenLamp.glb?v=c945af2c0198',
     },
-    HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=ee75ad25489e' },
+    HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=c8f9daebfbd2' },
     RoofTileLantern: {
-        url: '/assets/models/RoofTileLantern.glb?v=07a3a01fb75b',
+        url: '/assets/models/RoofTileLantern.glb?v=0a51dad18321',
     },
     WickerGardenLantern: {
-        url: '/assets/models/WickerGardenLantern.glb?v=45c25b93f310',
+        url: '/assets/models/WickerGardenLantern.glb?v=b7a3c7c8a4fe',
     },
     WoodenHandLantern: {
-        url: '/assets/models/WoodenHandLantern.glb?v=3efbdb200010',
+        url: '/assets/models/WoodenHandLantern.glb?v=583d3ee52834',
     },
-    MoonRainBarrel: { url: '/assets/models/MoonRainBarrel.glb?v=9462827a992b' },
+    MoonRainBarrel: { url: '/assets/models/MoonRainBarrel.glb?v=7425319b60fc' },
     Fence: { url: '/assets/models/Fence.glb?v=a23f2ed5242a' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },

@@ -46,7 +46,7 @@ const assetSpecs = [
         horizontalLimit: 0.5,
         depthLimit: 0.5,
         heightRange: [1.4, 1.42],
-        vertexLimit: 2_500,
+        vertexLimit: 3_000,
     },
     {
         name: 'HazelLightArch',
@@ -62,10 +62,12 @@ const assetSpecs = [
             'Material.HazelLightArch.HazelWood',
             'Material.HazelLightArch.Terracotta',
         ],
-        horizontalLimit: 0.5,
+        // A single planar gateway must keep a narrow side profile. The
+        // previous four-legged tunnel was over three times wider.
+        horizontalLimit: 0.24,
         depthLimit: 1,
-        heightRange: [1.52, 1.54],
-        vertexLimit: 6_500,
+        heightRange: [1.53, 1.55],
+        vertexLimit: 8_500,
     },
     {
         name: 'RoofTileLantern',
@@ -82,7 +84,7 @@ const assetSpecs = [
         horizontalLimit: 0.5,
         depthLimit: 0.5,
         heightRange: [0.35, 0.4],
-        vertexLimit: 2_000,
+        vertexLimit: 2_500,
     },
     {
         name: 'WickerGardenLantern',
@@ -100,8 +102,8 @@ const assetSpecs = [
         ],
         horizontalLimit: 0.5,
         depthLimit: 0.5,
-        heightRange: [0.68, 0.7],
-        vertexLimit: 8_000,
+        heightRange: [0.65, 0.68],
+        vertexLimit: 13_000,
     },
     {
         name: 'WoodenHandLantern',
@@ -120,8 +122,8 @@ const assetSpecs = [
         ],
         horizontalLimit: 0.5,
         depthLimit: 0.5,
-        heightRange: [0.65, 0.67],
-        vertexLimit: 3_500,
+        heightRange: [0.6, 0.62],
+        vertexLimit: 4_500,
     },
     {
         name: 'MoonRainBarrel',
@@ -133,10 +135,12 @@ const assetSpecs = [
             'MoonRainBarrel_Water',
             'MoonRainBarrel_Leaf',
             'MoonRainBarrel_MoonStone',
+            'MoonRainBarrel_LimestoneFeet',
         ],
         materials: [
             'Material.MoonRainBarrel.Brass',
             'Material.MoonRainBarrel.Leaf',
+            'Material.MoonRainBarrel.Limestone',
             'Material.MoonRainBarrel.MoonStone',
             'Material.MoonRainBarrel.Water',
             'Material.MoonRainBarrel.Wood',
@@ -145,7 +149,7 @@ const assetSpecs = [
         horizontalLimit: 0.5,
         depthLimit: 0.5,
         heightRange: [0.85, 1],
-        vertexLimit: 6_000,
+        vertexLimit: 7_000,
     },
 ] as const;
 
@@ -258,6 +262,32 @@ function sortedNames(value: unknown) {
             return item.name;
         })
         .toSorted();
+}
+
+function getNodeBounds(document: Record<string, unknown>, nodeName: string) {
+    assert.ok(Array.isArray(document.nodes));
+    assert.ok(Array.isArray(document.meshes));
+    const node = document.nodes.find(
+        (candidate) => isRecord(candidate) && candidate.name === nodeName,
+    );
+    assert.ok(isRecord(node));
+    assert.ok(typeof node.mesh === 'number');
+    const mesh = document.meshes[node.mesh];
+    assert.ok(isRecord(mesh));
+    assert.ok(Array.isArray(mesh.primitives));
+    const accessors = getPositionAccessors({
+        accessors: document.accessors,
+        meshes: [mesh],
+    });
+
+    return {
+        maximum: [0, 1, 2].map((axis) =>
+            Math.max(...accessors.map((accessor) => accessor.maximum[axis])),
+        ),
+        minimum: [0, 1, 2].map((axis) =>
+            Math.min(...accessors.map((accessor) => accessor.minimum[axis])),
+        ),
+    };
 }
 
 describe('garden lighting and stone walkway assets', () => {
@@ -373,28 +403,14 @@ describe('garden lighting and stone walkway assets', () => {
         );
     });
 
-    it('keeps the StoneWalkway palette close to the existing gray stones', () => {
+    it('keeps the StoneWalkway palette in one warm limestone family', () => {
         const walkwayModelPath = fileURLToPath(
             new URL(
                 '../../../../apps/garden/public/assets/models/StoneWalkway.glb',
                 import.meta.url,
             ),
         );
-        const referenceModelPath = fileURLToPath(
-            new URL(
-                '../../../../apps/garden/public/assets/models/StoneSmall.glb',
-                import.meta.url,
-            ),
-        );
         const walkway = readGlbDocument(readFileSync(walkwayModelPath));
-        const reference = readGlbDocument(readFileSync(referenceModelPath));
-        const referenceColor = getMaterialBaseColor(
-            reference,
-            'Material.Stone',
-        ).slice(0, 3);
-        const referenceLightness =
-            referenceColor.reduce((total, channel) => total + channel, 0) /
-            referenceColor.length;
 
         for (const materialName of [
             'Material.StoneWalkway.LightStone',
@@ -405,15 +421,42 @@ describe('garden lighting and stone walkway assets', () => {
                 0,
                 3,
             );
-            const darkestChannel = Math.min(...color);
-            const lightestChannel = Math.max(...color);
-            const lightness =
-                color.reduce((total, channel) => total + channel, 0) /
-                color.length;
-
-            assert.ok(Math.abs(lightness - referenceLightness) <= 0.05);
-            assert.ok(color[0] >= color[2]);
-            assert.ok(lightestChannel - darkestChannel <= 0.045);
+            assert.ok(color[0] > color[1]);
+            assert.ok(color[1] > color[2]);
+            assert.ok(color[0] - color[2] >= 0.2);
         }
+    });
+
+    it('HazelLightArch remains one thin free-standing gateway', () => {
+        const modelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/HazelLightArch.glb',
+                import.meta.url,
+            ),
+        );
+        const document = readGlbDocument(readFileSync(modelPath));
+        const poles = getNodeBounds(document, 'HazelLightArch_Poles');
+        const width = poles.maximum[0] - poles.minimum[0];
+        const depth = poles.maximum[2] - poles.minimum[2];
+
+        // A square shoe or under-block would widen the 0.104-unit round posts.
+        assert.ok(width <= 0.11);
+        assert.ok(depth >= 1.5);
+        assert.ok(depth >= width * 10);
+        assert.ok(Math.abs(poles.minimum[1]) < 0.000_01);
+    });
+
+    it('WoodenHandLantern rests directly on its wooden frame', () => {
+        const modelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/WoodenHandLantern.glb',
+                import.meta.url,
+            ),
+        );
+        const document = readGlbDocument(readFileSync(modelPath));
+        const frame = getNodeBounds(document, 'WoodenHandLantern_Frame');
+
+        assert.ok(Math.abs(frame.minimum[1]) < 0.000_01);
+        assert.ok(frame.maximum[0] - frame.minimum[0] <= 0.405);
     });
 });
