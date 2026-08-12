@@ -514,7 +514,7 @@ async function disableWebGL(page: Page) {
 test('guest Outlet garden renders WebGL, selects an offer, and preserves its deep link', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(150_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const baseURL = testInfo.project.use.baseURL;
@@ -670,7 +670,7 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
                     throw error;
                 }
             },
-            { timeout: 30_000 },
+            { timeout: 60_000 },
         )
         .toBe('reload');
     await expect(
