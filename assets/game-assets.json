@@ -1878,7 +1878,7 @@
             "name": "WoodenSign",
             "source": "WoodenSign.blend",
             "output": "WoodenSign.glb",
-            "version": "0c75cd59f180",
+            "version": "970d78ef2f60",
             "preload": "lazy",
             "objects": [
                 "WoodenSign_Post",
