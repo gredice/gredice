@@ -50,6 +50,7 @@ export const localSandboxBlockNames = [
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',
+    'FishingBoat',
     'WaterWell',
     'LemonadeStand',
     'IceCreamCart',
@@ -177,6 +178,11 @@ const localSandboxBlockMetadata: Partial<
         shortDescription:
             'Niske vapnenačke ploče za stazu preko tla ili uskog vodenog kanala.',
     },
+    FishingBoat: {
+        label: 'Ribarska barka',
+        shortDescription:
+            'Tamna drvena barka s dvije klupe, veslima i spremljenom ribarskom mrežom.',
+    },
     EnamelGardenLamp: {
         label: 'Emajlirana vrtna lampa',
         shortDescription:
@@ -285,6 +291,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WickerGardenLantern: 0.7,
         WoodenHandLantern: 0.66,
         MoonRainBarrel: 1,
+        FishingBoat: 0.62,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
         Snowman: 0.5,
@@ -382,6 +389,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 1,
         hitboxWidth: 0.76,
     },
+    FishingBoat: {
+        hitboxDepth: 1.84,
+        hitboxHeight: 0.62,
+        hitboxWidth: 0.94,
+    },
     SummerHat: {
         hitboxDepth: 0.64,
         hitboxHeight: 0.2,
@@ -421,6 +433,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     StoneWalkway: {
         placeableOnWater: true,
         spanDepth: 1,
+        spanWidth: 1,
+    },
+    FishingBoat: {
+        placeableOnWater: true,
+        spanDepth: 2,
         spanWidth: 1,
     },
     EnamelGardenLamp: {

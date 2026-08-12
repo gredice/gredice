@@ -210,6 +210,23 @@ test('local sandbox exposes the wooden walkway with its model bounds', () => {
     assert.equal(walkway.attributes.placeableOnWater, true);
 });
 
+test('local sandbox exposes the fishing boat as a two-cell water decoration', () => {
+    const boat = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'FishingBoat',
+    );
+
+    assert.ok(boat);
+    assert.equal(boat.information.label, 'Ribarska barka');
+    assert.equal(boat.attributes.height, 0.62);
+    assert.equal(boat.attributes.hitboxDepth, 1.84);
+    assert.equal(boat.attributes.hitboxHeight, 0.62);
+    assert.equal(boat.attributes.hitboxWidth, 0.94);
+    assert.equal(boat.attributes.placeableOnWater, true);
+    assert.equal(boat.attributes.spanDepth, 2);
+    assert.equal(boat.attributes.spanWidth, 1);
+    assert.equal(boat.attributes.stackable, false);
+});
+
 test('local sandbox exposes the new walkway and lighting blocks with catalog dimensions', () => {
     const blockData = getLocalSandboxBlockData();
     const expectedBlocks = [

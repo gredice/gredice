@@ -449,6 +449,8 @@ export type GameState = {
     gardenAvatarCrouchInput: boolean;
     gardenAvatarZoomInput: boolean;
     gardenAvatarJumpRequest: number;
+    gardenAvatarBoatId: string | null;
+    gardenAvatarAimedBoatId: string | null;
     closeupBlock: Block | null;
     closeupCameraActive: boolean;
     closeupCameraSettled: boolean;
@@ -465,6 +467,8 @@ export type GameState = {
     setGardenAvatarCrouchInput: (active: boolean) => void;
     setGardenAvatarZoomInput: (active: boolean) => void;
     requestGardenAvatarJump: () => void;
+    setGardenAvatarBoatId: (blockId: string | null) => void;
+    setGardenAvatarAimedBoatId: (blockId: string | null) => void;
 
     // Debug (overrides)
     editHitboxDebugVisible: boolean;
@@ -1065,6 +1069,8 @@ export function createGameState({
         gardenAvatarCrouchInput: false,
         gardenAvatarZoomInput: false,
         gardenAvatarJumpRequest: 0,
+        gardenAvatarBoatId: null,
+        gardenAvatarAimedBoatId: null,
         closeupBlock: null,
         closeupCameraActive: false,
         closeupCameraSettled: false,
@@ -1099,6 +1105,8 @@ export function createGameState({
                           gardenAvatarSprintInput: false,
                           gardenAvatarCrouchInput: false,
                           gardenAvatarZoomInput: false,
+                          gardenAvatarBoatId: null,
+                          gardenAvatarAimedBoatId: null,
                       }
                     : {
                           gardenAvatarView,
@@ -1121,6 +1129,19 @@ export function createGameState({
             set((state) => ({
                 gardenAvatarJumpRequest: state.gardenAvatarJumpRequest + 1,
             })),
+        setGardenAvatarBoatId: (gardenAvatarBoatId) => {
+            if (get().gardenAvatarBoatId !== gardenAvatarBoatId) {
+                triggerSelectionHaptic();
+            }
+            set({
+                gardenAvatarBoatId,
+                gardenAvatarAimedBoatId: null,
+                gardenAvatarCrouchInput: false,
+                gardenAvatarSprintInput: false,
+            });
+        },
+        setGardenAvatarAimedBoatId: (gardenAvatarAimedBoatId) =>
+            set({ gardenAvatarAimedBoatId }),
 
         isDragging: false,
         gameCamera: null,

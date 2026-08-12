@@ -19,6 +19,7 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
     { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
+    { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
     { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
     { label: 'Svjetleći luk od lijeske', price: 120, picker: 'Rasvjeta' },
     { label: 'Fenjer od starog crijepa', price: 40, picker: 'Rasvjeta' },
@@ -588,6 +589,9 @@ test('local sandbox decoration picker includes sunflower and mulch', async ({
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Kamena staza' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Ribarska barka' }),
     ).toBeVisible();
     await expect(
         page

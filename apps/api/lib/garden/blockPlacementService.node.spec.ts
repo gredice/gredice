@@ -15,6 +15,28 @@ const blockDataByName = new Map([
         },
     ],
     [
+        'Block_Swamp',
+        {
+            attributes: {
+                stackable: true,
+                height: 1,
+                placeableOnWater: true,
+            },
+        },
+    ],
+    [
+        'FishingBoat',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.62,
+                placeableOnWater: true,
+                spanWidth: 1,
+                spanDepth: 2,
+            },
+        },
+    ],
+    [
         'SmallWoodenBridge',
         {
             attributes: {
@@ -291,6 +313,55 @@ describe('resolveGardenBlockPlacement', () => {
             });
         });
     }
+
+    it('requires water or swamp below every fishing boat footprint cell', () => {
+        const supportCases = [
+            {
+                name: 'water',
+                supportNames: ['Block_Water', 'Block_Water'],
+                valid: true,
+            },
+            {
+                name: 'swamp',
+                supportNames: ['Block_Swamp', 'Block_Swamp'],
+                valid: true,
+            },
+            {
+                name: 'land',
+                supportNames: ['Block_Grass', 'Block_Grass'],
+                valid: false,
+            },
+            {
+                name: 'partial water',
+                supportNames: ['Block_Water'],
+                valid: false,
+            },
+        ] as const;
+
+        for (const supportCase of supportCases) {
+            const supportBlocks = supportCase.supportNames.map(
+                (supportName, index) => ({
+                    id: `${supportCase.name}-${index.toString()}`,
+                    name: supportName,
+                }),
+            );
+            const placement = resolveGardenBlockPlacement({
+                blockName: 'FishingBoat',
+                requestedPosition: { x: 0, y: 0 },
+                stacks: supportBlocks.map((support, index) => ({
+                    positionX: 0,
+                    positionY: index,
+                    blocks: [support.id],
+                })),
+                blockNameById: new Map(
+                    supportBlocks.map((support) => [support.id, support.name]),
+                ),
+                blockDataByName,
+            });
+
+            assert.equal(placement.valid, supportCase.valid, supportCase.name);
+        }
+    });
 
     it('rejects multi-block placement on uneven footprint support', () => {
         const placement = resolveGardenBlockPlacement({

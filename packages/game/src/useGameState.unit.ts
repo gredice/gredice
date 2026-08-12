@@ -592,6 +592,13 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         assert.equal(store.getState().gardenAvatarZoomInput, true);
         assert.equal(store.getState().gardenAvatarCollisionDebugVisible, false);
 
+        store.getState().setGardenAvatarAimedBoatId('boat-a');
+        store.getState().setGardenAvatarBoatId('boat-a');
+        assert.equal(store.getState().gardenAvatarBoatId, 'boat-a');
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+
         store.getState().setGardenAvatarCollisionDebugVisible(true);
         assert.equal(store.getState().gardenAvatarCollisionDebugVisible, true);
 
@@ -604,6 +611,8 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         assert.equal(store.getState().gardenAvatarSprintInput, false);
         assert.equal(store.getState().gardenAvatarCrouchInput, false);
         assert.equal(store.getState().gardenAvatarZoomInput, false);
+        assert.equal(store.getState().gardenAvatarBoatId, null);
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
     } finally {
         store.getState().audio.dispose();
     }

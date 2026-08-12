@@ -1,6 +1,8 @@
 import {
     canStackBlockOnBlock,
     getGardenBlockFootprintOffsets,
+    isWaterOrSwampBlockName,
+    requiresWaterOrSwampSupport,
     type GardenBlockDataLike as SharedGardenBlockDataLike,
 } from '@gredice/js/gardenBlocks';
 
@@ -224,6 +226,16 @@ export function validateStackPlacement(params: {
     blockDataByName: Map<string, BlockDataLike>;
 }): ValidationResult {
     const { blockIds, blockNameById, blockDataByName } = params;
+    const bottomBlockId = blockIds[0];
+    const bottomBlockName = bottomBlockId
+        ? blockNameById.get(bottomBlockId)
+        : undefined;
+    if (bottomBlockName && requiresWaterOrSwampSupport(bottomBlockName)) {
+        return {
+            valid: false,
+            error: `Invalid stack placement: block ${bottomBlockId} requires water or swamp support`,
+        };
+    }
 
     for (let index = 1; index < blockIds.length; index++) {
         const belowBlockId = blockIds[index - 1];
@@ -571,6 +583,16 @@ export function validateSpanningBlockMove(params: {
         const x = destinationPosition.x + offset.x;
         const y = destinationPosition.y + offset.y;
         const topOccupiedCell = getTopOccupiedCell(occupiedCells, x, y);
+        if (
+            requiresWaterOrSwampSupport(movedBlockName) &&
+            (!topOccupiedCell ||
+                !isWaterOrSwampBlockName(topOccupiedCell.blockName))
+        ) {
+            return {
+                valid: false,
+                error: `Invalid block placement: ${movedBlockName} requires water or swamp under every footprint cell`,
+            };
+        }
         if (
             topOccupiedCell &&
             !canStackBlockOnBlock({

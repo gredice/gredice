@@ -8,6 +8,7 @@ import type { Stack } from '../types/Stack';
 import { GameStateContext, useGameState } from '../useGameState';
 import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
 import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
+import { canRotatePlacedBlock } from './blockRotation';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
 const DOUBLE_TAP_THRESHOLD_MS = 320;
@@ -36,6 +37,10 @@ export function RotatableGroup({
     const firstTapTimeStamp = useRef(0);
 
     function doRotate() {
+        if (!canRotatePlacedBlock(block.name)) {
+            return false;
+        }
+
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||

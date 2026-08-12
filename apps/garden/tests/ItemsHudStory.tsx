@@ -180,6 +180,14 @@ const blockFixtures: Record<
         height: 0.1,
         stackable: false,
     },
+    FishingBoat: {
+        label: 'Ribarska barka',
+        shortDescription:
+            'Tamna drvena barka s dvije klupe, veslima i spremljenom ribarskom mrežom.',
+        sunflowers: 150,
+        height: 0.62,
+        stackable: false,
+    },
     FireflyJar: {
         label: 'Staklenka s krijesnicom',
         shortDescription:
@@ -321,6 +329,7 @@ const blockNames = [
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',
+    'FishingBoat',
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
