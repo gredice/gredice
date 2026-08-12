@@ -242,9 +242,9 @@ function createSignageBlockAttributes({
                 hitboxWidth: '0.88',
                 price: woodenSignPrice,
                 shortDescription:
-                    'Drvena vrtna ploča na koju možeš upisati vlastiti natpis do 12 znakova u jednom ili dva reda.',
+                    'Drvena vrtna ploča na koju možeš upisati vlastiti natpis do 12 znakova po redu, u jednom ili dva reda.',
                 fullDescription:
-                    'Postavi drvenu ploču uz gredicu, stazu ili ulaz, zatim je odaberi i upiši natpis do 12 znakova. Tekst može biti raspoređen u jednom ili dva reda i kasnije ga možeš ponovno urediti.',
+                    'Postavi drvenu ploču uz gredicu, stazu ili ulaz, zatim je odaberi i upiši natpis do 12 znakova po redu. Tekst može biti raspoređen u jednom ili dva reda i kasnije ga možeš ponovno urediti.',
             }),
         },
     ];

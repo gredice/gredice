@@ -5,6 +5,7 @@ import { WoodenSignModalStory } from './WoodenSignModalStory';
 const woodenSignTestGardenId = 42;
 const woodenSignTestBlockId = 'wooden-sign-1';
 const woodenSignInitialMessage = 'DOBRO\nDOŠLI!!';
+const woodenSignMaximumMessage = 'ABCDEFGHIJKL\nMNOPQRSTUVWX';
 
 const updatePath = `/api/gredice/api/gardens/${woodenSignTestGardenId.toString()}/blocks/${woodenSignTestBlockId}`;
 
@@ -102,7 +103,7 @@ test('shows the existing two-row inscription and its grapheme counter', async ({
 
     await expect(dialog).toBeVisible();
     await expect(editor).toHaveValue(woodenSignInitialMessage);
-    await expect(dialog.getByText('12/12', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('12/24', { exact: true })).toBeVisible();
 });
 
 test('keeps one Unicode grapheme intact while rejecting the thirteenth character', async ({
@@ -122,6 +123,23 @@ test('keeps one Unicode grapheme intact while rejecting the thirteenth character
     await expect(dialog.getByText('12/12', { exact: true })).toBeVisible();
 });
 
+test('allows twelve Unicode graphemes on each row and rejects the thirteenth per row', async ({
+    mount,
+    page,
+}) => {
+    await mount(<WoodenSignModalStory />);
+
+    const dialog = page.getByRole('dialog', {
+        name: 'Uredi drveni natpis',
+    });
+    const editor = dialog.getByLabel('Tekst na drvenom natpisu');
+
+    await editor.fill('12345678901👩‍🌾A\nABCDEFGHIJKLZ');
+
+    await expect(editor).toHaveValue('12345678901👩‍🌾\nABCDEFGHIJKL');
+    await expect(dialog.getByText('24/24', { exact: true })).toBeVisible();
+});
+
 test('optimistically updates the sign, sends the exact payload, and closes after success', async ({
     mount,
     page,
@@ -131,7 +149,7 @@ test('optimistically updates the sign, sends the exact payload, and closes after
         releaseResponse = resolve;
     });
     const updatePayloads = await mockWoodenSignRequests(page, {
-        responseMessage: 'MOJ\nVRT',
+        responseMessage: woodenSignMaximumMessage,
         responseReady,
     });
     await mount(<WoodenSignModalStory />);
@@ -139,12 +157,16 @@ test('optimistically updates the sign, sends the exact payload, and closes after
     const dialog = page.getByRole('dialog', {
         name: 'Uredi drveni natpis',
     });
-    await dialog.getByLabel('Tekst na drvenom natpisu').fill('MOJ\nVRT');
+    await dialog
+        .getByLabel('Tekst na drvenom natpisu')
+        .fill(woodenSignMaximumMessage);
     await dialog.getByRole('button', { name: 'Spremi natpis' }).click();
 
-    await expect.poll(() => updatePayloads).toEqual([{ message: 'MOJ\nVRT' }]);
+    await expect
+        .poll(() => updatePayloads)
+        .toEqual([{ message: woodenSignMaximumMessage }]);
     await expect(page.getByTestId('current-sign-message')).toHaveText(
-        'MOJ\nVRT',
+        woodenSignMaximumMessage,
     );
 
     releaseResponse();

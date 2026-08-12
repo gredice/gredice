@@ -19,7 +19,7 @@ import {
     isValidWoodenSignMessage,
     normalizeWoodenSignMessage,
     woodenSignBlockName,
-    woodenSignMessageMaxGraphemes,
+    woodenSignMessageMaxGraphemesPerLine,
 } from '@gredice/js/woodenSign';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
@@ -194,7 +194,7 @@ const gardenLikeBodySchema = z
 const woodenSignMessageSchema = z
     .union([z.string(), z.null()])
     .refine(isValidWoodenSignMessage, {
-        message: `Sign message must contain at most ${woodenSignMessageMaxGraphemes.toString()} characters across one or two rows and no control characters`,
+        message: `Sign message must contain at most ${woodenSignMessageMaxGraphemesPerLine.toString()} characters per row across one or two rows and no control characters`,
     })
     .transform((message) =>
         message === null ? null : normalizeWoodenSignMessage(message),
