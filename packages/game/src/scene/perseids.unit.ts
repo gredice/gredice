@@ -27,9 +27,9 @@ test('uses the recurring July 17 through August 24 activity window', () => {
     assert.equal(getPerseidsActiveWindowDurationDays(), 39);
 });
 
-test('doubles the real-world activity profile and peaks on August 13', () => {
+test('triples the original in-game cadence and peaks on August 13', () => {
     const peak = new Date(2026, 7, 13, 0, 0);
-    assert.equal(PERSEIDS_DENSITY_MULTIPLIER, 2);
+    assert.equal(PERSEIDS_DENSITY_MULTIPLIER, 6);
     assert.equal(getPerseidsRealRatePerHour(peak), PERSEIDS_REAL_PEAK_ZHR);
     assert.equal(
         getPerseidsMeteorRatePerHour(peak),
@@ -44,7 +44,7 @@ test('doubles the real-world activity profile and peaks on August 13', () => {
     ]) {
         assert.equal(
             getPerseidsMeteorRatePerHour(date),
-            getPerseidsRealRatePerHour(date) * 2,
+            getPerseidsRealRatePerHour(date) * PERSEIDS_DENSITY_MULTIPLIER,
         );
     }
 });
