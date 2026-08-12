@@ -218,11 +218,6 @@ async function mockGardenApi(
             pathname.endsWith('/api/gardens/1/raised-beds/10/sensors')
         ) {
             body = [];
-        } else if (
-            withGarden &&
-            pathname.endsWith('/api/gardens/1/raised-bed-notifications')
-        ) {
-            body = { notifications: [] };
         } else if (withGarden && pathname.endsWith('/api/gardens/1')) {
             body = gardenOverviewDetail;
         } else if (pathname.endsWith('/api/gardens')) {
