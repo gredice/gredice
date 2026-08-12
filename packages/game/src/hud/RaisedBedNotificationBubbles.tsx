@@ -9,12 +9,14 @@ import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
 import { getStackHeight } from '../utils/stackHeightCore';
 import {
     RaisedBedNotificationBubbleContent,
+    RaisedBedNotificationImageViewer,
     type SelectedRaisedBedGardenNotification,
     useRaisedBedNotificationSurface,
 } from './RaisedBedNotificationSurface';
 
 export {
     RaisedBedNotificationBubbleContent,
+    RaisedBedNotificationImageViewer,
     useRaisedBedNotificationSurface,
 } from './RaisedBedNotificationSurface';
 
@@ -86,11 +88,18 @@ export function getRaisedBedNotificationAnchor(
 
 export function RaisedBedNotificationBubble({
     notification,
+    onDismiss,
     onOpen,
+    onOpenImage,
     position,
 }: {
     notification: SelectedRaisedBedGardenNotification;
+    onDismiss: (notification: SelectedRaisedBedGardenNotification) => void;
     onOpen: (notification: SelectedRaisedBedGardenNotification) => void;
+    onOpenImage: (
+        notification: SelectedRaisedBedGardenNotification,
+        imageUrl: string,
+    ) => void;
     position: [x: number, y: number, z: number];
 }) {
     return (
@@ -98,7 +107,9 @@ export function RaisedBedNotificationBubble({
             <div className="-translate-x-1/2 -translate-y-[calc(100%+0.5rem)]">
                 <RaisedBedNotificationBubbleContent
                     notification={notification}
+                    onDismiss={onDismiss}
                     onOpen={onOpen}
+                    onOpenImage={onOpenImage}
                 />
             </div>
         </Html>
@@ -120,26 +131,46 @@ export function RaisedBedNotificationBubbles({
             state.activeDragPreview !== null ||
             state.hudPlacementDrag !== null,
     );
-    const { notifications, openNotification } =
-        useRaisedBedNotificationSurface(garden);
+    const {
+        closeImageViewer,
+        dismissNotification,
+        notifications,
+        openImageNotification,
+        openNotification,
+        viewerImage,
+    } = useRaisedBedNotificationSurface(garden);
 
     if (!garden || view === 'closeup' || hasActivePlacement) {
         return null;
     }
 
-    return notifications.map((notification) => {
-        const position = getRaisedBedNotificationAnchor(
-            blockData,
-            garden,
-            notification.raisedBedId,
-        );
-        return position ? (
-            <RaisedBedNotificationBubble
-                key={notification.id}
-                notification={notification}
-                onOpen={openNotification}
-                position={position}
-            />
-        ) : null;
-    });
+    return (
+        <>
+            {notifications.map((notification) => {
+                const position = getRaisedBedNotificationAnchor(
+                    blockData,
+                    garden,
+                    notification.raisedBedId,
+                );
+                return position ? (
+                    <RaisedBedNotificationBubble
+                        key={notification.id}
+                        notification={notification}
+                        onDismiss={dismissNotification}
+                        onOpen={openNotification}
+                        onOpenImage={openImageNotification}
+                        position={position}
+                    />
+                ) : null;
+            })}
+            {viewerImage ? (
+                <Html position={[0, 0, 0]} zIndexRange={[100, 100]}>
+                    <RaisedBedNotificationImageViewer
+                        image={viewerImage}
+                        onClose={closeImageViewer}
+                    />
+                </Html>
+            ) : null}
+        </>
+    );
 }

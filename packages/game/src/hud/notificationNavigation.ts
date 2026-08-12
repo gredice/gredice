@@ -17,10 +17,12 @@ type NavigateNotificationLinkOptions = {
 
 export function resolveRaisedBedNotificationHref({
     currentOrigin,
+    fieldTab,
     linkUrl,
     raisedBedName,
 }: {
     currentOrigin: string;
+    fieldTab?: 'diary' | 'lifecycle' | 'operations';
     linkUrl: string | null | undefined;
     raisedBedName: string | null | undefined;
 }) {
@@ -31,7 +33,11 @@ export function resolveRaisedBedNotificationHref({
             currentOrigin,
         );
         if (resolvedNotificationHref) {
-            return resolvedNotificationHref;
+            return addRaisedBedFieldTab(
+                resolvedNotificationHref,
+                currentOrigin,
+                fieldTab,
+            );
         }
     }
 
@@ -41,6 +47,28 @@ export function resolveRaisedBedNotificationHref({
               currentOrigin,
           )
         : null;
+}
+
+function addRaisedBedFieldTab(
+    href: string,
+    currentOrigin: string,
+    fieldTab: 'diary' | 'lifecycle' | 'operations' | undefined,
+) {
+    if (!fieldTab) return href;
+
+    try {
+        const targetUrl = new URL(href, currentOrigin);
+        const fieldNumber = Number(targetUrl.searchParams.get('polje'));
+        if (!Number.isSafeInteger(fieldNumber) || fieldNumber <= 0) {
+            return href;
+        }
+        targetUrl.searchParams.set('polje-kartica', fieldTab);
+        return href.startsWith('http')
+            ? targetUrl.toString()
+            : `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+    } catch {
+        return href;
+    }
 }
 
 function hasExplicitPort(rawUrl: string) {

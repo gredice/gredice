@@ -21,6 +21,7 @@ import {
 import type { CurrentGarden } from './hooks/useCurrentGarden';
 import {
     RaisedBedNotificationBubbleContent,
+    RaisedBedNotificationImageViewer,
     useRaisedBedNotificationSurface,
 } from './hud/RaisedBedNotificationSurface';
 import { getSolarEclipseVisualScales } from './scene/solarEclipse';
@@ -74,8 +75,12 @@ export function GardenOverview2DMap({
     const hudPlacementDrag = useGameState((state) => state.hudPlacementDrag);
     const { mutate: openRaisedBed } = useSetRaisedBedCloseupParam();
     const {
+        closeImageViewer: closeRaisedBedNotificationImageViewer,
+        dismissNotification: dismissRaisedBedNotification,
         notifications: raisedBedNotifications,
+        openImageNotification: openRaisedBedNotificationImage,
         openNotification: openRaisedBedNotification,
+        viewerImage: raisedBedNotificationViewerImage,
     } = useRaisedBedNotificationSurface(garden);
     const layout = useMemo(
         () =>
@@ -435,7 +440,13 @@ export function GardenOverview2DMap({
                                       <div className="pointer-events-auto absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2">
                                           <RaisedBedNotificationBubbleContent
                                               notification={notification}
+                                              onDismiss={
+                                                  dismissRaisedBedNotification
+                                              }
                                               onOpen={openRaisedBedNotification}
+                                              onOpenImage={
+                                                  openRaisedBedNotificationImage
+                                              }
                                           />
                                       </div>
                                   </div>
@@ -473,6 +484,10 @@ export function GardenOverview2DMap({
                     ) : null}
                 </section>
             </div>
+            <RaisedBedNotificationImageViewer
+                image={raisedBedNotificationViewerImage}
+                onClose={closeRaisedBedNotificationImageViewer}
+            />
         </section>
     );
 }

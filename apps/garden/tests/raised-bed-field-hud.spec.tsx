@@ -785,6 +785,25 @@ function daysFromNowIso(days: number): string {
 test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     test.use({ viewport: DESKTOP_VIEWPORT });
 
+    test('opens the plant details modal on the Dnevnik tab from a field deep link', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingScenario()}
+                positionIndex={0}
+                searchParams="polje=1&polje-kartica=diary"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole('tab', { name: /Dnevnik/ }),
+        ).toHaveAttribute('aria-selected', 'true');
+    });
+
     test('empty field shows sowing seed icon and no indicator stack', async ({
         mount,
         page,

@@ -40,7 +40,10 @@ export function getGardenBaseUrl(): string {
  */
 export function getRaisedBedCloseupUrl(
     raisedBedName: string,
-    options?: { positionIndex?: number | null },
+    options?: {
+        fieldTab?: 'diary' | 'lifecycle' | 'operations';
+        positionIndex?: number | null;
+    },
 ): string {
     const params = [`gredica=${encodeURIComponent(raisedBedName)}`];
     if (
@@ -49,6 +52,9 @@ export function getRaisedBedCloseupUrl(
         options.positionIndex >= 0
     ) {
         params.push(`polje=${(options.positionIndex + 1).toString()}`);
+        if (options.fieldTab) {
+            params.push(`polje-kartica=${options.fieldTab}`);
+        }
     }
 
     return `${getGardenBaseUrl()}?${params.join('&')}`;

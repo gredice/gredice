@@ -63,6 +63,7 @@ import {
     getGardenStack,
     getGardenStackForUpdate,
     getGardenVisitState,
+    getNotification,
     getOperationsByIds,
     getOperationsPage,
     getPreviousPlantStatusChangedAtForUpdate,
@@ -79,6 +80,7 @@ import {
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     getUnreadNotificationsByType,
+    getUnreadRaisedBedImageNotificationIdsForGarden,
     getUnreadRaisedBedNotificationsForGarden,
     getUserLikedGardenIds,
     isPlantStatusEffectiveDateAllowed,
@@ -217,6 +219,12 @@ const detailedInspectionReportsSeenBodySchema = z
             .array(z.string().min(1))
             .min(1)
             .max(maxNotificationReadBatchSize),
+    })
+    .strict();
+
+const raisedBedNotificationDismissBodySchema = z
+    .object({
+        scope: z.enum(['selected', 'raised_bed_images']),
     })
     .strict();
 
@@ -1385,6 +1393,105 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     notifications: notifications.map(
                         serializeRaisedBedGardenNotification,
                     ),
+                },
+                200,
+            );
+        },
+    )
+    .put(
+        '/:gardenId/raised-bed-notifications/:notificationId/dismiss',
+        describeRoute({
+            description:
+                'Dismiss one unread raised-bed notification, or every unread image notification for the same raised bed, for the current user in an owned garden.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                notificationId: z.string().min(1),
+            }),
+        ),
+        zValidator('json', raisedBedNotificationDismissBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, notificationId } = context.req.valid('param');
+            const { scope } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const notification = await getNotification(notificationId);
+            if (
+                !notification ||
+                notification.accountId !== accountId ||
+                (notification.userId !== null &&
+                    notification.userId !== userId) ||
+                notification.gardenId !== gardenIdNumber ||
+                notification.raisedBedId === null ||
+                notification.type ===
+                    detailedRaisedBedInspectionNotificationType
+            ) {
+                return context.json(
+                    { error: 'Raised-bed notification not found' },
+                    404,
+                );
+            }
+
+            const dismissedNotificationIds: string[] = [];
+            const dismissBatch = async (notificationIds: string[]) => {
+                await setAllNotificationsRead(
+                    accountId,
+                    userId,
+                    notificationIds,
+                    true,
+                    'game_raised_bed_bubble',
+                );
+                dismissedNotificationIds.push(...notificationIds);
+                return notificationIds.length;
+            };
+
+            if (
+                scope === 'raised_bed_images' &&
+                notification.imageUrl?.trim()
+            ) {
+                while (true) {
+                    const notificationIds =
+                        await getUnreadRaisedBedImageNotificationIdsForGarden({
+                            accountId,
+                            gardenId: gardenIdNumber,
+                            limit: maxNotificationReadBatchSize,
+                            raisedBedId: notification.raisedBedId,
+                            userId,
+                        });
+                    if (notificationIds.length === 0) {
+                        break;
+                    }
+
+                    const dismissedCount = await dismissBatch(notificationIds);
+                    if (
+                        dismissedCount === 0 ||
+                        notificationIds.length < maxNotificationReadBatchSize
+                    ) {
+                        break;
+                    }
+                }
+            } else {
+                await dismissBatch([notification.id]);
+            }
+
+            return context.json(
+                {
+                    dismissedNotificationIds: [
+                        ...new Set(dismissedNotificationIds),
+                    ],
                 },
                 200,
             );
