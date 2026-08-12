@@ -645,10 +645,34 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
         ).toBe(true);
     }
 
-    await page.reload({
-        timeout: 20_000,
-        waitUntil: 'commit',
+    await page.evaluate(() => {
+        window.location.reload();
     });
+    await expect
+        .poll(
+            async () => {
+                try {
+                    return await page.evaluate(() => {
+                        const [navigation] = performance.getEntriesByType(
+                            'navigation',
+                        ) as PerformanceNavigationTiming[];
+                        return navigation?.type;
+                    });
+                } catch (error) {
+                    if (
+                        error instanceof Error &&
+                        error.message.includes(
+                            'Execution context was destroyed',
+                        )
+                    ) {
+                        return undefined;
+                    }
+                    throw error;
+                }
+            },
+            { timeout: 30_000 },
+        )
+        .toBe('reload');
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeVisible({ timeout: 20_000 });
