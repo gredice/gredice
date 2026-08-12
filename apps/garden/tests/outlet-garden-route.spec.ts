@@ -793,6 +793,21 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
             Reflect.get(window, '__outletGardenDocumentSentinel'),
         ),
     ).toBeUndefined();
+
+    await page.goBack({ waitUntil: 'domcontentloaded' });
+    await expect(
+        page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
+    ).toBeVisible();
+    await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
+        'data-outlet-garden-exiting',
+        'true',
+    );
+
+    await page.getByRole('link', { name: 'Moj vrt' }).click();
+    await page.waitForURL((url) => url.pathname === '/');
+    await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('canvas')).toHaveCount(1);
+
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
 });

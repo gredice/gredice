@@ -387,13 +387,23 @@ export function OutletGardenViewer({
                 router.push(exitTarget.href);
             }
         };
+        const handlePageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                setExitTarget(null);
+            }
+        };
+        window.addEventListener('pageshow', handlePageShow);
+
         if (reducedMotion) {
             navigate();
-            return;
+            return () => window.removeEventListener('pageshow', handlePageShow);
         }
 
         const timeout = window.setTimeout(navigate, 220);
-        return () => window.clearTimeout(timeout);
+        return () => {
+            window.clearTimeout(timeout);
+            window.removeEventListener('pageshow', handlePageShow);
+        };
     }, [exitTarget, router]);
 
     const selectOffer = useCallback(
