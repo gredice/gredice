@@ -74,10 +74,10 @@ const groundPatchPresets = {
         mode: 4,
     },
     swampDirt: {
-        darkColor: '#2d302b',
-        darkStrength: 0.36,
-        lightColor: '#967957',
-        lightStrength: 0.28,
+        darkColor: '#3d432d',
+        darkStrength: 0.34,
+        lightColor: '#91835b',
+        lightStrength: 0.3,
         mode: 2,
     },
 } satisfies Record<GroundPatchSurface, GroundPatchPreset>;

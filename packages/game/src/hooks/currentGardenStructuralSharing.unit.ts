@@ -155,7 +155,7 @@ describe('shareCurrentGardenData', () => {
             height: 630,
             capturedAt: '2026-07-11T10:00:00.000Z',
             sourceRevision: 'revision-1',
-            rendererVersion: 'garden-preview-v1',
+            rendererVersion: 'garden-preview-v2',
         };
         const nextGarden = createGarden({
             previewImage,

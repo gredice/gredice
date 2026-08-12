@@ -1,8 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import {
     attributeValues,
     closeStorage,
     entities,
+    gardenBlocks,
     getAttributeDefinitions,
     imageAttributeValueFromUrl,
     type SelectAttributeDefinition,
@@ -11,6 +12,7 @@ import {
     upsertAttributeValue,
 } from '../src';
 import { createNamedEntity } from './lib/createNamedEntity';
+import { renameBlockEntityAndPlacements } from './lib/renameBlockEntityAndPlacements';
 
 // Deploy the runtime and public assets before using --apply. The default
 // dry-run prevents catalog entries from pointing at models and covers that are
@@ -30,6 +32,7 @@ type TerrainBlockSpec = {
     label: string;
     name: string;
     placeableOnWater?: boolean;
+    previousName?: string;
     shortDescription: string;
 };
 
@@ -40,10 +43,12 @@ function terrainBlockSpec({
     label,
     name,
     placeableOnWater = false,
+    previousName,
     shortDescription,
 }: TerrainBlockSpec) {
     return {
         name,
+        previousName,
         attributes: {
             'attributes.height': '0.4',
             'attributes.hitboxDepth': hitboxDepth.toString(),
@@ -90,17 +95,17 @@ const blockSpecs = [
         name: 'Block_Gravel',
         label: 'Šljunak',
         shortDescription:
-            'Sivi šljunčani blok sa sitnim kamenčićima za staze i suhe vrtne površine.',
+            'Topli sivosmeđi šljunak sa sitnim kamenčićima i ravnim spojevima za povezane staze.',
         fullDescription:
-            'Šljunak je sivi terenski blok prekriven sitnim kamenčićima različitih oblika. Bez raslinja stvara prohodnu, suhu i neutralnu podlogu za vrtne staze, prilaze i prijelaze između kamenih elemenata.',
+            'Šljunak je topli sivosmeđi terenski blok prekriven sitnim kamenčićima različitih oblika. Ravni, nezakošeni bridovi spajaju susjedne blokove bez procjepa, a površina bez raslinja prikladna je za vrtne staze, prilaze i suhe prijelaze.',
     }),
     terrainBlockSpec({
         name: 'Block_Gravel_Angle',
         label: 'Šljunak rub',
         shortDescription:
-            'Kosi rub od sivog šljunka za prirodne prijelaze uz staze i nasipe.',
+            'Topli sivosmeđi šljunčani nagib s ravnim spojevima za rubove staza i nasipa.',
         fullDescription:
-            'Šljunak rub spušta sivu šljunčanu površinu prema susjednom bloku i zadržava vidljive sitne kamenčiće bez raslinja. Koristi se za uredne završetke staza, prilaza i manjih nasipa.',
+            'Šljunak rub spušta toplu sivosmeđu šljunčanu površinu prema nižem terenu. Nezakošeni bočni bridovi čisto se spajaju sa susjednim blokovima, dok sitni kamenčići bez raslinja oblikuju prirodne završetke staza, prilaza i manjih nasipa.',
     }),
     terrainBlockSpec({
         name: 'Block_Dry_Ground',
@@ -122,17 +127,17 @@ const blockSpecs = [
         name: 'Block_Swamp_Ground',
         label: 'Močvarna zemlja',
         shortDescription:
-            'Smeđesiva vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
+            'Smeđezelena vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
         fullDescription:
-            'Močvarna zemlja spaja smeđe i sive tonove vlažnog tla sa svijetlosmeđim busenima raslinja. Stvara mekan, zasićen izgled obala, plićaka i sjenovitih dijelova vrta uz močvarnu vodu.',
+            'Močvarna zemlja spaja zemljane smeđe i prigušene zelene tonove vlažnog tla sa svijetlosmeđim busenima raslinja. Stvara mekan, zasićen izgled obala, plićaka i sjenovitih dijelova vrta uz močvarnu vodu.',
     }),
     terrainBlockSpec({
         name: 'Block_Swamp_Ground_Angle',
         label: 'Močvarna zemlja rub',
         shortDescription:
-            'Kosi rub smeđesive močvarne zemlje sa svijetlosmeđim raslinjem.',
+            'Kosi rub smeđezelene močvarne zemlje sa svijetlosmeđim raslinjem.',
         fullDescription:
-            'Močvarna zemlja rub spušta smeđesivo vlažno tlo prema nižoj površini. Svijetlosmeđe raslinje prati nagib i pomaže oblikovati prirodne obale, plićake i prijelaze uz močvarnu vodu.',
+            'Močvarna zemlja rub spušta smeđezeleno vlažno tlo prema nižoj površini. Svijetlosmeđe raslinje prati nagib i pomaže oblikovati prirodne obale, plićake i prijelaze uz močvarnu vodu.',
     }),
     terrainBlockSpec({
         name: 'Block_Swamp_Water',
@@ -152,16 +157,49 @@ const blockSpecs = [
             'Kamene stube ispunjavaju cijeli blok i imaju dvije jasno oblikovane razine: srednju i gornju. Velike sive kamene plohe sa zakošenim bridovima stvaraju čvrst prijelaz između različitih visina vrta.',
     }),
     terrainBlockSpec({
-        name: 'Block_Stone_Stairs_Half',
-        label: 'Kamene polustube',
+        name: 'Block_Stone_Stairs_Corner',
+        previousName: 'Block_Stone_Stairs_Half',
+        label: 'Kutne kamene stube',
         shortDescription:
-            'Kamene stube pola širine za završetke, rubove i uske prijelaze.',
+            'Kutne kamene stube s dvije razine za povezivanje stubišta pod pravim kutom.',
         fullDescription:
-            'Kamene polustube zadržavaju srednju i gornju razinu punih stuba, ali zauzimaju samo polovicu širine bloka. Namijenjene su završecima i rubovima stubišta te užim kamenim prijelazima.',
-        hitboxDepth: 0.5,
+            'Kutne kamene stube zauzimaju cijeli blok i zadržavaju srednju i gornju razinu punih stuba. Njihov kutni oblik povezuje dvije okomite strane stubišta u uredan zavoj od velikih sivih kamenih ploha sa zakošenim bridovima.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Polished_Stone',
+        label: 'Polirani kamen',
+        shortDescription:
+            'Glatki kameni blok iz jednog komada za uredne vrtne površine i zidove.',
+        fullDescription:
+            'Polirani kamen je čvrsti blok iz jednog komada s glatkom, ujednačenom kamenom plohom i diskretno obrađenim bridovima. Bez fuga i raslinja pruža čist izgled za terase, potporne zidove i suvremene kamene dijelove vrta.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Polished_Stone_Angle',
+        label: 'Polirani kamen rub',
+        shortDescription:
+            'Kosi rub poliranog kamena iz jednog komada za glatke završetke kamenih površina.',
+        fullDescription:
+            'Polirani kamen rub oblikuje postupan prijelaz prema nižoj površini u jednoj glatkoj kamenoj plohi. Ujednačena obrada bez fuga i raslinja uredno završava terase, zidove i suvremene kamene staze.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Polished_Stone_Stairs',
+        label: 'Polirane kamene stube',
+        shortDescription:
+            'Pune stube od glatkog kamena iz jednog komada s dvije jasno oblikovane razine.',
+        fullDescription:
+            'Polirane kamene stube zauzimaju cijeli blok i u jednoj glatkoj kamenoj cjelini oblikuju srednju i gornju razinu. Čista površina bez fuga i raslinja povezuje različite visine terasa, zidova i staza.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Polished_Stone_Stairs_Corner',
+        label: 'Kutne polirane kamene stube',
+        shortDescription:
+            'Kutne stube od glatkog kamena iz jednog komada za zavoje pod pravim kutom.',
+        fullDescription:
+            'Kutne polirane kamene stube zauzimaju cijeli blok te srednjom i gornjom razinom povezuju dvije okomite strane stubišta. Izrađene su kao jedna glatka kamena cjelina bez fuga i raslinja za čiste zavoje terasa i staza.',
     }),
 ] satisfies Array<{
     name: string;
+    previousName?: string;
     attributes: Record<string, string>;
 }>;
 
@@ -231,6 +269,14 @@ async function getExistingAttributeValue({
     });
 }
 
+async function countGardenBlocksWithName(blockName: string) {
+    const [result] = await storage()
+        .select({ value: count() })
+        .from(gardenBlocks)
+        .where(eq(gardenBlocks.name, blockName));
+    return result?.value ?? 0;
+}
+
 async function main() {
     const apply = parseApplyFlag(process.argv.slice(2));
     const definitions = await getAttributeDefinitions(entityTypeName);
@@ -263,12 +309,43 @@ async function main() {
         action: 'create' | 'update' | 'unchanged';
         changedAttributes: string[];
         publish: boolean;
+        rename: {
+            catalogueNameChange: boolean;
+            fromName: string;
+            sourceEntityId: number | null;
+            gardenBlocksToRename: number;
+            renamedGardenBlocks: number;
+        } | null;
     }> = [];
 
     for (const spec of blockSpecs) {
-        let entity = await findBlockEntity(nameDefinition.id, spec.name);
+        const targetEntity = await findBlockEntity(
+            nameDefinition.id,
+            spec.name,
+        );
+        const previousEntity = spec.previousName
+            ? await findBlockEntity(nameDefinition.id, spec.previousName)
+            : null;
+        if (targetEntity && previousEntity) {
+            throw new Error(
+                `Both ${spec.previousName} and ${spec.name} are active block entities. Resolve the duplicate before applying this catalogue migration.`,
+            );
+        }
+
+        let entity = targetEntity ?? previousEntity;
         let entityId = entity?.id ?? null;
         const changedAttributes: string[] = [];
+        const rename = spec.previousName
+            ? {
+                  catalogueNameChange: previousEntity !== null,
+                  fromName: spec.previousName,
+                  sourceEntityId: entityId,
+                  gardenBlocksToRename: await countGardenBlocksWithName(
+                      spec.previousName,
+                  ),
+                  renamedGardenBlocks: 0,
+              }
+            : null;
 
         if (entityId) {
             for (const [path, expectedValue] of Object.entries(
@@ -294,7 +371,9 @@ async function main() {
             entity?.state !== 'published' || entity?.publishedAt === null;
         const action: 'create' | 'update' | 'unchanged' = !entity
             ? 'create'
-            : changedAttributes.length > 0 || publish
+            : changedAttributes.length > 0 ||
+                publish ||
+                (rename?.gardenBlocksToRename ?? 0) > 0
               ? 'update'
               : 'unchanged';
         const summary = {
@@ -303,6 +382,7 @@ async function main() {
             action,
             changedAttributes,
             publish,
+            rename,
         };
         summaries.push(summary);
 
@@ -318,6 +398,26 @@ async function main() {
                 nameDefinition,
             });
             summary.entityId = entityId;
+            if (rename) {
+                rename.sourceEntityId = entityId;
+            }
+        }
+
+        if (rename) {
+            const renameResult = await renameBlockEntityAndPlacements({
+                actor,
+                entityId,
+                entityTypeName,
+                fromName: rename.fromName,
+                nameDefinition,
+                toName: spec.name,
+            });
+            rename.renamedGardenBlocks = renameResult.renamedGardenBlocks;
+            if (renameResult.renamedAttribute !== rename.catalogueNameChange) {
+                throw new Error(
+                    `Unexpected catalogue rename state for ${rename.fromName} on entity ${entityId.toString()}.`,
+                );
+            }
         }
 
         for (const [path, expectedValue] of orderedAttributeEntries(
@@ -359,6 +459,34 @@ async function main() {
             entity.publishedAt === null
         ) {
             throw new Error(`Failed to publish ${spec.name} block entity.`);
+        }
+
+        if (rename) {
+            const legacyEntity = await findBlockEntity(
+                nameDefinition.id,
+                rename.fromName,
+            );
+            if (legacyEntity) {
+                throw new Error(
+                    `Legacy block name ${rename.fromName} is still active on entity ${legacyEntity.id.toString()}.`,
+                );
+            }
+            if (
+                rename.sourceEntityId === null ||
+                entity.id !== rename.sourceEntityId
+            ) {
+                throw new Error(
+                    `Block rename changed entity ID from ${rename.sourceEntityId?.toString() ?? 'missing'} to ${entity.id.toString()}.`,
+                );
+            }
+            const remainingLegacyPlacements = await countGardenBlocksWithName(
+                rename.fromName,
+            );
+            if (remainingLegacyPlacements !== 0) {
+                throw new Error(
+                    `${remainingLegacyPlacements.toString()} placed blocks still use ${rename.fromName}.`,
+                );
+            }
         }
 
         for (const [path, expectedValue] of Object.entries(spec.attributes)) {

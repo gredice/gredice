@@ -14,15 +14,27 @@ export const gameAssetModels = {
     BlockStoneAngle: {
         url: '/assets/models/BlockStoneAngle.glb?v=998e0f9fb62b',
     },
-    BlockGravel: { url: '/assets/models/BlockGravel.glb?v=d25eff067d31' },
+    BlockGravel: { url: '/assets/models/BlockGravel.glb?v=41cc7c79a13c' },
     BlockGravelAngle: {
-        url: '/assets/models/BlockGravelAngle.glb?v=c7fe62b258fc',
+        url: '/assets/models/BlockGravelAngle.glb?v=3dec8432e1b9',
     },
     BlockStoneStairs: {
         url: '/assets/models/BlockStoneStairs.glb?v=0590228ac5fe',
     },
-    BlockStoneStairsHalf: {
-        url: '/assets/models/BlockStoneStairsHalf.glb?v=3afc2f86586e',
+    BlockStoneStairsCorner: {
+        url: '/assets/models/BlockStoneStairsCorner.glb?v=527837b09df4',
+    },
+    BlockPolishedStone: {
+        url: '/assets/models/BlockPolishedStone.glb?v=37f822173ab1',
+    },
+    BlockPolishedStoneAngle: {
+        url: '/assets/models/BlockPolishedStoneAngle.glb?v=87a23acfaaa7',
+    },
+    BlockPolishedStoneStairs: {
+        url: '/assets/models/BlockPolishedStoneStairs.glb?v=1ff582010dd2',
+    },
+    BlockPolishedStoneStairsCorner: {
+        url: '/assets/models/BlockPolishedStoneStairsCorner.glb?v=21d38a9e4b67',
     },
     BlockTerrainCorner: {
         url: '/assets/models/BlockTerrainCorner.glb?v=b0d3454df2fa',
@@ -180,7 +192,11 @@ export const groundGameAssetNames = [
     'BlockGravel',
     'BlockGravelAngle',
     'BlockStoneStairs',
-    'BlockStoneStairsHalf',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
     'GardenFlower',
@@ -303,7 +319,11 @@ export const allGameAssetNames = [
     'BlockGravel',
     'BlockGravelAngle',
     'BlockStoneStairs',
-    'BlockStoneStairsHalf',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
     'RaisedBed',

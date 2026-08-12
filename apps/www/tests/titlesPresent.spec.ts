@@ -125,6 +125,44 @@ test.describe('public SEO metadata', () => {
     ) as string[];
     const representativeCoverPaths = representativeDynamicCoverPaths(pages);
 
+    test('legacy corner-stairs path redirects to canonical metadata', async ({
+        page,
+    }) => {
+        const redirect = await page.request.get('/blokovi/kamene-polustube', {
+            maxRedirects: 0,
+        });
+        expect(redirect.status()).toBe(308);
+        expect(redirect.headers().location).toBe('/blokovi/kutne-kamene-stube');
+
+        await page.goto('/blokovi/kamene-polustube', {
+            waitUntil: 'domcontentloaded',
+        });
+
+        const canonicalUrl =
+            'https://www.gredice.com/blokovi/kutne-kamene-stube';
+        expect(new URL(page.url()).pathname).toBe(
+            '/blokovi/kutne-kamene-stube',
+        );
+        await expect(page).toHaveTitle(/Kamene polustube|Kutne kamene stube/u);
+        await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+            'href',
+            canonicalUrl,
+        );
+        await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+            'content',
+            canonicalUrl,
+        );
+        await expect(
+            page.locator('meta[property="og:description"]'),
+        ).toHaveAttribute('content', /.+/u);
+        await expect(
+            page.locator('meta[property="og:image"]').first(),
+        ).toHaveAttribute('content', /Block_Stone_Stairs_(Half|Corner)/u);
+        await expect(
+            page.locator('meta[name="twitter:image"]').first(),
+        ).toHaveAttribute('content', /Block_Stone_Stairs_(Half|Corner)/u);
+    });
+
     test('generated OG images survive a cache-miss image optimization', async ({
         page,
     }) => {

@@ -300,37 +300,52 @@ test('follows the middle and top levels of two-step stone stairs', () => {
     assert.equal(getGardenAvatarSurfaceY({ x: 0.5, z: 0 }, stairs), 0.4);
 });
 
-test('keeps half stairs on the rendered tile edge after rotation', () => {
-    const createWorld = (rotation: number) =>
-        createGardenAvatarCollisionWorld({
-            blockData: getLocalSandboxBlockData(),
-            stacks: [
-                {
-                    blocks: [
-                        {
-                            id: `half-stairs-${rotation}`,
-                            name: 'Block_Stone_Stairs_Half',
-                            rotation,
-                        },
-                    ],
-                    position: new Vector3(0, 0, 0),
-                },
-            ],
-        }).surfaces[0];
-    const unrotated = createWorld(0);
-    const quarterTurn = createWorld(1);
+test('follows full-tile corner stair levels across rotations and aliases', () => {
+    for (const name of [
+        'Block_Stone_Stairs_Corner',
+        'Block_Polished_Stone_Stairs_Corner',
+        'Block_Stone_Stairs_Half',
+    ]) {
+        for (const rotation of [0, 1, 2, 3]) {
+            const surface = createGardenAvatarCollisionWorld({
+                blockData: getLocalSandboxBlockData(),
+                stacks: [
+                    {
+                        blocks: [{ id: `${name}-${rotation}`, name, rotation }],
+                        position: new Vector3(0, 0, 0),
+                    },
+                ],
+            }).surfaces[0];
+            const angle = rotation * (Math.PI / 2);
+            const worldPoint = (localX: number, localZ: number) => ({
+                x: localX * Math.cos(angle) + localZ * Math.sin(angle),
+                z: -localX * Math.sin(angle) + localZ * Math.cos(angle),
+            });
 
-    assert.ok(unrotated);
-    assert.equal(unrotated.halfWidth, 0.5);
-    assert.equal(unrotated.halfDepth, 0.25);
-    assert.equal(unrotated.x, 0);
-    assert.equal(unrotated.z, -0.25);
-
-    assert.ok(quarterTurn);
-    assert.equal(quarterTurn.halfWidth, 0.5);
-    assert.equal(quarterTurn.halfDepth, 0.25);
-    assert.equal(quarterTurn.x, -0.25);
-    assert.ok(Math.abs(quarterTurn.z) < 0.000_001);
+            assert.ok(surface);
+            assert.equal(surface.halfWidth, 0.5);
+            assert.equal(surface.halfDepth, 0.5);
+            assert.equal(surface.x, 0);
+            assert.equal(surface.z, 0);
+            assert.equal(
+                getGardenAvatarSurfaceY(worldPoint(0.25, -0.25), surface),
+                0.4,
+            );
+            for (const [localX, localZ] of [
+                [-0.25, -0.25],
+                [-0.25, 0.25],
+                [0.25, 0.25],
+            ] satisfies readonly [number, number][]) {
+                assert.equal(
+                    getGardenAvatarSurfaceY(
+                        worldPoint(localX, localZ),
+                        surface,
+                    ),
+                    0.2,
+                );
+            }
+        }
+    }
 });
 
 test('allows one grounded jump and one airborne jump', () => {

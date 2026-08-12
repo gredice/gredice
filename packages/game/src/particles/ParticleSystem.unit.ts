@@ -19,7 +19,12 @@ describe('resolveBlockParticleType', () => {
             'Block_Stone',
             'Block_Stone_Angle',
             'Block_Stone_Stairs',
+            'Block_Stone_Stairs_Corner',
             'Block_Stone_Stairs_Half',
+            'Block_Polished_Stone',
+            'Block_Polished_Stone_Angle',
+            'Block_Polished_Stone_Stairs',
+            'Block_Polished_Stone_Stairs_Corner',
             'Block_Gravel',
             'Block_Gravel_Angle',
         ]) {

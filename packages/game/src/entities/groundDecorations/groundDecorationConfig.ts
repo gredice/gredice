@@ -1,3 +1,5 @@
+import { swampGroundDecorationColor } from '../swampGroundPalette';
+
 export type GroundDecorationSurface = 'grass' | 'sand' | 'swamp';
 
 type GroundFlowerOptions = {
@@ -32,7 +34,7 @@ const spriteNumbers = Array.from({ length: 8 }, (_, index) =>
 
 export const groundDecorationAtlasBasePath =
     '/assets/sprites/decorations/ground-cover-v2.atlas';
-export const swampGroundDecorationTint = '#98613d';
+export const swampGroundDecorationTint = swampGroundDecorationColor;
 
 export const groundDecorationOptions: Record<
     GroundDecorationSurface,

@@ -258,6 +258,18 @@ jobs:
       name: "garden"
       path: "apps/garden"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
+      testShardMatrix: >-
+        [
+          {"name":"chromium 1/2","args":"--project=chromium --shard=1/2"},
+          {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
+          {"name":"webgl components","args":"--project=chromium-webgl"},
+          {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
+          {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
+          {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
+          {"name":"outlet walk","args":"--project=chromium-webgl-outlet --grep @outlet-walk"},
+          {"name":"outlet rest","args":"--project=chromium-webgl-outlet --grep-invert @outlet-slow"}
+        ]
+      testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
 
   ci_farm:

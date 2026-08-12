@@ -54,6 +54,7 @@ import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
+import { swampGroundBaseColor } from './swampGroundPalette';
 import {
     getWaterBlockColumnSurfaceY,
     getWaterBlockDepthSamples,
@@ -183,13 +184,47 @@ const terrainVariationAssetParts = [
         weatherSurface: false,
     },
     {
-        assetName: 'BlockStoneStairsHalf',
+        assetName: 'BlockStoneStairsCorner',
+        blockName: 'Block_Stone_Stairs_Corner',
+        nodeNames: [
+            'Block_Stone_Stairs_Corner_Large',
+            'Block_Stone_Stairs_Corner_Mid',
+            'Block_Stone_Stairs_Corner_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockStoneStairsCorner',
         blockName: 'Block_Stone_Stairs_Half',
         nodeNames: [
-            'Block_Stone_Stairs_Half_Large',
-            'Block_Stone_Stairs_Half_Mid',
-            'Block_Stone_Stairs_Half_Dark',
+            'Block_Stone_Stairs_Corner_Large',
+            'Block_Stone_Stairs_Corner_Mid',
+            'Block_Stone_Stairs_Corner_Dark',
         ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStone',
+        blockName: 'Block_Polished_Stone',
+        nodeNames: ['Block_Polished_Stone'],
+        weatherSurface: true,
+    },
+    {
+        assetName: 'BlockPolishedStoneAngle',
+        blockName: 'Block_Polished_Stone_Angle',
+        nodeNames: ['Block_Polished_Stone_Angle'],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStoneStairs',
+        blockName: 'Block_Polished_Stone_Stairs',
+        nodeNames: ['Block_Polished_Stone_Stairs'],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStoneStairsCorner',
+        blockName: 'Block_Polished_Stone_Stairs_Corner',
+        nodeNames: ['Block_Polished_Stone_Stairs_Corner'],
         weatherSurface: false,
     },
 ] as const satisfies readonly {
@@ -283,7 +318,12 @@ export const additionalInstancedBlockNames = [
     'Block_Stone_Angle',
     'Block_Gravel',
     'Block_Gravel_Angle',
+    'Block_Polished_Stone',
+    'Block_Polished_Stone_Angle',
+    'Block_Polished_Stone_Stairs',
+    'Block_Polished_Stone_Stairs_Corner',
     'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
     'Block_Stone_Stairs_Half',
     ...waterBlockNames,
     'Raised_Bed',
@@ -519,7 +559,7 @@ function TerrainVariationInstances({
     const swampGroundMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
-                color: '#5b554a',
+                color: swampGroundBaseColor,
                 metalness: 0,
                 roughness: 1,
             }),
