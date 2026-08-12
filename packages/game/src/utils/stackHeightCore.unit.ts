@@ -4,7 +4,12 @@ import { Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { getStackBlockHeight, getStackHeight } from './stackHeightCore';
+import {
+    getBlockDataByName,
+    getStackBlockHeight,
+    getStackHeight,
+    isEdgeOrCornerTerrainBlockName,
+} from './stackHeightCore';
 
 function block(id: string, name: string): Block {
     return { id, name, rotation: 0 };
@@ -76,6 +81,57 @@ describe('getStackHeight', () => {
         assert.equal(
             getStackHeight(blockData, currentStack),
             localBlockHeight * 3,
+        );
+    });
+
+    it('resolves only the renamed corner-stair pair as compatibility aliases', () => {
+        const blockData = getLocalSandboxBlockData();
+        const currentOnly = blockData.filter(
+            (entry) => entry.information.name !== 'Block_Stone_Stairs_Half',
+        );
+        const legacyOnly = blockData.filter(
+            (entry) => entry.information.name !== 'Block_Stone_Stairs_Corner',
+        );
+
+        assert.equal(
+            getBlockDataByName(currentOnly, 'Block_Stone_Stairs_Half')
+                ?.information.name,
+            'Block_Stone_Stairs_Corner',
+        );
+        assert.equal(
+            getBlockDataByName(legacyOnly, 'Block_Stone_Stairs_Corner')
+                ?.information.name,
+            'Block_Stone_Stairs_Half',
+        );
+        const originalConsoleError = console.error;
+        console.error = () => undefined;
+        try {
+            assert.equal(
+                getBlockDataByName(
+                    currentOnly,
+                    'Block_Polished_Stone_Stairs_Half',
+                ),
+                undefined,
+            );
+        } finally {
+            console.error = originalConsoleError;
+        }
+    });
+
+    it('does not collapse water into stair corners', () => {
+        assert.equal(
+            isEdgeOrCornerTerrainBlockName('Block_Stone_Stairs_Corner'),
+            false,
+        );
+        assert.equal(
+            isEdgeOrCornerTerrainBlockName(
+                'Block_Polished_Stone_Stairs_Corner',
+            ),
+            false,
+        );
+        assert.equal(
+            isEdgeOrCornerTerrainBlockName('Block_Grass_Corner'),
+            true,
         );
     });
 });

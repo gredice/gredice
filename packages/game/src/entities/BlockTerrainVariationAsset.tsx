@@ -23,8 +23,17 @@ function resolveTerrainAssetName(blockName: string) {
             return 'BlockGravelAngle';
         case 'Block_Stone_Stairs':
             return 'BlockStoneStairs';
+        case 'Block_Stone_Stairs_Corner':
         case 'Block_Stone_Stairs_Half':
-            return 'BlockStoneStairsHalf';
+            return 'BlockStoneStairsCorner';
+        case 'Block_Polished_Stone_Angle':
+            return 'BlockPolishedStoneAngle';
+        case 'Block_Polished_Stone_Stairs':
+            return 'BlockPolishedStoneStairs';
+        case 'Block_Polished_Stone_Stairs_Corner':
+            return 'BlockPolishedStoneStairsCorner';
+        case 'Block_Polished_Stone':
+            return 'BlockPolishedStone';
         default:
             return 'BlockStone';
     }
@@ -70,12 +79,24 @@ export function BlockTerrainVariationAsset({
                 nodes.Block_Stone_Stairs_Dark,
             ];
             break;
-        case 'BlockStoneStairsHalf':
+        case 'BlockStoneStairsCorner':
             parts = [
-                nodes.Block_Stone_Stairs_Half_Large,
-                nodes.Block_Stone_Stairs_Half_Mid,
-                nodes.Block_Stone_Stairs_Half_Dark,
+                nodes.Block_Stone_Stairs_Corner_Large,
+                nodes.Block_Stone_Stairs_Corner_Mid,
+                nodes.Block_Stone_Stairs_Corner_Dark,
             ];
+            break;
+        case 'BlockPolishedStone':
+            parts = [nodes.Block_Polished_Stone];
+            break;
+        case 'BlockPolishedStoneAngle':
+            parts = [nodes.Block_Polished_Stone_Angle];
+            break;
+        case 'BlockPolishedStoneStairs':
+            parts = [nodes.Block_Polished_Stone_Stairs];
+            break;
+        case 'BlockPolishedStoneStairsCorner':
+            parts = [nodes.Block_Polished_Stone_Stairs_Corner];
             break;
         default:
             parts = [

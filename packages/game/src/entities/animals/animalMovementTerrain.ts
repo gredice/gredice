@@ -3,6 +3,7 @@ import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getStackBlockHeight } from '../../utils/stackHeightCore';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
+import { isTerrainStairBlockName } from '../terrainStairs';
 import {
     getWalkwayVisualTopOffset,
     isWalkwayBlockName,
@@ -56,9 +57,14 @@ const groundBlockNames = new Set([
     'Block_Snow_Falling',
     'Block_Gravel',
     'Block_Gravel_Angle',
+    'Block_Polished_Stone',
+    'Block_Polished_Stone_Angle',
+    'Block_Polished_Stone_Stairs',
+    'Block_Polished_Stone_Stairs_Corner',
     'Block_Stone',
     'Block_Stone_Angle',
     'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
     'Block_Stone_Stairs_Half',
     'Block_Swamp_Ground',
     'Block_Swamp_Ground_Angle',
@@ -120,7 +126,7 @@ function getGroundSurfaceY({
     return walkwaySurfaceHeight > 0 ? walkwaySurfaceHeight + groundLift : 0;
 }
 
-function createHalfStairMovementSurfaces({
+function createStairMovementSurfaces({
     blockData,
     groundLift,
     stack,
@@ -130,10 +136,11 @@ function createHalfStairMovementSurfaces({
     groundLift: number;
     stack: Stack;
     y: number;
-}) {
+}): AnimalMovementSurface[] | null {
     const topBlock = stack.blocks.at(-1);
     if (
-        topBlock?.name !== 'Block_Stone_Stairs_Half' ||
+        !topBlock ||
+        !isTerrainStairBlockName(topBlock.name) ||
         !stack.blocks.every((block) => isAnimalGroundBlockName(block.name))
     ) {
         return null;
@@ -141,29 +148,20 @@ function createHalfStairMovementSurfaces({
 
     const bottomHeight = getStackHeight(blockData, stack, topBlock);
     const rotation = topBlock.rotation * (Math.PI / 2);
-    const localZ = -0.25;
 
-    const surfaces: AnimalMovementSurface[] = [];
-    if (bottomHeight > 0) {
-        surfaces.push({
+    return [
+        {
+            bottomY: bottomHeight + groundLift,
+            halfDepth: 0.5,
+            halfWidth: 0.5,
             kind: 'ground',
+            rotation,
+            slopeBlockName: topBlock.name,
             x: stack.position.x,
-            y: bottomHeight + groundLift,
+            y,
             z: stack.position.z,
-        });
-    }
-    surfaces.push({
-        bottomY: bottomHeight + groundLift,
-        halfDepth: 0.25,
-        halfWidth: 0.5,
-        kind: 'ground',
-        rotation,
-        slopeBlockName: topBlock.name,
-        x: stack.position.x + Math.sin(rotation) * localZ,
-        y,
-        z: stack.position.z + Math.cos(rotation) * localZ,
-    });
-    return surfaces;
+        },
+    ];
 }
 
 export function createAnimalMovementSurfaces({
@@ -204,14 +202,14 @@ export function createAnimalMovementSurfaces({
 
         const y = getGroundSurfaceY({ blockData, groundLift, stack });
         if (y !== null) {
-            const halfStairSurfaces = createHalfStairMovementSurfaces({
+            const stairSurfaces = createStairMovementSurfaces({
                 blockData,
                 groundLift,
                 stack,
                 y,
             });
-            if (halfStairSurfaces) {
-                surfaces.push(...halfStairSurfaces);
+            if (stairSurfaces) {
+                surfaces.push(...stairSurfaces);
                 continue;
             }
 

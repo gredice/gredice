@@ -14,10 +14,14 @@ import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import {
+    getBlockRouteAlias,
+    getBlockStaticParams,
+    resolveBlockRoute,
+} from '../../../lib/blocks/blockRoute';
 import { getBlocksData } from '../../../lib/blocks/getBlocksData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
-import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
 export const revalidate = 3600; // 1 hour
@@ -28,16 +32,14 @@ export async function generateMetadata(
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const blockData = await getBlocksData();
-    const block = blockData?.find((block) =>
-        matchesPageAlias(block.information.label, alias),
-    );
+    const block = resolveBlockRoute(blockData, alias);
     if (!block) {
         notFound();
     }
     return createPublicMetadata({
         title: block.information.label,
         description: block.information.shortDescription,
-        path: KnownPages.Block(block.slug || block.information.label),
+        path: KnownPages.Block(getBlockRouteAlias(block)),
         category: 'Vrtni blok',
         imageUrl: block.image?.cover?.url,
         imageAlt: `Prikaz bloka ${block.information.label}`,
@@ -46,11 +48,7 @@ export async function generateMetadata(
 
 export async function generateStaticParams() {
     const entities = await getBlocksData();
-    return (
-        entities?.map((entity) => ({
-            alias: entity.slug || toPageAlias(String(entity.information.label)),
-        })) ?? []
-    );
+    return getBlockStaticParams(entities);
 }
 
 function BlockAttributes({ prices, attributes }: BlockData) {
@@ -88,13 +86,11 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
 
     // TODO: Query API for single entities with filter on 'label' attribute
     const blockData = await getBlocksData();
-    const entity = blockData?.find((block) =>
-        matchesPageAlias(block.information.label, alias),
-    );
+    const entity = resolveBlockRoute(blockData, alias);
     if (!entity) {
         notFound();
     }
-    const blockPath = KnownPages.Block(entity.slug || entity.information.label);
+    const blockPath = KnownPages.Block(getBlockRouteAlias(entity));
 
     return (
         <div className="border-b">

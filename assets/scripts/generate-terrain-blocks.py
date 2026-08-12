@@ -9,8 +9,10 @@ Run with Blender, not the system Python:
 
 The generated meshes use Blender's Z axis as vertical. The glTF exporter maps
 that axis to Three.js Y. All assets stay inside one garden tile. Angled assets
-rise linearly from zero at local X=-0.5 to 0.4 at local X=0.5. Stone stairs
-follow the same direction, with horizontal treads at 0.2 and 0.4.
+rise linearly from zero at local X=-0.5 to 0.4 at local X=0.5. Straight stone
+stairs follow the same direction, with horizontal treads at 0.2 and 0.4.
+Corner stairs occupy the full tile: their 0.2 tread wraps around the outside of
+the 0.4 corner tread.
 """
 
 from __future__ import annotations
@@ -206,6 +208,96 @@ def wedge_segment(
 
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, value)
+    bevel(obj, bevel_width)
+    return obj
+
+
+def extruded_profile(
+    name: str,
+    *,
+    profile: tuple[tuple[float, float], ...],
+    y_bounds: tuple[float, float],
+    value: bpy.types.Material,
+    bevel_width: float,
+) -> bpy.types.Object:
+    """Extrude a closed X/Z profile into one continuous low-poly mesh."""
+    y_min, y_max = y_bounds
+    front = [(x, y_min, z) for x, z in profile]
+    back = [(x, y_max, z) for x, z in profile]
+    count = len(profile)
+    vertices = front + back
+    faces = [
+        tuple(range(count)),
+        tuple(reversed(range(count, count * 2))),
+        *[
+            (
+                index,
+                index + count,
+                ((index + 1) % count) + count,
+                (index + 1) % count,
+            )
+            for index in range(count)
+        ],
+    ]
+
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.validate(verbose=True)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, value)
+    bevel(obj, bevel_width)
+    return obj
+
+
+def corner_step_block(
+    name: str,
+    *,
+    value: bpy.types.Material,
+    bevel_width: float,
+) -> bpy.types.Object:
+    """Create one full-tile L-shaped stair solid with a raised far corner."""
+    vertices = [
+        (-0.5, -0.5, 0),
+        (0.5, -0.5, 0),
+        (0.5, 0, 0),
+        (0.5, 0.5, 0),
+        (0, 0.5, 0),
+        (-0.5, 0.5, 0),
+        (-0.5, -0.5, 0.2),
+        (0.5, -0.5, 0.2),
+        (0.5, 0, 0.2),
+        (0, 0, 0.2),
+        (0, 0.5, 0.2),
+        (-0.5, 0.5, 0.2),
+        (0, 0, 0.4),
+        (0.5, 0, 0.4),
+        (0.5, 0.5, 0.4),
+        (0, 0.5, 0.4),
+    ]
+    faces = [
+        (0, 5, 4, 3, 2, 1),
+        (6, 7, 8, 9),
+        (6, 9, 10, 11),
+        (12, 13, 14, 15),
+        (9, 8, 13, 12),
+        (10, 9, 12, 15),
+        (0, 1, 7, 6),
+        (5, 0, 6, 11),
+        (1, 2, 8, 7),
+        (2, 3, 14, 13),
+        (4, 5, 11, 10),
+        (3, 4, 15, 14),
+    ]
+
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.validate(verbose=True)
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
@@ -430,15 +522,15 @@ def generate_block_stone_angle(output_dir: Path) -> None:
 
 def gravel_materials() -> dict[str, bpy.types.Material]:
     return {
-        "base": material("Material.BlockGravel.Base", "#747A7B", roughness=0.97),
+        "base": material("Material.BlockGravel.Base", "#817B70", roughness=0.97),
         "light": material(
             "Material.BlockGravel.PiecesLight",
-            "#9AA0A0",
+            "#A49B8D",
             roughness=0.92,
         ),
         "dark": material(
             "Material.BlockGravel.PiecesDark",
-            "#505759",
+            "#5D5A52",
             roughness=0.96,
         ),
     }
@@ -470,7 +562,8 @@ def generate_block_gravel(output_dir: Path) -> None:
         y_bounds=(-0.5, 0.5),
         height=0.388,
         value=materials["base"],
-        bevel_width=0.012,
+        # The tile shell must meet neighboring gravel without chamfered gaps.
+        bevel_width=0,
     )
     pieces: dict[str, list[bpy.types.Object]] = {"light": [], "dark": []}
     for index, (role, x, y, width, depth, height, rotation) in enumerate(
@@ -628,6 +721,132 @@ def generate_block_stone_stairs_half(output_dir: Path) -> None:
     )
 
 
+def generate_block_stone_stairs_corner(output_dir: Path) -> None:
+    name = "BlockStoneStairsCorner"
+    reset_scene(name)
+    materials = stone_materials()
+    roles: dict[str, list[bpy.types.Object]] = {
+        "large": [],
+        "mid": [],
+        "dark": [],
+    }
+    specs = (
+        ("large", (-0.5, 0), (-0.5, 0.063), 0.2),
+        ("dark", (-0.5, 0), (0.077, 0.5), 0.2),
+        ("mid", (0, 0.5), (-0.5, -0.007), 0.2),
+        ("large", (0, 0.5), (0.007, 0.5), 0.4),
+    )
+    for index, (role, x_bounds, y_bounds, height) in enumerate(specs):
+        roles[role].append(
+            box(
+                f"corner_stair_{index}",
+                x_bounds=x_bounds,
+                y_bounds=y_bounds,
+                height=height,
+                value=materials[role],
+                bevel_width=0.018,
+            )
+        )
+    final = [
+        join_objects(
+            roles["large"],
+            "Block_Stone_Stairs_Corner_Large",
+            materials["large"],
+        ),
+        join_objects(
+            roles["mid"],
+            "Block_Stone_Stairs_Corner_Mid",
+            materials["mid"],
+        ),
+        join_objects(
+            roles["dark"],
+            "Block_Stone_Stairs_Corner_Dark",
+            materials["dark"],
+        ),
+    ]
+    save_asset(name, output_dir, final)
+
+
+def polished_stone_material() -> bpy.types.Material:
+    return material(
+        "Material.BlockPolishedStone.Surface",
+        "#918B7F",
+        roughness=0.58,
+    )
+
+
+def generate_block_polished_stone(output_dir: Path) -> None:
+    name = "BlockPolishedStone"
+    reset_scene(name)
+    surface = polished_stone_material()
+    final = [
+        box(
+            "Block_Polished_Stone",
+            x_bounds=(-0.5, 0.5),
+            y_bounds=(-0.5, 0.5),
+            height=TERRAIN_HEIGHT,
+            value=surface,
+            bevel_width=0.018,
+        )
+    ]
+    save_asset(name, output_dir, final)
+
+
+def generate_block_polished_stone_angle(output_dir: Path) -> None:
+    name = "BlockPolishedStoneAngle"
+    reset_scene(name)
+    surface = polished_stone_material()
+    final = [
+        wedge_segment(
+            "Block_Polished_Stone_Angle",
+            x_bounds=(-0.5, 0.5),
+            y_bounds=(-0.5, 0.5),
+            maximum_height=TERRAIN_HEIGHT,
+            value=surface,
+            # Keep the zero-height leading edge exactly aligned to the tile.
+            bevel_width=0,
+        )
+    ]
+    save_asset(name, output_dir, final)
+
+
+def generate_block_polished_stone_stairs(output_dir: Path) -> None:
+    name = "BlockPolishedStoneStairs"
+    reset_scene(name)
+    surface = polished_stone_material()
+    final = [
+        extruded_profile(
+            "Block_Polished_Stone_Stairs",
+            profile=(
+                (-0.5, 0),
+                (0.5, 0),
+                (0.5, 0.4),
+                (0, 0.4),
+                (0, 0.2),
+                (-0.5, 0.2),
+            ),
+            y_bounds=(-0.5, 0.5),
+            value=surface,
+            bevel_width=0.014,
+        )
+    ]
+    save_asset(name, output_dir, final)
+
+
+def generate_block_polished_stone_stairs_corner(output_dir: Path) -> None:
+    name = "BlockPolishedStoneStairsCorner"
+    reset_scene(name)
+    surface = polished_stone_material()
+    final = [
+        corner_step_block(
+            "Block_Polished_Stone_Stairs_Corner",
+            value=surface,
+            bevel_width=0.014,
+        )
+    ]
+    save_asset(name, output_dir, final)
+
+
 GENERATORS: dict[str, Callable[[Path], None]] = {
     "BlockStone": generate_block_stone,
     "BlockStoneAngle": generate_block_stone_angle,
@@ -635,6 +854,11 @@ GENERATORS: dict[str, Callable[[Path], None]] = {
     "BlockGravelAngle": generate_block_gravel_angle,
     "BlockStoneStairs": generate_block_stone_stairs,
     "BlockStoneStairsHalf": generate_block_stone_stairs_half,
+    "BlockStoneStairsCorner": generate_block_stone_stairs_corner,
+    "BlockPolishedStone": generate_block_polished_stone,
+    "BlockPolishedStoneAngle": generate_block_polished_stone_angle,
+    "BlockPolishedStoneStairs": generate_block_polished_stone_stairs,
+    "BlockPolishedStoneStairsCorner": generate_block_polished_stone_stairs_corner,
 }
 
 

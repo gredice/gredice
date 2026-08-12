@@ -8,6 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useGroundPatchStandardMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { swampGroundBaseColor } from './swampGroundPalette';
 
 export function BlockSwampGroundAngle({
     stack,
@@ -18,7 +19,7 @@ export function BlockSwampGroundAngle({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const material = useGroundPatchStandardMaterial({
-        color: '#5b554a',
+        color: swampGroundBaseColor,
         metalness: 0,
         roughness: 1,
         surface: 'swampDirt',

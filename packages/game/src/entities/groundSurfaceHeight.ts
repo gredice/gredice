@@ -1,3 +1,8 @@
+import {
+    isTerrainCornerStairBlockName,
+    isTerrainStraightStairBlockName,
+} from './terrainStairs';
+
 const terrainHalfSize = 0.5;
 
 function clampUnit(value: number) {
@@ -13,11 +18,12 @@ export function getSlopedGroundNormalizedHeight(
     localX: number,
     localZ: number,
 ) {
-    if (
-        blockName === 'Block_Stone_Stairs' ||
-        blockName === 'Block_Stone_Stairs_Half'
-    ) {
+    if (isTerrainStraightStairBlockName(blockName)) {
         return localX < 0 ? 0.5 : 1;
+    }
+
+    if (isTerrainCornerStairBlockName(blockName)) {
+        return localX >= 0 && localZ <= 0 ? 1 : 0.5;
     }
 
     if (blockName.endsWith('_Reverse_Corner')) {

@@ -214,9 +214,13 @@ export type GLTFResult = GLTF & {
         Block_Stone_Stairs_Large: THREE.Mesh;
         Block_Stone_Stairs_Mid: THREE.Mesh;
         Block_Stone_Stairs_Dark: THREE.Mesh;
-        Block_Stone_Stairs_Half_Large: THREE.Mesh;
-        Block_Stone_Stairs_Half_Mid: THREE.Mesh;
-        Block_Stone_Stairs_Half_Dark: THREE.Mesh;
+        Block_Stone_Stairs_Corner_Large: THREE.Mesh;
+        Block_Stone_Stairs_Corner_Mid: THREE.Mesh;
+        Block_Stone_Stairs_Corner_Dark: THREE.Mesh;
+        Block_Polished_Stone: THREE.Mesh;
+        Block_Polished_Stone_Angle: THREE.Mesh;
+        Block_Polished_Stone_Stairs: THREE.Mesh;
+        Block_Polished_Stone_Stairs_Corner: THREE.Mesh;
         Block_Ground_Corner_1: THREE.Mesh;
         Block_Grass_Corner_1_1: THREE.Mesh;
         Block_Grass_Corner_1_2: THREE.Mesh;
@@ -1212,6 +1216,7 @@ export type GLTFResult = GLTF & {
         'Material.BlockGravel.Base': THREE.MeshStandardMaterial;
         'Material.BlockGravel.PiecesDark': THREE.MeshStandardMaterial;
         'Material.BlockGravel.PiecesLight': THREE.MeshStandardMaterial;
+        'Material.BlockPolishedStone.Surface': THREE.MeshStandardMaterial;
         'Material.BlockStone.Dark': THREE.MeshStandardMaterial;
         'Material.BlockStone.Large': THREE.MeshStandardMaterial;
         'Material.BlockStone.Mid': THREE.MeshStandardMaterial;

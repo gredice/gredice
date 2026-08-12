@@ -99,6 +99,7 @@ describe('garden preview capture policy', () => {
 
 describe('garden preview API contract', () => {
     it('builds the proxied raw upload request metadata', () => {
+        assert.equal(gardenPreviewRendererVersion, 'garden-preview-v2');
         assert.equal(
             getGardenPreviewUploadUrl(42),
             '/api/gredice/api/gardens/42/preview',

@@ -74,7 +74,7 @@
             "name": "BlockGravel",
             "source": "BlockGravel.blend",
             "output": "BlockGravel.glb",
-            "version": "d25eff067d31",
+            "version": "41cc7c79a13c",
             "preload": "ground",
             "objects": [
                 "Block_Gravel_Base",
@@ -86,7 +86,7 @@
             "name": "BlockGravelAngle",
             "source": "BlockGravelAngle.blend",
             "output": "BlockGravelAngle.glb",
-            "version": "c7fe62b258fc",
+            "version": "3dec8432e1b9",
             "preload": "ground",
             "objects": [
                 "Block_Gravel_Angle_Base",
@@ -107,16 +107,48 @@
             ]
         },
         {
-            "name": "BlockStoneStairsHalf",
-            "source": "BlockStoneStairsHalf.blend",
-            "output": "BlockStoneStairsHalf.glb",
-            "version": "3afc2f86586e",
+            "name": "BlockStoneStairsCorner",
+            "source": "BlockStoneStairsCorner.blend",
+            "output": "BlockStoneStairsCorner.glb",
+            "version": "527837b09df4",
             "preload": "ground",
             "objects": [
-                "Block_Stone_Stairs_Half_Large",
-                "Block_Stone_Stairs_Half_Mid",
-                "Block_Stone_Stairs_Half_Dark"
+                "Block_Stone_Stairs_Corner_Large",
+                "Block_Stone_Stairs_Corner_Mid",
+                "Block_Stone_Stairs_Corner_Dark"
             ]
+        },
+        {
+            "name": "BlockPolishedStone",
+            "source": "BlockPolishedStone.blend",
+            "output": "BlockPolishedStone.glb",
+            "version": "37f822173ab1",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone"]
+        },
+        {
+            "name": "BlockPolishedStoneAngle",
+            "source": "BlockPolishedStoneAngle.blend",
+            "output": "BlockPolishedStoneAngle.glb",
+            "version": "87a23acfaaa7",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Angle"]
+        },
+        {
+            "name": "BlockPolishedStoneStairs",
+            "source": "BlockPolishedStoneStairs.blend",
+            "output": "BlockPolishedStoneStairs.glb",
+            "version": "1ff582010dd2",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Stairs"]
+        },
+        {
+            "name": "BlockPolishedStoneStairsCorner",
+            "source": "BlockPolishedStoneStairsCorner.blend",
+            "output": "BlockPolishedStoneStairsCorner.glb",
+            "version": "21d38a9e4b67",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Stairs_Corner"]
         },
         {
             "name": "BlockTerrainCorner",

@@ -88,6 +88,7 @@ export const localSandboxBlockNames = [
     'Block_Dry_Ground',
     'Block_Swamp_Ground',
     'Block_Stone',
+    'Block_Polished_Stone',
     'Block_Gravel',
     'Block_Sand',
     'Block_Snow',
@@ -99,10 +100,15 @@ export const localSandboxBlockNames = [
     'Block_Dry_Ground_Angle',
     'Block_Swamp_Ground_Angle',
     'Block_Stone_Angle',
+    'Block_Polished_Stone_Angle',
     'Block_Gravel_Angle',
     'Block_Sand_Angle',
     'Block_Snow_Angle',
     'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
+    'Block_Polished_Stone_Stairs',
+    'Block_Polished_Stone_Stairs_Corner',
+    // Kept so gardens authored with the previous offer name still render.
     'Block_Stone_Stairs_Half',
     'Block_Grass_Corner',
     'Block_Ground_Corner',
@@ -132,12 +138,12 @@ const localSandboxBlockMetadata: Partial<
     Block_Gravel: {
         label: 'Šljunak',
         shortDescription:
-            'Sivi šljunčani blok sa sitnim kamenčićima za staze i suhe vrtne površine.',
+            'Topliji sivosmeđi šljunčani blok sa sitnim kamenčićima za povezane staze i suhe vrtne površine.',
     },
     Block_Gravel_Angle: {
         label: 'Šljunak rub',
         shortDescription:
-            'Kosi rub od sivog šljunka za prirodne prijelaze uz staze i nasipe.',
+            'Kosi rub od toplijeg sivosmeđeg šljunka za prirodne prijelaze uz staze i nasipe.',
     },
     Block_Dry_Ground: {
         label: 'Suha zemlja',
@@ -152,12 +158,12 @@ const localSandboxBlockMetadata: Partial<
     Block_Swamp_Ground: {
         label: 'Močvarna zemlja',
         shortDescription:
-            'Smeđesiva vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
+            'Smeđezelena vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
     },
     Block_Swamp_Ground_Angle: {
         label: 'Močvarna zemlja rub',
         shortDescription:
-            'Kosi rub smeđesive močvarne zemlje sa svijetlosmeđim raslinjem.',
+            'Kosi rub smeđezelene močvarne zemlje sa svijetlosmeđim raslinjem.',
     },
     Block_Swamp_Water: {
         label: 'Močvarna voda',
@@ -169,10 +175,35 @@ const localSandboxBlockMetadata: Partial<
         shortDescription:
             'Pune kamene stube s dvije razine za povezivanje nižih i viših površina.',
     },
-    Block_Stone_Stairs_Half: {
-        label: 'Kamene polustube',
+    Block_Stone_Stairs_Corner: {
+        label: 'Kutne kamene stube',
         shortDescription:
-            'Kamene stube pola širine za završetke, rubove i uske prijelaze.',
+            'Kutne kamene stube s dvije razine za povezivanje kamenih stubišta oko zavoja.',
+    },
+    Block_Stone_Stairs_Half: {
+        label: 'Kutne kamene stube',
+        shortDescription:
+            'Prethodni naziv kutnih kamenih stuba, zadržan za postojeće vrtove.',
+    },
+    Block_Polished_Stone: {
+        label: 'Polirani kamen',
+        shortDescription:
+            'Jednodijelni blok glatkog poliranog kamena za uredne vrtne površine i zidove.',
+    },
+    Block_Polished_Stone_Angle: {
+        label: 'Polirani kamen rub',
+        shortDescription:
+            'Kosi jednodijelni rub od poliranog kamena za uredne prijelaze između razina.',
+    },
+    Block_Polished_Stone_Stairs: {
+        label: 'Polirane kamene stube',
+        shortDescription:
+            'Jednodijelne polirane kamene stube s dvije razine za ravne prijelaze.',
+    },
+    Block_Polished_Stone_Stairs_Corner: {
+        label: 'Kutne polirane kamene stube',
+        shortDescription:
+            'Jednodijelne kutne stube od poliranog kamena za povezivanje stubišta oko zavoja.',
     },
     StoneWalkway: {
         label: 'Kamena staza',
@@ -240,6 +271,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Block_Dry_Ground: 0.4,
         Block_Swamp_Ground: 0.4,
         Block_Stone: 0.4,
+        Block_Polished_Stone: 0.4,
         Block_Gravel: 0.4,
         Block_Sand: 0.4,
         Block_Snow: 0.4,
@@ -251,10 +283,14 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Block_Dry_Ground_Angle: 0.4,
         Block_Swamp_Ground_Angle: 0.4,
         Block_Stone_Angle: 0.4,
+        Block_Polished_Stone_Angle: 0.4,
         Block_Gravel_Angle: 0.4,
         Block_Sand_Angle: 0.4,
         Block_Snow_Angle: 0.4,
         Block_Stone_Stairs: 0.4,
+        Block_Stone_Stairs_Corner: 0.4,
+        Block_Polished_Stone_Stairs: 0.4,
+        Block_Polished_Stone_Stairs_Corner: 0.4,
         Block_Stone_Stairs_Half: 0.4,
         Block_Grass_Corner: 0.4,
         Block_Ground_Corner: 0.4,
@@ -341,8 +377,18 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.08,
         hitboxWidth: 0.96,
     },
+    Block_Stone_Stairs_Corner: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.4,
+        hitboxWidth: 1,
+    },
     Block_Stone_Stairs_Half: {
-        hitboxDepth: 0.5,
+        hitboxDepth: 1,
+        hitboxHeight: 0.4,
+        hitboxWidth: 1,
+    },
+    Block_Polished_Stone_Stairs_Corner: {
+        hitboxDepth: 1,
         hitboxHeight: 0.4,
         hitboxWidth: 1,
     },

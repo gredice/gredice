@@ -51,7 +51,12 @@ test('local sandbox exposes every terrain variation with offer dimensions', () =
         'Block_Swamp_Ground_Angle',
         'Block_Swamp_Water',
         'Block_Stone_Stairs',
+        'Block_Stone_Stairs_Corner',
         'Block_Stone_Stairs_Half',
+        'Block_Polished_Stone',
+        'Block_Polished_Stone_Angle',
+        'Block_Polished_Stone_Stairs',
+        'Block_Polished_Stone_Stairs_Corner',
     ];
 
     for (const name of names) {
@@ -65,14 +70,20 @@ test('local sandbox exposes every terrain variation with offer dimensions', () =
         assert.equal(block.prices.sunflowers, 0);
     }
 
-    const halfStairs = blockData.find(
-        (block) => block.information.name === 'Block_Stone_Stairs_Half',
+    const cornerStairs = blockData.filter((block) =>
+        [
+            'Block_Stone_Stairs_Corner',
+            'Block_Stone_Stairs_Half',
+            'Block_Polished_Stone_Stairs_Corner',
+        ].includes(block.information.name),
     );
     const swampWater = blockData.find(
         (block) => block.information.name === 'Block_Swamp_Water',
     );
-    assert.equal(halfStairs?.attributes.hitboxDepth, 0.5);
-    assert.equal(halfStairs?.attributes.hitboxWidth, 1);
+    for (const cornerStair of cornerStairs) {
+        assert.equal(cornerStair.attributes.hitboxDepth, 1);
+        assert.equal(cornerStair.attributes.hitboxWidth, 1);
+    }
     assert.equal(swampWater?.attributes.placeableOnWater, true);
 });
 
