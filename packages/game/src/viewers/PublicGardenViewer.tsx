@@ -149,6 +149,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     onSceneReady?: () => void;
     noWeather?: boolean;
     renderDetails?: boolean;
+    renderGroundDecorations?: boolean;
     sceneChildren?: ReactNode;
     deferDetails?: boolean;
     className?: string;
@@ -406,6 +407,13 @@ function publicGardenTimeLocation(
     };
 }
 
+export function shouldRenderPublicGardenGroundDecorations(
+    renderDetails: boolean,
+    renderGroundDecorations: boolean | undefined,
+) {
+    return renderGroundDecorations ?? renderDetails;
+}
+
 function PublicGardenScene({
     cameraMinZoom,
     capture,
@@ -423,6 +431,7 @@ function PublicGardenScene({
     onSceneContextLost,
     onSceneReady,
     renderDetails,
+    renderGroundDecorations,
     sceneChildren,
     selectedBlockFocus,
     visitorPresence,
@@ -443,6 +452,7 @@ function PublicGardenScene({
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
     renderDetails: boolean;
+    renderGroundDecorations?: boolean;
     sceneChildren?: ReactNode;
     selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     visitorPresence?: GardenVisitorPresenceController;
@@ -545,9 +555,10 @@ function PublicGardenScene({
                                     <EntityInstances
                                         farmId={garden?.farmId}
                                         quality={qualityProfile}
-                                        renderGroundDecorations={
-                                            renderLivingDetails
-                                        }
+                                        renderGroundDecorations={shouldRenderPublicGardenGroundDecorations(
+                                            renderLivingDetails,
+                                            renderGroundDecorations,
+                                        )}
                                         stacks={normalizedStacks}
                                         renderDetails={renderLivingDetails}
                                     />
@@ -775,6 +786,7 @@ export function PublicGardenViewer({
     onSceneContextLost,
     onSceneReady,
     renderDetails: renderDetailsOverride,
+    renderGroundDecorations,
     sceneChildren,
     selectedBlockId,
     selectedBlockFocus,
@@ -1041,6 +1053,9 @@ export function PublicGardenViewer({
                                     onSceneContextLost={onSceneContextLost}
                                     onSceneReady={onSceneReady}
                                     renderDetails={renderDetails}
+                                    renderGroundDecorations={
+                                        renderGroundDecorations
+                                    }
                                     sceneChildren={sceneChildren}
                                     selectedBlockFocus={selectedBlockFocus}
                                     visitorPresence={visitorPresence}

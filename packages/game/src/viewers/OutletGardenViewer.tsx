@@ -377,15 +377,33 @@ export function OutletGardenViewer({
         const reducedMotion = window.matchMedia(
             '(prefers-reduced-motion: reduce)',
         ).matches;
+        const navigate = () => {
+            if (exitTarget.destination === 'garden') {
+                // React Three Fiber tears down a WebGL root asynchronously.
+                // Start the user garden in a fresh document so its renderer
+                // cannot overlap that delayed Outlet renderer cleanup.
+                window.location.assign(exitTarget.href);
+            } else {
+                router.push(exitTarget.href);
+            }
+        };
+        const handlePageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                setExitTarget(null);
+            }
+        };
+        window.addEventListener('pageshow', handlePageShow);
+
         if (reducedMotion) {
-            router.push(exitTarget.href);
-            return;
+            navigate();
+            return () => window.removeEventListener('pageshow', handlePageShow);
         }
 
-        const timeout = window.setTimeout(() => {
-            router.push(exitTarget.href);
-        }, 220);
-        return () => window.clearTimeout(timeout);
+        const timeout = window.setTimeout(navigate, 220);
+        return () => {
+            window.clearTimeout(timeout);
+            window.removeEventListener('pageshow', handlePageShow);
+        };
     }, [exitTarget, router]);
 
     const selectOffer = useCallback(
@@ -481,6 +499,7 @@ export function OutletGardenViewer({
                         onSceneContextLost={reportSceneContextLost}
                         onSceneReady={trackSceneReady}
                         renderDetails={false}
+                        renderGroundDecorations
                         sceneChildren={
                             <OutletGardenSeedlingMarkers
                                 highlightedOfferId={hoveredOfferId}

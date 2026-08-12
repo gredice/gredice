@@ -174,6 +174,11 @@ async function mockGardenApi(
             body = { items: [], nextCursor: null, total: 0 };
         } else if (
             withGarden &&
+            pathname.endsWith('/api/gardens/1/raised-bed-notifications')
+        ) {
+            body = { notifications: [] };
+        } else if (
+            withGarden &&
             pathname.endsWith('/api/gardens/1/visit-summary/seen')
         ) {
             body = {
