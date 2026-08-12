@@ -20,6 +20,7 @@ import {
     resolveGardenLightBudget,
     selectActiveGardenLightKeys,
 } from './gardenLightBudget';
+import { GardenLightRegistryStore } from './gardenLightRegistry';
 
 export type GardenEmissiveMaterial = Material & {
     emissiveIntensity: number;
@@ -57,22 +58,20 @@ export function GardenLightProvider({
     children,
     qualityTier,
 }: PropsWithChildren<{ qualityTier: GameQualityProfileTier }>) {
-    const registrationsRef = useRef(new Map<string, GardenLightRegistration>());
+    const registrationsRef = useRef(
+        new GardenLightRegistryStore<GardenLightRegistration>(),
+    );
     const worldPosition = useMemo(() => new Vector3(), []);
     const budget = resolveGardenLightBudget(qualityTier);
     const timeOfDay = useOptionalGameState((state) => state.timeOfDay, 0.5);
     const registry = useMemo<GardenLightRegistry>(
         () => ({
             register: (registration) => {
-                registrationsRef.current.set(registration.key, registration);
+                const registered =
+                    registrationsRef.current.register(registration);
 
                 return () => {
-                    if (
-                        registrationsRef.current.get(registration.key) ===
-                        registration
-                    ) {
-                        registrationsRef.current.delete(registration.key);
-                    }
+                    registered.unregister();
                     const light = registration.lightRef.current;
                     if (light) {
                         light.intensity = 0;
@@ -85,11 +84,11 @@ export function GardenLightProvider({
     );
 
     useFrame(({ camera }) => {
-        const registrations = [...registrationsRef.current.values()];
+        const registrations = registrationsRef.current.getEntries();
         const nightAmount = getNightGardenGlowAmount(timeOfDay);
         const candidates =
             nightAmount > 0
-                ? registrations.flatMap((registration) => {
+                ? registrations.flatMap(({ instanceKey, registration }) => {
                       const light = registration.lightRef.current;
                       if (!light) {
                           return [];
@@ -101,7 +100,7 @@ export function GardenLightProvider({
 
                       return [
                           {
-                              key: registration.key,
+                              key: instanceKey,
                               x: worldPosition.x,
                               y: worldPosition.y,
                               z: worldPosition.z,
@@ -111,12 +110,12 @@ export function GardenLightProvider({
                 : [];
         const activeKeys = selectActiveGardenLightKeys(candidates, budget);
 
-        for (const registration of registrations) {
+        for (const { instanceKey, registration } of registrations) {
             const frame = resolveNightGardenLightFrame({
                 emissiveBaseIntensity: registration.emissiveBaseIntensity,
                 emissivePeakIntensity: registration.emissivePeakIntensity,
                 lightIntensity: registration.lightIntensity,
-                physicalLightSelected: activeKeys.has(registration.key),
+                physicalLightSelected: activeKeys.has(instanceKey),
                 timeOfDay,
             });
 
