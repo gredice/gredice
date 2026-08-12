@@ -6,6 +6,9 @@ import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
 
 type OutletOffer = OutletGardenOfferBrowserProps['offers'][number];
+type OutletGardenCommerce = NonNullable<
+    OutletGardenOfferBrowserProps['commerce']
+>;
 
 const outletOffers = [
     {
@@ -106,10 +109,12 @@ export type OutletGardenOfferBrowserStoryState =
 
 export function OutletGardenOfferBrowserStory({
     displayLimited = false,
+    commerceUnavailable = false,
     initialSelectedOfferId = null,
     selectionDriven = false,
     state = 'ready',
 }: {
+    commerceUnavailable?: boolean;
     displayLimited?: boolean;
     initialSelectedOfferId?: number | null;
     selectionDriven?: boolean;
@@ -120,9 +125,39 @@ export function OutletGardenOfferBrowserStory({
     );
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [commerceCloseCount, setCommerceCloseCount] = useState(0);
     const [offerListOpen, setOfferListOpen] = useState(false);
     const browserOpen =
         !selectionDriven || offerListOpen || selectedOfferId !== null;
+    const commerce = commerceUnavailable
+        ? ({
+              cartHref: null,
+              close: () => setCommerceCloseCount((count) => count + 1),
+              continueToCart: () => undefined,
+              enabled: true,
+              errorMessage: null,
+              fieldTargets: [],
+              gardens: [],
+              open: () => undefined,
+              opened: true,
+              raisedBeds: [],
+              receipt: null,
+              refreshAuthentication: async () => undefined,
+              reserve: async () => undefined,
+              retryQueries: async () => undefined,
+              selectGarden: () => undefined,
+              selectRaisedBed: () => undefined,
+              selectTarget: () => undefined,
+              selectedGardenId: null,
+              selectedOffer:
+                  outletOffers.find((offer) => offer.id === selectedOfferId) ??
+                  null,
+              selectedRaisedBedId: null,
+              selectedTargetKey: null,
+              state: 'unavailable',
+              targets: [],
+          } satisfies OutletGardenCommerce)
+        : undefined;
 
     return (
         <div className="h-[100dvh] bg-muted">
@@ -142,6 +177,7 @@ export function OutletGardenOfferBrowserStory({
             {browserOpen ? (
                 <OutletGardenOfferBrowser
                     className="h-full w-full max-w-md"
+                    commerce={commerce}
                     displayLimited={displayLimited}
                     isError={state === 'error'}
                     isLoading={state === 'loading'}
@@ -186,6 +222,9 @@ export function OutletGardenOfferBrowserStory({
             </output>
             <output className="sr-only" data-hovered-offer-id>
                 {hoveredOfferId ?? 'none'}
+            </output>
+            <output className="sr-only" data-commerce-close-count>
+                {commerceCloseCount}
             </output>
             <output className="sr-only" data-selected-offer-id>
                 {selectedOfferId ?? 'none'}

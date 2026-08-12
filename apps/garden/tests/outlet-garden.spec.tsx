@@ -109,6 +109,32 @@ test('keeps the 3D sidebar closed until the list or a seedling is selected', asy
     await expect(page.locator('[data-selected-offer-id]')).toHaveText('none');
 });
 
+test('returns unavailable 3D reservations to the in-scene offer list', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <OutletGardenOfferBrowserStory
+            commerceUnavailable
+            initialSelectedOfferId={302}
+            selectionDriven
+        />,
+    );
+
+    const browser = page.locator('[data-outlet-garden-browser]');
+    await expect(browser).toHaveAttribute(
+        'data-outlet-garden-state',
+        'selected',
+    );
+    await browser.getByRole('button', { name: 'Odaberi drugu' }).click();
+
+    await expect(browser).toBeVisible();
+    await expect(
+        browser.locator('[data-outlet-garden-offer-list]'),
+    ).toBeVisible();
+    await expect(page.locator('[data-commerce-close-count]')).toHaveText('1');
+});
+
 test('shows representative hierarchy imagery and complete offer pricing', async ({
     mount,
     page,

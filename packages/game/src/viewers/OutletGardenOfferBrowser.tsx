@@ -719,6 +719,10 @@ export function OutletGardenOfferBrowser({
                                     }
                                     onChooseAnother={() => {
                                         commerce.close();
+                                        if (onShowOfferList) {
+                                            onShowOfferList();
+                                            return;
+                                        }
                                         onSelectOffer(null);
                                     }}
                                 />
