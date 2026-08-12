@@ -258,6 +258,8 @@ jobs:
       name: "garden"
       path: "apps/garden"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
+      testShardMatrix: '[{"index":1,"total":2},{"index":2,"total":2}]'
+      testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
 
   ci_farm:

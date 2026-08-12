@@ -22,6 +22,7 @@
         "profile:game:start": "GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
         "profile:game:ci": "GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game",
         "test": "pnpm run test:sw && pnpm run test:profile && pnpm run test:run",
+        "test:ci:prepare": "pnpm run test:sw && pnpm run test:profile",
         "test:prepare": "turbo build --filter=garden",
         "test:run": "playwright test",
         "test:profile": "node --experimental-strip-types --test scripts/profile-game-scene.unit.mjs app/debug/profile/game/profileFlags.unit.ts app/debug/profile/game/profileWeather.unit.ts",
