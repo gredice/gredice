@@ -1,11 +1,11 @@
 import { clientAuthenticated } from '@gredice/client';
-import {
-    type AdvancedSowingSelectionRequestV1,
-    type AdvancedSowingSelectionSummaryV1,
-    advancedSowingSelectionRequestKind,
-} from '@gredice/js/plants';
+import { advancedSowingSelectionRequestKind } from '@gredice/js/plants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEffectiveEurPrice } from '../utils/sunflowerPricing';
+import {
+    type SetShoppingCartItemInput,
+    shoppingCartMutationErrorFromResponse,
+} from './shoppingCartItemMutation';
 import {
     currentAccountKeys,
     type useCurrentAccount,
@@ -17,22 +17,10 @@ import {
 } from './useShoppingCart';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
-type SetShoppingCartItemInput = {
-    id?: number;
-    entityTypeName: string;
-    entityId: string;
-    amount: number;
-    gardenId?: number;
-    raisedBedId?: number;
-    positionIndex?: number;
-    additionalData?: string | null;
-    currency?: string | null;
-    outletOfferId?: number;
-    forceCreate?: boolean;
-    advancedSowingSelection?:
-        | AdvancedSowingSelectionRequestV1
-        | AdvancedSowingSelectionSummaryV1;
-};
+export {
+    type SetShoppingCartItemInput,
+    ShoppingCartMutationError,
+} from './shoppingCartItemMutation';
 
 type CurrentAccountData = ReturnType<typeof useCurrentAccount>['data'];
 
@@ -188,8 +176,8 @@ export function useSetShoppingCartItem() {
                     cartId: cart.id,
                 },
             });
-            if (response.status !== 200) {
-                throw new Error('Failed to set shopping cart item');
+            if (!response.ok) {
+                throw await shoppingCartMutationErrorFromResponse(response);
             }
         },
         onMutate: async (item) => {

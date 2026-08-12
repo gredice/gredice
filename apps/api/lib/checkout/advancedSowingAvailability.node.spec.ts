@@ -9,6 +9,8 @@ import {
     assertAdvancedSowingPlanAvailable,
     assertLegacySowingCartTargetsAvailable,
     assertLegacySowingTargetAvailable,
+    assertUniqueDirectSowingCartTargets,
+    DuplicateDirectSowingCartTargetError,
     getLegacySowingCartMutationTarget,
     getLegacySowingCartTargets,
     LegacySowingSelectedPlantingConflictError,
@@ -308,6 +310,17 @@ describe('legacy sowing selected-planting guard', () => {
             LegacySowingSelectedPlantingConflictError,
         );
         assert.deepEqual(loadedRaisedBedIds, [2]);
+    });
+
+    it('rejects duplicate direct planting anchors before payment', () => {
+        assert.throws(
+            () =>
+                assertUniqueDirectSowingCartTargets({
+                    authorizationsByCartItemId: new Map(),
+                    cartItems: [legacyCartItem, { ...legacyCartItem, id: 21 }],
+                }),
+            DuplicateDirectSowingCartTargetError,
+        );
     });
 
     it('preserves an exact authorized item update but guards conversions, moves, and outlet fallback', () => {

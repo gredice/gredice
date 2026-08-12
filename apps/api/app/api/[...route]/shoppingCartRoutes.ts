@@ -18,6 +18,7 @@ import {
     getEntityFormatted,
     getEntityRaw,
     getGarden,
+    getGardenBlocks,
     getHarvestScheduleForCart,
     getOrCreateShoppingCart,
     getOutletOffer,
@@ -30,6 +31,7 @@ import {
     HarvestScheduleConflictError,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    OutletCartTargetUnavailableError,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationForCartItem,
@@ -56,8 +58,16 @@ import {
 } from '../../../lib/checkout/advancedSowingPlan';
 import { isAdvancedSowingServerEnabled } from '../../../lib/checkout/advancedSowingServerFlag';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import {
+    assertOutletCartTargetAvailable,
+    OutletCartMutationConflictError,
+    outletCartMutationConflictCodes,
+    requireOutletCartTarget,
+    resolveOutletCartCurrency,
+} from '../../../lib/checkout/outletCartTarget';
 import { serializeShoppingCartItemForClient } from '../../../lib/checkout/shoppingCartClientSerialization';
 import { getDefaultCartItemCurrency } from '../../../lib/checkout/sunflowerCalculations';
+import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
@@ -206,7 +216,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/',
         describeRoute({
             description:
-                'Add or update an item in the shopping cart. New items without an explicit currency use sunflowers when the current balance covers all sunflower commitments in the cart.',
+                'Add or update an item in the shopping cart. New items without an explicit currency use sunflowers when the current balance covers all sunflower commitments in the cart. Outlet additions require an owned, available garden field and return stable conflict codes when the offer or target is unavailable.',
         }),
         authValidator(['user', 'admin']),
         zValidator(
@@ -280,6 +290,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 typeof id === 'number'
                     ? cart.items.find((item) => item.id === id)
                     : undefined;
+            let outletMutationCurrency = currency;
             if (outletOfferId && entityTypeName !== 'plantSort') {
                 return context.json(
                     { error: 'Outlet offers can only be used for plant sorts' },
@@ -309,10 +320,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             if (outletOfferId && amount > 0) {
+                if (amount !== 1) {
+                    return context.json(
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
+                        409,
+                    );
+                }
                 const offer = await getOutletOffer(outletOfferId);
                 if (!offer) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
                         409,
                     );
                 }
@@ -322,16 +345,70 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     offer.status !== 'published' ||
                     offer.startAt.getTime() > now ||
                     offer.endAt.getTime() <= now ||
-                    offer.remainingQuantity < amount ||
                     offer.plantSortId.toString() !== entityId
                 ) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
                         409,
                     );
                 }
+
+                try {
+                    const target = requireOutletCartTarget({
+                        gardenId,
+                        positionIndex,
+                        raisedBedId,
+                    });
+                    const [garden, blocks] = await Promise.all([
+                        getGarden(target.gardenId),
+                        getGardenBlocks(target.gardenId),
+                    ]);
+                    const validityMap = garden
+                        ? calculateRaisedBedsValidity(
+                              garden.raisedBeds,
+                              garden.stacks,
+                              new Map(
+                                  blocks.map((block) => [block.id, block.name]),
+                              ),
+                          )
+                        : new Map<number, boolean>();
+                    assertOutletCartTargetAvailable({
+                        accountId,
+                        garden,
+                        isRaisedBedValid:
+                            validityMap.get(target.raisedBedId) ?? false,
+                        positionIndex: target.positionIndex,
+                        raisedBedId: target.raisedBedId,
+                    });
+                } catch (error) {
+                    if (error instanceof OutletCartMutationConflictError) {
+                        return context.json(
+                            { error: error.message, code: error.code },
+                            409,
+                        );
+                    }
+                    throw error;
+                }
+                const existingOutletTargetItem =
+                    existingItem ??
+                    cart.items.find(
+                        (item) =>
+                            item.status === 'new' &&
+                            item.amount > 0 &&
+                            item.entityTypeName === 'plantSort' &&
+                            item.gardenId === gardenId &&
+                            item.raisedBedId === raisedBedId &&
+                            item.positionIndex === positionIndex,
+                    );
+                outletMutationCurrency = resolveOutletCartCurrency(
+                    currency,
+                    existingOutletTargetItem?.currency,
+                );
             }
-            if (amount > 0 && raisedBedId) {
+            if (amount > 0 && raisedBedId && !outletOfferId) {
                 const raisedBed = await getRaisedBed(raisedBedId);
                 if (!raisedBed || raisedBed.accountId !== accountId) {
                     return context.json({ error: 'Raised bed not found' }, 404);
@@ -532,7 +609,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     throw error;
                 }
             }
-            let appliedCurrency = currency ?? undefined;
+            let appliedCurrency = outletMutationCurrency ?? undefined;
             try {
                 let cartItemId: number | null = null;
                 if (outletOfferId && amount > 0) {
@@ -547,7 +624,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             raisedBedId,
                             positionIndex,
                             additionalData,
-                            currency,
+                            currency: outletMutationCurrency,
                             forceCreate,
                             outletOfferId,
                             accountId,
@@ -656,7 +733,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     error instanceof OutletReservationUnavailableError
                 ) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof OutletCartTargetUnavailableError) {
+                    return context.json(
+                        {
+                            error: 'Outlet target is not available',
+                            code: outletCartMutationConflictCodes.targetUnavailable,
+                        },
                         409,
                     );
                 }

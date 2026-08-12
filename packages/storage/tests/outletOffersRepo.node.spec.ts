@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    advancedSowingCartAuthorizationKind,
+    buildAdvancedSowingCartConfigurationV1,
+} from '@gredice/js/plants';
+import {
     assignStripeCustomerId,
     bindStripeCheckoutAttempt,
     cleanupOutletLifecycle,
@@ -15,16 +19,21 @@ import {
     getOrCreateShoppingCart,
     getOutletOffer,
     getOutletOfferReservation,
+    getOutletOfferReservationForCartItem,
+    getOutletOfferReservationsForCartItems,
     getOutletOffers,
     getShoppingCart,
+    OutletCartTargetUnavailableError,
     OutletOfferIdentityImmutableError,
     OutletOfferUnavailableError,
+    OutletReservationUnavailableError,
     recordStripeCheckoutAttemptReconciliationMiss,
     releaseOutletReservationForCartItem,
     releaseStripeCheckoutAttempt,
     releaseStripeCheckoutAttemptAfterReconciliationMisses,
     reserveOutletOffer,
     StripeCheckoutAttemptConflictError,
+    StripeCheckoutAttemptInProgressError,
     type StripeCheckoutAttemptSnapshot,
     setCartItemPaid,
     storage,
@@ -32,12 +41,19 @@ import {
     updateOutletOffer,
     upsertEntityType,
     upsertOrRemoveCartItem,
+    upsertOrRemoveCartItemWithAdvancedSowingAuthorization,
     upsertOrRemoveCartItemWithOutletReservation,
     verifyStripeCheckoutAttemptLiveCart,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
 import { events, outletOfferReservations, outletOffers } from '../src/schema';
-import { createTestAccount } from './helpers/testHelpers';
+import {
+    createTestAccount,
+    createTestBlock,
+    createTestGarden,
+    createTestRaisedBed,
+    ensureFarmId,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 async function createTestPlantSort() {
@@ -87,6 +103,14 @@ async function createCartItem(accountId: string, plantSortId: number) {
     };
 }
 
+async function createOutletCartTarget(accountId: string) {
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    return { gardenId, positionIndex: 0, raisedBedId };
+}
+
 async function createPublishedOffer({
     plantSortId,
     quantity = 1,
@@ -116,6 +140,7 @@ function outletAttemptSnapshot({
     cartItemId,
     entityId,
     reservation,
+    target,
 }: {
     cartId: number;
     cartItemId: number;
@@ -123,6 +148,11 @@ function outletAttemptSnapshot({
     reservation: NonNullable<
         Awaited<ReturnType<typeof getOutletOfferReservation>>
     >;
+    target?: {
+        gardenId: number;
+        positionIndex: number;
+        raisedBedId: number;
+    };
 }): StripeCheckoutAttemptSnapshot {
     const attemptId = randomUUID();
     return {
@@ -140,7 +170,7 @@ function outletAttemptSnapshot({
                 currency: 'eur',
                 entityId,
                 entityTypeName: 'plantSort',
-                gardenId: null,
+                gardenId: target?.gardenId ?? null,
                 id: cartItemId,
                 outlet: {
                     comparePriceCents: reservation.heldComparePriceCents,
@@ -152,8 +182,8 @@ function outletAttemptSnapshot({
                 },
                 paymentAmount: reservation.heldOutletPriceCents,
                 paymentKind: 'stripe',
-                positionIndex: null,
-                raisedBedId: null,
+                positionIndex: target?.positionIndex ?? null,
+                raisedBedId: target?.raisedBedId ?? null,
                 status: 'new',
             },
         ],
@@ -730,6 +760,7 @@ test('outlet cart upsert rolls back when reservation fails', async () => {
     const otherAccountId = await createTestAccount();
     const otherCart = await getOrCreateShoppingCart(otherAccountId);
     assert.ok(otherCart, 'Cart should be created');
+    const target = await createOutletCartTarget(otherAccountId);
 
     await assert.rejects(
         () =>
@@ -740,6 +771,7 @@ test('outlet cart upsert rolls back when reservation fails', async () => {
                 amount: 1,
                 currency: 'eur',
                 forceCreate: true,
+                ...target,
                 outletOfferId: offerId,
                 accountId: otherAccountId,
                 now,
@@ -749,6 +781,719 @@ test('outlet cart upsert rolls back when reservation fails', async () => {
 
     const rolledBackCart = await getShoppingCart(otherCart.id);
     assert.deepEqual(rolledBackCart?.items ?? [], []);
+});
+
+test('concurrent exact outlet cart retries create one item and one hold', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const input = {
+        accountId,
+        additionalData: JSON.stringify({ outletOfferId: offerId }),
+        amount: 1,
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        ...target,
+        now,
+        outletOfferId: offerId,
+    };
+
+    const [firstItemId, secondItemId] = await Promise.all([
+        upsertOrRemoveCartItemWithOutletReservation(input),
+        upsertOrRemoveCartItemWithOutletReservation(input),
+    ]);
+
+    assert.ok(firstItemId);
+    assert.equal(secondItemId, firstItemId);
+    assert.equal(
+        await upsertOrRemoveCartItemWithOutletReservation(input),
+        firstItemId,
+    );
+    const persistedCart = await getShoppingCart(cart.id);
+    assert.deepEqual(
+        persistedCart?.items.map((item) => item.id),
+        [firstItemId],
+    );
+    const reservations = await getOutletOfferReservationsForCartItems([
+        firstItemId,
+    ]);
+    assert.equal(reservations.length, 1);
+    assert.equal(reservations[0]?.status, 'held');
+    const offer = await getOutletOffer(offerId, now);
+    assert.equal(offer?.reservedQuantity, 1);
+    assert.equal(offer?.remainingQuantity, 0);
+});
+
+test('id-less outlet cart retries retain the active checkout fence', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    await assignStripeCustomerId(accountId, 'cus_outlet');
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const input = {
+        accountId,
+        amount: 1,
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        ...target,
+        now,
+        outletOfferId: offerId,
+    };
+    const cartItemId = await upsertOrRemoveCartItemWithOutletReservation(input);
+    assert.ok(cartItemId);
+    const reservation = await getOutletOfferReservationForCartItem(cartItemId);
+    assert.ok(reservation);
+    await createStripeCheckoutAttempt(
+        outletAttemptSnapshot({
+            cartId: cart.id,
+            cartItemId,
+            entityId: plantSortId.toString(),
+            reservation,
+            target,
+        }),
+        { accountId, now },
+    );
+
+    await assert.rejects(
+        () => upsertOrRemoveCartItemWithOutletReservation(input),
+        StripeCheckoutAttemptInProgressError,
+    );
+    assert.deepEqual(
+        (await getShoppingCart(cart.id))?.items.map((item) => item.id),
+        [cartItemId],
+    );
+});
+
+test('id-less outlet cart addition rejects a different live plant target', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const existingItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        target.positionIndex,
+        null,
+        'eur',
+        true,
+    );
+    assert.ok(existingItemId);
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 1,
+                cartId: cart.id,
+                currency: 'eur',
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                ...target,
+                now,
+                outletOfferId: offerId,
+            }),
+        OutletCartTargetUnavailableError,
+    );
+
+    const persistedCart = await getShoppingCart(cart.id);
+    assert.deepEqual(
+        persistedCart?.items.map((item) => item.id),
+        [existingItemId],
+    );
+    assert.equal((await getOutletOffer(offerId, now))?.remainingQuantity, 1);
+});
+
+test('outlet cart mutation rejects a non-unit amount without reserving stock', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 2,
+                cartId: cart.id,
+                currency: 'eur',
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                ...target,
+                now,
+                outletOfferId: offerId,
+            }),
+        OutletReservationUnavailableError,
+    );
+    assert.deepEqual((await getShoppingCart(cart.id))?.items, []);
+    assert.equal((await getOutletOffer(offerId, now))?.remainingQuantity, 2);
+});
+
+test('explicit outlet conversion rejects a different persisted garden and bed', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const persistedTarget = await createOutletCartTarget(accountId);
+    const suppliedTarget = await createOutletCartTarget(accountId);
+    const cartItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        persistedTarget.gardenId,
+        persistedTarget.raisedBedId,
+        persistedTarget.positionIndex,
+        null,
+        'inventory',
+        true,
+    );
+    assert.ok(cartItemId);
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 1,
+                cartId: cart.id,
+                currency: 'eur',
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                id: cartItemId,
+                ...suppliedTarget,
+                now,
+                outletOfferId: offerId,
+            }),
+        OutletCartTargetUnavailableError,
+    );
+    const persistedItem = (await getShoppingCart(cart.id))?.items.find(
+        (item) => item.id === cartItemId,
+    );
+    assert.equal(persistedItem?.gardenId, persistedTarget.gardenId);
+    assert.equal(persistedItem?.raisedBedId, persistedTarget.raisedBedId);
+    assert.equal(persistedItem?.currency, 'inventory');
+    assert.equal(
+        await getOutletOfferReservationForCartItem(cartItemId),
+        undefined,
+    );
+});
+
+test('explicit outlet conversion rejects another live row at its persisted target', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const firstItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        target.positionIndex,
+        'first',
+        'inventory',
+        true,
+    );
+    const secondItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        target.positionIndex,
+        'second',
+        'eur',
+        true,
+    );
+    assert.ok(firstItemId);
+    assert.ok(secondItemId);
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 1,
+                cartId: cart.id,
+                currency: 'eur',
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                id: firstItemId,
+                ...target,
+                now,
+                outletOfferId: offerId,
+            }),
+        OutletCartTargetUnavailableError,
+    );
+    assert.equal(
+        await getOutletOfferReservationForCartItem(firstItemId),
+        undefined,
+    );
+});
+
+test('held outlet item atomically swaps with one ordinary direct target row', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const input = {
+        accountId,
+        amount: 1,
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        ...target,
+        now,
+        outletOfferId: offerId,
+    };
+    const outletItemId =
+        await upsertOrRemoveCartItemWithOutletReservation(input);
+    assert.ok(outletItemId);
+    const occupiedItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        1,
+        null,
+        'eur',
+        true,
+    );
+    assert.ok(occupiedItemId);
+
+    assert.equal(
+        await upsertOrRemoveCartItemWithOutletReservation({
+            ...input,
+            id: outletItemId,
+            positionIndex: 1,
+        }),
+        outletItemId,
+    );
+    const swappedCart = await getShoppingCart(cart.id);
+    assert.equal(
+        swappedCart?.items.find((item) => item.id === outletItemId)
+            ?.positionIndex,
+        1,
+    );
+    assert.equal(
+        swappedCart?.items.find((item) => item.id === occupiedItemId)
+            ?.positionIndex,
+        0,
+    );
+
+    await upsertOrRemoveCartItem(
+        occupiedItemId,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        0,
+        null,
+        'eur',
+    );
+    const idempotentSecondSwapRequest = await getShoppingCart(cart.id);
+    assert.equal(
+        idempotentSecondSwapRequest?.items.find(
+            (item) => item.id === occupiedItemId,
+        )?.positionIndex,
+        0,
+    );
+
+    assert.equal(
+        await upsertOrRemoveCartItemWithOutletReservation({
+            ...input,
+            id: outletItemId,
+            positionIndex: 2,
+        }),
+        outletItemId,
+    );
+    assert.equal(
+        (await getShoppingCart(cart.id))?.items.find(
+            (item) => item.id === outletItemId,
+        )?.positionIndex,
+        2,
+    );
+});
+
+test('two held outlet items atomically swap and keep their reservations', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const baseInput = {
+        accountId,
+        amount: 1,
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        gardenId: target.gardenId,
+        now,
+        outletOfferId: offerId,
+        raisedBedId: target.raisedBedId,
+    };
+    const firstItemId = await upsertOrRemoveCartItemWithOutletReservation({
+        ...baseInput,
+        positionIndex: 0,
+    });
+    const secondItemId = await upsertOrRemoveCartItemWithOutletReservation({
+        ...baseInput,
+        positionIndex: 1,
+    });
+    assert.ok(firstItemId);
+    assert.ok(secondItemId);
+
+    await upsertOrRemoveCartItemWithOutletReservation({
+        ...baseInput,
+        id: firstItemId,
+        positionIndex: 1,
+    });
+    await upsertOrRemoveCartItemWithOutletReservation({
+        ...baseInput,
+        id: secondItemId,
+        positionIndex: 0,
+    });
+
+    const swappedCart = await getShoppingCart(cart.id);
+    assert.equal(
+        swappedCart?.items.find((item) => item.id === firstItemId)
+            ?.positionIndex,
+        1,
+    );
+    assert.equal(
+        swappedCart?.items.find((item) => item.id === secondItemId)
+            ?.positionIndex,
+        0,
+    );
+    assert.equal(
+        (await getOutletOfferReservationForCartItem(firstItemId))
+            ?.outletOfferId,
+        offerId,
+    );
+    assert.equal(
+        (await getOutletOfferReservationForCartItem(secondItemId))
+            ?.outletOfferId,
+        offerId,
+    );
+    assert.equal((await getOutletOffer(offerId, now))?.reservedQuantity, 2);
+});
+
+test('outlet target rejects another pending Advanced Sowing footprint', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const plan = buildAdvancedSowingCartConfigurationV1({
+        anchorPositionIndex: 11,
+        bedFieldCount: 18,
+        maxDistanceCm: 60,
+        minDistanceCm: 15,
+        optimalDistanceCm: 30,
+        selectedDistanceCm: 60,
+    });
+    const overlappingPosition = plan.occupiedPositionIndices.find(
+        (positionIndex) => positionIndex !== plan.anchorPositionIndex,
+    );
+    assert.notEqual(overlappingPosition, undefined);
+    await upsertOrRemoveCartItemWithAdvancedSowingAuthorization({
+        amount: 1,
+        authorization: {
+            kind: advancedSowingCartAuthorizationKind,
+            plan,
+            version: 1,
+        },
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        gardenId: target.gardenId,
+        positionIndex: plan.anchorPositionIndex,
+        raisedBedId: target.raisedBedId,
+    });
+
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 1,
+                cartId: cart.id,
+                currency: 'eur',
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                gardenId: target.gardenId,
+                now,
+                outletOfferId: offerId,
+                positionIndex: overlappingPosition,
+                raisedBedId: target.raisedBedId,
+            }),
+        OutletCartTargetUnavailableError,
+    );
+    assert.equal((await getOutletOffer(offerId, now))?.remainingQuantity, 1);
+});
+
+test('concurrent Outlet and generic direct additions leave one target row', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+
+    const results = await Promise.allSettled([
+        upsertOrRemoveCartItemWithOutletReservation({
+            accountId,
+            amount: 1,
+            cartId: cart.id,
+            currency: 'eur',
+            entityId: plantSortId.toString(),
+            entityTypeName: 'plantSort',
+            ...target,
+            now,
+            outletOfferId: offerId,
+        }),
+        upsertOrRemoveCartItem(
+            null,
+            cart.id,
+            plantSortId.toString(),
+            'plantSort',
+            1,
+            target.gardenId,
+            target.raisedBedId,
+            target.positionIndex,
+            'ordinary-direct',
+            'eur',
+            true,
+        ),
+    ]);
+
+    assert.equal(
+        results.filter((result) => result.status === 'fulfilled').length,
+        1,
+    );
+    assert.equal(
+        results.filter((result) => result.status === 'rejected').length,
+        1,
+    );
+    const persistedCart = await getShoppingCart(cart.id);
+    assert.equal(persistedCart?.items.length, 1);
+});
+
+test('concurrent Outlet and Advanced Sowing additions cannot overlap a footprint', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({ plantSortId, now });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const plan = buildAdvancedSowingCartConfigurationV1({
+        anchorPositionIndex: 11,
+        bedFieldCount: 18,
+        maxDistanceCm: 60,
+        minDistanceCm: 15,
+        optimalDistanceCm: 30,
+        selectedDistanceCm: 60,
+    });
+    const overlappingPosition = plan.occupiedPositionIndices.find(
+        (positionIndex) => positionIndex !== plan.anchorPositionIndex,
+    );
+    assert.notEqual(overlappingPosition, undefined);
+
+    const results = await Promise.allSettled([
+        upsertOrRemoveCartItemWithOutletReservation({
+            accountId,
+            amount: 1,
+            cartId: cart.id,
+            currency: 'eur',
+            entityId: plantSortId.toString(),
+            entityTypeName: 'plantSort',
+            gardenId: target.gardenId,
+            now,
+            outletOfferId: offerId,
+            positionIndex: overlappingPosition,
+            raisedBedId: target.raisedBedId,
+        }),
+        upsertOrRemoveCartItemWithAdvancedSowingAuthorization({
+            amount: 1,
+            authorization: {
+                kind: advancedSowingCartAuthorizationKind,
+                plan,
+                version: 1,
+            },
+            cartId: cart.id,
+            currency: 'eur',
+            entityId: plantSortId.toString(),
+            entityTypeName: 'plantSort',
+            forceCreate: true,
+            gardenId: target.gardenId,
+            positionIndex: plan.anchorPositionIndex,
+            raisedBedId: target.raisedBedId,
+        }),
+    ]);
+
+    assert.equal(
+        results.filter((result) => result.status === 'fulfilled').length,
+        1,
+    );
+    assert.equal(
+        results.filter((result) => result.status === 'rejected').length,
+        1,
+    );
+    assert.equal((await getShoppingCart(cart.id))?.items.length, 1);
+});
+
+test('outlet cart mutation normalizes a supplied currency and fails closed otherwise', async () => {
+    createTestDb();
+    const now = new Date('2026-05-01T10:00:00.000Z');
+    const plantSortId = await createTestPlantSort();
+    const offerId = await createPublishedOffer({
+        plantSortId,
+        quantity: 2,
+        now,
+    });
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    assert.ok(cart, 'Cart should be created');
+    const target = await createOutletCartTarget(accountId);
+    const inventoryItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        target.gardenId,
+        target.raisedBedId,
+        target.positionIndex,
+        null,
+        'inventory',
+        true,
+    );
+    assert.ok(inventoryItemId);
+
+    await upsertOrRemoveCartItemWithOutletReservation({
+        accountId,
+        amount: 1,
+        cartId: cart.id,
+        currency: 'eur',
+        entityId: plantSortId.toString(),
+        entityTypeName: 'plantSort',
+        id: inventoryItemId,
+        ...target,
+        now,
+        outletOfferId: offerId,
+    });
+    assert.equal(
+        (await getShoppingCart(cart.id))?.items.find(
+            (item) => item.id === inventoryItemId,
+        )?.currency,
+        'eur',
+    );
+
+    const unsupportedTarget = { ...target, positionIndex: 1 };
+    const unsupportedItemId = await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        plantSortId.toString(),
+        'plantSort',
+        1,
+        unsupportedTarget.gardenId,
+        unsupportedTarget.raisedBedId,
+        unsupportedTarget.positionIndex,
+        null,
+        'inventory',
+        true,
+    );
+    assert.ok(unsupportedItemId);
+    await assert.rejects(
+        () =>
+            upsertOrRemoveCartItemWithOutletReservation({
+                accountId,
+                amount: 1,
+                cartId: cart.id,
+                entityId: plantSortId.toString(),
+                entityTypeName: 'plantSort',
+                id: unsupportedItemId,
+                ...unsupportedTarget,
+                now,
+                outletOfferId: offerId,
+            }),
+        OutletReservationUnavailableError,
+    );
+    assert.equal(
+        (await getShoppingCart(cart.id))?.items.find(
+            (item) => item.id === unsupportedItemId,
+        )?.currency,
+        'inventory',
+    );
+    assert.equal(
+        await getOutletOfferReservationForCartItem(unsupportedItemId),
+        undefined,
+    );
 });
 
 test('reserveOutletOffer refreshes an existing reservation without double-counting stock', async () => {

@@ -53,6 +53,17 @@ export class LegacySowingSelectedPlantingConflictError extends Error {
     }
 }
 
+export class DuplicateDirectSowingCartTargetError extends Error {
+    override readonly name = 'DuplicateDirectSowingCartTargetError';
+
+    constructor(
+        readonly raisedBedId: number,
+        readonly positionIndex: number,
+    ) {
+        super('Multiple pending cart items use the same planting target.');
+    }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -173,6 +184,33 @@ export function getLegacySowingCartTargets({
     });
 }
 
+export function assertUniqueDirectSowingCartTargets({
+    authorizationsByCartItemId,
+    cartItems,
+}: {
+    authorizationsByCartItemId: ReadonlyMap<
+        number,
+        AdvancedSowingCartAuthorizationV1
+    >;
+    cartItems: readonly PendingCartItem[];
+}) {
+    const targets = getLegacySowingCartTargets({
+        authorizationsByCartItemId,
+        cartItems,
+    });
+    const targetKeys = new Set<string>();
+    for (const target of targets) {
+        const key = `${target.raisedBedId.toString()}:${target.positionIndex.toString()}`;
+        if (targetKeys.has(key)) {
+            throw new DuplicateDirectSowingCartTargetError(
+                target.raisedBedId,
+                target.positionIndex,
+            );
+        }
+        targetKeys.add(key);
+    }
+}
+
 /**
  * Resolves the physical legacy target that the ordinary cart mutation will
  * leave behind. Exact idempotent updates to an explicitly identified selected
@@ -249,6 +287,10 @@ export async function assertLegacySowingCartTargetsAvailable({
     ) => Promise<readonly RaisedBedPlantingAvailabilitySource[]>;
 }) {
     const targets = getLegacySowingCartTargets({
+        authorizationsByCartItemId,
+        cartItems,
+    });
+    assertUniqueDirectSowingCartTargets({
         authorizationsByCartItemId,
         cartItems,
     });
