@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { SolarEclipseVisualFixture } from './SolarEclipseVisualFixture';
 
 const webglSnapshotOptions = { maxDiffPixelRatio: 0.003 };
+// SwiftShader rasterizes the high-contrast celestial silhouettes slightly
+// differently across macOS and Linux. Keep this allowance scoped to those
+// snapshots; the environment-lighting comparison remains at the stricter limit.
+const celestialSnapshotOptions = { maxDiffPixelRatio: 0.006 };
 
 async function readLightIntensities(fixture: {
     getAttribute: (name: string) => Promise<string | null>;
@@ -38,7 +42,7 @@ test('renders the 2026 Croatian partial eclipse before local sunset', async ({
     const png = await fixture.locator('canvas').screenshot();
     expect(png).toMatchSnapshot(
         'solar-eclipse-croatia-2026.png',
-        webglSnapshotOptions,
+        celestialSnapshotOptions,
     );
     expect(browserErrors).toEqual([]);
 });
@@ -138,6 +142,6 @@ test('keeps foreground geometry in front of the lunar occluder', async ({
     const png = await fixture.locator('canvas').screenshot();
     expect(png).toMatchSnapshot(
         'solar-eclipse-foreground-occlusion.png',
-        webglSnapshotOptions,
+        celestialSnapshotOptions,
     );
 });
