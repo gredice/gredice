@@ -4,50 +4,61 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Color } from 'three';
-import { defaultGameWoodColor } from '../entities/woodPalette';
+import {
+    defaultGameWoodColor,
+    dogHouseWoodColors,
+} from '../entities/woodPalette';
 
-type WoodRole = 'deep' | 'light' | 'warm';
+type WoodRole = 'bridgeDeep' | 'bridgeLight' | 'bridgeWarm' | 'default';
 
 const referenceMaterials = {
-    deep: 'Material.SmallWoodenBridge.DeepWood',
-    light: 'Material.SmallWoodenBridge.LightWood',
-    warm: 'Material.SmallWoodenBridge.WarmWood',
-} satisfies Record<WoodRole, string>;
+    bridgeDeep: {
+        asset: 'SmallWoodenBridge',
+        material: 'Material.SmallWoodenBridge.DeepWood',
+    },
+    bridgeLight: {
+        asset: 'SmallWoodenBridge',
+        material: 'Material.SmallWoodenBridge.LightWood',
+    },
+    bridgeWarm: {
+        asset: 'SmallWoodenBridge',
+        material: 'Material.SmallWoodenBridge.WarmWood',
+    },
+    default: {
+        asset: 'WoodenWalkway',
+        material: 'Material.WoodenWalkway.WarmWood',
+    },
+} satisfies Record<WoodRole, { asset: string; material: string }>;
 
 const timberAssetMaterials = {
     BeachChair: {
-        BeachChair_DarkWood: 'warm',
-        BeachChair_LightWood: 'warm',
-        BeachChair_WarmWood: 'warm',
+        BeachChair_DarkWood: 'default',
+        BeachChair_LightWood: 'default',
+        BeachChair_WarmWood: 'default',
     },
     BirdHouse: {
-        BH_flat_dark_wood: 'warm',
-        BH_flat_light_wood: 'warm',
+        BH_flat_dark_wood: 'default',
+        BH_flat_light_wood: 'default',
     },
-    Bucket: { 'Material.Planks': 'warm' },
-    Composter: { 'Material.Planks': 'warm' },
-    DogHouse: {
-        'Material.DogHouse.DarkRedWood': 'warm',
-        'Material.DogHouse.RedWood': 'warm',
-        'Material.DogHouse.WarmTrim': 'warm',
-    },
-    Fence: { 'Material.Planks': 'warm' },
-    GardenBox: { 'Material.Planks': 'warm' },
-    IceCreamCart: { wood: 'warm', wood_dark: 'warm' },
+    Bucket: { 'Material.Planks': 'default' },
+    Composter: { 'Material.Planks': 'default' },
+    Fence: { 'Material.Planks': 'default' },
+    GardenBox: { 'Material.Planks': 'default' },
+    IceCreamCart: { wood: 'default', wood_dark: 'default' },
     LemonadeStand: {
-        tan: 'warm',
-        wood: 'warm',
-        wood_dark: 'warm',
-        wood_light: 'warm',
+        tan: 'default',
+        wood: 'default',
+        wood_dark: 'default',
+        wood_light: 'default',
     },
-    RaisedBed: { 'Material.Planks': 'warm' },
-    Shade: { 'Material.Planks': 'warm' },
-    Stool: { 'Material.Planks': 'warm' },
-    WaterWell: { 'Material.Planks': 'warm' },
+    RaisedBed: { 'Material.Planks': 'default' },
+    Shade: { 'Material.Planks': 'default' },
+    Stool: { 'Material.Planks': 'default' },
+    WaterWell: { 'Material.Planks': 'default' },
     WoodenBench: {
-        WoodenBench_DarkWood: 'deep',
-        WoodenBench_LightWood: 'light',
-        WoodenBench_WarmWood: 'warm',
+        WoodenBench_DarkWood: 'bridgeDeep',
+        WoodenBench_LightWood: 'bridgeLight',
+        WoodenBench_WarmWood: 'bridgeWarm',
     },
 } satisfies Record<string, Record<string, WoodRole>>;
 
@@ -153,39 +164,99 @@ function readManifestAssets() {
     return manifest.assets.filter(isRecord);
 }
 
+function assertCurrentCacheVersion(
+    assetName: string,
+    manifestAssets: Record<string, unknown>[],
+) {
+    const asset = manifestAssets.find(
+        (candidate) => candidate.name === assetName,
+    );
+    assert.ok(asset);
+    assert.equal(typeof asset.output, 'string');
+    assert.equal(typeof asset.version, 'string');
+    const modelPath = fileURLToPath(
+        new URL(
+            `../../../../apps/garden/public/assets/models/${asset.output}`,
+            import.meta.url,
+        ),
+    );
+    const expectedVersion = createHash('sha256')
+        .update(readFileSync(modelPath))
+        .digest('hex')
+        .slice(0, 12);
+    assert.equal(asset.version, expectedVersion);
+}
+
 describe('timber asset palette', () => {
-    const bridgeMaterials = readMaterials('SmallWoodenBridge');
-    const palette = Object.fromEntries(
-        Object.entries(referenceMaterials).map(([role, materialName]) => [
-            role,
-            readBaseColor(bridgeMaterials, materialName),
-        ]),
-    );
-    const referenceColor = palette.warm;
-    assert.ok(referenceColor);
     const referenceProfiles = Object.fromEntries(
-        Object.entries(referenceMaterials).map(([role, materialName]) => [
+        Object.entries(referenceMaterials).map(([role, reference]) => [
             role,
-            readSurfaceProfile(bridgeMaterials, materialName),
+            readSurfaceProfile(
+                readMaterials(reference.asset),
+                reference.material,
+            ),
         ]),
     );
+    const referenceProfile = referenceProfiles.default;
+    assert.ok(referenceProfile);
     const manifestAssets = readManifestAssets();
 
-    it('uses the bridge middle plank as the default in-game wood color', () => {
+    it('uses the walkway warm plank as the default in-game wood color', () => {
         assertColorsEqual(
             new Color(defaultGameWoodColor).toArray(),
-            referenceColor.slice(0, 3),
+            referenceProfile.baseColor.slice(0, 3),
             0.002,
         );
     });
 
-    it('uses the bridge non-metallic response for raised-bed planks', () => {
+    it('uses the complete walkway warm profile for raised-bed planks', () => {
         const raisedBedProfile = readSurfaceProfile(
             readMaterials('RaisedBed'),
             'Material.Planks',
         );
         assert.equal(raisedBedProfile.metallic, 0);
-        assertSurfaceProfilesEqual(raisedBedProfile, referenceProfiles.warm);
+        assertSurfaceProfilesEqual(raisedBedProfile, referenceProfile);
+    });
+
+    it('restores the doghouse multi-tone wood palette', () => {
+        assert.deepEqual(dogHouseWoodColors, {
+            darkWall: '#3f2618',
+            roof: '#5f3a22',
+            trim: '#b8793d',
+            wall: '#7a4f2b',
+        });
+        assert.equal(new Set(Object.values(dogHouseWoodColors)).size, 4);
+
+        const dogHouseMaterials = readMaterials('DogHouse');
+        const expectedProfiles = {
+            'Material.DogHouse.DarkRedWood': {
+                baseColor: [0.3, 0.18, 0.1, 1],
+                emissive: [0, 0, 0],
+                metallic: 0,
+                roughness: 0.94,
+            },
+            'Material.DogHouse.RedWood': {
+                baseColor: [0.48, 0.31, 0.17, 1],
+                emissive: [0, 0, 0],
+                metallic: 0,
+                roughness: 0.92,
+            },
+            'Material.DogHouse.WarmTrim': {
+                baseColor: [0.72, 0.47, 0.24, 1],
+                emissive: [0, 0, 0],
+                metallic: 0,
+                roughness: 0.86,
+            },
+        };
+        for (const [materialName, expectedProfile] of Object.entries(
+            expectedProfiles,
+        )) {
+            assertSurfaceProfilesEqual(
+                readSurfaceProfile(dogHouseMaterials, materialName),
+                expectedProfile,
+            );
+        }
+        assertCurrentCacheVersion('DogHouse', manifestAssets);
     });
 
     for (const [assetName, expectedMaterials] of Object.entries(
@@ -194,14 +265,12 @@ describe('timber asset palette', () => {
         const paletteDescription =
             assetName === 'WoodenBench'
                 ? 'bridge plank palette'
-                : 'bridge middle wood color';
+                : 'walkway warm wood profile';
         it(`${assetName} uses the ${paletteDescription} and a current cache version`, () => {
             const materials = readMaterials(assetName);
             for (const [materialName, role] of Object.entries(
                 expectedMaterials,
             )) {
-                const expectedColor = palette[role];
-                assert.ok(expectedColor);
                 const expectedProfile = referenceProfiles[role];
                 assert.ok(expectedProfile);
                 assertSurfaceProfilesEqual(
@@ -209,24 +278,7 @@ describe('timber asset palette', () => {
                     expectedProfile,
                 );
             }
-
-            const asset = manifestAssets.find(
-                (candidate) => candidate.name === assetName,
-            );
-            assert.ok(asset);
-            assert.equal(typeof asset.output, 'string');
-            assert.equal(typeof asset.version, 'string');
-            const modelPath = fileURLToPath(
-                new URL(
-                    `../../../../apps/garden/public/assets/models/${asset.output}`,
-                    import.meta.url,
-                ),
-            );
-            const expectedVersion = createHash('sha256')
-                .update(readFileSync(modelPath))
-                .digest('hex')
-                .slice(0, 12);
-            assert.equal(asset.version, expectedVersion);
+            assertCurrentCacheVersion(assetName, manifestAssets);
         });
     }
 });
