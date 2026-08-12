@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     countWoodenSignMessageGraphemes,
-    getWoodenSignMessageGraphemeLimit,
     isValidWoodenSignMessage,
     normalizeWoodenSignMessage,
     sanitizeWoodenSignDraft,
@@ -24,14 +23,6 @@ describe('countWoodenSignMessageGraphemes', () => {
             ),
             2,
         );
-    });
-});
-
-describe('getWoodenSignMessageGraphemeLimit', () => {
-    it('doubles the character allowance when a second row is drawn', () => {
-        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ VRT'), 12);
-        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ\nVRT'), 24);
-        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ\r\nVRT'), 24);
     });
 });
 
@@ -125,14 +116,32 @@ describe('normalizeWoodenSignMessage', () => {
 });
 
 describe('sanitizeWoodenSignDraft', () => {
-    it('produces an NFC, control-free two-row draft capped at twelve graphemes per row', () => {
+    it('automatically wraps continuous text after twelve graphemes', () => {
+        assert.equal(
+            sanitizeWoodenSignDraft('ABCDEFGHIJKLMNOPQRSTUVWX'),
+            'ABCDEFGHIJKL\nMNOPQRSTUVWX',
+        );
+        assert.equal(
+            sanitizeWoodenSignDraft(`12345678901👩‍🌾A`),
+            `12345678901👩‍🌾\nA`,
+        );
+    });
+
+    it('preserves a manual second row and flows first-row overflow into it', () => {
         assert.equal(
             sanitizeWoodenSignDraft(
                 'ABCDEFGHIJKLM\r\nNOPQRSTUVWXYZ\nignored\t',
             ),
-            'ABCDEFGHIJKL\nNOPQRSTUVWXY',
+            'ABCDEFGHIJKL\nMNOPQRSTUVWX',
         );
+    });
+
+    it('produces an NFC, control-free draft capped at two rows', () => {
         assert.equal(sanitizeWoodenSignDraft('C\u030C'), 'Č');
+        assert.equal(
+            sanitizeWoodenSignDraft('PRVI\t\nDRUGI\nTREĆI'),
+            'PRVI\nDRUGI',
+        );
     });
 });
 

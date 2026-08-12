@@ -90,7 +90,7 @@ async function mockWoodenSignRequests(
     return updatePayloads;
 }
 
-test('shows the existing two-row inscription and its grapheme counter', async ({
+test('shows the inscription without a visible card header, counter, or disclaimer', async ({
     mount,
     page,
 }) => {
@@ -103,10 +103,18 @@ test('shows the existing two-row inscription and its grapheme counter', async ({
 
     await expect(dialog).toBeVisible();
     await expect(editor).toHaveValue(woodenSignInitialMessage);
-    await expect(dialog.getByText('12/24', { exact: true })).toBeVisible();
+    await expect(dialog.locator('h2:not(.sr-only)')).toHaveCount(0);
+    await expect(dialog.locator('#wooden-sign-counter')).toHaveCount(0);
+    await expect(dialog.locator('#wooden-sign-help')).toHaveCount(0);
+    await expect(editor).not.toHaveAttribute('aria-describedby');
+
+    const saveButton = dialog.getByRole('button', { name: 'Spremi natpis' });
+    await expect(saveButton).toHaveClass(/bg-primary/u);
+    await expect(saveButton).toHaveClass(/text-primary-foreground/u);
+    await expect(saveButton).toHaveCSS('background-color', 'rgb(42, 28, 15)');
 });
 
-test('keeps one Unicode grapheme intact while rejecting the thirteenth character', async ({
+test('automatically wraps continuous typing onto the second row in order', async ({
     mount,
     page,
 }) => {
@@ -117,13 +125,13 @@ test('keeps one Unicode grapheme intact while rejecting the thirteenth character
     });
     const editor = dialog.getByLabel('Tekst na drvenom natpisu');
 
-    await editor.fill('12345678901👩‍🌾A');
+    await editor.fill('');
+    await editor.pressSequentially('ABCDEFGHIJKLMNOPQRSTUVWX');
 
-    await expect(editor).toHaveValue('12345678901👩‍🌾');
-    await expect(dialog.getByText('12/12', { exact: true })).toBeVisible();
+    await expect(editor).toHaveValue('ABCDEFGHIJKL\nMNOPQRSTUVWX');
 });
 
-test('allows twelve Unicode graphemes on each row and rejects the thirteenth per row', async ({
+test('wraps pasted Unicode text and caps the message at two twelve-character rows', async ({
     mount,
     page,
 }) => {
@@ -134,10 +142,9 @@ test('allows twelve Unicode graphemes on each row and rejects the thirteenth per
     });
     const editor = dialog.getByLabel('Tekst na drvenom natpisu');
 
-    await editor.fill('12345678901👩‍🌾A\nABCDEFGHIJKLZ');
+    await editor.fill(`12345678901👩‍🌾ABCDEFGHIJKLZ`);
 
-    await expect(editor).toHaveValue('12345678901👩‍🌾\nABCDEFGHIJKL');
-    await expect(dialog.getByText('24/24', { exact: true })).toBeVisible();
+    await expect(editor).toHaveValue(`12345678901👩‍🌾\nABCDEFGHIJKL`);
 });
 
 test('optimistically updates the sign, sends the exact payload, and closes after success', async ({

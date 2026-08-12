@@ -82,14 +82,6 @@ export function countWoodenSignMessageGraphemes(value: string): number {
     return graphemes(normalizeUnicode(value).replaceAll('\n', '')).length;
 }
 
-export function getWoodenSignMessageGraphemeLimit(value: string): number {
-    const lineCount = Math.min(
-        normalizeLineEndings(value).split('\n').length,
-        woodenSignMessageMaxLines,
-    );
-    return lineCount * woodenSignMessageMaxGraphemesPerLine;
-}
-
 export function normalizeWoodenSignMessage(value: string): string | null {
     if (value.length > woodenSignMessageMaxRawLength) {
         throw new WoodenSignMessageValidationError('raw_too_long');
@@ -138,14 +130,19 @@ export function sanitizeWoodenSignDraft(value: string): string {
     const rows = stripUnsupportedControlCharacters(normalized)
         .split('\n')
         .slice(0, woodenSignMessageMaxLines);
+    const firstRowGraphemes = graphemes(rows[0] ?? '');
+    const firstRow = firstRowGraphemes
+        .slice(0, woodenSignMessageMaxGraphemesPerLine)
+        .join('');
+    const overflow = firstRowGraphemes.slice(
+        woodenSignMessageMaxGraphemesPerLine,
+    );
+    const secondRow = [...overflow, ...graphemes(rows[1] ?? '')]
+        .slice(0, woodenSignMessageMaxGraphemesPerLine)
+        .join('');
+    const hasSecondRow = rows.length > 1 || overflow.length > 0;
 
-    return rows
-        .map((row) =>
-            graphemes(row)
-                .slice(0, woodenSignMessageMaxGraphemesPerLine)
-                .join(''),
-        )
-        .join('\n');
+    return hasSecondRow ? `${firstRow}\n${secondRow}` : firstRow;
 }
 
 export function isValidWoodenSignMessage(value: string | null): boolean {
