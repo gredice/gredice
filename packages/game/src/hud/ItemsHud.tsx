@@ -97,6 +97,7 @@ const arrowSignItems: HudItemEntity[] = arrowSignNames.map((name) => ({
 const lightingItems: HudItemEntity[] = [
     { type: 'entity', name: 'FireflyJar' },
     { type: 'entity', name: 'EnamelGardenLamp' },
+    { type: 'entity', name: 'DoubleGardenLightPole' },
     { type: 'entity', name: 'HazelLightArch' },
     { type: 'entity', name: 'RoofTileLantern' },
     { type: 'entity', name: 'WickerGardenLantern' },

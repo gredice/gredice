@@ -21,6 +21,11 @@ const newBlockCatalogItems = [
     { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
     { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
     { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
+    {
+        label: 'Dvostruki drveni rasvjetni stup',
+        price: 120,
+        picker: 'Rasvjeta',
+    },
     { label: 'Svjetleći luk od lijeske', price: 120, picker: 'Rasvjeta' },
     { label: 'Fenjer od starog crijepa', price: 40, picker: 'Rasvjeta' },
     { label: 'Pleteni vrtni fenjer', price: 60, picker: 'Rasvjeta' },
@@ -537,6 +542,7 @@ test('garden lights are grouped under Rasvjeta', async ({ mount, page }) => {
     for (const label of [
         'Staklenka s krijesnicom',
         'Emajlirana vrtna lampa',
+        'Dvostruki drveni rasvjetni stup',
         'Svjetleći luk od lijeske',
         'Fenjer od starog crijepa',
         'Pleteni vrtni fenjer',

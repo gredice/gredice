@@ -1,14 +1,24 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { Vector3 } from 'three';
+import {
+    createGardenAvatarCollisionWorld,
+    findGardenAvatarRoute,
+    getGardenAvatarRoamBlockedCells,
+} from '../entities/avatar/gardenAvatarMovement';
+import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import {
     buildOutletGardenDetail,
     buildOutletGardenStacks,
     getOutletGardenDisplayUnits,
     getOutletGardenOfferPlacement,
+    getOutletGardenProductSignPlacements,
     isOutletGardenDisplayLimited,
     type OutletGardenLayoutOffer,
     outletGardenMaxDisplayedUnitsPerOffer,
     outletGardenMaxDisplayedUnitsTotal,
+    outletGardenMaxDoubleLightPoleCount,
+    outletGardenMaxProductSigns,
     outletGardenMaxTrackedTombstones,
     outletGardenRegisteredBlockNames,
     outletOfferBlockId,
@@ -173,6 +183,33 @@ describe('getOutletGardenDisplayUnits', () => {
 });
 
 describe('reconcileOutletGardenSlots', () => {
+    it('updates live assignment metadata without moving its display slot', () => {
+        const originalOffer = {
+            id: 170,
+            plantId: 17,
+            plantSortId: 171,
+            remainingQuantity: 1,
+        };
+        const initial = reconcileOutletGardenSlots(new Map(), [originalOffer]);
+        const changedOffer = {
+            ...originalOffer,
+            plantSortId: 172,
+        };
+        const reconciled = reconcileOutletGardenSlots(initial, [changedOffer]);
+        const blockId = outletOfferBlockId(originalOffer.id);
+
+        assert.notEqual(reconciled, initial);
+        assert.equal(reconciled.get(blockId)?.slotIndex, 0);
+        assert.equal(reconciled.get(blockId)?.plantSortId, 172);
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements(
+                [changedOffer],
+                reconciled,
+            ).map((sign) => sign.plantSortId),
+            [172],
+        );
+    });
+
     it('creates deterministic plant bays with sorts ordered inside each bay', () => {
         const assignments = reconcileOutletGardenSlots(new Map(), [
             offers[4],
@@ -469,6 +506,214 @@ describe('getOutletGardenOfferPlacement', () => {
     });
 });
 
+describe('getOutletGardenProductSignPlacements', () => {
+    it('caps pathological distinct-sort catalogs at the earliest sign anchors', () => {
+        const catalogOffers = Array.from(
+            { length: outletGardenMaxProductSigns + 10 },
+            (_, index) => ({
+                id: 10_000 + index,
+                plantId: 10_000 + index,
+                plantSortId: 20_000 + index,
+                remainingQuantity: 1,
+            }),
+        );
+        const assignments = reconcileOutletGardenSlots(
+            new Map(),
+            catalogOffers,
+        );
+        const signs = getOutletGardenProductSignPlacements(
+            catalogOffers,
+            assignments,
+        );
+
+        assert.equal(signs.length, outletGardenMaxProductSigns);
+        assert.deepEqual(
+            signs.map((sign) => sign.anchorSlotIndex),
+            Array.from(
+                { length: outletGardenMaxProductSigns },
+                (_, index) => index * 4,
+            ),
+        );
+    });
+
+    it('returns one deterministic sign per live plant sort across duplicate offers', () => {
+        const groupedOffers = [
+            { id: 401, plantId: 4, plantSortId: 402, remainingQuantity: 1 },
+            { id: 402, plantId: 4, plantSortId: 401, remainingQuantity: 2 },
+            { id: 403, plantId: 4, plantSortId: 401, remainingQuantity: 1 },
+        ] satisfies OutletGardenLayoutOffer[];
+        const assignments = reconcileOutletGardenSlots(
+            new Map(),
+            groupedOffers,
+        );
+        const signs = getOutletGardenProductSignPlacements(
+            groupedOffers,
+            assignments,
+        );
+
+        assert.deepEqual(
+            signs.map(
+                ({ anchorBlockId, anchorSlotIndex, id, plantSortId }) => ({
+                    anchorBlockId,
+                    anchorSlotIndex,
+                    id,
+                    plantSortId,
+                }),
+            ),
+            [
+                {
+                    anchorBlockId: 'outlet-offer:402',
+                    anchorSlotIndex: 0,
+                    id: 'outlet-sort-sign:401',
+                    plantSortId: 401,
+                },
+                {
+                    anchorBlockId: 'outlet-offer:401',
+                    anchorSlotIndex: 3,
+                    id: 'outlet-sort-sign:402',
+                    plantSortId: 402,
+                },
+            ],
+        );
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements(
+                [...groupedOffers].reverse(),
+                assignments,
+            ),
+            signs,
+        );
+    });
+
+    it('offsets table and floor signs toward the outer corner while facing the path', () => {
+        const placementOffers = [0, 2, 4, 16].map((slotIndex) => ({
+            id: 500 + slotIndex,
+            plantId: 5 + slotIndex,
+            plantSortId: 600 + slotIndex,
+            remainingQuantity: 1,
+        })) satisfies OutletGardenLayoutOffer[];
+        const assignments = new Map(
+            placementOffers.map((offer, index) => {
+                const slotIndex = [0, 2, 4, 16][index] ?? 0;
+                const blockId = outletOfferBlockId(offer.id);
+                return [
+                    blockId,
+                    {
+                        offerId: offer.id,
+                        plantKey: `plant:${offer.plantId?.toString() ?? 'unknown'}`,
+                        plantSortId: offer.plantSortId,
+                        slotIndex,
+                        unitIndex: 0,
+                    },
+                ] as const;
+            }),
+        );
+
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements(placementOffers, assignments),
+            [
+                {
+                    anchorBlockId: 'outlet-offer:500',
+                    anchorSlotIndex: 0,
+                    id: 'outlet-sort-sign:600',
+                    plantSortId: 600,
+                    rotation: 1,
+                    surface: 'table',
+                    x: -2.28,
+                    y: 0.72,
+                },
+                {
+                    anchorBlockId: 'outlet-offer:502',
+                    anchorSlotIndex: 2,
+                    id: 'outlet-sort-sign:602',
+                    plantSortId: 602,
+                    rotation: 1,
+                    surface: 'floor',
+                    x: -1.28,
+                    y: 0.72,
+                },
+                {
+                    anchorBlockId: 'outlet-offer:504',
+                    anchorSlotIndex: 4,
+                    id: 'outlet-sort-sign:604',
+                    plantSortId: 604,
+                    rotation: 3,
+                    surface: 'table',
+                    x: 2.28,
+                    y: 0.72,
+                },
+                {
+                    anchorBlockId: 'outlet-offer:516',
+                    anchorSlotIndex: 16,
+                    id: 'outlet-sort-sign:616',
+                    plantSortId: 616,
+                    rotation: 2,
+                    surface: 'table',
+                    x: 0.72,
+                    y: 12.28,
+                },
+            ],
+        );
+    });
+
+    it('keeps a live sort sign on its earliest tombstone and restores it after removal', () => {
+        const firstOffer = {
+            id: 701,
+            plantId: 7,
+            plantSortId: 700,
+            remainingQuantity: 1,
+        };
+        const secondOffer = {
+            id: 702,
+            plantId: 7,
+            plantSortId: 700,
+            remainingQuantity: 1,
+        };
+        const initialOffers = [firstOffer, secondOffer];
+        const initialAssignments = reconcileOutletGardenSlots(
+            new Map(),
+            initialOffers,
+        );
+        const initialSign = getOutletGardenProductSignPlacements(
+            initialOffers,
+            initialAssignments,
+        );
+        const withoutFirstAssignments = reconcileOutletGardenSlots(
+            initialAssignments,
+            [secondOffer],
+        );
+        const signWithTombstone = getOutletGardenProductSignPlacements(
+            [secondOffer],
+            withoutFirstAssignments,
+        );
+        const withoutSortAssignments = reconcileOutletGardenSlots(
+            withoutFirstAssignments,
+            [],
+        );
+        const restoredAssignments = reconcileOutletGardenSlots(
+            withoutSortAssignments,
+            initialOffers,
+        );
+
+        assert.deepEqual(signWithTombstone, initialSign);
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements([], withoutSortAssignments),
+            [],
+        );
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements(
+                initialOffers,
+                restoredAssignments,
+            ),
+            initialSign,
+        );
+        assert.equal(
+            initialAssignments.get(outletOfferBlockId(firstOffer.id))
+                ?.plantSortId,
+            firstOffer.plantSortId,
+        );
+    });
+});
+
 describe('buildOutletGardenStacks', () => {
     it('renders one display per remaining seedling using only registered scene blocks', () => {
         const assignments = reconcileOutletGardenSlots(new Map(), offers);
@@ -700,6 +945,7 @@ describe('buildOutletGardenStacks', () => {
                 {
                     offerId: facingOffer.id,
                     plantKey: 'plant:8',
+                    plantSortId: facingOffer.plantSortId,
                     slotIndex,
                     unitIndex,
                 },
@@ -784,7 +1030,7 @@ describe('buildOutletGardenStacks', () => {
 
         assert.deepEqual(decorationNames, [
             'Bush',
-            'EnamelGardenLamp',
+            'DoubleGardenLightPole',
             'StoneSmall',
             'Tree',
             'WoodenBench',
@@ -801,15 +1047,17 @@ describe('buildOutletGardenStacks', () => {
             ),
         );
         assert.ok(
-            decorations.every(({ x, y }) =>
-                displayPositions.every(
-                    (position) =>
-                        Math.max(
-                            Math.abs(x - position.x),
-                            Math.abs(y - position.y),
-                        ) > 1,
+            decorations
+                .filter(({ block }) => block.name !== 'DoubleGardenLightPole')
+                .every(({ x, y }) =>
+                    displayPositions.every(
+                        (position) =>
+                            Math.max(
+                                Math.abs(x - position.x),
+                                Math.abs(y - position.y),
+                            ) > 1,
+                    ),
                 ),
-            ),
         );
         assert.ok(
             decorations.every(({ x, y }) =>
@@ -834,29 +1082,206 @@ describe('buildOutletGardenStacks', () => {
         );
 
         const lights = decorations.filter(
-            ({ block }) => block.name === 'EnamelGardenLamp',
+            ({ block }) => block.name === 'DoubleGardenLightPole',
         );
         const tablePositions = positionsForBlocks(stacks, (block) =>
             block.id.startsWith('outlet-table:'),
         );
-        assert.equal(lights.length, 4);
+        const floorPlantPositions = Array.from(assignments.values())
+            .filter(
+                (assignment) =>
+                    getOutletGardenOfferPlacement(assignment.slotIndex)
+                        .surface === 'floor',
+            )
+            .map((assignment) =>
+                getOutletGardenOfferPlacement(assignment.slotIndex),
+            );
+        const manhattanDistance = (
+            left: { x: number; y: number },
+            right: { x: number; y: number },
+        ) => Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
+
+        assert.equal(lights.length, outletGardenMaxDoubleLightPoleCount);
+        assert.deepEqual(
+            lights.map(({ block, x, y }) => ({
+                id: block.id,
+                rotation: block.rotation,
+                x,
+                y,
+            })),
+            [
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:3:right',
+                    rotation: 0,
+                    x: 13,
+                    y: -2,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:3:left',
+                    rotation: 0,
+                    x: 13,
+                    y: 2,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:0:left',
+                    rotation: 3,
+                    x: -2,
+                    y: 3,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:0:right',
+                    rotation: 3,
+                    x: 2,
+                    y: 3,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:2:right',
+                    rotation: 1,
+                    x: 8,
+                    y: 7,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:2:left',
+                    rotation: 1,
+                    x: 12,
+                    y: 7,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:1:right',
+                    rotation: 0,
+                    x: 3,
+                    y: 8,
+                },
+                {
+                    id: 'outlet-decor:DoubleGardenLightPole:1:left',
+                    rotation: 0,
+                    x: 3,
+                    y: 12,
+                },
+            ],
+        );
         assert.ok(
-            lights.every(({ x, y }) =>
-                tablePositions.some(
-                    (position) =>
-                        Math.max(
-                            Math.abs(x - position.x),
-                            Math.abs(y - position.y),
-                        ) <= 2,
-                ),
+            lights.every(
+                ({ x, y }) =>
+                    tablePositions.filter(
+                        (position) =>
+                            manhattanDistance({ x, y }, position) === 1,
+                    ).length === 2,
             ),
         );
+        assert.ok(
+            lights.every(
+                ({ x, y }) =>
+                    Math.min(
+                        ...pathPositions.map((position) =>
+                            manhattanDistance({ x, y }, position),
+                        ),
+                    ) === 2,
+            ),
+        );
+        assert.ok(
+            lights.every(
+                ({ x, y }) =>
+                    Math.min(
+                        ...floorPlantPositions.map((position) =>
+                            manhattanDistance({ x, y }, position),
+                        ),
+                    ) === 2,
+            ),
+        );
+        for (const { x, y } of lights) {
+            const lightStack = stacks.find(
+                (stack) => stack.x === x && stack.y === y,
+            );
+            assert.deepEqual(
+                lightStack?.blocks.map((block) => block.name),
+                ['Block_Grass', 'DoubleGardenLightPole'],
+            );
+        }
         for (const name of ['Bush', 'StoneSmall', 'Tree']) {
             assert.equal(
                 decorations.filter(({ block }) => block.name === name).length,
                 7,
             );
         }
+    });
+
+    it('keeps the avatar route and first path turn clear of pole hitboxes', () => {
+        const routeOffer = {
+            id: 892,
+            plantId: 8,
+            plantSortId: 893,
+            remainingQuantity: 100,
+        };
+        const assignments = reconcileOutletGardenSlots(new Map(), [routeOffer]);
+        const stacks = buildOutletGardenStacks([routeOffer], assignments);
+        const world = createGardenAvatarCollisionWorld({
+            blockData: getLocalSandboxBlockData(),
+            stacks: stacks.map((stack) => ({
+                blocks: stack.blocks,
+                position: new Vector3(stack.x, 0, stack.y),
+            })),
+        });
+        const blockedPositions = new Set(
+            getGardenAvatarRoamBlockedCells(world).map(({ x, z }) =>
+                coordinateKey({ x, y: z }),
+            ),
+        );
+        const pathPositions = positionsForBlocks(stacks, (block) =>
+            block.id.startsWith('outlet-path:'),
+        );
+        const polePositions = positionsForBlocks(
+            stacks,
+            (block) => block.name === 'DoubleGardenLightPole',
+        );
+
+        assert.ok(
+            pathPositions.every(
+                (position) => !blockedPositions.has(coordinateKey(position)),
+            ),
+        );
+        assert.ok(
+            polePositions.every((position) =>
+                blockedPositions.has(coordinateKey(position)),
+            ),
+        );
+
+        const entrance = { x: 0, y: 0.41, z: -6 };
+        const corner = { x: 0, y: 0.41, z: 10 };
+        const afterTurn = { x: 4, y: 0.41, z: 10 };
+        const routeToCorner = findGardenAvatarRoute({
+            from: entrance,
+            to: corner,
+            world,
+        });
+        const routeAfterTurn = findGardenAvatarRoute({
+            from: corner,
+            to: afterTurn,
+            world,
+        });
+
+        assert.ok(routeToCorner.length > 1);
+        assert.deepEqual(
+            routeToCorner.at(-1) && {
+                x: routeToCorner.at(-1)?.x,
+                z: routeToCorner.at(-1)?.z,
+            },
+            { x: corner.x, z: corner.z },
+        );
+        assert.ok(
+            Math.abs((routeToCorner.at(-1)?.y ?? 0) - corner.y) < 0.000_001,
+        );
+        assert.ok(routeAfterTurn.length > 1);
+        assert.deepEqual(
+            routeAfterTurn.at(-1) && {
+                x: routeAfterTurn.at(-1)?.x,
+                z: routeAfterTurn.at(-1)?.z,
+            },
+            { x: afterTurn.x, z: afterTurn.z },
+        );
+        assert.ok(
+            Math.abs((routeAfterTurn.at(-1)?.y ?? 0) - afterTurn.y) < 0.000_001,
+        );
     });
 
     it('keeps existing decor and offer coordinates stable as the route grows and stock churns', () => {
@@ -898,7 +1323,16 @@ describe('buildOutletGardenStacks', () => {
                     stack.blocks.flatMap((block) =>
                         block.id.startsWith('outlet-decor:') ||
                         outletOfferIdFromBlockId(block.id) !== null
-                            ? [[block.id, { x: stack.x, y: stack.y }] as const]
+                            ? [
+                                  [
+                                      block.id,
+                                      {
+                                          rotation: block.rotation,
+                                          x: stack.x,
+                                          y: stack.y,
+                                      },
+                                  ] as const,
+                              ]
                             : [],
                     ),
                 ),
@@ -911,6 +1345,18 @@ describe('buildOutletGardenStacks', () => {
             assert.deepEqual(expandedPositions.get(blockId), position);
             assert.deepEqual(reducedPositions.get(blockId), position);
         }
+        const expandedLights = Array.from(expandedPositions).filter(
+            ([blockId]) =>
+                blockId.startsWith('outlet-decor:DoubleGardenLightPole:'),
+        );
+        const reducedLights = Array.from(reducedPositions).filter(([blockId]) =>
+            blockId.startsWith('outlet-decor:DoubleGardenLightPole:'),
+        );
+        assert.equal(
+            expandedLights.length,
+            outletGardenMaxDoubleLightPoleCount,
+        );
+        assert.deepEqual(reducedLights, expandedLights);
         assert.ok(
             expandedStacks.some((stack) =>
                 stack.blocks.some(

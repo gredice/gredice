@@ -114,6 +114,9 @@ export const gameAssetModels = {
     EnamelGardenLamp: {
         url: '/assets/models/EnamelGardenLamp.glb?v=c945af2c0198',
     },
+    DoubleGardenLightPole: {
+        url: '/assets/models/DoubleGardenLightPole.glb?v=fe31962c9b22',
+    },
     HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=6718c29e0a75' },
     RoofTileLantern: {
         url: '/assets/models/RoofTileLantern.glb?v=0a51dad18321',
@@ -247,6 +250,7 @@ export const lazyGameAssetNames = [
     'WoodenWalkway',
     'StoneWalkway',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',
@@ -362,6 +366,7 @@ export const allGameAssetNames = [
     'WoodenWalkway',
     'StoneWalkway',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',

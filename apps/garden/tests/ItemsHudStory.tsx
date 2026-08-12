@@ -204,6 +204,14 @@ const blockFixtures: Record<
         height: 1.45,
         stackable: false,
     },
+    DoubleGardenLightPole: {
+        label: 'Dvostruki drveni rasvjetni stup',
+        shortDescription:
+            'Visoki drveni stup s dvije nasuprotne svjetiljke za osvjetljenje staza i biljaka.',
+        sunflowers: 120,
+        height: 2.2,
+        stackable: false,
+    },
     HazelLightArch: {
         label: 'Svjetleći luk od lijeske',
         shortDescription:
@@ -352,6 +360,7 @@ const blockNames = [
     'BirdHouse',
     'FireflyJar',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',

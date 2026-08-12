@@ -15,6 +15,11 @@ const currentUser = {
     userName: 'test-user',
 };
 
+const tomatoSortImageUrl =
+    'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3Crect width=%221%22 height=%221%22 fill=%22%23dc2626%22/%3E%3C/svg%3E';
+const pepperSortImageUrl =
+    'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3Crect width=%221%22 height=%221%22 fill=%22%23eab308%22/%3E%3C/svg%3E';
+
 const outletOffers = [
     {
         id: 301,
@@ -22,7 +27,7 @@ const outletOffers = [
             id: 101,
             name: 'Rajčica mini red cherry',
             description: 'Kompaktna cherry rajčica.',
-            imageUrl: null,
+            imageUrl: tomatoSortImageUrl,
             plant: { id: 1, name: 'Rajčica' },
         },
         sowingDate: '2026-05-28T00:00:00.000Z',
@@ -44,7 +49,7 @@ const outletOffers = [
             id: 102,
             name: 'Paprika Zlata Snack',
             description: 'Slatka snack paprika.',
-            imageUrl: null,
+            imageUrl: pepperSortImageUrl,
             plant: { id: 2, name: 'Paprika' },
         },
         sowingDate: '2026-06-12T00:00:00.000Z',
@@ -573,6 +578,20 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     );
     await expect(page.locator('canvas')).toBeVisible();
     await expectOutletCanvasToFillScene(page);
+    const productSigns = page.locator('[data-outlet-garden-product-sign]');
+    await expect(productSigns).toHaveCount(2);
+    const tomatoSign = productSigns.filter({
+        hasText: 'Rajčica mini red cherry',
+    });
+    await expect(tomatoSign).toHaveAttribute(
+        'data-outlet-garden-product-sign-price',
+        '2,49 €',
+    );
+    await expect(tomatoSign.locator('img')).toHaveAttribute(
+        'src',
+        tomatoSortImageUrl,
+    );
+    await expect(tomatoSign).toHaveCSS('pointer-events', 'none');
     await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
     await page
         .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
@@ -667,6 +686,13 @@ test('guest Outlet garden renders WebGL, selects an offer, and preserves its dee
     await expect(
         page.getByRole('button', { name: /Bosiljak Genovese/u }),
     ).toBeVisible();
+    await expect(productSigns).toHaveCount(2);
+    await expect(
+        productSigns.filter({ hasText: 'Bosiljak Genovese' }),
+    ).toBeVisible();
+    await expect(
+        productSigns.filter({ hasText: 'Rajčica mini red cherry' }),
+    ).toHaveCount(0);
     await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
         'data-outlet-garden-display-count',
         '3',
@@ -831,6 +857,106 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
     await page.waitForURL((url) => url.pathname === '/');
     await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('canvas')).toHaveCount(1);
+
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('Outlet visitor walks in third and first person without mutating or losing the selected offer', async ({
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden Playwright base URL is required.');
+    }
+    await disableOutletGardenCommerce(page, baseURL);
+    const outletApi = await mockOutletGardenApi(page);
+
+    await page.goto('/outlet?ponuda=302');
+    const outlet = page.locator('[data-outlet-garden]');
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'overview',
+    );
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Prošetaj vrtom', exact: true }),
+    ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }).click();
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'third-person',
+    );
+    await expect(outlet).toHaveAttribute('data-outlet-garden-walking', 'true');
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toHaveCount(0);
+    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(300);
+    await page.keyboard.up('KeyW');
+    await page
+        .getByRole('button', { name: 'Prikaži pogled iz prvog lica' })
+        .click();
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'first-person',
+    );
+
+    await page.getByRole('button', { name: 'Izađi iz šetnje' }).click();
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'overview',
+    );
+    await expect(outlet).not.toHaveAttribute(
+        'data-outlet-garden-walking',
+        /.+/u,
+    );
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+
+    const offerRequestCountBeforeSceneLoss =
+        outletApi.getOutletOfferRequestCount();
+    await page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }).click();
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'third-person',
+    );
+    outletApi.setOffers([]);
+    await page.evaluate(() => {
+        window.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect
+        .poll(() => outletApi.getOutletOfferRequestCount(), {
+            timeout: 18_000,
+        })
+        .toBeGreaterThan(offerRequestCountBeforeSceneLoss);
+    await expect(outlet).toHaveAttribute(
+        'data-outlet-garden-avatar-view',
+        'overview',
+    );
+    await expect(outlet).not.toHaveAttribute(
+        'data-outlet-garden-walking',
+        /.+/u,
+    );
+    await expect(
+        page.getByText('Nove sadnice uskoro stižu u Outlet vrt.'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Moj vrt', exact: true }),
+    ).toBeVisible();
 
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);

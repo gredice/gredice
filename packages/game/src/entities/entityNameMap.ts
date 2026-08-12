@@ -41,6 +41,7 @@ import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
+import { DoubleGardenLightPole } from './DoubleGardenLightPole';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
@@ -185,6 +186,7 @@ export const entityNameMap = {
     FishingBoat: FishingBoat,
     FireflyJar: FireflyJar,
     EnamelGardenLamp: EnamelGardenLamp,
+    DoubleGardenLightPole: DoubleGardenLightPole,
     HazelLightArch: HazelLightArch,
     RoofTileLantern: RoofTileLantern,
     WickerGardenLantern: WickerGardenLantern,

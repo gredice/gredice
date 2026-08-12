@@ -251,6 +251,170 @@ def audit_stone() -> None:
     )
 
 
+def audit_double_pole() -> None:
+    asset = "DoubleGardenLightPole"
+    objects = load(asset)
+    expected_names = {
+        f"{asset}_BulbLeft",
+        f"{asset}_BulbRight",
+        f"{asset}_DarkMetal",
+        f"{asset}_LimestoneBase",
+        f"{asset}_Shades",
+        f"{asset}_Wood",
+    }
+    check(
+        set(objects) == expected_names,
+        f"{asset}.exact-six-objects",
+        f"actual={sorted(objects)}",
+    )
+    check(
+        f"{asset}_Pole" not in objects,
+        f"{asset}.no-legacy-metal-pole",
+    )
+    check(
+        not any("ForestMetal" in material.name for material in bpy.data.materials),
+        f"{asset}.no-legacy-forest-metal",
+        f"materials={sorted(material.name for material in bpy.data.materials)}",
+    )
+
+    wood_entry = objects.get(f"{asset}_Wood")
+    if wood_entry is None:
+        return
+    wood_object, wood_components = wood_entry
+    warm_wood_name = f"Material.{asset}.WarmWood"
+    wood_material_names = [
+        material.name for material in wood_object.data.materials if material
+    ]
+    check(
+        wood_material_names == [warm_wood_name],
+        f"{asset}.wood-has-only-warm-wood",
+        f"materials={wood_material_names}",
+    )
+    check(
+        len(wood_components) == 5,
+        f"{asset}.five-wood-structural-components",
+        f"count={len(wood_components)}",
+    )
+    assert_solid(f"{asset}.wood-structure", wood_components)
+
+    wood_material = bpy.data.materials.get(warm_wood_name)
+    principled = (
+        wood_material.node_tree.nodes.get("Principled BSDF")
+        if wood_material is not None
+        and wood_material.node_tree is not None
+        else None
+    )
+    check(
+        principled is not None,
+        f"{asset}.wood-principled-shader",
+    )
+    if principled is not None:
+        base_input = principled.inputs.get("Base Color")
+        metallic_input = principled.inputs.get("Metallic")
+        roughness_input = principled.inputs.get("Roughness")
+        check(
+            base_input is not None
+            and all(
+                abs(actual - expected) <= 0.000_01
+                for actual, expected in zip(
+                    base_input.default_value[:3],
+                    (0.205, 0.058, 0.016),
+                    strict=True,
+                )
+            ),
+            f"{asset}.canonical-wood-base-color",
+            f"actual={list(base_input.default_value[:3]) if base_input else None}",
+        )
+        check(
+            metallic_input is not None
+            and abs(metallic_input.default_value) <= 0.000_001,
+            f"{asset}.canonical-wood-metallic",
+            f"actual={metallic_input.default_value if metallic_input else None}",
+        )
+        check(
+            roughness_input is not None
+            and abs(roughness_input.default_value - 0.78) <= 0.000_001,
+            f"{asset}.canonical-wood-roughness",
+            f"actual={roughness_input.default_value if roughness_input else None}",
+        )
+
+    all_components = [
+        component
+        for _, components in objects.values()
+        for component in components
+    ]
+    minimum = Vector(
+        tuple(
+            min(component.bounds_min[axis] for component in all_components)
+            for axis in range(3)
+        )
+    )
+    maximum = Vector(
+        tuple(
+            max(component.bounds_max[axis] for component in all_components)
+            for axis in range(3)
+        )
+    )
+    check(
+        minimum.x >= -0.5
+        and maximum.x <= 0.5
+        and minimum.y >= -0.5
+        and maximum.y <= 0.5,
+        f"{asset}.inside-one-tile-footprint",
+        f"bounds=({minimum.x:.4f},{minimum.y:.4f})..({maximum.x:.4f},{maximum.y:.4f})",
+    )
+    check(
+        abs(minimum.z) <= 0.002 and 2.18 <= maximum.z <= 2.20,
+        f"{asset}.grounded-approved-height",
+        f"z={minimum.z:.4f}..{maximum.z:.4f}",
+    )
+
+    def assert_opposed_pair(label: str, components: list[Component]) -> None:
+        check(
+            len(components) == 2,
+            f"{asset}.{label}-pair",
+            f"count={len(components)}",
+        )
+        if len(components) != 2:
+            return
+        left, right = sorted(components, key=lambda component: component.centroid.x)
+        check(
+            left.bounds_max.x < 0 < right.bounds_min.x,
+            f"{asset}.{label}-opposed-x",
+            f"x={left.bounds_min.x:.4f}..{left.bounds_max.x:.4f},"
+            f"{right.bounds_min.x:.4f}..{right.bounds_max.x:.4f}",
+        )
+        check(
+            abs(left.centroid.y) <= 0.000_01
+            and abs(right.centroid.y) <= 0.000_01,
+            f"{asset}.{label}-centered-y",
+            f"y={[round(component.centroid.y, 6) for component in (left, right)]}",
+        )
+        check(
+            abs(left.bounds_min.x + right.bounds_max.x) <= 0.000_01
+            and abs(left.bounds_max.x + right.bounds_min.x) <= 0.000_01
+            and all(
+                abs(left.bounds_min[axis] - right.bounds_min[axis]) <= 0.000_01
+                and abs(left.bounds_max[axis] - right.bounds_max[axis])
+                <= 0.000_01
+                for axis in (1, 2)
+            ),
+            f"{asset}.{label}-mirror-symmetric",
+        )
+
+    shades_entry = objects.get(f"{asset}_Shades")
+    assert_opposed_pair("shades", shades_entry[1] if shades_entry else [])
+    left_bulb = objects.get(f"{asset}_BulbLeft")
+    right_bulb = objects.get(f"{asset}_BulbRight")
+    bulb_components = [
+        component
+        for entry in (left_bulb, right_bulb)
+        if entry is not None
+        for component in entry[1]
+    ]
+    assert_opposed_pair("bulbs", bulb_components)
+
+
 def audit_hazel() -> None:
     objects = load("HazelLightArch")
     poles = objects["HazelLightArch_Poles"][1]
@@ -530,6 +694,7 @@ def audit_wooden_hand() -> None:
 
 for audit in (
     audit_stone,
+    audit_double_pole,
     audit_hazel,
     audit_roof,
     audit_wicker,

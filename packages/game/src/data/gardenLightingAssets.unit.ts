@@ -49,6 +49,30 @@ const assetSpecs = [
         vertexLimit: 3_000,
     },
     {
+        name: 'DoubleGardenLightPole',
+        objects: [
+            'DoubleGardenLightPole_LimestoneBase',
+            'DoubleGardenLightPole_Wood',
+            'DoubleGardenLightPole_Shades',
+            'DoubleGardenLightPole_DarkMetal',
+            'DoubleGardenLightPole_BulbLeft',
+            'DoubleGardenLightPole_BulbRight',
+        ],
+        materials: [
+            'Material.DoubleGardenLightPole.DarkMetal',
+            'Material.DoubleGardenLightPole.Glow',
+            'Material.DoubleGardenLightPole.Limestone',
+            'Material.DoubleGardenLightPole.WarmWood',
+            'Material.DoubleGardenLightPole.WarmEnamel',
+        ],
+        horizontalLimit: 0.5,
+        depthLimit: 0.5,
+        heightRange: [2.18, 2.2],
+        // The symmetric two-head fixture remains below the existing
+        // single-lamp budget (3,000) while retaining readable wood bevels.
+        vertexLimit: 2_500,
+    },
+    {
         name: 'HazelLightArch',
         objects: [
             'HazelLightArch_Poles',
@@ -431,6 +455,30 @@ describe('generated garden decoration assets', () => {
         assert.ok(
             Math.max(...bounds.map(({ maximum }) => maximum[2])) >= 0.499_99,
         );
+    });
+
+    it('keeps the double pole bulbs opposed along local X', () => {
+        const modelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/DoubleGardenLightPole.glb',
+                import.meta.url,
+            ),
+        );
+        const document = readGlbDocument(readFileSync(modelPath));
+        const left = getNodePositionBounds(
+            document,
+            'DoubleGardenLightPole_BulbLeft',
+        );
+        const right = getNodePositionBounds(
+            document,
+            'DoubleGardenLightPole_BulbRight',
+        );
+
+        assert.ok(left.maximum[0] < 0);
+        assert.ok(right.minimum[0] > 0);
+        assert.ok(Math.abs(left.minimum[0] + right.maximum[0]) < 0.000_01);
+        assert.deepEqual(left.minimum.slice(1), right.minimum.slice(1));
+        assert.deepEqual(left.maximum.slice(1), right.maximum.slice(1));
     });
 
     it('keeps the StoneWalkway palette in one warm limestone family', () => {

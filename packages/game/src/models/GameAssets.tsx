@@ -913,6 +913,12 @@ export type GLTFResult = GLTF & {
         EnamelGardenLamp_EnamelShade: THREE.Mesh;
         EnamelGardenLamp_MetalTrim: THREE.Mesh;
         EnamelGardenLamp_Bulb: THREE.Mesh;
+        DoubleGardenLightPole_LimestoneBase: THREE.Mesh;
+        DoubleGardenLightPole_Wood: THREE.Mesh;
+        DoubleGardenLightPole_Shades: THREE.Mesh;
+        DoubleGardenLightPole_DarkMetal: THREE.Mesh;
+        DoubleGardenLightPole_BulbLeft: THREE.Mesh;
+        DoubleGardenLightPole_BulbRight: THREE.Mesh;
         HazelLightArch_Poles: THREE.Mesh;
         HazelLightArch_TerracottaShades: THREE.Mesh;
         HazelLightArch_Cords: THREE.Mesh;
@@ -1246,6 +1252,11 @@ export type GLTFResult = GLTF & {
         'Material.DogHouse.DarkRedWood': THREE.MeshStandardMaterial;
         'Material.DogHouse.RedWood': THREE.MeshStandardMaterial;
         'Material.DogHouse.WarmTrim': THREE.MeshStandardMaterial;
+        'Material.DoubleGardenLightPole.DarkMetal': THREE.MeshStandardMaterial;
+        'Material.DoubleGardenLightPole.Glow': THREE.MeshStandardMaterial;
+        'Material.DoubleGardenLightPole.Limestone': THREE.MeshStandardMaterial;
+        'Material.DoubleGardenLightPole.WarmEnamel': THREE.MeshStandardMaterial;
+        'Material.DoubleGardenLightPole.WarmWood': THREE.MeshStandardMaterial;
         'Material.EnamelGardenLamp.BlueEnamel': THREE.MeshStandardMaterial;
         'Material.EnamelGardenLamp.DarkMetal': THREE.MeshStandardMaterial;
         'Material.EnamelGardenLamp.Glow': THREE.MeshStandardMaterial;

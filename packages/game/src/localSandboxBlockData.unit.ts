@@ -253,6 +253,17 @@ test('local sandbox exposes the new walkway and lighting blocks with catalog dim
             spanWidth: 1,
         },
         {
+            name: 'DoubleGardenLightPole',
+            label: 'Dvostruki drveni rasvjetni stup',
+            height: 2.2,
+            hitboxDepth: 0.38,
+            hitboxHeight: 2.2,
+            hitboxWidth: 0.94,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
             name: 'HazelLightArch',
             label: 'Svjetleći luk od lijeske',
             height: 1.65,

@@ -64,6 +64,7 @@ export const localSandboxBlockNames = [
     'BirdHouse',
     'FireflyJar',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',
@@ -188,6 +189,11 @@ const localSandboxBlockMetadata: Partial<
         shortDescription:
             'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
     },
+    DoubleGardenLightPole: {
+        label: 'Dvostruki drveni rasvjetni stup',
+        shortDescription:
+            'Visoki drveni stup s dvije nasuprotne svjetiljke za osvjetljenje staza i biljaka.',
+    },
     HazelLightArch: {
         label: 'Svjetleći luk od lijeske',
         shortDescription:
@@ -286,6 +292,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Stool: 0.39,
         StoneWalkway: 0.1,
         EnamelGardenLamp: 1.45,
+        DoubleGardenLightPole: 2.2,
         HazelLightArch: 1.65,
         RoofTileLantern: 0.4,
         WickerGardenLantern: 0.7,
@@ -364,6 +371,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 1.45,
         hitboxWidth: 0.52,
     },
+    DoubleGardenLightPole: {
+        hitboxDepth: 0.38,
+        hitboxHeight: 2.2,
+        hitboxWidth: 0.94,
+    },
     HazelLightArch: {
         hitboxDepth: 1,
         hitboxHeight: 1.65,
@@ -441,6 +453,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
         spanWidth: 1,
     },
     EnamelGardenLamp: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    DoubleGardenLightPole: {
         placeableOnWater: false,
         spanDepth: 1,
         spanWidth: 1,

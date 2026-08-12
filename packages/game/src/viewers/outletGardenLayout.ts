@@ -13,6 +13,7 @@ export type OutletGardenLayoutOffer = {
 export type OutletGardenSlotAssignment = {
     offerId: number;
     plantKey: string;
+    plantSortId: number;
     slotIndex: number;
     unitIndex: number;
 };
@@ -35,6 +36,17 @@ export type OutletGardenOfferPlacement = {
     y: number;
 };
 
+export type OutletGardenProductSignPlacement = {
+    anchorBlockId: string;
+    anchorSlotIndex: number;
+    id: string;
+    plantSortId: number;
+    rotation: number;
+    surface: OutletGardenOfferPlacement['surface'];
+    x: number;
+    y: number;
+};
+
 const outletOfferBlockIdPrefix = 'outlet-offer:';
 const outletGardenOffersPerPlantBay = 4;
 const outletGardenPlantBaysPerAisleRow = 2;
@@ -44,15 +56,21 @@ const outletGardenFirstAisleRowOffset = 1;
 const outletGardenPathSegmentLength = 10;
 const outletGardenTableDistance = 2;
 const outletGardenFloorDistance = 1;
+const outletGardenProductSignOffset = 0.28;
 const outletGardenDecorationDistance = 5;
-const outletGardenLightDistance = 4;
+const outletGardenLightNormalDistance = 2;
+const outletGardenLightTangentDistance = 3;
 const outletGardenBenchDistance = 1;
-const outletGardenMaxLightCount = 4;
 const outletGardenMapMargin = 2;
 const outletGardenEntranceY =
     -outletGardenDecorationDistance - outletGardenMapMargin;
 const outletGardenVirtualId = -1;
 const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
+
+export const outletGardenVisitorSpawnPoint = {
+    x: 0,
+    z: outletGardenEntranceY + 1,
+} as const;
 
 /**
  * Outlet tables and pots are individual scene objects. Keep the beta viewer
@@ -61,6 +79,8 @@ const outletGardenUpdatedAt = '1970-01-01T00:00:00.000Z';
  */
 export const outletGardenMaxDisplayedUnitsPerOffer = 100;
 export const outletGardenMaxDisplayedUnitsTotal = 500;
+export const outletGardenMaxProductSigns = 64;
+export const outletGardenMaxDoubleLightPoleCount = 8;
 export const outletGardenMaxTrackedTombstones = 500;
 
 const outletGardenPotNames = [
@@ -81,7 +101,7 @@ type OutletGardenPotName = (typeof outletGardenPotNames)[number];
 export const outletGardenRegisteredBlockNames = [
     'Block_Grass',
     'Bush',
-    'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'Fence',
     'MulchWood',
     'OutletDisplayTable',
@@ -104,7 +124,7 @@ type OutletGardenPathSegment = {
 
 type OutletGardenDecorationName =
     | 'Bush'
-    | 'EnamelGardenLamp'
+    | 'DoubleGardenLightPole'
     | 'StoneSmall'
     | 'Tree'
     | 'WoodenBench';
@@ -285,14 +305,45 @@ export function reconcileOutletGardenSlots(
                   }
                   return prunedAssignments;
               })();
+    let updatedAssignments: Map<string, OutletGardenSlotAssignment> | null =
+        null;
+    for (const display of displays) {
+        const assignment = (updatedAssignments ?? retainedAssignments).get(
+            display.blockId,
+        );
+        if (!assignment) {
+            continue;
+        }
+
+        const plantKey = outletGardenPlantKey(display);
+        if (
+            assignment.offerId === display.id &&
+            assignment.plantKey === plantKey &&
+            assignment.plantSortId === display.plantSortId &&
+            assignment.unitIndex === display.unitIndex
+        ) {
+            continue;
+        }
+
+        updatedAssignments ??= new Map(retainedAssignments);
+        updatedAssignments.set(display.blockId, {
+            ...assignment,
+            offerId: display.id,
+            plantKey,
+            plantSortId: display.plantSortId,
+            unitIndex: display.unitIndex,
+        });
+    }
+    const currentAssignments = updatedAssignments ?? retainedAssignments;
+
     const unseenDisplays = displays.filter(
-        (display) => !retainedAssignments.has(display.blockId),
+        (display) => !currentAssignments.has(display.blockId),
     );
     if (unseenDisplays.length === 0) {
-        return retainedAssignments;
+        return currentAssignments;
     }
 
-    const assignments = new Map(retainedAssignments);
+    const assignments = new Map(currentAssignments);
     const usedSlots = new Set(
         Array.from(assignments.values(), (assignment) => assignment.slotIndex),
     );
@@ -380,6 +431,7 @@ export function reconcileOutletGardenSlots(
             assignments.set(display.blockId, {
                 offerId: display.id,
                 plantKey,
+                plantSortId: display.plantSortId,
                 slotIndex,
                 unitIndex: display.unitIndex,
             });
@@ -504,6 +556,19 @@ function outletGardenRotationFacingPath(normal: OutletGardenPoint) {
     return 0;
 }
 
+function outletGardenRotationAlongPath(direction: OutletGardenPoint) {
+    if (direction.x === 1) {
+        return 0;
+    }
+    if (direction.y === -1) {
+        return 1;
+    }
+    if (direction.x === -1) {
+        return 2;
+    }
+    return 3;
+}
+
 function outletGardenFacingRotation(slotIndex: number) {
     const plantBay = outletGardenPlantBay(slotIndex);
     const aisleRow = Math.floor(plantBay / outletGardenPlantBaysPerAisleRow);
@@ -534,6 +599,88 @@ export function getOutletGardenOfferPlacement(
         x: anchor.x + normal.x * distance + segment.direction.x * tangentOffset,
         y: anchor.y + normal.y * distance + segment.direction.y * tangentOffset,
     };
+}
+
+/**
+ * Places one compact product sign per visible plant sort beside the earliest
+ * slot that sort has owned. Retained assignments intentionally remain eligible
+ * anchors so stock churn does not make a sign jump between tables. The
+ * deterministic cap protects the WebGL scene from mounting hundreds of Drei
+ * Html portals for pathological catalogs; the semantic offer browser remains
+ * complete.
+ */
+export function getOutletGardenProductSignPlacements(
+    offers: readonly OutletGardenLayoutOffer[],
+    assignments: OutletGardenSlotAssignments,
+) {
+    const livePlantSortIds = new Set(
+        getOutletGardenDisplayUnits(offers).map(
+            (display) => display.plantSortId,
+        ),
+    );
+    const anchorByPlantSortId = new Map<
+        number,
+        { assignment: OutletGardenSlotAssignment; blockId: string }
+    >();
+    const productSignCoordinate = (value: number) =>
+        Math.round(value * 100) / 100;
+
+    for (const [blockId, assignment] of assignments) {
+        if (!livePlantSortIds.has(assignment.plantSortId)) {
+            continue;
+        }
+
+        const currentAnchor = anchorByPlantSortId.get(assignment.plantSortId);
+        if (
+            !currentAnchor ||
+            assignment.slotIndex < currentAnchor.assignment.slotIndex ||
+            (assignment.slotIndex === currentAnchor.assignment.slotIndex &&
+                blockId.localeCompare(currentAnchor.blockId) < 0)
+        ) {
+            anchorByPlantSortId.set(assignment.plantSortId, {
+                assignment,
+                blockId,
+            });
+        }
+    }
+
+    return Array.from(anchorByPlantSortId, ([plantSortId, anchor]) => {
+        const { slotIndex } = anchor.assignment;
+        const placement = getOutletGardenOfferPlacement(slotIndex);
+        const plantBay = outletGardenPlantBay(slotIndex);
+        const slotInPlantBay = slotIndex % outletGardenOffersPerPlantBay;
+        const { segment } = outletGardenAisleRowGeometry(placement.aisleRow);
+        const normal = outletGardenSideNormal(plantBay, segment.direction);
+        const tangentOffset =
+            slotInPlantBay % 2 === 0
+                ? -outletGardenProductSignOffset
+                : outletGardenProductSignOffset;
+
+        return {
+            anchorBlockId: anchor.blockId,
+            anchorSlotIndex: slotIndex,
+            id: `outlet-sort-sign:${plantSortId.toString()}`,
+            plantSortId,
+            rotation: outletGardenRotationFacingPath(normal),
+            surface: placement.surface,
+            x: productSignCoordinate(
+                placement.x +
+                    normal.x * outletGardenProductSignOffset +
+                    segment.direction.x * tangentOffset,
+            ),
+            y: productSignCoordinate(
+                placement.y +
+                    normal.y * outletGardenProductSignOffset +
+                    segment.direction.y * tangentOffset,
+            ),
+        } satisfies OutletGardenProductSignPlacement;
+    })
+        .sort(
+            (left, right) =>
+                left.anchorSlotIndex - right.anchorSlotIndex ||
+                left.plantSortId - right.plantSortId,
+        )
+        .slice(0, outletGardenMaxProductSigns);
 }
 
 function stackKey(x: number, y: number) {
@@ -689,7 +836,10 @@ function outletGardenPointIsClear(
     );
 }
 
-function outletGardenDecorations(segmentCount: number) {
+function outletGardenDecorations(
+    segmentCount: number,
+    assignments: OutletGardenSlotAssignments,
+) {
     const futureSafeSegmentCount = segmentCount + 1;
     const pathPoints = outletGardenPathPoints(futureSafeSegmentCount);
     const pathPositionKeys = new Set(
@@ -699,11 +849,28 @@ function outletGardenDecorations(segmentCount: number) {
         futureSafeSegmentCount,
     );
     const decorations: Array<{
+        idSuffix: string;
         name: OutletGardenDecorationName;
         point: OutletGardenPoint;
         rotation: number;
         segmentIndex: number;
     }> = [];
+    const illuminatedSegmentIndices = Array.from(
+        new Set(
+            Array.from(assignments.values(), (assignment) => {
+                const plantBay = outletGardenPlantBay(assignment.slotIndex);
+                const aisleRow = Math.floor(
+                    plantBay / outletGardenPlantBaysPerAisleRow,
+                );
+                return Math.floor(
+                    aisleRow / outletGardenAisleRowsPerPathSegment,
+                );
+            }),
+        ),
+    )
+        .sort((left, right) => left - right)
+        .slice(0, outletGardenMaxDoubleLightPoleCount / 2);
+    const illuminatedSegmentIndexSet = new Set(illuminatedSegmentIndices);
 
     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
         const segment = outletGardenPathSegment(segmentIndex);
@@ -741,6 +908,7 @@ function outletGardenDecorations(segmentCount: number) {
             }
 
             decorations.push({
+                idSuffix: segmentIndex.toString(),
                 name,
                 point: candidate.point,
                 rotation: outletGardenRotationFacingPath(candidate.normal),
@@ -748,17 +916,44 @@ function outletGardenDecorations(segmentCount: number) {
             });
         };
 
-        // A bounded number of the tall registered lamps illuminate the offer
-        // rows at night. They sit behind the tables, outside their interaction
-        // clearance, and existing segment IDs never move as the route grows.
-        if (segmentIndex < outletGardenMaxLightCount) {
-            addDecoration(
-                'EnamelGardenLamp',
-                0,
-                outletGardenLightDistance,
-                [3, 6],
-                false,
+        // A pole sits in the free tile between each side's two table rows. Its
+        // two heads follow the aisle tangent, so one head faces each adjacent
+        // table while the spill also reaches the one-tile walkway. Retained
+        // assignment tombstones keep the earliest four occupied segments
+        // illuminated without letting the light registry grow with stock.
+        if (illuminatedSegmentIndexSet.has(segmentIndex)) {
+            const pathPoint = outletGardenPointAlongSegment(
+                segment,
+                outletGardenLightTangentDistance,
             );
+            const leftNormal = {
+                x: -segment.direction.y,
+                y: segment.direction.x,
+            };
+            const normals = [
+                { id: 'left', normal: leftNormal },
+                {
+                    id: 'right',
+                    normal: { x: -leftNormal.x, y: -leftNormal.y },
+                },
+            ] as const;
+
+            for (const { id, normal } of normals) {
+                decorations.push({
+                    idSuffix: `${segmentIndex.toString()}:${id}`,
+                    name: 'DoubleGardenLightPole',
+                    point: {
+                        x:
+                            pathPoint.x +
+                            normal.x * outletGardenLightNormalDistance,
+                        y:
+                            pathPoint.y +
+                            normal.y * outletGardenLightNormalDistance,
+                    },
+                    rotation: outletGardenRotationAlongPath(segment.direction),
+                    segmentIndex,
+                });
+            }
         }
 
         // Seating belongs beside the aisle, while trees, bushes, and stones
@@ -874,9 +1069,12 @@ export function buildOutletGardenStacks(
         });
     }
 
-    for (const decoration of outletGardenDecorations(segmentCount)) {
+    for (const decoration of outletGardenDecorations(
+        segmentCount,
+        assignments,
+    )) {
         addBlock(stacksByPosition, decoration.point.x, decoration.point.y, {
-            id: `outlet-decor:${decoration.name}:${decoration.segmentIndex.toString()}`,
+            id: `outlet-decor:${decoration.name}:${decoration.idSuffix}`,
             name: decoration.name,
             rotation: decoration.rotation,
         });
