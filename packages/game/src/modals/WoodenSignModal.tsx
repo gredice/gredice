@@ -2,10 +2,10 @@
 
 import {
     countWoodenSignMessageGraphemes,
+    getWoodenSignMessageGraphemeLimit,
     normalizeWoodenSignMessage,
     sanitizeWoodenSignDraft,
     woodenSignBlockName,
-    woodenSignMessageMaxGraphemes,
 } from '@gredice/js/woodenSign';
 import { Button } from '@gredice/ui/Button';
 import { Stack } from '@gredice/ui/Stack';
@@ -31,6 +31,7 @@ function WoodenSignEditor({
     const updateMessage = useBlockMessage();
     const { track } = useGameAnalytics();
     const characterCount = countWoodenSignMessageGraphemes(draft);
+    const characterLimit = getWoodenSignMessageGraphemeLimit(draft);
 
     const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -70,8 +71,8 @@ function WoodenSignEditor({
                 />
                 <div className="flex items-start justify-between gap-4">
                     <Typography id="wooden-sign-help" level="body2" secondary>
-                        Upiši najviše 12 znakova u jedan ili dva reda. Natpis će
-                        vidjeti svi koji mogu vidjeti vrt.
+                        Upiši najviše 12 znakova po redu, u najviše dva reda.
+                        Natpis će vidjeti svi koji mogu vidjeti vrt.
                     </Typography>
                     <Typography
                         id="wooden-sign-counter"
@@ -79,7 +80,7 @@ function WoodenSignEditor({
                         className="shrink-0 tabular-nums"
                         aria-live="polite"
                     >
-                        {characterCount}/{woodenSignMessageMaxGraphemes}
+                        {characterCount}/{characterLimit}
                     </Typography>
                 </div>
                 {errorMessage ? (

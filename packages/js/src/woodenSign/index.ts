@@ -1,7 +1,9 @@
 export const woodenSignBlockName = 'WoodenSign';
-export const woodenSignMessageMaxGraphemes = 12;
+export const woodenSignMessageMaxGraphemesPerLine = 12;
 export const woodenSignMessageMaxLines = 2;
-export const woodenSignMessageMaxRawLength = 128;
+export const woodenSignMessageMaxGraphemes =
+    woodenSignMessageMaxGraphemesPerLine * woodenSignMessageMaxLines;
+export const woodenSignMessageMaxRawLength = 256;
 
 export type WoodenSignMessageValidationCode =
     | 'control_character'
@@ -13,7 +15,7 @@ const validationMessages = {
     control_character:
         'Wooden sign messages cannot contain control characters.',
     raw_too_long: 'Wooden sign message input is too long.',
-    too_many_graphemes: `Wooden sign messages can contain at most ${woodenSignMessageMaxGraphemes.toString()} characters.`,
+    too_many_graphemes: `Each wooden sign line can contain at most ${woodenSignMessageMaxGraphemesPerLine.toString()} characters.`,
     too_many_lines: `Wooden sign messages can contain at most ${woodenSignMessageMaxLines.toString()} lines.`,
 } satisfies Record<WoodenSignMessageValidationCode, string>;
 
@@ -80,6 +82,14 @@ export function countWoodenSignMessageGraphemes(value: string): number {
     return graphemes(normalizeUnicode(value).replaceAll('\n', '')).length;
 }
 
+export function getWoodenSignMessageGraphemeLimit(value: string): number {
+    const lineCount = Math.min(
+        normalizeLineEndings(value).split('\n').length,
+        woodenSignMessageMaxLines,
+    );
+    return lineCount * woodenSignMessageMaxGraphemesPerLine;
+}
+
 export function normalizeWoodenSignMessage(value: string): string | null {
     if (value.length > woodenSignMessageMaxRawLength) {
         throw new WoodenSignMessageValidationError('raw_too_long');
@@ -106,8 +116,15 @@ export function normalizeWoodenSignMessage(value: string): string | null {
         return null;
     }
 
-    const graphemeCount = countWoodenSignMessageGraphemes(message);
-    if (graphemeCount > woodenSignMessageMaxGraphemes) {
+    if (
+        message
+            .split('\n')
+            .some(
+                (row) =>
+                    graphemes(row).length >
+                    woodenSignMessageMaxGraphemesPerLine,
+            )
+    ) {
         throw new WoodenSignMessageValidationError('too_many_graphemes');
     }
 
@@ -121,20 +138,13 @@ export function sanitizeWoodenSignDraft(value: string): string {
     const rows = stripUnsupportedControlCharacters(normalized)
         .split('\n')
         .slice(0, woodenSignMessageMaxLines);
-    let remainingGraphemes = woodenSignMessageMaxGraphemes;
 
     return rows
-        .map((row) => {
-            const rowGraphemes = graphemes(row);
-            const sanitizedRow = rowGraphemes
-                .slice(0, remainingGraphemes)
-                .join('');
-            remainingGraphemes = Math.max(
-                0,
-                remainingGraphemes - rowGraphemes.length,
-            );
-            return sanitizedRow;
-        })
+        .map((row) =>
+            graphemes(row)
+                .slice(0, woodenSignMessageMaxGraphemesPerLine)
+                .join(''),
+        )
         .join('\n');
 }
 

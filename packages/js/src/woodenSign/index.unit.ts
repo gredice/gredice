@@ -4,12 +4,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     countWoodenSignMessageGraphemes,
+    getWoodenSignMessageGraphemeLimit,
     isValidWoodenSignMessage,
     normalizeWoodenSignMessage,
     sanitizeWoodenSignDraft,
     WoodenSignMessageValidationError,
     woodenSignBlockName,
     woodenSignMessageMaxGraphemes,
+    woodenSignMessageMaxGraphemesPerLine,
     woodenSignMessageMaxRawLength,
 } from './index';
 
@@ -22,6 +24,14 @@ describe('countWoodenSignMessageGraphemes', () => {
             ),
             2,
         );
+    });
+});
+
+describe('getWoodenSignMessageGraphemeLimit', () => {
+    it('doubles the character allowance when a second row is drawn', () => {
+        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ VRT'), 12);
+        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ\nVRT'), 24);
+        assert.equal(getWoodenSignMessageGraphemeLimit('MOJ\r\nVRT'), 24);
     });
 });
 
@@ -38,11 +48,12 @@ describe('normalizeWoodenSignMessage', () => {
         assert.equal(normalizeWoodenSignMessage(''), null);
     });
 
-    it('accepts twelve graphemes split across two rows', () => {
-        assert.equal(woodenSignMessageMaxGraphemes, 12);
+    it('accepts twelve graphemes on each of two rows', () => {
+        assert.equal(woodenSignMessageMaxGraphemesPerLine, 12);
+        assert.equal(woodenSignMessageMaxGraphemes, 24);
         assert.equal(
-            normalizeWoodenSignMessage('ABCDEF\nGHIJKL'),
-            'ABCDEF\nGHIJKL',
+            normalizeWoodenSignMessage('ABCDEFGHIJKL\nMNOPQRSTUVWX'),
+            'ABCDEFGHIJKL\nMNOPQRSTUVWX',
         );
 
         const decomposedCroatianLetters = 'C\u030C'.repeat(12);
@@ -52,14 +63,22 @@ describe('normalizeWoodenSignMessage', () => {
         );
 
         assert.equal(
-            normalizeWoodenSignMessage('👩‍🌾'.repeat(12)),
-            '👩‍🌾'.repeat(12),
+            normalizeWoodenSignMessage(
+                `${'👩‍🌾'.repeat(12)}\n${'👨‍🌾'.repeat(12)}`,
+            ),
+            `${'👩‍🌾'.repeat(12)}\n${'👨‍🌾'.repeat(12)}`,
         );
     });
 
-    it('rejects more than twelve graphemes in total', () => {
+    it('rejects more than twelve graphemes on either row', () => {
         assert.throws(
-            () => normalizeWoodenSignMessage('ABCDEFG\nGHIJKL'),
+            () => normalizeWoodenSignMessage('ABCDEFGHIJKLM\nOK'),
+            (error) =>
+                error instanceof WoodenSignMessageValidationError &&
+                error.code === 'too_many_graphemes',
+        );
+        assert.throws(
+            () => normalizeWoodenSignMessage('OK\nABCDEFGHIJKLM'),
             (error) =>
                 error instanceof WoodenSignMessageValidationError &&
                 error.code === 'too_many_graphemes',
@@ -106,10 +125,12 @@ describe('normalizeWoodenSignMessage', () => {
 });
 
 describe('sanitizeWoodenSignDraft', () => {
-    it('produces an NFC, control-free two-row draft capped at twelve graphemes', () => {
+    it('produces an NFC, control-free two-row draft capped at twelve graphemes per row', () => {
         assert.equal(
-            sanitizeWoodenSignDraft('ABCDEFG\r\nHIJKLMN\nignored\t'),
-            'ABCDEFG\nHIJKL',
+            sanitizeWoodenSignDraft(
+                'ABCDEFGHIJKLM\r\nNOPQRSTUVWXYZ\nignored\t',
+            ),
+            'ABCDEFGHIJKL\nNOPQRSTUVWXY',
         );
         assert.equal(sanitizeWoodenSignDraft('C\u030C'), 'Č');
     });
@@ -121,6 +142,10 @@ describe('isValidWoodenSignMessage', () => {
         assert.equal(isValidWoodenSignMessage(null), true);
         assert.equal(isValidWoodenSignMessage(''), true);
         assert.equal(isValidWoodenSignMessage('MOJ\nVRT'), true);
+        assert.equal(
+            isValidWoodenSignMessage('ABCDEFGHIJKL\nMNOPQRSTUVWX'),
+            true,
+        );
     });
 
     it('rejects invalid messages', () => {
