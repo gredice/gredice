@@ -62,10 +62,10 @@ const assetSpecs = [
             'Material.HazelLightArch.HazelWood',
             'Material.HazelLightArch.Terracotta',
         ],
-        // A single planar gateway must keep a narrow side profile. The
-        // previous four-legged tunnel was over three times wider.
+        // A single planar gateway reaches the edges of one tile while keeping
+        // a narrow side profile.
         horizontalLimit: 0.24,
-        depthLimit: 1,
+        depthLimit: 0.505,
         heightRange: [1.53, 1.55],
         vertexLimit: 8_500,
     },
@@ -427,7 +427,7 @@ describe('garden lighting and stone walkway assets', () => {
         }
     });
 
-    it('HazelLightArch remains one thin free-standing gateway', () => {
+    it('HazelLightArch remains one thin free-standing one-tile gateway', () => {
         const modelPath = fileURLToPath(
             new URL(
                 '../../../../apps/garden/public/assets/models/HazelLightArch.glb',
@@ -436,13 +436,24 @@ describe('garden lighting and stone walkway assets', () => {
         );
         const document = readGlbDocument(readFileSync(modelPath));
         const poles = getNodeBounds(document, 'HazelLightArch_Poles');
+        const shades = getNodeBounds(
+            document,
+            'HazelLightArch_TerracottaShades',
+        );
+        const bulbs = getNodeBounds(document, 'HazelLightArch_Bulbs');
         const width = poles.maximum[0] - poles.minimum[0];
         const depth = poles.maximum[2] - poles.minimum[2];
+        const shadeDepth = shades.maximum[2] - shades.minimum[2];
 
         // A square shoe or under-block would widen the 0.104-unit round posts.
         assert.ok(width <= 0.11);
-        assert.ok(depth >= 1.5);
-        assert.ok(depth >= width * 10);
+        assert.ok(depth >= 0.98);
+        assert.ok(depth <= 1.01);
+        assert.ok(poles.minimum[2] >= -0.5);
+        assert.ok(poles.maximum[2] <= 0.5);
+        assert.ok(depth - shadeDepth >= 0.25);
+        assert.ok(depth >= width * 8);
+        assert.ok(bulbs.minimum[1] >= 1.16);
         assert.ok(Math.abs(poles.minimum[1]) < 0.000_01);
     });
 

@@ -144,6 +144,28 @@ const blockData = [
         placeableOnWater: true,
         stackable: false,
     }),
+    createBlockData({
+        id: 10,
+        name: 'HazelLightArch',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 11,
+        name: 'StoneWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 12,
+        name: 'WoodenWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.4,
+        id: 13,
+        name: 'Block_Grass',
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -348,6 +370,30 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         assert.equal(preview?.nextIsOverRecycler, false);
         assert.equal(preview?.nextIsBlocked, true);
     });
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`allows HazelLightArch to be placed on ${walkwayName}`, () => {
+            const arch = createBlock('HazelLightArch', 'hazel-light-arch');
+            const grass = createBlock('Block_Grass', 'grass');
+            const walkway = createBlock(walkwayName, 'walkway');
+            const sourceStack = createStack(0, 0, [arch]);
+            const walkwayStack = createStack(1, 0, [grass, walkway]);
+
+            const preview = resolvePickupPlacementPreviewForRelative({
+                blockData,
+                gardenIsSandbox: false,
+                localSandboxStorageKey: null,
+                movingSegments: [
+                    createMovingSegment({ block: arch, sourceStack }),
+                ],
+                relative: new Vector3(1, 0, 0),
+                stacks: [sourceStack, walkwayStack],
+            });
+
+            assert.equal(preview?.nextIsBlocked, false);
+            assert.equal(preview?.targetOffsets[0]?.hoverHeight, 0.5);
+        });
+    }
 
     it('blocks multi-cell drops that overlap a non-stackable footprint cell', () => {
         const stand = createBlock('LemonadeStand', 'stand');

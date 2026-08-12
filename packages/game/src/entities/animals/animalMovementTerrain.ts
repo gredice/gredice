@@ -1,7 +1,13 @@
 import type { BlockData } from '@gredice/client';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
+import { getStackBlockHeight } from '../../utils/stackHeightCore';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
+import {
+    getWalkwayVisualTopOffset,
+    isWalkwayBlockName,
+    isWaterCoveredByWalkway,
+} from '../walkwayPlacement';
 import { getWaterBlockColumnSurfaceY } from '../waterBlockDepth';
 import { isWaterBlockName } from '../waterBlockNames';
 
@@ -22,6 +28,11 @@ export type AnimalMovementSurface = AnimalMovementCell & {
 
 const movementSurfaceHalfSize = 0.5;
 const movementSurfaceEpsilon = 0.001;
+const passThroughDecorationNames = new Set([
+    'HazelLightArch',
+    'StoneWalkway',
+    'WoodenWalkway',
+]);
 
 const groundBlockNames = new Set([
     'Block_Ground',
@@ -70,8 +81,11 @@ function getGroundSurfaceY({
     groundLift: number;
     stack: Stack;
 }) {
-    const firstNonGroundBlock = stack.blocks.find(
-        (block) => !isAnimalGroundBlockName(block.name),
+    const firstBlockingBlock = stack.blocks.find(
+        (block, blockIndex) =>
+            !isAnimalGroundBlockName(block.name) &&
+            !isWalkwayBlockName(block.name) &&
+            !isWaterCoveredByWalkway(stack, blockIndex),
     );
     const firstBlock = stack.blocks[0];
 
@@ -79,8 +93,31 @@ function getGroundSurfaceY({
         return null;
     }
 
-    const height = getStackHeight(blockData, stack, firstNonGroundBlock);
-    return height > 0 ? height + groundLift : 0;
+    const height = getStackHeight(blockData, stack, firstBlockingBlock);
+    const firstBlockingIndex = firstBlockingBlock
+        ? stack.blocks.indexOf(firstBlockingBlock)
+        : stack.blocks.length;
+    const topWalkway = stack.blocks
+        .slice(0, firstBlockingIndex)
+        .findLast((block) => isWalkwayBlockName(block.name));
+
+    if (!topWalkway) {
+        return height > 0 ? height + groundLift : 0;
+    }
+
+    const walkwayIndex = stack.blocks.indexOf(topWalkway);
+    const walkwayMetadataHeight = getStackBlockHeight(
+        blockData,
+        stack,
+        topWalkway,
+        walkwayIndex,
+    );
+    const walkwaySurfaceHeight =
+        height -
+        walkwayMetadataHeight +
+        getWalkwayVisualTopOffset(stack, topWalkway);
+
+    return walkwaySurfaceHeight > 0 ? walkwaySurfaceHeight + groundLift : 0;
 }
 
 function createHalfStairMovementSurfaces({
@@ -198,7 +235,8 @@ export function createAnimalBlockedCells(stacks: Stack[] | undefined) {
         if (
             !topBlock ||
             isAnimalGroundBlockName(topBlock.name) ||
-            isAnimalWaterBlockName(topBlock.name)
+            isAnimalWaterBlockName(topBlock.name) ||
+            passThroughDecorationNames.has(topBlock.name)
         ) {
             continue;
         }

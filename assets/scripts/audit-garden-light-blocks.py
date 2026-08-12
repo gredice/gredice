@@ -255,6 +255,23 @@ def audit_hazel() -> None:
     objects = load("HazelLightArch")
     poles = objects["HazelLightArch_Poles"][1]
     assert_solid("HazelLightArch.poles", poles)
+    all_components = [
+        component
+        for _, components in objects.values()
+        for component in components
+    ]
+    asset_min = Vector(
+        tuple(
+            min(component.bounds_min[axis] for component in all_components)
+            for axis in range(3)
+        )
+    )
+    asset_max = Vector(
+        tuple(
+            max(component.bounds_max[axis] for component in all_components)
+            for axis in range(3)
+        )
+    )
     pole_min = Vector(
         tuple(min(component.bounds_min[axis] for component in poles) for axis in range(3))
     )
@@ -263,9 +280,18 @@ def audit_hazel() -> None:
     )
     dimensions = pole_max - pole_min
     check(
-        dimensions.x <= 0.14 and dimensions.y >= 1.55,
+        dimensions.x <= 0.14 and 0.98 <= dimensions.y <= 1.01,
         "HazelLightArch.one-thin-plane",
         f"dimensions={[round(value, 4) for value in dimensions]}",
+    )
+    check(
+        asset_min.y >= -0.505
+        and asset_max.y <= 0.505
+        and asset_min.y <= -0.49
+        and asset_max.y >= 0.49
+        and asset_max.x - asset_min.x <= 0.22,
+        "HazelLightArch.one-tile-edge-envelope",
+        f"bounds=({asset_min.x:.4f},{asset_min.y:.4f})..({asset_max.x:.4f},{asset_max.y:.4f})",
     )
     ground_legs = [
         component
@@ -280,7 +306,7 @@ def audit_hazel() -> None:
     top_rods = [
         component
         for component in poles
-        if component.dimensions.y >= 1.35 and component.bounds_min.z >= 1.30
+        if component.dimensions.y >= 0.75 and component.bounds_min.z >= 1.30
     ]
     check(len(top_rods) == 2, "HazelLightArch.two-top-rods", f"count={len(top_rods)}")
     check(
@@ -304,6 +330,40 @@ def audit_hazel() -> None:
     shades = objects.get("HazelLightArch_TerracottaShades", (None, []))[1]
     check(len(bulbs) == 3, "HazelLightArch.three-bulbs", f"count={len(bulbs)}")
     check(len(shades) == 6, "HazelLightArch.three-shades-and-rims", f"components={len(shades)}")
+    check(
+        bool(bulbs) and min(component.bounds_min.z for component in bulbs) >= 1.16,
+        "HazelLightArch.standing-clearance",
+        f"bulb-min-z={min((component.bounds_min.z for component in bulbs), default=0):.4f}",
+    )
+    bulb_centers = sorted(component.centroid.y for component in bulbs)
+    check(
+        len(bulb_centers) == 3
+        and abs(bulb_centers[1]) <= 0.002
+        and abs((bulb_centers[1] - bulb_centers[0]) - (bulb_centers[2] - bulb_centers[1])) <= 0.002,
+        "HazelLightArch.even-lamp-spacing",
+        f"centers={[round(value, 4) for value in bulb_centers]}",
+    )
+    sorted_legs = sorted(ground_legs, key=lambda component: component.centroid.y)
+    left_shades = [component for component in shades if component.centroid.y < -0.1]
+    right_shades = [component for component in shades if component.centroid.y > 0.1]
+    if len(sorted_legs) == 2 and left_shades and right_shades:
+        left_clearance = min(component.bounds_min.y for component in left_shades) - sorted_legs[0].bounds_max.y
+        right_clearance = sorted_legs[1].bounds_min.y - max(component.bounds_max.y for component in right_shades)
+        check(
+            left_clearance >= 0.04 and right_clearance >= 0.04,
+            "HazelLightArch.lamps-clear-poles",
+            f"clearance=({left_clearance:.4f},{right_clearance:.4f})",
+        )
+        pole_lamp_overlaps = [
+            len(leg.bvh.overlap(lamp.bvh))
+            for leg in sorted_legs
+            for lamp in [*shades, *bulbs]
+        ]
+        check(
+            all(count == 0 for count in pole_lamp_overlaps),
+            "HazelLightArch.lamps-do-not-intersect-poles",
+            f"pair-overlaps={pole_lamp_overlaps}",
+        )
 
 
 def audit_roof() -> None:

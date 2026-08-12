@@ -25,6 +25,9 @@ const blockDataByName = new Map([
         },
     ],
     ['Tree', { attributes: { stackable: true, height: 1 } }],
+    ['HazelLightArch', { attributes: { stackable: false, height: 1.65 } }],
+    ['StoneWalkway', { attributes: { stackable: false, height: 0.1 } }],
+    ['WoodenWalkway', { attributes: { stackable: false, height: 0.1 } }],
 ]);
 
 describe('validateStackPlacement', () => {
@@ -69,4 +72,19 @@ describe('validateStackPlacement', () => {
 
         assert.deepEqual(validation, { valid: true });
     });
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`allows HazelLightArch directly above ${walkwayName}`, () => {
+            const validation = validateStackPlacement({
+                blockIds: ['walkway-a', 'arch-a'],
+                blockNameById: new Map([
+                    ['walkway-a', walkwayName],
+                    ['arch-a', 'HazelLightArch'],
+                ]),
+                blockDataByName,
+            });
+
+            assert.deepEqual(validation, { valid: true });
+        });
+    }
 });

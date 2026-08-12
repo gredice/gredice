@@ -117,6 +117,41 @@ describe('animal movement terrain', () => {
         assert.equal(surfaces[0]?.z, 4);
     });
 
+    for (const supportName of [
+        'Block_Grass',
+        'Block_Water',
+        'Block_Swamp_Water',
+    ]) {
+        for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+            it(`lets animals pass through HazelLightArch on ${walkwayName} above ${supportName}`, () => {
+                const archStack = stack(3, 4, [
+                    block('grass', 'Block_Grass'),
+                    ...(supportName !== 'Block_Grass'
+                        ? [block('water', supportName)]
+                        : []),
+                    block('walkway', walkwayName),
+                    block('arch', 'HazelLightArch'),
+                ]);
+                const surfaces = createAnimalMovementSurfaces({
+                    blockData: getLocalSandboxBlockData(),
+                    groundLift: 0.02,
+                    stacks: [archStack],
+                    swimDepth: 0.12,
+                });
+                const supportHeight = supportName === 'Block_Grass' ? 0.4 : 0.8;
+                const walkwayHeight =
+                    walkwayName === 'StoneWalkway' ? 0.064 : 0.036;
+
+                assert.deepEqual(createAnimalBlockedCells([archStack]), []);
+                assert.equal(surfaces[0]?.kind, 'ground');
+                assert.equal(
+                    Number(surfaces[0]?.y.toFixed(6)),
+                    Number((supportHeight + walkwayHeight + 0.02).toFixed(6)),
+                );
+            });
+        }
+    }
+
     it('keeps half-stair animal surfaces on the rendered edge at every rotation', () => {
         for (const rotation of [0, 1, 2, 3]) {
             const surfaces = createAnimalMovementSurfaces({
