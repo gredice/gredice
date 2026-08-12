@@ -77,17 +77,20 @@ test('neutral daytime sky resolves to a visible gradient', () => {
     assert.ok(gradient.sunGlowIntensity > 0.4);
 });
 
-test('partial solar eclipse cools the daylight sky and attenuates the solar glow', () => {
+test('Croatian partial eclipse darkens every daylight gradient band and the solar glow', () => {
     const clearDay = resolveGradient({ timeOfDay: 0.78 });
     const eclipse = resolveGradient({
-        solarEclipseObscuration: 0.77,
+        solarEclipseObscuration: 0.478,
         timeOfDay: 0.78,
     });
 
-    assert.ok(
-        colorLuminance(eclipse.zenith) < colorLuminance(clearDay.zenith) * 0.9,
-    );
-    assert.ok(eclipse.sunGlowIntensity < clearDay.sunGlowIntensity * 0.4);
+    for (const key of ['zenith', 'upper', 'horizon', 'lower'] as const) {
+        assert.ok(
+            colorLuminance(eclipse[key]) < colorLuminance(clearDay[key]) * 0.8,
+            `Expected eclipse ${key} to be visibly darker than clear daylight`,
+        );
+    }
+    assert.ok(eclipse.sunGlowIntensity < clearDay.sunGlowIntensity * 0.6);
     assert.equal(eclipse.moonGlowIntensity, clearDay.moonGlowIntensity);
 });
 

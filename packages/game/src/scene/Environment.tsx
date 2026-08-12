@@ -36,6 +36,7 @@ import { ShadowMapController } from './ShadowMapController';
 import { SkyGradientBackground } from './SkyGradientBackground';
 import Snow from './Snow/Snow';
 import { resolveSnowParticleCounts } from './Snow/snowParticles';
+import { SolarEclipseSceneOverlay } from './SolarEclipseSceneOverlay';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
 import {
@@ -1178,6 +1179,11 @@ export function Environment({
                     ]}
                 />
             )}
+            {(solarEclipse?.obscuration ?? 0) > 0 ? (
+                <SolarEclipseSceneOverlay
+                    obscuration={solarEclipse?.obscuration ?? 0}
+                />
+            ) : null}
         </>
     );
 }

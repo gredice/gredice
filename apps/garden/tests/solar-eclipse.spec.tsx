@@ -3,6 +3,25 @@ import { SolarEclipseVisualFixture } from './SolarEclipseVisualFixture';
 
 const webglSnapshotOptions = { maxDiffPixelRatio: 0.003 };
 
+async function readLightIntensities(fixture: {
+    getAttribute: (name: string) => Promise<string | null>;
+}) {
+    const ambient = Number(
+        await fixture.getAttribute('data-ambient-light-intensity'),
+    );
+    const directional = Number(
+        await fixture.getAttribute('data-directional-light-intensity'),
+    );
+    const hemisphere = Number(
+        await fixture.getAttribute('data-hemisphere-light-intensity'),
+    );
+
+    expect(ambient).toBeGreaterThan(0);
+    expect(directional).toBeGreaterThan(0);
+    expect(hemisphere).toBeGreaterThan(0);
+    return { ambient, directional, hemisphere };
+}
+
 test('renders the 2026 Croatian partial eclipse before local sunset', async ({
     mount,
     page,
@@ -39,13 +58,17 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
     });
 
     const eclipseFixture = await mount(
-        <SolarEclipseVisualFixture time="2030-06-01T05:10:24.000Z" />,
+        <SolarEclipseVisualFixture
+            lightingProbe
+            time="2030-06-01T05:10:24.000Z"
+        />,
     );
     await expect(eclipseFixture).toHaveAttribute('data-render-ready', 'true');
     await expect(eclipseFixture).toHaveAttribute(
         'data-eclipse-obscuration',
         '0.696',
     );
+    const eclipseLights = await readLightIntensities(eclipseFixture);
 
     const eclipseCanvas = eclipseFixture.locator('canvas');
     const eclipsePng = await eclipseCanvas.screenshot();
@@ -56,12 +79,23 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
 
     await eclipseFixture.unmount();
     const clearFixture = await mount(
-        <SolarEclipseVisualFixture time="2030-05-31T05:10:24.000Z" />,
+        <SolarEclipseVisualFixture
+            lightingProbe
+            time="2030-05-31T05:10:24.000Z"
+        />,
     );
     await expect(clearFixture).toHaveAttribute('data-render-ready', 'true');
     await expect(clearFixture).toHaveAttribute(
         'data-eclipse-obscuration',
         '0.000',
+    );
+    const clearLights = await readLightIntensities(clearFixture);
+    expect(eclipseLights.ambient).toBeLessThan(clearLights.ambient * 0.55);
+    expect(eclipseLights.hemisphere).toBeLessThan(
+        clearLights.hemisphere * 0.55,
+    );
+    expect(eclipseLights.directional).toBeLessThan(
+        clearLights.directional * 0.4,
     );
     const clearPng = await clearFixture.locator('canvas').screenshot();
     expect(clearPng).toMatchSnapshot(
@@ -73,6 +107,7 @@ test('renders a location-aware future eclipse and keeps forced-day mode clear', 
     const forcedDayFixture = await mount(
         <SolarEclipseVisualFixture
             dayNightCycleDisabled
+            lightingProbe
             time="2030-06-01T05:10:24.000Z"
         />,
     );
