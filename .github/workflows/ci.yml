@@ -258,7 +258,12 @@ jobs:
       name: "garden"
       path: "apps/garden"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
-      testShardMatrix: '[{"index":1,"total":2},{"index":2,"total":2}]'
+      testShardMatrix: >-
+        [
+          {"name":"chromium 1/2","args":"--project=chromium --shard=1/2"},
+          {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
+          {"name":"webgl","args":"--project=chromium-webgl"}
+        ]
       testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
 
