@@ -8,7 +8,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { getWoodenWalkwayPlacementYOffset } from './woodenWalkwayPlacement';
+import { getWalkwayPlacementYOffset } from './walkwayPlacement';
 
 type WoodenWalkwayNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -58,7 +58,7 @@ export function WoodenWalkway({ stack, block, rotation }: EntityInstanceProps) {
     const { materials, nodes } = useGameGLTF('WoodenWalkway');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const placementYOffset = getWoodenWalkwayPlacementYOffset(stack, block);
+    const placementYOffset = getWalkwayPlacementYOffset(stack, block);
 
     return (
         <animated.group

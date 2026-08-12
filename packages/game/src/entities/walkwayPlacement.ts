@@ -4,7 +4,7 @@ import { waterBlockBottomOverlap } from './waterBlockGeometry';
 
 const terrainBlockPrefix = 'Block_';
 
-export function getWoodenWalkwayPlacementYOffset(
+export function getWalkwayPlacementYOffset(
     stack: Stack | undefined,
     block: Block,
 ) {

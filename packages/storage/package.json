@@ -46,6 +46,7 @@
         "generated-images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts",
         "blocks:images:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGeneratedImageAttributes.ts --entity-type block --source information.name --target image.cover --template 'https://www.gredice.com/assets/blocks/{encodedValue}.webp' --label Slika --description 'Public block image generated from the in-game block name and used by admin previews, directory cards, search results, and compact block UI.' --order aa",
         "blocks:signage:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertSignageBlockEntities.ts",
+        "blocks:garden-lighting:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGardenLightingBlockEntities.ts",
         "harvest-traces:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillHarvestTraceLinks.ts",
         "payout-items:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPayoutRequestItems.ts"
     },

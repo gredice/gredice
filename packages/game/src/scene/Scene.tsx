@@ -30,6 +30,7 @@ import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { GardenLightProvider } from './GardenLightProvider';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -308,41 +309,46 @@ export function Scene({
                 fixedTimeSeconds={fixedTimeSeconds}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
-                <AdaptiveHighQualityController
-                    effectiveDprCeiling={qualityProfile.dpr}
-                    enabled={adaptiveHighActive}
-                    interactionActive={adaptiveHighInteractionActive}
-                    onProfileChange={
-                        onAdaptiveHighProfileChange ?? (() => undefined)
-                    }
-                    profileControlEnabled={
-                        adaptiveHighActive && adaptiveHighProfileControlEnabled
-                    }
-                />
-                <WeatherSurfaceUniformProvider>
-                    <StaticOpaqueSceneCacheProvider
-                        enabled={staticOpaqueCacheActive}
+                <GardenLightProvider qualityTier={qualityProfile.tier}>
+                    <AdaptiveHighQualityController
+                        effectiveDprCeiling={qualityProfile.dpr}
+                        enabled={adaptiveHighActive}
                         interactionActive={adaptiveHighInteractionActive}
-                        qualityKey={staticOpaqueCacheQualityKey}
-                        wireframe={Boolean(debugStats && wireframeDebugVisible)}
-                    >
-                        <ActorGroundingShadowProvider
-                            enabled={qualityProfile.shadows}
+                        onProfileChange={
+                            onAdaptiveHighProfileChange ?? (() => undefined)
+                        }
+                        profileControlEnabled={
+                            adaptiveHighActive &&
+                            adaptiveHighProfileControlEnabled
+                        }
+                    />
+                    <WeatherSurfaceUniformProvider>
+                        <StaticOpaqueSceneCacheProvider
+                            enabled={staticOpaqueCacheActive}
+                            interactionActive={adaptiveHighInteractionActive}
+                            qualityKey={staticOpaqueCacheQualityKey}
+                            wireframe={Boolean(
+                                debugStats && wireframeDebugVisible,
+                            )}
                         >
-                            <HoverOutlineProvider>
-                                <SceneDebugName />
-                                {debugStats && <RendererStatsReporter />}
-                                <SceneWireframeMode
-                                    enabled={Boolean(
-                                        debugStats && wireframeDebugVisible,
-                                    )}
-                                />
-                                {children}
-                                <HoverOutlineEffect />
-                            </HoverOutlineProvider>
-                        </ActorGroundingShadowProvider>
-                    </StaticOpaqueSceneCacheProvider>
-                </WeatherSurfaceUniformProvider>
+                            <ActorGroundingShadowProvider
+                                enabled={qualityProfile.shadows}
+                            >
+                                <HoverOutlineProvider>
+                                    <SceneDebugName />
+                                    {debugStats && <RendererStatsReporter />}
+                                    <SceneWireframeMode
+                                        enabled={Boolean(
+                                            debugStats && wireframeDebugVisible,
+                                        )}
+                                    />
+                                    {children}
+                                    <HoverOutlineEffect />
+                                </HoverOutlineProvider>
+                            </ActorGroundingShadowProvider>
+                        </StaticOpaqueSceneCacheProvider>
+                    </WeatherSurfaceUniformProvider>
+                </GardenLightProvider>
             </SceneTimeProvider>
         </Canvas>
     );

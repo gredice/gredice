@@ -171,6 +171,110 @@ test('local sandbox exposes the wooden walkway with its model bounds', () => {
     assert.equal(walkway.attributes.placeableOnWater, true);
 });
 
+test('local sandbox exposes the new walkway and lighting blocks with catalog dimensions', () => {
+    const blockData = getLocalSandboxBlockData();
+    const expectedBlocks = [
+        {
+            name: 'StoneWalkway',
+            label: 'Kamena staza',
+            height: 0.1,
+            hitboxDepth: 1,
+            hitboxHeight: 0.1,
+            hitboxWidth: 0.86,
+            placeableOnWater: true,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'EnamelGardenLamp',
+            label: 'Emajlirana vrtna lampa',
+            height: 1.45,
+            hitboxDepth: 0.46,
+            hitboxHeight: 1.45,
+            hitboxWidth: 0.52,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'HazelLightArch',
+            label: 'Svjetleći luk od lijeske',
+            height: 1.65,
+            hitboxDepth: 1.72,
+            hitboxHeight: 1.65,
+            hitboxWidth: 0.9,
+            placeableOnWater: false,
+            spanDepth: 2,
+            spanWidth: 1,
+        },
+        {
+            name: 'RoofTileLantern',
+            label: 'Fenjer od starog crijepa',
+            height: 0.4,
+            hitboxDepth: 0.48,
+            hitboxHeight: 0.4,
+            hitboxWidth: 0.48,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'WickerGardenLantern',
+            label: 'Pleteni vrtni fenjer',
+            height: 0.7,
+            hitboxDepth: 0.62,
+            hitboxHeight: 0.7,
+            hitboxWidth: 0.62,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'WoodenHandLantern',
+            label: 'Drveni ručni fenjer',
+            height: 0.66,
+            hitboxDepth: 0.4,
+            hitboxHeight: 0.66,
+            hitboxWidth: 0.44,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'MoonRainBarrel',
+            label: 'Mjesečeva bačva',
+            height: 1,
+            hitboxDepth: 0.84,
+            hitboxHeight: 1,
+            hitboxWidth: 0.76,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+    ];
+
+    for (const expected of expectedBlocks) {
+        const block = blockData.find(
+            (candidate) => candidate.information.name === expected.name,
+        );
+
+        assert.ok(block, `Missing local sandbox block ${expected.name}`);
+        assert.equal(block.information.label, expected.label);
+        assert.equal(block.attributes.height, expected.height);
+        assert.equal(block.attributes.hitboxDepth, expected.hitboxDepth);
+        assert.equal(block.attributes.hitboxHeight, expected.hitboxHeight);
+        assert.equal(block.attributes.hitboxWidth, expected.hitboxWidth);
+        assert.equal(
+            block.attributes.placeableOnWater,
+            expected.placeableOnWater,
+        );
+        assert.equal(block.attributes.spanDepth, expected.spanDepth);
+        assert.equal(block.attributes.spanWidth, expected.spanWidth);
+        assert.equal(block.attributes.stackable, false);
+        assert.equal(block.attributes.nightOnlyPurchase, false);
+    }
+});
+
 test('local sandbox exposes flower decorations used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const blockNames = new Set(
