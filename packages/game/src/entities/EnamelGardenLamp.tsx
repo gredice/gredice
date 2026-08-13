@@ -9,7 +9,8 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const enamelLightColor = '#ffe6a8';
+const enamelLightColor = '#ffce53';
+const enamelBulbColor = '#000000';
 const enamelLightPosition = [0.13, 0.965, 0] as const;
 const lampRain = {
     darkness: 0.72,
@@ -63,7 +64,7 @@ export function EnamelGardenLamp({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={enamelLightColor}
+                    color={enamelBulbColor}
                     emissive={enamelLightColor}
                     emissiveIntensity={0.25}
                     metalness={0}
@@ -73,7 +74,7 @@ export function EnamelGardenLamp({
             </WeatheredEntityPart>
             <GardenNightLight
                 color={enamelLightColor}
-                distance={4.6}
+                distance={8}
                 emissiveBaseIntensity={0.25}
                 emissiveMaterialRefs={emissiveMaterialRefs}
                 emissivePeakIntensity={3.1}

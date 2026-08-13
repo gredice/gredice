@@ -1,5 +1,18 @@
 import { isNightTimeOfDay } from '@gredice/js/blocks';
 
+const gardenNightLightIntensityMultiplier = 10;
+const gardenNightLightEmissivePeakMultiplier = 0.2;
+
+export function resolveGardenNightLightIntensity(lightIntensity: number) {
+    return lightIntensity * gardenNightLightIntensityMultiplier;
+}
+
+export function resolveGardenNightLightEmissivePeakIntensity(
+    emissivePeakIntensity: number,
+) {
+    return emissivePeakIntensity * gardenNightLightEmissivePeakMultiplier;
+}
+
 export function getNightGardenGlowAmount(timeOfDay: number) {
     if (isNightTimeOfDay(timeOfDay)) {
         return 1;

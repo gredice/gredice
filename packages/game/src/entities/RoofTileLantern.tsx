@@ -9,7 +9,8 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const roofTileGlowColor = '#ff9a4f';
+const roofTileGlowColor = '#ff9425';
+const roofTileSourceColor = '#000000';
 const roofTileLightPosition = [0, 0.23, 0] as const;
 const tileRain = {
     darkness: 0.82,
@@ -51,7 +52,7 @@ export function RoofTileLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={roofTileGlowColor}
+                    color={roofTileSourceColor}
                     emissive={roofTileGlowColor}
                     emissiveIntensity={0.3}
                     metalness={0}

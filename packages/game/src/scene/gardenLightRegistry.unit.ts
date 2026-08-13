@@ -20,6 +20,7 @@ describe('GardenLightRegistryStore', () => {
             [
                 ...selectActiveGardenLightKeys(
                     registry.getEntries().map(({ instanceKey }) => ({
+                        influenceIntersectsFrustum: true,
                         key: instanceKey,
                         x: 0,
                         y: 0,

@@ -9,7 +9,8 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const handLanternGlowColor = '#ffd27f';
+const handLanternGlowColor = '#ffb733';
+const handLanternSourceColor = '#000000';
 const handLanternLightPosition = [0, 0.2475, 0] as const;
 const handLanternRain = {
     darkness: 0.72,
@@ -72,7 +73,7 @@ export function WoodenHandLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={handLanternGlowColor}
+                    color={handLanternSourceColor}
                     emissive={handLanternGlowColor}
                     emissiveIntensity={0.3}
                     metalness={0}

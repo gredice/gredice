@@ -36,7 +36,8 @@ const fireflyCenter = [0.015, 0.255, -0.018] as const;
 const fireflyVerticalBaseOffset = -0.095;
 const fireflyVerticalPrimaryAmplitude = 0.068;
 const fireflyVerticalSecondaryAmplitude = 0.014;
-const glowColor = '#ffe66d';
+const glowColor = '#ffda24';
+const glowSourceColor = '#000000';
 const bodyColor = '#1f2018';
 const wingColor = '#d7f4ff';
 const lidMetalMaterial = {
@@ -184,7 +185,7 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                         receiveShadow={false}
                     >
                         <meshStandardMaterial
-                            color={glowColor}
+                            color={glowSourceColor}
                             emissive={glowColor}
                             emissiveIntensity={0.35}
                             metalness={0}

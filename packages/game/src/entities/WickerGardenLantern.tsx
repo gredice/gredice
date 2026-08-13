@@ -9,7 +9,8 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const wickerGlowColor = '#ffc56d';
+const wickerGlowColor = '#ffa824';
+const wickerSourceColor = '#000000';
 const wickerLightPosition = [0, 0.38, 0] as const;
 const wickerRain = {
     darkness: 0.75,
@@ -57,7 +58,7 @@ export function WickerGardenLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={wickerGlowColor}
+                    color={wickerSourceColor}
                     emissive={wickerGlowColor}
                     emissiveIntensity={0.28}
                     metalness={0}

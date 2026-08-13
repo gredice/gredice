@@ -3,8 +3,24 @@ import { describe, it } from 'node:test';
 import {
     getNightGardenGlowAmount,
     getNightGardenLightPhase,
+    resolveGardenNightLightEmissivePeakIntensity,
+    resolveGardenNightLightIntensity,
     resolveNightGardenLightFrame,
 } from './nightGardenLight';
+
+describe('resolveGardenNightLightIntensity', () => {
+    it('increases every garden light to ten times its base strength', () => {
+        assert.equal(resolveGardenNightLightIntensity(1.35), 13.5);
+        assert.equal(resolveGardenNightLightIntensity(2.6), 26);
+    });
+
+    it('keeps the colored source from rendering white-hot', () => {
+        assert.ok(
+            Math.abs(resolveGardenNightLightEmissivePeakIntensity(3.2) - 0.64) <
+                0.000_001,
+        );
+    });
+});
 
 describe('getNightGardenGlowAmount', () => {
     it('keeps the light fully on during the shared night interval', () => {

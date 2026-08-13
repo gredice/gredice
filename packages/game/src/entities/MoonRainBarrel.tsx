@@ -10,9 +10,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const moonWaterColor = '#4aaac4';
+const moonWaterColor = '#358ca3';
 const moonWaterEmissive = '#2b6e9b';
-const moonStoneColor = '#d9d0b8';
+const moonStoneColor = '#40515a';
 const moonStoneEmissive = '#6b94ad';
 const moonLightPosition = [0, 0.72, 0] as const;
 const barrelRain = {

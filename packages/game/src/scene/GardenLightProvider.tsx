@@ -9,7 +9,14 @@ import {
     useMemo,
     useRef,
 } from 'react';
-import { type Material, type PointLight, Vector3 } from 'three';
+import {
+    Frustum,
+    type Material,
+    Matrix4,
+    type PointLight,
+    Sphere,
+    Vector3,
+} from 'three';
 import {
     getNightGardenGlowAmount,
     resolveNightGardenLightFrame,
@@ -17,6 +24,7 @@ import {
 import { useOptionalGameState } from '../useGameState';
 import type { GameQualityProfileTier } from './gameQuality';
 import {
+    doesGardenLightInfluenceIntersectFrustum,
     resolveGardenLightBudget,
     selectActiveGardenLightKeys,
 } from './gardenLightBudget';
@@ -61,6 +69,11 @@ export function GardenLightProvider({
     const registrationsRef = useRef(
         new GardenLightRegistryStore<GardenLightRegistration>(),
     );
+    const activeKeysRef = useRef<ReadonlySet<string>>(new Set());
+    const cameraFrustum = useMemo(() => new Frustum(), []);
+    const influenceSphere = useMemo(() => new Sphere(), []);
+    const projectedPosition = useMemo(() => new Vector3(), []);
+    const projectionViewMatrix = useMemo(() => new Matrix4(), []);
     const worldPosition = useMemo(() => new Vector3(), []);
     const budget = resolveGardenLightBudget(qualityTier);
     const timeOfDay = useOptionalGameState((state) => state.timeOfDay, 0.5);
@@ -86,6 +99,14 @@ export function GardenLightProvider({
     useFrame(({ camera }) => {
         const registrations = registrationsRef.current.getEntries();
         const nightAmount = getNightGardenGlowAmount(timeOfDay);
+        if (nightAmount > 0) {
+            camera.updateMatrixWorld();
+            projectionViewMatrix.multiplyMatrices(
+                camera.projectionMatrix,
+                camera.matrixWorldInverse,
+            );
+            cameraFrustum.setFromProjectionMatrix(projectionViewMatrix);
+        }
         const candidates =
             nightAmount > 0
                 ? registrations.flatMap(({ instanceKey, registration }) => {
@@ -96,19 +117,31 @@ export function GardenLightProvider({
 
                       light.updateWorldMatrix(true, false);
                       light.getWorldPosition(worldPosition);
-                      worldPosition.project(camera);
+                      projectedPosition.copy(worldPosition).project(camera);
 
                       return [
                           {
+                              influenceIntersectsFrustum:
+                                  doesGardenLightInfluenceIntersectFrustum({
+                                      distance: light.distance,
+                                      frustum: cameraFrustum,
+                                      influenceSphere,
+                                      position: worldPosition,
+                                  }),
                               key: instanceKey,
-                              x: worldPosition.x,
-                              y: worldPosition.y,
-                              z: worldPosition.z,
+                              x: projectedPosition.x,
+                              y: projectedPosition.y,
+                              z: projectedPosition.z,
                           },
                       ];
                   })
                 : [];
-        const activeKeys = selectActiveGardenLightKeys(candidates, budget);
+        const activeKeys = selectActiveGardenLightKeys(
+            candidates,
+            budget,
+            activeKeysRef.current,
+        );
+        activeKeysRef.current = activeKeys;
 
         for (const { instanceKey, registration } of registrations) {
             const frame = resolveNightGardenLightFrame({
