@@ -257,6 +257,8 @@ export type SelectGardenPreviewCaptureLease =
 export type SelectGardenPreviewBlobDeletion =
     typeof gardenPreviewBlobDeletions.$inferSelect;
 
+// Keep the deployed legacy table in the schema until its destructive drop can
+// be ordered in a dedicated migration. No runtime code reads or writes it.
 export const gardenVisitStates = pgTable(
     'garden_visit_states',
     {

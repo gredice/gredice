@@ -633,3 +633,49 @@ test('environment can publish blended rain intensity for surface effects', () =>
         store.getState().audio.dispose();
     }
 });
+
+test('garden target highlights can be replaced and cleared', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        const highlight = {
+            fieldId: 27,
+            gardenId: 8,
+            label: 'Polje 3',
+            message: 'Prikazana je završena radnja.',
+            positionIndex: 2,
+            raisedBedId: 17,
+            raisedBedName: 'Sjever',
+        };
+
+        store.getState().setGardenTargetHighlight(highlight);
+        const firstHighlight = store.getState().gardenTargetHighlight;
+        assert.ok(firstHighlight);
+        assert.deepEqual(
+            {
+                fieldId: firstHighlight.fieldId,
+                gardenId: firstHighlight.gardenId,
+                label: firstHighlight.label,
+                message: firstHighlight.message,
+                positionIndex: firstHighlight.positionIndex,
+                raisedBedId: firstHighlight.raisedBedId,
+                raisedBedName: firstHighlight.raisedBedName,
+                sequence: firstHighlight.sequence,
+            },
+            { ...highlight, sequence: 1 },
+        );
+        assert.equal(typeof firstHighlight.createdAt, 'number');
+
+        store.getState().setGardenTargetHighlight(highlight);
+        assert.equal(store.getState().gardenTargetHighlight?.sequence, 2);
+
+        store.getState().clearGardenTargetHighlight();
+        assert.equal(store.getState().gardenTargetHighlight, null);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});

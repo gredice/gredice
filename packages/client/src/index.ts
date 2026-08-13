@@ -6,7 +6,6 @@ export type {
     ClientMode,
     ClientOptions,
     GardenResponse,
-    GardenVisitSummaryResponse,
     PublicGardenResponse,
     PublicGardensResponse,
 } from './hono';

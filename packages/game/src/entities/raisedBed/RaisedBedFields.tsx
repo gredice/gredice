@@ -173,7 +173,7 @@ function getRaisedBedWholeAgrotextileCoverLayout({
     };
 }
 
-function RaisedBedFieldVisitSummaryHighlight({
+function RaisedBedFieldTargetHighlight({
     blockIndex,
     orientation,
     positionIndex,
@@ -522,8 +522,8 @@ export function RaisedBedFields({
         generatedPlantsHandledExternally ? undefined : raisedBed,
     );
     const orientation = raisedBed?.orientation ?? 'vertical';
-    const visitSummaryHighlight = useGameState(
-        (state) => state.gardenVisitSummaryHighlight,
+    const targetHighlight = useGameState(
+        (state) => state.gardenTargetHighlight,
     );
 
     const blockIds =
@@ -661,13 +661,13 @@ export function RaisedBedFields({
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
     const highlightedPositionIndex =
-        raisedBed && visitSummaryHighlight?.raisedBedId === raisedBed.id
+        raisedBed && targetHighlight?.raisedBedId === raisedBed.id
             ? (raisedBed.fields.find(
                   (field) =>
                       typeof field.id === 'number' &&
-                      field.id === visitSummaryHighlight.fieldId,
+                      field.id === targetHighlight.fieldId,
               )?.positionIndex ??
-              visitSummaryHighlight.positionIndex ??
+              targetHighlight.positionIndex ??
               null)
             : null;
     const highlightedLocalPositionIndex =
@@ -680,7 +680,7 @@ export function RaisedBedFields({
     return (
         <>
             {highlightedLocalPositionIndex != null ? (
-                <RaisedBedFieldVisitSummaryHighlight
+                <RaisedBedFieldTargetHighlight
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={highlightedLocalPositionIndex}

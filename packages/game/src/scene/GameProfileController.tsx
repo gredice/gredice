@@ -361,11 +361,11 @@ export function GameProfileController() {
     const cancelBlockPlacementDropAnimation = useGameState(
         (current) => current.cancelBlockPlacementDropAnimation,
     );
-    const setGardenVisitSummaryHighlight = useGameState(
-        (current) => current.setGardenVisitSummaryHighlight,
+    const setGardenTargetHighlight = useGameState(
+        (current) => current.setGardenTargetHighlight,
     );
-    const clearGardenVisitSummaryHighlight = useGameState(
-        (current) => current.clearGardenVisitSummaryHighlight,
+    const clearGardenTargetHighlight = useGameState(
+        (current) => current.clearGardenTargetHighlight,
     );
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
@@ -430,7 +430,7 @@ export function GameProfileController() {
         );
         if (!highlight) {
             if (operationVisualHighlightDispatchKeyRef.current !== null) {
-                clearGardenVisitSummaryHighlight();
+                clearGardenTargetHighlight();
                 operationVisualHighlightDispatchKeyRef.current = null;
             }
             updateOperationVisualHighlightProfileMetadata({
@@ -455,7 +455,7 @@ export function GameProfileController() {
             return;
         }
 
-        setGardenVisitSummaryHighlight(highlight);
+        setGardenTargetHighlight(highlight);
         operationVisualHighlightDispatchKeyRef.current = dispatchKey;
         invalidate(undefined, 2);
         updateOperationVisualHighlightProfileMetadata({
@@ -467,21 +467,17 @@ export function GameProfileController() {
             operationVisualHighlightProfileTargetRaisedBedId:
                 highlight.raisedBedId,
         });
-    }, [
-        clearGardenVisitSummaryHighlight,
-        garden,
-        setGardenVisitSummaryHighlight,
-    ]);
+    }, [clearGardenTargetHighlight, garden, setGardenTargetHighlight]);
 
     useEffect(
         () => () => {
             if (operationVisualHighlightDispatchKeyRef.current === null) {
                 return;
             }
-            clearGardenVisitSummaryHighlight();
+            clearGardenTargetHighlight();
             operationVisualHighlightDispatchKeyRef.current = null;
         },
-        [clearGardenVisitSummaryHighlight],
+        [clearGardenTargetHighlight],
     );
 
     useEffect(() => {

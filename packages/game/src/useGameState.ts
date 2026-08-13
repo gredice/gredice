@@ -250,7 +250,7 @@ export function formatBlockPlacementDropAnimationRenderIdentity(
         : `placement:${renderId}`;
 }
 
-export type GardenVisitSummaryHighlight = {
+export type GardenTargetHighlight = {
     createdAt: number;
     fieldId?: number | null;
     gardenId?: number | null;
@@ -425,11 +425,11 @@ export type GameState = {
     markBlockPlacementDropParticlesSpawned: (renderId: number) => boolean;
     markBlockPlacementDropVisualStarted: (renderId: number) => void;
     markBlockPlacementDropVisualComplete: (renderId: number) => void;
-    gardenVisitSummaryHighlight: GardenVisitSummaryHighlight | null;
-    setGardenVisitSummaryHighlight: (
-        highlight: Omit<GardenVisitSummaryHighlight, 'createdAt' | 'sequence'>,
+    gardenTargetHighlight: GardenTargetHighlight | null;
+    setGardenTargetHighlight: (
+        highlight: Omit<GardenTargetHighlight, 'createdAt' | 'sequence'>,
     ) => void;
-    clearGardenVisitSummaryHighlight: () => void;
+    clearGardenTargetHighlight: () => void;
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
@@ -980,18 +980,16 @@ export function createGameState({
 
                 return { blockPlacementDropAnimations };
             }),
-        gardenVisitSummaryHighlight: null,
-        setGardenVisitSummaryHighlight: (highlight) =>
+        gardenTargetHighlight: null,
+        setGardenTargetHighlight: (highlight) =>
             set((state) => ({
-                gardenVisitSummaryHighlight: {
+                gardenTargetHighlight: {
                     ...highlight,
                     createdAt: Date.now(),
-                    sequence:
-                        (state.gardenVisitSummaryHighlight?.sequence ?? 0) + 1,
+                    sequence: (state.gardenTargetHighlight?.sequence ?? 0) + 1,
                 },
             })),
-        clearGardenVisitSummaryHighlight: () =>
-            set({ gardenVisitSummaryHighlight: null }),
+        clearGardenTargetHighlight: () => set({ gardenTargetHighlight: null }),
         animalDebugEntries: [],
         setAnimalDebugEntry: (entry) =>
             set((state) => {

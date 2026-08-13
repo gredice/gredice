@@ -66,7 +66,6 @@ export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardenPreviewsRepo';
 export * from './repositories/gardenSandboxRepo';
 export * from './repositories/gardensRepo';
-export * from './repositories/gardenVisitStatesRepo';
 export * from './repositories/harvestScheduleRepo';
 export * from './repositories/harvestTraceLinksRepo';
 export * from './repositories/inventoryManagementRepo';

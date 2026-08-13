@@ -8,7 +8,6 @@ export interface GameFeatureFlags {
     enableGardenAvatarFlag?: boolean;
     enableOutletGardenFlag?: boolean;
     enableDebugHudFlag?: boolean;
-    enableRaisedBedNotificationBubblesFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;
     enableRaisedBedOperationsFlag?: boolean;
