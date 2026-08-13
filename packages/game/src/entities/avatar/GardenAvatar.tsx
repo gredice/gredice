@@ -48,7 +48,10 @@ import {
     getGardenAvatarThirdPersonCameraDistance,
     getGardenAvatarThirdPersonCameraTargetHeight,
 } from './gardenAvatarCamera';
-import { getGardenAvatarCameraFov } from './gardenAvatarCameraZoom';
+import {
+    getGardenAvatarCameraFov,
+    normalizeGardenAvatarWheelDeltaY,
+} from './gardenAvatarCameraZoom';
 import {
     createGardenAvatarCollisionWorld,
     findGardenAvatarRoute,
@@ -1080,7 +1083,12 @@ export function GardenAvatar({
             }
 
             event.preventDefault();
-            scaleCameraZoom(Math.exp(-event.deltaY * 0.001));
+            const normalizedDeltaY = normalizeGardenAvatarWheelDeltaY({
+                deltaMode: event.deltaMode,
+                deltaY: event.deltaY,
+                pageHeight: gl.domElement.clientHeight,
+            });
+            scaleCameraZoom(Math.exp(-normalizedDeltaY * 0.001));
         };
         const handleContextMenu = (event: MouseEvent) => {
             event.preventDefault();
