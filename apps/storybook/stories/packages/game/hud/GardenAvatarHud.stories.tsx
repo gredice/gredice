@@ -47,7 +47,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Touch controls for walking through a garden, including the movement joystick and icon-only character actions.',
+                    'Touch controls for walking through a garden, including the movement joystick, camera zoom in/out, and icon-only character actions.',
             },
         },
     },

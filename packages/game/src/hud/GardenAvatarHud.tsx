@@ -10,9 +10,11 @@ import {
     LogOut,
     UserCircle,
     ZoomIn,
+    ZoomOut,
 } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { type PointerEvent, useEffect } from 'react';
+import { gardenAvatarCameraZoomStep } from '../entities/avatar/gardenAvatarCameraZoom';
 import { useGameState } from '../useGameState';
 import { GardenAvatarJoystick } from './GardenAvatarJoystick';
 import { useGardenAvatarTouchControls } from './gardenAvatarTouchControls';
@@ -25,6 +27,7 @@ const avatarTouchActionButtonClassName =
 export function GardenAvatarHud() {
     const showTouchControls = useGardenAvatarTouchControls();
     const view = useGameState((state) => state.gardenAvatarView);
+    const cameraZoom = useGameState((state) => state.gardenAvatarCameraZoom);
     const boatId = useGameState((state) => state.gardenAvatarBoatId);
     const aimedBoatId = useGameState((state) => state.gardenAvatarAimedBoatId);
     const setView = useGameState((state) => state.setGardenAvatarView);
@@ -35,8 +38,8 @@ export function GardenAvatarHud() {
     const setCrouchInput = useGameState(
         (state) => state.setGardenAvatarCrouchInput,
     );
-    const setZoomInput = useGameState(
-        (state) => state.setGardenAvatarZoomInput,
+    const scaleCameraZoom = useGameState(
+        (state) => state.scaleGardenAvatarCameraZoom,
     );
     const requestJump = useGameState((state) => state.requestGardenAvatarJump);
 
@@ -44,9 +47,8 @@ export function GardenAvatarHud() {
         () => () => {
             setSprintInput(false);
             setCrouchInput(false);
-            setZoomInput(false);
         },
-        [setCrouchInput, setSprintInput, setZoomInput],
+        [setCrouchInput, setSprintInput],
     );
 
     const startAction = (
@@ -68,12 +70,15 @@ export function GardenAvatarHud() {
     };
 
     return (
-        <div className="pointer-events-none absolute inset-0 z-30 select-none">
+        <div
+            data-garden-avatar-camera-zoom={cameraZoom.toFixed(3)}
+            className="pointer-events-none absolute inset-0 z-30 select-none"
+        >
             {!showTouchControls ? (
                 <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
                     {boatId
                         ? 'W/S za vožnju · A/D za skretanje · E za izlazak iz barke · Esc za pregled'
-                        : 'WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput Space za dvostruki skok · naciljaj barku i klikni za ukrcaj · Esc za izlaz'}
+                        : 'WASD za hodanje · Shift za trčanje · Ctrl za čučanj · kotačić za zumiranje · dvaput Space za dvostruki skok · naciljaj barku i klikni za ukrcaj · Esc za izlaz'}
                 </div>
             ) : null}
 
@@ -158,6 +163,33 @@ export function GardenAvatarHud() {
                         <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2">
                             <IconButton
                                 type="button"
+                                aria-label="Udalji kameru"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onClick={() =>
+                                    scaleCameraZoom(
+                                        1 / gardenAvatarCameraZoomStep,
+                                    )
+                                }
+                            >
+                                <ZoomOut
+                                    aria-hidden="true"
+                                    className="size-6"
+                                />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                aria-label="Približi kameru"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onClick={() =>
+                                    scaleCameraZoom(gardenAvatarCameraZoomStep)
+                                }
+                            >
+                                <ZoomIn aria-hidden="true" className="size-6" />
+                            </IconButton>
+                            <IconButton
+                                type="button"
                                 aria-label="Čučni"
                                 variant="plain"
                                 className={avatarTouchActionButtonClassName}
@@ -175,23 +207,6 @@ export function GardenAvatarHud() {
                                     aria-hidden="true"
                                     className="size-6"
                                 />
-                            </IconButton>
-                            <IconButton
-                                type="button"
-                                aria-label="Zum"
-                                variant="plain"
-                                className={avatarTouchActionButtonClassName}
-                                onPointerDown={(event) =>
-                                    startAction(event, setZoomInput)
-                                }
-                                onPointerUp={(event) =>
-                                    stopAction(event, setZoomInput)
-                                }
-                                onPointerCancel={(event) =>
-                                    stopAction(event, setZoomInput)
-                                }
-                            >
-                                <ZoomIn aria-hidden="true" className="size-6" />
                             </IconButton>
                             <IconButton
                                 type="button"
@@ -223,7 +238,7 @@ export function GardenAvatarHud() {
                                 }}
                                 className={cx(
                                     avatarTouchActionButtonClassName,
-                                    'bg-background/95',
+                                    'col-start-2 bg-background/95',
                                 )}
                             >
                                 <ArrowUp

@@ -17,6 +17,10 @@ import {
     activeDragPreviewTargetMatches,
 } from './dragPreviewIdentity';
 import {
+    defaultGardenAvatarCameraZoom,
+    scaleGardenAvatarCameraZoom,
+} from './entities/avatar/gardenAvatarCameraZoom';
+import {
     getGameBackgroundPaletteIndexByKey,
     getGameBackgroundPaletteKey,
     getNextGameBackgroundPaletteIndex,
@@ -447,7 +451,7 @@ export type GameState = {
     gardenAvatarMoveInput: GardenAvatarMoveInput;
     gardenAvatarSprintInput: boolean;
     gardenAvatarCrouchInput: boolean;
-    gardenAvatarZoomInput: boolean;
+    gardenAvatarCameraZoom: number;
     gardenAvatarJumpRequest: number;
     gardenAvatarBoatId: string | null;
     gardenAvatarAimedBoatId: string | null;
@@ -465,7 +469,7 @@ export type GameState = {
     setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
     setGardenAvatarSprintInput: (active: boolean) => void;
     setGardenAvatarCrouchInput: (active: boolean) => void;
-    setGardenAvatarZoomInput: (active: boolean) => void;
+    scaleGardenAvatarCameraZoom: (scale: number) => void;
     requestGardenAvatarJump: () => void;
     setGardenAvatarBoatId: (blockId: string | null) => void;
     setGardenAvatarAimedBoatId: (blockId: string | null) => void;
@@ -1067,7 +1071,7 @@ export function createGameState({
         gardenAvatarMoveInput: { forward: 0, right: 0 },
         gardenAvatarSprintInput: false,
         gardenAvatarCrouchInput: false,
-        gardenAvatarZoomInput: false,
+        gardenAvatarCameraZoom: defaultGardenAvatarCameraZoom,
         gardenAvatarJumpRequest: 0,
         gardenAvatarBoatId: null,
         gardenAvatarAimedBoatId: null,
@@ -1104,7 +1108,7 @@ export function createGameState({
                           gardenAvatarMoveInput: { forward: 0, right: 0 },
                           gardenAvatarSprintInput: false,
                           gardenAvatarCrouchInput: false,
-                          gardenAvatarZoomInput: false,
+                          gardenAvatarCameraZoom: defaultGardenAvatarCameraZoom,
                           gardenAvatarBoatId: null,
                           gardenAvatarAimedBoatId: null,
                       }
@@ -1123,8 +1127,13 @@ export function createGameState({
             set({ gardenAvatarSprintInput }),
         setGardenAvatarCrouchInput: (gardenAvatarCrouchInput) =>
             set({ gardenAvatarCrouchInput }),
-        setGardenAvatarZoomInput: (gardenAvatarZoomInput) =>
-            set({ gardenAvatarZoomInput }),
+        scaleGardenAvatarCameraZoom: (scale) =>
+            set((state) => ({
+                gardenAvatarCameraZoom: scaleGardenAvatarCameraZoom(
+                    state.gardenAvatarCameraZoom,
+                    scale,
+                ),
+            })),
         requestGardenAvatarJump: () =>
             set((state) => ({
                 gardenAvatarJumpRequest: state.gardenAvatarJumpRequest + 1,

@@ -566,7 +566,7 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
     }
 });
 
-test('garden avatar view enters play mode and resets touch input on exit', () => {
+test('garden avatar view enters play mode and resets controls on exit', () => {
     const store = createGameState({
         appBaseUrl: '',
         freezeTime: new Date('2026-01-01T12:00:00.000Z'),
@@ -578,7 +578,7 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         store.getState().setGardenAvatarMoveInput({ forward: 1, right: -1 });
         store.getState().setGardenAvatarSprintInput(true);
         store.getState().setGardenAvatarCrouchInput(true);
-        store.getState().setGardenAvatarZoomInput(true);
+        store.getState().scaleGardenAvatarCameraZoom(1.15);
         store.getState().requestGardenAvatarJump();
 
         assert.equal(store.getState().gardenAvatarView, 'third-person');
@@ -589,7 +589,7 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         assert.equal(store.getState().gardenAvatarJumpRequest, 1);
         assert.equal(store.getState().gardenAvatarSprintInput, true);
         assert.equal(store.getState().gardenAvatarCrouchInput, true);
-        assert.equal(store.getState().gardenAvatarZoomInput, true);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1.15);
         assert.equal(store.getState().gardenAvatarCollisionDebugVisible, false);
 
         store.getState().setGardenAvatarAimedBoatId('boat-a');
@@ -610,7 +610,7 @@ test('garden avatar view enters play mode and resets touch input on exit', () =>
         });
         assert.equal(store.getState().gardenAvatarSprintInput, false);
         assert.equal(store.getState().gardenAvatarCrouchInput, false);
-        assert.equal(store.getState().gardenAvatarZoomInput, false);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1);
         assert.equal(store.getState().gardenAvatarBoatId, null);
         assert.equal(store.getState().gardenAvatarAimedBoatId, null);
     } finally {
