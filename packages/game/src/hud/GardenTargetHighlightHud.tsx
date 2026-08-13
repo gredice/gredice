@@ -11,12 +11,10 @@ import { useGameState } from '../useGameState';
 
 const highlightDurationMs = 9000;
 
-export function GardenVisitSummaryHighlightHud() {
-    const highlight = useGameState(
-        (state) => state.gardenVisitSummaryHighlight,
-    );
+export function GardenTargetHighlightHud() {
+    const highlight = useGameState((state) => state.gardenTargetHighlight);
     const clearHighlight = useGameState(
-        (state) => state.clearGardenVisitSummaryHighlight,
+        (state) => state.clearGardenTargetHighlight,
     );
     const { data: currentGarden } = useCurrentGarden();
     const currentGardenId = currentGarden?.id ?? null;

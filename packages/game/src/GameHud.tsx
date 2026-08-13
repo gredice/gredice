@@ -14,8 +14,7 @@ import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
-import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
-import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
+import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
@@ -73,10 +72,6 @@ export function GameHud({
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
-    const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
-        confirmed: boolean;
-        gardenId: number | null;
-    }>({ confirmed: false, gardenId: null });
     const [
         raisedBedOnboardingConfirmation,
         setRaisedBedOnboardingConfirmation,
@@ -99,28 +94,17 @@ export function GameHud({
     );
     const currentGardenId = currentGarden?.id ?? null;
     const raisedBedOnboardingAvailable = !isSandbox;
-    const visitSummaryConfirmed =
-        visitSummaryConfirmation.confirmed &&
-        visitSummaryConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingChecklistResolved =
         raisedBedOnboardingConfirmation.confirmed &&
         raisedBedOnboardingConfirmation.gardenId === currentGardenId;
-    const visitSummaryEnabled =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        !visitSummaryConfirmed &&
-        !isSandbox;
-    const visitSummaryStageComplete =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        visitSummaryStageComplete &&
+        !suppressOpeningHud &&
+        welcomeConfirmed &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
     const openingFlowComplete =
         !suppressOpeningHud &&
-        visitSummaryStageComplete &&
+        welcomeConfirmed &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
@@ -264,16 +248,7 @@ export function GameHud({
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <GardenVisitSummaryModal
-                        enabled={visitSummaryEnabled}
-                        onClosed={() =>
-                            setVisitSummaryConfirmation({
-                                confirmed: true,
-                                gardenId: currentGardenId,
-                            })
-                        }
-                    />
-                    <GardenVisitSummaryHighlightHud />
+                    <GardenTargetHighlightHud />
                     <WhatsNewWidget
                         enabled={openingFlowComplete}
                         openRequestId={whatsNewOpenRequestId}

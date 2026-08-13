@@ -14,7 +14,6 @@ const gardenFlagKeys = [
     'enableOutletGarden',
     'enableOutletGardenCommerce',
     'enableAdvancedSowing',
-    'enableRaisedBedNotificationBubbles',
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -72,9 +71,6 @@ test('flag discovery merges all code-defined and managed Vercel metadata', () =>
     expect(discoveredFlagKeys).toEqual(gardenFlagKeys);
     expect(flagsSource).toMatch(
         /enableOutletGardenCommerceFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
-    );
-    expect(flagsSource).toMatch(
-        /enableRaisedBedNotificationBubblesFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
     );
 });
 

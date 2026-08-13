@@ -71,12 +71,3 @@ export const enableAdvancedSowingFlag = flag<boolean>({
     decide: () => false,
     options: booleanFlagOptions,
 });
-
-export const enableRaisedBedNotificationBubblesFlag = flag<boolean>({
-    key: 'enableRaisedBedNotificationBubbles',
-    description:
-        'Show prioritized notification bubbles above raised beds in Garden.',
-    adapter: vercelAdapter,
-    defaultValue: false,
-    options: booleanFlagOptions,
-});

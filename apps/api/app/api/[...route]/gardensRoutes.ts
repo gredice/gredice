@@ -44,7 +44,6 @@ import {
     deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
     deleteSandboxGardenCompletely,
-    type EntityStandardized,
     GardenBoxInventoryLimitError,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
@@ -54,7 +53,6 @@ import {
     getAccountGardensMetadata,
     getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
-    getEntitiesFormatted,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -62,7 +60,6 @@ import {
     getGardenPreview,
     getGardenStack,
     getGardenStackForUpdate,
-    getGardenVisitState,
     getNotification,
     getOperationsByIds,
     getOperationsPage,
@@ -86,7 +83,6 @@ import {
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
-    markGardenVisitSummarySeen,
     maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
@@ -109,7 +105,6 @@ import {
     updateGardenStack,
     updateRaisedBed,
     updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
-    upsertGardenOpenedAt,
     withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
 import { del, put } from '@vercel/blob';
@@ -141,10 +136,6 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
-import {
-    generateGardenVisitSummaryFacts,
-    hashGardenVisitSummaryFacts,
-} from '../../../lib/garden/gardenVisitSummaryService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import {
     countPublicGardenActivePlants,
@@ -306,10 +297,6 @@ const updateSelectedPlantingStatusBodySchema =
             'removed',
         ]),
     });
-
-const visitSummarySeenBodySchema = z.object({
-    factsHash: z.string().trim().min(1).max(128).nullable().optional(),
-});
 
 const gardenCameraVectorSchema = z.tuple([
     z.number().finite(),
@@ -698,37 +685,6 @@ async function loadDetailedRaisedBedInspectionReports({
         operations,
         raisedBeds: garden.raisedBeds,
     });
-}
-
-function serializeGardenVisitState(
-    state: Awaited<ReturnType<typeof getGardenVisitState>>,
-) {
-    if (!state) {
-        return null;
-    }
-
-    return {
-        userId: state.userId,
-        accountId: state.accountId,
-        gardenId: state.gardenId,
-        lastOpenedAt: state.lastOpenedAt?.toISOString() ?? null,
-        lastSummarySeenAt: state.lastSummarySeenAt?.toISOString() ?? null,
-        lastSummaryFactsHash: state.lastSummaryFactsHash ?? null,
-        createdAt: state.createdAt.toISOString(),
-        updatedAt: state.updatedAt.toISOString(),
-    };
-}
-
-function serializeGardenVisitSummaryWindow(input: {
-    firstVisit: boolean;
-    since: Date | null;
-    until: Date;
-}) {
-    return {
-        firstVisit: input.firstVisit,
-        since: input.since?.toISOString() ?? null,
-        until: input.until.toISOString(),
-    };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1721,190 +1677,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
-        },
-    )
-    .get(
-        '/:gardenId/visit-state',
-        describeRoute({
-            description:
-                'Get the current user garden visit marker without advancing it.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const state = await getGardenVisitState({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
-        },
-    )
-    .get(
-        '/:gardenId/visit-summary',
-        describeRoute({
-            description:
-                'Generate reliable current-user garden facts since the previous visit marker.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            const [garden, visitState] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getGardenVisitState({
-                    userId,
-                    accountId,
-                    gardenId: gardenIdNumber,
-                }),
-            ]);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const until = new Date();
-            const since = visitState?.lastOpenedAt ?? null;
-            const window = serializeGardenVisitSummaryWindow({
-                firstVisit: !since,
-                since,
-                until,
-            });
-
-            if (!since) {
-                return context.json({
-                    window,
-                    facts: [],
-                    factsHash: null,
-                    state: serializeGardenVisitState(visitState),
-                });
-            }
-
-            const [operations, plantSorts] = await Promise.all([
-                getAppliedRaisedBedOperationsForGarden(
-                    accountId,
-                    gardenIdNumber,
-                ),
-                getEntitiesFormatted<EntityStandardized>('plantSort'),
-            ]);
-            const facts = generateGardenVisitSummaryFacts({
-                garden,
-                operations,
-                plantSorts,
-                window: { since, until },
-            });
-
-            return context.json({
-                window,
-                facts,
-                factsHash: hashGardenVisitSummaryFacts(facts),
-                state: serializeGardenVisitState(visitState),
-            });
-        },
-    )
-    .post(
-        '/:gardenId/visit-state/opened',
-        describeRoute({
-            description:
-                'Advance the current user garden opened marker after the opening flow is complete.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const state = await upsertGardenOpenedAt({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
-        },
-    )
-    .post(
-        '/:gardenId/visit-summary/seen',
-        describeRoute({
-            description:
-                'Mark the current user garden visit summary as seen and advance the visit marker.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        zValidator('json', visitSummarySeenBodySchema),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const { factsHash } = context.req.valid('json');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const state = await markGardenVisitSummarySeen({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-                factsHash,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
         },
     )
     .put(

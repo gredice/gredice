@@ -17,7 +17,6 @@ import {
     useState,
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { useGameFlags } from '../GameFlagsContext';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
 import { useDismissRaisedBedNotification } from '../hooks/useDismissRaisedBedNotification';
 import { useRaisedBedGardenNotifications } from '../hooks/useRaisedBedGardenNotifications';
@@ -211,13 +210,10 @@ export function useRaisedBedNotificationSurface(
 ) {
     const router = useRouter();
     const { track } = useGameAnalytics();
-    const { enableRaisedBedNotificationBubblesFlag = false } = useGameFlags();
     const notificationSurfaceUnavailable = useGameState(
         (state) => state.isMock || state.localSandboxStorageKey !== null,
     );
-    const notificationSurfaceEnabled =
-        enableRaisedBedNotificationBubblesFlag &&
-        !notificationSurfaceUnavailable;
+    const notificationSurfaceEnabled = !notificationSurfaceUnavailable;
     const notificationsQuery = useRaisedBedGardenNotifications(
         notificationSurfaceEnabled ? garden?.id : undefined,
     );

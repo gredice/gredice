@@ -32,8 +32,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const raisedBed = findRaisedBedByBlockId(garden, block.id);
     const visualRewards = useRaisedBedOperationVisualRewards(raisedBed);
     const currentTime = useSnapshotTime();
-    const visitSummaryHighlight = useGameState(
-        (state) => state.gardenVisitSummaryHighlight,
+    const targetHighlight = useGameState(
+        (state) => state.gardenTargetHighlight,
     );
     const hasActiveDragPreview = useGameState((state) =>
         Boolean(state.activeDragPreview),
@@ -127,9 +127,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
         shape1 = 'Raised_Bed_O_1';
         shape2 = 'Raised_Bed_O_2';
     }
-    const isVisitSummaryHighlighted =
-        raisedBed?.id != null &&
-        visitSummaryHighlight?.raisedBedId === raisedBed.id;
+    const isTargetHighlighted =
+        raisedBed?.id != null && targetHighlight?.raisedBedId === raisedBed.id;
     const blockIndex = Math.max(raisedBedBlockIds.indexOf(block.id), 0);
     const blockOffset =
         Math.max(raisedBedBlockIds.length - 1 - blockIndex, 0) * 9;
@@ -167,11 +166,11 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     return (
         <>
             <HoverOutline
-                color={isVisitSummaryHighlighted ? '#f6c445' : 'white'}
-                hovered={hovered || isVisitSummaryHighlighted}
-                opacity={isVisitSummaryHighlighted ? 0.95 : 1}
-                priority={isVisitSummaryHighlighted ? 10 : 0}
-                thickness={isVisitSummaryHighlighted ? 8 : 5}
+                color={isTargetHighlighted ? '#f6c445' : 'white'}
+                hovered={hovered || isTargetHighlighted}
+                opacity={isTargetHighlighted ? 0.95 : 1}
+                priority={isTargetHighlighted ? 10 : 0}
+                thickness={isTargetHighlighted ? 8 : 5}
             >
                 <animated.group
                     position={raisedBedPosition}
