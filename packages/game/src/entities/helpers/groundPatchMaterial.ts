@@ -3,10 +3,12 @@ import { Color, type Material, MeshStandardMaterial, Vector2 } from 'three';
 
 export type GroundPatchSurface =
     | 'dirt'
+    | 'dryDirt'
     | 'grass'
     | 'raisedBedSoil'
     | 'sand'
-    | 'snow';
+    | 'snow'
+    | 'swampDirt';
 
 export type GroundPatchWetPatch = {
     center: readonly [number, number];
@@ -50,6 +52,13 @@ const groundPatchPresets = {
         lightStrength: 0.42,
         mode: 2,
     },
+    dryDirt: {
+        darkColor: '#705037',
+        darkStrength: 0.24,
+        lightColor: '#d9b47f',
+        lightStrength: 0.32,
+        mode: 2,
+    },
     raisedBedSoil: {
         darkColor: '#2c2018',
         darkStrength: 0.32,
@@ -63,6 +72,13 @@ const groundPatchPresets = {
         lightColor: '#f9fdff',
         lightStrength: 0.04,
         mode: 4,
+    },
+    swampDirt: {
+        darkColor: '#3d432d',
+        darkStrength: 0.34,
+        lightColor: '#91835b',
+        lightStrength: 0.3,
+        mode: 2,
     },
 } satisfies Record<GroundPatchSurface, GroundPatchPreset>;
 

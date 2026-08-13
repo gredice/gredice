@@ -29,6 +29,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     DefaultChatTransport,
     lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -66,6 +67,7 @@ import {
     suncokretContextSuggestions,
     suncokretConversationLabel,
 } from './suncokretChatContext';
+import { invalidateSuncokretMutationQueries } from './suncokretChatQueryInvalidation';
 
 type SuncokretLimit = {
     retryAt: string;
@@ -376,6 +378,14 @@ function isToolRunningState(state: string) {
     );
 }
 
+function isCompletedRecommendationPart(part: Record<string, unknown>) {
+    const state = toolState(part);
+    return (
+        toolName(part) === 'presentRecommendations' &&
+        (state === 'output-available' || state === 'result')
+    );
+}
+
 function debugJson(value: unknown) {
     try {
         return JSON.stringify(value, null, 2);
@@ -634,6 +644,23 @@ function ChatMessage({
 }) {
     const isUser = message.role === 'user';
     const partKeyCounts = new Map<string, number>();
+    const keyedParts = message.parts.map((part) => {
+        const baseKey = messagePartKey(part);
+        const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
+        partKeyCounts.set(baseKey, duplicateCount + 1);
+
+        return {
+            key:
+                duplicateCount === 0 ? baseKey : `${baseKey}:${duplicateCount}`,
+            part,
+        };
+    });
+    const completedRecommendationParts = keyedParts.flatMap(({ key, part }) => {
+        const toolData = toolPart(part);
+        return toolData && isCompletedRecommendationPart(toolData)
+            ? [{ key, toolData }]
+            : [];
+    });
     const toolParts = message.parts
         .map(toolPart)
         .filter((part): part is Record<string, unknown> => Boolean(part));
@@ -684,14 +711,7 @@ function ChatMessage({
                 className={cx('flex flex-col gap-2', !isUser && 'w-full')}
                 variant={isUser ? 'sunflower' : 'ghost'}
             >
-                {message.parts.map((part) => {
-                    const baseKey = messagePartKey(part);
-                    const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
-                    partKeyCounts.set(baseKey, duplicateCount + 1);
-                    const key =
-                        duplicateCount === 0
-                            ? baseKey
-                            : `${baseKey}:${duplicateCount}`;
+                {keyedParts.map(({ key, part }) => {
                     const text = textPart(part);
                     if (text) {
                         return (
@@ -703,29 +723,8 @@ function ChatMessage({
 
                     const toolData = toolPart(part);
                     if (toolData) {
-                        if (
-                            toolName(toolData) === 'presentRecommendations' &&
-                            (toolState(toolData) === 'output-available' ||
-                                toolState(toolData) === 'result')
-                        ) {
-                            return (
-                                <div className="space-y-2" key={key}>
-                                    <SuncokretRecommendationChips
-                                        output={
-                                            toolData.output ?? toolData.result
-                                        }
-                                    />
-                                    {debug && (
-                                        <ToolPart
-                                            addToolApprovalResponse={
-                                                addToolApprovalResponse
-                                            }
-                                            debug
-                                            part={toolData}
-                                        />
-                                    )}
-                                </div>
-                            );
+                        if (isCompletedRecommendationPart(toolData)) {
+                            return null;
                         }
 
                         if (!debug && !isToolApprovalRequested(toolData)) {
@@ -791,12 +790,29 @@ function ChatMessage({
                         </pre>
                     </details>
                 )}
+                {completedRecommendationParts.map(({ key, toolData }) => (
+                    <div className="space-y-2" key={key}>
+                        <SuncokretRecommendationChips
+                            output={toolData.output ?? toolData.result}
+                        />
+                        {debug && (
+                            <ToolPart
+                                addToolApprovalResponse={
+                                    addToolApprovalResponse
+                                }
+                                debug
+                                part={toolData}
+                            />
+                        )}
+                    </div>
+                ))}
             </ChatBubble>
         </ChatMessageLayout>
     );
 }
 
 export function SuncokretChatHud() {
+    const queryClient = useQueryClient();
     const flags = useGameFlags();
     const debug = Boolean(flags.enableSuncokretDebugFlag);
     const chat = useSuncokretChat();
@@ -879,6 +895,7 @@ export function SuncokretChatHud() {
         raisedBedId: contextRaisedBedId,
         uiContext,
     });
+    const requestRaisedBedIdRef = useRef(contextRaisedBedId);
     requestContextRef.current = {
         conversationId: activeConversationId,
         debug,
@@ -897,6 +914,7 @@ export function SuncokretChatHud() {
                 credentials: 'include',
                 prepareSendMessagesRequest: ({ id, messages }) => {
                     const requestContext = requestContextRef.current;
+                    requestRaisedBedIdRef.current = requestContext.raisedBedId;
                     return {
                         body: {
                             id,
@@ -929,6 +947,13 @@ export function SuncokretChatHud() {
         id: chatSessionId,
         transport,
         experimental_throttle: 80,
+        onFinish: ({ message }) => {
+            void invalidateSuncokretMutationQueries({
+                fallbackRaisedBedId: requestRaisedBedIdRef.current,
+                message,
+                queryClient,
+            });
+        },
         sendAutomaticallyWhen:
             lastAssistantMessageIsCompleteWithApprovalResponses,
     });

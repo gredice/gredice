@@ -1,6 +1,7 @@
 import { Container } from '@gredice/ui/Container';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
-import type { Route } from 'next';
+import type { Metadata, Route } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import { EmptyNewsState } from '../../components/EmptyNewsState';
 import { NewsArchiveNavigation } from '../../components/NewsArchiveNavigation';
 import { NewsCard } from '../../components/NewsCard';
@@ -10,9 +11,12 @@ import {
     getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../../lib/news';
+import { changelogArchiveMetadata } from '../../lib/newsArchiveMetadata';
+import { hasNewsFilterResults } from '../../lib/newsFilters';
 import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = changelogArchiveMetadata;
 
 const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'long',
@@ -158,12 +162,16 @@ export default async function WhatsNewPage({
 }: {
     searchParams: Promise<{ tag?: string }>;
 }) {
-    const { tag } = await searchParams;
+    const { tag: rawTag } = await searchParams;
+    const tag = rawTag?.trim() || undefined;
     const [allEntries, entries] = await Promise.all([
         getChangelogEntries(),
         tag ? getChangelogEntries({ tag }) : getChangelogEntries(),
     ]);
     const tags = uniqueNewsValues(allEntries, (item) => item.tags);
+    if (!hasNewsFilterResults(tag, entries.length)) {
+        permanentRedirect('/sto-je-novo');
+    }
     const primaryTags = getPrimaryNewsTags(allEntries);
     const primaryTagKeys = new Set(
         primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),

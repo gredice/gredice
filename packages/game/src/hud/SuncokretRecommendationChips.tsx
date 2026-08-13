@@ -3,10 +3,12 @@
 import { Chip } from '@gredice/ui/Chip';
 import { Sprout } from '@gredice/ui/icons';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useOperations } from '../hooks/useOperations';
 import { useAllSorts } from '../hooks/usePlantSorts';
 import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
 import { RaisedBedAiOperationChip } from './raisedBed/RaisedBedAiOperationMarkdown';
 import { PlantPicker } from './raisedBed/RaisedBedPlantPicker';
+import { resolveOperationRecommendationTargets } from './suncokretOperationRecommendationTargets';
 
 type OperationRecommendation = {
     kind: 'operation';
@@ -228,9 +230,32 @@ function SowingRecommendationChip({
 
 export function SuncokretRecommendationChips({ output }: { output: unknown }) {
     const recommendations = parseSuncokretRecommendations(output);
+    const { data: garden } = useCurrentGarden();
+    const { data: operations } = useOperations();
+    const { data: plantSorts } = useAllSorts();
     if (recommendations.length === 0) {
         return null;
     }
+
+    const resolvedRecommendations = recommendations
+        .flatMap<SuncokretRecommendation>(
+            (recommendation): SuncokretRecommendation[] => {
+                if (recommendation.kind !== 'operation') {
+                    return [recommendation];
+                }
+
+                return resolveOperationRecommendationTargets({
+                    garden,
+                    operation: operations?.find(
+                        (operation) =>
+                            operation.id === recommendation.operationId,
+                    ),
+                    plantSorts,
+                    recommendation,
+                });
+            },
+        )
+        .slice(0, 6);
 
     return (
         <fieldset
@@ -238,7 +263,7 @@ export function SuncokretRecommendationChips({ output }: { output: unknown }) {
             data-suncokret-recommendations
         >
             <legend className="sr-only">Preporučene radnje i sijanja</legend>
-            {recommendations.map((recommendation) => {
+            {resolvedRecommendations.map((recommendation) => {
                 const entityId =
                     recommendation.kind === 'operation'
                         ? recommendation.operationId

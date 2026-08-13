@@ -19,6 +19,12 @@ type ScheduleActionTestState = {
         positionIndex: number;
         raisedBedId: number;
     };
+    lastSelectedPlantingSubmission?: {
+        commandId: string;
+        expectedLifecycleVersionEventId: number;
+        expectedPlantSortId: number;
+        plantingId: number;
+    };
     operationCalls: number;
     operationFailuresRemaining?: number;
     operationResolutions?: number;
@@ -69,6 +75,12 @@ type ScheduleTaskBlockerTarget =
           kind: 'planting';
           positionIndex: number;
           raisedBedId: number;
+      }
+    | {
+          expectedLifecycleVersionEventId: number;
+          expectedPlantSortId: number;
+          kind: 'selected';
+          plantingId: number;
       };
 
 declare global {
@@ -195,6 +207,25 @@ export async function completeFarmPlanting(
         expectedPlantSortId,
         positionIndex,
         raisedBedId,
+    };
+    await waitForRelease(state);
+    failWhenRequested(state, 'plantingFailuresRemaining');
+    return takeSubmissionFailure(state) ?? success('pendingVerification');
+}
+
+export async function completeFarmSelectedPlanting(
+    plantingId: number,
+    expectedLifecycleVersionEventId: number,
+    expectedPlantSortId: number,
+    commandId: string,
+) {
+    const state = getTestState();
+    state.plantingCalls += 1;
+    state.lastSelectedPlantingSubmission = {
+        commandId,
+        expectedLifecycleVersionEventId,
+        expectedPlantSortId,
+        plantingId,
     };
     await waitForRelease(state);
     failWhenRequested(state, 'plantingFailuresRemaining');

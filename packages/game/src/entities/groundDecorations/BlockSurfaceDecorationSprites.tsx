@@ -12,6 +12,7 @@ import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
     type GroundDecorationSurface,
     groundDecorationAtlasBasePath,
+    swampGroundDecorationTint,
 } from './groundDecorationConfig';
 
 const compassToDirection: Record<string, number> = {
@@ -126,6 +127,9 @@ export function PrecomputedBlockSurfaceDecorationSprites({
                 position={placement.position}
                 renderOrder={20}
                 spriteName={placement.spriteName}
+                tint={
+                    surface === 'swamp' ? swampGroundDecorationTint : undefined
+                }
                 windDirection={windDirection}
                 windSpeed={windSpeed}
             />

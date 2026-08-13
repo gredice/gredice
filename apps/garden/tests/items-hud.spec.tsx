@@ -17,8 +17,25 @@ import {
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
+const newBlockCatalogItems = [
+    { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
+    { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
+    { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
+    { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
+    {
+        label: 'Dvostruki drveni rasvjetni stup',
+        price: 120,
+        picker: 'Rasvjeta',
+    },
+    { label: 'Svjetleći luk od lijeske', price: 120, picker: 'Rasvjeta' },
+    { label: 'Fenjer od starog crijepa', price: 40, picker: 'Rasvjeta' },
+    { label: 'Pleteni vrtni fenjer', price: 60, picker: 'Rasvjeta' },
+    { label: 'Drveni ručni fenjer', price: 50, picker: 'Rasvjeta' },
+    { label: 'Mjesečeva bačva', price: 100, picker: 'Rasvjeta' },
+] as const;
 
 async function dragLocatorByMouse(page: Page, locator: Locator) {
+    await locator.hover();
     const box = await locator.boundingBox();
     expect(box).not.toBeNull();
 
@@ -395,6 +412,96 @@ test('trees are listed under the decoration tree picker', async ({
     await expect(page.getByRole('button', { name: 'PalmTree' })).toBeVisible();
 });
 
+test('decorations are grouped into summer, furniture, pets, and signs', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    for (const label of ['Ljeto', 'Namještaj', 'Ljubimci', 'Znakovi']) {
+        await expect(
+            page.getByRole('button', { name: label, exact: true }),
+        ).toBeVisible();
+    }
+    await expect(page.getByRole('button', { name: 'Putokazi' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'WoodenSign' })).toHaveCount(
+        0,
+    );
+
+    await page.getByRole('button', { name: 'Ljeto' }).click();
+    await expect(
+        page.getByRole('button', { name: 'BeachUmbrella' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'LemonadeStand' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Natrag' }).click();
+
+    await page.getByRole('button', { name: 'Namještaj' }).click();
+    await expect(
+        page.getByRole('button', { name: 'WoodenBench' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Drveni izložbeni stol' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Natrag' }).click();
+
+    await page.getByRole('button', { name: 'Ljubimci' }).click();
+    await expect(page.getByRole('button', { name: 'BirdHouse' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'DogHouse' })).toBeVisible();
+    await page.getByRole('button', { name: 'Natrag' }).click();
+
+    await page.getByRole('button', { name: 'Znakovi' }).click();
+    await expect(
+        page.getByRole('button', { name: 'ArrowSignWhiteRight' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'WoodenSign' }),
+    ).toBeVisible();
+});
+
+test('terrain blocks are grouped by biome or material type', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+
+    const groups = [
+        ['Trava', 'Block Grass Angle'],
+        ['Zemlja', 'Block Ground Corner'],
+        ['Suha zemlja', 'Suha zemlja rub'],
+        ['Močvara', 'Močvarna voda'],
+        ['Kamen', 'Kutne kamene stube'],
+        ['Polirani kamen', 'Kutne polirane kamene stube'],
+        ['Šljunak', 'Šljunak rub'],
+        ['Pijesak', 'Block Sand Reverse Corner'],
+        ['Snijeg', 'Block Snow Reverse Corner'],
+        ['Voda', 'Block Water'],
+    ];
+
+    for (const [groupLabel, representativeItemLabel] of groups) {
+        await expect(
+            page.getByRole('button', { name: groupLabel, exact: true }),
+        ).toBeVisible();
+        await page
+            .getByRole('button', { name: groupLabel, exact: true })
+            .click();
+        await expect(
+            page.getByRole('button', {
+                name: representativeItemLabel,
+                exact: true,
+            }),
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Natrag' }).click();
+    }
+});
+
 test('tool picker lists functional garden boxes outside sandbox', async ({
     mount,
     page,
@@ -441,6 +548,14 @@ test('sandbox decoration picker includes special blocks', async ({
     await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'Mali drveni most' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Drveni izložbeni stol' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Natrag' }).click();
+    await expect(
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Poklon kutije' }),
@@ -478,7 +593,106 @@ test('sandbox decoration picker includes special blocks', async ({
     ).toBeVisible();
 });
 
-test('local sandbox decoration picker includes sunflower and mulch', async ({
+test('small wooden bridge uses the published shop price', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Mali drveni most' }).click();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*80/u }),
+    ).toBeVisible();
+});
+
+test('stackable display table is offered at its catalog price', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
+    await page.getByRole('button', { name: 'Drveni izložbeni stol' }).click();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*40/u }),
+    ).toBeVisible();
+});
+
+test('garden lights are grouped under Rasvjeta', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Rasvjeta' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Rasvjeta' }).click();
+
+    for (const label of [
+        'Staklenka s krijesnicom',
+        'Emajlirana vrtna lampa',
+        'Dvostruki drveni rasvjetni stup',
+        'Svjetleći luk od lijeske',
+        'Fenjer od starog crijepa',
+        'Pleteni vrtni fenjer',
+        'Drveni ručni fenjer',
+        'Mjesečeva bačva',
+    ]) {
+        await expect(page.getByRole('button', { name: label })).toBeVisible();
+    }
+});
+
+test('brown and white fences are grouped under Ograde', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Ograde' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Ograde' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Ograda', exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Bijela ograda' }),
+    ).toBeVisible();
+});
+
+for (const item of newBlockCatalogItems) {
+    test(`${item.label} uses the published shop price`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize(TABLET_VIEWPORT);
+        await mount(<ItemsHudAlignmentStory />);
+
+        await page.getByRole('button', { name: 'Dekoracija' }).click();
+        if (item.picker !== 'Dekoracija') {
+            await page.getByRole('button', { name: item.picker }).click();
+        }
+        await page.getByRole('button', { name: item.label }).click();
+        await expect(
+            page.getByRole('button', {
+                name: new RegExp(`Postavi.*${item.price}`, 'u'),
+            }),
+        ).toBeVisible();
+    });
+}
+
+test('local sandbox decoration picker includes current decoration blocks', async ({
     mount,
     page,
 }) => {
@@ -489,9 +703,36 @@ test('local sandbox decoration picker includes sunflower and mulch', async ({
 
     await expect(page.getByRole('button', { name: 'Sunflower' })).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'SmallWoodenBridge' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Drveni izložbeni stol' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Natrag' }).click();
+    await expect(
+        page.getByRole('button', { name: 'WoodenWalkway' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Kamena staza' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Ribarska barka' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Rasvjeta' }),
+    ).toBeVisible();
+    await expect(
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Ograde' }),
     ).toBeVisible();
 
     await page.getByRole('button', { name: 'Malč' }).click();
@@ -551,13 +792,17 @@ test('dragging an affordable picker item requests a scene drop without opening d
     await expect(dragState).toHaveText('idle');
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ograde' }).click();
 
-    const stoolButton = page.getByRole('button', { name: 'Stool' });
-    await dragLocatorByMouse(page, stoolButton);
+    const fenceButton = page.getByRole('button', {
+        name: 'Ograda',
+        exact: true,
+    });
+    await dragLocatorByMouse(page, fenceButton);
 
-    await expect(dragState).toHaveText('Stool:drag');
+    await expect(dragState).toHaveText('Fence:drag');
     await page.mouse.up();
-    await expect(dragState).toHaveText('Stool:drop');
+    await expect(dragState).toHaveText('Fence:drop');
     await expect(
         page.getByText('Mock block for HUD layout tests.'),
     ).toHaveCount(0);
@@ -649,6 +894,7 @@ test('touch drag cancellation clears HUD item placement', async ({
     await mount(<ItemsHudDragStateStory />);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
 
     const stoolButton = page.getByRole('button', { name: 'Stool' });
     await dispatchTouchDrag({
@@ -688,6 +934,7 @@ test('item details place button keeps the soft color treatment', async ({
     await mount(<ItemsHudAlignmentStory />);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
     await page.getByRole('button', { name: 'Stool' }).click();
 
     const placeButton = page.getByRole('button', { name: /Postavi.*10/u });
@@ -728,6 +975,7 @@ test('item placement starts near the current camera target', async ({
     await mount(<ItemsHudCameraTargetStory />);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Namještaj' }).click();
     await page.getByRole('button', { name: 'Stool' }).click();
     await page.getByRole('button', { name: /Postavi.*10/u }).click();
 
@@ -771,6 +1019,7 @@ test('item placement reserves local positions while requests are pending', async
     await mount(<ItemsHudAlignmentStory />);
 
     await page.getByRole('button', { name: 'Blokovi' }).click();
+    await page.getByRole('button', { name: 'Trava' }).click();
     await page
         .getByRole('button', { name: 'Block Grass', exact: true })
         .click();
@@ -824,6 +1073,7 @@ test('item placement subtracts pending sunflower spends before enabling more pur
     await mount(<LowSunflowerBalanceItemsHudStory />);
 
     await page.getByRole('button', { name: 'Blokovi' }).click();
+    await page.getByRole('button', { name: 'Trava' }).click();
     await page
         .getByRole('button', { name: 'Block Grass', exact: true })
         .click();

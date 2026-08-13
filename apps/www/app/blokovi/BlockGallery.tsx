@@ -8,6 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { getBlockRouteAlias } from '../../lib/blocks/blockRoute';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -36,7 +37,7 @@ function BlockGalleryItem(
                         )}
                 </Row>
             }
-            href={KnownPages.Block(entity.information.label)}
+            href={KnownPages.Block(getBlockRouteAlias(entity))}
         >
             <BlockImage
                 blockName={entity.information.name}

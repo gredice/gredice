@@ -15,19 +15,19 @@ import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantPestsData } from '../../lib/plants/getPlantHealthIssuesData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 const pageDescription =
     'Pregled štetnika koji mogu napasti biljke u gredicama, s pogođenim biljkama i preporučenim radnjama.';
 
 export const revalidate = 3600;
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Štetnici biljaka',
     description: pageDescription,
-    alternates: {
-        canonical: KnownPages.PlantPests,
-    },
-};
+    path: KnownPages.PlantPests,
+    category: 'Zdravlje biljaka',
+});
 
 export default async function PlantPestsPage({
     searchParams,

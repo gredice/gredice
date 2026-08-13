@@ -126,6 +126,25 @@ describe('createMergedWaterSideGeometry', () => {
         geometry.dispose();
     });
 
+    it('hides internal sides when a style batch receives mixed-water neighbors', () => {
+        const standardWater = {
+            position: [0, 0, 0] as [number, number, number],
+            style: 'standard',
+        };
+        const swampWater = {
+            position: [1, 0, 0] as [number, number, number],
+            style: 'swamp',
+        };
+        const geometry = createMergedWaterSideGeometry([standardWater], {
+            neighborInstances: [standardWater, swampWater],
+        });
+
+        assert.equal(geometry.getAttribute('position').count, 12);
+        assert.equal(geometry.getIndex()?.count, 18);
+
+        geometry.dispose();
+    });
+
     it('keeps side walls when adjacent water blocks are on different levels', () => {
         const geometry = createMergedWaterSideGeometry([
             { position: [0, 0, 0] },

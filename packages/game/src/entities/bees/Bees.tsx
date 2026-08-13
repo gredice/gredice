@@ -28,8 +28,13 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { beeSpeechMessages } from '../animals/actorSpeechMessages';
 import { getCactusVariantConfig } from '../Cactus';
 import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
 import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
@@ -147,6 +152,7 @@ const clearBeeWeather = {
 } satisfies BeeWeather;
 
 const beeScale = 0.095;
+const beeSpeechBubbleOffsetY = 0.25;
 const beeFlightSpeedBlocksPerSecond = 1.1;
 const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
@@ -1158,6 +1164,8 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(beeSpeechMessages);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
@@ -1231,6 +1239,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1459,9 +1472,17 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 scale={beeScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <primitive object={beeModel.scene} />
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={beeSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#facc15" />
         </>
     );

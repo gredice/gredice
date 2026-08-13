@@ -1,21 +1,16 @@
-import { isNightTimeOfDay } from '@gredice/js/blocks';
 import { animated } from '@react-spring/three';
 import { useFrame } from '@react-three/fiber';
 import { type ReactNode, useMemo, useRef } from 'react';
-import {
-    DoubleSide,
-    type Group,
-    type MeshStandardMaterial,
-    type PointLight,
-} from 'three';
+import { DoubleSide, type Group, type MeshStandardMaterial } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { GardenNightLight } from './helpers/GardenNightLight';
+import { getNightGardenLightPhase } from './helpers/nightGardenLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type FireflyJarNodeName = Extract<
@@ -50,36 +45,6 @@ const lidMetalMaterial = {
     roughness: 0.5,
     side: DoubleSide,
 };
-
-function hashStringToPhase(value: string) {
-    let hash = 0;
-    for (let index = 0; index < value.length; index += 1) {
-        hash = (hash * 31 + value.charCodeAt(index)) % 100_000;
-    }
-    return (hash / 100_000) * Math.PI * 2;
-}
-
-function getGlowAmount(timeOfDay: number) {
-    if (isNightTimeOfDay(timeOfDay)) {
-        return 1;
-    }
-
-    const dawnFadeStart = 0.2;
-    const dawnFadeEnd = 0.26;
-    const duskFadeStart = 0.74;
-    const duskFadeEnd = 0.8;
-
-    if (timeOfDay > dawnFadeStart && timeOfDay < dawnFadeEnd) {
-        return 1 - (timeOfDay - dawnFadeStart) / (dawnFadeEnd - dawnFadeStart);
-    }
-
-    if (timeOfDay > duskFadeStart && timeOfDay < duskFadeEnd) {
-        return (timeOfDay - duskFadeStart) / (duskFadeEnd - duskFadeStart);
-    }
-
-    return 0;
-}
-
 function FireflyJarPart({
     castShadow = true,
     children,
@@ -109,18 +74,11 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('FireflyJar');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const timeOfDay = useGameState((state) => state.timeOfDay);
     const fireflyGroupRef = useRef<Group>(null);
     const glowMaterialRef = useRef<MeshStandardMaterial>(null);
-    const glowLightRef = useRef<PointLight>(null);
-    const phase = useMemo(
-        () =>
-            hashStringToPhase(
-                `${block.name}:${stack.position.x}:${stack.position.z}`,
-            ),
-        [block.name, stack.position.x, stack.position.z],
-    );
-    const glowAmount = getGlowAmount(timeOfDay);
+    const emissiveMaterialRefs = useMemo(() => [glowMaterialRef], []);
+    const phaseKey = `${block.name}:${stack.position.x}:${stack.position.z}`;
+    const phase = useMemo(() => getNightGardenLightPhase(phaseKey), [phaseKey]);
 
     useFrame(({ clock }) => {
         const elapsed = clock.elapsedTime + phase;
@@ -144,19 +102,6 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                 Math.sin(elapsed * 0.21 + 0.7) * 0.22,
                 Math.cos(elapsed * 0.13 + 0.2) * 0.08,
             );
-        }
-
-        const pulse =
-            0.82 +
-            Math.sin(elapsed * 0.9) * 0.1 +
-            Math.sin(elapsed * 0.37 + 1.4) * 0.08;
-        const intensity = Math.max(0, glowAmount * pulse);
-
-        if (glowMaterialRef.current) {
-            glowMaterialRef.current.emissiveIntensity = 0.35 + intensity * 3.2;
-        }
-        if (glowLightRef.current) {
-            glowLightRef.current.intensity = intensity * 1.8;
         }
     });
 
@@ -241,23 +186,25 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                         <meshStandardMaterial
                             color={glowColor}
                             emissive={glowColor}
-                            emissiveIntensity={0.35 + glowAmount * 2.8}
+                            emissiveIntensity={0.35}
                             metalness={0}
                             ref={glowMaterialRef}
                             roughness={0.32}
                         />
                     </FireflyJarPart>
                 </group>
-                <pointLight
-                    castShadow={false}
-                    color={glowColor}
-                    decay={1.7}
-                    distance={4.5}
-                    intensity={0}
-                    position={fireflyCenter}
-                    ref={glowLightRef}
-                />
             </group>
+            <GardenNightLight
+                color={glowColor}
+                decay={1.7}
+                distance={4.5}
+                emissiveBaseIntensity={0.35}
+                emissiveMaterialRefs={emissiveMaterialRefs}
+                emissivePeakIntensity={3.55}
+                lightIntensity={1.8}
+                lightKey={`FireflyJar:${block.id}`}
+                position={fireflyCenter}
+            />
         </animated.group>
     );
 }

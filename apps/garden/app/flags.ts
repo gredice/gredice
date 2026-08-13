@@ -1,5 +1,7 @@
+import { vercelAdapter } from '@flags-sdk/vercel';
 import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
+import { outletGardenEnabledByDefault } from './outletGardenFlagDefault';
 
 export const deliveryChargeAtCheckoutFlag = flag<boolean>({
     key: 'deliveryChargeAtCheckout',
@@ -33,5 +35,48 @@ export const enableSuncokretDebugFlag = flag<boolean>({
     key: 'enableSuncokretDebug',
     description: 'Show Suncokret AI debug metadata in chat conversations.',
     decide: () => false,
+    options: booleanFlagOptions,
+});
+
+export const enableGardenAvatarFlag = flag<boolean>({
+    key: 'enableGardenAvatar',
+    description:
+        'Enable the experimental walkable gardener with POV and third-person cameras.',
+    decide: () => false,
+    options: booleanFlagOptions,
+});
+
+export const enableOutletGardenFlag = flag<boolean>({
+    key: 'enableOutletGarden',
+    description:
+        'Expose the 3D Outlet garden from the current Outlet flow; disabling restores the classic Outlet flow.',
+    adapter: vercelAdapter,
+    defaultValue: outletGardenEnabledByDefault(process.env),
+    options: booleanFlagOptions,
+});
+
+export const enableOutletGardenCommerceFlag = flag<boolean>({
+    key: 'enableOutletGardenCommerce',
+    description:
+        'Allow signed-in customers to choose a garden field and hold an Outlet seedling directly from the 3D or list experience.',
+    adapter: vercelAdapter,
+    defaultValue: false,
+    options: booleanFlagOptions,
+});
+
+export const enableAdvancedSowingFlag = flag<boolean>({
+    key: 'enableAdvancedSowing',
+    description:
+        'Enable Advanced Sowing selection and cart submission for the internal Garden cohort; server authorization remains independently gated.',
+    decide: () => false,
+    options: booleanFlagOptions,
+});
+
+export const enableRaisedBedNotificationBubblesFlag = flag<boolean>({
+    key: 'enableRaisedBedNotificationBubbles',
+    description:
+        'Show prioritized notification bubbles above raised beds in Garden.',
+    adapter: vercelAdapter,
+    defaultValue: false,
     options: booleanFlagOptions,
 });

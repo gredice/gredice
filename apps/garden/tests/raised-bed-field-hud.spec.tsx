@@ -785,6 +785,25 @@ function daysFromNowIso(days: number): string {
 test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     test.use({ viewport: DESKTOP_VIEWPORT });
 
+    test('opens the plant details modal on the Dnevnik tab from a field deep link', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingScenario()}
+                positionIndex={0}
+                searchParams="polje=1&polje-kartica=diary"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole('tab', { name: /Dnevnik/ }),
+        ).toHaveAttribute('aria-selected', 'true');
+    });
+
     test('empty field shows sowing seed icon and no indicator stack', async ({
         mount,
         page,
@@ -1359,7 +1378,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             /opacity-100/,
         );
         await expect(healthContent).toHaveAttribute('aria-hidden', 'true');
-        await expect(healthContent).toHaveCount(0);
         await healthHeader.click();
         await expect
             .poll(() =>
@@ -2423,9 +2441,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(statusChangeDateButton).toBeVisible();
         await statusChangeDateButton.click();
 
+        const statusChangeCalendar = page
+            .getByRole('group', { name: 'Kalendar' })
+            .last();
+        await expect(statusChangeCalendar).toBeVisible();
         await expect(
-            page.getByRole('textbox', { name: 'Datum promjene' }),
-        ).toBeVisible();
+            statusChangeCalendar.locator(
+                '[data-calendar-date][aria-pressed="true"]',
+            ),
+        ).toHaveCount(1);
     });
 
     test('opening the plant history modal lists prior plants newest first', async ({

@@ -17,6 +17,10 @@ import {
     activeDragPreviewTargetMatches,
 } from './dragPreviewIdentity';
 import {
+    defaultGardenAvatarCameraZoom,
+    scaleGardenAvatarCameraZoom,
+} from './entities/avatar/gardenAvatarCameraZoom';
+import {
     getGameBackgroundPaletteIndexByKey,
     getGameBackgroundPaletteKey,
     getNextGameBackgroundPaletteIndex,
@@ -51,6 +55,11 @@ import {
 } from './utils/weather';
 
 export type WinterMode = 'summer' | 'winter' | 'holiday';
+export type GardenAvatarView = 'overview' | 'third-person' | 'first-person';
+export type GardenAvatarMoveInput = {
+    forward: number;
+    right: number;
+};
 export type MockGardenProfile =
     | 'default'
     | 'dense'
@@ -438,6 +447,14 @@ export type GameState = {
 
     // Camera
     view: 'normal' | 'closeup';
+    gardenAvatarView: GardenAvatarView;
+    gardenAvatarMoveInput: GardenAvatarMoveInput;
+    gardenAvatarSprintInput: boolean;
+    gardenAvatarCrouchInput: boolean;
+    gardenAvatarCameraZoom: number;
+    gardenAvatarJumpRequest: number;
+    gardenAvatarBoatId: string | null;
+    gardenAvatarAimedBoatId: string | null;
     closeupBlock: Block | null;
     closeupCameraActive: boolean;
     closeupCameraSettled: boolean;
@@ -448,10 +465,20 @@ export type GameState = {
             | { view: 'normal'; block?: Block }
             | { view: 'closeup'; block: Block },
     ) => void;
+    setGardenAvatarView: (view: GardenAvatarView) => void;
+    setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
+    setGardenAvatarSprintInput: (active: boolean) => void;
+    setGardenAvatarCrouchInput: (active: boolean) => void;
+    scaleGardenAvatarCameraZoom: (scale: number) => void;
+    requestGardenAvatarJump: () => void;
+    setGardenAvatarBoatId: (blockId: string | null) => void;
+    setGardenAvatarAimedBoatId: (blockId: string | null) => void;
 
     // Debug (overrides)
     editHitboxDebugVisible: boolean;
     setEditHitboxDebugVisible: (visible: boolean) => void;
+    gardenAvatarCollisionDebugVisible: boolean;
+    setGardenAvatarCollisionDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
     wireframeDebugVisible: boolean;
@@ -1040,6 +1067,14 @@ export function createGameState({
 
         // Camera
         view: 'normal',
+        gardenAvatarView: 'overview',
+        gardenAvatarMoveInput: { forward: 0, right: 0 },
+        gardenAvatarSprintInput: false,
+        gardenAvatarCrouchInput: false,
+        gardenAvatarCameraZoom: defaultGardenAvatarCameraZoom,
+        gardenAvatarJumpRequest: 0,
+        gardenAvatarBoatId: null,
+        gardenAvatarAimedBoatId: null,
         closeupBlock: null,
         closeupCameraActive: false,
         closeupCameraSettled: false,
@@ -1060,6 +1095,62 @@ export function createGameState({
                 set({ view });
             }
         },
+        setGardenAvatarView: (gardenAvatarView) => {
+            const currentGardenAvatarView = get().gardenAvatarView;
+            if (currentGardenAvatarView !== gardenAvatarView) {
+                triggerSelectionHaptic();
+            }
+
+            set(
+                gardenAvatarView === 'overview'
+                    ? {
+                          gardenAvatarView,
+                          gardenAvatarMoveInput: { forward: 0, right: 0 },
+                          gardenAvatarSprintInput: false,
+                          gardenAvatarCrouchInput: false,
+                          gardenAvatarCameraZoom: defaultGardenAvatarCameraZoom,
+                          gardenAvatarBoatId: null,
+                          gardenAvatarAimedBoatId: null,
+                      }
+                    : {
+                          gardenAvatarView,
+                          view: 'normal',
+                          closeupBlock: null,
+                          closeupCameraActive: false,
+                          closeupCameraSettled: false,
+                      },
+            );
+        },
+        setGardenAvatarMoveInput: (gardenAvatarMoveInput) =>
+            set({ gardenAvatarMoveInput }),
+        setGardenAvatarSprintInput: (gardenAvatarSprintInput) =>
+            set({ gardenAvatarSprintInput }),
+        setGardenAvatarCrouchInput: (gardenAvatarCrouchInput) =>
+            set({ gardenAvatarCrouchInput }),
+        scaleGardenAvatarCameraZoom: (scale) =>
+            set((state) => ({
+                gardenAvatarCameraZoom: scaleGardenAvatarCameraZoom(
+                    state.gardenAvatarCameraZoom,
+                    scale,
+                ),
+            })),
+        requestGardenAvatarJump: () =>
+            set((state) => ({
+                gardenAvatarJumpRequest: state.gardenAvatarJumpRequest + 1,
+            })),
+        setGardenAvatarBoatId: (gardenAvatarBoatId) => {
+            if (get().gardenAvatarBoatId !== gardenAvatarBoatId) {
+                triggerSelectionHaptic();
+            }
+            set({
+                gardenAvatarBoatId,
+                gardenAvatarAimedBoatId: null,
+                gardenAvatarCrouchInput: false,
+                gardenAvatarSprintInput: false,
+            });
+        },
+        setGardenAvatarAimedBoatId: (gardenAvatarAimedBoatId) =>
+            set({ gardenAvatarAimedBoatId }),
 
         isDragging: false,
         gameCamera: null,
@@ -1078,6 +1169,10 @@ export function createGameState({
         editHitboxDebugVisible: false,
         setEditHitboxDebugVisible: (editHitboxDebugVisible) =>
             set({ editHitboxDebugVisible }),
+        gardenAvatarCollisionDebugVisible: false,
+        setGardenAvatarCollisionDebugVisible: (
+            gardenAvatarCollisionDebugVisible,
+        ) => set({ gardenAvatarCollisionDebugVisible }),
         entityRenderModeDebugVisible: false,
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),

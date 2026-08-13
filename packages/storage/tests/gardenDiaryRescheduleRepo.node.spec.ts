@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { operationCanceledNotificationType } from '@gredice/js/notifications';
 import {
     acceptOperation,
     cancelGardenDiaryOperation,
@@ -742,7 +743,9 @@ test('cancelGardenDiaryOperation cancels future planned operations with refund a
     assert.equal(operation.cancelReason, 'Korisnik je otkazao.');
     assert.equal(await getSunflowers(accountId), 3500);
     assert.equal(notifications.length, 1);
+    assert.equal(notifications[0]?.category, 'garden');
     assert.equal(notifications[0]?.header, 'Radnja je otkazana');
+    assert.equal(notifications[0]?.type, operationCanceledNotificationType);
     assert.match(notifications[0]?.content ?? '', /2500 🌻/);
 });
 

@@ -1,12 +1,17 @@
 import type { BlockData } from '@gredice/client';
+import {
+    isTerrainStairBlockName,
+    legacyStoneCornerStairsBlockName,
+    stoneCornerStairsBlockName,
+} from '../entities/terrainStairs';
+import { isWaterBlockName } from '../entities/waterBlockNames';
 import type { Block } from '../types/Block';
 import type { GardenStack } from '../types/Stack';
-
-const waterBlockName = 'Block_Water';
 
 export function isEdgeOrCornerTerrainBlockName(blockName: string) {
     return (
         blockName.startsWith('Block_') &&
+        !isTerrainStairBlockName(blockName) &&
         (blockName.endsWith('_Angle') || blockName.endsWith('_Corner'))
     );
 }
@@ -15,7 +20,22 @@ export function getBlockDataByName(
     blockData: BlockData[] | null | undefined,
     name: string,
 ) {
-    const block = blockData?.find((entity) => entity.information.name === name);
+    const exactBlock = blockData?.find(
+        (entity) => entity.information.name === name,
+    );
+    const compatibilityName =
+        name === legacyStoneCornerStairsBlockName
+            ? stoneCornerStairsBlockName
+            : name === stoneCornerStairsBlockName
+              ? legacyStoneCornerStairsBlockName
+              : null;
+    const block =
+        exactBlock ??
+        (compatibilityName
+            ? blockData?.find(
+                  (entity) => entity.information.name === compatibilityName,
+              )
+            : undefined);
     if (!block) {
         console.error(`Block data not found for block with name: ${name}`);
     }
@@ -27,7 +47,7 @@ function isWaterBlockCollapsedIntoSupport(
     block: Block,
     blockIndex: number,
 ) {
-    if (block.name !== waterBlockName) {
+    if (!isWaterBlockName(block.name)) {
         return false;
     }
 

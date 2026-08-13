@@ -38,6 +38,7 @@ import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import { SchedulePlantVisual } from './ScheduleTaskVisual';
+import { SelectedPlantingScheduleTaskRow } from './SelectedPlantingScheduleTaskRow';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     activePlantCycleEventId,
@@ -51,6 +52,7 @@ import {
     isSameScheduleDay,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
+import type { AdminSelectedPlantingScheduleItem } from './selectedPlantingSchedulePresentation';
 import type { RaisedBed, RaisedBedField } from './types';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyPlantingModal } from './VerifyPlantingModal';
@@ -61,6 +63,7 @@ interface RaisedBedPlantingScheduleSectionProps {
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledFields: RaisedBedField[];
+    scheduledSelectedPlantings: AdminSelectedPlantingScheduleItem[];
     plantSorts: EntityStandardized[] | null | undefined;
     assignableFarmUsersByRaisedBedFieldId: Record<
         number,
@@ -112,6 +115,7 @@ export function RaisedBedPlantingScheduleSection({
     physicalId,
     raisedBeds,
     scheduledFields,
+    scheduledSelectedPlantings,
     plantSorts,
     assignableFarmUsersByRaisedBedFieldId,
 }: RaisedBedPlantingScheduleSectionProps) {
@@ -151,6 +155,10 @@ export function RaisedBedPlantingScheduleSection({
         .filter((field) => !field.isDeleted)
         .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex);
 
+    const selectedPlantingTasks = scheduledSelectedPlantings.filter((item) =>
+        sortedRaisedBeds.some((raisedBed) => raisedBed.id === item.raisedBedId),
+    );
+
     const copyTasks = dayFields.map((field) => {
         const sortData = plantSorts?.find(
             (plantSort) => plantSort.id === field.plantSortId,
@@ -176,6 +184,13 @@ export function RaisedBedPlantingScheduleSection({
                 !isFieldCompleted(field.plantStatus),
         };
     });
+    copyTasks.push(
+        ...selectedPlantingTasks.map((item) => ({
+            approved: item.status === 'planned',
+            id: `selected-planting-${item.plantingId.toString()}`,
+            text: `${item.physicalPositionNumbers.join(', ')} - ${item.label}`,
+        })),
+    );
 
     const fieldsToApprove = dayFields
         .filter(
@@ -292,6 +307,15 @@ export function RaisedBedPlantingScheduleSection({
         },
         { total: 0, approved: 0, completed: 0 },
     );
+    for (const item of selectedPlantingTasks) {
+        durations.total += PLANTING_TASK_DURATION_MINUTES;
+        if (item.status === 'planned') {
+            durations.approved += PLANTING_TASK_DURATION_MINUTES;
+        }
+        if (item.status === 'completed') {
+            durations.completed += PLANTING_TASK_DURATION_MINUTES;
+        }
+    }
 
     return (
         <Stack key={physicalId} spacing={2}>
@@ -479,7 +503,7 @@ export function RaisedBedPlantingScheduleSection({
                 </Row>
             </Row>
             <Stack spacing={0}>
-                {!dayFields.length && (
+                {!dayFields.length && !selectedPlantingTasks.length && (
                     <Typography level="body2">
                         Trenutno nema sijanja za ovu gredicu.
                     </Typography>
@@ -937,6 +961,24 @@ export function RaisedBedPlantingScheduleSection({
                         </div>
                     );
                 })}
+                {selectedPlantingTasks.map((item) => (
+                    <SelectedPlantingScheduleTaskRow
+                        farmUsers={
+                            assignableFarmUsersByRaisedBedFieldId[
+                                item.anchorRaisedBedFieldId
+                            ] ?? []
+                        }
+                        item={item}
+                        key={`selected-planting-${item.plantingId.toString()}`}
+                        physicalId={physicalId}
+                        plantSort={plantSorts?.find(
+                            (plantSort) =>
+                                plantSort.id ===
+                                item.identity.expectedPlantSortId,
+                        )}
+                        timeZone={timeZone}
+                    />
+                ))}
             </Stack>
         </Stack>
     );

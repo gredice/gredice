@@ -8,6 +8,7 @@ import {
 } from '../../../components/plant-health/plantHealthIssueContent';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getPlantDiseasesData } from '../../../lib/plants/getPlantHealthIssuesData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 
@@ -23,20 +24,18 @@ export async function generateMetadata(
     );
 
     if (!issue) {
-        return {
-            title: 'Bolest nije pronađena',
-            description: 'Bolest biljke nije pronađena.',
-        };
+        notFound();
     }
 
     const title = plantHealthIssueTitle(issue);
-    return {
+    return createPublicMetadata({
         title,
-        description: plantHealthIssueShortDescription(issue),
-        alternates: {
-            canonical: KnownPages.PlantDisease(issue.slug || title),
-        },
-    };
+        description:
+            plantHealthIssueShortDescription(issue) ||
+            `Saznaj više o bolesti biljaka ${title}.`,
+        path: KnownPages.PlantDisease(issue.slug || title),
+        category: 'Bolest biljaka',
+    });
 }
 
 export async function generateStaticParams() {

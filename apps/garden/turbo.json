@@ -9,6 +9,7 @@
                 "CHECKLY_API_KEY",
                 "EDGE_CONFIG",
                 "ENABLE_EXPERIMENTAL_COREPACK",
+                "FLAGS",
                 "FLAGS_SECRET",
                 "GREDICE_API_HOST",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
@@ -39,6 +40,7 @@
                 "POSTHOG_SERVER_HOST",
                 "RESEND_API_KEY",
                 "STRIPE_SECRETKEY",
+                "VERCEL",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

@@ -12,10 +12,12 @@ import {
     UserButton,
 } from '@gredice/ui/auth';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import {
     Card,
     CardActions,
@@ -1170,6 +1172,7 @@ function PublicContentShowcase() {
                                             previewHeight={140}
                                             previewWidth={260}
                                         />
+                                        <BarcodeValue value="3858890410952" />
                                     </Stack>
                                 </CardContent>
                             </Card>
@@ -1342,6 +1345,7 @@ function PublicContentShowcase() {
 
 function GardenWorkspaceShowcase() {
     const [collapsed, setCollapsed] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState('2026-06-20');
 
     return (
         <Container className="py-8" maxWidth="xl">
@@ -1516,6 +1520,15 @@ function GardenWorkspaceShowcase() {
                                     </Row>
                                 </CardContent>
                             </Card>
+
+                            <CalendarDatePicker
+                                fullWidth
+                                helperText="Kalendar zadržava datum kao lokalnu vrijednost bez vremenskog pomaka."
+                                label="Datum sljedeće radnje"
+                                min="2026-06-19"
+                                onValueChange={setScheduledDate}
+                                value={scheduledDate}
+                            />
 
                             <EventCalendar
                                 entries={gardenCalendarEntries}

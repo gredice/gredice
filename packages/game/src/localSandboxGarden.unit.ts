@@ -54,6 +54,12 @@ test('persists local sandbox stacks in local storage', () => {
                             name: 'Tree',
                             rotation: 2,
                         },
+                        {
+                            id: createLocalSandboxBlockId('WoodenSign'),
+                            name: 'WoodenSign',
+                            rotation: 0,
+                            message: '  ABCDEFGHIJKL\nMNOPQRSTUVWX  ',
+                        },
                     ],
                 },
             ],
@@ -69,6 +75,37 @@ test('persists local sandbox stacks in local storage', () => {
         assert.equal(loadedGarden.stacks[0]?.position.z, -1);
         assert.equal(loadedGarden.stacks[0]?.blocks[0]?.name, 'Tree');
         assert.equal(loadedGarden.stacks[0]?.blocks[0]?.rotation, 2);
+        assert.equal(
+            loadedGarden.stacks[0]?.blocks[1]?.message,
+            'ABCDEFGHIJKL\nMNOPQRSTUVWX',
+        );
+    });
+});
+
+test('drops malformed wooden sign messages from local storage', () => {
+    withLocalStorage(() => {
+        window.localStorage.setItem(
+            'test-local-sandbox',
+            JSON.stringify({
+                stacks: [
+                    {
+                        position: { x: 0, z: 0 },
+                        blocks: [
+                            {
+                                id: 'configured-sign',
+                                name: 'WoodenSign',
+                                rotation: 0,
+                                message: 'ABCDEFGHIJKLM',
+                            },
+                        ],
+                    },
+                ],
+            }),
+        );
+
+        const garden = loadLocalSandboxGarden('test-local-sandbox');
+
+        assert.equal(garden.stacks[0]?.blocks[0]?.message, undefined);
     });
 });
 

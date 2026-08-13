@@ -1,6 +1,8 @@
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    check,
+    doublePrecision,
     index,
     integer,
     jsonb,
@@ -10,6 +12,7 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { entities } from './cmsSchema';
 import { farms } from './farmsSchema';
 import { accounts, users } from './usersSchema';
 
@@ -369,6 +372,7 @@ export const gardenBlocks = pgTable(
         name: text('name').notNull(),
         rotation: integer('rotation'),
         variant: integer('variant'),
+        message: text('message'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -449,6 +453,9 @@ export const raisedBedRelations = relations(raisedBeds, ({ one, many }) => ({
     fields: many(raisedBedFields, {
         relationName: 'raisedBedFieldsRaisedBed',
     }),
+    plantings: many(raisedBedPlantings, {
+        relationName: 'raisedBedPlantingsRaisedBed',
+    }),
 }));
 
 export type InsertRaisedBed = typeof raisedBeds.$inferInsert;
@@ -483,11 +490,14 @@ export const raisedBedFields = pgTable(
 
 export const raisedBedFieldRelations = relations(
     raisedBedFields,
-    ({ one }) => ({
+    ({ one, many }) => ({
         raisedBed: one(raisedBeds, {
             fields: [raisedBedFields.raisedBedId],
             references: [raisedBeds.id],
             relationName: 'raisedBedFieldsRaisedBed',
+        }),
+        plantingMemberships: many(raisedBedPlantingFields, {
+            relationName: 'raisedBedPlantingFieldsRaisedBedField',
         }),
     }),
 );
@@ -501,6 +511,209 @@ export type UpdateRaisedBedField = Partial<
 > &
     Pick<typeof raisedBedFields.$inferSelect, 'id'>;
 export type SelectRaisedBedField = typeof raisedBedFields.$inferSelect;
+
+export const raisedBedPlantingConfigurationSources = [
+    'legacy',
+    'selected',
+] as const;
+export type RaisedBedPlantingConfigurationSource =
+    (typeof raisedBedPlantingConfigurationSources)[number];
+
+/**
+ * A stable logical planting. Unlike a raised-bed field, one planting can cover
+ * several physical fields and several plantings can share a field when their
+ * layout keys do not collide.
+ */
+export const raisedBedPlantings = pgTable(
+    'raised_bed_plantings',
+    {
+        id: serial('id').primaryKey(),
+        raisedBedId: integer('raised_bed_id')
+            .notNull()
+            .references(() => raisedBeds.id),
+        plantSortId: integer('plant_sort_id')
+            .notNull()
+            .references(() => entities.id),
+        eventAggregateId: text('event_aggregate_id').notNull(),
+        legacyPlantPlaceEventId: integer('legacy_plant_place_event_id'),
+        anchorPositionIndex: integer('anchor_position_index').notNull(),
+        selectedSeedingDistanceCm: doublePrecision(
+            'selected_seeding_distance_cm',
+        ),
+        minSeedingDistanceCm: doublePrecision('min_seeding_distance_cm'),
+        optimalSeedingDistanceCm: doublePrecision(
+            'optimal_seeding_distance_cm',
+        ),
+        maxSeedingDistanceCm: doublePrecision('max_seeding_distance_cm'),
+        plantsPerAxis: integer('plants_per_axis'),
+        plantCount: integer('plant_count'),
+        layoutKey: text('layout_key'),
+        spanRows: integer('span_rows').notNull().default(1),
+        spanColumns: integer('span_columns').notNull().default(1),
+        layoutVersion: integer('layout_version').notNull().default(1),
+        configurationSource: text('configuration_source')
+            .notNull()
+            .$type<RaisedBedPlantingConfigurationSource>(),
+        isActive: boolean('is_active').notNull().default(true),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+        isDeleted: boolean('is_deleted').notNull().default(false),
+    },
+    (table) => [
+        uniqueIndex('raised_bed_plantings_event_aggregate_id_uq').on(
+            table.eventAggregateId,
+        ),
+        uniqueIndex('raised_bed_plantings_legacy_place_event_id_uq').on(
+            table.legacyPlantPlaceEventId,
+        ),
+        index('raised_bed_plantings_raised_bed_id_idx').on(table.raisedBedId),
+        index('raised_bed_plantings_plant_sort_id_idx').on(table.plantSortId),
+        index('raised_bed_plantings_layout_key_idx').on(table.layoutKey),
+        index('raised_bed_plantings_is_active_idx').on(table.isActive),
+        index('raised_bed_plantings_is_deleted_idx').on(table.isDeleted),
+        check(
+            'raised_bed_plantings_configuration_source_check',
+            sql`${table.configurationSource} IN ('legacy', 'selected')`,
+        ),
+        check(
+            'raised_bed_plantings_anchor_position_check',
+            sql`${table.anchorPositionIndex} >= 0`,
+        ),
+        check(
+            'raised_bed_plantings_span_check',
+            sql`${table.spanRows} > 0 AND ${table.spanColumns} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_layout_version_check',
+            sql`${table.layoutVersion} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_distance_check',
+            sql`${table.selectedSeedingDistanceCm} IS NULL OR ${table.selectedSeedingDistanceCm} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_min_distance_check',
+            sql`${table.minSeedingDistanceCm} IS NULL OR ${table.minSeedingDistanceCm} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_optimal_distance_check',
+            sql`${table.optimalSeedingDistanceCm} IS NULL OR ${table.optimalSeedingDistanceCm} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_max_distance_check',
+            sql`${table.maxSeedingDistanceCm} IS NULL OR ${table.maxSeedingDistanceCm} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_plants_per_axis_check',
+            sql`${table.plantsPerAxis} IS NULL OR ${table.plantsPerAxis} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_plant_count_check',
+            sql`${table.plantCount} IS NULL OR ${table.plantCount} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_legacy_event_check',
+            sql`${table.legacyPlantPlaceEventId} IS NULL OR ${table.legacyPlantPlaceEventId} > 0`,
+        ),
+        check(
+            'raised_bed_plantings_selected_configuration_check',
+            sql`${table.configurationSource} <> 'selected' OR (${table.legacyPlantPlaceEventId} IS NULL AND ${table.selectedSeedingDistanceCm} IS NOT NULL AND ${table.minSeedingDistanceCm} IS NOT NULL AND ${table.optimalSeedingDistanceCm} IS NOT NULL AND ${table.maxSeedingDistanceCm} IS NOT NULL AND ${table.plantsPerAxis} IS NOT NULL AND ${table.plantCount} IS NOT NULL AND ${table.layoutKey} IS NOT NULL AND ${table.layoutVersion} = 1 AND ${table.minSeedingDistanceCm} <= ${table.optimalSeedingDistanceCm} AND ${table.optimalSeedingDistanceCm} <= ${table.maxSeedingDistanceCm} AND ${table.minSeedingDistanceCm} <= ${table.selectedSeedingDistanceCm} AND ${table.selectedSeedingDistanceCm} <= ${table.maxSeedingDistanceCm})`,
+        ),
+        check(
+            'raised_bed_plantings_legacy_configuration_check',
+            sql`${table.configurationSource} <> 'legacy' OR (${table.legacyPlantPlaceEventId} IS NOT NULL AND ${table.selectedSeedingDistanceCm} IS NULL AND ${table.minSeedingDistanceCm} IS NULL AND ${table.optimalSeedingDistanceCm} IS NULL AND ${table.maxSeedingDistanceCm} IS NULL AND ${table.plantsPerAxis} IS NULL AND ${table.plantCount} IS NULL AND ${table.layoutKey} IS NULL AND ${table.spanRows} = 1 AND ${table.spanColumns} = 1 AND ${table.layoutVersion} = 1)`,
+        ),
+    ],
+);
+
+export const raisedBedPlantingFields = pgTable(
+    'raised_bed_planting_fields',
+    {
+        id: serial('id').primaryKey(),
+        plantingId: integer('planting_id')
+            .notNull()
+            .references(() => raisedBedPlantings.id),
+        raisedBedFieldId: integer('raised_bed_field_id')
+            .notNull()
+            .references(() => raisedBedFields.id),
+        relativeRow: integer('relative_row').notNull(),
+        relativeColumn: integer('relative_column').notNull(),
+        isAnchor: boolean('is_anchor').notNull().default(false),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+        isDeleted: boolean('is_deleted').notNull().default(false),
+    },
+    (table) => [
+        uniqueIndex('raised_bed_planting_fields_planting_field_uq').on(
+            table.plantingId,
+            table.raisedBedFieldId,
+        ),
+        uniqueIndex('raised_bed_planting_fields_planting_coordinate_uq').on(
+            table.plantingId,
+            table.relativeRow,
+            table.relativeColumn,
+        ),
+        index('raised_bed_planting_fields_planting_id_idx').on(
+            table.plantingId,
+        ),
+        index('raised_bed_planting_fields_field_id_idx').on(
+            table.raisedBedFieldId,
+        ),
+        index('raised_bed_planting_fields_is_deleted_idx').on(table.isDeleted),
+        check(
+            'raised_bed_planting_fields_relative_position_check',
+            sql`${table.relativeRow} >= 0 AND ${table.relativeColumn} >= 0`,
+        ),
+    ],
+);
+
+export const raisedBedPlantingRelations = relations(
+    raisedBedPlantings,
+    ({ one, many }) => ({
+        raisedBed: one(raisedBeds, {
+            fields: [raisedBedPlantings.raisedBedId],
+            references: [raisedBeds.id],
+            relationName: 'raisedBedPlantingsRaisedBed',
+        }),
+        plantSort: one(entities, {
+            fields: [raisedBedPlantings.plantSortId],
+            references: [entities.id],
+            relationName: 'raisedBedPlantingsPlantSort',
+        }),
+        fields: many(raisedBedPlantingFields, {
+            relationName: 'raisedBedPlantingFieldsPlanting',
+        }),
+    }),
+);
+
+export const raisedBedPlantingFieldRelations = relations(
+    raisedBedPlantingFields,
+    ({ one }) => ({
+        planting: one(raisedBedPlantings, {
+            fields: [raisedBedPlantingFields.plantingId],
+            references: [raisedBedPlantings.id],
+            relationName: 'raisedBedPlantingFieldsPlanting',
+        }),
+        raisedBedField: one(raisedBedFields, {
+            fields: [raisedBedPlantingFields.raisedBedFieldId],
+            references: [raisedBedFields.id],
+            relationName: 'raisedBedPlantingFieldsRaisedBedField',
+        }),
+    }),
+);
+
+export type InsertRaisedBedPlanting = typeof raisedBedPlantings.$inferInsert;
+export type SelectRaisedBedPlanting = typeof raisedBedPlantings.$inferSelect;
+export type InsertRaisedBedPlantingField =
+    typeof raisedBedPlantingFields.$inferInsert;
+export type SelectRaisedBedPlantingField =
+    typeof raisedBedPlantingFields.$inferSelect;
 
 export const raisedBedSensors = pgTable(
     'raised_bed_sensors',

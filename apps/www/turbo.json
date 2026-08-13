@@ -35,6 +35,7 @@
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
+                "VERCEL",
                 "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]

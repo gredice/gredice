@@ -15,7 +15,7 @@ export const farmOperationCompletionSyncModeFlag =
     flag<FarmOperationCompletionSyncMode>({
         key: 'farmOperationCompletionSyncMode',
         description:
-            'Control local operation-completion queue creation and foreground draining.',
+            'Control offline operation-completion queue creation and foreground draining.',
         decide: () => 'enabled',
         options: [
             { label: 'Off', value: 'off' },

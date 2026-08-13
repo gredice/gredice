@@ -3,6 +3,10 @@ import {
     type GameBackgroundPaletteKey,
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
+import {
+    normalizeWoodenSignMessage,
+    woodenSignBlockName,
+} from '@gredice/js/woodenSign';
 import type { Block } from './types/Block';
 import { createGardenPosition, type GardenStack } from './types/Stack';
 
@@ -100,6 +104,24 @@ function isStoredBlock(value: unknown): value is Partial<Block> {
     return typeof value === 'object' && value !== null;
 }
 
+function normalizeStoredWoodenSignMessage(candidate: Partial<Block>) {
+    if (candidate.name !== woodenSignBlockName) {
+        return undefined;
+    }
+    if (candidate.message === null) {
+        return null;
+    }
+    if (typeof candidate.message !== 'string') {
+        return undefined;
+    }
+
+    try {
+        return normalizeWoodenSignMessage(candidate.message);
+    } catch {
+        return undefined;
+    }
+}
+
 function normalizeStoredBlocks(blocks: unknown): Block[] {
     if (!Array.isArray(blocks)) {
         return [];
@@ -130,6 +152,7 @@ function normalizeStoredBlocks(blocks: unknown): Block[] {
                     candidate.variant === null
                         ? candidate.variant
                         : undefined,
+                message: normalizeStoredWoodenSignMessage(candidate),
             },
         ];
     });
@@ -218,6 +241,10 @@ export function persistLocalSandboxGarden(
                 name: block.name,
                 rotation: block.rotation,
                 variant: block.variant,
+                message:
+                    block.name === woodenSignBlockName
+                        ? (block.message ?? null)
+                        : undefined,
             })),
         })),
     };

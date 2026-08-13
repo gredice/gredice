@@ -15,8 +15,19 @@ function createLoginModalQueryClient() {
     });
 }
 
-export function LoginModalStory() {
+export function LoginModalStory({
+    controlled = false,
+    dismissible = false,
+    returnTo,
+}: {
+    controlled?: boolean;
+    dismissible?: boolean;
+    returnTo?: string;
+}) {
     const [lastRoute, setLastRoute] = useState('none');
+    const [open, setOpen] = useState(true);
+    const [openChangeCount, setOpenChangeCount] = useState(0);
+    const [authenticatedCount, setAuthenticatedCount] = useState(0);
     const queryClient = useMemo(createLoginModalQueryClient, []);
     const router = useMemo(
         () =>
@@ -35,9 +46,44 @@ export function LoginModalStory() {
     return (
         <AppRouterContext.Provider value={router}>
             <ReactQuery.QueryClientProvider client={queryClient}>
-                <LoginModal />
+                <LoginModal
+                    dismissible={dismissible}
+                    onAuthenticated={
+                        controlled
+                            ? () => setAuthenticatedCount((count) => count + 1)
+                            : undefined
+                    }
+                    onOpenChange={
+                        controlled
+                            ? (nextOpen) => {
+                                  setOpen(nextOpen);
+                                  setOpenChangeCount((count) => count + 1);
+                              }
+                            : undefined
+                    }
+                    open={controlled ? open : undefined}
+                    returnTo={returnTo}
+                />
                 <output className="sr-only" data-testid="last-router-push">
                     {lastRoute}
+                </output>
+                <output
+                    className="sr-only"
+                    data-testid="login-modal-open-state"
+                >
+                    {open ? 'open' : 'closed'}
+                </output>
+                <output
+                    className="sr-only"
+                    data-testid="login-modal-open-change-count"
+                >
+                    {openChangeCount}
+                </output>
+                <output
+                    className="sr-only"
+                    data-testid="login-modal-authenticated-count"
+                >
+                    {authenticatedCount}
                 </output>
             </ReactQuery.QueryClientProvider>
         </AppRouterContext.Provider>

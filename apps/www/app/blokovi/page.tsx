@@ -1,33 +1,21 @@
-import { directoriesClient } from '@gredice/client';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
+import { getBlocksData } from '../../lib/blocks/getBlocksData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
 import { BlockPlantGalleries } from './BlockPlantGalleries';
 
 export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Blokovi',
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
-};
-
-async function getBlocksData() {
-    try {
-        const { data, error } =
-            await directoriesClient().GET('/entities/block');
-        if (error) {
-            console.error('Failed to fetch blocks data', error);
-            return [];
-        }
-
-        return data ?? [];
-    } catch (error) {
-        console.error('Failed to fetch blocks data', error);
-        return [];
-    }
-}
+    path: KnownPages.Blocks,
+    category: '3D vrt',
+});
 
 export default async function BlocksPage() {
     const [blocks, plants] = await Promise.all([

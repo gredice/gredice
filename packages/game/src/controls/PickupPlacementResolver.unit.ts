@@ -138,6 +138,42 @@ const blockData = [
         name: 'Block_Water',
         placeableOnWater: true,
     }),
+    createBlockData({
+        id: 9,
+        name: 'SmallWoodenBridge',
+        placeableOnWater: true,
+        stackable: false,
+    }),
+    createBlockData({
+        id: 10,
+        name: 'HazelLightArch',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 11,
+        name: 'StoneWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 12,
+        name: 'WoodenWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.4,
+        id: 13,
+        name: 'Block_Grass',
+    }),
+    createBlockData({
+        id: 14,
+        name: 'FishingBoat',
+        placeableOnWater: true,
+        spanDepth: 2,
+        spanWidth: 1,
+        stackable: false,
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -343,6 +379,30 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         assert.equal(preview?.nextIsBlocked, true);
     });
 
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`allows HazelLightArch to be placed on ${walkwayName}`, () => {
+            const arch = createBlock('HazelLightArch', 'hazel-light-arch');
+            const grass = createBlock('Block_Grass', 'grass');
+            const walkway = createBlock(walkwayName, 'walkway');
+            const sourceStack = createStack(0, 0, [arch]);
+            const walkwayStack = createStack(1, 0, [grass, walkway]);
+
+            const preview = resolvePickupPlacementPreviewForRelative({
+                blockData,
+                gardenIsSandbox: false,
+                localSandboxStorageKey: null,
+                movingSegments: [
+                    createMovingSegment({ block: arch, sourceStack }),
+                ],
+                relative: new Vector3(1, 0, 0),
+                stacks: [sourceStack, walkwayStack],
+            });
+
+            assert.equal(preview?.nextIsBlocked, false);
+            assert.equal(preview?.targetOffsets[0]?.hoverHeight, 0.5);
+        });
+    }
+
     it('blocks multi-cell drops that overlap a non-stackable footprint cell', () => {
         const stand = createBlock('LemonadeStand', 'stand');
         const waterWell = createBlock('WaterWell', 'water-well');
@@ -419,6 +479,67 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         });
 
         assert.equal(preview?.nextIsBlocked, false);
+    });
+
+    it('allows the small wooden bridge to be dropped onto water', () => {
+        const bridge = createBlock('SmallWoodenBridge', 'bridge');
+        const water = createBlock('Block_Water', 'water');
+        const sourceStack = createStack(0, 0, [bridge]);
+        const waterStack = createStack(1, 0, [water]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: bridge, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.targetOffsets[0]?.hoverHeight, 1);
+    });
+
+    it('only allows the fishing boat when both footprint cells are water', () => {
+        const boat = createBlock('FishingBoat', 'boat');
+        const sourceStack = createStack(0, 0, [boat]);
+        const firstWaterStack = createStack(1, 0, [
+            createBlock('Block_Water', 'water-a'),
+        ]);
+        const secondWaterStack = createStack(1, 1, [
+            createBlock('Block_Water', 'water-b'),
+        ]);
+
+        const fullySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack, secondWaterStack],
+        });
+        const partiallySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack],
+        });
+        const unsupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(2, 0, 0),
+            stacks: [sourceStack],
+        });
+
+        assert.equal(fullySupported?.nextIsBlocked, false);
+        assert.equal(partiallySupported?.nextIsBlocked, true);
+        assert.equal(unsupported?.nextIsBlocked, true);
     });
 
     it('matches the single-resolution path when reusing prepared placement state', () => {

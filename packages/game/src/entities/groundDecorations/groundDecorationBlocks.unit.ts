@@ -33,6 +33,16 @@ test('skips grass and sand decoration blocks covered by water', () => {
     );
 });
 
+test('skips decoration blocks covered by swamp water', () => {
+    const grass = block('grass-low', 'Block_Grass');
+    const swampWater = block('water-top', 'Block_Swamp_Water');
+
+    assert.deepEqual(
+        getGroundDecorationBlocks([stack([grass, swampWater])]),
+        [],
+    );
+});
+
 test('keeps grass and sand decoration blocks when water is lower in the stack', () => {
     const water = block('water-low', 'Block_Water');
     const grass = block('grass-top', 'Block_Grass');

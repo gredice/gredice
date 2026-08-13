@@ -8,6 +8,7 @@ import {
     getUserRegistrationsByWeekday,
 } from '@gredice/storage';
 import { getAnalyticsData } from '../../../components/admin/dashboard/actions';
+import { getOperationFinancialBreakdownData } from './operations/operationFinancialBreakdownData';
 
 const weekdayLabels = [
     'Nedjelja',
@@ -44,11 +45,20 @@ export async function getUserStatisticsData({
 }
 
 export async function getOperationsStatisticsData({
+    fromDate,
+    toDate,
     pickerFrom,
     pickerTo,
 }: BoundedStatisticsPeriod) {
-    const data = await getAnalyticsData(undefined, pickerFrom, pickerTo);
-    return data.operationsDuration;
+    const [data, financialBreakdown] = await Promise.all([
+        getAnalyticsData(undefined, pickerFrom, pickerTo),
+        getOperationFinancialBreakdownData({ fromDate, toDate }),
+    ]);
+
+    return {
+        ...data.operationsDuration,
+        financialBreakdown,
+    };
 }
 
 export async function getRecordsStatisticsData() {

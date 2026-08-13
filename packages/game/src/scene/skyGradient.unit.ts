@@ -14,6 +14,7 @@ import {
     resolveSkyBackgroundColor,
     resolveSkyGradientColors,
 } from './skyGradient';
+import { getSolarEclipseVisualScales } from './solarEclipse';
 
 function colorDistance(
     first: { b: number; g: number; r: number },
@@ -33,11 +34,13 @@ function colorLuminance(color: { b: number; g: number; r: number }) {
 function resolveGradient({
     moonlight = 0,
     paletteIndex = defaultGameBackgroundPaletteIndex,
+    solarEclipseObscuration = 0,
     timeOfDay,
     weather,
 }: {
     moonlight?: number;
     paletteIndex?: number;
+    solarEclipseObscuration?: number;
     timeOfDay: number;
     weather?: Parameters<typeof resolveSkyGradientColors>[0]['weather'];
 }) {
@@ -53,12 +56,13 @@ function resolveGradient({
         background: baseColors.background,
         moonlitSkyScale: moonlitNightScales.skyScale,
         weather,
-    });
+    }).multiplyScalar(getSolarEclipseVisualScales(solarEclipseObscuration).sky);
 
     return resolveSkyGradientColors({
         backgroundColor,
         backgroundPaletteIndex: paletteIndex,
         moonlight,
+        solarEclipseObscuration,
         timeOfDay,
         weather,
     });
@@ -71,6 +75,23 @@ test('neutral daytime sky resolves to a visible gradient', () => {
     assert.ok(colorDistance(gradient.upper, gradient.horizon) > 0.015);
     assert.ok(colorDistance(gradient.lower, gradient.horizon) < 0.001);
     assert.ok(gradient.sunGlowIntensity > 0.4);
+});
+
+test('Croatian partial eclipse darkens every daylight gradient band and the solar glow', () => {
+    const clearDay = resolveGradient({ timeOfDay: 0.78 });
+    const eclipse = resolveGradient({
+        solarEclipseObscuration: 0.478,
+        timeOfDay: 0.78,
+    });
+
+    for (const key of ['zenith', 'upper', 'horizon', 'lower'] as const) {
+        assert.ok(
+            colorLuminance(eclipse[key]) < colorLuminance(clearDay[key]) * 0.8,
+            `Expected eclipse ${key} to be visibly darker than clear daylight`,
+        );
+    }
+    assert.ok(eclipse.sunGlowIntensity < clearDay.sunGlowIntensity * 0.6);
+    assert.equal(eclipse.moonGlowIntensity, clearDay.moonGlowIntensity);
 });
 
 test('neutral post-sunset sky darkens the lower background', () => {

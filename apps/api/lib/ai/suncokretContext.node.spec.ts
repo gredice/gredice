@@ -52,9 +52,14 @@ test('buildSuncokretSystemPrompt requires structured actionable recommendations'
 
     assert.match(prompt, /pozovi presentRecommendations/);
     assert.match(prompt, /klikabilne prijedloge/);
+    assert.match(prompt, /provjeri kroz getOperationsDirectory/);
+    assert.match(prompt, /nikada ne šalji biljnu radnju bez positionIndex/);
     assert.match(prompt, /ne dodaje ništa u košaricu/);
     assert.match(prompt, /ručno naručiti/);
     assert.match(prompt, /dodaš u košaricu/);
+    assert.match(prompt, /ID-evi radnji, biljaka i sorti interni su podaci/);
+    assert.match(prompt, /Nikada ih ne spominji korisniku/);
+    assert.match(prompt, /Brojevi polja u gredici korisnički su vidljivi/);
 });
 
 test('buildSuncokretSystemPrompt describes the active settings section', () => {
@@ -133,6 +138,8 @@ test('buildSuncokretFinalAnswerSystemPrompt forbids internal tool protocols', ()
     const prompt = buildSuncokretFinalAnswerSystemPrompt('Osnovne upute.');
 
     assert.match(prompt, /više ne koristi alate/);
+    assert.match(prompt, /Ne spominji interne brojčane ID-eve radnji/);
+    assert.match(prompt, /broj polja smiješ navesti/);
     assert.match(prompt, /Nikada ne ispisuj poziv alata, DSML, XML, JSON/);
     assert.match(prompt, /običnim hrvatskim jezikom/);
 });

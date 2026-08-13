@@ -9,6 +9,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getOccasionsData } from '../../../../lib/occasions/getOccasionsData';
+import { createPublicMetadata } from '../../../../lib/seo/publicMetadata';
 
 type OccasionPageProps = {
     params: Promise<{ occasionSlug: string }>;
@@ -31,15 +32,15 @@ export async function generateMetadata({
     );
 
     if (!occasion) {
-        return {
-            title: 'Natječaj nije pronađen',
-        };
+        notFound();
     }
 
-    return {
+    return createPublicMetadata({
         title: `Pravila natječaja ${occasion.information.name}`,
         description: `Pročitaj službena pravila za sudjelovanje u natječaju ${occasion.information.name}.`,
-    };
+        path: `/legalno/natjecaji/${encodeURIComponent(occasionSlug)}`,
+        eyebrow: 'Pravila natječaja',
+    });
 }
 
 export default async function OccasionPage({ params }: OccasionPageProps) {

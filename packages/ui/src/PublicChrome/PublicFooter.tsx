@@ -135,9 +135,30 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Pozadine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Wallpapers,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljke',
                             href: publicChromeHref(
                                 PublicPagePaths.Plants,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Sjeme',
+                            href: publicChromeHref(
+                                PublicPagePaths.Seeds,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Brendovi sjemena',
+                            href: publicChromeHref(
+                                PublicPagePaths.SeedBrands,
                                 linkMode,
                             ),
                         },

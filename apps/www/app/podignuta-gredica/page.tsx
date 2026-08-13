@@ -6,16 +6,18 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Podignuta gredica',
     description:
         'Kako funkcionira tvoja podignuta gredica u Gredicama: tlo, sadnja, održavanje, berba i dostava.',
-};
+    path: KnownPages.RaisedBeds,
+    eyebrow: 'Vrt po tvom',
+});
 
 export default function RaisedBedPage() {
     return (

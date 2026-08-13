@@ -43,6 +43,7 @@ import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { defaultGameWoodColor } from '../woodPalette';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import {
     hasActiveRaisedBedProtectiveCover,
@@ -606,7 +607,7 @@ function createFieldVisualMaterials() {
             transparent: true,
         }),
         support: new MeshStandardMaterial({
-            color: '#7a4f2b',
+            color: defaultGameWoodColor,
             roughness: 0.9,
         }),
         weed: new MeshStandardMaterial({

@@ -34,12 +34,14 @@ overrides:
   'ip-address': '10.2.0'
   'minimatch@10>brace-expansion': '5.0.7'
   'openapi-typescript@7.13.0>typescript': '-'
-  'postcss': '8.5.15'
-  'qs': '6.15.2'
+  'postcss': '8.5.23'
+  'qs': '6.15.3'
   'react-docgen-typescript@2.4.0>typescript': '-'
   'tsconfck@3.1.6>typescript': '-'
 patchedDependencies:
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0': patches/@joshwooding__vite-plugin-react-docgen-typescript@0.7.0.patch
+  # Backport https://github.com/vercel/next.js/pull/96733 until it ships in stable Next.
+  'next@16.3.0': patches/next@16.3.0.patch
   openapi-typescript@7.13.0: patches/openapi-typescript@7.13.0.patch
   react-docgen-typescript@2.4.0: patches/react-docgen-typescript@2.4.0.patch
   tsconfck@3.1.6: patches/tsconfck@3.1.6.patch

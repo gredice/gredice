@@ -19,11 +19,16 @@ import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import {
     type AnimalDebugPathPoint,
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { catSpeechMessages } from '../animals/actorSpeechMessages';
 import {
     type AnimalMovementSurface,
     canAnimalSettleAt,
@@ -125,6 +130,7 @@ const clearCatWeather = {
 } satisfies CatWeather;
 
 const catScale = 0.42;
+const catSpeechBubbleOffsetY = 0.92;
 const catGroundLift = 0.02;
 const catPillowSurfaceYOffset = 0.24;
 const catSwimDepth = 0.12;
@@ -163,7 +169,7 @@ const lowEntityYOffsets: Record<string, number> = {
     PotWideLippedCup: 0.49,
     StoneMedium: 0.35,
     StoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
 };
 
 function hashString(value: string) {
@@ -1273,6 +1279,8 @@ function Cat({
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(catSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalPathfindingDebugVisible = useGameState(
         (state) => state.animalPathfindingDebugVisible,
@@ -1392,6 +1400,11 @@ function Cat({
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1706,9 +1719,17 @@ function Cat({
                 scale={catScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <primitive object={catModel.scene} />
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={catSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#38bdf8" />
             <AnimalPathDebugIndicator
                 color="#38bdf8"

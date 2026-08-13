@@ -19,11 +19,16 @@ import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import {
     type AnimalDebugPathPoint,
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { dogSpeechMessages } from '../animals/actorSpeechMessages';
 import {
     type AnimalMovementSurface,
     canAnimalSettleAt,
@@ -146,6 +151,7 @@ const clearDogWeather = {
 } satisfies DogWeather;
 
 const dogScale = 0.46;
+const dogSpeechBubbleOffsetY = 1.13;
 const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
 const dogHouseNightRestInset = 0.42;
@@ -190,7 +196,7 @@ const lowEntityYOffsets: Record<string, number> = {
     PotWideLippedCup: 0.49,
     StoneMedium: 0.35,
     StoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
 };
 
 function hashString(value: string) {
@@ -1445,6 +1451,8 @@ function Dog({
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(dogSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalPathfindingDebugVisible = useGameState(
         (state) => state.animalPathfindingDebugVisible,
@@ -1565,6 +1573,11 @@ function Dog({
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1900,11 +1913,19 @@ function Dog({
                 scale={dogScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <group rotation={[0, dogVisualYawOffset, 0]}>
                     <primitive object={dogModel.scene} />
                 </group>
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={dogSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
                 color="#f59e0b"

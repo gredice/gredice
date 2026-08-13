@@ -3,7 +3,14 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as SunCalc from 'suncalc';
-import { Color, DoubleSide, type Mesh, ShaderMaterial, Vector2 } from 'three';
+import {
+    Color,
+    DoubleSide,
+    type Mesh,
+    ShaderMaterial,
+    Vector2,
+    Vector3,
+} from 'three';
 import { useGameState } from '../useGameState';
 import { useSceneTimeInvalidation } from './SceneTime';
 import {
@@ -36,20 +43,25 @@ const SKY_GRADIENT_TRANSITION_SECONDS = 0.6;
 const SKY_GRADIENT_TRANSITION_EPSILON = 0.001;
 const HORIZON_FADE_START = -0.05;
 const HORIZON_FADE_END = 0.18;
+const WORLD_SKY_RADIUS = 800;
 
 const skyGradientVertex = /* glsl */ `
     varying vec2 vUv;
+    varying vec3 vSkyDirection;
 
     void main() {
         vUv = uv;
+        vSkyDirection = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
 `;
 
 const skyGradientFragment = /* glsl */ `
     varying vec2 vUv;
+    varying vec3 vSkyDirection;
 
     uniform float uAspect;
+    uniform float uWorldSky;
     uniform vec3 uZenithColor;
     uniform vec3 uUpperColor;
     uniform vec3 uHorizonColor;
@@ -60,6 +72,8 @@ const skyGradientFragment = /* glsl */ `
     uniform float uMoonGlowIntensity;
     uniform vec2 uSunPosition;
     uniform vec2 uMoonPosition;
+    uniform vec3 uSunDirection;
+    uniform vec3 uMoonDirection;
 
     float glowAt(vec2 p, vec2 center, float radius) {
         vec2 delta = p - center;
@@ -68,15 +82,29 @@ const skyGradientFragment = /* glsl */ `
     }
 
     void main() {
-        float y = clamp(vUv.y, 0.0, 1.0);
+        vec3 skyDirection = normalize(vSkyDirection);
+        float worldSkyY = clamp(
+            0.42 + asin(clamp(skyDirection.y, -1.0, 1.0)) / 3.14159265 * 4.2,
+            0.0,
+            1.0
+        );
+        float y = mix(clamp(vUv.y, 0.0, 1.0), worldSkyY, uWorldSky);
         vec3 color = mix(uLowerColor, uHorizonColor, smoothstep(0.0, 0.42, y));
         color = mix(color, uUpperColor, smoothstep(0.38, 0.84, y));
         color = mix(color, uZenithColor, smoothstep(0.76, 1.0, y));
 
         vec2 p = vUv * 2.0 - 1.0;
-        float sunGlow = glowAt(p, uSunPosition, 0.95);
-        float sunCore = glowAt(p, uSunPosition, 0.36);
-        float moonGlow = glowAt(p, uMoonPosition, 0.58);
+        float screenSunGlow = glowAt(p, uSunPosition, 0.95);
+        float screenSunCore = glowAt(p, uSunPosition, 0.36);
+        float screenMoonGlow = glowAt(p, uMoonPosition, 0.58);
+        float sunDistance = 1.0 - dot(skyDirection, normalize(uSunDirection));
+        float moonDistance = 1.0 - dot(skyDirection, normalize(uMoonDirection));
+        float worldSunGlow = 1.0 - smoothstep(0.015, 0.24, sunDistance);
+        float worldSunCore = 1.0 - smoothstep(0.0015, 0.035, sunDistance);
+        float worldMoonGlow = 1.0 - smoothstep(0.008, 0.12, moonDistance);
+        float sunGlow = mix(screenSunGlow, worldSunGlow, uWorldSky);
+        float sunCore = mix(screenSunCore, worldSunCore, uWorldSky);
+        float moonGlow = mix(screenMoonGlow, worldMoonGlow, uWorldSky);
 
         color = mix(color, uSunGlowColor, clamp(sunGlow * uSunGlowIntensity, 0.0, 1.0));
         color = mix(color, vec3(1.0), clamp(sunCore * uSunGlowIntensity * 0.62, 0.0, 1.0));
@@ -100,6 +128,8 @@ type SkyGradientBackgroundProps = {
     hideCelestialGlow?: boolean;
     location: { lat: number; lon: number };
     moonlight: number;
+    screenOffsetMultiplier?: number;
+    solarEclipseObscuration?: number;
     timeOfDay: number;
     weather?: SkyGradientWeather | null;
 };
@@ -122,6 +152,17 @@ function copyVectorUniform(
 ) {
     const uniform = material.uniforms[name];
     if (uniform?.value instanceof Vector2) {
+        uniform.value.copy(vector);
+    }
+}
+
+function copyVector3Uniform(
+    material: ShaderMaterial,
+    name: string,
+    vector: Vector3,
+) {
+    const uniform = material.uniforms[name];
+    if (uniform?.value instanceof Vector3) {
         uniform.value.copy(vector);
     }
 }
@@ -164,6 +205,8 @@ export function SkyGradientBackground({
     hideCelestialGlow = false,
     location,
     moonlight,
+    screenOffsetMultiplier = 1,
+    solarEclipseObscuration = 0,
     timeOfDay,
     weather,
 }: SkyGradientBackgroundProps) {
@@ -173,6 +216,7 @@ export function SkyGradientBackground({
         (state) => state.size,
     );
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const meshRef = useRef<Mesh>(null);
     const basisRef = useRef(createSkyViewBasis());
     const cameraProjectionSnapshotRef = useRef(
@@ -202,6 +246,7 @@ export function SkyGradientBackground({
                 side: DoubleSide,
                 uniforms: {
                     uAspect: { value: 1 },
+                    uWorldSky: { value: 0 },
                     uZenithColor: { value: new Color('#e6f6ff') },
                     uUpperColor: { value: new Color('#f1f3ea') },
                     uHorizonColor: { value: new Color('#fff9ea') },
@@ -212,6 +257,8 @@ export function SkyGradientBackground({
                     uMoonGlowIntensity: { value: 0 },
                     uSunPosition: { value: new Vector2(0, 0) },
                     uMoonPosition: { value: new Vector2(0, 0) },
+                    uSunDirection: { value: new Vector3(0, 1, 0) },
+                    uMoonDirection: { value: new Vector3(0, 1, 0) },
                 },
             }),
         [],
@@ -226,6 +273,7 @@ export function SkyGradientBackground({
             ),
             backgroundPaletteIndex,
             moonlight,
+            solarEclipseObscuration,
             timeOfDay,
             weather,
         });
@@ -240,6 +288,7 @@ export function SkyGradientBackground({
         backgroundRed,
         groundView,
         moonlight,
+        solarEclipseObscuration,
         timeOfDay,
         weather,
     ]);
@@ -323,6 +372,41 @@ export function SkyGradientBackground({
             }
 
             const basis = basisRef.current;
+            const worldSky = gardenAvatarView !== 'overview';
+            material.uniforms.uWorldSky.value = worldSky ? 1 : 0;
+            copyVector3Uniform(
+                material,
+                'uSunDirection',
+                celestialState.sunDirection,
+            );
+            copyVector3Uniform(
+                material,
+                'uMoonDirection',
+                celestialState.moonDirection,
+            );
+
+            if (worldSky) {
+                mesh.position.copy(camera.position);
+                mesh.quaternion.identity();
+                mesh.scale.setScalar(1);
+                sunOpacityRef.current = celestialState.sunOpacity;
+                moonOpacityRef.current = celestialState.moonOpacity;
+                const displayed = displayedGradientRef.current;
+                if (displayed) {
+                    applyVisibleGradientUniforms(
+                        material,
+                        displayed,
+                        celestialState.sunOpacity,
+                        celestialState.moonOpacity,
+                        hideCelestialGlow,
+                    );
+                }
+                if (requestRender) {
+                    invalidate();
+                }
+                return;
+            }
+
             mesh.position
                 .copy(camera.position)
                 .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE);
@@ -337,7 +421,8 @@ export function SkyGradientBackground({
                 {
                     horizontalOffsetMultiplier:
                         sunTuning.horizontalOffsetMultiplier,
-                    screenOffsetMultiplier: SUN_SCREEN_OFFSET_MULTIPLIER,
+                    screenOffsetMultiplier:
+                        SUN_SCREEN_OFFSET_MULTIPLIER * screenOffsetMultiplier,
                     verticalOffsetMultiplier:
                         sunTuning.verticalOffsetMultiplier,
                 },
@@ -346,7 +431,7 @@ export function SkyGradientBackground({
             projectSkyDirectionToScreen(
                 celestialState.moonDirection,
                 basis,
-                {},
+                { screenOffsetMultiplier },
                 moonScreenRef.current,
             );
             copyVectorUniform(material, 'uSunPosition', sunScreenRef.current);
@@ -373,9 +458,11 @@ export function SkyGradientBackground({
         [
             camera,
             celestialState,
+            gardenAvatarView,
             hideCelestialGlow,
             invalidate,
             material,
+            screenOffsetMultiplier,
             sunTuning,
         ],
     );
@@ -442,7 +529,11 @@ export function SkyGradientBackground({
             name="Environment:SkyGradientBackground"
             renderOrder={-1000}
         >
-            <planeGeometry args={[1, 1]} />
+            {gardenAvatarView === 'overview' ? (
+                <planeGeometry args={[1, 1]} />
+            ) : (
+                <sphereGeometry args={[WORLD_SKY_RADIUS, 48, 24]} />
+            )}
         </mesh>
     );
 }

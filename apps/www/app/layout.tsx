@@ -1,3 +1,4 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
@@ -11,6 +12,7 @@ import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { createPublicMetadata } from '../lib/seo/publicMetadata';
 import { LayoutContainer } from './LayoutContainer';
 
 const montserrat = Montserrat({
@@ -27,17 +29,39 @@ const gardenModelPreloadUrls = [
     'BlockSandAngle',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
+    'BlockStone',
+    'BlockStoneAngle',
+    'BlockGravel',
+    'BlockGravelAngle',
+    'BlockStoneStairs',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
 ].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
 
+const homepageDescription =
+    'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.';
+
 export function generateMetadata(): Metadata {
+    const publicMetadata = createPublicMetadata({
+        title: 'Gredice - vrt po tvom',
+        description: homepageDescription,
+        path: '/',
+        eyebrow: 'Tvoj digitalni vrt',
+        imageUrl: 'https://www.gredice.com/seo-fallback.png',
+        imageAlt: 'Digitalni vrt Gredice s podignutom gredicom',
+    });
+
     return {
+        ...publicMetadata,
         metadataBase: new URL('https://www.gredice.com'),
         title: {
             template: '%s | Gredice',
             default: 'Gredice - vrt po tvom',
         },
-        description:
-            'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.',
+        description: homepageDescription,
         keywords: [
             'gredice',
             'gredica',
@@ -65,12 +89,6 @@ export function generateMetadata(): Metadata {
             'virtualni vrt',
             'virtualno',
         ],
-        openGraph: {
-            type: 'website',
-            title: 'Gredice - vrt po tvom',
-            url: 'https://www.gredice.com',
-            siteName: 'Gredice - vrt po tvom',
-        },
     };
 }
 
@@ -86,6 +104,9 @@ export default async function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
@@ -106,7 +127,7 @@ export default async function RootLayout({
                 </main>
                 <PublicFooter />
             </Stack>
-            <Analytics />
+            {injectVercelAnalytics && <Analytics />}
             <PageViewTracker />
             {shouldInjectToolbar && <VercelToolbar />}
         </ClientAppProvider>

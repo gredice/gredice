@@ -1,5 +1,7 @@
 import { type ConsoleMessage, expect, type Page, test } from '@playwright/test';
+import { encryptOverrides } from 'flags';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
+import { outletGardenTestFlagsSecret } from '../playwright/outletGardenFlagTestSupport';
 
 type GardenRenderProbeWindow = Window & {
     __gardenWebglContextRequests?: number;
@@ -174,6 +176,11 @@ async function mockGardenApi(
             body = { items: [], nextCursor: null, total: 0 };
         } else if (
             withGarden &&
+            pathname.endsWith('/api/gardens/1/raised-bed-notifications')
+        ) {
+            body = { notifications: [] };
+        } else if (
+            withGarden &&
             pathname.endsWith('/api/gardens/1/visit-summary/seen')
         ) {
             body = {
@@ -304,6 +311,10 @@ async function mockGardenApi(
             body = { devices: [] };
         } else if (pathname.endsWith('/api/notifications/push-status')) {
             body = { hasDevices: false, status: 'unsubscribed' };
+        } else if (
+            /\/api\/gardens\/\d+\/raised-bed-notifications$/u.test(pathname)
+        ) {
+            body = { notifications: [] };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
         }
@@ -446,10 +457,11 @@ test('opens the React-only garden page from the existing HUD', async ({
 test('renders the shared HUD over a React-only 2D garden overview', async ({
     context,
     page,
-}) => {
+}, testInfo) => {
     test.setTimeout(20_000);
     const failures = collectRuntimeFailures(page);
     const modelRequests: string[] = [];
+    let raisedBedNotificationRequestCount = 0;
     await page.setViewportSize({ height: 844, width: 390 });
     await page.addInitScript(() => {
         const probeWindow = window as GardenRenderProbeWindow;
@@ -473,16 +485,34 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
             instrumentedGetContext as typeof originalGetContext;
     });
     page.on('request', (request) => {
-        if (new URL(request.url()).pathname.endsWith('.glb')) {
+        const { pathname } = new URL(request.url());
+        if (pathname.endsWith('.glb')) {
             modelRequests.push(request.url());
         }
+        if (pathname.endsWith('/api/gardens/1/raised-bed-notifications')) {
+            raisedBedNotificationRequestCount += 1;
+        }
     });
+    const baseURL = testInfo.project.use.baseURL;
+    if (typeof baseURL !== 'string') {
+        throw new Error('Garden landing test requires a Playwright base URL');
+    }
+    const flagOverrides = await encryptOverrides(
+        { enableRaisedBedNotificationBubbles: true },
+        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
+        '1h',
+    );
     await context.addCookies([
         {
             domain: '127.0.0.1',
             name: 'gredice_impersonating',
             path: '/',
             value: '1',
+        },
+        {
+            name: 'vercel-flag-overrides',
+            url: baseURL,
+            value: flagOverrides,
         },
     ]);
     await mockGardenApi(page, true, {
@@ -500,6 +530,9 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     await expect(
         page.getByRole('button', { name: /Otvori gredicu Testna gredica/u }),
     ).toBeVisible();
+    await expect
+        .poll(() => raisedBedNotificationRequestCount)
+        .toBeGreaterThan(0);
     await expect(page.getByTitle('Profil')).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page.getByTitle(/zvuk/u)).toHaveCount(0);

@@ -566,6 +566,58 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
     }
 });
 
+test('garden avatar view enters play mode and resets controls on exit', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setGardenAvatarView('third-person');
+        store.getState().setGardenAvatarMoveInput({ forward: 1, right: -1 });
+        store.getState().setGardenAvatarSprintInput(true);
+        store.getState().setGardenAvatarCrouchInput(true);
+        store.getState().scaleGardenAvatarCameraZoom(1.15);
+        store.getState().requestGardenAvatarJump();
+
+        assert.equal(store.getState().gardenAvatarView, 'third-person');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 1,
+            right: -1,
+        });
+        assert.equal(store.getState().gardenAvatarJumpRequest, 1);
+        assert.equal(store.getState().gardenAvatarSprintInput, true);
+        assert.equal(store.getState().gardenAvatarCrouchInput, true);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1.15);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, false);
+
+        store.getState().setGardenAvatarAimedBoatId('boat-a');
+        store.getState().setGardenAvatarBoatId('boat-a');
+        assert.equal(store.getState().gardenAvatarBoatId, 'boat-a');
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+
+        store.getState().setGardenAvatarCollisionDebugVisible(true);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, true);
+
+        store.getState().setGardenAvatarView('overview');
+        assert.equal(store.getState().gardenAvatarView, 'overview');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 0,
+            right: 0,
+        });
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1);
+        assert.equal(store.getState().gardenAvatarBoatId, null);
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('environment can publish blended rain intensity for surface effects', () => {
     const store = createGameState({
         appBaseUrl: '',

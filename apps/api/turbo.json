@@ -18,6 +18,7 @@
                 "GOOGLE_CLIENT_ID",
                 "GOOGLE_CLIENT_SECRET",
                 "GREDICE_ADMIN_APP_URL",
+                "GREDICE_ADVANCED_SOWING_ENABLED",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_DELIVERY_NOTIFICATION_EMAIL_ENABLED",
@@ -66,6 +67,7 @@
                 "SOCIAL_PUBLISHING_QUEUE_SECRET",
                 "STRIPE_SECRETKEY",
                 "STRIPE_WEBHOOK_SECRET",
+                "VERCEL",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

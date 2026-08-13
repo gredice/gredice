@@ -64,6 +64,7 @@ import {
     areBlockInteractionsSuppressed,
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
+import { canRotatePlacedBlock } from './blockRotation';
 import {
     getInstancedInteractionMountProfileMetadata,
     getPickupPointerMoveCancelDistance,
@@ -1594,6 +1595,10 @@ export function InstancedBlockInteractionController({
     }
 
     function doRotate(target: BlockInteractionLayerTarget) {
+        if (!canRotatePlacedBlock(target.block.name)) {
+            return false;
+        }
+
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||

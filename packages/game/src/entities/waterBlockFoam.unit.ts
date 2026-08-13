@@ -13,6 +13,10 @@ function waterBlock(id: string): Block {
     return { id, name: 'Block_Water', rotation: 0 };
 }
 
+function swampWaterBlock(id: string): Block {
+    return { id, name: 'Block_Swamp_Water', rotation: 0 };
+}
+
 function grassBlock(id: string): Block {
     return { id, name: 'Block_Grass', rotation: 0 };
 }
@@ -49,6 +53,24 @@ describe('resolveWaterFoamEdges', () => {
                 stacks,
             }).toArray(),
             [1, 0, 1, 0],
+        );
+    });
+
+    it('removes foam between standard and swamp water', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [swampWaterBlock('swamp-water-east')]),
+        ];
+
+        assert.deepEqual(
+            resolveWaterFoamEdges({
+                block: currentWater,
+                stack: currentStack,
+                stacks,
+            }).toArray(),
+            [1, 0, 1, 1],
         );
     });
 
@@ -179,6 +201,25 @@ describe('resolveWaterFoamCorners', () => {
                 stacks,
             }).toArray(),
             [1, 1, 1, 0],
+        );
+    });
+
+    it('treats mixed water styles as joined around shoreline corners', () => {
+        const currentWater = swampWaterBlock('swamp-water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        const stacks = [
+            currentStack,
+            stack(-1, 0, [waterBlock('water-west')]),
+            stack(0, -1, [waterBlock('water-north')]),
+        ];
+
+        assert.deepEqual(
+            resolveWaterFoamCorners({
+                block: currentWater,
+                stack: currentStack,
+                stacks,
+            }).toArray(),
+            [1, 0, 0, 0],
         );
     });
 });

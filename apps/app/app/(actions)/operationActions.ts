@@ -1,5 +1,6 @@
 'use server';
 
+import { operationCanceledNotificationType } from '@gredice/js/notifications';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
@@ -10,6 +11,7 @@ import {
     validateHostedImageUrl,
 } from '@gredice/js/urls';
 import {
+    notifyDetailedRaisedBedInspectionCompleted,
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
 } from '@gredice/notifications';
@@ -29,6 +31,7 @@ import {
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     submitOperationTaskCompletion,
     switchOperationEntity,
     unacceptOperation,
@@ -47,6 +50,7 @@ import {
     canSwitchOperationTaskEntity,
     canUnacceptOperationTask,
 } from '../admin/schedule/scheduleShared';
+import { classifyOperationCompletionNotificationType } from './operationCompletionNotification';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 const MAX_COMPLETION_IMAGE_COUNT = 20;
@@ -113,7 +117,9 @@ function buildRaisedBedNotificationLink(
 
     return getRaisedBedCloseupUrl(
         raisedBedName,
-        typeof positionIndex === 'number' ? { positionIndex } : undefined,
+        typeof positionIndex === 'number'
+            ? { fieldTab: 'diary', positionIndex }
+            : undefined,
     );
 }
 
@@ -926,6 +932,7 @@ async function buildOperationCompletionNotification(
         header,
         content,
         linkUrl,
+        visualReward: operationData?.attributes?.visualReward ?? null,
     };
 }
 
@@ -933,8 +940,6 @@ async function notifyVerifiedOperationCompletion(
     operation: Awaited<ReturnType<typeof getOperationById>>,
     { notifySlack }: { notifySlack: boolean },
 ) {
-    const { header, content, linkUrl } =
-        await buildOperationCompletionNotification(operation);
     if (!operation.completedBy) {
         throw new Error('Completed operation is missing a completion actor.');
     }
@@ -942,25 +947,49 @@ async function notifyVerifiedOperationCompletion(
         throw new Error('Completed operation is missing a verification event.');
     }
 
+    const detailedInspectionHandled =
+        operation.entityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+            ? await notifyDetailedRaisedBedInspectionCompleted(operation.id)
+            : false;
+    const completionNotification = detailedInspectionHandled
+        ? null
+        : await buildOperationCompletionNotification(operation);
+
     await Promise.all([
         notifySlack
             ? notifyOperationUpdate(operation.id, 'completed', {
                   completedBy: operation.completedBy,
               })
             : undefined,
-        operation.accountId
+        operation.accountId && completionNotification
             ? createNotification(
                   {
                       accountId: operation.accountId,
+                      category: 'garden',
                       gardenId: operation.gardenId,
                       raisedBedId: operation.raisedBedId,
-                      header,
-                      content,
+                      header: completionNotification.header,
+                      content: completionNotification.content,
                       imageUrl: operation.imageUrls?.[0],
-                      linkUrl,
+                      linkUrl: completionNotification.linkUrl,
+                      metadata: {
+                          operationId: operation.id,
+                          operationEntityId: operation.entityId,
+                          raisedBedFieldId: operation.raisedBedFieldId ?? null,
+                          visualReward: completionNotification.visualReward,
+                      },
+                      priority: 'high',
                       timestamp: operation.verifiedAt,
+                      type: classifyOperationCompletionNotificationType({
+                          hasImage: Boolean(operation.imageUrls?.[0]),
+                          raisedBedFieldId: operation.raisedBedFieldId,
+                          visualReward: completionNotification.visualReward,
+                      }),
                   },
                   {
+                      compatibleExistingClassifications: [
+                          { category: 'general', type: 'general' },
+                      ],
                       idempotencyKey: `schedule-task:operation-completed:${operation.verificationEventId.toString()}`,
                   },
               )
@@ -1027,6 +1056,10 @@ async function completeOperationForActor(
         await notifyVerifiedOperationCompletion(verifiedOperation, {
             notifySlack: result.created,
         });
+    } else if (
+        expectedEntityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+    ) {
+        await notifyDetailedRaisedBedInspectionCompleted(operationId);
     }
 
     await revalidateOperationPaths(operation);
@@ -1271,14 +1304,26 @@ export async function cancelOperationAction(formData: FormData) {
         const notificationId = await createNotification(
             {
                 accountId: cancellation.operation.accountId,
+                category: 'garden',
                 gardenId: cancellation.operation.gardenId,
                 raisedBedId: cancellation.operation.raisedBedId,
                 header,
                 content,
                 linkUrl,
+                metadata: {
+                    operationEntityId: cancellation.operation.entityId,
+                    operationId: cancellation.operation.id,
+                    raisedBedFieldId:
+                        cancellation.operation.raisedBedFieldId ?? null,
+                },
+                priority: 'high',
                 timestamp: cancellation.canceledAt,
+                type: operationCanceledNotificationType,
             },
             {
+                compatibleExistingClassifications: [
+                    { category: 'general', type: 'general' },
+                ],
                 idempotencyKey: `admin:operation-canceled:${cancellation.cancellationEventId.toString()}`,
             },
         );

@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NewsDetail } from '../../../components/NewsDetail';
-import { getChangelogEntry } from '../../../lib/news';
+import { getChangelogEntries, getChangelogEntry } from '../../../lib/news';
 import { getNewsArticleViewTransitionName } from '../../../lib/viewTransitions';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+    const entries = await getChangelogEntries();
+    return entries.map((entry) => ({ slug: entry.slug }));
+}
 
 export default async function ChangelogEntryPage({
     params,
@@ -36,7 +41,7 @@ export async function generateMetadata({
     const { slug } = await params;
     const entry = await getChangelogEntry(slug);
     if (!entry) {
-        return {};
+        notFound();
     }
     const openGraphImage = entry.seoImageUrl || `${entry.path}/opengraph-image`;
 

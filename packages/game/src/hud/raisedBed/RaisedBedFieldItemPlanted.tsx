@@ -21,12 +21,13 @@ import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
 import { GameModal } from '../../shared-ui/game-modal';
+import type { RaisedBedFieldTabValue } from '../../useUrlState';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
@@ -60,14 +61,13 @@ import {
     ScheduledSowingDateBadge,
 } from './ScheduledSowingDateBadge';
 
-type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
-
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
     fieldOverride,
     onOpenChange,
     open: openProp,
+    requestedTab,
     plantHistory = [],
     isHistorical = false,
     triggerOverride,
@@ -78,6 +78,7 @@ export function RaisedBedFieldItemPlanted({
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
+    requestedTab?: RaisedBedFieldTabValue;
     plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     isHistorical?: boolean;
     triggerOverride?: ReactElement | null;
@@ -125,6 +126,12 @@ export function RaisedBedFieldItemPlanted({
     };
     const isOpenControlled = openProp !== undefined;
     const open = openProp ?? internalOpen;
+
+    useEffect(() => {
+        if (open && requestedTab) {
+            setActiveTab(requestedTab);
+        }
+    }, [open, requestedTab]);
 
     if (!raisedBed) {
         return null;

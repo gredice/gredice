@@ -79,6 +79,48 @@ describe('getWaterBlockColumnDepth', () => {
         );
     });
 
+    it('groups contiguous swamp water blocks', () => {
+        const lowerWater = block('swamp-water-a', 'Block_Swamp_Water');
+        const upperWater = block('swamp-water-b', 'Block_Swamp_Water');
+        const currentStack = stack([lowerWater, upperWater]);
+
+        assert.equal(
+            getWaterBlockColumnDepth({
+                block: lowerWater,
+                stack: currentStack,
+            }),
+            2,
+        );
+        assert.equal(
+            getWaterBlockColumnDepth({
+                block: upperWater,
+                stack: currentStack,
+            }),
+            2,
+        );
+    });
+
+    it('keeps mixed water styles in separate vertical depth groups', () => {
+        const standardWater = block('water-a', 'Block_Water');
+        const swampWater = block('swamp-water-a', 'Block_Swamp_Water');
+        const currentStack = stack([standardWater, swampWater]);
+
+        assert.equal(
+            getWaterBlockColumnDepth({
+                block: standardWater,
+                stack: currentStack,
+            }),
+            1,
+        );
+        assert.equal(
+            getWaterBlockColumnDepth({
+                block: swampWater,
+                stack: currentStack,
+            }),
+            1,
+        );
+    });
+
     it('resolves the top surface y for the full contiguous water column', () => {
         const shallowWater = block('water-a', 'Block_Water');
         const deepWater = block('water-b', 'Block_Water');

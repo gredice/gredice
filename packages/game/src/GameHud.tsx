@@ -13,6 +13,7 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
+import { GardenAvatarHud } from './hud/GardenAvatarHud';
 import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
 import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
 import { InventoryHud } from './hud/InventoryHud';
@@ -33,6 +34,7 @@ import { WhatsNewWidget } from './hud/WhatsNewWidget';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
+import { WoodenSignModal } from './modals/WoodenSignModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -83,6 +85,7 @@ export function GameHud({
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: currentGarden } = useCurrentGarden();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -121,6 +124,15 @@ export function GameHud({
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
+
+    if (gardenAvatarView !== 'overview') {
+        return (
+            <>
+                <GardenAvatarHud />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
+    }
 
     return (
         <SuncokretChatProvider>
@@ -246,6 +258,7 @@ export function GameHud({
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
+            <WoodenSignModal />
             {!isLocalSandbox && !suppressOpeningHud && (
                 <>
                     <WelcomeMessage

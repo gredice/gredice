@@ -297,6 +297,12 @@ export function DebugHud() {
     const setEditHitboxDebugVisible = useGameState(
         (s) => s.setEditHitboxDebugVisible,
     );
+    const gardenAvatarCollisionDebugVisible = useGameState(
+        (s) => s.gardenAvatarCollisionDebugVisible,
+    );
+    const setGardenAvatarCollisionDebugVisible = useGameState(
+        (s) => s.setGardenAvatarCollisionDebugVisible,
+    );
     const entityRenderModeDebugVisible = useGameState(
         (s) => s.entityRenderModeDebugVisible,
     );
@@ -1097,7 +1103,7 @@ export function DebugHud() {
                             <Row spacing={1} className="flex-wrap">
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Fence className="size-3.5" />
                                     }
@@ -1116,7 +1122,26 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
+                                    startDecorator={
+                                        <Custom className="size-3.5" />
+                                    }
+                                    variant={
+                                        gardenAvatarCollisionDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setGardenAvatarCollisionDebugVisible(
+                                            !gardenAvatarCollisionDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Walk collisions
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Layers className="size-3.5" />
                                     }
@@ -1135,7 +1160,7 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Graph className="size-3.5" />
                                     }
@@ -1154,7 +1179,7 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <MapPin className="size-3.5" />
                                     }

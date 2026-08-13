@@ -58,6 +58,30 @@ export type GardenBlockPlacementResult =
 const CANDIDATE_BLOCK_ID = '__candidate_block__';
 const MAX_SPIRAL_STEPS = 1000;
 export const WATER_BLOCK_NAME = 'Block_Water';
+export const WATER_BLOCK_NAMES = [
+    WATER_BLOCK_NAME,
+    'Block_Swamp_Water',
+] as const;
+const HAZEL_LIGHT_ARCH_BLOCK_NAME = 'HazelLightArch';
+const WALKWAY_BLOCK_NAMES = new Set(['StoneWalkway', 'WoodenWalkway']);
+export const SWAMP_BLOCK_NAME = 'Block_Swamp';
+export const FISHING_BOAT_BLOCK_NAME = 'FishingBoat';
+
+export function isWaterBlockName(blockName: string) {
+    return WATER_BLOCK_NAMES.some((name) => name === blockName);
+}
+
+export function isWaterOrSwampBlockName(blockName: string) {
+    return (
+        isWaterBlockName(blockName) ||
+        blockName === SWAMP_BLOCK_NAME ||
+        blockName.startsWith(`${SWAMP_BLOCK_NAME}_`)
+    );
+}
+
+export function requiresWaterOrSwampSupport(blockName: string) {
+    return blockName === FISHING_BOAT_BLOCK_NAME;
+}
 
 function toPositiveGridSpan(value: number | null | undefined) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -233,7 +257,7 @@ function getTopOccupiedCell(
 }
 
 function isGroundBlock(blockName: string) {
-    return blockName.startsWith('Block') && blockName !== WATER_BLOCK_NAME;
+    return blockName.startsWith('Block') && !isWaterBlockName(blockName);
 }
 
 function isWaterPlacement(params: {
@@ -253,9 +277,10 @@ function isWaterPlacement(params: {
             y: placement.y + offset.y,
         });
 
-        return stack?.blocks.some(
-            (blockId) => blockNameById.get(blockId) === WATER_BLOCK_NAME,
-        );
+        return stack?.blocks.some((blockId) => {
+            const candidateName = blockNameById.get(blockId);
+            return candidateName ? isWaterBlockName(candidateName) : false;
+        });
     });
 }
 
@@ -267,8 +292,7 @@ export function isBlockPlaceableOnWater({
     blockName: string;
 }) {
     return (
-        blockData?.attributes?.placeableOnWater ??
-        blockName === WATER_BLOCK_NAME
+        blockData?.attributes?.placeableOnWater ?? isWaterBlockName(blockName)
     );
 }
 
@@ -283,11 +307,22 @@ export function canStackBlockOnBlock({
     belowBlockData: GardenBlockDataLike | undefined;
     belowBlockName: string;
 }) {
+    if (
+        aboveBlockName === HAZEL_LIGHT_ARCH_BLOCK_NAME &&
+        WALKWAY_BLOCK_NAMES.has(belowBlockName)
+    ) {
+        return true;
+    }
+
     if (!belowBlockData?.attributes?.stackable) {
         return false;
     }
 
-    if (belowBlockName !== WATER_BLOCK_NAME) {
+    if (requiresWaterOrSwampSupport(aboveBlockName)) {
+        return isWaterOrSwampBlockName(belowBlockName);
+    }
+
+    if (!isWaterBlockName(belowBlockName)) {
         return true;
     }
 
@@ -303,6 +338,16 @@ export function validateStackPlacement(params: {
     blockDataByName: Map<string, GardenBlockDataLike>;
 }): ValidationResult {
     const { blockIds, blockNameById, blockDataByName } = params;
+    const bottomBlockId = blockIds[0];
+    const bottomBlockName = bottomBlockId
+        ? blockNameById.get(bottomBlockId)
+        : undefined;
+    if (bottomBlockName && requiresWaterOrSwampSupport(bottomBlockName)) {
+        return {
+            valid: false,
+            error: `Invalid stack placement: block ${bottomBlockId} requires water or swamp support`,
+        };
+    }
 
     for (let index = 1; index < blockIds.length; index++) {
         const belowBlockId = blockIds[index - 1];
@@ -480,6 +525,17 @@ function validatePlacementAtPosition(params: {
             occupiedCells,
             footprintPosition,
         );
+
+        if (
+            requiresWaterOrSwampSupport(blockName) &&
+            (!topOccupiedCell ||
+                !isWaterOrSwampBlockName(topOccupiedCell.blockName))
+        ) {
+            return {
+                valid: false,
+                error: `Invalid block placement: ${blockName} requires water or swamp under every footprint cell`,
+            };
+        }
 
         if (
             isGroundBlock(blockName) &&

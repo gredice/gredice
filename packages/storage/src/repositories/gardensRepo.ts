@@ -598,13 +598,26 @@ export async function createGardenBlock(
     return blockId;
 }
 
-export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
-    await storage()
+export async function updateGardenBlock(
+    gardenId: number,
+    { id, ...values }: UpdateGardenBlock,
+    db: DatabaseClient = storage(),
+) {
+    const updatedBlocks = await db
         .update(gardenBlocks)
         .set({
             ...values,
         })
-        .where(eq(gardenBlocks.id, id));
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, id),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+
+    return updatedBlocks.length > 0;
 }
 
 export async function deleteGardenBlock(

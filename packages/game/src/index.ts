@@ -2,6 +2,11 @@ export {
     GameAnalyticsProvider,
     useGameAnalytics,
 } from './analytics/GameAnalyticsContext';
+export type {
+    GardenAvatarPresenceState,
+    GardenVisitorPresence,
+    GardenVisitorPresenceController,
+} from './entities/avatar/gardenVisitorPresence';
 export type { GameFeatureFlags } from './GameFlagsContext';
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
@@ -105,6 +110,8 @@ export {
 } from './viewers/PlantViewer';
 export type {
     PublicGardenBlock,
+    PublicGardenCapture,
+    PublicGardenCapturePhase,
     PublicGardenDetail,
     PublicGardenStack,
     PublicGardenViewerProps,

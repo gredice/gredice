@@ -1373,6 +1373,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                                       name: block.name,
                                       rotation: block.rotation ?? 0,
                                       variant: block.variant,
+                                      message: block.message,
                                   };
                               })
                             : [],

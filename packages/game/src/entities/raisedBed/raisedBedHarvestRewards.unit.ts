@@ -344,6 +344,32 @@ test('delivery-ready harvest operations hide the basket', () => {
     );
 });
 
+test('harvest basket waits for delivery visibility to resolve', () => {
+    const visualRewards = resolveOperationVisualRewards({
+        appliedOperations: [
+            applied(751, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+        ],
+        operations,
+    });
+
+    assert.equal(
+        resolveRaisedBedHarvestBasketState({
+            fields: [
+                { active: true, id: 50, plantSortId: 337, positionIndex: 0 },
+            ],
+            hiddenOperationIds: new Set(),
+            hiddenOperationIdsResolved: false,
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        null,
+    );
+});
+
 test('harvest basket uses the first free stackable neighbor block', () => {
     assert.deepStrictEqual(
         resolveRaisedBedHarvestBasketPlacement({

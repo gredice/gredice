@@ -14,6 +14,9 @@ import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
 import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
+import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFarmer';
+import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
+import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -41,15 +44,23 @@ import {
     defaultGameCameraZoom,
     farGameCameraZoom,
 } from './gameCamera';
+import { detailedInspectionFarmerMessage } from './hooks/detailedRaisedBedInspectionReports';
 import { useBlockData } from './hooks/useBlockData';
 import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { type CurrentGarden, useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
+import {
+    type DetailedRaisedBedInspectionReport,
+    useDetailedRaisedBedInspectionReports,
+    useMarkDetailedRaisedBedInspectionReportsSeen,
+} from './hooks/useDetailedRaisedBedInspectionReports';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useSceneCurrentGarden } from './hooks/useSceneCurrentGarden';
 import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundPalette';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
+import { DetailedRaisedBedInspectionModal } from './hud/DetailedRaisedBedInspectionModal';
+import { RaisedBedNotificationBubbles } from './hud/RaisedBedNotificationBubbles';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
@@ -318,6 +329,10 @@ export function GameScene({
         (state) => state.localSandboxStorageKey !== null,
     );
     const isMock = useGameState((state) => state.isMock);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const setGardenAvatarView = useGameState(
+        (state) => state.setGardenAvatarView,
+    );
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
@@ -326,6 +341,9 @@ export function GameScene({
         (state) => state.gameQualityCustomProfile,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const gardenAvatarEnabled = Boolean(flags?.enableGardenAvatarFlag);
+    const gardenAvatarActive =
+        gardenAvatarEnabled && gardenAvatarView !== 'overview';
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
     const isOperationRewardDebug =
@@ -336,6 +354,14 @@ export function GameScene({
         (zoom !== 'far' || isOperationRewardDebug);
     const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
         useState<SunflowerDropFlyOrigin | null>(null);
+    const detailedInspectionReportsQuery =
+        useDetailedRaisedBedInspectionReports();
+    const markDetailedInspectionReportsSeen =
+        useMarkDetailedRaisedBedInspectionReportsSeen();
+    const [openedDetailedInspection, setOpenedDetailedInspection] = useState<{
+        gardenId: number;
+        reports: DetailedRaisedBedInspectionReport[];
+    } | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
         quality === undefined && gameQualitySetting === 'auto',
     );
@@ -358,7 +384,9 @@ export function GameScene({
                 (quality === undefined && gameQualitySetting === 'high')),
     );
     const staticOpaqueCacheEnabled = Boolean(
-        staticOpaqueSceneCache && qualityProfile.tier === 'high',
+        staticOpaqueSceneCache &&
+            qualityProfile.tier === 'high' &&
+            !gardenAvatarActive,
     );
     const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
         adaptiveHighEnabled || staticOpaqueCacheEnabled,
@@ -367,9 +395,39 @@ export function GameScene({
         useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
-    useBlockData();
+    const { data: blockData } = useBlockData();
     const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
     const garden = useSceneCurrentGarden(gardenData);
+    const detailedInspectionReports =
+        detailedInspectionReportsQuery.data?.reports;
+    const detailedInspectionMessage = useMemo(
+        () =>
+            detailedInspectionFarmerMessage(
+                detailedInspectionReports?.map(
+                    (report) => report.notificationId,
+                ) ?? [],
+            ),
+        [detailedInspectionReports],
+    );
+    const detailedInspectionFirstReport = detailedInspectionReports?.[0];
+    const detailedInspectionTargetRaisedBedId =
+        detailedInspectionFirstReport?.raisedBedId;
+    const detailedInspectionTargetBlockId = garden?.raisedBeds.find(
+        (raisedBed) => raisedBed.id === detailedInspectionTargetRaisedBedId,
+    )?.blockId;
+    const detailedInspectionFarmerTransform = useMemo(
+        () =>
+            findDetailedInspectionFarmerTransform({
+                blockData,
+                stacks: garden?.stacks,
+                targetBlockId: detailedInspectionTargetBlockId,
+            }),
+        [blockData, detailedInspectionTargetBlockId, garden?.stacks],
+    );
+    const openedDetailedInspectionForCurrentGarden =
+        openedDetailedInspection?.gardenId === garden?.id
+            ? openedDetailedInspection
+            : null;
     const gardenInitialViewKey = garden?.id ?? 'default';
     const gardenInitialHomeCameraRef = useRef<{
         key: string | number;
@@ -404,6 +462,11 @@ export function GameScene({
         !isLocalSandbox && !weatherDisabled && !weather && garden !== undefined,
         garden?.farmId,
     );
+    useEffect(() => {
+        if (!gardenAvatarEnabled && gardenAvatarView !== 'overview') {
+            setGardenAvatarView('overview');
+        }
+    }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
     const isLoading = gardenLoading;
 
     const loadingContext = useGameLoading();
@@ -419,6 +482,33 @@ export function GameScene({
     }
 
     const showDebugHud = debugHud ?? Boolean(flags?.enableDebugHudFlag);
+
+    function markDetailedInspectionSeen(
+        inspection: NonNullable<
+            typeof openedDetailedInspectionForCurrentGarden
+        >,
+    ) {
+        markDetailedInspectionReportsSeen.mutate({
+            gardenId: inspection.gardenId,
+            notificationIds: inspection.reports.map(
+                (report) => report.notificationId,
+            ),
+        });
+    }
+
+    function openDetailedInspectionReports() {
+        if (!garden || !detailedInspectionReports?.length) {
+            return;
+        }
+
+        const inspection = {
+            gardenId: garden.id,
+            reports: detailedInspectionReports,
+        };
+        markDetailedInspectionReportsSeen.reset();
+        setOpenedDetailedInspection(inspection);
+        markDetailedInspectionSeen(inspection);
+    }
 
     return (
         <div
@@ -525,7 +615,9 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <BlockInteractionLayer
-                                    controlsEnabled={!noControls}
+                                    controlsEnabled={
+                                        !noControls && !gardenAvatarActive
+                                    }
                                     sharedControllerEnabled
                                     stacks={garden?.stacks}
                                 />
@@ -554,6 +646,48 @@ export function GameScene({
                                         />
                                     </Suspense>
                                 )}
+                                {gardenAvatarEnabled &&
+                                    renderDetails &&
+                                    zoom !== 'far' && (
+                                        <Suspense fallback={null}>
+                                            <GardenAvatar
+                                                stacks={garden?.stacks}
+                                            />
+                                        </Suspense>
+                                    )}
+                                {!hideHud &&
+                                    renderDetails &&
+                                    zoom !== 'far' &&
+                                    !openedDetailedInspectionForCurrentGarden &&
+                                    detailedInspectionFirstReport &&
+                                    detailedInspectionMessage &&
+                                    detailedInspectionFarmerTransform && (
+                                        <Suspense fallback={null}>
+                                            <DetailedInspectionFarmer
+                                                id={
+                                                    detailedInspectionFirstReport.notificationId
+                                                }
+                                                message={
+                                                    detailedInspectionMessage
+                                                }
+                                                onOpen={
+                                                    openDetailedInspectionReports
+                                                }
+                                                transform={
+                                                    detailedInspectionFarmerTransform
+                                                }
+                                            />
+                                        </Suspense>
+                                    )}
+                                {!hideHud &&
+                                    renderDetails &&
+                                    zoom !== 'far' &&
+                                    !openedDetailedInspectionForCurrentGarden && (
+                                        <RaisedBedNotificationBubbles
+                                            blockData={blockData}
+                                            garden={garden}
+                                        />
+                                    )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Bees
@@ -569,7 +703,9 @@ export function GameScene({
                                 )}
                             </group>
                             <GameCameraRig
-                                controlsEnabled={!noControls}
+                                controlsEnabled={
+                                    !noControls && !gardenAvatarActive
+                                }
                                 initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}
                                 initialTarget={sceneCameraTarget}
@@ -580,6 +716,25 @@ export function GameScene({
                     </ParticleSystemProvider>
                 </Scene>
             </GameSceneDetailContext.Provider>
+            {!hideHud && openedDetailedInspectionForCurrentGarden ? (
+                <DetailedRaisedBedInspectionModal
+                    dismissError={
+                        markDetailedInspectionReportsSeen.error instanceof Error
+                            ? markDetailedInspectionReportsSeen.error
+                            : null
+                    }
+                    dismissPending={markDetailedInspectionReportsSeen.isPending}
+                    onClose={() => setOpenedDetailedInspection(null)}
+                    onRetryDismiss={() => {
+                        markDetailedInspectionReportsSeen.reset();
+                        markDetailedInspectionSeen(
+                            openedDetailedInspectionForCurrentGarden,
+                        );
+                    }}
+                    open
+                    reports={openedDetailedInspectionForCurrentGarden.reports}
+                />
+            ) : null}
             <GardenPreviewCaptureController
                 enabled={!isLocalSandbox && !isMock}
                 garden={garden}

@@ -3,6 +3,8 @@ import {
     getGardenBlockFootprintOffsets,
 } from '@gredice/js/gardenBlocks';
 import type { Stack } from '../types/Stack';
+import { isAnimalGroundBlockName } from './animals/animalMovementTerrain';
+import { isWaterBlockName } from './waterBlockNames';
 
 export type BeachBallBounceObstacle = {
     x: number;
@@ -55,23 +57,8 @@ const maxMotionSeconds = 5.4;
 const surfaceCellEpsilon = 0.0001;
 
 export const beachBallCollisionRadius = 0.24;
-
-const passableTerrainBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Grass_Corner',
-    'Block_Grass_Reverse_Corner',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Sand_Corner',
-    'Block_Sand_Reverse_Corner',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-    'Block_Water',
-]);
+const beachBallRollableSurfaceMaxHeight = 0.1;
+const maxMotionSubstepDistance = beachBallCollisionRadius / 2;
 
 function cellKey(position: { x: number; z: number }) {
     return `${position.x}|${position.z}`;
@@ -134,6 +121,22 @@ function getBlockHeight(
         : null;
 }
 
+function isBeachBallRollableSurfaceBlock(
+    blockDataByName: Map<string, BeachBallBlockDataLike>,
+    blockName: string,
+) {
+    if (isBeachBallPassableTerrainBlockName(blockName)) {
+        return true;
+    }
+
+    const blockHeight = getBlockHeight(blockDataByName, blockName);
+    return (
+        blockHeight !== null &&
+        blockHeight >= 0 &&
+        blockHeight <= beachBallRollableSurfaceMaxHeight
+    );
+}
+
 function getStackSurfaceHeight({
     blockDataByName,
     movingBlockId,
@@ -151,7 +154,7 @@ function getStackSurfaceHeight({
             return height;
         }
 
-        if (!isBeachBallPassableTerrainBlockName(block.name)) {
+        if (!isBeachBallRollableSurfaceBlock(blockDataByName, block.name)) {
             break;
         }
 
@@ -256,7 +259,7 @@ function resolveAxisMotion({
 }
 
 export function isBeachBallPassableTerrainBlockName(name: string) {
-    return passableTerrainBlockNames.has(name);
+    return isWaterBlockName(name) || isAnimalGroundBlockName(name);
 }
 
 export function createBeachBallBounceState(): BeachBallBounceState {
@@ -313,7 +316,7 @@ export function createBeachBallBounceEnvironment({
         for (const block of stack.blocks) {
             if (
                 block.id === movingBlockId ||
-                isBeachBallPassableTerrainBlockName(block.name)
+                isBeachBallRollableSurfaceBlock(blockDataByName, block.name)
             ) {
                 continue;
             }
@@ -388,38 +391,47 @@ export function advanceBeachBallBounce(
     let velocityZ = state.velocityZ;
     let collisionCount = state.collisionCount;
 
-    const xMotion = resolveAxisMotion({
-        axis: 'x',
-        baseX: options.baseX,
-        baseZ: options.baseZ,
-        currentOffsetX: offsetX,
-        currentOffsetZ: offsetZ,
-        deltaSeconds,
-        environment,
-        nextOffset: offsetX + velocityX * deltaSeconds,
-        velocity: velocityX,
-    });
-    offsetX = xMotion.offset;
-    velocityX = xMotion.velocity;
-    if (xMotion.collided) {
-        collisionCount += 1;
-    }
+    const motionDistance = Math.hypot(velocityX, velocityZ) * deltaSeconds;
+    const motionStepCount = Math.max(
+        1,
+        Math.ceil(motionDistance / maxMotionSubstepDistance),
+    );
+    const motionStepSeconds = deltaSeconds / motionStepCount;
 
-    const zMotion = resolveAxisMotion({
-        axis: 'z',
-        baseX: options.baseX,
-        baseZ: options.baseZ,
-        currentOffsetX: offsetX,
-        currentOffsetZ: offsetZ,
-        deltaSeconds,
-        environment,
-        nextOffset: offsetZ + velocityZ * deltaSeconds,
-        velocity: velocityZ,
-    });
-    offsetZ = zMotion.offset;
-    velocityZ = zMotion.velocity;
-    if (zMotion.collided) {
-        collisionCount += 1;
+    for (let step = 0; step < motionStepCount; step += 1) {
+        const xMotion = resolveAxisMotion({
+            axis: 'x',
+            baseX: options.baseX,
+            baseZ: options.baseZ,
+            currentOffsetX: offsetX,
+            currentOffsetZ: offsetZ,
+            deltaSeconds: motionStepSeconds,
+            environment,
+            nextOffset: offsetX + velocityX * motionStepSeconds,
+            velocity: velocityX,
+        });
+        offsetX = xMotion.offset;
+        velocityX = xMotion.velocity;
+        if (xMotion.collided) {
+            collisionCount += 1;
+        }
+
+        const zMotion = resolveAxisMotion({
+            axis: 'z',
+            baseX: options.baseX,
+            baseZ: options.baseZ,
+            currentOffsetX: offsetX,
+            currentOffsetZ: offsetZ,
+            deltaSeconds: motionStepSeconds,
+            environment,
+            nextOffset: offsetZ + velocityZ * motionStepSeconds,
+            velocity: velocityZ,
+        });
+        offsetZ = zMotion.offset;
+        velocityZ = zMotion.velocity;
+        if (zMotion.collided) {
+            collisionCount += 1;
+        }
     }
 
     const damping = velocityDampingPerSecond ** deltaSeconds;

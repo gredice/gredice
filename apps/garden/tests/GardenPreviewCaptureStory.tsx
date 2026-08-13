@@ -102,7 +102,15 @@ const captureGarden = {
         },
         '2': {
             '0': [{ id: 'grass-2-0', name: 'Block_Grass', rotation: 0 }],
-            '1': [{ id: 'grass-2-1', name: 'Block_Grass', rotation: 0 }],
+            '1': [
+                { id: 'grass-2-1', name: 'Block_Grass', rotation: 0 },
+                {
+                    id: 'wooden-sign-message',
+                    message: 'MOJ\nVRT',
+                    name: 'WoodenSign',
+                    rotation: 0,
+                },
+            ],
             '2': [{ id: 'grass-2-2', name: 'Block_Grass', rotation: 0 }],
         },
         '3': {

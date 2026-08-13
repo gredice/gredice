@@ -1,9 +1,17 @@
-import { type Camera, OrthographicCamera, Vector2, Vector3 } from 'three';
+import {
+    type Camera,
+    MathUtils,
+    OrthographicCamera,
+    PerspectiveCamera,
+    Vector2,
+    Vector3,
+} from 'three';
 
 export const SKY_FORWARD_DISTANCE = 500;
 export const SKY_SCREEN_FRACTION = 1.05;
 export const SKY_REFERENCE_ZOOM = 100;
 export const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
+const SKY_REFERENCE_HALF_HEIGHT = 3.6;
 
 const MOBILE_MAX_WIDTH = 767;
 const TABLET_MAX_WIDTH = 1023;
@@ -12,6 +20,7 @@ export type SkyViewBasis = {
     forward: Vector3;
     halfHeight: number;
     halfWidth: number;
+    perspective: boolean;
     right: Vector3;
     screenScale: number;
     skyRadius: number;
@@ -25,7 +34,9 @@ export type SunViewportTuning = {
 };
 
 export type SkyCameraProjectionSnapshot = {
+    aspect: number;
     bottom: number;
+    fov: number;
     initialized: boolean;
     left: number;
     positionX: number;
@@ -45,7 +56,9 @@ export type SkyCameraProjectionSnapshot = {
 
 export function createSkyCameraProjectionSnapshot(): SkyCameraProjectionSnapshot {
     return {
+        aspect: 0,
         bottom: 0,
+        fov: 0,
         initialized: false,
         left: 0,
         positionX: 0,
@@ -68,14 +81,26 @@ export function updateSkyCameraProjectionSnapshot(
     camera: Camera,
     snapshot: SkyCameraProjectionSnapshot,
 ) {
-    if (!(camera instanceof OrthographicCamera)) {
+    if (
+        !(camera instanceof OrthographicCamera) &&
+        !(camera instanceof PerspectiveCamera)
+    ) {
         return false;
     }
 
+    const aspect = camera instanceof PerspectiveCamera ? camera.aspect : 0;
+    const bottom = camera instanceof OrthographicCamera ? camera.bottom : 0;
+    const fov = camera instanceof PerspectiveCamera ? camera.fov : 0;
+    const left = camera instanceof OrthographicCamera ? camera.left : 0;
+    const right = camera instanceof OrthographicCamera ? camera.right : 0;
+    const top = camera instanceof OrthographicCamera ? camera.top : 0;
+
     const changed =
         !snapshot.initialized ||
-        snapshot.bottom !== camera.bottom ||
-        snapshot.left !== camera.left ||
+        snapshot.aspect !== aspect ||
+        snapshot.bottom !== bottom ||
+        snapshot.fov !== fov ||
+        snapshot.left !== left ||
         snapshot.positionX !== camera.position.x ||
         snapshot.positionY !== camera.position.y ||
         snapshot.positionZ !== camera.position.z ||
@@ -83,16 +108,18 @@ export function updateSkyCameraProjectionSnapshot(
         snapshot.quaternionX !== camera.quaternion.x ||
         snapshot.quaternionY !== camera.quaternion.y ||
         snapshot.quaternionZ !== camera.quaternion.z ||
-        snapshot.right !== camera.right ||
-        snapshot.top !== camera.top ||
+        snapshot.right !== right ||
+        snapshot.top !== top ||
         snapshot.upX !== camera.up.x ||
         snapshot.upY !== camera.up.y ||
         snapshot.upZ !== camera.up.z ||
         snapshot.zoom !== camera.zoom;
 
-    snapshot.bottom = camera.bottom;
+    snapshot.aspect = aspect;
+    snapshot.bottom = bottom;
+    snapshot.fov = fov;
     snapshot.initialized = true;
-    snapshot.left = camera.left;
+    snapshot.left = left;
     snapshot.positionX = camera.position.x;
     snapshot.positionY = camera.position.y;
     snapshot.positionZ = camera.position.z;
@@ -100,8 +127,8 @@ export function updateSkyCameraProjectionSnapshot(
     snapshot.quaternionX = camera.quaternion.x;
     snapshot.quaternionY = camera.quaternion.y;
     snapshot.quaternionZ = camera.quaternion.z;
-    snapshot.right = camera.right;
-    snapshot.top = camera.top;
+    snapshot.right = right;
+    snapshot.top = top;
     snapshot.upX = camera.up.x;
     snapshot.upY = camera.up.y;
     snapshot.upZ = camera.up.z;
@@ -115,6 +142,7 @@ export function createSkyViewBasis(): SkyViewBasis {
         forward: new Vector3(),
         halfHeight: 1,
         halfWidth: 1,
+        perspective: false,
         right: new Vector3(),
         screenScale: 1,
         skyRadius: 1,
@@ -123,19 +151,48 @@ export function createSkyViewBasis(): SkyViewBasis {
 }
 
 export function updateSkyViewBasis(camera: Camera, basis: SkyViewBasis) {
-    if (!(camera instanceof OrthographicCamera)) {
+    if (
+        !(camera instanceof OrthographicCamera) &&
+        !(camera instanceof PerspectiveCamera)
+    ) {
         return false;
     }
 
     camera.getWorldDirection(basis.forward);
-    basis.right.crossVectors(basis.forward, camera.up).normalize();
-    basis.viewUp.crossVectors(basis.right, basis.forward).normalize();
-    basis.halfWidth = (camera.right - camera.left) / (2 * camera.zoom);
-    basis.halfHeight = (camera.top - camera.bottom) / (2 * camera.zoom);
+    basis.right.set(1, 0, 0).applyQuaternion(camera.quaternion).normalize();
+    basis.viewUp.set(0, 1, 0).applyQuaternion(camera.quaternion).normalize();
+    if (camera instanceof OrthographicCamera) {
+        basis.perspective = false;
+        basis.halfWidth = (camera.right - camera.left) / (2 * camera.zoom);
+        basis.halfHeight = (camera.top - camera.bottom) / (2 * camera.zoom);
+        basis.screenScale = SKY_REFERENCE_ZOOM / camera.zoom;
+    } else {
+        basis.perspective = true;
+        basis.halfHeight =
+            (Math.tan(MathUtils.degToRad(camera.fov) / 2) *
+                SKY_FORWARD_DISTANCE) /
+            camera.zoom;
+        basis.halfWidth = basis.halfHeight * camera.aspect;
+        basis.screenScale = basis.halfHeight / SKY_REFERENCE_HALF_HEIGHT;
+    }
     basis.skyRadius = basis.halfHeight * SKY_SCREEN_FRACTION;
-    basis.screenScale = SKY_REFERENCE_ZOOM / camera.zoom;
 
     return true;
+}
+
+const SKY_MIN_FORWARD_DEPTH = 0.000_1;
+const SKY_HIDDEN_SCREEN_POSITION = 10;
+
+export function getSkyDirectionProjectionScale(
+    direction: Vector3,
+    basis: SkyViewBasis,
+) {
+    if (!basis.perspective) {
+        return 1;
+    }
+
+    const forwardDepth = direction.dot(basis.forward);
+    return forwardDepth > SKY_MIN_FORWARD_DEPTH ? 1 / forwardDepth : null;
 }
 
 export function getSunViewportTuning(
@@ -181,10 +238,17 @@ export function projectSkyDirectionToScreen(
     },
     target = new Vector2(),
 ) {
+    const projectionScale = getSkyDirectionProjectionScale(direction, basis);
+    if (projectionScale === null) {
+        target.set(SKY_HIDDEN_SCREEN_POSITION, SKY_HIDDEN_SCREEN_POSITION);
+        return false;
+    }
+
     const x =
         basis.halfWidth === 0
             ? 0
             : (direction.dot(basis.right) *
+                  projectionScale *
                   basis.skyRadius *
                   screenOffsetMultiplier *
                   horizontalOffsetMultiplier) /
@@ -193,10 +257,12 @@ export function projectSkyDirectionToScreen(
         basis.halfHeight === 0
             ? 0
             : (direction.dot(basis.viewUp) *
+                  projectionScale *
                   basis.skyRadius *
                   screenOffsetMultiplier *
                   verticalOffsetMultiplier) /
               basis.halfHeight;
 
-    return target.set(x, y);
+    target.set(x, y);
+    return true;
 }

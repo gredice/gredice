@@ -51,5 +51,5 @@ export function outletOfferImage(offer: OutletOffer) {
 }
 
 export function outletGardenUrl(offerId: number) {
-    return `https://vrt.gredice.com/?outlet=${encodeURIComponent(offerId)}`;
+    return `https://vrt.gredice.com/outlet?ponuda=${encodeURIComponent(offerId)}`;
 }

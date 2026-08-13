@@ -9,6 +9,7 @@ import {
     useMemo,
     useRef,
 } from 'react';
+import { FishingBoatRegistryProvider } from '../entities/fishingBoat/FishingBoatRegistry';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 
@@ -127,7 +128,9 @@ export function BlockInteractionRegistryProvider({
 
     return (
         <BlockInteractionRegistryContext.Provider value={registry}>
-            {children}
+            <FishingBoatRegistryProvider>
+                {children}
+            </FishingBoatRegistryProvider>
         </BlockInteractionRegistryContext.Provider>
     );
 }

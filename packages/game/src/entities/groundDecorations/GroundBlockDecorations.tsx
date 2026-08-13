@@ -19,6 +19,7 @@ import {
 } from './GroundDecorationInstances';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import { getGroundDecorationBlocks } from './groundDecorationBlocks';
+import { swampGroundDecorationTint } from './groundDecorationConfig';
 
 const blockSurfaceYOffset = 0.2;
 type GroundBlockDecorationsProps = {
@@ -67,7 +68,8 @@ function decorationInstancesEqual(
                 rightInstance?.position[2] ?? Number.NaN,
             ) &&
             numbersEqual(leftInstance.rotationZ, rightInstance.rotationZ) &&
-            leftInstance.spriteName === rightInstance.spriteName
+            leftInstance.spriteName === rightInstance.spriteName &&
+            leftInstance.tint === rightInstance.tint
         );
     });
 }
@@ -165,6 +167,7 @@ export function GroundBlockDecorations({
             blockIndex,
             placements,
             stack,
+            surface,
         } of decorationBlocks) {
             const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
                 createActiveDragPreviewTarget({
@@ -206,6 +209,10 @@ export function GroundBlockDecorations({
                     rotationZ:
                         placement.kind === 'flower' ? placement.rotation : 0,
                     spriteName: placement.spriteName,
+                    tint:
+                        placement.kind === 'sprite' && surface === 'swamp'
+                            ? swampGroundDecorationTint
+                            : undefined,
                 });
             }
         }

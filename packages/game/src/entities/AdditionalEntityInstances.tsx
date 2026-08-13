@@ -40,6 +40,11 @@ import {
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
+import { fenceVariantNames } from './Fence';
+import {
+    type FenceConnectionShape,
+    resolveFenceConnection,
+} from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import {
     type GroundPatchSurface,
@@ -54,6 +59,8 @@ import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
+import { swampGroundBaseColor } from './swampGroundPalette';
+import { whiteFenceVariantNames } from './WhiteFence';
 import {
     getWaterBlockColumnSurfaceY,
     getWaterBlockDepthSamples,
@@ -68,6 +75,12 @@ import {
     getWaterBlockCenterY,
     getWaterBlockVisualHeight,
 } from './waterBlockHeight';
+import {
+    getWaterBlockStyle,
+    type WaterBlockStyle,
+    waterBlockNames,
+    waterBlockStyles,
+} from './waterBlockNames';
 import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
 import {
     chunkWaterTopInstances,
@@ -79,6 +92,7 @@ import {
     resolveWaterShoreDepthSamples,
     resolveWaterShoreDepths,
 } from './waterShoreDepth';
+import { defaultGameWoodColor } from './woodPalette';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -118,11 +132,113 @@ type WaterBlockInstance = EntityBlockInstance & {
     depth: number;
     depthSamples: WaterBlockDepthSamples;
     shoreDepthSamples?: WaterBlockDepthSamples;
+    style: WaterBlockStyle;
     surfaceY: number;
     waterHeight: number;
 };
+type StyledWaterTopChunkInstance = WaterTopChunkInstance & {
+    style: WaterBlockStyle;
+};
 
 const emptyWaterDepthSamples: WaterBlockDepthSamples = [0, 0, 0, 0];
+
+const terrainVariationAssetParts = [
+    {
+        assetName: 'BlockStone',
+        blockName: 'Block_Stone',
+        nodeNames: ['Block_Stone_Large', 'Block_Stone_Mid', 'Block_Stone_Dark'],
+        weatherSurface: true,
+    },
+    {
+        assetName: 'BlockStoneAngle',
+        blockName: 'Block_Stone_Angle',
+        nodeNames: [
+            'Block_Stone_Angle_Large',
+            'Block_Stone_Angle_Mid',
+            'Block_Stone_Angle_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockGravel',
+        blockName: 'Block_Gravel',
+        nodeNames: [
+            'Block_Gravel_Base',
+            'Block_Gravel_Pieces_Light',
+            'Block_Gravel_Pieces_Dark',
+        ],
+        weatherSurface: true,
+    },
+    {
+        assetName: 'BlockGravelAngle',
+        blockName: 'Block_Gravel_Angle',
+        nodeNames: [
+            'Block_Gravel_Angle_Base',
+            'Block_Gravel_Angle_Pieces_Light',
+            'Block_Gravel_Angle_Pieces_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockStoneStairs',
+        blockName: 'Block_Stone_Stairs',
+        nodeNames: [
+            'Block_Stone_Stairs_Large',
+            'Block_Stone_Stairs_Mid',
+            'Block_Stone_Stairs_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockStoneStairsCorner',
+        blockName: 'Block_Stone_Stairs_Corner',
+        nodeNames: [
+            'Block_Stone_Stairs_Corner_Large',
+            'Block_Stone_Stairs_Corner_Mid',
+            'Block_Stone_Stairs_Corner_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockStoneStairsCorner',
+        blockName: 'Block_Stone_Stairs_Half',
+        nodeNames: [
+            'Block_Stone_Stairs_Corner_Large',
+            'Block_Stone_Stairs_Corner_Mid',
+            'Block_Stone_Stairs_Corner_Dark',
+        ],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStone',
+        blockName: 'Block_Polished_Stone',
+        nodeNames: ['Block_Polished_Stone'],
+        weatherSurface: true,
+    },
+    {
+        assetName: 'BlockPolishedStoneAngle',
+        blockName: 'Block_Polished_Stone_Angle',
+        nodeNames: ['Block_Polished_Stone_Angle'],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStoneStairs',
+        blockName: 'Block_Polished_Stone_Stairs',
+        nodeNames: ['Block_Polished_Stone_Stairs'],
+        weatherSurface: false,
+    },
+    {
+        assetName: 'BlockPolishedStoneStairsCorner',
+        blockName: 'Block_Polished_Stone_Stairs_Corner',
+        nodeNames: ['Block_Polished_Stone_Stairs_Corner'],
+        weatherSurface: false,
+    },
+] as const satisfies readonly {
+    assetName: GameAssetName;
+    blockName: string;
+    nodeNames: readonly (keyof GLTFResult['nodes'])[];
+    weatherSurface: boolean;
+}[];
 
 const gardenBoxTooltipDurationMs = 3600;
 const gardenBoxTooltipYOffset = 1.25;
@@ -200,10 +316,26 @@ export const additionalInstancedBlockNames = [
     'Block_Ground_Angle',
     'Block_Ground_Corner',
     'Block_Ground_Reverse_Corner',
-    'Block_Water',
+    'Block_Dry_Ground',
+    'Block_Dry_Ground_Angle',
+    'Block_Swamp_Ground',
+    'Block_Swamp_Ground_Angle',
+    'Block_Stone',
+    'Block_Stone_Angle',
+    'Block_Gravel',
+    'Block_Gravel_Angle',
+    'Block_Polished_Stone',
+    'Block_Polished_Stone_Angle',
+    'Block_Polished_Stone_Stairs',
+    'Block_Polished_Stone_Stairs_Corner',
+    'Block_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
+    'Block_Stone_Stairs_Half',
+    ...waterBlockNames,
     'Raised_Bed',
     'Shade',
     'Fence',
+    'WhiteFence',
     'GardenBox',
     'Stool',
     'Bucket',
@@ -418,10 +550,122 @@ function BlockGroundInstances({
     );
 }
 
+function TerrainVariationInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const dryGroundMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: '#b8895f',
+                metalness: 0,
+                roughness: 1,
+            }),
+        [],
+    );
+    const swampGroundMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: swampGroundBaseColor,
+                metalness: 0,
+                roughness: 1,
+            }),
+        [],
+    );
+
+    return (
+        <>
+            <AssetBlock
+                assetName="BlockSand"
+                stacks={stacks}
+                name="Block_Dry_Ground"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="dryDirt"
+                renderRainWetOverlay
+                weatherSurface="base-ground"
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                material={() => dryGroundMaterial}
+                snow={snowPresets.sand}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            <AssetBlock
+                assetName="BlockSandAngle"
+                stacks={stacks}
+                name="Block_Dry_Ground_Angle"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="dryDirt"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                material={() => dryGroundMaterial}
+                snow={snowPresets.sandAngle}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            <AssetBlock
+                assetName="BlockSand"
+                stacks={stacks}
+                name="Block_Swamp_Ground"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="swampDirt"
+                renderRainWetOverlay
+                weatherSurface="base-ground"
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                material={() => swampGroundMaterial}
+                snow={snowPresets.sand}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            <AssetBlock
+                assetName="BlockSandAngle"
+                stacks={stacks}
+                name="Block_Swamp_Ground_Angle"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="swampDirt"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                material={() => swampGroundMaterial}
+                snow={snowPresets.sandAngle}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            {terrainVariationAssetParts.flatMap((part) =>
+                part.nodeNames.map((nodeName) => (
+                    <AssetBlock
+                        key={`${part.blockName}:${nodeName}`}
+                        assetName={part.assetName}
+                        stacks={stacks}
+                        name={part.blockName}
+                        staticOpaqueCacheGroup="base-terrain"
+                        renderRainWetOverlay
+                        weatherSurface={
+                            part.weatherSurface ? 'base-ground' : undefined
+                        }
+                        geometry={(gltf) => gltf.nodes[nodeName].geometry}
+                        material={(gltf) => gltf.nodes[nodeName].material}
+                        snow={snowPresets.stone}
+                        snowLift={0.002}
+                        renderStableChunksAsMergedGeometry
+                        {...commonSnowProps}
+                    />
+                )),
+            )}
+        </>
+    );
+}
+
 function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
     const { data: blockData } = useBlockData();
     const baseWaterInstances = useEntityBlockInstances({
-        name: 'Block_Water',
+        names: waterBlockNames,
         stacks,
     });
     const waterInstances = useMemo(
@@ -445,6 +689,8 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     ...instance,
                     depth: Math.max(...depthSamples),
                     depthSamples,
+                    style:
+                        getWaterBlockStyle(instance.block.name) ?? 'standard',
                     surfaceY: getWaterBlockColumnSurfaceY({
                         block: instance.block,
                         blockData,
@@ -468,7 +714,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
         const topInstances =
             waterInstances
                 ?.filter(isWaterBlockTopSurfaceVisible)
-                .map((instance): WaterTopChunkInstance => {
+                .map((instance): StyledWaterTopChunkInstance => {
                     const foamEdges = resolveWaterFoamEdges({
                         block: instance.block,
                         blockData,
@@ -489,6 +735,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                         position: instance.position,
                         rotation: 0,
                         shoreDepth: 0,
+                        style: instance.style,
                         surfaceY: instance.surfaceY,
                         waterHeight: instance.waterHeight,
                     };
@@ -539,8 +786,54 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
 
     return (
         <>
-            <WaterBlockTopChunks instances={topSurfaceInstances} />
-            <WaterBlockMergedSides instances={sideSurfaceInstances} />
+            {waterBlockStyles.map((style) => (
+                <WaterBlockStyleInstances
+                    key={style}
+                    allSideInstances={sideSurfaceInstances}
+                    sideInstances={sideSurfaceInstances}
+                    style={style}
+                    topInstances={topSurfaceInstances}
+                />
+            ))}
+        </>
+    );
+}
+
+function WaterBlockStyleInstances({
+    allSideInstances,
+    sideInstances,
+    style,
+    topInstances,
+}: {
+    allSideInstances: WaterBlockInstance[];
+    sideInstances: WaterBlockInstance[];
+    style: WaterBlockStyle;
+    topInstances: StyledWaterTopChunkInstance[];
+}) {
+    const styledTopInstances = useMemo(
+        () => topInstances.filter((instance) => instance.style === style),
+        [style, topInstances],
+    );
+    const styledSideInstances = useMemo(
+        () => sideInstances.filter((instance) => instance.style === style),
+        [sideInstances, style],
+    );
+
+    return (
+        <>
+            {styledTopInstances.length > 0 ? (
+                <WaterBlockTopChunks
+                    instances={styledTopInstances}
+                    style={style}
+                />
+            ) : null}
+            {styledSideInstances.length > 0 ? (
+                <WaterBlockMergedSides
+                    allInstances={allSideInstances}
+                    instances={styledSideInstances}
+                    style={style}
+                />
+            ) : null}
         </>
     );
 }
@@ -558,8 +851,10 @@ const mergedWaterTopFoamCorners = new Vector4(0, 0, 0, 0);
 
 function WaterBlockTopChunks({
     instances,
+    style,
 }: {
-    instances: WaterTopChunkInstance[];
+    instances: StyledWaterTopChunkInstance[];
+    style: WaterBlockStyle;
 }) {
     const chunks = useMemo(
         () => chunkWaterTopInstances(instances),
@@ -570,6 +865,7 @@ function WaterBlockTopChunks({
         false,
         mergedWaterTopFoamCorners,
         {
+            style,
             useFoamAttributes: true,
             useWaterDepthAttribute: true,
             useShoreDepthAttribute: true,
@@ -579,7 +875,7 @@ function WaterBlockTopChunks({
 
     return chunks.map((chunk) => (
         <WaterBlockTopChunk
-            key={`Block_Water_Top:${chunk.key}`}
+            key={`Block_Water_Top:${style}:${chunk.key}`}
             chunk={chunk}
             material={material}
         />
@@ -590,7 +886,7 @@ function WaterBlockTopChunk({
     chunk,
     material,
 }: {
-    chunk: MeshInstanceChunk<WaterTopChunkInstance>;
+    chunk: MeshInstanceChunk<StyledWaterTopChunkInstance>;
     material: ReturnType<typeof useWaterBlockMaterial>;
 }) {
     const geometry = useMemo(
@@ -618,15 +914,20 @@ function WaterBlockTopChunk({
 }
 
 function WaterBlockMergedSides({
+    allInstances,
     instances,
+    style,
 }: {
+    allInstances: WaterBlockInstance[];
     instances: WaterBlockInstance[];
+    style: WaterBlockStyle;
 }) {
     const material = useWaterBlockMaterial(
         mergedWaterSideFoamEdges,
         false,
         undefined,
         {
+            style,
             useWaterDepthAttribute: true,
             useShoreDepthAttribute: true,
         },
@@ -635,8 +936,8 @@ function WaterBlockMergedSides({
 
     return chunks.map((chunk) => (
         <WaterBlockMergedSideChunk
-            key={`Block_Water_Sides:${chunk.key}`}
-            allInstances={instances}
+            key={`Block_Water_Sides:${style}:${chunk.key}`}
+            allInstances={allInstances}
             chunk={chunk}
             material={material}
         />
@@ -1189,72 +1490,25 @@ const shadeKeys = [
     'Shade_Middle',
 ] satisfies ShadeKey[];
 
-type FenceKey =
-    | 'Fence_Solo'
-    | 'Fence_Single'
-    | 'Fence_Middle'
-    | 'Fence_Corner'
-    | 'Fence_T'
-    | 'Fence_Cross';
+type FenceKey = (typeof fenceVariantNames)[keyof typeof fenceVariantNames];
+type WhiteFenceKey =
+    (typeof whiteFenceVariantNames)[keyof typeof whiteFenceVariantNames];
 
-function resolveFenceVariant(
+function resolveConnectedFenceVariant<Key extends string>(
     instance: EntityBlockInstance,
     stacks: Stack[] | undefined,
+    variants: Record<FenceConnectionShape, Key>,
 ) {
     const neighbors = resolveEntityNeighbors(
         stacks,
         instance.stack,
         instance.block,
     );
-    let variant: FenceKey = 'Fence_Solo';
-    let realizedRotation = instance.rotation % 4;
-
-    if (neighbors.total === 1) {
-        variant = 'Fence_Single';
-        realizedRotation = neighbors.n
-            ? 3
-            : neighbors.s
-              ? 1
-              : neighbors.e
-                ? 0
-                : 2;
-    } else if (neighbors.total === 2) {
-        if (neighbors.n && neighbors.s) {
-            variant = 'Fence_Middle';
-            realizedRotation = 1;
-        } else if (neighbors.e && neighbors.w) {
-            variant = 'Fence_Middle';
-            realizedRotation = 0;
-        } else {
-            variant = 'Fence_Corner';
-            if (neighbors.n && neighbors.e) {
-                realizedRotation = 0;
-            } else if (neighbors.e && neighbors.s) {
-                realizedRotation = 1;
-            } else if (neighbors.s && neighbors.w) {
-                realizedRotation = 2;
-            } else if (neighbors.w && neighbors.n) {
-                realizedRotation = 3;
-            }
-        }
-    } else if (neighbors.total === 3) {
-        variant = 'Fence_T';
-        if (neighbors.n && neighbors.e && neighbors.s) {
-            realizedRotation = 0;
-        } else if (neighbors.e && neighbors.s && neighbors.w) {
-            realizedRotation = 1;
-        } else if (neighbors.s && neighbors.w && neighbors.n) {
-            realizedRotation = 2;
-        } else if (neighbors.w && neighbors.n && neighbors.e) {
-            realizedRotation = 3;
-        }
-    } else if (neighbors.total === 4) {
-        variant = 'Fence_Cross';
-    }
+    const connection = resolveFenceConnection(neighbors, instance.rotation);
 
     return {
-        instance: mapInstanceRotation(instance, realizedRotation),
-        variant,
+        instance: mapInstanceRotation(instance, connection.rotation),
+        variant: variants[connection.shape],
     };
 }
 
@@ -1269,7 +1523,7 @@ function FenceInstances({
         yOffset: 1,
     });
     const resolved = instances?.map((instance) =>
-        resolveFenceVariant(instance, stacks),
+        resolveConnectedFenceVariant(instance, stacks, fenceVariantNames),
     );
 
     if (!resolved?.length) {
@@ -1302,13 +1556,83 @@ function FenceInstances({
 }
 
 const fenceKeys = [
-    'Fence_Solo',
-    'Fence_Single',
-    'Fence_Middle',
-    'Fence_Corner',
-    'Fence_T',
-    'Fence_Cross',
+    fenceVariantNames.Solo,
+    fenceVariantNames.Single,
+    fenceVariantNames.Middle,
+    fenceVariantNames.Corner,
+    fenceVariantNames.T,
+    fenceVariantNames.Cross,
 ] satisfies FenceKey[];
+
+function LoadedWhiteFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const { nodes, materials } = useGameGLTF('WhiteFence');
+    const instances = useEntityBlockInstances({
+        name: 'WhiteFence',
+        stacks,
+        yOffset: 1,
+    });
+    const resolved = instances?.map((instance) =>
+        resolveConnectedFenceVariant(instance, stacks, whiteFenceVariantNames),
+    );
+
+    if (!resolved?.length) {
+        return null;
+    }
+
+    return (
+        <>
+            {whiteFenceKeys.map((key) => (
+                <EntityInstancesGeometry
+                    key={key}
+                    instanceKey={key}
+                    instances={resolved
+                        .filter(({ variant }) => variant === key)
+                        .map(({ instance }) => instance)}
+                    geometry={nodes[key].geometry}
+                    material={materials['Material.WhitePaint']}
+                    staticOpaqueCacheGroup="static-props"
+                    renderRainWetOverlay
+                    snow={{
+                        maxThickness: 0.035,
+                        slopeExponent: 2.9,
+                        noiseScale: 3.3,
+                    }}
+                    {...commonSnowProps}
+                />
+            ))}
+        </>
+    );
+}
+
+function WhiteFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, 'WhiteFence');
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedWhiteFenceInstances stacks={stacks} {...commonSnowProps} />
+        </Suspense>
+    );
+}
+
+const whiteFenceKeys = [
+    whiteFenceVariantNames.Solo,
+    whiteFenceVariantNames.Single,
+    whiteFenceVariantNames.Middle,
+    whiteFenceVariantNames.Corner,
+    whiteFenceVariantNames.T,
+    whiteFenceVariantNames.Cross,
+] satisfies WhiteFenceKey[];
 
 function GardenBoxInstances({
     stacks,
@@ -2326,7 +2650,7 @@ function BirdHouseInstances({
     const woodMaterial = useMemo(
         () => (
             <meshStandardMaterial
-                color="#956247"
+                color={defaultGameWoodColor}
                 metalness={0}
                 roughness={0.9}
                 side={DoubleSide}
@@ -2520,7 +2844,7 @@ function SimpleAdditionalInstances({
                 material={(gltf) => gltf.materials[planksMaterialName]}
                 renderRainWetOverlay
                 snow={{
-                    maxThickness: 0.11,
+                    maxThickness: 0.08,
                     slopeExponent: 2.9,
                     noiseScale: 3,
                 }}
@@ -2547,11 +2871,13 @@ export function AdditionalEntityInstances({
     return (
         <>
             <BlockGroundInstances stacks={stacks} {...commonSnowProps} />
+            <TerrainVariationInstances stacks={stacks} {...commonSnowProps} />
             <SimpleAdditionalInstances stacks={stacks} {...commonSnowProps} />
             <WaterBlockInstances stacks={stacks} />
             <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
             <ShadeInstances stacks={stacks} {...commonSnowProps} />
             <FenceInstances stacks={stacks} {...commonSnowProps} />
+            <WhiteFenceInstances stacks={stacks} {...commonSnowProps} />
             <GardenBoxInstances stacks={stacks} {...commonSnowProps} />
             <BucketInstances stacks={stacks} {...commonSnowProps} />
             <WateringCanInstances stacks={stacks} {...commonSnowProps} />

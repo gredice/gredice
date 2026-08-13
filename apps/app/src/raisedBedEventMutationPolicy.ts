@@ -50,12 +50,52 @@ export type RaisedBedEventMutationDecision =
     | { allowed: true }
     | {
           allowed: false;
-          reason: 'event_not_found' | 'event_read_only' | 'invalid_input';
+          reason:
+              | 'event_not_found'
+              | 'event_read_only'
+              | 'invalid_input'
+              | 'selected_planting_conflict';
       };
+
+type RaisedBedEventMutationContext = {
+    activeSelectedPlantingPositionIndices?: ReadonlySet<number>;
+};
+
+type RaisedBedPlantingHistoryAvailability = {
+    configurationSource: string;
+    isActive: boolean;
+    isDeleted?: boolean;
+    memberships: Array<{
+        isDeleted?: boolean;
+        raisedBedField: { positionIndex: number };
+    }>;
+};
+
+export function activeSelectedPlantingPositionIndices(
+    plantings: readonly RaisedBedPlantingHistoryAvailability[],
+) {
+    return new Set(
+        plantings.flatMap((planting) => {
+            if (
+                planting.configurationSource !== 'selected' ||
+                !planting.isActive ||
+                planting.isDeleted
+            ) {
+                return [];
+            }
+            return planting.memberships.flatMap((membership) =>
+                membership.isDeleted
+                    ? []
+                    : [membership.raisedBedField.positionIndex],
+            );
+        }),
+    );
+}
 
 export function raisedBedEventMutationDecision(
     event: RaisedBedHistoryEvent,
     raisedBedId: number,
+    context?: RaisedBedEventMutationContext,
 ): RaisedBedEventMutationDecision {
     if (!isValidId(raisedBedId)) {
         return { allowed: false, reason: 'invalid_input' };
@@ -72,9 +112,14 @@ export function raisedBedEventMutationDecision(
         const positionIndex = event.aggregateId.startsWith(prefix)
             ? event.aggregateId.slice(prefix.length)
             : '';
-        return isCanonicalPositionIndex(positionIndex)
-            ? { allowed: true }
-            : { allowed: false, reason: 'event_not_found' };
+        if (!isCanonicalPositionIndex(positionIndex)) {
+            return { allowed: false, reason: 'event_not_found' };
+        }
+        return context?.activeSelectedPlantingPositionIndices?.has(
+            Number(positionIndex),
+        )
+            ? { allowed: false, reason: 'selected_planting_conflict' }
+            : { allowed: true };
     }
 
     return { allowed: false, reason: 'event_read_only' };
@@ -83,8 +128,9 @@ export function raisedBedEventMutationDecision(
 export function canMutateRaisedBedHistoryEvent(
     event: RaisedBedHistoryEvent,
     raisedBedId: number,
+    context?: RaisedBedEventMutationContext,
 ) {
-    return raisedBedEventMutationDecision(event, raisedBedId).allowed;
+    return raisedBedEventMutationDecision(event, raisedBedId, context).allowed;
 }
 
 export async function runRaisedBedEventMutation({
@@ -92,11 +138,13 @@ export async function runRaisedBedEventMutation({
     getEvent,
     mutate,
     raisedBedId,
+    context,
 }: {
     eventId: number;
     getEvent: (eventId: number) => Promise<RaisedBedHistoryEvent | undefined>;
-    mutate: () => Promise<unknown>;
+    mutate: (event: RaisedBedHistoryEvent) => Promise<unknown>;
     raisedBedId: number;
+    context?: RaisedBedEventMutationContext;
 }): Promise<RaisedBedEventMutationDecision> {
     if (!isValidId(eventId) || !isValidId(raisedBedId)) {
         return { allowed: false, reason: 'invalid_input' };
@@ -107,11 +155,15 @@ export async function runRaisedBedEventMutation({
         return { allowed: false, reason: 'event_not_found' };
     }
 
-    const decision = raisedBedEventMutationDecision(event, raisedBedId);
+    const decision = raisedBedEventMutationDecision(
+        event,
+        raisedBedId,
+        context,
+    );
     if (!decision.allowed) {
         return decision;
     }
 
-    await mutate();
+    await mutate(event);
     return { allowed: true };
 }

@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",
+        "@gredice/js": "workspace:*",
         "@gredice/slack": "workspace:*",
         "@gredice/storage": "workspace:*"
     },

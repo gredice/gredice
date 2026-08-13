@@ -129,9 +129,6 @@ export function FarmScheduleNavigationFrame({
         >
             <ScheduleTaskReturnFocus />
             <div className="space-y-2">
-                <Typography component="h1" level="h5" semiBold>
-                    Raspored
-                </Typography>
                 <div className="grid min-w-0 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="min-w-0 justify-self-center sm:justify-self-start">
                         <Row className="shrink-0 gap-1 sm:gap-2">
@@ -148,6 +145,7 @@ export function FarmScheduleNavigationFrame({
                             </Link>
                             <div className="min-w-16 text-center sm:min-w-20">
                                 <Typography
+                                    component="h1"
                                     level="body2"
                                     semiBold
                                     className="capitalize text-xs leading-tight sm:text-sm"

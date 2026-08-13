@@ -21,10 +21,12 @@ import {
     useRef,
     useState,
 } from 'react';
+import { arrowSignNames } from '../entities/signageConfig';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import { isInternalSceneBlockData } from '../internalSceneBlockData';
 import {
     itemsHudDropTargetActiveAttribute,
     itemsHudDropTargetAttribute,
@@ -85,6 +87,163 @@ const treeItems: HudItemEntity[] = [
     { type: 'entity', name: 'Pine' },
     { type: 'entity', name: 'DeadTreeTall' },
     { type: 'entity', name: 'DeadTreeStump' },
+];
+
+const signItems: HudItemEntity[] = [
+    ...arrowSignNames.map<HudItemEntity>((name) => ({
+        type: 'entity',
+        name,
+    })),
+    { type: 'entity', name: 'WoodenSign' },
+];
+
+const lightingItems: HudItemEntity[] = [
+    { type: 'entity', name: 'FireflyJar' },
+    { type: 'entity', name: 'EnamelGardenLamp' },
+    { type: 'entity', name: 'DoubleGardenLightPole' },
+    { type: 'entity', name: 'HazelLightArch' },
+    { type: 'entity', name: 'RoofTileLantern' },
+    { type: 'entity', name: 'WickerGardenLantern' },
+    { type: 'entity', name: 'WoodenHandLantern' },
+    { type: 'entity', name: 'MoonRainBarrel' },
+];
+
+const fenceItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Fence' },
+    { type: 'entity', name: 'WhiteFence' },
+];
+
+const summerItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Shade' },
+    { type: 'entity', name: 'BeachUmbrella' },
+    { type: 'entity', name: 'LemonadeStand' },
+    { type: 'entity', name: 'IceCreamCart' },
+    { type: 'entity', name: 'SummerHat' },
+    { type: 'entity', name: 'BeachTowelStriped' },
+    { type: 'entity', name: 'InflatablePoolSmall' },
+    { type: 'entity', name: 'BeachChair' },
+    { type: 'entity', name: 'BeachBall' },
+    { type: 'entity', name: 'SandcastleSmallA' },
+];
+
+const furnitureItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Stool' },
+    { type: 'entity', name: 'WoodenBench' },
+    { type: 'entity', name: 'OutletDisplayTable' },
+];
+
+const petItems: HudItemEntity[] = [
+    { type: 'entity', name: 'BirdHouse' },
+    { type: 'entity', name: 'CatPillow' },
+    { type: 'entity', name: 'DogHouse' },
+];
+
+const terrainItems: HudItemPicker[] = [
+    {
+        type: 'picker',
+        label: 'Trava',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Grass.webp',
+        items: [
+            { type: 'entity', name: 'Block_Grass' },
+            { type: 'entity', name: 'Block_Grass_Angle' },
+            { type: 'entity', name: 'Block_Grass_Corner' },
+            { type: 'entity', name: 'Block_Grass_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Zemlja',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Ground.webp',
+        items: [
+            { type: 'entity', name: 'Block_Ground' },
+            { type: 'entity', name: 'Block_Ground_Angle' },
+            { type: 'entity', name: 'Block_Ground_Corner' },
+            { type: 'entity', name: 'Block_Ground_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Suha zemlja',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Dry_Ground.webp',
+        items: [
+            { type: 'entity', name: 'Block_Dry_Ground' },
+            { type: 'entity', name: 'Block_Dry_Ground_Angle' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Močvara',
+        imageSrc:
+            'https://www.gredice.com/assets/blocks/Block_Swamp_Ground.webp',
+        items: [
+            { type: 'entity', name: 'Block_Swamp_Ground' },
+            { type: 'entity', name: 'Block_Swamp_Ground_Angle' },
+            { type: 'entity', name: 'Block_Swamp_Water' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Kamen',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Stone.webp',
+        items: [
+            { type: 'entity', name: 'Block_Stone' },
+            { type: 'entity', name: 'Block_Stone_Angle' },
+            { type: 'entity', name: 'Block_Stone_Stairs' },
+            { type: 'entity', name: 'Block_Stone_Stairs_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Polirani kamen',
+        imageSrc:
+            'https://www.gredice.com/assets/blocks/Block_Polished_Stone.webp',
+        items: [
+            { type: 'entity', name: 'Block_Polished_Stone' },
+            { type: 'entity', name: 'Block_Polished_Stone_Angle' },
+            { type: 'entity', name: 'Block_Polished_Stone_Stairs' },
+            {
+                type: 'entity',
+                name: 'Block_Polished_Stone_Stairs_Corner',
+            },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Šljunak',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Gravel.webp',
+        items: [
+            { type: 'entity', name: 'Block_Gravel' },
+            { type: 'entity', name: 'Block_Gravel_Angle' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Pijesak',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Sand.webp',
+        items: [
+            { type: 'entity', name: 'Block_Sand' },
+            { type: 'entity', name: 'Block_Sand_Angle' },
+            { type: 'entity', name: 'Block_Sand_Corner' },
+            { type: 'entity', name: 'Block_Sand_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Snijeg',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Snow.webp',
+        items: [
+            { type: 'entity', name: 'Block_Snow' },
+            { type: 'entity', name: 'Block_Snow_Angle' },
+            { type: 'entity', name: 'Block_Snow_Corner' },
+            { type: 'entity', name: 'Block_Snow_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Voda',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Water.webp',
+        items: [{ type: 'entity', name: 'Block_Water' }],
+    },
 ];
 
 const treeGroupEntityNames = new Set([
@@ -151,23 +310,51 @@ const items: HudItem[] = [
                 imageSrc: treePickerImageSrc,
                 items: treeItems,
             },
-            { type: 'entity', name: 'Shade' },
-            { type: 'entity', name: 'BeachUmbrella' },
-            { type: 'entity', name: 'Stool' },
-            { type: 'entity', name: 'Fence' },
+            {
+                type: 'picker',
+                label: 'Znakovi',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/ArrowSignWhiteRight.webp',
+                items: signItems,
+            },
+            {
+                type: 'picker',
+                label: 'Rasvjeta',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/FireflyJar.webp',
+                items: lightingItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ljeto',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/BeachUmbrella.webp',
+                items: summerItems,
+            },
+            {
+                type: 'picker',
+                label: 'Namještaj',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/WoodenBench.webp',
+                items: furnitureItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ljubimci',
+                imageSrc: 'https://www.gredice.com/assets/blocks/DogHouse.webp',
+                items: petItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ograde',
+                imageSrc: 'https://www.gredice.com/assets/blocks/Fence.webp',
+                items: fenceItems,
+            },
+            { type: 'entity', name: 'SmallWoodenBridge' },
+            { type: 'entity', name: 'WoodenWalkway' },
+            { type: 'entity', name: 'StoneWalkway' },
+            { type: 'entity', name: 'FishingBoat' },
             { type: 'entity', name: 'WaterWell' },
-            { type: 'entity', name: 'LemonadeStand' },
-            { type: 'entity', name: 'IceCreamCart' },
-            { type: 'entity', name: 'SummerHat' },
-            { type: 'entity', name: 'BeachTowelStriped' },
-            { type: 'entity', name: 'InflatablePoolSmall' },
-            { type: 'entity', name: 'BeachChair' },
-            { type: 'entity', name: 'BeachBall' },
-            { type: 'entity', name: 'SandcastleSmallA' },
-            { type: 'entity', name: 'BirdHouse' },
-            { type: 'entity', name: 'FireflyJar' },
-            { type: 'entity', name: 'CatPillow' },
-            { type: 'entity', name: 'DogHouse' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'Sunflower' },
@@ -181,25 +368,7 @@ const items: HudItem[] = [
         label: 'Blokovi',
         imageSrc:
             'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.webp',
-        items: [
-            { type: 'entity', name: 'Block_Grass' },
-            { type: 'entity', name: 'Block_Ground' },
-            { type: 'entity', name: 'Block_Sand' },
-            { type: 'entity', name: 'Block_Snow' },
-            { type: 'entity', name: 'Block_Water' },
-            { type: 'entity', name: 'Block_Grass_Angle' },
-            { type: 'entity', name: 'Block_Ground_Angle' },
-            { type: 'entity', name: 'Block_Sand_Angle' },
-            { type: 'entity', name: 'Block_Snow_Angle' },
-            { type: 'entity', name: 'Block_Grass_Corner' },
-            { type: 'entity', name: 'Block_Ground_Corner' },
-            { type: 'entity', name: 'Block_Sand_Corner' },
-            { type: 'entity', name: 'Block_Snow_Corner' },
-            { type: 'entity', name: 'Block_Grass_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Ground_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Sand_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Snow_Reverse_Corner' },
-        ],
+        items: terrainItems,
     },
 ];
 
@@ -229,7 +398,9 @@ function useHudEntityPlacementState(
     const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
     const isSandbox = useIsSandboxGarden();
     const block = blockData?.find((block) => block.information.name === name);
-    if (!block) {
+    // Scene-only fallbacks keep authored public/outlet scenes renderable before
+    // their catalog row is deployed, but they must never become a shop item.
+    if (!block || isInternalSceneBlockData(block)) {
         return null;
     }
 
@@ -709,9 +880,6 @@ function PlaceEntityButton({
 
     if (!isPlaceable && simple) return null;
 
-    const errorMessage =
-        placeBlock.error instanceof Error ? placeBlock.error.message : null;
-
     return (
         <Stack spacing={1}>
             <Button
@@ -753,11 +921,6 @@ function PlaceEntityButton({
             {insufficientSunflowersMessage && !simple && (
                 <Typography level="body3" className="text-muted-foreground">
                     {insufficientSunflowersMessage}
-                </Typography>
-            )}
-            {errorMessage && (
-                <Typography level="body3" className="text-red-600">
-                    {errorMessage}
                 </Typography>
             )}
         </Stack>

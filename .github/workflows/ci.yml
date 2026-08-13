@@ -49,7 +49,6 @@ jobs:
               - turbo.json
             app_news:
               - apps/news/**
-              - packages/client/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -74,6 +73,7 @@ jobs:
               - packages/client/**
               - packages/js/**
               - packages/label-printer/**
+              - packages/notifications/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -238,6 +238,17 @@ jobs:
       testShardPrepareScript: "test:prepare:routes"
     secrets: inherit
 
+  ci_news:
+    name: "CI - news"
+    needs: changes
+    if: success() && needs.changes.outputs.app_news == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "news"
+      path: "apps/news"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_NEWS"
+    secrets: inherit
+
   ci_garden:
     name: "CI - garden"
     needs: changes
@@ -247,6 +258,18 @@ jobs:
       name: "garden"
       path: "apps/garden"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
+      testShardMatrix: >-
+        [
+          {"name":"chromium 1/2","args":"--project=chromium --shard=1/2"},
+          {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
+          {"name":"webgl components","args":"--project=chromium-webgl"},
+          {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
+          {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
+          {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
+          {"name":"outlet walk","args":"--project=chromium-webgl-outlet --grep @outlet-walk"},
+          {"name":"outlet rest","args":"--project=chromium-webgl-outlet --grep-invert @outlet-slow"}
+        ]
+      testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
 
   ci_farm:
@@ -307,7 +330,7 @@ jobs:
 
   test_packages:
     name: "CI - test @gredice/storage"
-    timeout-minutes: 5
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: changes
     if: success() && github.event_name == 'pull_request' &&
@@ -456,6 +479,7 @@ jobs:
       [
         changes,
         ci_www,
+        ci_news,
         ci_garden,
         ci_farm,
         ci_delivery,

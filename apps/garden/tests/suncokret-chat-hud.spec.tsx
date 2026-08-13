@@ -100,10 +100,6 @@ async function mockSuncokretRoutes(
                                 role: 'assistant',
                                 parts: [
                                     {
-                                        type: 'text',
-                                        text: 'Provjeri odvodnju i zaštiti osjetljive biljke. Predlažem i ove korake:',
-                                    },
-                                    {
                                         type: 'tool-presentRecommendations',
                                         toolCallId: 'recommendations-1',
                                         state: 'output-available',
@@ -114,6 +110,13 @@ async function mockSuncokretRoutes(
                                                     operationId: 77,
                                                     gardenId: 1,
                                                     raisedBedId: 11,
+                                                },
+                                                {
+                                                    kind: 'operation',
+                                                    operationId: 569,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    scheduledDate: '2026-08-12',
                                                 },
                                                 {
                                                     kind: 'sowing',
@@ -133,6 +136,13 @@ async function mockSuncokretRoutes(
                                                     raisedBedId: 11,
                                                 },
                                                 {
+                                                    kind: 'operation',
+                                                    operationId: 569,
+                                                    gardenId: 1,
+                                                    raisedBedId: 11,
+                                                    scheduledDate: '2026-08-12',
+                                                },
+                                                {
                                                     kind: 'sowing',
                                                     plantSortId: 102,
                                                     gardenId: 1,
@@ -141,6 +151,15 @@ async function mockSuncokretRoutes(
                                                 },
                                             ],
                                         },
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: [
+                                            'Provjeri odvodnju i zaštiti osjetljive biljke.',
+                                            'Prije kiše pregledaj rubove svake gredice, ukloni sve što usporava otjecanje vode i učvrsti više biljke koje bi vjetar mogao polegnuti.',
+                                            'Nakon kiše pričekaj da se površina tla malo prosuši pa provjeri zadržava li se voda uz stabljike. Nemoj dodatno zalijevati dok je zemlja još vlažna.',
+                                            'Predlažem i ove korake:',
+                                        ].join('\n\n'),
                                     },
                                 ],
                             },
@@ -310,6 +329,18 @@ test('saved AI recommendations open manual operation and sowing flows', async ({
     ).toBeVisible();
     await page.getByRole('button', { name: 'Odustani' }).click();
 
+    const resistanceRecommendation = recommendations.getByRole('button', {
+        name: 'Jačanje otpornosti rajčice i patlidžana - polje 2',
+    });
+    await expect(resistanceRecommendation).toBeEnabled();
+    await resistanceRecommendation.click();
+    await expect(
+        page.getByRole('dialog', {
+            name: 'Zakaži radnju: Jačanje otpornosti rajčice i patlidžana',
+        }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Odustani' }).click();
+
     await recommendations
         .getByRole('button', { name: 'Klasični bosiljak - polje 1' })
         .click();
@@ -323,6 +354,37 @@ test('saved AI recommendations open manual operation and sowing flows', async ({
     await expect(
         sowingDialog.getByRole('button', { name: 'Dodaj u košaru' }),
     ).toBeEnabled();
+});
+
+test('saved AI recommendations follow the answer and stay visible at the end', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mockSuncokretRoutes(page);
+    await mount(<SuncokretChatHudStory />);
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByRole('button', { name: 'Prijašnji razgovori' }).click();
+    await page.getByRole('button', { name: /Priprema vrta za kišu/ }).click();
+
+    const answer = page.getByText('Predlažem i ove korake:');
+    const recommendations = page.getByRole('group', {
+        name: 'Preporučene radnje i sijanja',
+    });
+    await expect(answer).toBeVisible();
+    await expect(recommendations).toBeVisible();
+    await expect
+        .poll(async () => {
+            const answerBox = await answer.boundingBox();
+            const recommendationsBox = await recommendations.boundingBox();
+            if (!answerBox || !recommendationsBox) {
+                return false;
+            }
+
+            return answerBox.y + answerBox.height <= recommendationsBox.y;
+        })
+        .toBe(true);
+    await expect(recommendations).toBeInViewport();
 });
 
 test('settings context replaces the raised-bed context in the header', async ({
@@ -584,4 +646,136 @@ test('approving a tool automatically continues the conversation', async ({
 
     await expect.poll(() => requestBodies.length).toBe(2);
     expect(JSON.stringify(requestBodies[1])).toContain('approval-responded');
+});
+
+test('completed AI cart actions refresh the active shopping-cart query', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    let cartReads = 0;
+    let chatRequests = 0;
+    await page.route('**/api/test/suncokret-shopping-cart', async (route) => {
+        cartReads += 1;
+        await route.fulfill({ body: cartReads.toString() });
+    });
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        chatRequests += 1;
+        const chunks =
+            chatRequests === 1
+                ? [
+                      { type: 'start', messageId: 'assistant-cart-approval' },
+                      { type: 'start-step' },
+                      {
+                          type: 'tool-input-available',
+                          toolCallId: 'cart-call-1',
+                          toolName: 'addProductToCart',
+                          input: {
+                              productId: 'plant-sort-458',
+                              quantity: 1,
+                          },
+                      },
+                      {
+                          type: 'tool-approval-request',
+                          approvalId: 'approval-cart-1',
+                          toolCallId: 'cart-call-1',
+                      },
+                      { type: 'finish-step' },
+                      { type: 'finish', finishReason: 'tool-calls' },
+                  ]
+                : [
+                      { type: 'start', messageId: 'assistant-cart-result' },
+                      { type: 'start-step' },
+                      {
+                          type: 'tool-output-available',
+                          toolCallId: 'cart-call-1',
+                          output: { cartItemId: 42 },
+                      },
+                      { type: 'text-start', id: 'text-cart-result' },
+                      {
+                          type: 'text-delta',
+                          id: 'text-cart-result',
+                          delta: 'Dodano u košaricu.',
+                      },
+                      { type: 'text-end', id: 'text-cart-result' },
+                      { type: 'finish-step' },
+                      { type: 'finish', finishReason: 'stop' },
+                  ];
+        await route.fulfill({
+            body: uiMessageStream(chunks),
+            headers: {
+                'content-type': 'text/event-stream',
+                'x-vercel-ai-ui-message-stream': 'v1',
+            },
+        });
+    });
+
+    await mount(<SuncokretChatHudStory observeShoppingCart />);
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByLabel('Pitaj Suncokret').fill('Dodaj bosiljak');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.getByRole('button', { name: 'Dopusti' })).toBeVisible();
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+    expect(cartReads).toBe(1);
+
+    await page.getByRole('button', { name: 'Dopusti' }).click();
+
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('2');
+    expect(chatRequests).toBe(2);
+    expect(cartReads).toBe(2);
+});
+
+test('completed AI cart actions refresh after a later stream error', async ({
+    mount,
+    page,
+}) => {
+    await mockSuncokretRoutes(page);
+    let cartReads = 0;
+    await page.route('**/api/test/suncokret-shopping-cart', async (route) => {
+        cartReads += 1;
+        await route.fulfill({ body: cartReads.toString() });
+    });
+    await page.route('**/api/ai/suncokret/chat', async (route) => {
+        await route.fulfill({
+            body: uiMessageStream([
+                { type: 'start', messageId: 'assistant-cart-error' },
+                { type: 'start-step' },
+                {
+                    type: 'tool-input-available',
+                    toolCallId: 'cart-call-error',
+                    toolName: 'addProductToCart',
+                    input: {
+                        productId: 'plant-sort-458',
+                        quantity: 1,
+                    },
+                },
+                {
+                    type: 'tool-output-available',
+                    toolCallId: 'cart-call-error',
+                    output: { cartItemId: 43 },
+                },
+                {
+                    type: 'error',
+                    errorText:
+                        'Model follow-up failed after the tool completed',
+                },
+            ]),
+            headers: {
+                'content-type': 'text/event-stream',
+                'x-vercel-ai-ui-message-stream': 'v1',
+            },
+        });
+    });
+
+    await mount(<SuncokretChatHudStory observeShoppingCart />);
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('1');
+
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await page.getByLabel('Pitaj Suncokret').fill('Dodaj bosiljak');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(page.getByLabel('Verzija košarice')).toHaveText('2');
+    expect(cartReads).toBe(2);
 });

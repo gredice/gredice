@@ -1,3 +1,4 @@
+import { shouldLogPostHogProxyRequest } from '@gredice/js/observability';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { SeverityNumber } from '@opentelemetry/api-logs';
 import { postHogMiddleware } from '@posthog/next';
@@ -13,6 +14,11 @@ import {
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
 } from './lib/posthog-server';
+import {
+    canonicalLegacyNewsQueryPath,
+    canonicalPlantArchiveQueryPath,
+} from './src/canonicalQueryRedirects';
+import { canonicalLegacyNewsPathname } from './src/newsPaths';
 import { toPageAlias } from './src/pageAliases';
 
 const postHogApiKey =
@@ -37,6 +43,11 @@ function normalizeSlugSegment(segment: string): string | null {
 }
 
 function getCanonicalPathname(pathname: string): string | null {
+    const canonicalNewsPathname = canonicalLegacyNewsPathname(pathname);
+    if (canonicalNewsPathname) {
+        return canonicalNewsPathname;
+    }
+
     const segments = pathname.split('/').filter(Boolean);
 
     if (segments.length === 2 && segments[0] === 'biljke') {
@@ -120,9 +131,26 @@ const proxyHandler: NextProxy = async (
     request: NextRequest,
     event: NextFetchEvent,
 ) => {
+    const canonicalQueryPath =
+        canonicalLegacyNewsQueryPath(
+            request.nextUrl.pathname,
+            request.nextUrl.searchParams,
+        ) ??
+        canonicalPlantArchiveQueryPath(
+            request.nextUrl.pathname,
+            request.nextUrl.searchParams,
+        );
     const canonicalPathname = getCanonicalPathname(request.nextUrl.pathname);
     let response: Response;
-    if (canonicalPathname && canonicalPathname !== request.nextUrl.pathname) {
+    if (canonicalQueryPath) {
+        response = NextResponse.redirect(
+            new URL(canonicalQueryPath, request.nextUrl),
+            308,
+        );
+    } else if (
+        canonicalPathname &&
+        canonicalPathname !== request.nextUrl.pathname
+    ) {
         const url = request.nextUrl.clone();
         // Next derives implicit cache tags from the pathname.
         // Redirect slug-backed routes before rendering so headers stay ASCII-safe.
@@ -132,15 +160,22 @@ const proxyHandler: NextProxy = async (
         response =
             (await baseProxyHandler(request, event)) ?? NextResponse.next();
     }
+    const proxyAttributes = getProxyAttributes(response);
 
-    if (isPostHogLoggingEnabled()) {
+    if (
+        isPostHogLoggingEnabled() &&
+        shouldLogPostHogProxyRequest({
+            pathname: request.nextUrl.pathname,
+            proxyResult: proxyAttributes['next.proxy_result'],
+        })
+    ) {
         requestLogger.emit({
             attributes: {
                 'http.method': request.method,
                 'posthog.log_type': 'request',
                 'server.address': request.nextUrl.hostname,
                 'url.path': request.nextUrl.pathname,
-                ...getProxyAttributes(response),
+                ...proxyAttributes,
                 ...(request.headers.get('referer')
                     ? {
                           'http.request.header.referer':
@@ -169,6 +204,6 @@ export default proxyHandler;
 
 export const config = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|assets|api/gredice).*)',
+        '/((?!_next/static|_next/image|_vercel|favicon.ico|assets|api/gredice).*)',
     ],
 };

@@ -1,36 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { CompanyFacebook, Navigate } from '@gredice/ui/icons';
-import { cx } from '@gredice/ui/utils';
-import Link from 'next/link';
+import { CompanyFacebook } from '@gredice/ui/icons';
+import { SocialCard } from './SocialCard';
 
 export function FacebookCard() {
     return (
-        <Link href="https://gredice.link/fb">
-            <Card
-                className={cx(
-                    'h-full flex flex-row rounded-xl items-center justify-between max-w-md shadow hover:shadow-xl transition-all duration-300',
-                    'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 dark:from-blue-200 dark:to-cyan-200 dark:border-blue-700',
-                )}
-            >
-                <CardHeader className={cx('flex flex-row gap-4 items-center')}>
-                    <div
-                        className={cx(
-                            'size-16 shrink-0 rounded-full flex items-center justify-center shadow-lg',
-                            'bg-[#1877F2]',
-                        )}
-                    >
-                        <CompanyFacebook className="size-10 fill-white" />
-                    </div>
-                    <CardTitle className="text-lg leading-tight font-bold text-gray-800 max-w-xs mx-auto">
-                        Prati nas na Facebooku
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                    <Navigate
-                        className={cx('size-8 shrink-0', 'text-blue-600')}
-                    />
-                </CardContent>
-            </Card>
-        </Link>
+        <SocialCard
+            href="https://gredice.link/fb"
+            ctaText="Prati nas na Facebooku"
+            icon={<CompanyFacebook className="size-9 fill-white text-white" />}
+            bgColor="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-950 dark:border-blue-800 dark:from-blue-950 dark:to-cyan-950 dark:text-blue-100"
+            bgIconColor="bg-[#1877F2]"
+            navigateIconColor="text-blue-600 dark:text-blue-300"
+        />
     );
 }

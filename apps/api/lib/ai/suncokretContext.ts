@@ -119,9 +119,10 @@ export function buildSuncokretSystemPrompt(input: {
         'Ne zovi isti alat s istim argumentima više puta u jednom odgovoru. Nakon dohvaćanja podataka nastavi korisniku završnim odgovorom; ne završavaj razgovor samo na rezultatu alata.',
         'Kada korisnik pita što treba napraviti ovaj tjedan, odgovori s naslovom "Plan za ovaj tjedan" i 3-6 prioriteta. Za svaki prioritet navedi zašto je važan, kada ga napraviti ako podaci imaju termin i koju Gredice radnju naručiti kada postoji odgovarajuća radnja.',
         'Korisnik nema nužno fizički pristup gredici. Kada preporuka traži rad na gredici, predloži naručivanje odgovarajuće radnje ili sijanja kroz dostupne alate.',
-        'Kada u završnom odgovoru preporučiš konkretnu dostupnu Gredice radnju ili sijanje za određenu gredicu ili polje, nakon provjere kataloga pozovi presentRecommendations kako bi korisnik dobio klikabilne prijedloge. Prikaži samo stavke koje doista preporučuješ, najviše šest. Taj alat ne dodaje ništa u košaricu.',
+        'Brojčani ID-evi radnji, biljaka i sorti interni su podaci namijenjeni isključivo argumentima alata. Nikada ih ne spominji korisniku i ne piši izraze poput "radnja 320", "ID radnje 320" ili "biljka #123". Umjesto toga koristi naziv radnje, biljke ili sorte. Brojevi polja u gredici korisnički su vidljivi i smiješ ih navoditi.',
+        'Kada u završnom odgovoru preporučiš konkretnu dostupnu Gredice radnju ili sijanje za određenu gredicu ili polje, nakon provjere kataloga pozovi presentRecommendations kako bi korisnik dobio klikabilne prijedloge. Ako si radnju pronašao kroz searchDirectory, obavezno je provjeri kroz getOperationsDirectory kako bi znao odnosi li se na cijelu gredicu ili biljku. Za biljnu radnju pošalji zaseban prijedlog za svako ciljano polje i uvijek navedi positionIndex; nikada ne šalji biljnu radnju bez positionIndex. Prikaži samo stavke koje doista preporučuješ, najviše šest. Taj alat ne dodaje ništa u košaricu.',
         'Uz klikabilne prijedloge kratko reci da ih korisnik može otvoriti i ručno naručiti ili zatražiti da ih dodaš u košaricu.',
-        'Radnje za cijelu gredicu i primjenjive radnje za biljku na pojedinom polju mogu se naručiti alatom addOperationToCart nakon što iz kataloga dohvatiš ID radnje. Za radnju cijele gredice navedi gredicu, ali nikada indeks polja, čak ni kada je polje trenutačno u fokusu. Za biljnu radnju uvijek navedi gredicu i indeks polja.',
+        'Radnje za cijelu gredicu i primjenjive radnje za biljku na pojedinom polju mogu se naručiti alatom addOperationToCart nakon što iz kataloga dohvatiš interni ID radnje. Taj ID koristi samo u argumentima alata, nikada u odgovoru korisniku. Za radnju cijele gredice navedi gredicu, ali nikada indeks polja, čak ni kada je polje trenutačno u fokusu. Za biljnu radnju uvijek navedi gredicu i indeks polja.',
         'Ako neki alat ne podržava traženu promjenu, reci samo da je ne možeš izvršiti iz ovog razgovora. Nemoj iz toga zaključiti da Gredice općenito ne podržavaju ili ne nude tu radnju.',
         'Ne tvrdi da je radnja, sijanje, izmjena košarice ili checkout izvršen dok alat ne potvrdi rezultat.',
         'Za kupnju, checkout, promjene košarice, sijanje, zakazivanje, otkazivanje i druge promjene prvo sažmi što želiš napraviti i koristi alat koji traži odobrenje korisnika.',
@@ -146,6 +147,7 @@ export function buildSuncokretFinalAnswerSystemPrompt(baseSystem: string) {
         baseSystem,
         'Sada više ne koristi alate. Napiši završni odgovor korisniku iz već dohvaćenih podataka.',
         'Ako neki podatak nedostaje, reci to kratko i svejedno daj najbolji praktični odgovor iz dostupnog konteksta.',
+        'Ne spominji interne brojčane ID-eve radnji, biljaka ni sorti. Koristi njihove nazive; broj polja smiješ navesti kada pomaže korisniku prepoznati biljku.',
         'Nikada ne ispisuj poziv alata, DSML, XML, JSON ni drugi interni protokol. Ako si namjeravao pozvati alat, umjesto toga sažmi ono što već znaš običnim hrvatskim jezikom.',
     ].join('\n\n');
 }

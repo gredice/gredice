@@ -3,13 +3,16 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Politika privatnosti',
     description:
         'Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice.',
-};
+    path: KnownPages.LegalPrivacy,
+    eyebrow: 'Pravni dokument',
+});
 
 export default function PolitikaPrivatnostiPage() {
     return (

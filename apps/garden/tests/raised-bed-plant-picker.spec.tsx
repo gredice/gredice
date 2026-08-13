@@ -1,7 +1,20 @@
 import type { FavoriteEntityType, FavoriteItem } from '@gredice/client';
+import {
+    advancedSowingCartAuthorizationKind,
+    buildAdvancedSowingCartConfigurationV1,
+    buildAdvancedSowingSelectionSummaryV1,
+} from '@gredice/js/plants';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
-import { PlantPickerTestStory } from './PlantPickerTestStory';
+import {
+    calendarMonthOffset,
+    formatTestCalendarDate,
+    selectCalendarDate,
+} from './calendarDatePickerTestUtils';
+import {
+    PlantPickerTestStory,
+    type TestShoppingCartItem,
+} from './PlantPickerTestStory';
 
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
 
@@ -130,6 +143,70 @@ async function mockShoppingCartPosts(page: Page) {
     return posts;
 }
 
+function advancedSowingCartItem(
+    id: number,
+    selectedDistanceCm: number,
+): TestShoppingCartItem {
+    const plan = buildAdvancedSowingCartConfigurationV1({
+        anchorPositionIndex: 17,
+        bedFieldCount: 18,
+        maxDistanceCm: 60,
+        minDistanceCm: 10,
+        optimalDistanceCm: 30,
+        selectedDistanceCm,
+    });
+
+    return {
+        additionalData: JSON.stringify({
+            scheduledDate: '2026-05-14T00:00:00.000Z',
+        }),
+        advancedSowingSelection: buildAdvancedSowingSelectionSummaryV1({
+            kind: advancedSowingCartAuthorizationKind,
+            plan,
+            version: 1,
+        }),
+        amount: 1,
+        currency: 'eur',
+        entityId: '101',
+        entityTypeName: 'plantSort',
+        gardenId: 1,
+        id,
+        positionIndex: 17,
+        raisedBedId: 1,
+        shopData: {
+            discountPrice: null,
+            price: 1.5,
+        },
+        status: 'new',
+    };
+}
+
+function activeSelectedPlanting(selectedDistanceCm: number) {
+    const selectedPlan = buildAdvancedSowingCartConfigurationV1({
+        anchorPositionIndex: 17,
+        bedFieldCount: 18,
+        maxDistanceCm: 60,
+        minDistanceCm: 10,
+        optimalDistanceCm: 30,
+        selectedDistanceCm,
+    });
+
+    return {
+        configurationSource: 'selected',
+        isActive: true,
+        layoutKey: selectedPlan.layoutKey,
+        memberships: selectedPlan.occupiedPositionIndices.map(
+            (positionIndex) => ({ positionIndex }),
+        ),
+    };
+}
+
+async function selectAdvancedSowingSort(page: Page) {
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+}
+
 test('favorite plants and sorts are ranked first', async ({ mount, page }) => {
     const favorites = [
         favoriteItem({ entityType: 'plant', entityId: 2 }),
@@ -230,7 +307,7 @@ test('outlet sorts keep planned sowing selected by default', async ({
     await expect(sowingMode.getByText('Outlet sadnica')).toHaveCount(2);
     await expect(sowingMode.locator('svg').first()).toBeVisible();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toBeVisible();
     await expect(
         page.getByRole('switch', { name: 'Sijanje u stakleniku' }),
@@ -246,6 +323,405 @@ test('outlet sorts keep planned sowing selected by default', async ({
     }
     expect(post.outletOfferId).toBeUndefined();
     expect(post.entityId).toBe('101');
+});
+
+test('Advanced Sowing stays on the legacy path while its customer flag is off', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{
+                maxDistanceCm: 60,
+                minDistanceCm: 10,
+            }}
+            positionIndex={17}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    await expect(page.locator('[data-advanced-sowing-preview]')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post) || typeof post.additionalData !== 'string') {
+        return;
+    }
+    const additionalData: unknown = JSON.parse(post.additionalData);
+    expect(isRecord(additionalData)).toBe(true);
+    if (!isRecord(additionalData)) {
+        return;
+    }
+    expect(additionalData.advancedSowing).toBeUndefined();
+    expect(additionalData.advancedSowingAuthorization).toBeUndefined();
+    expect(post.advancedSowingSelection).toBeUndefined();
+    expect(post.forceCreate).toBeUndefined();
+});
+
+test('flag-off selected footprint cannot submit a legacy cart row', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            plantings={[activeSelectedPlanting(15)]}
+            positionIndex={17}
+        />,
+    );
+
+    await selectAdvancedSowingSort(page);
+
+    await expect(page.locator('[data-advanced-sowing-preview]')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toContainText(
+        'Obična sjetva ovdje nije dostupna',
+    );
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
+});
+
+test('flag-on selected footprint can submit a compatible Advanced Sowing co-plant', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            enableAdvancedSowing
+            plantings={[activeSelectedPlanting(15)]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(
+        preview.getByRole('radio', { name: /15 cm.*4 biljke/u }),
+    ).toBeDisabled();
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeChecked();
+    const addToCart = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(addToCart).toBeEnabled();
+    await addToCart.click();
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (isRecord(post)) {
+        expect(post.advancedSowingSelection).toEqual({
+            kind: 'advanced-sowing-selection',
+            selectedDistanceCm: 30,
+            version: 1,
+        });
+        expect(post.forceCreate).toBe(true);
+    }
+});
+
+test('selected footprint blocks an unsupported legacy fallback', async ({
+    mount,
+    page,
+}) => {
+    await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            enableAdvancedSowing
+            plantings={[activeSelectedPlanting(15)]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    await expect(page.getByRole('alert')).toContainText(
+        'Obična sjetva ovdje nije dostupna',
+    );
+});
+
+test('selected footprint blocks an outlet legacy fallback', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            enableAdvancedSowing
+            plantings={[activeSelectedPlanting(15)]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
+});
+
+test('Advanced Sowing submits a one-field density through the top-level selection contract', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{
+                maxDistanceCm: 60,
+                minDistanceCm: 10,
+            }}
+            enableAdvancedSowing
+            positionIndex={17}
+        />,
+    );
+
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(preview).toBeVisible();
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeChecked();
+    await expect(
+        preview.getByRole('radio', { name: /10 cm.*9 biljaka/u }),
+    ).toBeVisible();
+
+    await preview.getByRole('radio', { name: /15 cm.*4 biljke/u }).click();
+    await expect(preview.locator('[data-occupied="true"]')).toHaveCount(1);
+    await expect(preview.getByText(/sadrži 4 biljke/u)).toBeVisible();
+
+    await expect(
+        page.getByText(
+            'Odabrani razmak i raspored spremit će se uz ovu sjetvu.',
+        ),
+    ).toBeVisible();
+
+    const addToCart = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(addToCart).toBeEnabled();
+    await addToCart.click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.advancedSowingSelection).toEqual({
+        kind: 'advanced-sowing-selection',
+        selectedDistanceCm: 15,
+        version: 1,
+    });
+    expect(post.forceCreate).toBe(true);
+    expect(post.id).toBeUndefined();
+    expect(typeof post.additionalData).toBe('string');
+    if (typeof post.additionalData === 'string') {
+        const additionalData: unknown = JSON.parse(post.additionalData);
+        expect(isRecord(additionalData)).toBe(true);
+        if (isRecord(additionalData)) {
+            expect(additionalData.advancedSowing).toBeUndefined();
+            expect(additionalData.advancedSowingAuthorization).toBeUndefined();
+        }
+    }
+});
+
+test('Advanced Sowing submits one 2 by 2 footprint from its anchor field', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            enableAdvancedSowing
+            fieldPositionIndices={[17]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await preview.getByRole('radio', { name: /60 cm.*2 × 2 polja/u }).click();
+    await expect(preview.locator('[data-occupied="true"]')).toHaveCount(4);
+    await expect(preview.getByText(/zauzima 2 × 2 polja/u)).toBeVisible();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (isRecord(post)) {
+        expect(post.advancedSowingSelection).toEqual({
+            kind: 'advanced-sowing-selection',
+            selectedDistanceCm: 60,
+            version: 1,
+        });
+        expect(post.forceCreate).toBe(true);
+    }
+});
+
+test('Advanced Sowing creates a different-density co-plant without replacing the existing row', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            cartItems={[advancedSowingCartItem(41, 15)]}
+            enableAdvancedSowing
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeChecked();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (isRecord(post)) {
+        expect(post.id).toBeUndefined();
+        expect(post.forceCreate).toBe(true);
+        expect(post.amount).toBe(1);
+        expect(post.advancedSowingSelection).toEqual({
+            kind: 'advanced-sowing-selection',
+            selectedDistanceCm: 30,
+            version: 1,
+        });
+    }
+});
+
+test('Advanced Sowing updates only the explicitly selected summarized cart row', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+    const selectedItem = advancedSowingCartItem(42, 30);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            cartItems={[advancedSowingCartItem(41, 15), selectedItem]}
+            enableAdvancedSowing
+            inShoppingCart
+            positionIndex={17}
+            preselectedPlantId={1}
+            preselectedSortId={101}
+            selectedCartItemId={42}
+        />,
+    );
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeChecked();
+    await preview.getByRole('radio', { name: /60 cm.*2 × 2 polja/u }).click();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const updatePost = posts[0];
+    expect(isRecord(updatePost)).toBe(true);
+    if (isRecord(updatePost)) {
+        expect(updatePost.id).toBe(42);
+        expect(updatePost.forceCreate).toBe(false);
+        expect(updatePost.advancedSowingSelection).toEqual({
+            kind: 'advanced-sowing-selection',
+            selectedDistanceCm: 60,
+            version: 1,
+        });
+    }
+});
+
+test('Advanced Sowing removal targets the exact summarized co-plant row', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            cartItems={[
+                advancedSowingCartItem(41, 15),
+                advancedSowingCartItem(42, 30),
+            ]}
+            enableAdvancedSowing
+            inShoppingCart
+            positionIndex={17}
+            preselectedPlantId={1}
+            preselectedSortId={101}
+            selectedCartItemId={42}
+        />,
+    );
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: 'Ukloni' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+
+    const removePost = posts[0];
+    expect(isRecord(removePost)).toBe(true);
+    if (isRecord(removePost)) {
+        expect(removePost.id).toBe(42);
+        expect(removePost.amount).toBe(0);
+        expect(removePost.advancedSowingSelection).toBeUndefined();
+    }
+});
+
+test('Advanced Sowing disables every footprint that overlaps an active legacy planting', async ({
+    mount,
+    page,
+}) => {
+    await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            enableAdvancedSowing
+            plantings={[
+                {
+                    configurationSource: 'legacy',
+                    isActive: true,
+                    layoutKey: null,
+                    memberships: [{ positionIndex: 17 }],
+                },
+            ]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(preview.getByRole('radio')).toHaveCount(4);
+    for (const radio of await preview.getByRole('radio').all()) {
+        await expect(radio).toBeDisabled();
+    }
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
 });
 
 test('planned greenhouse sowing sends greenhouse location', async ({
@@ -308,7 +784,7 @@ test('outlet sowing sends the selected outlet offer', async ({
     await sowingMode.getByText('Preostalo 3').click();
     await expect(laterOutletOffer).toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -319,6 +795,59 @@ test('outlet sowing sends the selected outlet offer', async ({
     if (!isRecord(post)) {
         return;
     }
+    expect(post.outletOfferId).toBe(302);
+    expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
+});
+
+test('outlet sowing converts an existing inventory row to euros', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+    const inventoryCartItem = {
+        additionalData: JSON.stringify({
+            scheduledDate: '2026-05-14T00:00:00.000Z',
+        }),
+        amount: 1,
+        currency: 'inventory',
+        entityId: '101',
+        entityTypeName: 'plantSort',
+        gardenId: 1,
+        id: 41,
+        positionIndex: 0,
+        raisedBedId: 1,
+        shopData: {
+            discountPrice: null,
+            price: 1.5,
+        },
+        status: 'new',
+    } satisfies TestShoppingCartItem;
+
+    await mount(
+        <PlantPickerTestStory
+            cartItems={[inventoryCartItem]}
+            inShoppingCart
+            preselectedPlantId={1}
+            preselectedSortId={101}
+            selectedCartItemId={inventoryCartItem.id}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.id).toBe(41);
+    expect(post.currency).toBe('eur');
     expect(post.outletOfferId).toBe(302);
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
@@ -342,7 +871,7 @@ test('outlet selection param opens the selected outlet offer', async ({
     });
     await expect(laterOutletOffer).toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -418,7 +947,7 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
+    const dateInput = page.getByRole('button', { name: /Datum sijanja/u });
     const greenhouseSwitch = page.getByRole('switch', {
         name: 'Sijanje u stakleniku',
     });
@@ -431,7 +960,17 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
     expect(switchBox).not.toBeNull();
     expect(Math.abs((dateBox?.y ?? 0) - (switchBox?.y ?? 0))).toBeLessThan(48);
 
-    await dateInput.fill('2026-07-01');
+    const initialDate = new Date();
+    initialDate.setDate(initialDate.getDate() + 1);
+    const selectedDate = new Date();
+    selectedDate.setDate(selectedDate.getDate() + 14);
+    const selectedDateKey = formatTestCalendarDate(selectedDate);
+    await selectCalendarDate({
+        date: selectedDateKey,
+        monthOffset: calendarMonthOffset(initialDate, selectedDate),
+        page,
+        trigger: dateInput,
+    });
     await greenhouseSwitch.click();
     await expect(greenhouseSwitch).toBeChecked();
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
@@ -453,7 +992,9 @@ test('scheduled greenhouse sowing sends date and sowing location together', asyn
         return;
     }
     expect(additionalData.sowingLocation).toBe('greenhouse');
-    expect(additionalData.scheduledDate).toBe('2026-07-01T00:00:00.000Z');
+    expect(additionalData.scheduledDate).toBe(
+        `${selectedDateKey}T00:00:00.000Z`,
+    );
 });
 
 test('outlet refetch does not replace a missing selected offer', async ({
@@ -486,7 +1027,7 @@ test('outlet refetch does not replace a missing selected offer', async ({
         sowingMode.getByRole('radio', { name: /Preostalo 2/ }),
     ).not.toBeChecked();
     await expect(
-        page.getByRole('textbox', { name: 'Datum sijanja' }),
+        page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: 'Dodaj u košaru' }),
@@ -545,7 +1086,7 @@ test('mobile sort step scrolls the sowing date clear of sticky actions', async (
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
 
-    const dateInput = page.getByRole('textbox', { name: 'Datum sijanja' });
+    const dateInput = page.getByRole('button', { name: /Datum sijanja/u });
     await dateInput.evaluate((element) => {
         let scrollParent = element.parentElement;
         while (scrollParent) {

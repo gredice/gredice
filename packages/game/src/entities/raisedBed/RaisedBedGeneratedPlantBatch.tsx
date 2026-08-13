@@ -54,6 +54,7 @@ export interface RaisedBedGeneratedPlantBatchInstance {
     raisedBedId?: number;
     scale: number;
     seed: string;
+    yawRadians?: number;
 }
 
 interface RaisedBedGeneratedPlantBatchProps {
@@ -260,7 +261,7 @@ export function RaisedBedGeneratedPlantBatch({
                 translation: instance.position,
                 uniformScale:
                     instance.scale * (variation?.scaleMultiplier ?? 1),
-                yawRadians: variation?.yawRadians,
+                yawRadians: instance.yawRadians ?? variation?.yawRadians,
             };
             const chunk = chunks.get(templateKey);
             if (chunk) {

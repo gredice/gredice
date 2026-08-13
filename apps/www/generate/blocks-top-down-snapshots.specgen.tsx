@@ -44,7 +44,32 @@ test.beforeEach(async ({ page }) => {
             },
         );
     }
+
+    await page.route(
+        '**/assets/sprites/decorations/ground-cover-v2.atlas.*',
+        async (route) => {
+            const assetName = new URL(route.request().url()).pathname
+                .split('/')
+                .at(-1);
+            if (!assetName) {
+                await route.abort();
+                return;
+            }
+            await route.fulfill({
+                path: resolve(
+                    `../garden/public/assets/sprites/decorations/${assetName}`,
+                ),
+            });
+        },
+    );
 });
+
+function shouldRenderSnapshotDetails(entityName: string) {
+    return (
+        entityName === 'Block_Swamp_Ground' ||
+        entityName === 'Block_Swamp_Ground_Angle'
+    );
+}
 
 const entities = JSON.parse(
     readFileSync('./generate/test-cases.json', 'utf8'),
@@ -85,10 +110,17 @@ for (const entity of entities) {
                         cameraTarget={target}
                         cameraUp={[0, 0, -1]}
                         entityName={entity.information.name}
+                        message={
+                            entity.information.name === 'WoodenSign'
+                                ? 'MOJ\nVRT'
+                                : undefined
+                        }
                         itemPosition={itemPosition}
                         noControl
                         quality={snapshotQuality}
-                        renderDetails={false}
+                        renderDetails={shouldRenderSnapshotDetails(
+                            entity.information.name,
+                        )}
                         rotation={rotation}
                         staticEnvironment
                         zoom={80 / Math.max(span.width, span.depth)}

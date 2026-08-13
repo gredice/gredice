@@ -98,6 +98,7 @@ export function ScheduleTaskBlockerModal({
     const [successMessage, setSuccessMessage] = useState<string>();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const submissionInFlightRef = useRef(false);
+    const selectedCommandIdRef = useRef(crypto.randomUUID());
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
@@ -346,6 +347,9 @@ export function ScheduleTaskBlockerModal({
                 reasonCode,
                 trimmedNote || undefined,
                 imageUrls.length > 0 ? imageUrls : undefined,
+                target.kind === 'selected'
+                    ? selectedCommandIdRef.current
+                    : undefined,
             );
             if (!result.success) {
                 markStoredPhotosForRetry(result.retryImageUrls);
@@ -378,6 +382,7 @@ export function ScheduleTaskBlockerModal({
         setErrorMessage(undefined);
         setRequiresRefresh(false);
         setSuccessMessage(undefined);
+        selectedCommandIdRef.current = crypto.randomUUID();
     };
 
     const finishSuccess = () => {

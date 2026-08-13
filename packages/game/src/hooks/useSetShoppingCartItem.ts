@@ -1,6 +1,11 @@
 import { clientAuthenticated } from '@gredice/client';
+import { advancedSowingSelectionRequestKind } from '@gredice/js/plants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEffectiveEurPrice } from '../utils/sunflowerPricing';
+import {
+    type SetShoppingCartItemInput,
+    shoppingCartMutationErrorFromResponse,
+} from './shoppingCartItemMutation';
 import {
     currentAccountKeys,
     type useCurrentAccount,
@@ -12,19 +17,10 @@ import {
 } from './useShoppingCart';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
-type SetShoppingCartItemInput = {
-    id?: number;
-    entityTypeName: string;
-    entityId: string;
-    amount: number;
-    gardenId?: number;
-    raisedBedId?: number;
-    positionIndex?: number;
-    additionalData?: string | null;
-    currency?: string | null;
-    outletOfferId?: number;
-    forceCreate?: boolean;
-};
+export {
+    type SetShoppingCartItemInput,
+    ShoppingCartMutationError,
+} from './shoppingCartItemMutation';
 
 type CurrentAccountData = ReturnType<typeof useCurrentAccount>['data'];
 
@@ -150,25 +146,38 @@ function applyOptimisticShoppingCartItem(
     );
 }
 
-export function useSetShoppingCartItem() {
+export function useSetShoppingCartItem(enabled = true) {
     const queryClient = useQueryClient();
-    const { data: cart } = useShoppingCart();
+    const { data: cart } = useShoppingCart(enabled);
     return useMutation({
         mutationFn: async (item: SetShoppingCartItemInput) => {
             if (!cart) {
                 throw new Error('Shopping cart is not available');
             }
 
+            const {
+                advancedSowingSelection: suppliedAdvancedSowingSelection,
+                ...cartItem
+            } = item;
+            const advancedSowingSelection =
+                suppliedAdvancedSowingSelection?.kind ===
+                advancedSowingSelectionRequestKind
+                    ? suppliedAdvancedSowingSelection
+                    : undefined;
+
             const response = await clientAuthenticated().api[
                 'shopping-cart'
             ].$post({
                 json: {
-                    ...item,
+                    ...cartItem,
+                    ...(advancedSowingSelection
+                        ? { advancedSowingSelection }
+                        : {}),
                     cartId: cart.id,
                 },
             });
-            if (response.status !== 200) {
-                throw new Error('Failed to set shopping cart item');
+            if (!response.ok) {
+                throw await shoppingCartMutationErrorFromResponse(response);
             }
         },
         onMutate: async (item) => {
