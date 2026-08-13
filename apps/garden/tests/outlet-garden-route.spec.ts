@@ -857,9 +857,7 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
         page.locator('[data-outlet-garden-renderer="webgl"]'),
     ).toBeVisible();
     await expect(
-        page.getByRole('main', {
-            name: 'Interaktivni 3D prikaz Outlet vrta',
-        }),
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeFocused();
     await expect(page.locator('canvas')).toBeVisible();
 
