@@ -9,7 +9,8 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const lightColor = '#ffd58a';
+const lightColor = '#ffb93b';
+const bulbColor = '#000000';
 const lightPosition = [0, 1.82, 0] as const;
 const poleRain = {
     darkness: 0.7,
@@ -69,7 +70,7 @@ export function DoubleGardenLightPole({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={lightColor}
+                    color={bulbColor}
                     emissive={lightColor}
                     emissiveIntensity={0.28}
                     metalness={0}
@@ -83,7 +84,7 @@ export function DoubleGardenLightPole({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={lightColor}
+                    color={bulbColor}
                     emissive={lightColor}
                     emissiveIntensity={0.28}
                     metalness={0}
@@ -93,11 +94,11 @@ export function DoubleGardenLightPole({
             </WeatheredEntityPart>
             <GardenNightLight
                 color={lightColor}
-                distance={5}
+                distance={12}
                 emissiveBaseIntensity={0.28}
                 emissiveMaterialRefs={emissiveMaterialRefs}
                 emissivePeakIntensity={3.2}
-                lightIntensity={2.6}
+                lightIntensity={4.6}
                 lightKey={`DoubleGardenLightPole:${block.id}`}
                 position={lightPosition}
             />

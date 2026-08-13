@@ -10,7 +10,8 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 import { getStackedOnWalkwayPlacementYOffset } from './walkwayPlacement';
 
-const archLightColor = '#ffd58a';
+const archLightColor = '#ffb93b';
+const archBulbColor = '#000000';
 const archLightPosition = [0, 1.2, 0] as const;
 const archRain = {
     darkness: 0.7,
@@ -61,7 +62,7 @@ export function HazelLightArch({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={archLightColor}
+                    color={archBulbColor}
                     emissive={archLightColor}
                     emissiveIntensity={0.25}
                     metalness={0}
@@ -71,11 +72,11 @@ export function HazelLightArch({
             </WeatheredEntityPart>
             <GardenNightLight
                 color={archLightColor}
-                distance={5.2}
+                distance={15}
                 emissiveBaseIntensity={0.25}
                 emissiveMaterialRefs={emissiveMaterialRefs}
                 emissivePeakIntensity={3.2}
-                lightIntensity={2.6}
+                lightIntensity={5.6}
                 lightKey={`HazelLightArch:${block.id}`}
                 position={archLightPosition}
             />

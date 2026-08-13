@@ -6,6 +6,10 @@ import {
     type GardenEmissiveMaterialRef,
     useGardenLightRegistry,
 } from '../../scene/GardenLightProvider';
+import {
+    resolveGardenNightLightEmissivePeakIntensity,
+    resolveGardenNightLightIntensity,
+} from './nightGardenLight';
 
 const emptyEmissiveMaterialRefs: readonly GardenEmissiveMaterialRef[] = [];
 
@@ -38,9 +42,13 @@ export function GardenNightLight({
             registry.register({
                 emissiveBaseIntensity,
                 emissiveMaterialRefs,
-                emissivePeakIntensity,
+                emissivePeakIntensity:
+                    resolveGardenNightLightEmissivePeakIntensity(
+                        emissivePeakIntensity,
+                    ),
                 key: lightKey,
-                lightIntensity,
+                lightIntensity:
+                    resolveGardenNightLightIntensity(lightIntensity),
                 lightRef,
             }),
         [
