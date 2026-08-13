@@ -44,6 +44,7 @@ import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedB
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { parsePositiveIntegerRouteParam } from '../../../../src/routeParams';
 import { OperationsTableCard } from './OperationsTableCard';
 import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
@@ -95,11 +96,16 @@ export default async function RaisedBedPage({
     params,
     searchParams,
 }: {
-    params: Promise<{ raisedBedId: number }>;
+    params: Promise<{ raisedBedId: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { raisedBedId } = await params;
+    const { raisedBedId: raisedBedIdParam } = await params;
     const resolvedSearchParams = await searchParams;
+    const raisedBedId = parsePositiveIntegerRouteParam(raisedBedIdParam);
+    if (raisedBedId === null) {
+        notFound();
+    }
+
     await auth(['admin']);
     const [raisedBed, plantSorts] = await Promise.all([
         getRaisedBed(raisedBedId),
