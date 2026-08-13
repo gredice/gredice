@@ -1630,6 +1630,21 @@
             ]
         },
         {
+            "name": "WhiteFence",
+            "source": "WhiteFence.blend",
+            "output": "WhiteFence.glb",
+            "version": "7c459aebfee5",
+            "preload": "lazy",
+            "objects": [
+                "WhiteFence_Solo",
+                "WhiteFence_Single",
+                "WhiteFence_Middle",
+                "WhiteFence_Corner",
+                "WhiteFence_T",
+                "WhiteFence_Cross"
+            ]
+        },
+        {
             "name": "Greenhouse",
             "source": "Greenhouse.blend",
             "output": "Greenhouse.glb",

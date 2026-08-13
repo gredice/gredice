@@ -88,6 +88,7 @@ import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
 import { WaterWell } from './WaterWell';
+import { WhiteFence } from './WhiteFence';
 import { WickerGardenLantern } from './WickerGardenLantern';
 import { WoodenBench } from './WoodenBench';
 import { WoodenHandLantern } from './WoodenHandLantern';
@@ -134,6 +135,7 @@ export const entityNameMap = {
     Shade: Shade,
     BeachUmbrella: BeachUmbrella,
     Fence: Fence,
+    WhiteFence: WhiteFence,
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,

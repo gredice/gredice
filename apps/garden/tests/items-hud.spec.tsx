@@ -18,6 +18,7 @@ import {
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
     { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
     { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
     { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
@@ -647,6 +648,29 @@ test('garden lights are grouped under Rasvjeta', async ({ mount, page }) => {
     }
 });
 
+test('brown and white fences are grouped under Ograde', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Ograde' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Ograde' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Ograda', exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Bijela ograda' }),
+    ).toBeVisible();
+});
+
 for (const item of newBlockCatalogItems) {
     test(`${item.label} uses the published shop price`, async ({
         mount,
@@ -656,7 +680,7 @@ for (const item of newBlockCatalogItems) {
         await mount(<ItemsHudAlignmentStory />);
 
         await page.getByRole('button', { name: 'Dekoracija' }).click();
-        if (item.picker === 'Rasvjeta') {
+        if (item.picker !== 'Dekoracija') {
             await page.getByRole('button', { name: item.picker }).click();
         }
         await page.getByRole('button', { name: item.label }).click();
@@ -668,7 +692,7 @@ for (const item of newBlockCatalogItems) {
     });
 }
 
-test('local sandbox decoration picker includes sunflower and mulch', async ({
+test('local sandbox decoration picker includes current decoration blocks', async ({
     mount,
     page,
 }) => {
@@ -704,6 +728,11 @@ test('local sandbox decoration picker includes sunflower and mulch', async ({
         page
             .locator('[data-items-picker-group-label]')
             .filter({ hasText: 'Malč' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Ograde' }),
     ).toBeVisible();
 
     await page.getByRole('button', { name: 'Malč' }).click();
@@ -763,8 +792,12 @@ test('dragging an affordable picker item requests a scene drop without opening d
     await expect(dragState).toHaveText('idle');
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ograde' }).click();
 
-    const fenceButton = page.getByRole('button', { name: 'Fence' });
+    const fenceButton = page.getByRole('button', {
+        name: 'Ograda',
+        exact: true,
+    });
     await dragLocatorByMouse(page, fenceButton);
 
     await expect(dragState).toHaveText('Fence:drag');

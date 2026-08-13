@@ -40,6 +40,11 @@ import {
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
+import { fenceVariantNames } from './Fence';
+import {
+    type FenceConnectionShape,
+    resolveFenceConnection,
+} from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import {
     type GroundPatchSurface,
@@ -55,6 +60,7 @@ import {
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
 import { swampGroundBaseColor } from './swampGroundPalette';
+import { whiteFenceVariantNames } from './WhiteFence';
 import {
     getWaterBlockColumnSurfaceY,
     getWaterBlockDepthSamples,
@@ -329,6 +335,7 @@ export const additionalInstancedBlockNames = [
     'Raised_Bed',
     'Shade',
     'Fence',
+    'WhiteFence',
     'GardenBox',
     'Stool',
     'Bucket',
@@ -1483,72 +1490,25 @@ const shadeKeys = [
     'Shade_Middle',
 ] satisfies ShadeKey[];
 
-type FenceKey =
-    | 'Fence_Solo'
-    | 'Fence_Single'
-    | 'Fence_Middle'
-    | 'Fence_Corner'
-    | 'Fence_T'
-    | 'Fence_Cross';
+type FenceKey = (typeof fenceVariantNames)[keyof typeof fenceVariantNames];
+type WhiteFenceKey =
+    (typeof whiteFenceVariantNames)[keyof typeof whiteFenceVariantNames];
 
-function resolveFenceVariant(
+function resolveConnectedFenceVariant<Key extends string>(
     instance: EntityBlockInstance,
     stacks: Stack[] | undefined,
+    variants: Record<FenceConnectionShape, Key>,
 ) {
     const neighbors = resolveEntityNeighbors(
         stacks,
         instance.stack,
         instance.block,
     );
-    let variant: FenceKey = 'Fence_Solo';
-    let realizedRotation = instance.rotation % 4;
-
-    if (neighbors.total === 1) {
-        variant = 'Fence_Single';
-        realizedRotation = neighbors.n
-            ? 3
-            : neighbors.s
-              ? 1
-              : neighbors.e
-                ? 0
-                : 2;
-    } else if (neighbors.total === 2) {
-        if (neighbors.n && neighbors.s) {
-            variant = 'Fence_Middle';
-            realizedRotation = 1;
-        } else if (neighbors.e && neighbors.w) {
-            variant = 'Fence_Middle';
-            realizedRotation = 0;
-        } else {
-            variant = 'Fence_Corner';
-            if (neighbors.n && neighbors.e) {
-                realizedRotation = 0;
-            } else if (neighbors.e && neighbors.s) {
-                realizedRotation = 1;
-            } else if (neighbors.s && neighbors.w) {
-                realizedRotation = 2;
-            } else if (neighbors.w && neighbors.n) {
-                realizedRotation = 3;
-            }
-        }
-    } else if (neighbors.total === 3) {
-        variant = 'Fence_T';
-        if (neighbors.n && neighbors.e && neighbors.s) {
-            realizedRotation = 0;
-        } else if (neighbors.e && neighbors.s && neighbors.w) {
-            realizedRotation = 1;
-        } else if (neighbors.s && neighbors.w && neighbors.n) {
-            realizedRotation = 2;
-        } else if (neighbors.w && neighbors.n && neighbors.e) {
-            realizedRotation = 3;
-        }
-    } else if (neighbors.total === 4) {
-        variant = 'Fence_Cross';
-    }
+    const connection = resolveFenceConnection(neighbors, instance.rotation);
 
     return {
-        instance: mapInstanceRotation(instance, realizedRotation),
-        variant,
+        instance: mapInstanceRotation(instance, connection.rotation),
+        variant: variants[connection.shape],
     };
 }
 
@@ -1563,7 +1523,7 @@ function FenceInstances({
         yOffset: 1,
     });
     const resolved = instances?.map((instance) =>
-        resolveFenceVariant(instance, stacks),
+        resolveConnectedFenceVariant(instance, stacks, fenceVariantNames),
     );
 
     if (!resolved?.length) {
@@ -1596,13 +1556,83 @@ function FenceInstances({
 }
 
 const fenceKeys = [
-    'Fence_Solo',
-    'Fence_Single',
-    'Fence_Middle',
-    'Fence_Corner',
-    'Fence_T',
-    'Fence_Cross',
+    fenceVariantNames.Solo,
+    fenceVariantNames.Single,
+    fenceVariantNames.Middle,
+    fenceVariantNames.Corner,
+    fenceVariantNames.T,
+    fenceVariantNames.Cross,
 ] satisfies FenceKey[];
+
+function LoadedWhiteFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const { nodes, materials } = useGameGLTF('WhiteFence');
+    const instances = useEntityBlockInstances({
+        name: 'WhiteFence',
+        stacks,
+        yOffset: 1,
+    });
+    const resolved = instances?.map((instance) =>
+        resolveConnectedFenceVariant(instance, stacks, whiteFenceVariantNames),
+    );
+
+    if (!resolved?.length) {
+        return null;
+    }
+
+    return (
+        <>
+            {whiteFenceKeys.map((key) => (
+                <EntityInstancesGeometry
+                    key={key}
+                    instanceKey={key}
+                    instances={resolved
+                        .filter(({ variant }) => variant === key)
+                        .map(({ instance }) => instance)}
+                    geometry={nodes[key].geometry}
+                    material={materials['Material.WhitePaint']}
+                    staticOpaqueCacheGroup="static-props"
+                    renderRainWetOverlay
+                    snow={{
+                        maxThickness: 0.035,
+                        slopeExponent: 2.9,
+                        noiseScale: 3.3,
+                    }}
+                    {...commonSnowProps}
+                />
+            ))}
+        </>
+    );
+}
+
+function WhiteFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, 'WhiteFence');
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedWhiteFenceInstances stacks={stacks} {...commonSnowProps} />
+        </Suspense>
+    );
+}
+
+const whiteFenceKeys = [
+    whiteFenceVariantNames.Solo,
+    whiteFenceVariantNames.Single,
+    whiteFenceVariantNames.Middle,
+    whiteFenceVariantNames.Corner,
+    whiteFenceVariantNames.T,
+    whiteFenceVariantNames.Cross,
+] satisfies WhiteFenceKey[];
 
 function GardenBoxInstances({
     stacks,
@@ -2847,6 +2877,7 @@ export function AdditionalEntityInstances({
             <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
             <ShadeInstances stacks={stacks} {...commonSnowProps} />
             <FenceInstances stacks={stacks} {...commonSnowProps} />
+            <WhiteFenceInstances stacks={stacks} {...commonSnowProps} />
             <GardenBoxInstances stacks={stacks} {...commonSnowProps} />
             <BucketInstances stacks={stacks} {...commonSnowProps} />
             <WateringCanInstances stacks={stacks} {...commonSnowProps} />

@@ -195,6 +195,20 @@ test('local sandbox exposes animal home blocks used by the item HUD', () => {
     assert.equal(blockNames.has('DogHouse'), true);
 });
 
+test('local sandbox exposes the connected white fence with model bounds', () => {
+    const whiteFence = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'WhiteFence',
+    );
+
+    assert.ok(whiteFence);
+    assert.equal(whiteFence.information.label, 'Bijela ograda');
+    assert.equal(whiteFence.attributes.height, 0.72);
+    assert.equal(whiteFence.attributes.hitboxDepth, 1);
+    assert.equal(whiteFence.attributes.hitboxHeight, 0.72);
+    assert.equal(whiteFence.attributes.hitboxWidth, 1);
+    assert.equal(whiteFence.attributes.stackable, false);
+});
+
 test('local sandbox exposes the small wooden bridge with its model bounds', () => {
     const bridge = getLocalSandboxBlockData().find(
         (block) => block.information.name === 'SmallWoodenBridge',

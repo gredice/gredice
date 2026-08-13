@@ -11,25 +11,24 @@ import {
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
-export const fenceVariantNames = {
-    Solo: 'Fence_Solo',
-    Single: 'Fence_Single',
-    Middle: 'Fence_Middle',
-    Corner: 'Fence_Corner',
-    T: 'Fence_T',
-    Cross: 'Fence_Cross',
+export const whiteFenceVariantNames = {
+    Solo: 'WhiteFence_Solo',
+    Single: 'WhiteFence_Single',
+    Middle: 'WhiteFence_Middle',
+    Corner: 'WhiteFence_Corner',
+    T: 'WhiteFence_T',
+    Cross: 'WhiteFence_Cross',
 } satisfies Record<
     FenceConnectionShape,
     keyof ReturnType<typeof useGameGLTF>['nodes']
 >;
 
-export function Fence({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF('Fence');
+export function WhiteFence({ stack, block, rotation }: EntityInstanceProps) {
+    const { nodes, materials } = useGameGLTF('WhiteFence');
     const currentStackHeight = useStackHeight(stack, block);
-
     const neighbors = useEntityNeighbors(stack, block);
     const connection = resolveFenceConnection(neighbors, rotation);
-    const variant = fenceVariantNames[connection.shape];
+    const variant = whiteFenceVariantNames[connection.shape];
     const [animatedRotation] = useAnimatedEntityRotation(connection.rotation);
 
     return (
@@ -41,11 +40,11 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes[variant].geometry}
-                material={materials['Material.Planks']}
+                material={materials['Material.WhitePaint']}
             >
                 <SnowOverlay
                     geometry={nodes[variant].geometry}
-                    maxThickness={0.09}
+                    maxThickness={0.035}
                     slopeExponent={2.9}
                     noiseScale={3.3}
                 />

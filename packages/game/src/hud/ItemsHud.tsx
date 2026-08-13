@@ -108,6 +108,11 @@ const lightingItems: HudItemEntity[] = [
     { type: 'entity', name: 'MoonRainBarrel' },
 ];
 
+const fenceItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Fence' },
+    { type: 'entity', name: 'WhiteFence' },
+];
+
 const summerItems: HudItemEntity[] = [
     { type: 'entity', name: 'Shade' },
     { type: 'entity', name: 'BeachUmbrella' },
@@ -339,7 +344,12 @@ const items: HudItem[] = [
                 imageSrc: 'https://www.gredice.com/assets/blocks/DogHouse.webp',
                 items: petItems,
             },
-            { type: 'entity', name: 'Fence' },
+            {
+                type: 'picker',
+                label: 'Ograde',
+                imageSrc: 'https://www.gredice.com/assets/blocks/Fence.webp',
+                items: fenceItems,
+            },
             { type: 'entity', name: 'SmallWoodenBridge' },
             { type: 'entity', name: 'WoodenWalkway' },
             { type: 'entity', name: 'StoneWalkway' },

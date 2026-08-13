@@ -11,6 +11,7 @@ import {
     isAnimalWaterBlockName,
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
+import { resolveFenceConnection } from '../fenceConnections';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import {
     getStackedOnWalkwayPlacementYOffset,
@@ -359,10 +360,29 @@ const narrowAvatarCollisionFootprints: Record<
 
 const avatarCollisionSizeRelaxation = 0.12;
 const minimumAvatarCollisionSize = 0.12;
-const fencePostSize = 0.15;
-const fenceHeight = 0.55;
-const fenceRailHalfLength = 0.2125;
-const fenceRailCenterOffset = 0.2875;
+type FenceCollisionProfile = {
+    height: number;
+    picketSpacing?: number;
+    postDepth: number;
+    postWidth: number;
+    railThickness: number;
+};
+
+const fenceCollisionProfiles: Record<string, FenceCollisionProfile> = {
+    Fence: {
+        height: 0.55,
+        postDepth: 0.15,
+        postWidth: 0.15,
+        railThickness: 0.15,
+    },
+    WhiteFence: {
+        height: 0.72,
+        picketSpacing: 0.25,
+        postDepth: 0.045,
+        postWidth: 0.215,
+        railThickness: 0.04,
+    },
+};
 const hazelLightArchName = 'HazelLightArch';
 const hazelLightArchPostOffset = 0.443;
 const hazelLightArchPostHalfSize = 0.052;
@@ -425,69 +445,138 @@ function getAvatarCollisionFootprint(block: BlockData | undefined) {
 function fenceLayerKey(
     stack: { position: Pick<GardenAvatarPoint, 'x' | 'z'> },
     blockIndex: number,
+    blockName: string,
 ) {
-    return `${stack.position.x}:${stack.position.z}:${blockIndex}`;
+    return `${blockName}:${stack.position.x}:${stack.position.z}:${blockIndex}`;
 }
 
 function createFenceCollisionSurfaces({
+    blockName,
     blockIndex,
     bottomY,
     fenceLayers,
+    profile,
+    rotation,
     stack,
 }: {
+    blockName: string;
     blockIndex: number;
     bottomY: number;
     fenceLayers: Set<string>;
+    profile: FenceCollisionProfile;
+    rotation: number;
     stack: Stack;
 }) {
+    const railHalfLength = (0.5 - profile.postWidth / 2) / 2;
+    const railCenterOffset = (0.5 + profile.postWidth / 2) / 2;
     const roamBlockedCells = [{ x: stack.position.x, z: stack.position.z }];
     const shared: Pick<
         GardenAvatarMovementSurface,
         'bottomY' | 'debugLabel' | 'kind' | 'roamable' | 'rotation' | 'y'
     > = {
         bottomY,
-        debugLabel: 'Fence',
+        debugLabel: blockName,
         kind: 'ground',
         roamable: false,
         rotation: 0,
-        y: bottomY + fenceHeight,
+        y: bottomY + profile.height,
     };
-    const surfaces: GardenAvatarMovementSurface[] = [
-        {
-            ...shared,
-            halfDepth: fencePostSize / 2,
-            halfWidth: fencePostSize / 2,
-            roamBlockedCells,
-            x: stack.position.x,
-            z: stack.position.z,
-        },
-    ];
     const directions = [
         { x: 1, z: 0 },
         { x: -1, z: 0 },
         { x: 0, z: 1 },
         { x: 0, z: -1 },
     ];
-
-    for (const direction of directions) {
+    const connectedDirections = directions.filter((direction) => {
         const neighbor = {
             position: {
                 x: stack.position.x + direction.x,
                 z: stack.position.z + direction.z,
             },
         };
-        if (!fenceLayers.has(fenceLayerKey(neighbor, blockIndex))) {
-            continue;
-        }
+        return fenceLayers.has(fenceLayerKey(neighbor, blockIndex, blockName));
+    });
+    const fallbackAlongX = rotation % 2 === 0;
+    const connection = resolveFenceConnection(
+        {
+            e: connectedDirections.some(
+                (direction) => direction.x === 0 && direction.z === -1,
+            ),
+            n: connectedDirections.some(
+                (direction) => direction.x === 1 && direction.z === 0,
+            ),
+            s: connectedDirections.some(
+                (direction) => direction.x === -1 && direction.z === 0,
+            ),
+            total: connectedDirections.length,
+            w: connectedDirections.some(
+                (direction) => direction.x === 0 && direction.z === 1,
+            ),
+        },
+        rotation,
+    );
+    const centerAlongX = connection.rotation % 2 === 0;
+    const surfaces: GardenAvatarMovementSurface[] = [];
+    const addPicket = (
+        x: number,
+        z: number,
+        alongX: boolean,
+        blockedCells: GardenAvatarMovementSurface['roamBlockedCells'] = [],
+    ) => {
+        surfaces.push({
+            ...shared,
+            halfDepth: (alongX ? profile.postDepth : profile.postWidth) / 2,
+            halfWidth: (alongX ? profile.postWidth : profile.postDepth) / 2,
+            roamBlockedCells: blockedCells,
+            x,
+            z,
+        });
+    };
+    addPicket(
+        stack.position.x,
+        stack.position.z,
+        centerAlongX,
+        roamBlockedCells,
+    );
 
+    for (const direction of connectedDirections) {
         const alongX = direction.x !== 0;
         surfaces.push({
             ...shared,
-            halfDepth: alongX ? fencePostSize / 2 : fenceRailHalfLength,
-            halfWidth: alongX ? fenceRailHalfLength : fencePostSize / 2,
+            halfDepth: alongX ? profile.railThickness / 2 : railHalfLength,
+            halfWidth: alongX ? railHalfLength : profile.railThickness / 2,
             roamBlockedCells: [],
-            x: stack.position.x + direction.x * fenceRailCenterOffset,
-            z: stack.position.z + direction.z * fenceRailCenterOffset,
+            x: stack.position.x + direction.x * railCenterOffset,
+            z: stack.position.z + direction.z * railCenterOffset,
+        });
+        if (profile.picketSpacing) {
+            for (const distance of [profile.picketSpacing, 0.5]) {
+                addPicket(
+                    stack.position.x + direction.x * distance,
+                    stack.position.z + direction.z * distance,
+                    alongX,
+                );
+            }
+        }
+    }
+
+    if (connectedDirections.length === 0 && profile.picketSpacing) {
+        for (const side of [-1, 1]) {
+            addPicket(
+                stack.position.x +
+                    (fallbackAlongX ? side * profile.picketSpacing : 0),
+                stack.position.z +
+                    (fallbackAlongX ? 0 : side * profile.picketSpacing),
+                fallbackAlongX,
+            );
+        }
+        surfaces.push({
+            ...shared,
+            halfDepth: fallbackAlongX ? profile.railThickness / 2 : 0.25,
+            halfWidth: fallbackAlongX ? 0.25 : profile.railThickness / 2,
+            roamBlockedCells: [],
+            x: stack.position.x,
+            z: stack.position.z,
         });
     }
 
@@ -569,11 +658,12 @@ export function createGardenAvatarCollisionWorld({
     const surfaces: GardenAvatarMovementSurface[] = [];
     const fenceLayers = new Set(
         (stacks ?? []).flatMap((stack) =>
-            stack.blocks.flatMap((block, blockIndex) =>
-                block.name === 'Fence'
-                    ? [fenceLayerKey(stack, blockIndex)]
-                    : [],
-            ),
+            stack.blocks.flatMap((block, blockIndex) => {
+                const profile = fenceCollisionProfiles[block.name];
+                return profile
+                    ? [fenceLayerKey(stack, blockIndex, block.name)]
+                    : [];
+            }),
         ),
     );
 
@@ -614,12 +704,16 @@ export function createGardenAvatarCollisionWorld({
             }
 
             waterSupportY = null;
-            if (block.name === 'Fence') {
+            const fenceProfile = fenceCollisionProfiles[block.name];
+            if (fenceProfile) {
                 surfaces.push(
                     ...createFenceCollisionSurfaces({
+                        blockName: block.name,
                         blockIndex,
                         bottomY,
                         fenceLayers,
+                        profile: fenceProfile,
+                        rotation: block.rotation,
                         stack,
                     }),
                 );

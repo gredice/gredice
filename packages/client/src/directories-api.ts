@@ -2,7 +2,7 @@ import type { paths } from '@gredice/directory-types';
 import createClient from 'openapi-fetch';
 import { createDevSafeFetch, getAppUrl } from './shared';
 
-const blockDirectoryCacheVersion = 'terrain-refinements-2026-08-12-2';
+const blockDirectoryCacheVersion = 'white-fence-terrain-2026-08-13-1';
 const blockDirectoryPath = '/api/directories/entities/block';
 
 function withBlockDirectoryCacheVersion(baseFetch: typeof fetch): typeof fetch {
