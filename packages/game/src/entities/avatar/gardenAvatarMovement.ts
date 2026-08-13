@@ -386,6 +386,15 @@ const fenceCollisionProfiles: Record<string, FenceCollisionProfile> = {
 const hazelLightArchName = 'HazelLightArch';
 const hazelLightArchPostOffset = 0.443;
 const hazelLightArchPostHalfSize = 0.052;
+const gardenAvatarWalkableOverlayBlockNames = new Set([
+    'MulchCoconut',
+    'MulchHey',
+    'MulchWood',
+]);
+
+export function isGardenAvatarWalkableOverlayBlockName(name: string) {
+    return gardenAvatarWalkableOverlayBlockNames.has(name);
+}
 
 function positiveDimension(value: unknown, fallback: number) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -636,41 +645,6 @@ function getAvatarCollisionPlacement({
     };
 }
 
-function getTerrainCollisionFootprint(blockName: string, height: number) {
-    return blockName === 'Block_Stone_Stairs_Half'
-        ? { depth: 0.5, height, width: 1 }
-        : { depth: 1, height, width: 1 };
-}
-
-function getTerrainCollisionPlacement({
-    blockName,
-    rotation,
-    stack,
-}: {
-    blockName: string;
-    rotation: number;
-    stack: Stack;
-}) {
-    if (blockName !== 'Block_Stone_Stairs_Half') {
-        return {
-            roamBlockedCells: undefined,
-            x: stack.position.x,
-            z: stack.position.z,
-        };
-    }
-
-    // The half stair occupies the local -Z edge (z=-0.5..0). Rotate that
-    // center offset with the rendered block so its walkable footprint matches
-    // the visible edge at every quarter turn.
-    const angle = rotation * (Math.PI / 2);
-    const localZ = -0.25;
-    return {
-        roamBlockedCells: undefined,
-        x: stack.position.x + Math.sin(angle) * localZ,
-        z: stack.position.z + Math.cos(angle) * localZ,
-    };
-}
-
 export function createGardenAvatarCollisionWorld({
     blockData,
     stacks,
@@ -746,6 +720,9 @@ export function createGardenAvatarCollisionWorld({
                 continue;
             }
 
+            const isWalkableOverlay = isGardenAvatarWalkableOverlayBlockName(
+                block.name,
+            );
             const blockDefinition = blockDataByName.get(block.name);
             if (block.name === hazelLightArchName) {
                 surfaces.push(
@@ -782,29 +759,34 @@ export function createGardenAvatarCollisionWorld({
 
             const isTerrain = isAnimalGroundBlockName(block.name);
             const footprint = isTerrain
-                ? getTerrainCollisionFootprint(
-                      block.name,
-                      stackHeight - bottomY,
-                  )
-                : getAvatarCollisionFootprint(blockDefinition);
+                ? { depth: 1, height: stackHeight - bottomY, width: 1 }
+                : isWalkableOverlay
+                  ? { depth: 1, height: stackHeight - bottomY, width: 1 }
+                  : getAvatarCollisionFootprint(blockDefinition);
             const placement = isTerrain
-                ? getTerrainCollisionPlacement({
-                      blockName: block.name,
-                      rotation: block.rotation,
-                      stack,
-                  })
-                : getAvatarCollisionPlacement({
-                      block: blockDefinition,
-                      rotation: block.rotation,
-                      stack,
-                  });
+                ? {
+                      roamBlockedCells: undefined,
+                      x: stack.position.x,
+                      z: stack.position.z,
+                  }
+                : isWalkableOverlay
+                  ? {
+                        roamBlockedCells: undefined,
+                        x: stack.position.x,
+                        z: stack.position.z,
+                    }
+                  : getAvatarCollisionPlacement({
+                        block: blockDefinition,
+                        rotation: block.rotation,
+                        stack,
+                    });
             surfaces.push({
                 bottomY,
                 debugLabel: block.name,
                 halfDepth: footprint.depth / 2,
                 halfWidth: footprint.width / 2,
                 kind: 'ground',
-                roamable: isTerrain,
+                roamable: isTerrain || isWalkableOverlay,
                 roamBlockedCells: placement.roamBlockedCells,
                 rotation: block.rotation * (Math.PI / 2),
                 slopeBlockName: isTerrain ? block.name : undefined,
@@ -1052,10 +1034,28 @@ export function findGardenAvatarRoute({
     return [from];
 }
 
-export function findGardenAvatarSpawnPoint(world: GardenAvatarCollisionWorld) {
+export function findGardenAvatarSpawnPoint(
+    world: GardenAvatarCollisionWorld,
+    preferredPosition?: Pick<GardenAvatarPoint, 'x' | 'z'>,
+) {
     const surfaces = [...createWalkableSurfaceMap(world).values()];
     if (surfaces.length === 0) {
         return null;
+    }
+
+    if (preferredPosition) {
+        const preferredGroundY = getGardenAvatarGroundY({
+            currentGroundY: 0,
+            position: preferredPosition,
+            world,
+        });
+        if (preferredGroundY !== null) {
+            return {
+                x: preferredPosition.x,
+                y: preferredGroundY,
+                z: preferredPosition.z,
+            };
+        }
     }
 
     const center = surfaces.reduce(

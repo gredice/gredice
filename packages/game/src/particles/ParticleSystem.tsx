@@ -65,7 +65,12 @@ export function resolveBlockParticleType(
         case 'Block_Stone':
         case 'Block_Stone_Angle':
         case 'Block_Stone_Stairs':
+        case 'Block_Stone_Stairs_Corner':
         case 'Block_Stone_Stairs_Half':
+        case 'Block_Polished_Stone':
+        case 'Block_Polished_Stone_Angle':
+        case 'Block_Polished_Stone_Stairs':
+        case 'Block_Polished_Stone_Stairs_Corner':
         case 'Block_Gravel':
         case 'Block_Gravel_Angle':
             return ParticleType.Stone;

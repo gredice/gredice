@@ -44,7 +44,12 @@ describe('animal movement terrain', () => {
             'Block_Stone_Angle',
             'Block_Gravel',
             'Block_Gravel_Angle',
+            'Block_Polished_Stone',
+            'Block_Polished_Stone_Angle',
+            'Block_Polished_Stone_Stairs',
+            'Block_Polished_Stone_Stairs_Corner',
             'Block_Stone_Stairs',
+            'Block_Stone_Stairs_Corner',
             'Block_Stone_Stairs_Half',
         ]) {
             assert.equal(isAnimalGroundBlockName(name), true, name);
@@ -152,92 +157,67 @@ describe('animal movement terrain', () => {
         }
     }
 
-    it('keeps half-stair animal surfaces on the rendered edge at every rotation', () => {
-        for (const rotation of [0, 1, 2, 3]) {
-            const surfaces = createAnimalMovementSurfaces({
-                blockData: getLocalSandboxBlockData(),
-                groundLift: 0.02,
-                stacks: [
-                    stack(0, 0, [
-                        block(
-                            `half-stairs-${rotation}`,
-                            'Block_Stone_Stairs_Half',
-                            rotation,
+    it('follows full-tile corner stair treads across rotations and aliases', () => {
+        for (const name of [
+            'Block_Stone_Stairs_Corner',
+            'Block_Polished_Stone_Stairs_Corner',
+            'Block_Stone_Stairs_Half',
+        ]) {
+            for (const rotation of [0, 1, 2, 3]) {
+                const surfaces = createAnimalMovementSurfaces({
+                    blockData: getLocalSandboxBlockData(),
+                    groundLift: 0.02,
+                    stacks: [
+                        stack(0, 0, [
+                            block(`${name}-${rotation}`, name, rotation),
+                        ]),
+                    ],
+                    swimDepth: 0.12,
+                });
+                const angle = rotation * (Math.PI / 2);
+                const worldPoint = (localX: number, localZ: number) => ({
+                    x: localX * Math.cos(angle) + localZ * Math.sin(angle),
+                    z: -localX * Math.sin(angle) + localZ * Math.cos(angle),
+                });
+
+                assert.equal(
+                    surfaces.length,
+                    1,
+                    `${name} rotation ${rotation}`,
+                );
+                for (const [localX, localZ] of [
+                    [-0.25, -0.25],
+                    [-0.25, 0.25],
+                    [0.25, 0.25],
+                ] satisfies readonly [number, number][]) {
+                    assert.equal(
+                        Number(
+                            getAnimalMovementYAt(
+                                worldPoint(localX, localZ),
+                                surfaces,
+                            ).toFixed(6),
                         ),
-                    ]),
-                ],
-                swimDepth: 0.12,
-            });
-            const angle = rotation * (Math.PI / 2);
-            const worldPoint = (localX: number, localZ: number) => ({
-                x: localX * Math.cos(angle) + localZ * Math.sin(angle),
-                z: -localX * Math.sin(angle) + localZ * Math.cos(angle),
-            });
-
-            assert.equal(surfaces.length, 1, `rotation ${rotation}`);
-            assert.equal(
-                Number(
-                    getAnimalMovementYAt(
-                        worldPoint(-0.25, -0.25),
+                        0.22,
+                        `${name} middle L at rotation ${rotation}`,
+                    );
+                }
+                assert.equal(
+                    Number(
+                        getAnimalMovementYAt(
+                            worldPoint(0.25, -0.25),
+                            surfaces,
+                        ).toFixed(6),
+                    ),
+                    0.42,
+                    `${name} top quadrant at rotation ${rotation}`,
+                );
+                assert.ok(
+                    getAnimalMovementSurfaceAt(
+                        worldPoint(0.25, 0.25),
                         surfaces,
-                    ).toFixed(6),
-                ),
-                0.22,
-                `middle tread at rotation ${rotation}`,
-            );
-            assert.equal(
-                Number(
-                    getAnimalMovementYAt(
-                        worldPoint(0.25, -0.25),
-                        surfaces,
-                    ).toFixed(6),
-                ),
-                0.42,
-                `top tread at rotation ${rotation}`,
-            );
-            assert.equal(
-                getAnimalMovementYAt(worldPoint(0.25, 0.25), surfaces),
-                0,
-                `empty half at rotation ${rotation}`,
-            );
-            assert.equal(
-                getAnimalMovementSurfaceAt(worldPoint(0.25, 0.25), surfaces),
-                null,
-                `no stair surface on empty half at rotation ${rotation}`,
-            );
+                    ),
+                );
+            }
         }
-    });
-
-    it('falls back to the supporting terrain on a half-stair empty side', () => {
-        const surfaces = createAnimalMovementSurfaces({
-            blockData: getLocalSandboxBlockData(),
-            groundLift: 0.02,
-            stacks: [
-                stack(2, 3, [
-                    block('grass', 'Block_Grass'),
-                    block('half-stairs', 'Block_Stone_Stairs_Half'),
-                ]),
-            ],
-            swimDepth: 0.12,
-        });
-
-        assert.equal(
-            Number(
-                getAnimalMovementYAt({ x: 1.75, z: 2.75 }, surfaces).toFixed(6),
-            ),
-            0.62,
-        );
-        assert.equal(
-            Number(
-                getAnimalMovementYAt({ x: 2.25, z: 2.75 }, surfaces).toFixed(6),
-            ),
-            0.82,
-        );
-        assert.equal(
-            Number(
-                getAnimalMovementYAt({ x: 2.25, z: 3.25 }, surfaces).toFixed(6),
-            ),
-            0.42,
-        );
     });
 });

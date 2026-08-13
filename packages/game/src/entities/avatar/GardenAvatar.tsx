@@ -32,6 +32,15 @@ import {
     useActorHoverSpeech,
 } from '../animals/ActorSpeechBubble';
 import { playerSpeechMessages } from '../animals/actorSpeechMessages';
+import {
+    type FishingBoatController,
+    useFishingBoatRegistry,
+} from '../fishingBoat/FishingBoatRegistry';
+import {
+    createFishingBoatNavigationGrid,
+    isFishingBoatNavigablePose,
+    resolveFishingBoatNavigation,
+} from '../fishingBoat/fishingBoatNavigation';
 import { GardenAvatarCollisionDebug } from './GardenAvatarCollisionDebug';
 import {
     getGardenAvatarPerspectiveEntryPosition,
@@ -85,6 +94,14 @@ const avatarCrouchRigDrop = 0.34;
 const avatarCrouchLowerLegLength = 0.41;
 const pointerLookSensitivity = 0.0023;
 const touchLookSensitivity = 0.006;
+const fishingBoatInteractionRange = 3.2;
+const fishingBoatForwardSpeed = 1.75;
+const fishingBoatReverseSpeed = 0.9;
+const fishingBoatAcceleration = 3.8;
+const fishingBoatDeceleration = 5.2;
+const fishingBoatTurnSpeed = 1.45;
+const fishingBoatSeatHeight = 0.27;
+const fishingBoatSeatOffset = 0.27;
 
 type AvatarRig = {
     armLeft: Object3D | undefined;
@@ -217,6 +234,7 @@ export function animateGardenAvatarRig({
     headPitch,
     walkAmount,
     rig,
+    seated = false,
 }: {
     crouchAmount: number;
     delta: number;
@@ -225,17 +243,26 @@ export function animateGardenAvatarRig({
     headPitch: number;
     walkAmount: number;
     rig: AvatarRig;
+    seated?: boolean;
 }) {
     const walkPhase = (distanceWalked / 0.82) * Math.PI * 2;
     const phaseSine = Math.sin(walkPhase);
     const legSwing = grounded ? phaseSine * 0.44 * walkAmount : -0.2;
     const armSwing = grounded ? phaseSine * 0.34 * walkAmount : -0.48;
-    const leftKneeBend = grounded
-        ? Math.max(0, -phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
-        : 0.42;
-    const rightKneeBend = grounded
-        ? Math.max(0, phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
-        : 0.42;
+    const leftKneeBend = seated
+        ? 1.2
+        : grounded
+          ? Math.max(0, -phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
+          : 0.42;
+    const rightKneeBend = seated
+        ? 1.2
+        : grounded
+          ? Math.max(0, phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
+          : 0.42;
+    const leftLegRotation = seated ? -1.02 : legSwing;
+    const rightLegRotation = seated ? -1.02 : -legSwing;
+    const leftArmRotation = seated ? -0.46 : -armSwing;
+    const rightArmRotation = seated ? -0.46 : armSwing;
     const poseDamping = 1 - Math.exp(-12 * delta);
     const crouchLegDrop =
         avatarCrouchLowerLegLength * (1 - Math.cos(crouchAmount * 0.82));
@@ -248,7 +275,7 @@ export function animateGardenAvatarRig({
         );
         rig.legLeft.rotation.x = MathUtils.lerp(
             rig.legLeft.rotation.x,
-            legSwing,
+            leftLegRotation,
             poseDamping,
         );
     }
@@ -260,7 +287,7 @@ export function animateGardenAvatarRig({
         );
         rig.legRight.rotation.x = MathUtils.lerp(
             rig.legRight.rotation.x,
-            -legSwing,
+            rightLegRotation,
             poseDamping,
         );
     }
@@ -272,7 +299,7 @@ export function animateGardenAvatarRig({
         );
         rig.armLeft.rotation.x = MathUtils.lerp(
             rig.armLeft.rotation.x,
-            -armSwing,
+            leftArmRotation,
             poseDamping,
         );
         rig.armLeft.rotation.z = MathUtils.lerp(
@@ -289,7 +316,7 @@ export function animateGardenAvatarRig({
         );
         rig.armRight.rotation.x = MathUtils.lerp(
             rig.armRight.rotation.x,
-            armSwing,
+            rightArmRotation,
             poseDamping,
         );
         rig.armRight.rotation.z = MathUtils.lerp(
@@ -549,12 +576,18 @@ function GardenAvatarCamera({
 }
 
 export function GardenAvatar({
+    activationRequest = 0,
+    initialSpawnPoint,
     onPresenceChange,
     roamSeed = 'garden-avatar',
+    showActivationPrompt = true,
     stacks,
 }: {
+    activationRequest?: number;
+    initialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
     roamSeed?: string;
+    showActivationPrompt?: boolean;
     stacks: Stack[] | undefined;
 }) {
     const gltf = useGameGLTF('FarmerAvatar');
@@ -573,11 +606,24 @@ export function GardenAvatar({
     );
     const touchZoomInput = useGameState((state) => state.gardenAvatarZoomInput);
     const jumpRequest = useGameState((state) => state.gardenAvatarJumpRequest);
+    const boatId = useGameState((state) => state.gardenAvatarBoatId);
+    const aimedBoatId = useGameState((state) => state.gardenAvatarAimedBoatId);
+    const setBoatId = useGameState((state) => state.setGardenAvatarBoatId);
+    const setAimedBoatId = useGameState(
+        (state) => state.setGardenAvatarAimedBoatId,
+    );
+    const fishingBoatRegistry = useFishingBoatRegistry();
     const { camera, gl } = useThree();
     const actorRef = useRef<Group>(null);
     const yawRef = useRef(0);
     const pitchRef = useRef(-0.08);
     const velocityRef = useRef(new Vector3());
+    const mountedBoatRef = useRef<FishingBoatController | null>(null);
+    const boatSpeedRef = useRef(0);
+    const boatYawRef = useRef(0);
+    const boatWorldPositionRef = useRef(new Vector3());
+    const boatSeatOffsetRef = useRef(new Vector3());
+    const lastBoatAimCheckAtRef = useRef(Number.NEGATIVE_INFINITY);
     const verticalVelocityRef = useRef(0);
     const groundedRef = useRef(true);
     const groundYRef = useRef(0);
@@ -585,6 +631,7 @@ export function GardenAvatar({
     const jumpQueuedRef = useRef(false);
     const jumpsUsedRef = useRef(0);
     const previousJumpRequestRef = useRef(jumpRequest);
+    const previousActivationRequestRef = useRef(0);
     const previousViewRef = useRef(view);
     const avatarViewRef = useRef(view);
     avatarViewRef.current = view;
@@ -648,12 +695,98 @@ export function GardenAvatar({
         () => getGardenAvatarRoamTargets(world),
         [world],
     );
+    const fishingBoatNavigationGrid = useMemo(
+        () => createFishingBoatNavigationGrid(stacks),
+        [stacks],
+    );
+    const boardAimedFishingBoat = useCallback(() => {
+        const actor = actorRef.current;
+        const controller = fishingBoatRegistry?.resolveAimed(camera);
+        if (!actor || !controller || mountedBoatRef.current) {
+            return false;
+        }
+
+        controller.object.updateWorldMatrix(true, false);
+        const boatPosition = controller.object.getWorldPosition(
+            boatWorldPositionRef.current,
+        );
+        if (
+            Math.hypot(
+                boatPosition.x - actor.position.x,
+                boatPosition.z - actor.position.z,
+            ) > fishingBoatInteractionRange
+        ) {
+            return false;
+        }
+
+        mountedBoatRef.current = controller;
+        boatSpeedRef.current = 0;
+        boatYawRef.current = controller.object.rotation.y;
+        velocityRef.current.set(0, 0, 0);
+        verticalVelocityRef.current = 0;
+        groundedRef.current = true;
+        jumpsUsedRef.current = 0;
+        crouchingRef.current = true;
+        yawRef.current = boatYawRef.current;
+        setBoatId(controller.blockId);
+        return true;
+    }, [camera, fishingBoatRegistry, setBoatId]);
+    const dismountFishingBoat = useCallback(() => {
+        const actor = actorRef.current;
+        const mountedBoat = mountedBoatRef.current;
+        if (actor && mountedBoat) {
+            mountedBoat.object.updateWorldMatrix(true, false);
+            const boatPosition = mountedBoat.object.getWorldPosition(
+                boatWorldPositionRef.current,
+            );
+            const fallbackSpawn = findGardenAvatarSpawnPoint(world);
+            const shore = roamCandidates.reduce<GardenAvatarPoint | null>(
+                (nearest, candidate) => {
+                    if (!nearest) {
+                        return candidate;
+                    }
+                    const nearestDistance = Math.hypot(
+                        nearest.x - boatPosition.x,
+                        nearest.z - boatPosition.z,
+                    );
+                    const candidateDistance = Math.hypot(
+                        candidate.x - boatPosition.x,
+                        candidate.z - boatPosition.z,
+                    );
+                    return candidateDistance < nearestDistance
+                        ? candidate
+                        : nearest;
+                },
+                fallbackSpawn,
+            );
+            if (shore) {
+                actor.position.set(shore.x, shore.y, shore.z);
+                groundYRef.current = shore.y;
+                actor.rotation.y = boatYawRef.current;
+            }
+        }
+
+        mountedBoatRef.current = null;
+        boatSpeedRef.current = 0;
+        velocityRef.current.set(0, 0, 0);
+        verticalVelocityRef.current = 0;
+        groundedRef.current = true;
+        crouchingRef.current = false;
+        jumpsUsedRef.current = 0;
+        setBoatId(null);
+    }, [roamCandidates, setBoatId, world]);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: 'garden-avatar',
         primaryCasterCount: view !== 'overview' ? model.primaryCasterCount : 0,
         species: 'avatar',
     });
     useSceneTimeInvalidation(true, sceneFrameRates.interactive);
+
+    useEffect(() => {
+        if (!boatId && mountedBoatRef.current) {
+            dismountFishingBoat();
+        }
+    }, [boatId, dismountFishingBoat]);
 
     useLayoutEffect(() => {
         const castRealShadow = view !== 'overview';
@@ -697,7 +830,10 @@ export function GardenAvatar({
         if (!actor) {
             return;
         }
-        const defaultSpawn = findGardenAvatarSpawnPoint(world);
+        const defaultSpawn = findGardenAvatarSpawnPoint(
+            world,
+            initialSpawnPoint,
+        );
         if (!defaultSpawn) {
             actor.visible = false;
             return;
@@ -712,10 +848,12 @@ export function GardenAvatar({
             }))
             .sort((left, right) => left.distance - right.distance)
             .slice(0, 12);
-        const spawn =
-            nearbySpawnCandidates[
-                roamSeedRef.current % Math.max(nearbySpawnCandidates.length, 1)
-            ]?.candidate ?? defaultSpawn;
+        const spawn = initialSpawnPoint
+            ? defaultSpawn
+            : (nearbySpawnCandidates[
+                  roamSeedRef.current %
+                      Math.max(nearbySpawnCandidates.length, 1)
+              ]?.candidate ?? defaultSpawn);
         actor.visible = true;
         const currentGroundY = getGardenAvatarGroundY({
             currentGroundY: groundYRef.current,
@@ -729,7 +867,7 @@ export function GardenAvatar({
         } else {
             groundYRef.current = currentGroundY;
         }
-    }, [roamCandidates, world]);
+    }, [initialSpawnPoint, roamCandidates, world]);
 
     useEffect(() => {
         if (jumpRequest !== previousJumpRequestRef.current) {
@@ -782,7 +920,20 @@ export function GardenAvatar({
                 setView('overview');
                 return;
             }
-            if (event.code === 'Space' && !event.repeat) {
+            if (
+                event.code === 'KeyE' &&
+                !event.repeat &&
+                mountedBoatRef.current
+            ) {
+                event.preventDefault();
+                dismountFishingBoat();
+                return;
+            }
+            if (
+                event.code === 'Space' &&
+                !event.repeat &&
+                !mountedBoatRef.current
+            ) {
                 jumpQueuedRef.current = true;
             }
             keyboardRef.current.add(event.code);
@@ -834,10 +985,14 @@ export function GardenAvatar({
                     event.button === 0 &&
                     document.pointerLockElement !== gl.domElement
                 ) {
+                    boardAimedFishingBoat();
                     void gl.domElement.requestPointerLock();
+                } else if (event.button === 0) {
+                    boardAimedFishingBoat();
                 }
                 return;
             }
+            boardAimedFishingBoat();
             dragPointerId = event.pointerId;
             lastPointerX = event.clientX;
             lastPointerY = event.clientY;
@@ -893,7 +1048,14 @@ export function GardenAvatar({
             window.removeEventListener('pointercancel', handlePointerEnd);
             gl.domElement.removeEventListener('contextmenu', handleContextMenu);
         };
-    }, [avatarActive, finishTemporaryZoom, gl.domElement, setView]);
+    }, [
+        avatarActive,
+        boardAimedFishingBoat,
+        dismountFishingBoat,
+        finishTemporaryZoom,
+        gl.domElement,
+        setView,
+    ]);
 
     useEffect(() => {
         const wasZooming = previousTouchZoomInputRef.current;
@@ -911,7 +1073,7 @@ export function GardenAvatar({
         }
     }, [finishTemporaryZoom, setView, touchZoomInput, view]);
 
-    function activateAvatarView() {
+    const activateAvatarView = useCallback(() => {
         const actor = actorRef.current;
         if (!actor || view !== 'overview') {
             return;
@@ -928,7 +1090,19 @@ export function GardenAvatar({
         roamRef.current.route = [];
         dismissSpeechMessage();
         setView('third-person');
-    }
+    }, [camera, dismissSpeechMessage, setView, view]);
+
+    useEffect(() => {
+        if (
+            activationRequest <= previousActivationRequestRef.current ||
+            view !== 'overview'
+        ) {
+            return;
+        }
+
+        previousActivationRequestRef.current = activationRequest;
+        activateAvatarView();
+    }, [activationRequest, activateAvatarView, view]);
 
     function enterAvatarView(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
@@ -959,6 +1133,46 @@ export function GardenAvatar({
         const delta = Math.min(frameDelta, 0.05);
         const now = clock.elapsedTime;
         let movingSpeed = 0;
+
+        const mountedBoat = mountedBoatRef.current;
+        if (
+            mountedBoat &&
+            fishingBoatRegistry?.get(mountedBoat.blockId) !== mountedBoat
+        ) {
+            dismountFishingBoat();
+        }
+
+        if (
+            view !== 'overview' &&
+            !mountedBoatRef.current &&
+            now - lastBoatAimCheckAtRef.current >= 0.1
+        ) {
+            lastBoatAimCheckAtRef.current = now;
+            const aimedBoat = fishingBoatRegistry?.resolveAimed(camera) ?? null;
+            if (aimedBoat) {
+                aimedBoat.object.updateWorldMatrix(true, false);
+            }
+            const aimedBoatPosition = aimedBoat?.object.getWorldPosition(
+                boatWorldPositionRef.current,
+            );
+            const nextAimedBoatId =
+                aimedBoat &&
+                aimedBoatPosition &&
+                Math.hypot(
+                    aimedBoatPosition.x - actor.position.x,
+                    aimedBoatPosition.z - actor.position.z,
+                ) <= fishingBoatInteractionRange
+                    ? aimedBoat.blockId
+                    : null;
+            if (aimedBoatId !== nextAimedBoatId) {
+                setAimedBoatId(nextAimedBoatId);
+            }
+        } else if (
+            (view === 'overview' || mountedBoatRef.current) &&
+            aimedBoatId !== null
+        ) {
+            setAimedBoatId(null);
+        }
 
         if (previousViewRef.current !== view) {
             if (previousViewRef.current === 'overview') {
@@ -1039,6 +1253,90 @@ export function GardenAvatar({
                 delta,
             );
             groundedRef.current = true;
+        } else if (mountedBoatRef.current) {
+            const controller = mountedBoatRef.current;
+            const boat = controller.object;
+            const keys = keyboardRef.current;
+            const keyboardForward =
+                (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) -
+                (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+            const keyboardRight =
+                (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) -
+                (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+            const inputForward = MathUtils.clamp(
+                keyboardForward + touchMoveInput.forward,
+                -1,
+                1,
+            );
+            const inputRight = MathUtils.clamp(
+                keyboardRight + touchMoveInput.right,
+                -1,
+                1,
+            );
+            const targetSpeed =
+                inputForward >= 0
+                    ? inputForward * fishingBoatForwardSpeed
+                    : inputForward * fishingBoatReverseSpeed;
+            boatSpeedRef.current = MathUtils.damp(
+                boatSpeedRef.current,
+                targetSpeed,
+                Math.abs(inputForward) > 0
+                    ? fishingBoatAcceleration
+                    : fishingBoatDeceleration,
+                delta,
+            );
+
+            const previousYaw = boatYawRef.current;
+            const travelDirection = Math.sign(boatSpeedRef.current) || 1;
+            const requestedYaw =
+                previousYaw -
+                inputRight * fishingBoatTurnSpeed * travelDirection * delta;
+            const nextYaw = isFishingBoatNavigablePose({
+                grid: fishingBoatNavigationGrid,
+                x: boat.position.x,
+                yaw: requestedYaw,
+                z: boat.position.z,
+            })
+                ? requestedYaw
+                : previousYaw;
+            const travel = boatSpeedRef.current * delta;
+            const navigation = resolveFishingBoatNavigation({
+                deltaX: -Math.sin(nextYaw) * travel,
+                deltaZ: -Math.cos(nextYaw) * travel,
+                grid: fishingBoatNavigationGrid,
+                x: boat.position.x,
+                yaw: nextYaw,
+                z: boat.position.z,
+            });
+            if (!navigation.moved) {
+                boatSpeedRef.current = MathUtils.damp(
+                    boatSpeedRef.current,
+                    0,
+                    fishingBoatDeceleration,
+                    delta,
+                );
+            }
+            boat.position.x = navigation.x;
+            boat.position.z = navigation.z;
+            boat.rotation.y = navigation.yaw;
+            boatYawRef.current = navigation.yaw;
+            boat.updateWorldMatrix(true, false);
+            const boatPosition = boat.getWorldPosition(
+                boatWorldPositionRef.current,
+            );
+            const seatOffset = boatSeatOffsetRef.current.set(
+                Math.sin(navigation.yaw) * fishingBoatSeatOffset,
+                fishingBoatSeatHeight,
+                Math.cos(navigation.yaw) * fishingBoatSeatOffset,
+            );
+            actor.position.copy(boatPosition).add(seatOffset);
+            actor.rotation.y = navigation.yaw;
+            groundYRef.current = boatPosition.y;
+            groundedRef.current = true;
+            verticalVelocityRef.current = 0;
+            jumpsUsedRef.current = 0;
+            crouchingRef.current = true;
+            movingSpeed = Math.abs(boatSpeedRef.current);
         } else {
             const keys = keyboardRef.current;
             const crouchRequested =
@@ -1216,13 +1514,15 @@ export function GardenAvatar({
 
         gaitAmountRef.current = MathUtils.damp(
             gaitAmountRef.current,
-            MathUtils.clamp(movingSpeed / avatarWalkSpeed, 0, 1),
+            mountedBoatRef.current
+                ? 0
+                : MathUtils.clamp(movingSpeed / avatarWalkSpeed, 0, 1),
             9,
             delta,
         );
         crouchAmountRef.current = MathUtils.damp(
             crouchAmountRef.current,
-            crouchingRef.current ? 1 : 0,
+            mountedBoatRef.current || crouchingRef.current ? 1 : 0,
             18,
             delta,
         );
@@ -1234,6 +1534,7 @@ export function GardenAvatar({
             grounded: groundedRef.current,
             headPitch: view === 'overview' ? 0 : pitchRef.current,
             rig: model.rig,
+            seated: Boolean(mountedBoatRef.current),
             walkAmount: gaitAmountRef.current,
         });
         if (view !== 'overview') {
@@ -1297,7 +1598,7 @@ export function GardenAvatar({
                 <group scale={avatarModelScale}>
                     <primitive object={model.scene} />
                 </group>
-                {view === 'overview' ? (
+                {view === 'overview' && showActivationPrompt ? (
                     <Html center position={[0, 1.43, 0]} zIndexRange={[30, 20]}>
                         <button
                             type="button"

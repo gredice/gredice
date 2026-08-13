@@ -2,6 +2,8 @@ import type { BlockData } from '@gredice/client';
 import {
     canStackBlockOnBlock,
     getGardenBlockFootprintOffsets,
+    isWaterOrSwampBlockName,
+    requiresWaterOrSwampSupport,
 } from '@gredice/js/gardenBlocks';
 import {
     type ActiveDragPreviewTargetOffset,
@@ -485,16 +487,35 @@ function resolvePickupPlacementPreviewFromPreparedState({
                 const occupiedBlockData = occupiedCell
                     ? getBlockDataByName(blockData, occupiedCell.block.name)
                     : null;
-                const isSupported =
-                    !occupiedCell ||
-                    (movingBaseBlock
-                        ? canStackBlockOnBlock({
-                              aboveBlockData: movingBaseBlockData ?? undefined,
-                              aboveBlockName: movingBaseBlock.name,
-                              belowBlockData: occupiedBlockData ?? undefined,
-                              belowBlockName: occupiedCell.block.name,
-                          })
-                        : true);
+                const requiresWaterSupport = movingBaseBlock
+                    ? requiresWaterOrSwampSupport(movingBaseBlock.name)
+                    : false;
+                const isSupported = requiresWaterSupport
+                    ? Boolean(
+                          occupiedCell &&
+                              isWaterOrSwampBlockName(
+                                  occupiedCell.block.name,
+                              ) &&
+                              movingBaseBlock &&
+                              canStackBlockOnBlock({
+                                  aboveBlockData:
+                                      movingBaseBlockData ?? undefined,
+                                  aboveBlockName: movingBaseBlock.name,
+                                  belowBlockData:
+                                      occupiedBlockData ?? undefined,
+                                  belowBlockName: occupiedCell.block.name,
+                              }),
+                      )
+                    : !occupiedCell ||
+                      (movingBaseBlock
+                          ? canStackBlockOnBlock({
+                                aboveBlockData:
+                                    movingBaseBlockData ?? undefined,
+                                aboveBlockName: movingBaseBlock.name,
+                                belowBlockData: occupiedBlockData ?? undefined,
+                                belowBlockName: occupiedCell.block.name,
+                            })
+                          : true);
 
                 return {
                     isBlocked: !isSupported,

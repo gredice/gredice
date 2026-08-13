@@ -6,6 +6,7 @@ import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { useParams } from 'next/navigation';
 import { ListCollapsable } from '../../../components/shared/ListCollapsable';
+import { getBlockRouteAlias } from '../../../lib/blocks/blockRoute';
 import { KnownPages } from '../../../src/KnownPages';
 
 export function BlocksList({
@@ -23,7 +24,7 @@ export function BlocksList({
     const items = entitiesArray.map((entity) => ({
         value: entity.information.label,
         label: entity.information.label,
-        href: KnownPages.Block(entity.information.label),
+        href: KnownPages.Block(getBlockRouteAlias(entity)),
         icon: (
             <BlockImage
                 blockName={entity.information.name}

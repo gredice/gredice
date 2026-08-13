@@ -1,4 +1,5 @@
 import { Box3, type Object3D, type Ray, Vector3 } from 'three';
+import { isTerrainCornerStairBlockName } from '../entities/terrainStairs';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 
@@ -60,6 +61,10 @@ function isBlockInteractionPassthrough(object: Object3D) {
 export function getBlockInteractionRotatedHitboxFootprint(
     target: BlockInteractionLayerTarget,
 ) {
+    if (isTerrainCornerStairBlockName(target.block.name)) {
+        return { depth: 1, width: 1 };
+    }
+
     const rotation = ((Math.round(target.block.rotation) % 2) + 2) % 2;
 
     return rotation === 1
@@ -76,25 +81,9 @@ export function getBlockInteractionRotatedHitboxFootprint(
 export function getBlockInteractionHitboxCenter(
     target: BlockInteractionLayerTarget,
 ) {
-    const center = {
+    return {
         x: target.stack.position.x,
         z: target.stack.position.z,
-    };
-
-    if (target.block.name !== 'Block_Stone_Stairs_Half') {
-        return center;
-    }
-
-    // The half stair occupies local Z=-0.5..0 instead of straddling the tile
-    // center. Rotate that local center with the model so the shared instanced
-    // interaction layer follows the visible edge at every quarter turn.
-    const angle = target.block.rotation * (Math.PI / 2);
-    const localZ = -0.25;
-    const offsetX = Math.sin(angle) * localZ;
-    const offsetZ = Math.cos(angle) * localZ;
-    return {
-        x: center.x + (Math.abs(offsetX) < 1e-12 ? 0 : offsetX),
-        z: center.z + (Math.abs(offsetZ) < 1e-12 ? 0 : offsetZ),
     };
 }
 

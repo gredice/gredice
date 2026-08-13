@@ -607,6 +607,120 @@ def generate_enamel_garden_lamp(output_dir: Path) -> None:
     save_asset(name, output_dir, final)
 
 
+def generate_double_garden_light_pole(output_dir: Path) -> None:
+    """Build the symmetric 1x1 Outlet and garden path light pole."""
+    name = "DoubleGardenLightPole"
+    reset_scene(name)
+    limestone = material(
+        "Material.DoubleGardenLightPole.Limestone", "#D5C6A3", roughness=0.9
+    )
+    # Match Material.WoodenWalkway.WarmWood, the repository's canonical
+    # timber profile. This keeps the pole visually related to the Outlet's
+    # tables and benches instead of reading as brown-painted metal.
+    warm_wood = material(
+        "Material.DoubleGardenLightPole.WarmWood", "#7D4422", roughness=0.78
+    )
+    # WoodenWalkway predates the shared hex helper and stores this canonical
+    # linear surface profile directly. Preserve those exact values so timber
+    # assets remain interchangeable instead of accumulating near-identical
+    # brown materials after GLB export.
+    canonical_wood_linear = (0.205, 0.058, 0.016, 1.0)
+    warm_wood.diffuse_color = canonical_wood_linear
+    warm_wood_principled = warm_wood.node_tree.nodes.get("Principled BSDF")
+    if warm_wood_principled is not None:
+        warm_wood_principled.inputs["Base Color"].default_value = (
+            canonical_wood_linear
+        )
+    warm_enamel = material(
+        "Material.DoubleGardenLightPole.WarmEnamel",
+        "#DCA861",
+        roughness=0.68,
+        metallic=0.12,
+    )
+    dark_metal = material(
+        "Material.DoubleGardenLightPole.DarkMetal",
+        "#4B4843",
+        roughness=0.7,
+        metallic=0.48,
+    )
+    glow = material(
+        "Material.DoubleGardenLightPole.Glow",
+        "#FFD88A",
+        roughness=0.28,
+        emission_strength=2.5,
+    )
+
+    base = join_objects(
+        [
+            cylinder("base lower", 0.19, 0.10, (0, 0, 0.05), limestone, vertices=8),
+            cylinder("base upper", 0.145, 0.10, (0, 0, 0.145), limestone, vertices=8),
+        ],
+        f"{name}_LimestoneBase",
+        limestone,
+    )
+    pole = join_objects(
+        [
+            cylinder("upright", 0.052, 1.91, (0, 0, 1.105), warm_wood, vertices=8),
+            cylinder(
+                "crossarm",
+                0.043,
+                0.70,
+                (0, 0, 2.10),
+                warm_wood,
+                vertices=8,
+                rotation=(0, math.radians(90), 0),
+            ),
+            cylinder("left drop", 0.035, 0.18, (-0.32, 0, 2.015), warm_wood, vertices=8),
+            cylinder("right drop", 0.035, 0.18, (0.32, 0, 2.015), warm_wood, vertices=8),
+            box(
+                "center brace",
+                (0.16, 0.11, 0.12),
+                (0, 0, 2.085),
+                warm_wood,
+                bevel_width=0.025,
+            ),
+        ],
+        f"{name}_Wood",
+        warm_wood,
+    )
+    shades = join_objects(
+        [
+            cone("left shade", 0.145, 0.065, 0.15, (-0.32, 0, 1.92), warm_enamel),
+            cone("right shade", 0.145, 0.065, 0.15, (0.32, 0, 1.92), warm_enamel),
+        ],
+        f"{name}_Shades",
+        warm_enamel,
+    )
+    trim = join_objects(
+        [
+            cylinder("base collar", 0.067, 0.055, (0, 0, 0.215), dark_metal),
+            cylinder("top cap", 0.062, 0.05, (0, 0, 2.16), dark_metal),
+            cylinder("left rim", 0.151, 0.025, (-0.32, 0, 1.85), dark_metal),
+            cylinder("right rim", 0.151, 0.025, (0.32, 0, 1.85), dark_metal),
+        ],
+        f"{name}_DarkMetal",
+        dark_metal,
+    )
+    left_bulb = sphere(
+        f"{name}_BulbLeft",
+        (0.061, 0.061, 0.078),
+        (-0.32, 0, 1.82),
+        glow,
+    )
+    right_bulb = sphere(
+        f"{name}_BulbRight",
+        (0.061, 0.061, 0.078),
+        (0.32, 0, 1.82),
+        glow,
+    )
+
+    save_asset(
+        name,
+        output_dir,
+        [base, pole, shades, trim, left_bulb, right_bulb],
+    )
+
+
 def generate_hazel_light_arch(output_dir: Path) -> None:
     name = "HazelLightArch"
     reset_scene(name)
@@ -1297,6 +1411,7 @@ def generate_moon_rain_barrel(output_dir: Path) -> None:
 GENERATORS: dict[str, Callable[[Path], None]] = {
     "StoneWalkway": generate_stone_walkway,
     "EnamelGardenLamp": generate_enamel_garden_lamp,
+    "DoubleGardenLightPole": generate_double_garden_light_pole,
     "HazelLightArch": generate_hazel_light_arch,
     "RoofTileLantern": generate_roof_tile_lantern,
     "WickerGardenLantern": generate_wicker_garden_lantern,

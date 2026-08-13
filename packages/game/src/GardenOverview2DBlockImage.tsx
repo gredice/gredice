@@ -4,6 +4,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import type { ImageProps } from 'next/image';
 import Image from 'next/image';
 import { useState } from 'react';
+import { resolveCurrentTerrainBlockName } from './entities/terrainStairs';
 
 type GardenOverview2DBlockImageProps = Omit<ImageProps, 'alt' | 'src'> & {
     alt: string;
@@ -17,7 +18,8 @@ export function GardenOverview2DBlockImage({
     rotationSuffix,
     ...props
 }: GardenOverview2DBlockImageProps) {
-    const src = `/assets/blocks/top-down/${encodeURIComponent(blockName)}_${rotationSuffix}.webp`;
+    const imageBlockName = resolveCurrentTerrainBlockName(blockName);
+    const src = `/assets/blocks/top-down/${encodeURIComponent(imageBlockName)}_${rotationSuffix}.webp`;
     const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
     // A newly introduced block can appear in live data before its generated
@@ -27,7 +29,7 @@ export function GardenOverview2DBlockImage({
             <BlockImage
                 {...props}
                 alt={alt}
-                blockName={blockName}
+                blockName={imageBlockName}
                 rotationSuffix={rotationSuffix}
             />
         );

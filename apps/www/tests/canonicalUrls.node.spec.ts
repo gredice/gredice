@@ -150,25 +150,39 @@ test('query-driven public archives declare stable canonicals', () => {
 
 test('alias-backed entity metadata uses authoritative canonical paths', () => {
     const routes = [
-        ['../app/biljke/[alias]/page.tsx', /path:\s*KnownPages\.Plant\(/u],
+        [
+            '../app/biljke/[alias]/page.tsx',
+            /path:\s*KnownPages\.Plant\(/u,
+            /\.slug\s*\|\|/u,
+        ],
         [
             '../app/biljke/[alias]/sorte/[sortAlias]/page.tsx',
             /path:\s*KnownPages\.PlantSort\(/u,
+            /\.slug\s*\|\|/u,
         ],
-        ['../app/blokovi/[alias]/page.tsx', /path:\s*KnownPages\.Block\(/u],
+        [
+            '../app/blokovi/[alias]/page.tsx',
+            /path:\s*KnownPages\.Block\(/u,
+            /getBlockRouteAlias\(/u,
+        ],
         [
             '../app/blokovi/biljke/[alias]/page.tsx',
             /path:\s*KnownPages\.BlockPlant\(/u,
+            /\.slug\s*\|\|/u,
         ],
-        ['../app/radnje/[alias]/page.tsx', /path:\s*KnownPages\.Operation\(/u],
+        [
+            '../app/radnje/[alias]/page.tsx',
+            /path:\s*KnownPages\.Operation\(/u,
+            /\.slug\s*\|\|/u,
+        ],
     ] as const;
 
-    for (const [relativePath, pattern] of routes) {
+    for (const [relativePath, pathPattern, aliasPattern] of routes) {
         const source = readFileSync(
             new URL(relativePath, import.meta.url),
             'utf8',
         );
-        assert.match(source, pattern, relativePath);
-        assert.match(source, /\.slug\s*\|\|/u, relativePath);
+        assert.match(source, pathPattern, relativePath);
+        assert.match(source, aliasPattern, relativePath);
     }
 });

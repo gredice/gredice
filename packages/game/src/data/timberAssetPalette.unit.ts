@@ -42,6 +42,9 @@ const timberAssetMaterials = {
     },
     Bucket: { 'Material.Planks': 'default' },
     Composter: { 'Material.Planks': 'default' },
+    DoubleGardenLightPole: {
+        'Material.DoubleGardenLightPole.WarmWood': 'default',
+    },
     Fence: { 'Material.Planks': 'default' },
     GardenBox: { 'Material.Planks': 'default' },
     IceCreamCart: { wood: 'default', wood_dark: 'default' },

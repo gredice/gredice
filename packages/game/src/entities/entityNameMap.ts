@@ -41,9 +41,11 @@ import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
+import { DoubleGardenLightPole } from './DoubleGardenLightPole';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
+import { FishingBoat } from './FishingBoat';
 import { GardenBox } from './GardenBox';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
@@ -108,7 +110,12 @@ export const entityNameMap = {
     Block_Gravel: BlockTerrainVariationAsset,
     Block_Gravel_Angle: BlockTerrainVariationAsset,
     Block_Stone_Stairs: BlockTerrainVariationAsset,
+    Block_Stone_Stairs_Corner: BlockTerrainVariationAsset,
     Block_Stone_Stairs_Half: BlockTerrainVariationAsset,
+    Block_Polished_Stone: BlockTerrainVariationAsset,
+    Block_Polished_Stone_Angle: BlockTerrainVariationAsset,
+    Block_Polished_Stone_Stairs: BlockTerrainVariationAsset,
+    Block_Polished_Stone_Stairs_Corner: BlockTerrainVariationAsset,
     Block_Ground_Angle: BlockGroundAngle,
     Block_Grass_Angle: BlockGrassAngle,
     Block_Sand_Angle: BlockSandAngle,
@@ -183,8 +190,10 @@ export const entityNameMap = {
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,
+    FishingBoat: FishingBoat,
     FireflyJar: FireflyJar,
     EnamelGardenLamp: EnamelGardenLamp,
+    DoubleGardenLightPole: DoubleGardenLightPole,
     HazelLightArch: HazelLightArch,
     RoofTileLantern: RoofTileLantern,
     WickerGardenLantern: WickerGardenLantern,

@@ -14,7 +14,8 @@ import {
 
 // Deploy the runtime and public assets before using --apply. The default
 // dry-run prevents catalog entries from pointing at models and covers that are
-// not live yet.
+// not live yet. Use `--name DoubleGardenLightPole` to inspect or apply only
+// this exact block without touching the rest of the lighting catalogue.
 
 const actor = {
     id: 'codex',
@@ -76,6 +77,33 @@ const blockSpecs = [
             'information.shortDescription':
                 'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
             'prices.sunflowers': '80',
+        },
+    },
+    {
+        name: 'DoubleGardenLightPole',
+        attributes: {
+            'attributes.height': '2.2',
+            'attributes.hitboxDepth': '0.38',
+            'attributes.hitboxHeight': '2.2',
+            'attributes.hitboxWidth': '0.94',
+            'attributes.nightOnlyPurchase': 'false',
+            'attributes.placeableOnWater': 'false',
+            'attributes.spanDepth': '1',
+            'attributes.spanWidth': '1',
+            'attributes.stackable': 'false',
+            'attributes.type': 'decoration',
+            'functions.raisedBed': 'false',
+            'functions.recycler': 'false',
+            'image.cover': imageAttributeValueFromUrl(
+                'https://www.gredice.com/assets/blocks/DoubleGardenLightPole.webp',
+            ),
+            'information.fullDescription':
+                'Vitki drveni rasvjetni stup s dvije nasuprotne svjetiljke usmjerene prema tlu. Postavi ga između stolova ili uz stazu kako bi noću osvijetlio prolaz i obližnje biljke.',
+            'information.label': 'Dvostruki drveni rasvjetni stup',
+            'information.name': 'DoubleGardenLightPole',
+            'information.shortDescription':
+                'Visoki drveni stup s dvije nasuprotne svjetiljke za osvjetljenje staza i biljaka.',
+            'prices.sunflowers': '120',
         },
     },
     {
@@ -218,13 +246,30 @@ const blockSpecs = [
     attributes: Record<string, string>;
 }>;
 
-function parseApplyFlag(argv: string[]) {
-    for (const argument of argv) {
-        if (argument !== '--' && argument !== '--apply') {
-            throw new Error(`Unknown argument: ${argument}`);
+function parseOptions(argv: string[]) {
+    let apply = false;
+    let blockName: string | null = null;
+    for (let index = 0; index < argv.length; index += 1) {
+        const argument = argv[index];
+        if (argument === '--') {
+            continue;
         }
+        if (argument === '--apply') {
+            apply = true;
+            continue;
+        }
+        if (argument === '--name') {
+            const value = argv[index + 1];
+            if (!value || value.startsWith('--')) {
+                throw new Error('--name requires an exact block name.');
+            }
+            blockName = value;
+            index += 1;
+            continue;
+        }
+        throw new Error(`Unknown argument: ${argument}`);
     }
-    return argv.includes('--apply');
+    return { apply, blockName };
 }
 
 function attributePath(definition: SelectAttributeDefinition) {
@@ -285,7 +330,13 @@ async function getExistingAttributeValue({
 }
 
 async function main() {
-    const apply = parseApplyFlag(process.argv.slice(2));
+    const { apply, blockName } = parseOptions(process.argv.slice(2));
+    const selectedBlockSpecs = blockName
+        ? blockSpecs.filter((spec) => spec.name === blockName)
+        : blockSpecs;
+    if (selectedBlockSpecs.length === 0) {
+        throw new Error(`Unknown garden lighting block: ${blockName}`);
+    }
     const definitions = await getAttributeDefinitions(entityTypeName);
     const definitionsByPath = new Map(
         definitions.map((definition) => [
@@ -294,7 +345,7 @@ async function main() {
         ]),
     );
     const requiredPaths = new Set(
-        blockSpecs.flatMap((spec) => Object.keys(spec.attributes)),
+        selectedBlockSpecs.flatMap((spec) => Object.keys(spec.attributes)),
     );
     const missingDefinitions = Array.from(requiredPaths).filter(
         (path) => !definitionsByPath.has(path),
@@ -318,7 +369,7 @@ async function main() {
         publish: boolean;
     }> = [];
 
-    for (const spec of blockSpecs) {
+    for (const spec of selectedBlockSpecs) {
         let entity = await findBlockEntity(nameDefinition.id, spec.name);
         let entityId = entity?.id ?? null;
         const changedAttributes: string[] = [];

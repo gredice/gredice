@@ -19,6 +19,7 @@ const gravelMaterials = [
     'Material.BlockGravel.PiecesLight',
     'Material.BlockGravel.PiecesDark',
 ];
+const polishedStoneMaterials = ['Material.BlockPolishedStone.Surface'];
 const assetSpecs = [
     {
         materials: stoneMaterials,
@@ -68,13 +69,37 @@ const assetSpecs = [
     },
     {
         materials: stoneMaterials,
-        name: 'BlockStoneStairsHalf',
+        name: 'BlockStoneStairsCorner',
         objects: [
-            'Block_Stone_Stairs_Half_Large',
-            'Block_Stone_Stairs_Half_Mid',
-            'Block_Stone_Stairs_Half_Dark',
+            'Block_Stone_Stairs_Corner_Large',
+            'Block_Stone_Stairs_Corner_Mid',
+            'Block_Stone_Stairs_Corner_Dark',
         ],
-        zBounds: [-0.5, 0],
+        zBounds: [-0.5, 0.5],
+    },
+    {
+        materials: polishedStoneMaterials,
+        name: 'BlockPolishedStone',
+        objects: ['Block_Polished_Stone'],
+        zBounds: [-0.5, 0.5],
+    },
+    {
+        materials: polishedStoneMaterials,
+        name: 'BlockPolishedStoneAngle',
+        objects: ['Block_Polished_Stone_Angle'],
+        zBounds: [-0.5, 0.5],
+    },
+    {
+        materials: polishedStoneMaterials,
+        name: 'BlockPolishedStoneStairs',
+        objects: ['Block_Polished_Stone_Stairs'],
+        zBounds: [-0.5, 0.5],
+    },
+    {
+        materials: polishedStoneMaterials,
+        name: 'BlockPolishedStoneStairsCorner',
+        objects: ['Block_Polished_Stone_Stairs_Corner'],
+        zBounds: [-0.5, 0.5],
     },
 ] as const;
 
@@ -153,6 +178,75 @@ function getPositionAccessors(document: Record<string, unknown>) {
     });
 }
 
+function getPositionVertices(
+    model: Buffer,
+    document: Record<string, unknown>,
+    nodeName: string,
+) {
+    const nodes = document.nodes;
+    const meshes = document.meshes;
+    const accessors = document.accessors;
+    const bufferViews = document.bufferViews;
+    assert.ok(Array.isArray(nodes));
+    assert.ok(Array.isArray(meshes));
+    assert.ok(Array.isArray(accessors));
+    assert.ok(Array.isArray(bufferViews));
+
+    const node = nodes.find(
+        (candidate) => isRecord(candidate) && candidate.name === nodeName,
+    );
+    assert.ok(isRecord(node));
+    assert.ok(typeof node.mesh === 'number');
+    const mesh = meshes[node.mesh];
+    assert.ok(isRecord(mesh));
+    assert.ok(Array.isArray(mesh.primitives));
+    const primitive = mesh.primitives[0];
+    assert.ok(isRecord(primitive));
+    assert.ok(isRecord(primitive.attributes));
+    const positionIndex = primitive.attributes.POSITION;
+    assert.ok(typeof positionIndex === 'number');
+    const accessor = accessors[positionIndex];
+    assert.ok(isRecord(accessor));
+    assert.equal(accessor.componentType, 5126);
+    assert.equal(accessor.type, 'VEC3');
+    assert.ok(typeof accessor.count === 'number');
+    assert.ok(typeof accessor.bufferView === 'number');
+    const bufferView = bufferViews[accessor.bufferView];
+    assert.ok(isRecord(bufferView));
+    assert.ok(
+        bufferView.byteOffset === undefined ||
+            typeof bufferView.byteOffset === 'number',
+    );
+    assert.ok(
+        bufferView.byteStride === undefined ||
+            typeof bufferView.byteStride === 'number',
+    );
+    assert.ok(
+        accessor.byteOffset === undefined ||
+            typeof accessor.byteOffset === 'number',
+    );
+
+    const jsonLength = model.readUInt32LE(12);
+    const binaryChunkHeader = 20 + jsonLength;
+    assert.equal(
+        model.subarray(binaryChunkHeader + 4, binaryChunkHeader + 8).toString(),
+        'BIN\0',
+    );
+    const binaryStart = binaryChunkHeader + 8;
+    const baseOffset =
+        binaryStart + (bufferView.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+    const byteStride = bufferView.byteStride ?? 12;
+
+    return Array.from({ length: accessor.count }, (_, index) => {
+        const offset = baseOffset + index * byteStride;
+        return [
+            model.readFloatLE(offset),
+            model.readFloatLE(offset + 4),
+            model.readFloatLE(offset + 8),
+        ] as const;
+    });
+}
+
 function sortedNames(value: unknown) {
     assert.ok(Array.isArray(value));
     return value
@@ -189,6 +283,28 @@ describe('terrain block Blender assets', () => {
     assert.ok(isRecord(manifestDocument));
     const manifestAssets = manifestDocument.assets;
     assert.ok(Array.isArray(manifestAssets));
+
+    it('does not register or preload the obsolete half-stair model', () => {
+        assert.equal(
+            manifestAssets.some(
+                (asset) =>
+                    isRecord(asset) && asset.name === 'BlockStoneStairsHalf',
+            ),
+            false,
+        );
+        assert.equal(
+            Object.hasOwn(gameAssetModels, 'BlockStoneStairsHalf'),
+            false,
+        );
+        assert.equal(
+            groundGameAssetNames.map(String).includes('BlockStoneStairsHalf'),
+            false,
+        );
+        assert.equal(
+            allGameAssetNames.map(String).includes('BlockStoneStairsHalf'),
+            false,
+        );
+    });
 
     for (const spec of assetSpecs) {
         it(`${spec.name} matches its manifest and ground preload contract`, () => {
@@ -255,7 +371,7 @@ describe('terrain block Blender assets', () => {
         });
     }
 
-    it('keeps gravel as a gray base with distinct light and dark pieces', () => {
+    it('keeps gravel warm-neutral with distinct light and dark pieces', () => {
         for (const name of ['BlockGravel', 'BlockGravelAngle'] as const) {
             const document = readGlbDocument(readFileSync(getModelPath(name)));
             const accessors = getPositionAccessors(document);
@@ -273,51 +389,128 @@ describe('terrain block Blender assets', () => {
                 'Gravel pieces must remain separately modeled geometry',
             );
             for (const color of getMaterialColors(document)) {
-                assert.ok(Math.max(...color) - Math.min(...color) <= 0.04);
+                assert.ok(color[0] > color[1]);
+                assert.ok(color[1] > color[2]);
+                assert.ok(Math.max(...color) - Math.min(...color) <= 0.12);
             }
         }
     });
 
-    it('uses two X-running stair levels and edge-aligns the half stair', () => {
-        for (const name of [
-            'BlockStoneStairs',
-            'BlockStoneStairsHalf',
+    it('keeps gravel tile walls and top perimeters perfectly unbeveled', () => {
+        for (const [name, nodeName] of [
+            ['BlockGravel', 'Block_Gravel_Base'],
+            ['BlockGravelAngle', 'Block_Gravel_Angle_Base'],
         ] as const) {
-            const accessors = getPositionAccessors(
-                readGlbDocument(readFileSync(getModelPath(name))),
+            const model = readFileSync(getModelPath(name));
+            const document = readGlbDocument(model);
+            const vertices = getPositionVertices(model, document, nodeName);
+
+            // A beveled shell previously exported 96 base vertices. The exact
+            // box/wedge perimeter uses only its original 24/18 face vertices.
+            assert.equal(vertices.length, name === 'BlockGravel' ? 24 : 18);
+            assert.ok(
+                vertices.every(
+                    ([x, , z]) =>
+                        Math.abs(Math.abs(x) - 0.5) <= 0.000_01 &&
+                        Math.abs(Math.abs(z) - 0.5) <= 0.000_01,
+                ),
+                `${name} must not inset any outer perimeter vertex`,
             );
-            const treadLevels = accessors
-                .map(({ maximum }) => Number(maximum[1].toFixed(3)))
-                .filter(
-                    (height, index, values) => values.indexOf(height) === index,
-                )
+
+            const negativeZEdge = vertices
+                .filter(([, , z]) => Math.abs(z + 0.5) <= 0.000_01)
+                .map(([x, y]) => `${x.toFixed(5)}:${y.toFixed(5)}`)
                 .toSorted();
-            const middleTread = accessors.find(
-                ({ maximum, minimum }) =>
-                    Math.abs(minimum[0] + 0.5) <= 0.000_01 &&
-                    Math.abs(maximum[0]) <= 0.000_01 &&
-                    Math.abs(maximum[1] - 0.2) <= 0.000_01,
+            const positiveZEdge = vertices
+                .filter(([, , z]) => Math.abs(z - 0.5) <= 0.000_01)
+                .map(([x, y]) => `${x.toFixed(5)}:${y.toFixed(5)}`)
+                .toSorted();
+            assert.deepEqual(
+                negativeZEdge,
+                positiveZEdge,
+                `${name} neighboring side profiles must join without a gap`,
             );
-            const topTread = accessors.find(
-                ({ maximum, minimum }) =>
-                    Math.abs(minimum[0]) <= 0.000_01 &&
-                    Math.abs(maximum[0] - 0.5) <= 0.000_01 &&
-                    Math.abs(maximum[1] - 0.4) <= 0.000_01,
-            );
-
-            assert.deepEqual(treadLevels, [0.2, 0.4]);
-            assert.ok(middleTread);
-            assert.ok(topTread);
         }
+    });
 
-        const halfAccessors = getPositionAccessors(
-            readGlbDocument(readFileSync(getModelPath('BlockStoneStairsHalf'))),
+    it('uses two X-running stair levels on the straight stone stairs', () => {
+        const accessors = getPositionAccessors(
+            readGlbDocument(readFileSync(getModelPath('BlockStoneStairs'))),
         );
-        assert.ok(
-            halfAccessors.every(
-                ({ maximum, minimum }) =>
-                    minimum[2] >= -0.500_01 && maximum[2] <= 0.000_01,
-            ),
+        const treadLevels = accessors
+            .map(({ maximum }) => Number(maximum[1].toFixed(3)))
+            .filter((height, index, values) => values.indexOf(height) === index)
+            .toSorted();
+        const middleTread = accessors.find(
+            ({ maximum, minimum }) =>
+                Math.abs(minimum[0] + 0.5) <= 0.000_01 &&
+                Math.abs(maximum[0]) <= 0.000_01 &&
+                Math.abs(maximum[1] - 0.2) <= 0.000_01,
         );
+        const topTread = accessors.find(
+            ({ maximum, minimum }) =>
+                Math.abs(minimum[0]) <= 0.000_01 &&
+                Math.abs(maximum[0] - 0.5) <= 0.000_01 &&
+                Math.abs(maximum[1] - 0.4) <= 0.000_01,
+        );
+
+        assert.deepEqual(treadLevels, [0.2, 0.4]);
+        assert.ok(middleTread);
+        assert.ok(topTread);
+    });
+
+    it('makes both corner stairs full-tile L stairs with the top at +X/-Z', () => {
+        for (const [name, nodeName] of [
+            ['BlockStoneStairsCorner', 'Block_Stone_Stairs_Corner_Large'],
+            [
+                'BlockPolishedStoneStairsCorner',
+                'Block_Polished_Stone_Stairs_Corner',
+            ],
+        ] as const) {
+            const model = readFileSync(getModelPath(name));
+            const document = readGlbDocument(model);
+            const allAccessors = getPositionAccessors(document);
+            const vertices = getPositionVertices(model, document, nodeName);
+            const topVertices = vertices.filter(
+                ([, y]) => Math.abs(y - 0.4) <= 0.000_01,
+            );
+
+            assertClose(
+                Math.min(...allAccessors.map(({ minimum }) => minimum[0])),
+                -0.5,
+            );
+            assertClose(
+                Math.max(...allAccessors.map(({ maximum }) => maximum[0])),
+                0.5,
+            );
+            assertClose(
+                Math.min(...allAccessors.map(({ minimum }) => minimum[2])),
+                -0.5,
+            );
+            assertClose(
+                Math.max(...allAccessors.map(({ maximum }) => maximum[2])),
+                0.5,
+            );
+            assert.ok(topVertices.length > 0);
+            assert.ok(
+                topVertices.every(
+                    ([x, , z]) => x >= -0.000_01 && z <= 0.000_01,
+                ),
+                `${name} top tread must occupy runtime +X/-Z`,
+            );
+        }
+    });
+
+    it('exports every polished stone variation as one-piece geometry', () => {
+        for (const name of [
+            'BlockPolishedStone',
+            'BlockPolishedStoneAngle',
+            'BlockPolishedStoneStairs',
+            'BlockPolishedStoneStairsCorner',
+        ] as const) {
+            const document = readGlbDocument(readFileSync(getModelPath(name)));
+            assert.equal(getPositionAccessors(document).length, 1);
+            assert.equal(getMaterialColors(document).length, 1);
+        }
     });
 });

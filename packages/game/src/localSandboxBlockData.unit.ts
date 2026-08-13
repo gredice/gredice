@@ -51,7 +51,12 @@ test('local sandbox exposes every terrain variation with offer dimensions', () =
         'Block_Swamp_Ground_Angle',
         'Block_Swamp_Water',
         'Block_Stone_Stairs',
+        'Block_Stone_Stairs_Corner',
         'Block_Stone_Stairs_Half',
+        'Block_Polished_Stone',
+        'Block_Polished_Stone_Angle',
+        'Block_Polished_Stone_Stairs',
+        'Block_Polished_Stone_Stairs_Corner',
     ];
 
     for (const name of names) {
@@ -65,14 +70,20 @@ test('local sandbox exposes every terrain variation with offer dimensions', () =
         assert.equal(block.prices.sunflowers, 0);
     }
 
-    const halfStairs = blockData.find(
-        (block) => block.information.name === 'Block_Stone_Stairs_Half',
+    const cornerStairs = blockData.filter((block) =>
+        [
+            'Block_Stone_Stairs_Corner',
+            'Block_Stone_Stairs_Half',
+            'Block_Polished_Stone_Stairs_Corner',
+        ].includes(block.information.name),
     );
     const swampWater = blockData.find(
         (block) => block.information.name === 'Block_Swamp_Water',
     );
-    assert.equal(halfStairs?.attributes.hitboxDepth, 0.5);
-    assert.equal(halfStairs?.attributes.hitboxWidth, 1);
+    for (const cornerStair of cornerStairs) {
+        assert.equal(cornerStair.attributes.hitboxDepth, 1);
+        assert.equal(cornerStair.attributes.hitboxWidth, 1);
+    }
     assert.equal(swampWater?.attributes.placeableOnWater, true);
 });
 
@@ -224,6 +235,23 @@ test('local sandbox exposes the wooden walkway with its model bounds', () => {
     assert.equal(walkway.attributes.placeableOnWater, true);
 });
 
+test('local sandbox exposes the fishing boat as a two-cell water decoration', () => {
+    const boat = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'FishingBoat',
+    );
+
+    assert.ok(boat);
+    assert.equal(boat.information.label, 'Ribarska barka');
+    assert.equal(boat.attributes.height, 0.62);
+    assert.equal(boat.attributes.hitboxDepth, 1.84);
+    assert.equal(boat.attributes.hitboxHeight, 0.62);
+    assert.equal(boat.attributes.hitboxWidth, 0.94);
+    assert.equal(boat.attributes.placeableOnWater, true);
+    assert.equal(boat.attributes.spanDepth, 2);
+    assert.equal(boat.attributes.spanWidth, 1);
+    assert.equal(boat.attributes.stackable, false);
+});
+
 test('local sandbox exposes the new walkway and lighting blocks with catalog dimensions', () => {
     const blockData = getLocalSandboxBlockData();
     const expectedBlocks = [
@@ -245,6 +273,17 @@ test('local sandbox exposes the new walkway and lighting blocks with catalog dim
             hitboxDepth: 0.46,
             hitboxHeight: 1.45,
             hitboxWidth: 0.52,
+            placeableOnWater: false,
+            spanDepth: 1,
+            spanWidth: 1,
+        },
+        {
+            name: 'DoubleGardenLightPole',
+            label: 'Dvostruki drveni rasvjetni stup',
+            height: 2.2,
+            hitboxDepth: 0.38,
+            hitboxHeight: 2.2,
+            hitboxWidth: 0.94,
             placeableOnWater: false,
             spanDepth: 1,
             spanWidth: 1,

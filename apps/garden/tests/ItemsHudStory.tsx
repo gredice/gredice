@@ -55,7 +55,7 @@ const blockFixtures: Record<
     Block_Gravel: {
         label: 'Šljunak',
         shortDescription:
-            'Sivi šljunčani blok sa sitnim kamenčićima za staze i suhe vrtne površine.',
+            'Topliji sivosmeđi šljunčani blok sa sitnim kamenčićima za povezane staze i suhe vrtne površine.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -63,7 +63,7 @@ const blockFixtures: Record<
     Block_Gravel_Angle: {
         label: 'Šljunak rub',
         shortDescription:
-            'Kosi rub od sivog šljunka za prirodne prijelaze uz staze i nasipe.',
+            'Kosi rub od toplijeg sivosmeđeg šljunka za prirodne prijelaze uz staze i nasipe.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -87,7 +87,7 @@ const blockFixtures: Record<
     Block_Swamp_Ground: {
         label: 'Močvarna zemlja',
         shortDescription:
-            'Smeđesiva vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
+            'Smeđezelena vlažna zemlja sa svijetlosmeđim raslinjem za močvarne dijelove vrta.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -95,7 +95,7 @@ const blockFixtures: Record<
     Block_Swamp_Ground_Angle: {
         label: 'Močvarna zemlja rub',
         shortDescription:
-            'Kosi rub smeđesive močvarne zemlje sa svijetlosmeđim raslinjem.',
+            'Kosi rub smeđezelene močvarne zemlje sa svijetlosmeđim raslinjem.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -116,10 +116,42 @@ const blockFixtures: Record<
         height: 0.4,
         stackable: true,
     },
-    Block_Stone_Stairs_Half: {
-        label: 'Kamene polustube',
+    Block_Stone_Stairs_Corner: {
+        label: 'Kutne kamene stube',
         shortDescription:
-            'Kamene stube pola širine za završetke, rubove i uske prijelaze.',
+            'Kutne kamene stube s dvije razine za povezivanje kamenih stubišta oko zavoja.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Polished_Stone: {
+        label: 'Polirani kamen',
+        shortDescription:
+            'Jednodijelni blok glatkog poliranog kamena za uredne vrtne površine i zidove.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Polished_Stone_Angle: {
+        label: 'Polirani kamen rub',
+        shortDescription:
+            'Kosi jednodijelni rub od poliranog kamena za uredne prijelaze između razina.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Polished_Stone_Stairs: {
+        label: 'Polirane kamene stube',
+        shortDescription:
+            'Jednodijelne polirane kamene stube s dvije razine za ravne prijelaze.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Polished_Stone_Stairs_Corner: {
+        label: 'Kutne polirane kamene stube',
+        shortDescription:
+            'Jednodijelne kutne stube od poliranog kamena za povezivanje stubišta oko zavoja.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -196,6 +228,14 @@ const blockFixtures: Record<
         height: 0.1,
         stackable: false,
     },
+    FishingBoat: {
+        label: 'Ribarska barka',
+        shortDescription:
+            'Tamna drvena barka s dvije klupe, veslima i spremljenom ribarskom mrežom.',
+        sunflowers: 150,
+        height: 0.62,
+        stackable: false,
+    },
     FireflyJar: {
         label: 'Staklenka s krijesnicom',
         shortDescription:
@@ -210,6 +250,14 @@ const blockFixtures: Record<
             'Visoka vrtna lampa s emajliranim sjenilom i toplim, mirnim svjetlom.',
         sunflowers: 80,
         height: 1.45,
+        stackable: false,
+    },
+    DoubleGardenLightPole: {
+        label: 'Dvostruki drveni rasvjetni stup',
+        shortDescription:
+            'Visoki drveni stup s dvije nasuprotne svjetiljke za osvjetljenje staza i biljaka.',
+        sunflowers: 120,
+        height: 2.2,
         stackable: false,
     },
     HazelLightArch: {
@@ -338,6 +386,7 @@ const blockNames = [
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',
+    'FishingBoat',
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
@@ -360,6 +409,7 @@ const blockNames = [
     'BirdHouse',
     'FireflyJar',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',
@@ -391,6 +441,7 @@ const blockNames = [
     'Block_Dry_Ground',
     'Block_Swamp_Ground',
     'Block_Stone',
+    'Block_Polished_Stone',
     'Block_Gravel',
     'Block_Sand',
     'Block_Snow',
@@ -402,11 +453,14 @@ const blockNames = [
     'Block_Dry_Ground_Angle',
     'Block_Swamp_Ground_Angle',
     'Block_Stone_Angle',
+    'Block_Polished_Stone_Angle',
     'Block_Gravel_Angle',
     'Block_Sand_Angle',
     'Block_Snow_Angle',
     'Block_Stone_Stairs',
-    'Block_Stone_Stairs_Half',
+    'Block_Stone_Stairs_Corner',
+    'Block_Polished_Stone_Stairs',
+    'Block_Polished_Stone_Stairs_Corner',
     'Block_Grass_Corner',
     'Block_Ground_Corner',
     'Block_Sand_Corner',

@@ -58,6 +58,15 @@ const nextConfig: NextConfig = {
             },
         ];
     },
+    async redirects() {
+        return [
+            {
+                source: '/blokovi/kamene-polustube',
+                destination: '/blokovi/kutne-kamene-stube',
+                permanent: true,
+            },
+        ];
+    },
     async rewrites() {
         const isDev =
             process.env.NODE_ENV === 'development' ||

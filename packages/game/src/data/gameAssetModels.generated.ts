@@ -14,15 +14,27 @@ export const gameAssetModels = {
     BlockStoneAngle: {
         url: '/assets/models/BlockStoneAngle.glb?v=998e0f9fb62b',
     },
-    BlockGravel: { url: '/assets/models/BlockGravel.glb?v=d25eff067d31' },
+    BlockGravel: { url: '/assets/models/BlockGravel.glb?v=41cc7c79a13c' },
     BlockGravelAngle: {
-        url: '/assets/models/BlockGravelAngle.glb?v=c7fe62b258fc',
+        url: '/assets/models/BlockGravelAngle.glb?v=3dec8432e1b9',
     },
     BlockStoneStairs: {
         url: '/assets/models/BlockStoneStairs.glb?v=0590228ac5fe',
     },
-    BlockStoneStairsHalf: {
-        url: '/assets/models/BlockStoneStairsHalf.glb?v=3afc2f86586e',
+    BlockStoneStairsCorner: {
+        url: '/assets/models/BlockStoneStairsCorner.glb?v=527837b09df4',
+    },
+    BlockPolishedStone: {
+        url: '/assets/models/BlockPolishedStone.glb?v=37f822173ab1',
+    },
+    BlockPolishedStoneAngle: {
+        url: '/assets/models/BlockPolishedStoneAngle.glb?v=87a23acfaaa7',
+    },
+    BlockPolishedStoneStairs: {
+        url: '/assets/models/BlockPolishedStoneStairs.glb?v=1ff582010dd2',
+    },
+    BlockPolishedStoneStairsCorner: {
+        url: '/assets/models/BlockPolishedStoneStairsCorner.glb?v=21d38a9e4b67',
     },
     BlockTerrainCorner: {
         url: '/assets/models/BlockTerrainCorner.glb?v=b0d3454df2fa',
@@ -114,6 +126,9 @@ export const gameAssetModels = {
     EnamelGardenLamp: {
         url: '/assets/models/EnamelGardenLamp.glb?v=c945af2c0198',
     },
+    DoubleGardenLightPole: {
+        url: '/assets/models/DoubleGardenLightPole.glb?v=fe31962c9b22',
+    },
     HazelLightArch: { url: '/assets/models/HazelLightArch.glb?v=6718c29e0a75' },
     RoofTileLantern: {
         url: '/assets/models/RoofTileLantern.glb?v=0a51dad18321',
@@ -125,6 +140,7 @@ export const gameAssetModels = {
         url: '/assets/models/WoodenHandLantern.glb?v=583d3ee52834',
     },
     MoonRainBarrel: { url: '/assets/models/MoonRainBarrel.glb?v=7425319b60fc' },
+    FishingBoat: { url: '/assets/models/FishingBoat.glb?v=ed251d920c48' },
     Fence: { url: '/assets/models/Fence.glb?v=a23f2ed5242a' },
     WhiteFence: { url: '/assets/models/WhiteFence.glb?v=7c459aebfee5' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
@@ -177,7 +193,11 @@ export const groundGameAssetNames = [
     'BlockGravel',
     'BlockGravelAngle',
     'BlockStoneStairs',
-    'BlockStoneStairsHalf',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
     'GardenFlower',
@@ -247,11 +267,13 @@ export const lazyGameAssetNames = [
     'WoodenWalkway',
     'StoneWalkway',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',
     'WoodenHandLantern',
     'MoonRainBarrel',
+    'FishingBoat',
     'Fence',
     'WhiteFence',
     'Greenhouse',
@@ -299,7 +321,11 @@ export const allGameAssetNames = [
     'BlockGravel',
     'BlockGravelAngle',
     'BlockStoneStairs',
-    'BlockStoneStairsHalf',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
     'RaisedBed',
@@ -362,11 +388,13 @@ export const allGameAssetNames = [
     'WoodenWalkway',
     'StoneWalkway',
     'EnamelGardenLamp',
+    'DoubleGardenLightPole',
     'HazelLightArch',
     'RoofTileLantern',
     'WickerGardenLantern',
     'WoodenHandLantern',
     'MoonRainBarrel',
+    'FishingBoat',
     'Fence',
     'WhiteFence',
     'Greenhouse',

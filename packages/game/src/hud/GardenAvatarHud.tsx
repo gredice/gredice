@@ -25,7 +25,10 @@ const avatarTouchActionButtonClassName =
 export function GardenAvatarHud() {
     const showTouchControls = useGardenAvatarTouchControls();
     const view = useGameState((state) => state.gardenAvatarView);
+    const boatId = useGameState((state) => state.gardenAvatarBoatId);
+    const aimedBoatId = useGameState((state) => state.gardenAvatarAimedBoatId);
     const setView = useGameState((state) => state.setGardenAvatarView);
+    const setBoatId = useGameState((state) => state.setGardenAvatarBoatId);
     const setSprintInput = useGameState(
         (state) => state.setGardenAvatarSprintInput,
     );
@@ -68,9 +71,25 @@ export function GardenAvatarHud() {
         <div className="pointer-events-none absolute inset-0 z-30 select-none">
             {!showTouchControls ? (
                 <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
-                    WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput
-                    Space za dvostruki skok · desni klik za POV zum · Esc za
-                    izlaz
+                    {boatId
+                        ? 'W/S za vožnju · A/D za skretanje · E za izlazak iz barke · Esc za pregled'
+                        : 'WASD za hodanje · Shift za trčanje · Ctrl za čučanj · dvaput Space za dvostruki skok · naciljaj barku i klikni za ukrcaj · Esc za izlaz'}
+                </div>
+            ) : null}
+
+            <div
+                aria-hidden="true"
+                className={cx(
+                    'absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2 transition-colors',
+                    aimedBoatId && !boatId ? 'text-amber-300' : 'text-white/75',
+                )}
+            >
+                <span className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-current shadow-sm" />
+                <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-current shadow-sm" />
+            </div>
+            {aimedBoatId && !boatId ? (
+                <div className="absolute top-[calc(50%+1.25rem)] left-1/2 -translate-x-1/2 rounded-full border border-amber-200/50 bg-neutral-950/70 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-md backdrop-blur-sm">
+                    Klikni za ukrcaj
                 </div>
             ) : null}
 
@@ -105,10 +124,12 @@ export function GardenAvatarHud() {
                     )}
                 </IconButton>
                 <IconButton
-                    title="Izađi iz šetnje"
+                    title={boatId ? 'Izađi iz barke' : 'Izađi iz šetnje'}
                     variant="plain"
                     className={avatarHudButtonClassName}
-                    onClick={() => setView('overview')}
+                    onClick={() =>
+                        boatId ? setBoatId(null) : setView('overview')
+                    }
                 >
                     <LogOut className="hidden size-5 sm:block" />
                     <Close className="size-5 sm:hidden" />
@@ -121,77 +142,97 @@ export function GardenAvatarHud() {
                         <GardenAvatarJoystick />
                     </div>
 
-                    <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2">
-                        <IconButton
-                            type="button"
-                            aria-label="Čučni"
-                            variant="plain"
-                            className={avatarTouchActionButtonClassName}
-                            onPointerDown={(event) =>
-                                startAction(event, setCrouchInput)
-                            }
-                            onPointerUp={(event) =>
-                                stopAction(event, setCrouchInput)
-                            }
-                            onPointerCancel={(event) =>
-                                stopAction(event, setCrouchInput)
-                            }
-                        >
-                            <ChevronsDown
-                                aria-hidden="true"
-                                className="size-6"
-                            />
-                        </IconButton>
-                        <IconButton
-                            type="button"
-                            aria-label="Zum"
-                            variant="plain"
-                            className={avatarTouchActionButtonClassName}
-                            onPointerDown={(event) =>
-                                startAction(event, setZoomInput)
-                            }
-                            onPointerUp={(event) =>
-                                stopAction(event, setZoomInput)
-                            }
-                            onPointerCancel={(event) =>
-                                stopAction(event, setZoomInput)
-                            }
-                        >
-                            <ZoomIn aria-hidden="true" className="size-6" />
-                        </IconButton>
-                        <IconButton
-                            type="button"
-                            aria-label="Trči"
-                            variant="plain"
-                            className={avatarTouchActionButtonClassName}
-                            onPointerDown={(event) =>
-                                startAction(event, setSprintInput)
-                            }
-                            onPointerUp={(event) =>
-                                stopAction(event, setSprintInput)
-                            }
-                            onPointerCancel={(event) =>
-                                stopAction(event, setSprintInput)
-                            }
-                        >
-                            <Footprints aria-hidden="true" className="size-6" />
-                        </IconButton>
-                        <IconButton
-                            type="button"
-                            aria-label="Skoči"
-                            variant="plain"
-                            onPointerDown={(event) => {
-                                event.preventDefault();
-                                requestJump();
-                            }}
-                            className={cx(
-                                avatarTouchActionButtonClassName,
-                                'bg-background/95',
-                            )}
-                        >
-                            <ArrowUp aria-hidden="true" className="size-6" />
-                        </IconButton>
-                    </div>
+                    {boatId ? (
+                        <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)]">
+                            <IconButton
+                                type="button"
+                                aria-label="Izađi iz barke"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onClick={() => setBoatId(null)}
+                            >
+                                <LogOut aria-hidden="true" className="size-6" />
+                            </IconButton>
+                        </div>
+                    ) : (
+                        <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)] grid grid-cols-2 gap-2">
+                            <IconButton
+                                type="button"
+                                aria-label="Čučni"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onPointerDown={(event) =>
+                                    startAction(event, setCrouchInput)
+                                }
+                                onPointerUp={(event) =>
+                                    stopAction(event, setCrouchInput)
+                                }
+                                onPointerCancel={(event) =>
+                                    stopAction(event, setCrouchInput)
+                                }
+                            >
+                                <ChevronsDown
+                                    aria-hidden="true"
+                                    className="size-6"
+                                />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                aria-label="Zum"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onPointerDown={(event) =>
+                                    startAction(event, setZoomInput)
+                                }
+                                onPointerUp={(event) =>
+                                    stopAction(event, setZoomInput)
+                                }
+                                onPointerCancel={(event) =>
+                                    stopAction(event, setZoomInput)
+                                }
+                            >
+                                <ZoomIn aria-hidden="true" className="size-6" />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                aria-label="Trči"
+                                variant="plain"
+                                className={avatarTouchActionButtonClassName}
+                                onPointerDown={(event) =>
+                                    startAction(event, setSprintInput)
+                                }
+                                onPointerUp={(event) =>
+                                    stopAction(event, setSprintInput)
+                                }
+                                onPointerCancel={(event) =>
+                                    stopAction(event, setSprintInput)
+                                }
+                            >
+                                <Footprints
+                                    aria-hidden="true"
+                                    className="size-6"
+                                />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                aria-label="Skoči"
+                                variant="plain"
+                                onPointerDown={(event) => {
+                                    event.preventDefault();
+                                    requestJump();
+                                }}
+                                className={cx(
+                                    avatarTouchActionButtonClassName,
+                                    'bg-background/95',
+                                )}
+                            >
+                                <ArrowUp
+                                    aria-hidden="true"
+                                    className="size-6"
+                                />
+                            </IconButton>
+                        </div>
+                    )}
                 </>
             ) : null}
         </div>

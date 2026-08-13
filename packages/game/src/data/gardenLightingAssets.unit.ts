@@ -49,6 +49,30 @@ const assetSpecs = [
         vertexLimit: 3_000,
     },
     {
+        name: 'DoubleGardenLightPole',
+        objects: [
+            'DoubleGardenLightPole_LimestoneBase',
+            'DoubleGardenLightPole_Wood',
+            'DoubleGardenLightPole_Shades',
+            'DoubleGardenLightPole_DarkMetal',
+            'DoubleGardenLightPole_BulbLeft',
+            'DoubleGardenLightPole_BulbRight',
+        ],
+        materials: [
+            'Material.DoubleGardenLightPole.DarkMetal',
+            'Material.DoubleGardenLightPole.Glow',
+            'Material.DoubleGardenLightPole.Limestone',
+            'Material.DoubleGardenLightPole.WarmWood',
+            'Material.DoubleGardenLightPole.WarmEnamel',
+        ],
+        horizontalLimit: 0.5,
+        depthLimit: 0.5,
+        heightRange: [2.18, 2.2],
+        // The symmetric two-head fixture remains below the existing
+        // single-lamp budget (3,000) while retaining readable wood bevels.
+        vertexLimit: 2_500,
+    },
+    {
         name: 'HazelLightArch',
         objects: [
             'HazelLightArch_Poles',
@@ -150,6 +174,36 @@ const assetSpecs = [
         depthLimit: 0.5,
         heightRange: [0.85, 1],
         vertexLimit: 7_000,
+    },
+    {
+        name: 'FishingBoat',
+        objects: [
+            'FishingBoat_HullWoodDark',
+            'FishingBoat_HullWood',
+            'FishingBoat_InteriorWood',
+            'FishingBoat_Benches',
+            'FishingBoat_Oars',
+            'FishingBoat_Rope',
+            'FishingBoat_Net',
+            'FishingBoat_Floats',
+            'FishingBoat_Metal',
+            'FishingBoat_Ripples',
+        ],
+        materials: [
+            'Material.FishingBoat.DarkWarmWood',
+            'Material.FishingBoat.DarkMetal',
+            'Material.FishingBoat.FloatGold',
+            'Material.FishingBoat.HullWood',
+            'Material.FishingBoat.InteriorWood',
+            'Material.FishingBoat.Net',
+            'Material.FishingBoat.Ripple',
+            'Material.FishingBoat.Rope',
+            'Material.FishingBoat.WarmWood',
+        ],
+        horizontalLimit: 0.48,
+        depthLimit: 0.96,
+        heightRange: [0.59, 0.63],
+        vertexLimit: 5_100,
     },
 ] as const;
 
@@ -290,7 +344,7 @@ function getNodeBounds(document: Record<string, unknown>, nodeName: string) {
     };
 }
 
-describe('garden lighting and stone walkway assets', () => {
+describe('generated garden decoration assets', () => {
     const manifestDocument: unknown = JSON.parse(
         readFileSync(manifestPath, 'utf8'),
     );
@@ -401,6 +455,30 @@ describe('garden lighting and stone walkway assets', () => {
         assert.ok(
             Math.max(...bounds.map(({ maximum }) => maximum[2])) >= 0.499_99,
         );
+    });
+
+    it('keeps the double pole bulbs opposed along local X', () => {
+        const modelPath = fileURLToPath(
+            new URL(
+                '../../../../apps/garden/public/assets/models/DoubleGardenLightPole.glb',
+                import.meta.url,
+            ),
+        );
+        const document = readGlbDocument(readFileSync(modelPath));
+        const left = getNodePositionBounds(
+            document,
+            'DoubleGardenLightPole_BulbLeft',
+        );
+        const right = getNodePositionBounds(
+            document,
+            'DoubleGardenLightPole_BulbRight',
+        );
+
+        assert.ok(left.maximum[0] < 0);
+        assert.ok(right.minimum[0] > 0);
+        assert.ok(Math.abs(left.minimum[0] + right.maximum[0]) < 0.000_01);
+        assert.deepEqual(left.minimum.slice(1), right.minimum.slice(1));
+        assert.deepEqual(left.maximum.slice(1), right.maximum.slice(1));
     });
 
     it('keeps the StoneWalkway palette in one warm limestone family', () => {
