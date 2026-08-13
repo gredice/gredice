@@ -12,6 +12,14 @@ const TOOLTIP_VERSION = 3;
 const REMINDER_AFTER_MS = 1000 * 60 * 60 * 24 * 30;
 
 type TooltipState = { dismissedAt: number; seenVersion: number };
+type TooltipStorageKey = DeviceType | `view:${DeviceType}`;
+
+function tooltipStorageKey(
+    mode: 'edit' | 'view',
+    deviceType: DeviceType,
+): TooltipStorageKey {
+    return mode === 'edit' ? deviceType : `view:${deviceType}`;
+}
 
 function getDeviceType(): DeviceType {
     if (typeof window === 'undefined') return 'desktop';
@@ -21,20 +29,20 @@ function getDeviceType(): DeviceType {
     return 'desktop';
 }
 
-function readStorage(): Partial<Record<DeviceType, TooltipState>> {
+function readStorage(): Partial<Record<TooltipStorageKey, TooltipState>> {
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw) as unknown;
         return typeof parsed === 'object' && parsed
-            ? (parsed as Partial<Record<DeviceType, TooltipState>>)
+            ? (parsed as Partial<Record<TooltipStorageKey, TooltipState>>)
             : {};
     } catch {
         return {};
     }
 }
 
-function writeStorage(next: Partial<Record<DeviceType, TooltipState>>) {
+function writeStorage(next: Partial<Record<TooltipStorageKey, TooltipState>>) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
@@ -53,7 +61,13 @@ function prefersReducedMotion() {
     );
 }
 
-export function ControlsTooltipHud() {
+export function ControlsTooltipHud({
+    mode = 'edit',
+    offsetForItemsHud = true,
+}: {
+    mode?: 'edit' | 'view';
+    offsetForItemsHud?: boolean;
+} = {}) {
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState(0.75);
@@ -62,7 +76,7 @@ export function ControlsTooltipHud() {
         const syncDeviceType = () => {
             const nextType = getDeviceType();
             setDeviceType(nextType);
-            const record = readStorage()[nextType];
+            const record = readStorage()[tooltipStorageKey(mode, nextType)];
             if (shouldShowTooltip(record)) {
                 setOpen(true);
             }
@@ -71,7 +85,7 @@ export function ControlsTooltipHud() {
         syncDeviceType();
         window.addEventListener('resize', syncDeviceType);
         return () => window.removeEventListener('resize', syncDeviceType);
-    }, []);
+    }, [mode]);
 
     useEffect(() => {
         if (!open || prefersReducedMotion()) return;
@@ -86,7 +100,7 @@ export function ControlsTooltipHud() {
     const dismiss = () => {
         setOpen(false);
         const map = readStorage();
-        map[deviceType] = {
+        map[tooltipStorageKey(mode, deviceType)] = {
             dismissedAt: Date.now(),
             seenVersion: TOOLTIP_VERSION,
         };
@@ -99,10 +113,11 @@ export function ControlsTooltipHud() {
                 <div
                     id="game-controls-tooltip"
                     data-controls-tooltip-hud="open"
-                    className="pointer-events-auto relative p-2 sm:p-3 md:mb-24"
+                    className={`pointer-events-auto relative p-2 sm:p-3 ${offsetForItemsHud ? 'md:mb-24' : ''}`}
                 >
                     <ControlsVisualization
                         deviceType={deviceType}
+                        mode={mode}
                         phase={phase}
                     />
                     <ButtonGreen

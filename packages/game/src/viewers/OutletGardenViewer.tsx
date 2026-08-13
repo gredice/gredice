@@ -16,6 +16,9 @@ import {
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { useOutletOffers } from '../hooks/useOutletOffers';
+import { ControlsTooltipHud } from '../hud/ControlsTooltipHud';
+import { ButtonGreen } from '../shared-ui/ButtonGreen';
+import { GameModal } from '../shared-ui/game-modal';
 import type { GardenAvatarView } from '../useGameState';
 import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
@@ -527,7 +530,7 @@ export function OutletGardenViewer({
 
     return (
         <div
-            className={`relative grid h-[100dvh] overflow-hidden bg-[#cfeaca] ${!avatarWalking && (offerListOpen || selectedOfferId !== null) ? 'grid-rows-[minmax(0,1fr)_minmax(18rem,46dvh)] lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-1' : 'grid-cols-1 grid-rows-1'} ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
+            className={`relative grid h-[100dvh] grid-cols-1 grid-rows-1 overflow-hidden bg-[#cfeaca] ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
             data-outlet-garden
             data-outlet-garden-avatar-view={visibleAvatarView}
             data-outlet-garden-display-count={displayUnits.length}
@@ -599,8 +602,8 @@ export function OutletGardenViewer({
 
                 {!avatarWalking ? (
                     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-linear-to-b from-black/25 to-transparent p-3 pb-10 sm:p-4">
-                        <Button
-                            className="pointer-events-auto border-white/60 bg-white/85 shadow-lg backdrop-blur"
+                        <ButtonGreen
+                            className="pointer-events-auto border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
                             href="/"
                             onClick={(event) => {
                                 event.preventDefault();
@@ -608,12 +611,12 @@ export function OutletGardenViewer({
                             }}
                             size="lg"
                             startDecorator={<ArrowLeft className="size-4" />}
-                            variant="outlined"
                         >
                             Moj vrt
-                        </Button>
+                        </ButtonGreen>
                         <div className="pointer-events-auto flex items-start gap-2">
-                            <Button
+                            <ButtonGreen
+                                className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
                                 aria-label="Prošetaj Outlet vrtom"
                                 onClick={() => {
                                     setAvatarActivationRequest(
@@ -624,13 +627,13 @@ export function OutletGardenViewer({
                                 startDecorator={
                                     <Footprints className="size-4" />
                                 }
-                                variant="outlined"
                             >
                                 <span className="hidden sm:inline">
                                     Prošetaj vrtom
                                 </span>
-                            </Button>
-                            <Button
+                            </ButtonGreen>
+                            <ButtonGreen
+                                className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
                                 aria-controls="outlet-garden-browser"
                                 aria-expanded={offerListOpen}
                                 aria-label="Prikaži popis Outlet ponuda"
@@ -640,21 +643,19 @@ export function OutletGardenViewer({
                                 startDecorator={
                                     <LayoutList className="size-4" />
                                 }
-                                variant="outlined"
                             >
                                 Popis ponuda
-                            </Button>
-                            <div className="hidden max-w-xs rounded-xl bg-black/55 px-3 py-2 text-right text-xs text-white shadow-lg backdrop-blur sm:block">
-                                <p className="font-semibold">
-                                    Razgledaj Outlet vrt
-                                </p>
-                                <p className="mt-0.5 text-white/80">
-                                    Odaberi posjetitelja za šetnju · povuci za
-                                    zakretanje · približi kotačićem ili s dva
-                                    prsta
-                                </p>
-                            </div>
+                            </ButtonGreen>
                         </div>
+                    </div>
+                ) : null}
+
+                {!avatarWalking ? (
+                    <div className="pointer-events-none absolute bottom-[var(--game-safe-area-bottom,0px)] left-[var(--game-safe-area-left,0px)] z-10 flex items-end p-2">
+                        <ControlsTooltipHud
+                            mode="view"
+                            offsetForItemsHud={false}
+                        />
                     </div>
                 ) : null}
 
@@ -668,7 +669,21 @@ export function OutletGardenViewer({
                 ) : null}
             </main>
 
-            {!avatarWalking && (offerListOpen || selectedOfferId !== null) ? (
+            <GameModal
+                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 md:max-w-3xl"
+                hideClose
+                hudLayer
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeOfferBrowser();
+                    }
+                }}
+                open={
+                    !avatarWalking &&
+                    (offerListOpen || selectedOfferId !== null)
+                }
+                title={offerListOpen ? 'Popis Outlet ponuda' : 'Outlet ponuda'}
+            >
                 <OutletGardenOfferBrowser
                     commerce={commerce}
                     displayLimited={displayLimited}
@@ -700,9 +715,10 @@ export function OutletGardenViewer({
                     onSelectOffer={selectOffer}
                     onShowOfferList={openOfferList}
                     selectedOfferId={selectedOfferId}
+                    surface="modal"
                     view={offerListOpen ? 'list' : 'details'}
                 />
-            ) : null}
+            </GameModal>
         </div>
     );
 }

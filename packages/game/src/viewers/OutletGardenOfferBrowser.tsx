@@ -151,6 +151,7 @@ export type OutletGardenOfferBrowserProps = {
     onShowOfferList?: () => void;
     renderer?: OutletGardenRenderer;
     selectedOfferId: number | null;
+    surface?: 'modal' | 'panel';
     view?: 'combined' | 'details' | 'list';
 };
 
@@ -171,6 +172,7 @@ export function OutletGardenOfferBrowser({
     onShowOfferList,
     renderer = 'webgl',
     selectedOfferId,
+    surface = 'panel',
     view = 'combined',
 }: OutletGardenOfferBrowserProps) {
     const plantGroups = groupOutletGardenOffers(offers);
@@ -207,7 +209,10 @@ export function OutletGardenOfferBrowser({
         <aside
             aria-labelledby="outlet-garden-offers-title"
             className={cx(
-                'relative z-20 flex min-h-0 flex-col overflow-hidden border-t border-white/50 bg-background/95 shadow-2xl backdrop-blur-xl lg:border-t-0 lg:border-l',
+                'relative flex min-h-0 flex-col overflow-hidden',
+                surface === 'panel'
+                    ? 'z-20 border-t border-white/50 bg-background/95 shadow-2xl backdrop-blur-xl lg:border-t-0 lg:border-l'
+                    : 'max-h-[calc(100dvh-2rem)] bg-background',
                 className,
             )}
             data-outlet-garden-browser
@@ -726,6 +731,21 @@ export function OutletGardenOfferBrowser({
                                         onSelectOffer(null);
                                     }}
                                 />
+                            ) : null}
+
+                            {view === 'details' && onShowOfferList ? (
+                                <Button
+                                    aria-label="Prikaži popis Outlet ponuda"
+                                    className="mt-4"
+                                    fullWidth
+                                    onClick={onShowOfferList}
+                                    startDecorator={
+                                        <ArrowLeft className="size-4" />
+                                    }
+                                    variant="outlined"
+                                >
+                                    Sve Outlet ponude
+                                </Button>
                             ) : null}
 
                             {view === 'combined' ? (
