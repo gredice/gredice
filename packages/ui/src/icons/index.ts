@@ -178,6 +178,7 @@ export {
     X as Close,
     Zap as Lightning,
     ZoomIn,
+    ZoomOut,
 } from 'lucide-react';
 
 export { CompanyFacebook } from './CompanyFacebook';
