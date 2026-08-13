@@ -733,6 +733,21 @@ export function OutletGardenOfferBrowser({
                                 />
                             ) : null}
 
+                            {view === 'details' && onShowOfferList ? (
+                                <Button
+                                    aria-label="Prikaži popis Outlet ponuda"
+                                    className="mt-4"
+                                    fullWidth
+                                    onClick={onShowOfferList}
+                                    startDecorator={
+                                        <ArrowLeft className="size-4" />
+                                    }
+                                    variant="outlined"
+                                >
+                                    Sve Outlet ponude
+                                </Button>
+                            ) : null}
+
                             {view === 'combined' ? (
                                 <Button
                                     className="mt-4"

@@ -945,7 +945,7 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
     expect(runtimeErrors).toEqual([]);
 });
 
-test('Outlet visitor walks in third and first person without mutating or losing the selected offer @outlet-slow @outlet-walk', async ({
+test('Outlet visitor walks in third and first person without mutations and recovers when offers disappear @outlet-slow @outlet-walk', async ({
     page,
 }, testInfo) => {
     test.setTimeout(180_000);
@@ -985,6 +985,11 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     await expect(
         page.getByRole('button', { name: 'Prošetaj vrtom', exact: true }),
     ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Zatvori detalje sadnice' }).click();
+    await expect(
+        page.locator('[data-outlet-garden-selected-offer="302"]'),
+    ).toHaveCount(0);
+    await expect(page).toHaveURL(/\/outlet$/u);
 
     const walkButton = page.getByRole('button', {
         name: 'Prošetaj Outlet vrtom',
@@ -1000,7 +1005,7 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toHaveCount(0);
-    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+    await expect(page).toHaveURL(/\/outlet$/u);
 
     await page.keyboard.press('KeyW', { delay: 300 });
     const firstPersonButton = page.getByRole('button', {
@@ -1028,11 +1033,11 @@ test('Outlet visitor walks in third and first person without mutating or losing 
     );
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }),
     ).toBeVisible();
-    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+    await expect(page).toHaveURL(/\/outlet$/u);
 
     const offerRequestCountBeforeSceneLoss =
         outletApi.getOutletOfferRequestCount();
