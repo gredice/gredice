@@ -24,12 +24,8 @@ const outletProductSignCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
     currency: 'EUR',
     style: 'currency',
 });
-const outletProductSignScale = 0.5;
+const outletProductSignScale = 0.9;
 const outletProductSignFaceDistanceFactor = 1;
-const outletProductSignFaces = [
-    { face: 'front', positionZ: 0.064, rotationY: 0 },
-    { face: 'back', positionZ: -0.064, rotationY: Math.PI },
-] as const;
 const woodenSignNodeNames = [
     'WoodenSign_Post',
     'WoodenSign_Board',
@@ -136,22 +132,16 @@ function OutletGardenProductSignImage({
 }
 
 function OutletGardenProductSignFace({
-    face,
     product,
 }: {
-    face: (typeof outletProductSignFaces)[number]['face'];
     product: OutletGardenProductSignProduct;
 }) {
     return (
         <div
             aria-hidden="true"
             className="pointer-events-none flex h-[124px] w-[276px] items-center gap-[10px] overflow-hidden rounded-[12px] border-[4px] border-[#765032]/45 bg-[#fff8dc] p-[8px] text-[#352519] shadow-[0_8px_20px_rgba(30,20,10,0.35)]"
-            data-outlet-garden-product-sign={
-                face === 'front' ? product.plantSortId : undefined
-            }
-            data-outlet-garden-product-sign-back={
-                face === 'back' ? product.plantSortId : undefined
-            }
+            data-outlet-garden-product-sign={product.plantSortId}
+            data-outlet-garden-product-sign-scale={outletProductSignScale}
             data-outlet-garden-product-sign-name={product.name}
             data-outlet-garden-product-sign-price={product.priceLabel}
             style={{
@@ -338,27 +328,16 @@ export function OutletGardenProductSigns({
                     rotation={[0, placement.rotation * (Math.PI / 2), 0]}
                     scale={outletProductSignScale}
                 >
-                    {outletProductSignFaces.map(
-                        ({ face, positionZ, rotationY }) => (
-                            <Html
-                                key={face}
-                                transform
-                                distanceFactor={
-                                    outletProductSignFaceDistanceFactor
-                                }
-                                pointerEvents="none"
-                                position={[0, 0.93, positionZ]}
-                                rotation={[0, rotationY, 0]}
-                                style={{ pointerEvents: 'none' }}
-                                zIndexRange={[3, 0]}
-                            >
-                                <OutletGardenProductSignFace
-                                    face={face}
-                                    product={product}
-                                />
-                            </Html>
-                        ),
-                    )}
+                    <Html
+                        transform
+                        distanceFactor={outletProductSignFaceDistanceFactor}
+                        pointerEvents="none"
+                        position={[0, 0.93, 0.064]}
+                        style={{ pointerEvents: 'none' }}
+                        zIndexRange={[3, 0]}
+                    >
+                        <OutletGardenProductSignFace product={product} />
+                    </Html>
                 </group>
             ))}
         </group>

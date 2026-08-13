@@ -80,7 +80,7 @@ export const outletGardenVisitorSpawnPoint = {
 export const outletGardenMaxDisplayedUnitsPerOffer = 100;
 export const outletGardenMaxDisplayedUnitsTotal = 500;
 export const outletGardenMaxProductSigns = 64;
-export const outletGardenMaxDoubleLightPoleCount = 8;
+export const outletGardenMaxDoubleLightPoleCount = 4;
 export const outletGardenMaxTrackedTombstones = 500;
 
 const outletGardenPotNames = [
@@ -869,7 +869,7 @@ function outletGardenDecorations(
         ),
     )
         .sort((left, right) => left - right)
-        .slice(0, outletGardenMaxDoubleLightPoleCount / 2);
+        .slice(0, outletGardenMaxDoubleLightPoleCount);
     const illuminatedSegmentIndexSet = new Set(illuminatedSegmentIndices);
 
     for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
@@ -916,11 +916,11 @@ function outletGardenDecorations(
             });
         };
 
-        // A pole sits in the free tile between each side's two table rows. Its
-        // two heads follow the aisle tangent, so one head faces each adjacent
-        // table while the spill also reaches the one-tile walkway. Retained
-        // assignment tombstones keep the earliest four occupied segments
-        // illuminated without letting the light registry grow with stock.
+        // One pole sits in the free tile between a side's two table rows. The
+        // side alternates per segment, halving the light count while keeping
+        // both sides of the winding walkway evenly covered. Retained assignment
+        // tombstones keep the earliest four occupied segments illuminated
+        // without letting the light registry grow with stock.
         if (illuminatedSegmentIndexSet.has(segmentIndex)) {
             const pathPoint = outletGardenPointAlongSegment(
                 segment,
@@ -930,30 +930,22 @@ function outletGardenDecorations(
                 x: -segment.direction.y,
                 y: segment.direction.x,
             };
-            const normals = [
-                { id: 'left', normal: leftNormal },
-                {
-                    id: 'right',
-                    normal: { x: -leftNormal.x, y: -leftNormal.y },
-                },
-            ] as const;
+            const side = segmentIndex % 2 === 0 ? 'left' : 'right';
+            const normal =
+                side === 'left'
+                    ? leftNormal
+                    : { x: -leftNormal.x, y: -leftNormal.y };
 
-            for (const { id, normal } of normals) {
-                decorations.push({
-                    idSuffix: `${segmentIndex.toString()}:${id}`,
-                    name: 'DoubleGardenLightPole',
-                    point: {
-                        x:
-                            pathPoint.x +
-                            normal.x * outletGardenLightNormalDistance,
-                        y:
-                            pathPoint.y +
-                            normal.y * outletGardenLightNormalDistance,
-                    },
-                    rotation: outletGardenRotationAlongPath(segment.direction),
-                    segmentIndex,
-                });
-            }
+            decorations.push({
+                idSuffix: `${segmentIndex.toString()}:${side}`,
+                name: 'DoubleGardenLightPole',
+                point: {
+                    x: pathPoint.x + normal.x * outletGardenLightNormalDistance,
+                    y: pathPoint.y + normal.y * outletGardenLightNormalDistance,
+                },
+                rotation: outletGardenRotationAlongPath(segment.direction),
+                segmentIndex,
+            });
         }
 
         // Seating belongs beside the aisle, while trees, bushes, and stones

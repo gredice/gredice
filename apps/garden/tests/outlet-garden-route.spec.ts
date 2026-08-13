@@ -580,6 +580,13 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expectOutletCanvasToFillScene(page);
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(2);
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-scale',
+        '0.9',
+    );
+    await expect(
+        page.locator('[data-outlet-garden-product-sign-back]'),
+    ).toHaveCount(0);
     const tomatoSign = productSigns.filter({
         hasText: 'Rajčica mini red cherry',
     });
@@ -592,15 +599,19 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         tomatoSortImageUrl,
     );
     await expect(tomatoSign).toHaveCSS('pointer-events', 'none');
-    await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
-    await page
-        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
-        .click();
     await expect(
-        page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
-    ).toHaveCount(2);
-    await expectOutletCanvasToFillScene(page);
-    await expect(page.locator('[data-nextjs-dialog]')).toHaveCount(0);
+        page.locator('[data-controls-tooltip-hud="open"]'),
+    ).toBeVisible();
+    await expect(page.getByText('Pomak', { exact: true })).toBeVisible();
+    await expect(page.getByText('Zumiranje', { exact: true })).toBeVisible();
+    await expect(
+        page.getByText('Rotacija vrta', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Pokupi / spusti', { exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText('Razgledaj Outlet vrt')).toHaveCount(0);
+    await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
 
     const canvas = page.locator('canvas');
     const canvasElement = await canvas.elementHandle();
@@ -618,6 +629,24 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     }
     await expect(canvas).toBeVisible();
 
+    await page
+        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .click();
+    const offerDialog = page.getByRole('dialog', {
+        name: 'Popis Outlet ponuda',
+    });
+    await expect(offerDialog).toBeVisible();
+    await expect(
+        offerDialog.getByRole('button', {
+            name: 'Zatvori popis Outlet ponuda',
+        }),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
+    ).toHaveCount(2);
+    await expectOutletCanvasToFillScene(page);
+    await expect(page.locator('[data-nextjs-dialog]')).toHaveCount(0);
+
     const paprikaOffer = page.getByRole('button', {
         name: /Paprika Zlata Snack/u,
     });
@@ -626,11 +655,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'data-outlet-garden-hovered-offer',
         '302',
     );
-    await page
-        .getByRole('main', {
-            name: 'Interaktivni 3D prikaz Outlet vrta',
-        })
-        .hover({ position: { x: 20, y: 200 } });
+    await offerDialog
+        .getByRole('heading', { name: 'Outlet vrt', exact: true })
+        .hover();
     await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
         /.+/u,

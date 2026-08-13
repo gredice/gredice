@@ -1117,28 +1117,10 @@ describe('buildOutletGardenStacks', () => {
                     y: -2,
                 },
                 {
-                    id: 'outlet-decor:DoubleGardenLightPole:3:left',
-                    rotation: 0,
-                    x: 13,
-                    y: 2,
-                },
-                {
                     id: 'outlet-decor:DoubleGardenLightPole:0:left',
                     rotation: 3,
                     x: -2,
                     y: 3,
-                },
-                {
-                    id: 'outlet-decor:DoubleGardenLightPole:0:right',
-                    rotation: 3,
-                    x: 2,
-                    y: 3,
-                },
-                {
-                    id: 'outlet-decor:DoubleGardenLightPole:2:right',
-                    rotation: 1,
-                    x: 8,
-                    y: 7,
                 },
                 {
                     id: 'outlet-decor:DoubleGardenLightPole:2:left',
@@ -1151,12 +1133,6 @@ describe('buildOutletGardenStacks', () => {
                     rotation: 0,
                     x: 3,
                     y: 8,
-                },
-                {
-                    id: 'outlet-decor:DoubleGardenLightPole:1:left',
-                    rotation: 0,
-                    x: 3,
-                    y: 12,
                 },
             ],
         );
