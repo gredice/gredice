@@ -61,7 +61,7 @@ import {
 } from '../../utils/raisedBedOrientation';
 import {
     buildAdvancedSowingPlantVisualLayout,
-    getSelectedPlantingVisualGeneration,
+    resolveAdvancedSowingPlantVisualStage,
 } from './advancedSowingPlantVisualLayout';
 import { reconcileGeneratedPlantBatches } from './generatedPlantBatchReconciliation';
 import {
@@ -933,12 +933,6 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 blockIds.length * 9,
             );
             for (const planting of selectedPlantings) {
-                const generation = getSelectedPlantingVisualGeneration(
-                    planting.lifecycleStatus,
-                );
-                if (generation === null) {
-                    continue;
-                }
                 const layout = buildAdvancedSowingPlantVisualLayout({
                     fieldPositionByIndex,
                     planting,
@@ -976,10 +970,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     resolvedPlantPreset,
                     false,
                 );
-                const visualStage = resolveRaisedBedPlantVisualStage({
-                    generation,
+                const visualStage = resolveAdvancedSowingPlantVisualStage({
+                    lifecycleStatus: planting.lifecycleStatus,
                     plantDefinition,
                 });
+                if (!visualStage) {
+                    continue;
+                }
                 const fieldKey = `advanced-sowing:${raisedBed.id.toString()}:${planting.id.toString()}`;
                 const instances = layout.instancePositions.map(
                     (
@@ -987,7 +984,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         index,
                     ): RaisedBedGeneratedPlantBatchInstance => ({
                         fieldKey,
-                        generation,
+                        generation: visualStage.generation,
                         position,
                         raisedBedId: raisedBed.id,
                         scale: plantInstanceScale,
