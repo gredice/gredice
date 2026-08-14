@@ -255,17 +255,19 @@ export function animateGardenAvatarRig({
     const legSwing = grounded ? phaseSine * 0.44 * walkAmount : -0.2;
     const armSwing = grounded ? phaseSine * 0.34 * walkAmount : -0.48;
     const leftKneeBend = seated
-        ? 1.2
+        ? -1.2
         : grounded
           ? Math.max(0, -phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
           : 0.42;
     const rightKneeBend = seated
-        ? 1.2
+        ? -1.2
         : grounded
           ? Math.max(0, phaseSine) * 0.38 * walkAmount + crouchAmount * 0.82
           : 0.42;
-    const leftLegRotation = seated ? -1.02 : legSwing;
-    const rightLegRotation = seated ? -1.02 : -legSwing;
+    const leftElbowBend = Math.abs(leftKneeBend);
+    const rightElbowBend = Math.abs(rightKneeBend);
+    const leftLegRotation = seated ? 1.02 : legSwing;
+    const rightLegRotation = seated ? 1.02 : -legSwing;
     const leftArmRotation = seated ? -0.46 : -armSwing;
     const rightArmRotation = seated ? -0.46 : armSwing;
     const poseDamping = 1 - Math.exp(-12 * delta);
@@ -333,14 +335,14 @@ export function animateGardenAvatarRig({
     if (rig.elbowLeft) {
         rig.elbowLeft.rotation.x = MathUtils.lerp(
             rig.elbowLeft.rotation.x,
-            grounded ? -0.12 - leftKneeBend * 0.16 : -0.5,
+            grounded ? -0.12 - leftElbowBend * 0.16 : -0.5,
             poseDamping,
         );
     }
     if (rig.elbowRight) {
         rig.elbowRight.rotation.x = MathUtils.lerp(
             rig.elbowRight.rotation.x,
-            grounded ? -0.12 - rightKneeBend * 0.16 : -0.5,
+            grounded ? -0.12 - rightElbowBend * 0.16 : -0.5,
             poseDamping,
         );
     }
