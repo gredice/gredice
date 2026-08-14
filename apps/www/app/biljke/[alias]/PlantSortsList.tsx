@@ -102,7 +102,7 @@ async function PlantSortsListContent({
                                     {!isAvailable && (
                                         <Typography
                                             level="body2"
-                                            className="text-amber-600 font-medium"
+                                            className="text-amber-700 dark:text-amber-300 font-medium"
                                         >
                                             Trenutno nije dostupna u trgovini
                                         </Typography>
