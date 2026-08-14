@@ -6,17 +6,14 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
-import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
-import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
@@ -74,15 +71,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const [isRecipesEnabled, operations] = await Promise.all([
-        recipesFlag(),
-        getOperationsData(),
-    ]);
-    const recipes = isRecipesEnabled
-        ? ((await getRecipesData())?.filter((r) =>
-              r.plants.includes(plant.information.name),
-          ) ?? [])
-        : [];
+    const operations = await getOperationsData();
     const informationSections = getPlantInforationSections(
         plant,
         undefined,
@@ -216,14 +205,6 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     }}
                     relationships={plant.relationships}
                 />
-                {recipes.length > 0 && (
-                    <Stack spacing={4}>
-                        <Typography level="h2">
-                            Recepti s {plant.information.name}
-                        </Typography>
-                        <RecipeList recipes={recipes} />
-                    </Stack>
-                )}
                 <Typography level="body1" component="p">
                     Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
                     stranicu o{' '}

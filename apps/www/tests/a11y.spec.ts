@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures';
 
-const FALLBACK_ROUTES = ['/', '/recepti'];
+const FALLBACK_ROUTES = ['/'];
 const EXTERNAL_REWRITE_PREFIXES = ['/novosti'];
 const REDIRECT_ONLY_ROUTES = [
     '/prijava/facebook-prijava/povratak',

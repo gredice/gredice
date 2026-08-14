@@ -25,7 +25,6 @@ const publicOgExactPaths = new Set([
     '/povrati-i-povrat-novca',
     '/preporuke',
     '/radnje',
-    '/recepti',
     '/sjeme',
     '/sjeme/brendovi',
     '/sjetva',
@@ -106,7 +105,6 @@ function requiresPublicOgCoverage(url: string) {
         pathname.startsWith('/biljke/') ||
         pathname.startsWith('/bolesti/') ||
         pathname.startsWith('/radnje/') ||
-        pathname.startsWith('/recepti/') ||
         pathname.startsWith('/stetnici/')
     ) {
         return true;

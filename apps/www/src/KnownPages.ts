@@ -40,8 +40,6 @@ export const KnownPages = {
     Operations: PublicDirectoryPaths.Operations as Route,
     Operation: (alias: string) =>
         PublicDirectoryPaths.Operation(alias) as Route,
-    Recipes: '/recepti',
-    Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
     MCP: '/mcp',
     FAQ: PublicDirectoryPaths.FAQ as Route,
