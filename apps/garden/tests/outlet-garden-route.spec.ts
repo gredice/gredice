@@ -584,6 +584,20 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'data-outlet-garden-product-sign-scale',
         '0.9',
     );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-depth',
+        '0.0225',
+    );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-front-only',
+        'true',
+    );
+    await expect(productSigns.first()).toHaveCSS(
+        'backface-visibility',
+        'hidden',
+    );
+    await expect(productSigns.first()).toHaveCSS('box-shadow', 'none');
+    await expect(page.locator('canvas')).toHaveCSS('z-index', '1');
     await expect(
         page.locator('[data-outlet-garden-product-sign-back]'),
     ).toHaveCount(0);
