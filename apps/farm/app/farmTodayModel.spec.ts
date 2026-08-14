@@ -523,7 +523,7 @@ test('shows the greenhouse transplant quantity in Today operation work', () => {
                         name: 'Peršin lisnati',
                         plant: {
                             id: 148,
-                            attributes: { seedingDistance: 5 },
+                            attributes: { seedingDistance: 15 },
                         },
                     },
                 },
@@ -536,7 +536,7 @@ test('shows the greenhouse transplant quantity in Today operation work', () => {
         return;
     }
     expect(result.focusQueue.map(({ label }) => label)).toEqual([
-        'Presađivanje presadnica: Peršin lisnati · presaditi 36 biljaka u polje',
+        'Presađivanje presadnica: Peršin lisnati · presaditi 4 biljke u polje',
     ]);
 });
 

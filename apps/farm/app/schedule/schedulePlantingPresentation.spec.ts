@@ -8,10 +8,10 @@ test('labels a legacy task with the current catalogue recommendation', () => {
     expect(
         buildFarmSchedulePlantingLabel({
             plantName: 'Peršin lisnati',
-            recommendedPlantCount: 36,
+            recommendedPlantCount: 4,
             sowingLocation: 'raisedBed',
         }),
-    ).toBe('Sijanje: Peršin lisnati · preporučeno 36 biljaka po polju');
+    ).toBe('Sijanje: Peršin lisnati · preporučeno 4 biljke po polju');
 });
 
 test('marks the quantity unknown when the catalogue has no recommendation', () => {

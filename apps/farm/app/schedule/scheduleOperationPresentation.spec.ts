@@ -5,7 +5,7 @@ const parsley = {
     id: 213,
     information: {
         name: 'Peršin lisnati',
-        plant: { id: 148, attributes: { seedingDistance: 5 } },
+        plant: { id: 148, attributes: { seedingDistance: 15 } },
     },
 };
 
@@ -18,7 +18,7 @@ test('shows how many greenhouse seedlings to transplant into the field', () => {
             sowingLocation: 'greenhouse',
         }),
     ).toBe(
-        'Presađivanje presadnica: Peršin lisnati · presaditi 36 biljaka u polje',
+        'Presađivanje presadnica: Peršin lisnati · presaditi 4 biljke u polje',
     );
 });
 
