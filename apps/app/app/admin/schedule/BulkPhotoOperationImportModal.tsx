@@ -5,7 +5,6 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Camera } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -50,6 +49,15 @@ function croatianCountForm(
     }
 
     return plural;
+}
+
+function selectedImagesLabel(count: number) {
+    return `Odabrano ${count} ${croatianCountForm(
+        count,
+        'slika',
+        'slike',
+        'slika',
+    )}`;
 }
 
 export function BulkPhotoOperationImportModal({
@@ -155,6 +163,15 @@ export function BulkPhotoOperationImportModal({
         },
         [assignmentByItemId],
     );
+    const uploadItemLabel = useCallback(
+        ({ id }: ImageUploadSelectionItem) => {
+            const assignment = assignmentByItemId.get(id);
+            return assignment
+                ? `Gr ${assignment.target.physicalId}`
+                : undefined;
+        },
+        [assignmentByItemId],
+    );
 
     const handleConfirm = async () => {
         if (!preview.canSubmit || isSubmitting) {
@@ -238,7 +255,7 @@ export function BulkPhotoOperationImportModal({
             open={isOpen}
             onOpenChange={handleOpenChange}
             dismissible={!isSubmitting}
-            className="max-w-3xl"
+            className="max-w-5xl"
             trigger={
                 <IconButton
                     variant="plain"
@@ -252,18 +269,13 @@ export function BulkPhotoOperationImportModal({
             }
         >
             <Stack spacing={4}>
-                <Stack spacing={1}>
-                    <Typography level="h5">
-                        Skupni unos fotografija gredica
-                    </Typography>
-                    <Typography level="body2" className="text-muted-foreground">
-                        Odaberite slike nazvane{' '}
-                        <code>Gr&lt;fizički ID&gt;</code>. Za više slika iste
-                        gredice dodajte nastavke poput <code>- 1</code>,{' '}
-                        <code>- 2</code>. Fotografije će se učitati i povezane
-                        radnje „Fotografiranje gredice” označiti završenima.
-                    </Typography>
-                </Stack>
+                <Typography level="body2" className="text-muted-foreground">
+                    Odaberite slike nazvane <code>Gr&lt;fizički ID&gt;</code>.
+                    Za više slika iste gredice dodajte nastavke poput{' '}
+                    <code>- 1</code>, <code>- 2</code>. Fotografije će se
+                    učitati i povezane radnje „Fotografiranje gredice” označiti
+                    završenima.
+                </Typography>
 
                 <ImageUploadManager
                     ref={imageUploaderRef}
@@ -271,6 +283,9 @@ export function BulkPhotoOperationImportModal({
                     handleUploadUrl="/api/operations/images/upload"
                     clientPayload={clientPayload}
                     uploadPath={uploadPath}
+                    uploadConcurrency={4}
+                    layout="grid"
+                    itemLabel={uploadItemLabel}
                     onSelectionChange={handleSelectionChange}
                     onStateChange={handleUploadStateChange}
                     showCameraButton={false}
@@ -278,57 +293,27 @@ export function BulkPhotoOperationImportModal({
                     addMoreLabel="Dodaj još fotografija"
                     emptyLabel="Odaberite sve fotografije koje želite povezati sa zakazanim radnjama."
                     pasteHint="Nazivi se provjeravaju prije učitavanja; razmaci oko prefiksa i nastavka nisu važni."
+                    selectedLabel={selectedImagesLabel}
                 />
 
-                {preview.groups.length > 0 && (
+                {groupIssueCount > 0 && (
                     <Stack spacing={2}>
-                        <Typography level="h6">Pregled povezivanja</Typography>
-                        {preview.groups.map((group) => (
-                            <div
-                                key={group.target.operationId}
-                                className="rounded-md border bg-background p-3"
-                            >
-                                <Row
-                                    spacing={2}
-                                    className="items-start justify-between gap-y-2"
-                                >
-                                    <RaisedBedLabel
-                                        physicalId={group.target.physicalId}
-                                        size="compact"
-                                    />
+                        <Typography level="h6" className="text-red-600">
+                            Gredice s previše fotografija
+                        </Typography>
+                        {preview.groups.map(
+                            (group) =>
+                                group.errorMessage && (
                                     <Typography
+                                        key={group.target.operationId}
                                         level="body2"
-                                        className="text-muted-foreground"
+                                        className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
                                     >
-                                        {group.assignments.length}{' '}
-                                        {croatianCountForm(
-                                            group.assignments.length,
-                                            'slika',
-                                            'slike',
-                                            'slika',
-                                        )}
-                                    </Typography>
-                                </Row>
-                                <Typography
-                                    level="body3"
-                                    className="mt-2 break-words text-muted-foreground"
-                                >
-                                    {group.assignments
-                                        .map(
-                                            (assignment) => assignment.fileName,
-                                        )
-                                        .join(', ')}
-                                </Typography>
-                                {group.errorMessage && (
-                                    <Typography
-                                        level="body2"
-                                        className="mt-2 text-red-600"
-                                    >
+                                        Gr {group.target.physicalId}:{' '}
                                         {group.errorMessage}
                                     </Typography>
-                                )}
-                            </div>
-                        ))}
+                                ),
+                        )}
                     </Stack>
                 )}
 

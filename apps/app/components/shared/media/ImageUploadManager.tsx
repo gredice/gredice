@@ -18,6 +18,8 @@ import {
     useRef,
     useState,
 } from 'react';
+import { ImageUploadPreview } from './ImageUploadPreview';
+import { runTasksWithConcurrency } from './runTasksWithConcurrency';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -67,6 +69,8 @@ type ImageUploadManagerProps = {
     disabled?: boolean;
     emptyLabel?: string;
     handleUploadUrl: string;
+    itemLabel?: (item: ImageUploadSelectionItem) => string | undefined;
+    layout?: 'grid' | 'list';
     maxItems?: number;
     multiple?: boolean;
     onSelectionChange?: (items: ImageUploadSelectionItem[]) => void;
@@ -74,6 +78,7 @@ type ImageUploadManagerProps = {
     pasteHint?: string;
     selectedLabel?: (count: number) => string;
     showCameraButton?: boolean;
+    uploadConcurrency?: number;
     uploadPath: (input: UploadPathInput) => string;
 };
 
@@ -180,6 +185,8 @@ export const ImageUploadManager = forwardRef<
         disabled,
         emptyLabel = 'Odaberite slike ili ih zalijepite iz međuspremnika.',
         handleUploadUrl,
+        itemLabel,
+        layout = 'list',
         maxItems,
         multiple = true,
         onSelectionChange,
@@ -187,6 +194,7 @@ export const ImageUploadManager = forwardRef<
         pasteHint = 'Kliknite ovdje i zalijepite sliku iz međuspremnika.',
         selectedLabel = selectedImagesLabel,
         showCameraButton = true,
+        uploadConcurrency = 1,
         uploadPath,
     },
     ref,
@@ -394,32 +402,34 @@ export const ImageUploadManager = forwardRef<
             reset,
             uploadPendingImages: async () => {
                 setErrorMessage(null);
-                const imageUrls: string[] = [];
+                const imageUrls = await runTasksWithConcurrency(
+                    uploadItems,
+                    uploadConcurrency,
+                    async (uploadItem) => {
+                        if (
+                            uploadItem.status === 'uploaded' &&
+                            uploadItem.uploadedUrl
+                        ) {
+                            return uploadItem.uploadedUrl;
+                        }
 
-                for (const uploadItem of uploadItems) {
-                    if (
-                        uploadItem.status === 'uploaded' &&
-                        uploadItem.uploadedUrl
-                    ) {
-                        imageUrls.push(uploadItem.uploadedUrl);
-                        continue;
-                    }
+                        return uploadImage(uploadItem);
+                    },
+                );
 
-                    const uploadedUrl = await uploadImage(uploadItem);
-                    if (!uploadedUrl) {
-                        setErrorMessage(
-                            'Neke slike nisu učitane. Neuspjele stavke možete pokušati ponovno bez ponovnog odabira.',
-                        );
-                        return null;
-                    }
-
-                    imageUrls.push(uploadedUrl);
+                if (imageUrls.some((imageUrl) => imageUrl === null)) {
+                    setErrorMessage(
+                        'Neke slike nisu učitane. Neuspjele stavke možete pokušati ponovno bez ponovnog odabira.',
+                    );
+                    return null;
                 }
 
-                return imageUrls;
+                return imageUrls.filter(
+                    (imageUrl): imageUrl is string => imageUrl !== null,
+                );
             },
         }),
-        [reset, uploadImage, uploadItems],
+        [reset, uploadConcurrency, uploadImage, uploadItems],
     );
 
     return (
@@ -483,83 +493,134 @@ export const ImageUploadManager = forwardRef<
                 {pasteHint}
             </Typography>
             {uploadItems.length > 0 && (
-                <Stack spacing={2}>
+                <div
+                    data-image-upload-layout={layout}
+                    className={cx(
+                        layout === 'grid'
+                            ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4'
+                            : 'flex flex-col gap-2',
+                    )}
+                >
                     {uploadItems.map((uploadItem) => {
                         const progress =
                             uploadItem.status === 'uploaded'
                                 ? 100
                                 : clampUploadProgress(uploadItem.progress);
+                        const label = itemLabel?.({
+                            id: uploadItem.id,
+                            file: uploadItem.file,
+                        });
 
                         return (
                             <div
                                 key={uploadItem.id}
-                                className="rounded-md border bg-background px-3 py-2"
+                                className={cx(
+                                    'rounded-md border bg-background',
+                                    layout === 'grid'
+                                        ? 'relative overflow-hidden'
+                                        : 'px-3 py-2',
+                                )}
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 flex-1">
-                                        <Typography
-                                            level="body2"
-                                            className="truncate"
-                                        >
-                                            {uploadItem.file.name}
-                                        </Typography>
-                                        <Typography
-                                            level="body2"
-                                            className={`text-xs ${getUploadItemStatusClassName(uploadItem)}`}
-                                        >
-                                            {getUploadItemStatusLabel(
-                                                uploadItem,
+                                {layout === 'grid' && (
+                                    <>
+                                        <ImageUploadPreview
+                                            file={uploadItem.file}
+                                        />
+                                        {label && (
+                                            <Typography
+                                                level="body3"
+                                                className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-0.5 font-medium shadow-sm backdrop-blur-sm"
+                                            >
+                                                {label}
+                                            </Typography>
+                                        )}
+                                    </>
+                                )}
+                                <div className={cx(layout === 'grid' && 'p-2')}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <Typography
+                                                level="body2"
+                                                className="truncate"
+                                                title={uploadItem.file.name}
+                                            >
+                                                {uploadItem.file.name}
+                                            </Typography>
+                                            <Typography
+                                                level="body2"
+                                                className={`text-xs ${getUploadItemStatusClassName(uploadItem)}`}
+                                            >
+                                                {getUploadItemStatusLabel(
+                                                    uploadItem,
+                                                )}
+                                            </Typography>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {layout === 'list' && (
+                                                <Typography
+                                                    level="body2"
+                                                    className="text-xs text-muted-foreground"
+                                                >
+                                                    {progress}%
+                                                </Typography>
                                             )}
-                                        </Typography>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                        <Typography
-                                            level="body2"
-                                            className="text-xs text-muted-foreground"
-                                        >
-                                            {progress}%
-                                        </Typography>
-                                        <IconButton
-                                            aria-label="Ukloni sliku"
-                                            type="button"
-                                            size="xs"
-                                            variant="plain"
-                                            disabled={disabled}
-                                            onClick={() =>
-                                                removeUploadItem(uploadItem.id)
-                                            }
-                                        >
-                                            <Clear className="size-3.5" />
-                                        </IconButton>
-                                    </div>
-                                </div>
-                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                                    <div
-                                        className={`h-full transition-[width] duration-200 ${getUploadItemProgressClassName(uploadItem)}`}
-                                        style={{ width: `${progress}%` }}
-                                    />
-                                </div>
-                                {uploadItem.status === 'failed' &&
-                                    !disabled && (
-                                        <div className="mt-2">
-                                            <Button
-                                                variant="outlined"
+                                            <IconButton
+                                                aria-label={`Ukloni sliku ${uploadItem.file.name}`}
                                                 type="button"
-                                                size="sm"
+                                                size="xs"
+                                                variant={
+                                                    layout === 'grid'
+                                                        ? 'solid'
+                                                        : 'plain'
+                                                }
+                                                color={
+                                                    layout === 'grid'
+                                                        ? 'danger'
+                                                        : undefined
+                                                }
+                                                className={cx(
+                                                    layout === 'grid' &&
+                                                        'absolute right-2 top-2',
+                                                )}
+                                                disabled={disabled}
                                                 onClick={() =>
-                                                    resetUploadItem(
+                                                    removeUploadItem(
                                                         uploadItem.id,
                                                     )
                                                 }
                                             >
-                                                Pokušaj ponovno
-                                            </Button>
+                                                <Clear className="size-3.5" />
+                                            </IconButton>
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                                        <div
+                                            className={`h-full transition-[width] duration-200 ${getUploadItemProgressClassName(uploadItem)}`}
+                                            style={{ width: `${progress}%` }}
+                                        />
+                                    </div>
+                                    {uploadItem.status === 'failed' &&
+                                        !disabled && (
+                                            <div className="mt-2">
+                                                <Button
+                                                    variant="outlined"
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        resetUploadItem(
+                                                            uploadItem.id,
+                                                        )
+                                                    }
+                                                >
+                                                    Pokušaj ponovno
+                                                </Button>
+                                            </div>
+                                        )}
+                                </div>
                             </div>
                         );
                     })}
-                </Stack>
+                </div>
             )}
             {errorMessage && (
                 <Typography level="body2" className="text-red-600">
