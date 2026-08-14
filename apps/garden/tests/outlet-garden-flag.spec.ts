@@ -13,7 +13,6 @@ const gardenFlagKeys = [
     'enableGardenAvatar',
     'enableOutletGarden',
     'enableOutletGardenCommerce',
-    'enableAdvancedSowing',
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {

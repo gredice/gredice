@@ -2,7 +2,6 @@ import type { FavoriteItem, PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useEffect, useMemo } from 'react';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
@@ -355,7 +354,6 @@ function PlantPickerTestProviders({
     advancedSowingRange,
     cartItems = [],
     children,
-    enableAdvancedSowing = false,
     favorites = [],
     fieldPositionIndices,
     inventoryItems = [],
@@ -365,7 +363,6 @@ function PlantPickerTestProviders({
 }: PropsWithChildren<{
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
-    enableAdvancedSowing?: boolean;
     favorites?: FavoriteItem[];
     fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
@@ -409,13 +406,7 @@ function PlantPickerTestProviders({
         <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameFlagsContext.Provider
-                        value={{
-                            enableAdvancedSowingFlag: enableAdvancedSowing,
-                        }}
-                    >
-                        {children}
-                    </GameFlagsContext.Provider>
+                    {children}
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -444,7 +435,6 @@ function OutletOfferRefetchTestHook() {
 export function PlantPickerTestStory({
     advancedSowingRange,
     cartItems,
-    enableAdvancedSowing,
     favorites,
     fieldPositionIndices,
     inShoppingCart = false,
@@ -460,7 +450,6 @@ export function PlantPickerTestStory({
 }: {
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
-    enableAdvancedSowing?: boolean;
     favorites?: FavoriteItem[];
     fieldPositionIndices?: number[];
     inShoppingCart?: boolean;
@@ -478,7 +467,6 @@ export function PlantPickerTestStory({
         <PlantPickerTestProviders
             advancedSowingRange={advancedSowingRange}
             cartItems={cartItems}
-            enableAdvancedSowing={enableAdvancedSowing}
             favorites={favorites}
             fieldPositionIndices={fieldPositionIndices}
             inventoryItems={inventoryItems}

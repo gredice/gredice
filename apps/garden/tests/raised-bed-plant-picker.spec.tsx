@@ -325,47 +325,7 @@ test('outlet sorts keep planned sowing selected by default', async ({
     expect(post.entityId).toBe('101');
 });
 
-test('Advanced Sowing stays on the legacy path while its customer flag is off', async ({
-    mount,
-    page,
-}) => {
-    const posts = await mockShoppingCartPosts(page);
-
-    await mount(
-        <PlantPickerTestStory
-            advancedSowingRange={{
-                maxDistanceCm: 60,
-                minDistanceCm: 10,
-            }}
-            positionIndex={17}
-        />,
-    );
-
-    await page.getByRole('button', { name: 'Sijanje' }).click();
-    await page.getByRole('button', { name: /Rajčica/ }).click();
-    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
-
-    await expect(page.locator('[data-advanced-sowing-preview]')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
-    await expect.poll(() => posts.length).toBe(1);
-
-    const post = posts[0];
-    expect(isRecord(post)).toBe(true);
-    if (!isRecord(post) || typeof post.additionalData !== 'string') {
-        return;
-    }
-    const additionalData: unknown = JSON.parse(post.additionalData);
-    expect(isRecord(additionalData)).toBe(true);
-    if (!isRecord(additionalData)) {
-        return;
-    }
-    expect(additionalData.advancedSowing).toBeUndefined();
-    expect(additionalData.advancedSowingAuthorization).toBeUndefined();
-    expect(post.advancedSowingSelection).toBeUndefined();
-    expect(post.forceCreate).toBeUndefined();
-});
-
-test('flag-off selected footprint cannot submit a legacy cart row', async ({
+test('selected footprint can submit a compatible Advanced Sowing co-plant', async ({
     mount,
     page,
 }) => {
@@ -374,33 +334,6 @@ test('flag-off selected footprint cannot submit a legacy cart row', async ({
     await mount(
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
-            plantings={[activeSelectedPlanting(15)]}
-            positionIndex={17}
-        />,
-    );
-
-    await selectAdvancedSowingSort(page);
-
-    await expect(page.locator('[data-advanced-sowing-preview]')).toHaveCount(0);
-    await expect(page.getByRole('alert')).toContainText(
-        'Obična sjetva ovdje nije dostupna',
-    );
-    await expect(
-        page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toBeDisabled();
-    expect(posts).toHaveLength(0);
-});
-
-test('flag-on selected footprint can submit a compatible Advanced Sowing co-plant', async ({
-    mount,
-    page,
-}) => {
-    const posts = await mockShoppingCartPosts(page);
-
-    await mount(
-        <PlantPickerTestStory
-            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
-            enableAdvancedSowing
             plantings={[activeSelectedPlanting(15)]}
             positionIndex={17}
         />,
@@ -409,7 +342,7 @@ test('flag-on selected footprint can submit a compatible Advanced Sowing co-plan
 
     const preview = page.locator('[data-advanced-sowing-preview]');
     await expect(
-        preview.getByRole('radio', { name: /15 cm.*4 biljke/u }),
+        preview.getByRole('radio', { name: /4 biljke.*15 cm/u }),
     ).toBeDisabled();
     await expect(
         preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
@@ -438,7 +371,6 @@ test('selected footprint blocks an unsupported legacy fallback', async ({
 
     await mount(
         <PlantPickerTestStory
-            enableAdvancedSowing
             plantings={[activeSelectedPlanting(15)]}
             positionIndex={17}
         />,
@@ -461,7 +393,6 @@ test('selected footprint blocks an outlet legacy fallback', async ({
     await mount(
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
-            enableAdvancedSowing
             plantings={[activeSelectedPlanting(15)]}
             positionIndex={17}
         />,
@@ -489,7 +420,6 @@ test('Advanced Sowing submits a one-field density through the top-level selectio
                 maxDistanceCm: 60,
                 minDistanceCm: 10,
             }}
-            enableAdvancedSowing
             positionIndex={17}
         />,
     );
@@ -502,12 +432,16 @@ test('Advanced Sowing submits a one-field density through the top-level selectio
         preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
     ).toBeChecked();
     await expect(
-        preview.getByRole('radio', { name: /10 cm.*9 biljaka/u }),
+        preview.getByRole('radio', { name: /9 biljaka.*10 cm/u }),
     ).toBeVisible();
+    await expect(
+        preview.locator('[data-advanced-sowing-density-icon]'),
+    ).toHaveCount(4);
 
-    await preview.getByRole('radio', { name: /15 cm.*4 biljke/u }).click();
-    await expect(preview.locator('[data-occupied="true"]')).toHaveCount(1);
-    await expect(preview.getByText(/sadrži 4 biljke/u)).toBeVisible();
+    await preview.getByRole('radio', { name: /4 biljke.*15 cm/u }).click();
+    await expect(
+        preview.locator('[data-advanced-sowing-footprint]'),
+    ).toHaveCount(0);
 
     await expect(
         page.getByText(
@@ -552,7 +486,6 @@ test('Advanced Sowing submits one 2 by 2 footprint from its anchor field', async
     await mount(
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
-            enableAdvancedSowing
             fieldPositionIndices={[17]}
             positionIndex={17}
         />,
@@ -588,7 +521,6 @@ test('Advanced Sowing creates a different-density co-plant without replacing the
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
             cartItems={[advancedSowingCartItem(41, 15)]}
-            enableAdvancedSowing
             positionIndex={17}
         />,
     );
@@ -626,7 +558,6 @@ test('Advanced Sowing updates only the explicitly selected summarized cart row',
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
             cartItems={[advancedSowingCartItem(41, 15), selectedItem]}
-            enableAdvancedSowing
             inShoppingCart
             positionIndex={17}
             preselectedPlantId={1}
@@ -670,7 +601,6 @@ test('Advanced Sowing removal targets the exact summarized co-plant row', async 
                 advancedSowingCartItem(41, 15),
                 advancedSowingCartItem(42, 30),
             ]}
-            enableAdvancedSowing
             inShoppingCart
             positionIndex={17}
             preselectedPlantId={1}
@@ -700,7 +630,6 @@ test('Advanced Sowing disables every footprint that overlaps an active legacy pl
     await mount(
         <PlantPickerTestStory
             advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
-            enableAdvancedSowing
             plantings={[
                 {
                     configurationSource: 'legacy',

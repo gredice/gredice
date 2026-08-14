@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-This document locks the domain contract and rollout boundary for Advanced
+This document locks the domain contract and release boundary for Advanced
 Sowing. It is the source of truth for the compatible storage foundation and
-the default-off Garden, checkout, Admin, and Farm activation slice.
+the live Garden, checkout, Admin, and Farm sowing slice.
 
 The current implementation delivers:
 
@@ -14,8 +14,8 @@ The current implementation delivers:
 - expose authenticated planting reads without adding internal identifiers to
   public garden responses;
 - expose spacing-range and derived-layout guidance to Admin and Farm;
-- accept the dedicated versioned selection only behind the default-off API
-  gate, store the canonical authorization in a relation-free 1:1 cart-item
+- accept the dedicated versioned selection, store the canonical authorization
+  in a relation-free 1:1 cart-item
   table, and expose only a non-authoritative per-item selection summary;
 - revalidate the stored authorization against the live published plant sort,
   account-owned non-sandbox target, current physical occupancy, pending cart
@@ -28,20 +28,17 @@ The current implementation delivers:
   blockable, verifiable, reschedulable, and cancelable task to Admin and Farm;
 - notify the garden owner exactly once when selected sowing is completed
   directly by Admin or verified after Farm submission;
-- render and safely manage persisted selected plantings in Garden regardless
-  of the creation flag; and
-- keep new customer creation and configuration disabled by default behind both
-  the Garden cohort flag and the independent API environment gate.
+- render and safely manage persisted selected plantings in Garden; and
+- expose supported Advanced Sowing creation and configuration to every
+  customer without a presentation or API environment gate.
 
-This code is prepared for a controlled **sowing-only** cohort but is not
-live-enabled by this change. Selected-planting operations after sowing and
-harvest trace are not part of that cohort: their schemas still use legacy
+Advanced Sowing is live for the **sowing-only** workflow. Selected-planting
+operations after sowing and harvest trace are not part of that release: their
+schemas still use legacy
 field or `plantPlaceEventId` identity and must gain an explicit `plantingId`
-before broader lifecycle activation. Live attribute-definition writes,
-catalogue readback, generated directory contracts, legacy backfill execution,
-cohort selection, environment activation, and production smoke tests remain
-rollout operations. Existing legacy field tasks, operations, labels, and trace
-remain supported throughout the transition.
+before broader lifecycle activation. Attribute definitions and spacing ranges
+must remain complete for every published plant. Existing legacy field tasks,
+operations, labels, and trace remain supported throughout the transition.
 
 ## Summary
 
@@ -59,12 +56,11 @@ completable field tasks.
 ## Actors and ownership
 
 - **Customer:** chooses a supported plant, spacing, and available footprint in
-  the Garden experience when the Advanced Sowing flag allows creation.
-- **Garden app:** renders every persisted planting, but exposes Advanced Sowing
-  create and configuration controls only when the customer flag is enabled.
+  the Garden experience.
+- **Garden app:** renders every persisted planting and exposes Advanced Sowing
+  create and configuration controls whenever catalogue spacing supports them.
 - **Checkout and fulfillment:** preserve the authorized planting plan on the
-  cart item and fulfill that exact paid plan idempotently, even if the flag is
-  disabled after checkout starts.
+  cart item and fulfill that exact paid plan idempotently.
 - **Admin:** observes, assigns, reschedules, cancels, verifies, and repairs one
   logical planting without mutating unrelated co-plants.
 - **Farmer:** sees one actionable task per logical planting and completes or
@@ -131,7 +127,7 @@ The current supported raised bed is three fields wide and six fields long.
 Configured endpoints that derive a footprint wider or longer than that bed are
 invalid for Advanced Sowing: they are not shown as a valid Farm/Admin layout
 and the Garden must not silently clamp them. Catalogue preflight must report
-those plants before activation so their range can be corrected or a wider bed
+those plants before release so their range can be corrected or a wider bed
 geometry can be implemented explicitly.
 
 ### Commercial quantity
@@ -188,7 +184,7 @@ The logical planting, not a membership field, is the lifecycle aggregate.
 
 ```mermaid
 flowchart LR
-    A["Customer configures spacing and footprint"] --> B["Server validates flag, range, geometry, and layout keys"]
+    A["Customer configures spacing and footprint"] --> B["Server validates range, geometry, and layout keys"]
     B --> C["Cart stores immutable planting plan"]
     C --> D["Paid or inventory fulfillment locks planting and all fields"]
     D --> E["Planting, memberships, purchase, and initial event commit atomically"]
@@ -213,7 +209,7 @@ Every create or mutation transaction must:
    then lock all existing physical field rows once by ascending field ID before
    locking the raised bed;
 4. re-read current raised-bed geometry and active memberships under the locks;
-5. validate the flag where applicable, spacing range, calculated footprint,
+5. validate the spacing range, calculated footprint,
    raised-bed availability, and layout-key collisions;
 6. write the planting event, memberships, purchase or inventory effect, and
    task-visible state in one database transaction;
@@ -229,7 +225,7 @@ matches and must return a controlled conflict when it does not.
 ### Customer creation
 
 1. The Garden app reads the plant's current default and optional range.
-2. When the flag is enabled, the customer selects an allowed spacing.
+2. The customer selects an allowed spacing.
 3. The app previews the deterministic density or square footprint and sends
    the selected spacing plus intended origin; the server recalculates all
    derived values.
@@ -265,23 +261,19 @@ Admin and Farm show one task with the full footprint and total plant count.
 Completion, blocking, verification, cancellation, and refund affect the group
 once. Partial completion is outside the first slice.
 
-### Paid fulfillment across a flag change
+### Paid fulfillment after authorization
 
-The create/configuration flag is evaluated when the customer authorizes the
-plan. Checkout stores that authorized plan durably. A later flag change must
-not strand a paid cart item: webhook fulfillment validates and applies the
-stored plan without requiring the current flag to be enabled. Plan mismatch,
-unavailable geometry, or a new collision enters the controlled fulfillment
-incident workflow instead of silently changing the footprint.
+Checkout stores the authorized plan durably. Plan mismatch, unavailable
+geometry, or a new collision enters the controlled fulfillment incident
+workflow instead of silently changing the footprint.
 
-Cart activation uses two independent gates: the Garden presentation flag and
-the fail-closed `GREDICE_ADVANCED_SOWING_ENABLED` API mutation gate. The
-client request is a dedicated `{ kind: "advanced-sowing-selection", version: 1,
-selectedDistanceCm }` value, separate from `additionalData`. The API must reject
-client-supplied `advancedSowing` or `advancedSowingAuthorization` keys, derive
-the complete plan from the current catalogue and authoritative bed target, and
-persist its authorization envelope in the separate server-owned, relation-free
-1:1 table keyed by `cartItemId`, never inside client-writable `additionalData`.
+The client request is a dedicated `{ kind: "advanced-sowing-selection",
+version: 1, selectedDistanceCm }` value, separate from `additionalData`. The API
+must reject client-supplied `advancedSowing` or
+`advancedSowingAuthorization` keys, derive the complete plan from the current
+catalogue and authoritative bed target, and persist its authorization envelope
+in the separate server-owned, relation-free 1:1 table keyed by `cartItemId`,
+never inside client-writable `additionalData`.
 Cart mutation and authorization persistence, replacement, or clearing occur in
 one transaction behind the checkout-item fence. Generic cart queries never
 join the table. Authenticated cart responses may add only the versioned safe
@@ -294,10 +286,10 @@ field. This includes a best-effort pre-payment availability check against
 active persisted plantings and every pending item in the same cart. Neither
 generic cart responses nor Stripe product or session metadata contain the
 authorization envelope. Paid fulfillment reads only the authenticated snapshot
-field without consulting either flag or the live catalogue, then repeats the
+field without consulting the live catalogue, then repeats the
 collision check under the placement transaction's locks. A post-precheck race
 therefore becomes a controlled paid-fulfillment incident and never a silently
-changed plan. Before activation, audit every open cart for preexisting reserved
+changed plan. Before release, audit every open cart for preexisting reserved
 keys in `additionalData`; none may be promoted or treated as authorization.
 
 ## Compatibility and migration
@@ -337,7 +329,7 @@ historical species visuals must add a snapshotted visual-archetype key rather
 than inferring any planting geometry from the catalogue.
 
 Backfill must support dry-run reporting and assert all of the following before
-activation:
+release:
 
 - the number of projected legacy plantings equals the number of source
   `plantPlace` cycles in scope;
@@ -362,8 +354,8 @@ editing source events, or deleting history.
 
 ## Admin, Farm, operations, and labels
 
-Operational read paths are not feature-flagged. They must be compatible before
-customer creation is enabled.
+Operational read paths remain compatible with both legacy and selected
+plantings.
 
 - Admin and Farm key rows and mutations by `plantingId` plus the expected
   planting version.
@@ -374,7 +366,7 @@ customer creation is enabled.
 - Sowing labels use the immutable `totalPlantCount` and exact footprint rather
   than recalculating current catalogue spacing.
 
-The first controlled cohort stops at sowing, task verification, selected
+The current customer release stops at sowing, task verification, selected
 sowing labels, cancellation, and removal. It does not authorize selected
 crop-specific operations or harvest trace. Before expanding that boundary:
 
@@ -405,7 +397,6 @@ reordering from reactivating a legacy cycle beneath a selected planting.
 
 | Controlled reason | Condition | Expected handling |
 | --- | --- | --- |
-| `advanced_sowing_feature_disabled` | Customer attempts new configuration while the flag is off. | Reject before cart mutation; existing reads and tasks remain available. |
 | `invalid_spacing` | Spacing is missing, non-finite, zero, or negative. | Reject validation; do not write or consume inventory. |
 | `spacing_out_of_range` | Selected spacing is outside the snapshotted plant range. | Reject with the allowed range; do not silently clamp. |
 | `invalid_footprint` | Submitted fields do not form the calculated square. | Recalculate server-side and reject the plan. |
@@ -430,7 +421,7 @@ cart item before attempting another creation.
 
 Metrics and product analytics use bounded properties only:
 
-- source surface and feature-flag state;
+- source surface;
 - in-field versus footprint layout;
 - spacing, density, footprint-size, co-plant-count, and latency buckets;
 - lifecycle transition and actor role;
@@ -460,59 +451,28 @@ Operational review should track:
 - label count mismatches;
 - migration and legacy-adapter mismatch counts.
 
-## Feature flag, rollout, and rollback
+## Availability and rollback
 
-The Garden `enableAdvancedSowing` flag defaults to off, and the API accepts new
-authorizations only when `GREDICE_ADVANCED_SOWING_ENABLED` is exactly `true`.
-Both gates must allow creation. They gate only new customer creation and
-configuration plus the corresponding cart authorization. They never gate:
+Advanced Sowing creation and configuration is available to every Garden user
+when the selected published plant has a valid spacing range. There is no Garden
+presentation flag and no API environment gate. Catalogue validation, target
+ownership, sandbox exclusion, geometry, collision checks, atomic commercial
+effects, and checkout revalidation remain mandatory server boundaries.
 
-- canonical reads or rendering of persisted plantings;
-- legacy planting behavior;
-- Admin and Farm observation or task handling;
-- selected lifecycle, cancellation, refund, and sowing-label handling;
-- existing legacy operation, label, and trace handling;
-- fulfillment of a planting plan already authorized by checkout.
+Release prerequisites:
 
-Rollout order:
-
-1. Deploy additive storage, atomic legacy writer compatibility, and reads with
-   the flag off. Confirm checkout and sandbox planting both use the atomic
-   plant-place-plus-projection helper.
-2. Drain every older application instance, then fence or pause legacy
-   `plantPlace` writers for the backfill window. Do not rely on a READ COMMITTED
-   snapshot while an old writer can still append source events.
-3. Dry-run and apply the Advanced Sowing attribute definitions, verify readback,
-   and audit every published plant for positive `min <= optimal <= max` plus
-   supported 3x6 geometry. After the live directory schema exposes both new
-   attributes, regenerate `@gredice/directory-types` and the API's checked-in
-   directory client contract.
-4. Run the planting backfill in dry-run mode, review exact counts, then apply it
-   and rerun every backfill assertion before releasing the writer fence. If
-   readback fails after apply, inspect the source-history change and safely
-   rerun; do not delete or roll back already-created projection rows.
-5. Deploy planting-scoped mutations, idempotent paid fulfillment, and
-   observability while customer creation remains off.
-6. Verify existing Garden, Admin, Farm, checkout, inventory, automation, label,
-   and harvest-trace flows against legacy plantings. This is a compatibility
-   check, not authorization for selected crop-specific operations or trace.
-7. Deploy Admin and Farm grouped operational handling and confirm one 2x2
-   planting is one five-minute task.
-8. Map selected-layout and unresolved plant-operation repository conflicts into
-   the controlled paid-planting incident path. Verify legacy cart writes reject
-   selected-occupied fields and crop-operation writes reject selected targets,
-   then deploy the Garden selector and renderer, still off by default, and
-   enable a named internal test cohort.
-9. Exercise one in-field co-planting case, one same-key conflict, one 2x2
-   planting, one inventory planting, one paid planting, cancellation, farmer
-   completion, Admin verification, the one owner notification, selected sowing
-   labels, and rollback. Keep the named cohort sowing-only.
-10. Expand beyond sowing only after operation, automation, image-analysis,
-    harvest-trace, Garden-diary, and planting-achievement consumers carry
-    explicit planting identity and their ambiguous co-plant, multi-field, and
-    once-per-planting regressions pass.
-11. Expand the customer cohort only after controlled telemetry and the operator
-    incident queue show no unexplained mismatch or partial state.
+1. The live catalogue audit covers every published plant with positive
+   `min <= optimal <= max` values and supported 3x6 geometry.
+2. The reserved-cart audit finds no client-owned `advancedSowing` or
+   `advancedSowingAuthorization` value.
+3. Garden verifies an in-field density and a multi-field footprint through the
+   dedicated selection contract.
+4. API checks cover canonical authorization, checkout snapshot validation,
+   inventory, euro and sunflower fulfillment, idempotency, and collisions.
+5. Admin and Farm continue to show one task per logical planting, including a
+   multi-field planting.
+6. Selected crop-specific operations and harvest trace remain outside this
+   release until their schemas carry explicit planting identity.
 
 Attribute-definition and generated-contract gate:
 
@@ -526,27 +486,20 @@ pnpm --filter api regenerate:directories-api
 ```
 
 The catalogue audit is read-only and must pass after attribute readback and
-before any customer cohort is enabled. Separately, run an audited query over
-every open cart item before activation and require zero `additionalData`
+before release. Separately, run an audited query over every open cart item and
+require zero `additionalData`
 objects containing the reserved `advancedSowing` or
 `advancedSowingAuthorization` keys. No reserved client value may be copied into
 the server-owned authorization table or a checkout snapshot.
 
-The two regeneration commands are intentionally deferred until the definitions
-exist in the live directory schema. This code change does not edit live
-catalogue data or pretend that the old generated contracts contain the new
-fields.
+Rollback is artifact-based and data-preserving:
 
-Rollback is flag-first and data-preserving:
-
-1. Disable new customer creation and configuration immediately.
-2. Keep reads, rendering, Admin and Farm tasks, and paid fulfillment deployed.
-3. Continue processing or explicitly resolve already-authorized paid plans.
-4. If planting mutations are unsafe, disable new planting creation at the
-   server boundary while keeping lifecycle handling for existing plantings.
-5. Repair through an idempotent, audited workflow; never delete memberships,
+1. Roll the Garden and API back to the last verified compatible releases.
+2. Keep reads, rendering, Admin and Farm tasks, and paid fulfillment available
+   for already-authorized plans.
+3. Repair through an idempotent, audited workflow; never delete memberships,
    source events, or purchases manually.
-6. Do not drop the additive schema or remove the legacy adapter during
+4. Do not drop the additive schema or remove the legacy adapter during
    rollback. Contract cleanup is a later expand-and-contract phase after all
    old clients and legacy projections are retired.
 
@@ -562,9 +515,9 @@ Foundation tests must prove:
 - a footprint conflict rolls back every membership and commercial effect;
 - one cart item and one inventory unit create one logical planting;
 - idempotent checkout replay returns the original planting;
-- flag-off customer creation fails while legacy reads and existing advanced
-  reads remain intact;
-- a paid plan fulfills after the flag is disabled;
+- supported customer creation produces a canonical server-owned authorization;
+- a paid plan fulfills from its authenticated snapshot without live catalogue
+  reinterpretation;
 - legacy projections remain 1x1 with null advanced configuration regardless of
   current catalogue spacing;
 - removing or mutating one co-plant leaves the other unchanged;
@@ -605,7 +558,7 @@ git diff --check
 ```
 
 Never use `pnpm db-push`. Record migration dry-run and applied counts, the
-feature-flag state, exact test plant and layouts, cart currency, Farm and Admin
+exact test plant and layouts, cart currency, Farm and Admin
 task outcome, paid-fulfillment result, and rollback result. A passing storage
 test does not replace the later Garden interaction and real Farm task smoke
 checks.

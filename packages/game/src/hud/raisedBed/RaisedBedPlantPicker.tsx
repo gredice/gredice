@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
-import { useGameFlags } from '../../GameFlagsContext';
 import { buildOutletCartItemPayload } from '../../hooks/shoppingCartItemMutation';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardens } from '../../hooks/useGardens';
@@ -296,8 +295,6 @@ export function PlantPicker({
     const advancedSowingNoticeId = useId();
     const legacySowingNoticeId = useId();
     const shouldRestoreSearchFocusRef = useRef(false);
-    const { enableAdvancedSowingFlag = false } = useGameFlags();
-
     let currentStep = 0;
     if (selectedPlantId) {
         currentStep = 1;
@@ -745,14 +742,14 @@ export function PlantPicker({
         : null;
     const advancedSowingPreview = useMemo(
         () =>
-            enableAdvancedSowingFlag && !isSandbox && selectedSort
+            !isSandbox && selectedSort
                 ? createAdvancedSowingPickerPreview({
                       anchorPositionIndex: positionIndex,
                       attributes: selectedSort.information.plant.attributes,
                       bedFieldCount: raisedBedFieldCount,
                   })
                 : ({ status: 'unsupported' } as const),
-        [enableAdvancedSowingFlag, isSandbox, positionIndex, selectedSort],
+        [isSandbox, positionIndex, selectedSort],
     );
     const advancedSowingEditedItem =
         typeof selectedCartItemId === 'number'

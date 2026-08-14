@@ -170,7 +170,7 @@ test('requires an explicit planting choice for co-plants in one field', async ({
     await expect(page.getByText('1 × 1 polja')).toBeVisible();
 });
 
-test('keeps one persisted 2 by 2 planting visible with every membership when creation flag is off', async ({
+test('keeps one persisted 2 by 2 planting visible with every membership', async ({
     mount,
     page,
 }) => {
@@ -212,7 +212,6 @@ test('keeps one persisted 2 by 2 planting visible with every membership when cre
     ];
     const component = await mount(
         <AdvancedSowingPersistedStory
-            enableAdvancedSowing={false}
             plantings={plantingInputs}
             plantNames={[{ id: 42, name: 'Tikvica' }]}
         />,
@@ -248,7 +247,7 @@ test('keeps one persisted 2 by 2 planting visible with every membership when cre
     await expect(page.getByText('Planirana', { exact: true })).toBeVisible();
 });
 
-test('reschedules a persisted selected task with a fresh command identity while the creation flag is off', async ({
+test('reschedules a persisted selected task with a fresh command identity', async ({
     mount,
     page,
 }) => {
@@ -260,7 +259,6 @@ test('reschedules a persisted selected task with a fresh command identity while 
     });
     await mount(
         <AdvancedSowingPersistedStory
-            enableAdvancedSowing={false}
             plantings={[selectedPlanting()]}
             plantNames={[{ id: 42, name: 'Bosiljak' }]}
         />,
@@ -491,13 +489,9 @@ test('does not remove a logical multi-field planting until explicit confirmation
     );
 });
 
-test('keeps pending verification read-only without creation-flag gating', async ({
-    mount,
-    page,
-}) => {
+test('keeps pending verification read-only', async ({ mount, page }) => {
     await mount(
         <AdvancedSowingPersistedStory
-            enableAdvancedSowing={false}
             plantings={[
                 selectedPlanting({
                     lifecycleStatus: 'pendingVerification',

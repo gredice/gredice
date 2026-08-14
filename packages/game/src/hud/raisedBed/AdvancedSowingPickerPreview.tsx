@@ -4,6 +4,7 @@ import {
     ADVANCED_SOWING_BED_COLUMN_COUNT,
     type AdvancedSowingLayoutKey,
 } from '@gredice/js/plants';
+import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useId } from 'react';
@@ -75,6 +76,12 @@ export function AdvancedSowingPickerPreview({
         selectedLayoutKey,
         unavailableLayoutKeys,
     );
+    const selectedMultiFieldOption =
+        selectedOption?.plan &&
+        (selectedOption.layout.fieldSpanRows > 1 ||
+            selectedOption.layout.fieldSpanColumns > 1)
+            ? { layout: selectedOption.layout, plan: selectedOption.plan }
+            : null;
     const occupiedPositions = new Set(
         selectedOption?.plan?.occupiedPositionIndices ?? [],
     );
@@ -105,13 +112,15 @@ export function AdvancedSowingPickerPreview({
                     );
                     const selected =
                         selectedOption?.layout.layoutKey === layout.layoutKey;
-                    const label = `${layout.selectedDistanceCm.toLocaleString('hr-HR')} cm · ${footprintLabel(layout.fieldSpanRows, layout.fieldSpanColumns)} · ${plantCountLabel(layout.plantCount)}`;
+                    const countLabel = plantCountLabel(layout.plantCount);
+                    const distanceLabel = `${layout.selectedDistanceCm.toLocaleString('hr-HR')} cm`;
+                    const label = `${countLabel} · ${distanceLabel} · ${footprintLabel(layout.fieldSpanRows, layout.fieldSpanColumns)}`;
 
                     return (
                         <label
                             key={layout.layoutKey}
                             className={cx(
-                                'flex cursor-pointer items-start gap-2 rounded-md border bg-card p-2 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+                                'flex cursor-pointer items-center gap-2 rounded-md border bg-card p-2 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                                 selected
                                     ? 'border-green-600 text-green-950 dark:border-green-700 dark:text-green-100'
                                     : 'border-input hover:bg-muted',
@@ -120,6 +129,7 @@ export function AdvancedSowingPickerPreview({
                             )}
                         >
                             <input
+                                aria-label={`${label}${layout.isDefault ? ' (preporučeno)' : ''}`}
                                 checked={selected}
                                 disabled={!plan || unavailable}
                                 name={layoutInputName}
@@ -128,13 +138,29 @@ export function AdvancedSowingPickerPreview({
                                 }
                                 type="radio"
                             />
-                            <span className="min-w-0">
-                                <span>{label}</span>
-                                {layout.isDefault ? (
-                                    <span className="ml-1 text-xs text-muted-foreground">
-                                        (preporučeno)
-                                    </span>
-                                ) : null}
+                            <PlantGridIcon
+                                aria-hidden="true"
+                                className="size-7 shrink-0"
+                                data-advanced-sowing-density-icon
+                                data-plant-count={layout.plantCount}
+                                totalPlants={layout.plantCount}
+                            />
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium">
+                                    {countLabel}
+                                    {layout.isDefault ? (
+                                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                            (preporučeno)
+                                        </span>
+                                    ) : null}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                    {distanceLabel}
+                                    {layout.fieldSpanRows > 1 ||
+                                    layout.fieldSpanColumns > 1
+                                        ? ` · ${footprintLabel(layout.fieldSpanRows, layout.fieldSpanColumns)}`
+                                        : null}
+                                </span>
                                 {!plan ? (
                                     <span className="block text-xs text-amber-800 dark:text-amber-200">
                                         Raspored ne stane od odabranog polja.
@@ -152,10 +178,10 @@ export function AdvancedSowingPickerPreview({
                 })}
             </fieldset>
 
-            {selectedOption?.plan ? (
+            {selectedMultiFieldOption ? (
                 <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
                     <div
-                        aria-label={`Tlocrt zauzima ${footprintLabel(selectedOption.layout.fieldSpanRows, selectedOption.layout.fieldSpanColumns)}`}
+                        aria-label={`Tlocrt zauzima ${footprintLabel(selectedMultiFieldOption.layout.fieldSpanRows, selectedMultiFieldOption.layout.fieldSpanColumns)}`}
                         className="grid w-16 gap-0.5"
                         data-advanced-sowing-footprint
                         role="img"
@@ -170,7 +196,8 @@ export function AdvancedSowingPickerPreview({
                                     'aspect-square rounded-[2px] border border-green-300 bg-card dark:border-green-900',
                                     occupiedPositions.has(positionIndex) &&
                                         'border-green-700 bg-green-500 dark:border-green-400 dark:bg-green-700',
-                                    selectedOption.plan?.anchorPositionIndex ===
+                                    selectedMultiFieldOption.plan
+                                        .anchorPositionIndex ===
                                         positionIndex &&
                                         'ring-1 ring-green-950',
                                 )}
@@ -188,11 +215,14 @@ export function AdvancedSowingPickerPreview({
                     <Typography level="body3">
                         Ovaj raspored zauzima{' '}
                         {footprintLabel(
-                            selectedOption.layout.fieldSpanRows,
-                            selectedOption.layout.fieldSpanColumns,
+                            selectedMultiFieldOption.layout.fieldSpanRows,
+                            selectedMultiFieldOption.layout.fieldSpanColumns,
                         )}{' '}
                         i sadrži{' '}
-                        {plantCountLabel(selectedOption.layout.plantCount)}.
+                        {plantCountLabel(
+                            selectedMultiFieldOption.layout.plantCount,
+                        )}
+                        .
                     </Typography>
                 </div>
             ) : null}

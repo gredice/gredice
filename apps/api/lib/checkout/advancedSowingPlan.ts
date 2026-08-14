@@ -25,7 +25,6 @@ const legacyUntrustedAdvancedSowingKey = 'advancedSowing';
 
 export type AdvancedSowingPlanReasonCode =
     | 'catalogue_mismatch'
-    | 'feature_disabled'
     | 'footprint_out_of_bounds'
     | 'invalid_authorization'
     | 'invalid_json'
@@ -95,7 +94,6 @@ const advancedSowingPlanErrorMessages: Record<
 > = {
     catalogue_mismatch:
         'Advanced Sowing plan does not match the current catalogue.',
-    feature_disabled: 'Advanced Sowing cart authorization is disabled.',
     footprint_out_of_bounds:
         'Advanced Sowing footprint does not fit the raised bed target.',
     invalid_authorization: 'Advanced Sowing cart authorization is invalid.',
@@ -313,13 +311,11 @@ function buildCanonicalPlan({
 export function authorizeAdvancedSowingCartSelection({
     clientAdditionalData,
     selectionRequest,
-    enableAdvancedSowing,
     catalogueDistanceRange,
     target,
 }: {
     clientAdditionalData: unknown;
     selectionRequest: unknown;
-    enableAdvancedSowing: boolean;
     catalogueDistanceRange: AdvancedSowingDistanceRangeInput;
     target: AdvancedSowingCartTarget;
 }) {
@@ -332,10 +328,6 @@ export function authorizeAdvancedSowingCartSelection({
             authorization: null,
         };
     }
-    if (!enableAdvancedSowing) {
-        throw new AdvancedSowingPlanBoundaryError('feature_disabled');
-    }
-
     const request =
         parseUntrustedAdvancedSowingSelectionRequestV1(selectionRequest);
     const plan = buildCanonicalPlan({
@@ -357,16 +349,14 @@ export function authorizeAdvancedSowingCartSelection({
 
 /**
  * Revalidates the server-owned cart envelope immediately before payment opens.
- * This is deliberately flag- and catalogue-sensitive.
+ * This is deliberately catalogue-sensitive.
  */
 export function validateAdvancedSowingCartAuthorizationBeforeCheckout({
     persistedAuthorization,
-    enableAdvancedSowing,
     catalogueDistanceRange,
     target,
 }: {
     persistedAuthorization: unknown;
-    enableAdvancedSowing: boolean;
     catalogueDistanceRange: AdvancedSowingDistanceRangeInput;
     target: AdvancedSowingCartTarget;
 }): AdvancedSowingCartAuthorizationV1 | null {
@@ -379,9 +369,6 @@ export function validateAdvancedSowingCartAuthorizationBeforeCheckout({
     const authorization = parseUntrustedAdvancedSowingCartAuthorizationV1(
         persistedAuthorization,
     );
-    if (!enableAdvancedSowing) {
-        throw new AdvancedSowingPlanBoundaryError('feature_disabled');
-    }
     if (!targetMatchesPlan(authorization.plan, target)) {
         throw new AdvancedSowingPlanBoundaryError('target_mismatch');
     }

@@ -63,11 +63,3 @@ export const enableOutletGardenCommerceFlag = flag<boolean>({
     defaultValue: false,
     options: booleanFlagOptions,
 });
-
-export const enableAdvancedSowingFlag = flag<boolean>({
-    key: 'enableAdvancedSowing',
-    description:
-        'Enable Advanced Sowing selection and cart submission for the internal Garden cohort; server authorization remains independently gated.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});

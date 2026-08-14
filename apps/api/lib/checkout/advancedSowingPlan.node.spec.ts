@@ -41,7 +41,6 @@ function authorize(
             scheduledDate: '2026-09-01T00:00:00.000Z',
             sowingLocation: 'greenhouse',
         },
-        enableAdvancedSowing: true,
         selectionRequest,
         target,
         ...overrides,
@@ -171,13 +170,6 @@ describe('authorizeAdvancedSowingCartSelection', () => {
         );
     });
 
-    it('rejects a selection while the independent server gate is off', () => {
-        expectBoundaryReason(
-            () => authorize({ enableAdvancedSowing: false }),
-            'feature_disabled',
-        );
-    });
-
     it('distinguishes spacing and footprint validation failures', () => {
         expectBoundaryReason(
             () =>
@@ -260,7 +252,6 @@ describe('authorizeAdvancedSowingCartSelection', () => {
                 clientAdditionalData: JSON.stringify({
                     scheduledDate: '2026-09-01T00:00:00.000Z',
                 }),
-                enableAdvancedSowing: false,
                 selectionRequest: null,
             }),
             {
@@ -284,7 +275,6 @@ describe('Advanced Sowing checkout snapshot boundaries', () => {
                         minDistanceCm: 20,
                         optimalDistanceCm: 30,
                     },
-                    enableAdvancedSowing: true,
                     persistedAuthorization: authorization,
                     target,
                 }),
@@ -292,30 +282,19 @@ describe('Advanced Sowing checkout snapshot boundaries', () => {
         );
     });
 
-    it('requires the server flag before payment but not after a paid snapshot', () => {
+    it('revalidates authorization before payment and preserves the paid snapshot', () => {
         const { authorization } = authorize();
         assert.deepEqual(
             validateAdvancedSowingCartAuthorizationBeforeCheckout({
                 catalogueDistanceRange: distanceRange,
-                enableAdvancedSowing: true,
                 persistedAuthorization: authorization,
                 target,
             }),
             authorization,
         );
-        expectBoundaryReason(
-            () =>
-                validateAdvancedSowingCartAuthorizationBeforeCheckout({
-                    catalogueDistanceRange: distanceRange,
-                    enableAdvancedSowing: false,
-                    persistedAuthorization: authorization,
-                    target,
-                }),
-            'feature_disabled',
-        );
 
         // A paid checkout snapshot has already crossed the authorization
-        // boundary, so fulfillment intentionally has no flag input.
+        // boundary, so fulfillment remains independent of live catalogue data.
         assert.deepEqual(
             readAdvancedSowingPaidCheckoutSnapshot({
                 checkoutSnapshotAuthorization: authorization,
