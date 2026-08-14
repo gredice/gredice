@@ -763,6 +763,44 @@ test('planned greenhouse sowing sends greenhouse location', async ({
     expect(additionalData.sowingLocation).toBe('greenhouse');
 });
 
+test('planting calendar selects greenhouse sowing by default', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const calendarMonth = tomorrow.getMonth() + 1;
+
+    await mount(
+        <PlantPickerTestStory
+            propagatingRanges={[{ start: calendarMonth, end: calendarMonth }]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const greenhouseSwitch = page.getByRole('switch', { name: 'Staklenik' });
+    await expect(greenhouseSwitch).toBeChecked();
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post) || typeof post.additionalData !== 'string') {
+        return;
+    }
+    const additionalData: unknown = JSON.parse(post.additionalData);
+    expect(isRecord(additionalData)).toBe(true);
+    if (!isRecord(additionalData)) {
+        return;
+    }
+    expect(additionalData.sowingLocation).toBe('greenhouse');
+});
+
 test('outlet sowing sends the selected outlet offer', async ({
     mount,
     page,
