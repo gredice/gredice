@@ -4,6 +4,7 @@ import { resolveGardenBlockPlacement } from './blockPlacementService';
 
 const blockDataByName = new Map([
     ['Block_Grass', { attributes: { stackable: true, height: 1 } }],
+    ['Block_Grass_Angle', { attributes: { stackable: true, height: 1 } }],
     [
         'Block_Water',
         {
@@ -387,6 +388,41 @@ describe('resolveGardenBlockPlacement', () => {
         assert.deepStrictEqual(placement, {
             valid: false,
             error: 'Invalid block placement: all spanned cells must be on the same level',
+        });
+    });
+
+    it('places a spanning block on level water with shaped terrain underneath', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'FishingBoat',
+            requestedPosition: { x: 0, y: 0 },
+            stacks: [
+                {
+                    positionX: 0,
+                    positionY: 0,
+                    blocks: ['angle-a', 'water-shaped'],
+                },
+                {
+                    positionX: 0,
+                    positionY: 1,
+                    blocks: ['water-flat'],
+                },
+            ],
+            blockNameById: new Map([
+                ['angle-a', 'Block_Grass_Angle'],
+                ['water-shaped', 'Block_Water'],
+                ['water-flat', 'Block_Water'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: 0,
+                index: 2,
+                existingBlocks: ['angle-a', 'water-shaped'],
+            },
         });
     });
 

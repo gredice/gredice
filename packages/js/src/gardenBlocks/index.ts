@@ -64,6 +64,13 @@ export const WATER_BLOCK_NAMES = [
 ] as const;
 const HAZEL_LIGHT_ARCH_BLOCK_NAME = 'HazelLightArch';
 const WALKWAY_BLOCK_NAMES = new Set(['StoneWalkway', 'WoodenWalkway']);
+const TERRAIN_STAIR_BLOCK_NAMES = new Set([
+    'Block_Stone_Stairs',
+    'Block_Polished_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
+    'Block_Polished_Stone_Stairs_Corner',
+    'Block_Stone_Stairs_Half',
+]);
 export const SWAMP_BLOCK_NAME = 'Block_Swamp';
 export const FISHING_BOAT_BLOCK_NAME = 'FishingBoat';
 
@@ -81,6 +88,34 @@ export function isWaterOrSwampBlockName(blockName: string) {
 
 export function requiresWaterOrSwampSupport(blockName: string) {
     return blockName === FISHING_BOAT_BLOCK_NAME;
+}
+
+export function isEdgeOrCornerTerrainBlockName(blockName: string) {
+    return (
+        blockName.startsWith('Block_') &&
+        !TERRAIN_STAIR_BLOCK_NAMES.has(blockName) &&
+        (blockName.endsWith('_Angle') || blockName.endsWith('_Corner'))
+    );
+}
+
+export function getEffectiveGardenStackBlockHeight({
+    blockHeight,
+    blockName,
+    supportBlockName,
+}: {
+    blockHeight: number;
+    blockName: string;
+    supportBlockName: string | undefined;
+}) {
+    if (
+        isWaterBlockName(blockName) &&
+        supportBlockName &&
+        isEdgeOrCornerTerrainBlockName(supportBlockName)
+    ) {
+        return 0;
+    }
+
+    return blockHeight;
 }
 
 function toPositiveGridSpan(value: number | null | undefined) {
@@ -170,17 +205,29 @@ function getBlockHeight(
     return blockDataByName.get(blockName)?.attributes?.height ?? 0;
 }
 
-function getStackHeightByBlockIds(
+export function getGardenStackHeightByBlockIds(
     blockIds: string[],
     blockNameById: Map<string, string>,
     blockDataByName: Map<string, GardenBlockDataLike>,
 ) {
-    return blockIds.reduce((height, blockId) => {
+    let height = 0;
+    let supportBlockName: string | undefined;
+
+    for (const blockId of blockIds) {
         const blockName = blockNameById.get(blockId);
-        return blockName
-            ? height + getBlockHeight(blockName, blockDataByName)
-            : height;
-    }, 0);
+        if (!blockName) {
+            continue;
+        }
+
+        height += getEffectiveGardenStackBlockHeight({
+            blockHeight: getBlockHeight(blockName, blockDataByName),
+            blockName,
+            supportBlockName,
+        });
+        supportBlockName = blockName;
+    }
+
+    return height;
 }
 
 function createOccupiedCells(params: {
@@ -201,6 +248,7 @@ function createOccupiedCells(params: {
 
     for (const stack of stacks) {
         let stackHeight = 0;
+        let supportBlockName: string | undefined;
         for (const blockId of stack.blocks) {
             const blockName = blockNameById.get(blockId);
             if (!blockName) {
@@ -208,7 +256,11 @@ function createOccupiedCells(params: {
             }
 
             const blockData = blockDataByName.get(blockName);
-            const blockHeight = getBlockHeight(blockName, blockDataByName);
+            const blockHeight = getEffectiveGardenStackBlockHeight({
+                blockHeight: getBlockHeight(blockName, blockDataByName),
+                blockName,
+                supportBlockName,
+            });
             if (!movingBlockIds?.has(blockId)) {
                 for (const offset of getGardenBlockFootprintOffsets(
                     blockData,
@@ -233,9 +285,10 @@ function createOccupiedCells(params: {
                         occupiedCells.set(key, [cell]);
                     }
                 }
-            }
 
-            stackHeight += blockHeight;
+                stackHeight += blockHeight;
+                supportBlockName = blockName;
+            }
         }
     }
 
@@ -251,8 +304,9 @@ function getTopOccupiedCell(
         return null;
     }
 
+    // A collapsed water block is logically above its support at the same height.
     return cells.reduce((topCell, cell) =>
-        cell.topHeight > topCell.topHeight ? cell : topCell,
+        cell.topHeight >= topCell.topHeight ? cell : topCell,
     );
 }
 
@@ -574,7 +628,7 @@ function validatePlacementAtPosition(params: {
 
         const footprintHeight =
             topOccupiedCell?.topHeight ??
-            getStackHeightByBlockIds(
+            getGardenStackHeightByBlockIds(
                 footprintStack,
                 blockNameById,
                 blockDataByName,

@@ -1,6 +1,8 @@
 import {
     canStackBlockOnBlock,
+    getEffectiveGardenStackBlockHeight,
     getGardenBlockFootprintOffsets,
+    getGardenStackHeightByBlockIds,
     isWaterOrSwampBlockName,
     requiresWaterOrSwampSupport,
     type GardenBlockDataLike as SharedGardenBlockDataLike,
@@ -34,45 +36,17 @@ type ValidationResult =
           error: string;
       };
 
-function getBlockHeight(
-    blockId: string,
-    blockNameById: Map<string, string>,
-    blockDataByName: Map<string, BlockDataLike>,
-) {
-    const blockName = blockNameById.get(blockId);
-    if (!blockName) {
-        return 0;
-    }
-
-    return blockDataByName.get(blockName)?.attributes?.height ?? 0;
-}
-
-function getStackHeightByBlockIds(
-    blockIds: string[],
-    blockNameById: Map<string, string>,
-    blockDataByName: Map<string, BlockDataLike>,
-) {
-    return blockIds.reduce(
-        (height, blockId) =>
-            height + getBlockHeight(blockId, blockNameById, blockDataByName),
-        0,
-    );
-}
-
 function getHeightBeforeIndex(
     blockIds: string[],
     index: number,
     blockNameById: Map<string, string>,
     blockDataByName: Map<string, BlockDataLike>,
 ) {
-    return blockIds
-        .slice(0, index)
-        .reduce(
-            (height, blockId) =>
-                height +
-                getBlockHeight(blockId, blockNameById, blockDataByName),
-            0,
-        );
+    return getGardenStackHeightByBlockIds(
+        blockIds.slice(0, index),
+        blockNameById,
+        blockDataByName,
+    );
 }
 
 function findStackByPosition(stacks: GardenStack[], x: number, y: number) {
@@ -119,6 +93,7 @@ function createOccupiedCells(params: {
 
     for (const stack of stacks) {
         let stackHeight = 0;
+        let supportBlockName: string | undefined;
         for (const blockId of stack.blocks) {
             const blockName = blockNameById.get(blockId);
             if (!blockName) {
@@ -126,11 +101,11 @@ function createOccupiedCells(params: {
             }
 
             const blockData = blockDataByName.get(blockName);
-            const blockHeight = getBlockHeight(
-                blockId,
-                blockNameById,
-                blockDataByName,
-            );
+            const blockHeight = getEffectiveGardenStackBlockHeight({
+                blockHeight: blockData?.attributes?.height ?? 0,
+                blockName,
+                supportBlockName,
+            });
             if (!movingBlockIds?.has(blockId)) {
                 for (const offset of getGardenBlockFootprintOffsets(
                     blockData,
@@ -153,9 +128,10 @@ function createOccupiedCells(params: {
                         occupiedCells.set(key, [cell]);
                     }
                 }
-            }
 
-            stackHeight += blockHeight;
+                stackHeight += blockHeight;
+                supportBlockName = blockName;
+            }
         }
     }
 
@@ -172,8 +148,9 @@ function getTopOccupiedCell(
         return null;
     }
 
+    // A collapsed water block is logically above its support at the same height.
     return cells.reduce((topCell, cell) =>
-        cell.topHeight > topCell.topHeight ? cell : topCell,
+        cell.topHeight >= topCell.topHeight ? cell : topCell,
     );
 }
 
@@ -506,13 +483,13 @@ export function validateConnectedRaisedBedMove(params: {
     );
 
     const primaryHoverHeight =
-        getStackHeightByBlockIds(
+        getGardenStackHeightByBlockIds(
             destinationSupportBlocks[0]?.supportBlocks ?? [],
             blockNameById,
             blockDataByName,
         ) - primaryCurrentHeight;
     const attachedHoverHeight =
-        getStackHeightByBlockIds(
+        getGardenStackHeightByBlockIds(
             destinationSupportBlocks[1]?.supportBlocks ?? [],
             blockNameById,
             blockDataByName,
@@ -615,7 +592,7 @@ export function validateSpanningBlockMove(params: {
             ) ?? [];
         const footprintHeight =
             topOccupiedCell?.topHeight ??
-            getStackHeightByBlockIds(
+            getGardenStackHeightByBlockIds(
                 supportBlocks,
                 blockNameById,
                 blockDataByName,

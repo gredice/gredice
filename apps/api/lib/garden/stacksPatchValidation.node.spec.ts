@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { validateStackPlacement } from './stacksPatchValidation';
+import {
+    validateSpanningBlockMove,
+    validateStackPlacement,
+} from './stacksPatchValidation';
 
 const blockDataByName = new Map([
     ['Block_Grass', { attributes: { stackable: true, height: 1 } }],
+    ['Block_Grass_Angle', { attributes: { stackable: true, height: 1 } }],
     [
         'Block_Water',
         {
@@ -124,5 +128,51 @@ describe('validateStackPlacement', () => {
         assert.equal(unsupported.valid, false);
         assert.equal(onLand.valid, false);
         assert.deepEqual(onWater, { valid: true });
+    });
+});
+
+describe('validateSpanningBlockMove', () => {
+    it('allows a boat move across level water with different support stacks', () => {
+        const validation = validateSpanningBlockMove({
+            stacks: [
+                {
+                    positionX: -2,
+                    positionY: 7,
+                    blocks: ['source-angle', 'source-water', 'boat-a'],
+                },
+                {
+                    positionX: 0,
+                    positionY: -8,
+                    blocks: ['target-angle', 'target-water-shaped'],
+                },
+                {
+                    positionX: 0,
+                    positionY: -7,
+                    blocks: ['target-water-flat'],
+                },
+            ],
+            fromPath: '/-2/7/2',
+            toPath: '/0/-8/-',
+            movedBlockId: 'boat-a',
+            blockNameById: new Map([
+                ['source-angle', 'Block_Grass_Angle'],
+                ['source-water', 'Block_Water'],
+                ['boat-a', 'FishingBoat'],
+                ['target-angle', 'Block_Grass_Angle'],
+                ['target-water-shaped', 'Block_Water'],
+                ['target-water-flat', 'Block_Water'],
+            ]),
+            blockDataByName,
+            parsePath: (path) => {
+                const [, x, y, index] = path.split('/');
+                return {
+                    x: Number(x),
+                    y: Number(y),
+                    index: index === '-' ? undefined : Number(index),
+                };
+            },
+        });
+
+        assert.deepEqual(validation, { valid: true });
     });
 });

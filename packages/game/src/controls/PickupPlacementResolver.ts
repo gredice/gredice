@@ -150,8 +150,9 @@ function getTopOccupiedCell(
         return null;
     }
 
+    // A collapsed water block is logically above its support at the same height.
     return cells.reduce((topCell, cell) =>
-        cell.topHeight > topCell.topHeight ? cell : topCell,
+        cell.topHeight >= topCell.topHeight ? cell : topCell,
     );
 }
 

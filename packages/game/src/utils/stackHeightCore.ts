@@ -1,20 +1,13 @@
 import type { BlockData } from '@gredice/client';
+import { getEffectiveGardenStackBlockHeight } from '@gredice/js/gardenBlocks';
 import {
-    isTerrainStairBlockName,
     legacyStoneCornerStairsBlockName,
     stoneCornerStairsBlockName,
 } from '../entities/terrainStairs';
-import { isWaterBlockName } from '../entities/waterBlockNames';
 import type { Block } from '../types/Block';
 import type { GardenStack } from '../types/Stack';
 
-export function isEdgeOrCornerTerrainBlockName(blockName: string) {
-    return (
-        blockName.startsWith('Block_') &&
-        !isTerrainStairBlockName(blockName) &&
-        (blockName.endsWith('_Angle') || blockName.endsWith('_Corner'))
-    );
-}
+export { isEdgeOrCornerTerrainBlockName } from '@gredice/js/gardenBlocks';
 
 export function getBlockDataByName(
     blockData: BlockData[] | null | undefined,
@@ -42,32 +35,18 @@ export function getBlockDataByName(
     return block;
 }
 
-function isWaterBlockCollapsedIntoSupport(
-    stack: GardenStack,
-    block: Block,
-    blockIndex: number,
-) {
-    if (!isWaterBlockName(block.name)) {
-        return false;
-    }
-
-    const supportBlock = stack.blocks[blockIndex - 1];
-    return supportBlock
-        ? isEdgeOrCornerTerrainBlockName(supportBlock.name)
-        : false;
-}
-
 export function getStackBlockHeight(
     blockData: BlockData[] | null | undefined,
     stack: GardenStack,
     block: Block,
     blockIndex = stack.blocks.indexOf(block),
 ) {
-    if (isWaterBlockCollapsedIntoSupport(stack, block, blockIndex)) {
-        return 0;
-    }
-
-    return getBlockDataByName(blockData, block.name)?.attributes.height ?? 0;
+    return getEffectiveGardenStackBlockHeight({
+        blockHeight:
+            getBlockDataByName(blockData, block.name)?.attributes.height ?? 0,
+        blockName: block.name,
+        supportBlockName: stack.blocks[blockIndex - 1]?.name,
+    });
 }
 
 export function getStackHeight(
