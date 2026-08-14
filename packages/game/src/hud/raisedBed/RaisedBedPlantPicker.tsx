@@ -4,7 +4,10 @@ import {
     buildAdvancedSowingSelectionRequestV1,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
-import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
+import {
+    CalendarDatePicker,
+    parseCalendarDateKey,
+} from '@gredice/ui/CalendarDatePicker';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
@@ -672,15 +675,16 @@ export function PlantPicker({
 
     const plantDate = formatLocalDate(plantOptions?.scheduledDate ?? tomorrow);
     function handlePlantDateChange(date: string) {
-        const parsedDate = date ? new Date(date) : null;
+        const scheduledDate = date ? new Date(date) : null;
+        const localCalendarDate = parseCalendarDateKey(date);
         setPlantOptions({
-            scheduledDate: parsedDate,
+            scheduledDate,
         });
-        if (parsedDate && selectedSort) {
+        if (localCalendarDate && selectedSort) {
             setSowInGreenhouse(
                 isGreenhouseSowingRecommended(
                     selectedSort.information.plant,
-                    parsedDate,
+                    localCalendarDate,
                 ),
             );
         }
