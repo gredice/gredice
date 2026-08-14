@@ -46,12 +46,12 @@ export async function generateMetadata(
         getPlantSortsData(),
     ]);
     const plant = plants?.find((plant) =>
-        matchesPageAlias(plant.information.name, alias),
+        matchesPageAlias(plant.information.name, alias, plant.slug),
     );
     const sort = sorts?.find(
         (sort) =>
             sort.information.plant?.id === plant?.id &&
-            matchesPageAlias(sort.information.name, sortAlias),
+            matchesPageAlias(sort.information.name, sortAlias, sort.slug),
     );
     if (!plant || !sort) {
         notFound();
@@ -120,10 +120,6 @@ export default async function PlantSortPage(
         ? decodeRouteParam(sortAliasUnescaped)
         : null;
     if (!alias || !sort) {
-        console.warn(
-            'Invalid parameters for plant sort page:',
-            await props.params,
-        );
         notFound();
     }
 
@@ -133,18 +129,14 @@ export default async function PlantSortPage(
         getOperationsData(),
     ]);
     const basePlantData = plants?.find((p) =>
-        matchesPageAlias(p.information.name, alias),
+        matchesPageAlias(p.information.name, alias, p.slug),
     );
     const sortData = sorts?.find(
         (s) =>
             s.information.plant?.id === basePlantData?.id &&
-            matchesPageAlias(s.information.name, sort),
+            matchesPageAlias(s.information.name, sort, s.slug),
     );
     if (!basePlantData || !sortData) {
-        console.error('Base plant or sort not found:', {
-            basePlantData,
-            sortData,
-        });
         notFound();
     }
 
