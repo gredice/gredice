@@ -174,6 +174,10 @@ const blockData = [
         spanWidth: 1,
         stackable: false,
     }),
+    createBlockData({
+        id: 15,
+        name: 'Block_Grass_Angle',
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -540,6 +544,30 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         assert.equal(fullySupported?.nextIsBlocked, false);
         assert.equal(partiallySupported?.nextIsBlocked, true);
         assert.equal(unsupported?.nextIsBlocked, true);
+    });
+
+    it('allows the fishing boat across level water with different support stacks', () => {
+        const boat = createBlock('FishingBoat', 'boat');
+        const sourceStack = createStack(0, 0, [boat]);
+        const shapedWaterStack = createStack(1, 0, [
+            createBlock('Block_Grass_Angle', 'angle'),
+            createBlock('Block_Water', 'water-shaped'),
+        ]);
+        const flatWaterStack = createStack(1, 1, [
+            createBlock('Block_Water', 'water-flat'),
+        ]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, shapedWaterStack, flatWaterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.previewHoverHeight, 1);
     });
 
     it('matches the single-resolution path when reusing prepared placement state', () => {

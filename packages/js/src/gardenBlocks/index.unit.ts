@@ -3,7 +3,10 @@ import { describe, it, test } from 'node:test';
 import {
     canStackBlockOnBlock,
     type GardenBlockDataLike,
+    getEffectiveGardenStackBlockHeight,
+    getGardenStackHeightByBlockIds,
     isBlockPlaceableOnWater,
+    isEdgeOrCornerTerrainBlockName,
     isWaterBlockName,
 } from './index';
 
@@ -42,6 +45,55 @@ test('treats swamp water as placeable on water by default', () => {
             blockName: 'Block_Swamp_Water',
         }),
         true,
+    );
+});
+
+test('collapses water above shaped terrain to the shared surface height', () => {
+    const blockNameById = new Map([
+        ['angle', 'Block_Grass_Angle'],
+        ['water-shaped', 'Block_Water'],
+        ['water-flat', 'Block_Water'],
+    ]);
+    const blockDataByName = new Map([
+        ['Block_Grass_Angle', { attributes: { height: 1 } }],
+        ['Block_Water', { attributes: { height: 1 } }],
+    ]);
+
+    assert.equal(
+        getGardenStackHeightByBlockIds(
+            ['angle', 'water-shaped'],
+            blockNameById,
+            blockDataByName,
+        ),
+        getGardenStackHeightByBlockIds(
+            ['water-flat'],
+            blockNameById,
+            blockDataByName,
+        ),
+    );
+    assert.equal(
+        getEffectiveGardenStackBlockHeight({
+            blockHeight: 1,
+            blockName: 'Block_Water',
+            supportBlockName: 'Block_Grass_Angle',
+        }),
+        0,
+    );
+});
+
+test('does not treat terrain stair corners as water-fill supports', () => {
+    assert.equal(isEdgeOrCornerTerrainBlockName('Block_Grass_Corner'), true);
+    assert.equal(
+        isEdgeOrCornerTerrainBlockName('Block_Stone_Stairs_Corner'),
+        false,
+    );
+    assert.equal(
+        getEffectiveGardenStackBlockHeight({
+            blockHeight: 1,
+            blockName: 'Block_Water',
+            supportBlockName: 'Block_Stone_Stairs_Corner',
+        }),
+        1,
     );
 });
 
