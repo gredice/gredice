@@ -4,21 +4,21 @@ import {
     buildFarmScheduleSelectedPlantingLabel,
 } from './schedulePlantingPresentation';
 
-test('labels an exact canonical legacy task without deriving current catalogue density', () => {
+test('labels a legacy task with the current catalogue recommendation', () => {
     expect(
         buildFarmSchedulePlantingLabel({
-            hasCanonicalLegacyPlanting: true,
-            plantName: 'Tikvica',
+            plantName: 'Peršin lisnati',
+            recommendedPlantCount: 36,
             sowingLocation: 'raisedBed',
         }),
-    ).toBe('Sijanje: Tikvica · naslijeđeni raspored nije zabilježen');
+    ).toBe('Sijanje: Peršin lisnati · preporučeno 36 biljaka po polju');
 });
 
-test('keeps an unprojected legacy field task while marking its quantity unknown', () => {
+test('marks the quantity unknown when the catalogue has no recommendation', () => {
     expect(
         buildFarmSchedulePlantingLabel({
-            hasCanonicalLegacyPlanting: false,
             plantName: 'Salata',
+            recommendedPlantCount: null,
             sowingLocation: 'greenhouse',
         }),
     ).toBe('Sijanje u stakleniku: Salata · broj biljaka nije zabilježen');
