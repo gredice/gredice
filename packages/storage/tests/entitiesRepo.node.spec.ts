@@ -355,6 +355,232 @@ async function captureBustCacheKeys(run: () => Promise<void>) {
     return cacheKeys;
 }
 
+function assertFormattedCacheKeys(
+    cacheKeys: string[],
+    expectedCacheKeys: string[],
+) {
+    const formattedCacheKeys = cacheKeys.filter((cacheKey) =>
+        cacheKey.startsWith('entities:formatted:'),
+    );
+
+    assert.equal(
+        formattedCacheKeys.length,
+        new Set(formattedCacheKeys).size,
+        'formatted cache keys should only be busted once',
+    );
+    assert.deepEqual(
+        [...formattedCacheKeys].sort(),
+        [...expectedCacheKeys].sort(),
+    );
+}
+
+async function createEntityReadModelInvalidationTestData() {
+    for (const entityTypeName of [
+        'brand',
+        'operation',
+        'plant',
+        'plantSort',
+        'plantStage',
+        'seed',
+    ]) {
+        await upsertEntityType({
+            name: entityTypeName,
+            label: entityTypeName,
+        });
+    }
+
+    const plantNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+    });
+    const brandNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'brand',
+        dataType: 'text',
+    });
+    const operationNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'plantSort',
+        label: 'Plant sort',
+        entityTypeName: 'seed',
+        dataType: 'ref:plantSort',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'brand',
+        label: 'Brand',
+        entityTypeName: 'seed',
+        dataType: 'ref:brand',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'stage',
+        label: 'Stage',
+        entityTypeName: 'operation',
+        dataType: 'ref:plantStage',
+    });
+
+    return {
+        brandNameDefinitionId,
+        operationNameDefinitionId,
+        plantNameDefinitionId,
+    };
+}
+
+test('ordinary attribute mutations bust transitive formatted read models', async () => {
+    createTestDb();
+    const {
+        brandNameDefinitionId,
+        operationNameDefinitionId,
+        plantNameDefinitionId,
+    } = await createEntityReadModelInvalidationTestData();
+    const plantId = await createEntity('plant');
+    const brandId = await createEntity('brand');
+    const operationId = await createEntity('operation');
+
+    const plantCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: plantNameDefinitionId,
+            entityTypeName: 'plant',
+            entityId: plantId,
+            value: 'Tomato',
+        });
+    });
+    assertFormattedCacheKeys(plantCacheKeys, [
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+
+    const brandCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: brandNameDefinitionId,
+            entityTypeName: 'brand',
+            entityId: brandId,
+            value: 'Seed brand',
+        });
+    });
+    assertFormattedCacheKeys(brandCacheKeys, [
+        'entities:formatted:brand:state:published:locale:default:v1',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+
+    const operationCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: operationNameDefinitionId,
+            entityTypeName: 'operation',
+            entityId: operationId,
+            value: 'Watering',
+        });
+    });
+    assertFormattedCacheKeys(operationCacheKeys, [
+        'entities:formatted:operation:state:published:locale:default:v1',
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+});
+
+test('entity state and delete mutations bust transitive formatted read models', async () => {
+    createTestDb();
+    const { operationNameDefinitionId } =
+        await createEntityReadModelInvalidationTestData();
+    const operationId = await createEntity('operation');
+    await upsertAttributeValue({
+        attributeDefinitionId: operationNameDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationId,
+        value: 'Watering',
+    });
+    const expectedCacheKeys = [
+        'entities:formatted:operation:state:published:locale:default:v1',
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ];
+
+    const publishedCacheKeys = await captureBustCacheKeys(async () => {
+        await updateEntity({ id: operationId, state: 'published' });
+    });
+    assertFormattedCacheKeys(publishedCacheKeys, expectedCacheKeys);
+
+    const deletedCacheKeys = await captureBustCacheKeys(async () => {
+        await deleteEntity(operationId);
+    });
+    assertFormattedCacheKeys(deletedCacheKeys, expectedCacheKeys);
+});
+
+test('retired ref definitions retain invalidation dependencies for active values', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const targetTypeName = `cache-target-${suffix}`;
+    const dependentTypeName = `cache-dependent-${suffix}`;
+    await upsertEntityType({
+        name: targetTypeName,
+        label: 'Cache target',
+    });
+    await upsertEntityType({
+        name: dependentTypeName,
+        label: 'Cache dependent',
+    });
+    const targetNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: targetTypeName,
+        dataType: 'text',
+    });
+    const retiredReferenceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'target',
+        label: 'Target',
+        entityTypeName: dependentTypeName,
+        dataType: `ref:${targetTypeName}`,
+    });
+    const targetId = await createEntity(targetTypeName);
+    const dependentId = await createEntity(dependentTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: retiredReferenceDefinitionId,
+        entityTypeName: dependentTypeName,
+        entityId: dependentId,
+        value: String(targetId),
+    });
+    await deleteAttributeDefinition(retiredReferenceDefinitionId);
+
+    const cacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: targetNameDefinitionId,
+            entityTypeName: targetTypeName,
+            entityId: targetId,
+            value: 'Updated target',
+        });
+    });
+    assertFormattedCacheKeys(cacheKeys, [
+        `entities:formatted:${targetTypeName}:state:published:locale:default:v1`,
+        `entities:formatted:${dependentTypeName}:state:published:locale:default:v1`,
+    ]);
+});
+
 async function createPlantHealthTestData() {
     await upsertEntityType({ name: 'plant', label: 'Plant' });
     await upsertEntityType({ name: 'operation', label: 'Operation' });

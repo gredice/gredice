@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cacheKeys } from '../src/cache/directoriesCached';
+import {
+    cacheKeys,
+    directoryCacheProjectPrefixesForInvalidation,
+} from '../src/cache/directoriesCached';
+import { entityReadModelInvalidationClosure } from '../src/cache/entityReadModelInvalidation';
 import {
     redisCached,
     redisCacheKeyForEnvironment,
@@ -57,6 +61,47 @@ test('Redis cache keys isolate non-production environments', () => {
             'news:',
         ),
         'news:preview:entities:formatted:plant',
+    );
+});
+
+test('production directory invalidation covers every project namespace', () => {
+    assert.deepEqual(
+        directoryCacheProjectPrefixesForInvalidation('production', 'news'),
+        ['', 'news', 'delivery'],
+    );
+    assert.deepEqual(
+        directoryCacheProjectPrefixesForInvalidation('preview', 'news'),
+        ['news'],
+    );
+    assert.deepEqual(
+        directoryCacheProjectPrefixesForInvalidation(
+            'production',
+            'future-project:',
+        ),
+        ['', 'news', 'delivery', 'future-project'],
+    );
+});
+
+test('entity read-model invalidation follows references and derived aggregates', () => {
+    const references = [
+        { entityTypeName: 'plantSort', dataType: 'ref:plant' },
+        { entityTypeName: 'seed', dataType: 'ref:brand' },
+        { entityTypeName: 'seed', dataType: 'ref:plantSort' },
+        { entityTypeName: 'cycleA', dataType: 'ref:cycleB' },
+        { entityTypeName: 'cycleB', dataType: 'ref:cycleA' },
+    ];
+
+    assert.deepEqual(
+        entityReadModelInvalidationClosure(['brand'], references),
+        ['brand', 'seed'],
+    );
+    assert.deepEqual(
+        entityReadModelInvalidationClosure(['plantStage'], references),
+        ['plantStage', 'operation', 'plant', 'plantSort', 'seed'],
+    );
+    assert.deepEqual(
+        entityReadModelInvalidationClosure(['cycleA'], references),
+        ['cycleA', 'cycleB'],
     );
 });
 

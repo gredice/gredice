@@ -238,6 +238,7 @@ export async function redisCachedInfo(
 export async function bustRedisCached(
     key: string,
     namespace: RedisCacheNamespace = 'plants',
+    projectPrefix = process.env.GREDICE_DIRECTORY_CACHE_PREFIX,
 ) {
     try {
         const client = redisCacheClient(namespace);
@@ -245,7 +246,13 @@ export async function bustRedisCached(
             return;
         }
 
-        await client.del(redisCacheKeyForEnvironment(key));
+        await client.del(
+            redisCacheKeyForEnvironment(
+                key,
+                process.env.VERCEL_ENV,
+                projectPrefix,
+            ),
+        );
     } catch (error) {
         console.warn(`Error busting Redis cache for key "${key}":`, error);
     }
@@ -254,6 +261,7 @@ export async function bustRedisCached(
 export async function bustRedisCacheByPrefixes(
     prefixes: string[],
     namespace: RedisCacheNamespace = 'plants',
+    projectPrefixes = [process.env.GREDICE_DIRECTORY_CACHE_PREFIX ?? ''],
 ) {
     try {
         const client = redisCacheClient(namespace);
@@ -270,8 +278,14 @@ export async function bustRedisCacheByPrefixes(
             keys.push(...scanResult[1]);
         } while (cursor !== '0');
 
-        const environmentPrefixes = prefixes.map((prefix) =>
-            redisCacheKeyForEnvironment(prefix),
+        const environmentPrefixes = projectPrefixes.flatMap((projectPrefix) =>
+            prefixes.map((prefix) =>
+                redisCacheKeyForEnvironment(
+                    prefix,
+                    process.env.VERCEL_ENV,
+                    projectPrefix,
+                ),
+            ),
         );
         const keysToDelete = keys.filter((key) =>
             environmentPrefixes.some((prefix) => key.startsWith(prefix)),

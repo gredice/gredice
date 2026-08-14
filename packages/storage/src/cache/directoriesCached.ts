@@ -37,11 +37,37 @@ export async function directoriesCachedInfo() {
     return redisCachedInfo();
 }
 
+export function directoryCacheProjectPrefixesForInvalidation(
+    environment = process.env.VERCEL_ENV,
+    projectPrefix = process.env.GREDICE_DIRECTORY_CACHE_PREFIX,
+) {
+    if (environment === 'production') {
+        return Array.from(
+            new Set([
+                '',
+                'news',
+                'delivery',
+                projectPrefix?.trim().replace(/:+$/u, ''),
+            ]),
+        ).filter((prefix): prefix is string => typeof prefix === 'string');
+    }
+
+    return [projectPrefix ?? ''];
+}
+
 export async function bustCached(key: string) {
     console.debug(`Bust cache for key: ${key}`);
-    await bustRedisCached(key);
+    await Promise.all(
+        directoryCacheProjectPrefixesForInvalidation().map((projectPrefix) =>
+            bustRedisCached(key, 'plants', projectPrefix),
+        ),
+    );
 }
 
 export async function bustCachedByPrefixes(prefixes: string[]) {
-    return bustRedisCacheByPrefixes(prefixes);
+    return bustRedisCacheByPrefixes(
+        prefixes,
+        'plants',
+        directoryCacheProjectPrefixesForInvalidation(),
+    );
 }
