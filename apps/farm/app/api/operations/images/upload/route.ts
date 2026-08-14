@@ -8,6 +8,7 @@ import {
     parseFarmOperationCompletionSubmissionId,
 } from '../../../../schedule/operationCompletionProof';
 import { parseScheduleOperationCompletionRequirementsFingerprint } from '../../../../schedule/scheduleOperationRequirements';
+import { getExpectedScheduleTaskAccountId } from '../../../../schedule/scheduleTaskAccountScope';
 import {
     assertNonNegativeSafeInteger,
     assertPositiveSafeInteger,
@@ -101,7 +102,11 @@ export async function POST(request: Request) {
                         assertScheduleTaskUploadTarget(
                             await validateScheduleOperationUploadTarget({
                                 actor: { role: user.role, userId },
-                                expectedAccountId: accountId,
+                                expectedAccountId:
+                                    getExpectedScheduleTaskAccountId(
+                                        accountId,
+                                        user.role,
+                                    ),
                                 expectedEntityId,
                                 expectedRequirementsFingerprint,
                                 expectedTaskVersionEventId,
