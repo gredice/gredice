@@ -29,7 +29,7 @@ export type OutletOffer = {
 export async function getOutletOffers() {
     try {
         const response = await clientPublic().api.outlet.offers.$get(
-            undefined,
+            { query: {} },
             {
                 init: { cache: 'no-store' },
             },
