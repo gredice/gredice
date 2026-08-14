@@ -80,6 +80,7 @@ export function PlantPageHeader({
     );
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
+        sort?.information.name ?? plant.information.name,
     );
     const contentLinks = informationSections
         .filter((section) => section.avaialble)

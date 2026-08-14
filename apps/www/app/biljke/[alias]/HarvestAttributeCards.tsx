@@ -10,8 +10,10 @@ import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function HarvestAttributeCards({
     attributes,
+    plantName,
 }: {
     attributes: PlantData['attributes'] | undefined;
+    plantName: string;
 }) {
     const harvestPlantRemovalDescription = getHarvestPlantRemovalDisclaimer(
         attributes?.cleanHarvest,
@@ -58,6 +60,7 @@ export function HarvestAttributeCards({
 
         const { totalPlants } = calculatePlantsPerField(
             attributes.seedingDistance,
+            plantName,
         );
 
         const yieldMin = attributes.yieldMin ?? null;

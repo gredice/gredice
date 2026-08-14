@@ -12,15 +12,19 @@ export const FIELD_SIZE_LABEL = `${FIELD_SIZE_CM}x${FIELD_SIZE_CM} cm`;
 /**
  * Calculates the number of plants that can fit in a field based on seeding distance.
  * @param seedingDistance - Distance between plants in centimeters
+ * @param plantName - Plant or plant sort name used to identify invalid source data
  * @returns Number of plants per row and total plants in the field
  */
-export function calculatePlantsPerField(seedingDistance?: number | null) {
+export function calculatePlantsPerField(
+    seedingDistance: number | null | undefined,
+    plantName: string,
+) {
     const distance = seedingDistance ?? FIELD_SIZE_CM;
     let plantsPerRow = Math.floor(FIELD_SIZE_CM / distance);
 
     if (plantsPerRow < 1) {
         console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for seeding distance ${distance}cm. Setting to 1.`,
+            `Plants per row is less than 1 (${plantsPerRow}) for plant "${plantName}" with seeding distance ${distance}cm. Setting to 1.`,
         );
         plantsPerRow = 1;
     }

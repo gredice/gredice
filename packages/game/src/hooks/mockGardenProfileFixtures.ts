@@ -386,7 +386,10 @@ function getHighTargetMockGardenPlantInstancesPerRaisedBed() {
 
         return (
             total +
-            calculatePlantsPerField(attributes.seedingDistance).totalPlants
+            calculatePlantsPerField(
+                attributes.seedingDistance,
+                `High-target mock plant sort #${field.plantSortId.toString()}`,
+            ).totalPlants
         );
     }, 0);
 }
@@ -416,7 +419,10 @@ function getHighTargetFieldPlantInstanceCount(positionIndex: number) {
         );
     }
 
-    return calculatePlantsPerField(attributes.seedingDistance).totalPlants;
+    return calculatePlantsPerField(
+        attributes.seedingDistance,
+        `High-target mock plant sort #${field.plantSortId.toString()}`,
+    ).totalPlants;
 }
 
 export function getHighTargetOperationVisualFixtureCounts() {

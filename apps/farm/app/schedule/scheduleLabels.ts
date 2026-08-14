@@ -47,7 +47,11 @@ function getPlantsPerFieldCount(
     const seedingDistance =
         plantSort?.information?.plant?.attributes?.seedingDistance;
     return typeof seedingDistance === 'number'
-        ? calculatePlantsPerField(seedingDistance).totalPlants
+        ? calculatePlantsPerField(
+              seedingDistance,
+              plantSort?.information?.name ??
+                  `Plant sort #${plantSort?.id.toString() ?? 'unknown'}`,
+          ).totalPlants
         : null;
 }
 

@@ -207,6 +207,7 @@ export function PlantsList({
                         });
                     const { totalPlants } = calculatePlantsPerField(
                         plant.attributes?.seedingDistance,
+                        plant.information.name,
                     );
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
