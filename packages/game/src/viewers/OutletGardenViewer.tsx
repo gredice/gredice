@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { ArrowLeft, Footprints, LayoutList, Sprout } from '@gredice/ui/icons';
+import { ArrowLeft, LayoutList, Sprout } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
@@ -108,7 +108,6 @@ export function OutletGardenViewer({
     const [offerListOpen, setOfferListOpen] = useState(false);
     const [avatarView, setAvatarView] = useState<GardenAvatarView>('overview');
     const avatarViewRef = useRef<GardenAvatarView>('overview');
-    const [avatarActivationRequest, setAvatarActivationRequest] = useState(0);
     const { track } = useGameAnalytics();
     const openedTrackedRef = useRef(false);
     const sceneFailureTrackedRef = useRef(false);
@@ -556,7 +555,6 @@ export function OutletGardenViewer({
                         interactiveBlockIds={
                             avatarWalking ? undefined : interactiveBlockIds
                         }
-                        localVisitorActivationRequest={avatarActivationRequest}
                         localVisitorSpawnPoint={outletGardenVisitorSpawnPoint}
                         noWeather
                         onLocalVisitorViewChange={handleLocalVisitorViewChange}
@@ -615,23 +613,6 @@ export function OutletGardenViewer({
                             Moj vrt
                         </ButtonGreen>
                         <div className="pointer-events-auto flex items-start gap-2">
-                            <ButtonGreen
-                                className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
-                                aria-label="Prošetaj Outlet vrtom"
-                                onClick={() => {
-                                    setAvatarActivationRequest(
-                                        (currentRequest) => currentRequest + 1,
-                                    );
-                                }}
-                                size="lg"
-                                startDecorator={
-                                    <Footprints className="size-4" />
-                                }
-                            >
-                                <span className="hidden sm:inline">
-                                    Prošetaj vrtom
-                                </span>
-                            </ButtonGreen>
                             <ButtonGreen
                                 className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
                                 aria-controls="outlet-garden-browser"
