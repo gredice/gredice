@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     createAttributeDefinition,
     createEntity,
+    deleteAttributeDefinition,
     deleteAttributeValue,
     deleteEntity,
     generatedImageUrlDefaultValue,
@@ -32,6 +33,49 @@ type FormattedSort = {
         description?: string;
     };
 };
+
+test('raw entity loading preserves active values for retired definitions', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `retired-definition-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Retired Definition ${suffix}`,
+    });
+    const retiredDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'legacyName',
+        label: 'Legacy name',
+        entityTypeName,
+        dataType: 'text',
+    });
+    const entityId = await createEntity(entityTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: retiredDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'Legacy value',
+    });
+
+    await deleteAttributeDefinition(retiredDefinitionId);
+
+    const rawEntity = (await getEntitiesRaw(entityTypeName)).find(
+        (entity) => entity.id === entityId,
+    );
+    const retiredAttribute = rawEntity?.attributes.find(
+        (attribute) => attribute.attributeDefinitionId === retiredDefinitionId,
+    );
+
+    assert.equal(retiredAttribute?.value, 'Legacy value');
+    assert.equal(retiredAttribute?.attributeDefinition.isDeleted, true);
+    assert.equal(
+        rawEntity?.entityType.attributeDefinitions.some(
+            (definition) => definition.id === retiredDefinitionId,
+        ),
+        false,
+    );
+});
 
 test('CMS entity references are resolved by entity ID', async () => {
     createTestDb();
@@ -665,7 +709,7 @@ test('plant relationship mutations bust inherited plant sort relationships cache
 
     assert.ok(
         createdCacheKeys.includes(
-            'entities:formatted:plantSort:state:published:locale:default:v1',
+            'entities:formatted:plantSort:state:published:locale:default:v2',
         ),
     );
 
@@ -682,7 +726,7 @@ test('plant relationship mutations bust inherited plant sort relationships cache
 
     assert.ok(
         deletedCacheKeys.includes(
-            'entities:formatted:plantSort:state:published:locale:default:v1',
+            'entities:formatted:plantSort:state:published:locale:default:v2',
         ),
     );
 });

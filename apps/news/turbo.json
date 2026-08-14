@@ -4,9 +4,12 @@
     "tasks": {
         "build": {
             "env": [
+                "GREDICE_DIRECTORY_CACHE_PREFIX",
                 "GREDICE_API_HOST",
                 "NEXT_PUBLIC_GREDICE_WWW_ORIGIN",
                 "NEXT_PUBLIC_VERCEL_ENV",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
                 "POSTGRES_URL",
                 "VERCEL_ENV"
             ]

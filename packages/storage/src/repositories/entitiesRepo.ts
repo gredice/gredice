@@ -6,6 +6,7 @@ import {
     attributeValues,
     entities,
     entityRevisions,
+    entityTypes,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -248,7 +249,7 @@ function resolveAttributeDefaultValue(
 }
 
 export async function getEntitiesRaw(entityTypeName: string, state?: string) {
-    const rawEntities = await storage().query.entities.findMany({
+    const entityRows = await storage().query.entities.findMany({
         where: state
             ? and(
                   eq(entities.entityTypeName, entityTypeName),
@@ -260,22 +261,73 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
                   eq(entities.isDeleted, false),
               ),
         orderBy: desc(entities.updatedAt),
-        with: {
-            attributes: {
-                where: eq(attributeValues.isDeleted, false),
-                with: {
-                    attributeDefinition: true,
-                },
-            },
-            entityType: {
-                with: {
-                    attributeDefinitions: {
-                        where: eq(attributeDefinitions.isDeleted, false),
-                    },
-                },
-            },
-        },
     });
+
+    if (entityRows.length === 0) {
+        return [];
+    }
+
+    const [rawAttributes, entityType] = await Promise.all([
+        storage().query.attributeValues.findMany({
+            where: and(
+                inArray(
+                    attributeValues.entityId,
+                    entityRows.map((entity) => entity.id),
+                ),
+                eq(attributeValues.isDeleted, false),
+            ),
+        }),
+        storage().query.entityTypes.findFirst({
+            where: eq(entityTypes.name, entityTypeName),
+            with: {
+                attributeDefinitions: true,
+            },
+        }),
+    ]);
+
+    if (!entityType) {
+        throw new Error(`Entity type ${entityTypeName} was not found.`);
+    }
+
+    const attributeDefinitionsById = new Map(
+        entityType.attributeDefinitions.map((definition) => [
+            definition.id,
+            definition,
+        ]),
+    );
+    const attributesByEntityId = new Map<number, EntityAttribute[]>();
+    for (const attribute of rawAttributes) {
+        const attributeDefinition = attributeDefinitionsById.get(
+            attribute.attributeDefinitionId,
+        );
+        if (!attributeDefinition) {
+            throw new Error(
+                `Attribute definition ${attribute.attributeDefinitionId} was not found.`,
+            );
+        }
+
+        const entityAttributes =
+            attributesByEntityId.get(attribute.entityId) ?? [];
+        entityAttributes.push({
+            ...attribute,
+            attributeDefinition,
+        });
+        attributesByEntityId.set(attribute.entityId, entityAttributes);
+    }
+
+    const activeAttributeDefinitions = entityType.attributeDefinitions.filter(
+        (definition) => !definition.isDeleted,
+    );
+    const rawEntities: EntityWithAttributesAndDefinitions[] = entityRows.map(
+        (entity) => ({
+            ...entity,
+            attributes: attributesByEntityId.get(entity.id) ?? [],
+            entityType: {
+                ...entityType,
+                attributeDefinitions: activeAttributeDefinitions,
+            },
+        }),
+    );
 
     return Promise.all(
         rawEntities.map((entity) => buildEffectiveEntity(entity)),
