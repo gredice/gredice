@@ -25,7 +25,7 @@ import { getOperationImageViewTransitionName } from '../operationViewTransition'
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,

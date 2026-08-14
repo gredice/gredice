@@ -110,7 +110,9 @@ const nextConfig: NextConfig = {
         typedEnv: true,
         useTypeScriptCli: true,
     },
-    expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
+    // Preserve a 3-hour stale-while-revalidate window after the longest
+    // 12-hour catalogue revalidation interval.
+    expireTime: 54000,
     images: {
         remotePatterns: [
             {

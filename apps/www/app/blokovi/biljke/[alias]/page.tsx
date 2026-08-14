@@ -14,7 +14,7 @@ import { matchesPageAlias, toPageAlias } from '../../../../src/pageAliases';
 import { resolveProceduralPlantType } from '../../plantNamesWithProceduralModels';
 import { PlantGrowthViewer } from './PlantGrowthViewer';
 
-export const revalidate = 3600;
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/blokovi/biljke/[alias]'>,

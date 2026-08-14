@@ -8,7 +8,7 @@ import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { PlantBlockGallery } from '../PlantBlockGallery';
 
-export const revalidate = 3600;
+export const revalidate = 43200; // 12 hours
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke - 3D prikaz',

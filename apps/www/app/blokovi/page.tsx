@@ -9,7 +9,7 @@ import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { BlockPlantGalleries } from './BlockPlantGalleries';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 export const metadata: Metadata = createPublicMetadata({
     title: 'Blokovi',
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
