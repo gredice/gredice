@@ -980,9 +980,6 @@ test('Outlet visitor walks in third and first person without mutations and recov
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Prošetaj vrtom', exact: true }),
-    ).toHaveCount(0);
     await page.getByRole('button', { name: 'Zatvori detalje sadnice' }).click();
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
@@ -990,8 +987,12 @@ test('Outlet visitor walks in third and first person without mutations and recov
     await expect(page).toHaveURL(/\/outlet$/u);
 
     const walkButton = page.getByRole('button', {
-        name: 'Prošetaj Outlet vrtom',
+        name: 'Prošetaj vrtom',
+        exact: true,
     });
+    await expect(
+        page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }),
+    ).toHaveCount(0);
     await expect(walkButton).toBeVisible({ timeout: 90_000 });
     await walkButton.click({ timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
@@ -1033,7 +1034,7 @@ test('Outlet visitor walks in third and first person without mutations and recov
         page.locator('[data-outlet-garden-selected-offer="302"]'),
     ).toHaveCount(0);
     await expect(
-        page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }),
+        page.getByRole('button', { name: 'Prošetaj vrtom', exact: true }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/outlet$/u);
 
