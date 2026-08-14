@@ -2,8 +2,16 @@
 
 import { Sprout } from '@gredice/ui/icons';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Euler, type InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
+import {
+    Euler,
+    FrontSide,
+    type InstancedMesh,
+    Matrix4,
+    Quaternion,
+    Vector3,
+} from 'three';
 import { blockInteractionPassthroughUserDataKey } from '../controls/BlockInteractionResolver';
 import { useBlockData } from '../hooks/useBlockData';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
@@ -26,6 +34,9 @@ const outletProductSignCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
 });
 const outletProductSignScale = 0.9;
 const outletProductSignFaceDistanceFactor = 1;
+// The inset board's front face is z=0.0215; keep the card just above it and
+// behind the surrounding frame, whose front edge reaches z=0.05.
+const outletProductSignFaceDepth = 0.0225;
 const woodenSignNodeNames = [
     'WoodenSign_Post',
     'WoodenSign_Board',
@@ -139,8 +150,10 @@ function OutletGardenProductSignFace({
     return (
         <div
             aria-hidden="true"
-            className="pointer-events-none flex h-[124px] w-[276px] items-center gap-[10px] overflow-hidden rounded-[12px] border-[4px] border-[#765032]/45 bg-[#fff8dc] p-[8px] text-[#352519] shadow-[0_8px_20px_rgba(30,20,10,0.35)]"
+            className="pointer-events-none flex h-[124px] w-[276px] items-center gap-[10px] overflow-hidden rounded-[12px] border-[4px] border-[#765032]/45 bg-[#fff8dc] p-[8px] text-[#352519]"
             data-outlet-garden-product-sign={product.plantSortId}
+            data-outlet-garden-product-sign-depth={outletProductSignFaceDepth}
+            data-outlet-garden-product-sign-front-only
             data-outlet-garden-product-sign-scale={outletProductSignScale}
             data-outlet-garden-product-sign-name={product.name}
             data-outlet-garden-product-sign-price={product.priceLabel}
@@ -307,6 +320,26 @@ export function OutletGardenProductSigns({
         });
     }, [blockData, placements, products, stacks]);
 
+    useFrame(({ gl }) => {
+        if (resolvedSigns.length === 0) {
+            return;
+        }
+
+        // Drei Html instances share these canvas styles. A later non-blending
+        // avatar label can reset them, so retain the blending layer while any
+        // product sign is visible in the scene.
+        const canvasStyle = gl.domElement.style;
+        if (canvasStyle.zIndex !== '1') {
+            canvasStyle.zIndex = '1';
+        }
+        if (canvasStyle.position !== 'absolute') {
+            canvasStyle.position = 'absolute';
+        }
+        if (canvasStyle.pointerEvents !== 'none') {
+            canvasStyle.pointerEvents = 'none';
+        }
+    });
+
     if (resolvedSigns.length === 0) {
         return null;
     }
@@ -331,9 +364,26 @@ export function OutletGardenProductSigns({
                     <Html
                         transform
                         distanceFactor={outletProductSignFaceDistanceFactor}
+                        material={
+                            // Blending occlusion uses this zero-alpha plane as
+                            // the DOM window. FrontSide keeps that window shut
+                            // when the wooden sign is viewed from behind.
+                            <meshBasicMaterial
+                                depthTest
+                                depthWrite
+                                opacity={0}
+                                side={FrontSide}
+                                toneMapped={false}
+                            />
+                        }
+                        occlude="blending"
                         pointerEvents="none"
-                        position={[0, 0.93, 0.064]}
-                        style={{ pointerEvents: 'none' }}
+                        position={[0, 0.93, outletProductSignFaceDepth]}
+                        style={{
+                            backfaceVisibility: 'hidden',
+                            pointerEvents: 'none',
+                            WebkitBackfaceVisibility: 'hidden',
+                        }}
                         zIndexRange={[3, 0]}
                     >
                         <OutletGardenProductSignFace product={product} />
