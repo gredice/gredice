@@ -56,7 +56,6 @@ import {
     buildAdvancedSowingSupportedCartTarget,
     readAdvancedSowingCatalogueDistanceRange,
 } from '../../../lib/checkout/advancedSowingPlan';
-import { isAdvancedSowingServerEnabled } from '../../../lib/checkout/advancedSowingServerFlag';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
     assertOutletCartTargetAvailable,
@@ -557,8 +556,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     plantSort.information?.plant?.attributes,
                                 ),
                             clientAdditionalData: additionalData,
-                            enableAdvancedSowing:
-                                isAdvancedSowingServerEnabled(),
                             selectionRequest: advancedSowingSelection,
                             target: buildAdvancedSowingSupportedCartTarget(
                                 positionIndex,

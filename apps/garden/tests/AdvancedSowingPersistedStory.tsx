@@ -1,6 +1,5 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import {
     type AdvancedSowingGardenPlantingInput,
     buildAdvancedSowingGardenPlantingVisuals,
@@ -8,13 +7,11 @@ import {
 import { RaisedBedAdvancedSowingOverlay } from '../../../packages/game/src/hud/raisedBed/RaisedBedAdvancedSowingOverlay';
 
 export function AdvancedSowingPersistedStory({
-    enableAdvancedSowing = false,
     gardenId = 1,
     plantings: plantingInputs,
     plantNames,
     raisedBedId = 101,
 }: {
-    enableAdvancedSowing?: boolean;
     gardenId?: number;
     plantings: AdvancedSowingGardenPlantingInput[];
     plantNames: Array<{ id: number; name: string }>;
@@ -37,26 +34,22 @@ export function AdvancedSowingPersistedStory({
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            <GameFlagsContext.Provider
-                value={{ enableAdvancedSowingFlag: enableAdvancedSowing }}
-            >
-                <div className="relative h-[600px] w-[360px]">
-                    <button
-                        className="absolute inset-0"
-                        data-underlying-plant-picker="true"
-                        type="button"
-                    >
-                        Sij biljku
-                    </button>
-                    <RaisedBedAdvancedSowingOverlay
-                        bedFieldCount={18}
-                        gardenId={gardenId}
-                        plantings={plantings}
-                        plantNames={plantNames}
-                        raisedBedId={raisedBedId}
-                    />
-                </div>
-            </GameFlagsContext.Provider>
+            <div className="relative h-[600px] w-[360px]">
+                <button
+                    className="absolute inset-0"
+                    data-underlying-plant-picker="true"
+                    type="button"
+                >
+                    Sij biljku
+                </button>
+                <RaisedBedAdvancedSowingOverlay
+                    bedFieldCount={18}
+                    gardenId={gardenId}
+                    plantings={plantings}
+                    plantNames={plantNames}
+                    raisedBedId={raisedBedId}
+                />
+            </div>
         </ReactQuery.QueryClientProvider>
     );
 }

@@ -69,10 +69,6 @@ import {
     readAdvancedSowingCatalogueDistanceRange,
     validateAdvancedSowingCartAuthorizationBeforeCheckout,
 } from '../../../lib/checkout/advancedSowingPlan';
-import {
-    advancedSowingSelectedFulfillmentReady,
-    isAdvancedSowingServerEnabled,
-} from '../../../lib/checkout/advancedSowingServerFlag';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
     assertCheckoutCartItemSnapshot,
@@ -320,10 +316,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                 if (error instanceof AdvancedSowingPlanBoundaryError) {
                     return context.json(
                         {
-                            code:
-                                error.reasonCode === 'feature_disabled'
-                                    ? 'ADVANCED_SOWING_DISABLED'
-                                    : `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
+                            code: `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
                             error: error.message,
                         },
                         409,
@@ -730,8 +723,6 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                                     item.entityData.information
                                                         ?.plant?.attributes,
                                                 ),
-                                            enableAdvancedSowing:
-                                                isAdvancedSowingServerEnabled(),
                                             persistedAuthorization:
                                                 authorization,
                                             target: buildAdvancedSowingSupportedCartTarget(
@@ -767,25 +758,13 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                     if (error instanceof AdvancedSowingPlanBoundaryError) {
                         return context.json(
                             {
-                                code:
-                                    error.reasonCode === 'feature_disabled'
-                                        ? 'ADVANCED_SOWING_DISABLED'
-                                        : `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
+                                code: `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
                                 error: error.message,
                             },
                             409,
                         );
                     }
                     throw error;
-                }
-                if (!advancedSowingSelectedFulfillmentReady) {
-                    return context.json(
-                        {
-                            code: 'ADVANCED_SOWING_FULFILLMENT_NOT_READY',
-                            error: 'Advanced Sowing checkout is not available yet',
-                        },
-                        409,
-                    );
                 }
             }
             let checkoutAdditionalDataByCartItemId: ReadonlyMap<
