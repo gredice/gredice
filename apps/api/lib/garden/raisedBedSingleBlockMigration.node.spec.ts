@@ -221,6 +221,244 @@ describe('planRaisedBedSingleBlockMigration', () => {
         assert.match(result.unsafe[0]?.reason ?? '', /3 records/);
     });
 
+    it('uses an explicit pair to resolve a three-record component', () => {
+        const result = planRaisedBedSingleBlockMigration({
+            nativeFootprint: false,
+            resolvedPairs: [{ firstRaisedBedId: 2, secondRaisedBedId: 3 }],
+            raisedBeds: ['oldest', 'middle', 'newest'].map(
+                (blockId, index) => ({
+                    blockId,
+                    gardenId: 18,
+                    orientation: 'vertical' as const,
+                    raisedBedId: index + 1,
+                    status: 'new',
+                }),
+            ),
+            placements: ['oldest', 'middle', 'newest'].map(
+                (blockId, index) => ({
+                    blockId,
+                    gardenId: 18,
+                    index: 0,
+                    referenced: true,
+                    rotation: 0,
+                    x: 4,
+                    y: index + 1,
+                }),
+            ),
+        });
+
+        assert.deepEqual(result, {
+            alreadySingle: [],
+            plans: [
+                {
+                    anchor: { x: 4, y: 2 },
+                    canonicalBlockId: 'middle',
+                    gardenId: 18,
+                    legacyBlockId: 'newest',
+                    orientation: 'horizontal',
+                    raisedBedId: 2,
+                    rotation: 0,
+                    sourceRaisedBedId: 3,
+                    stackIndex: 0,
+                },
+                {
+                    anchor: { x: 4, y: 1 },
+                    canonicalBlockId: 'oldest',
+                    gardenId: 18,
+                    legacyBlockId: null,
+                    orientation: 'vertical',
+                    raisedBedId: 1,
+                    rotation: 1,
+                    sourceRaisedBedId: null,
+                    stackIndex: 0,
+                },
+            ],
+            unplaced: [],
+            unsafe: [],
+        });
+    });
+
+    it('rejects an explicit pair unless both active records are adjacent and new', () => {
+        const result = planRaisedBedSingleBlockMigration({
+            nativeFootprint: false,
+            resolvedPairs: [{ firstRaisedBedId: 1, secondRaisedBedId: 2 }],
+            raisedBeds: ['left', 'right'].map((blockId, index) => ({
+                blockId,
+                gardenId: 1,
+                orientation: 'horizontal' as const,
+                raisedBedId: index + 1,
+                status: index === 0 ? 'built' : 'new',
+            })),
+            placements: ['left', 'right'].map((blockId, index) => ({
+                blockId,
+                gardenId: 1,
+                index: 0,
+                referenced: true,
+                rotation: 0,
+                x: 0,
+                y: index,
+            })),
+        });
+
+        assert.equal(result.plans.length, 0);
+        assert.match(result.unsafe[0]?.reason ?? '', /must still be new/);
+    });
+
+    it('keeps adjacent full 18-field raised beds as separate logical beds', () => {
+        const result = planRaisedBedSingleBlockMigration({
+            nativeFootprint: false,
+            raisedBeds: ['left', 'right'].map((blockId, index) => ({
+                blockId,
+                gardenId: 137,
+                maxFieldPosition: 17,
+                minFieldPosition: 0,
+                orientation: 'vertical' as const,
+                raisedBedId: index + 1,
+                status: 'new',
+            })),
+            placements: ['left', 'right'].map((blockId, index) => ({
+                blockId,
+                gardenId: 137,
+                index: 1,
+                referenced: true,
+                rotation: index,
+                x: -2,
+                y: index - 1,
+            })),
+        });
+
+        assert.deepEqual(result, {
+            alreadySingle: [],
+            plans: [
+                {
+                    anchor: { x: -2, y: -1 },
+                    canonicalBlockId: 'left',
+                    gardenId: 137,
+                    legacyBlockId: null,
+                    orientation: 'vertical',
+                    raisedBedId: 1,
+                    rotation: 1,
+                    sourceRaisedBedId: null,
+                    stackIndex: 1,
+                },
+                {
+                    anchor: { x: -2, y: 0 },
+                    canonicalBlockId: 'right',
+                    gardenId: 137,
+                    legacyBlockId: null,
+                    orientation: 'vertical',
+                    raisedBedId: 2,
+                    rotation: 1,
+                    sourceRaisedBedId: null,
+                    stackIndex: 1,
+                },
+            ],
+            unplaced: [],
+            unsafe: [],
+        });
+    });
+
+    it('supports an explicit keep-separate decision after a partial migration', () => {
+        const result = planRaisedBedSingleBlockMigration({
+            nativeFootprint: false,
+            separatePairs: [{ firstRaisedBedId: 1, secondRaisedBedId: 2 }],
+            raisedBeds: [
+                {
+                    blockId: 'legacy-single',
+                    gardenId: 18,
+                    maxFieldPosition: null,
+                    minFieldPosition: null,
+                    orientation: 'vertical',
+                    raisedBedId: 1,
+                    status: 'new',
+                },
+                {
+                    blockId: 'converted-pair',
+                    gardenId: 18,
+                    maxFieldPosition: 17,
+                    minFieldPosition: 0,
+                    orientation: 'horizontal',
+                    raisedBedId: 2,
+                    status: 'new',
+                },
+            ],
+            placements: [
+                {
+                    blockId: 'legacy-single',
+                    gardenId: 18,
+                    index: 0,
+                    referenced: true,
+                    rotation: 1,
+                    x: 4,
+                    y: 1,
+                },
+                {
+                    blockId: 'converted-pair',
+                    gardenId: 18,
+                    index: 0,
+                    referenced: true,
+                    rotation: 0,
+                    x: 4,
+                    y: 2,
+                },
+            ],
+        });
+
+        assert.equal(result.plans.length, 2);
+        assert.equal(result.plans[0]?.legacyBlockId, null);
+        assert.equal(result.plans[1]?.legacyBlockId, null);
+        assert.deepEqual(result.unsafe, []);
+    });
+
+    it('fails closed on a mixed legacy and converted pair without an explicit decision', () => {
+        const result = planRaisedBedSingleBlockMigration({
+            nativeFootprint: false,
+            raisedBeds: [
+                {
+                    blockId: 'legacy-single',
+                    gardenId: 18,
+                    maxFieldPosition: null,
+                    minFieldPosition: null,
+                    orientation: 'vertical',
+                    raisedBedId: 1,
+                    status: 'new',
+                },
+                {
+                    blockId: 'converted-pair',
+                    gardenId: 18,
+                    maxFieldPosition: 17,
+                    minFieldPosition: 0,
+                    orientation: 'horizontal',
+                    raisedBedId: 2,
+                    status: 'new',
+                },
+            ],
+            placements: [
+                {
+                    blockId: 'legacy-single',
+                    gardenId: 18,
+                    index: 0,
+                    referenced: true,
+                    rotation: 1,
+                    x: 4,
+                    y: 1,
+                },
+                {
+                    blockId: 'converted-pair',
+                    gardenId: 18,
+                    index: 0,
+                    referenced: true,
+                    rotation: 0,
+                    x: 4,
+                    y: 2,
+                },
+            ],
+        });
+
+        assert.equal(result.plans.length, 0);
+        assert.match(result.unsafe[0]?.reason ?? '', /keep-separate/);
+    });
+
     it('refuses ambiguous legacy halves', () => {
         const result = planRaisedBedSingleBlockMigration({
             nativeFootprint: false,

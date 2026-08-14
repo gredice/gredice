@@ -14,12 +14,20 @@ const summaryOnly = args.includes('--summary');
 const gardenIdsArgument = args.find((argument) =>
     argument.startsWith('--garden-ids='),
 );
+const resolvedPairArguments = args.filter((argument) =>
+    argument.startsWith('--resolve-pair='),
+);
+const separatePairArguments = args.filter((argument) =>
+    argument.startsWith('--keep-separate='),
+);
 for (const argument of args) {
     if (
         argument !== '--' &&
         argument !== '--execute' &&
         argument !== '--summary' &&
-        !argument.startsWith('--garden-ids=')
+        !argument.startsWith('--garden-ids=') &&
+        !argument.startsWith('--resolve-pair=') &&
+        !argument.startsWith('--keep-separate=')
     ) {
         throw new Error(`Unknown argument: ${argument}`);
     }
@@ -31,6 +39,30 @@ const gardenIds = gardenIdsArgument
           .map((value) => Number.parseInt(value.trim(), 10))
           .filter(Number.isInteger)
     : [];
+const resolvedPairs = resolvedPairArguments.map((argument) => {
+    const match = /^--resolve-pair=(\d+):(\d+)$/.exec(argument);
+    if (!match?.[1] || !match[2]) {
+        throw new Error(
+            `Invalid explicit pair resolution: ${argument}. Expected --resolve-pair=<first-id>:<second-id>.`,
+        );
+    }
+    return {
+        firstRaisedBedId: Number.parseInt(match[1], 10),
+        secondRaisedBedId: Number.parseInt(match[2], 10),
+    };
+});
+const separatePairs = separatePairArguments.map((argument) => {
+    const match = /^--keep-separate=(\d+):(\d+)$/.exec(argument);
+    if (!match?.[1] || !match[2]) {
+        throw new Error(
+            `Invalid keep-separate pair: ${argument}. Expected --keep-separate=<first-id>:<second-id>.`,
+        );
+    }
+    return {
+        firstRaisedBedId: Number.parseInt(match[1], 10),
+        secondRaisedBedId: Number.parseInt(match[2], 10),
+    };
+});
 
 if (!process.env.POSTGRES_URL) {
     throw new Error('POSTGRES_URL environment variable is not set.');
@@ -50,6 +82,8 @@ async function readMigrationInput() {
     const raisedBedResult = await client.query<{
         block_id: string;
         garden_id: number;
+        max_field_position: number | null;
+        min_field_position: number | null;
         orientation: 'horizontal' | 'vertical';
         raised_bed_id: number;
         status: string;
@@ -60,7 +94,17 @@ async function readMigrationInput() {
                 rb.garden_id,
                 rb.id as raised_bed_id,
                 rb.orientation,
-                rb.status
+                rb.status,
+                (
+                    select max(field.position_index)
+                    from raised_bed_fields field
+                    where field.raised_bed_id = rb.id
+                ) as max_field_position,
+                (
+                    select min(field.position_index)
+                    from raised_bed_fields field
+                    where field.raised_bed_id = rb.id
+                ) as min_field_position
             from raised_beds rb
             where rb.is_deleted = false
               and rb.block_id is not null
@@ -165,6 +209,8 @@ async function readMigrationInput() {
         raisedBeds: raisedBedResult.rows.map((row) => ({
             blockId: row.block_id,
             gardenId: row.garden_id,
+            maxFieldPosition: row.max_field_position,
+            minFieldPosition: row.min_field_position,
             orientation: row.orientation,
             raisedBedId: row.raised_bed_id,
             status: row.status,
@@ -392,12 +438,18 @@ async function applyPlan(plan: RaisedBedSingleBlockMigrationPlan) {
 
 try {
     const input = await readMigrationInput();
-    const plan = planRaisedBedSingleBlockMigration(input);
+    const plan = planRaisedBedSingleBlockMigration({
+        ...input,
+        resolvedPairs,
+        separatePairs,
+    });
     console.log(
         JSON.stringify(
             {
                 mode: execute ? 'execute' : 'dry-run',
                 nativeFootprint: input.nativeFootprint,
+                resolvedPairs,
+                separatePairs,
                 alreadySingleCount: plan.alreadySingle.length,
                 collapsedPairCount: plan.plans.filter(
                     (candidate) => candidate.legacyBlockId !== null,
