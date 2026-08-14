@@ -1,10 +1,10 @@
 'use client';
 
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE } from './operationScope';
 import {
-    ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE,
-    isAdvancedSowingPlantOperationTargetBlocked,
-} from './operationScope';
+    type OperationTargetRaisedBed,
+    RaisedBedTargetGroup,
+} from './RaisedBedTargetGroup';
 
 export type TargetSelectionMode = 'farm' | 'garden' | 'raisedBed' | 'plant';
 
@@ -20,18 +20,7 @@ export type TargetsSelectionListProps = {
         name?: string | null;
         accountId?: string | null;
     }>;
-    raisedBeds: Array<{
-        id: number;
-        name?: string | null;
-        physicalId?: string | null;
-        accountId?: string | null;
-        gardenId?: number | null;
-        fields: Array<{
-            id: number;
-            positionIndex: number;
-            hasActiveSelectedPlanting: boolean;
-        }>;
-    }>;
+    raisedBeds: OperationTargetRaisedBed[];
     /**
      * Controls which targets are visible and which are selectable based on the selected operation.
      * - 'farm': show only farms (selectable), hide gardens, raised beds and fields
@@ -66,11 +55,8 @@ export function TargetsSelectionList({
     const showFarms = mode === undefined || mode === 'farm';
     const showGardens = mode !== 'farm';
     const showRaisedBeds = mode !== 'farm' && mode !== 'garden';
-    const showFields = mode === undefined || mode === 'plant';
     const selectableFarm = mode === undefined || mode === 'farm';
     const selectableGarden = mode === undefined || mode === 'garden';
-    const selectableRaisedBed = mode === undefined || mode === 'raisedBed';
-    const selectableField = mode === undefined || mode === 'plant';
 
     const baseClass = 'max-h-64 overflow-y-auto border rounded p-2 space-y-2';
     const inputType = selectionType === 'single' ? 'radio' : 'checkbox';
@@ -162,144 +148,18 @@ export function TargetsSelectionList({
                                 {/* Raised beds section (hidden for garden-only mode) */}
                                 {showRaisedBeds && (
                                     <div className="ml-4 space-y-1">
-                                        {gardenRaisedBeds.map((rb) => (
-                                            <div
-                                                key={rb.id}
-                                                className="space-y-1"
-                                            >
-                                                <label className="flex items-center gap-2">
-                                                    <input
-                                                        type={inputType}
-                                                        name={name}
-                                                        disabled={
-                                                            !selectableRaisedBed
-                                                        }
-                                                        value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`}
-                                                        checked={
-                                                            selectionType ===
-                                                            'single'
-                                                                ? selectedValue ===
-                                                                  `${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`
-                                                                : undefined
-                                                        }
-                                                        onChange={(event) => {
-                                                            if (
-                                                                selectionType ===
-                                                                'single'
-                                                            ) {
-                                                                onSelectedValueChange?.(
-                                                                    event.target
-                                                                        .checked
-                                                                        ? event
-                                                                              .target
-                                                                              .value
-                                                                        : null,
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                    {rb.physicalId ? (
-                                                        <RaisedBedLabel
-                                                            physicalId={
-                                                                rb.physicalId
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        rb.name
-                                                    )}
-                                                </label>
-                                                {/* Fields (only visible for plant mode or default) */}
-                                                {showFields && (
-                                                    <div className="ml-4 space-y-1">
-                                                        {rb.fields.map(
-                                                            (field) => (
-                                                                <label
-                                                                    key={
-                                                                        field.id
-                                                                    }
-                                                                    className={`flex items-start gap-2 ${
-                                                                        isAdvancedSowingPlantOperationTargetBlocked(
-                                                                            {
-                                                                                application:
-                                                                                    mode,
-                                                                                hasActiveSelectedPlanting:
-                                                                                    field.hasActiveSelectedPlanting,
-                                                                            },
-                                                                        )
-                                                                            ? 'text-muted-foreground'
-                                                                            : ''
-                                                                    }`}
-                                                                >
-                                                                    <input
-                                                                        type={
-                                                                            inputType
-                                                                        }
-                                                                        name={
-                                                                            name
-                                                                        }
-                                                                        disabled={
-                                                                            !selectableField ||
-                                                                            isAdvancedSowingPlantOperationTargetBlocked(
-                                                                                {
-                                                                                    application:
-                                                                                        mode,
-                                                                                    hasActiveSelectedPlanting:
-                                                                                        field.hasActiveSelectedPlanting,
-                                                                                },
-                                                                            )
-                                                                        }
-                                                                        value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`}
-                                                                        checked={
-                                                                            selectionType ===
-                                                                            'single'
-                                                                                ? selectedValue ===
-                                                                                  `${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`
-                                                                                : undefined
-                                                                        }
-                                                                        onChange={(
-                                                                            event,
-                                                                        ) => {
-                                                                            if (
-                                                                                selectionType ===
-                                                                                'single'
-                                                                            ) {
-                                                                                onSelectedValueChange?.(
-                                                                                    event
-                                                                                        .target
-                                                                                        .checked
-                                                                                        ? event
-                                                                                              .target
-                                                                                              .value
-                                                                                        : null,
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <span>
-                                                                        {`Polje ${
-                                                                            field.positionIndex +
-                                                                            1
-                                                                        }`}
-                                                                        {isAdvancedSowingPlantOperationTargetBlocked(
-                                                                            {
-                                                                                application:
-                                                                                    mode,
-                                                                                hasActiveSelectedPlanting:
-                                                                                    field.hasActiveSelectedPlanting,
-                                                                            },
-                                                                        ) ? (
-                                                                            <span className="block text-xs">
-                                                                                Napredna
-                                                                                sjetva
-                                                                            </span>
-                                                                        ) : null}
-                                                                    </span>
-                                                                </label>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                        {gardenRaisedBeds.map((raisedBed) => (
+                                            <RaisedBedTargetGroup
+                                                key={`${mode ?? 'all'}-${raisedBed.id}`}
+                                                name={name}
+                                                raisedBed={raisedBed}
+                                                mode={mode}
+                                                selectionType={selectionType}
+                                                selectedValue={selectedValue}
+                                                onSelectedValueChange={
+                                                    onSelectedValueChange
+                                                }
+                                            />
                                         ))}
                                     </div>
                                 )}

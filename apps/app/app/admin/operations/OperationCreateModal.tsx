@@ -4,14 +4,13 @@ import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { getEntities } from '../../../components/shared/attributes/actions/entitiesActions';
 import { UserPickerField } from '../../../components/shared/fields/UserPickerField';
-import {
-    type SingleCreateOperationActionState,
-    singleCreateOperationAction,
-} from '../../(actions)/operationActions';
+import { bulkCreateOperationsAction } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
 import { OperationCreateTrigger } from './OperationCreateTrigger';
 import {
@@ -21,7 +20,17 @@ import {
 
 const unassignedValue = '__unassigned__';
 
-export type SingleOperationCreateModalProps = {
+function SubmitButton() {
+    const { pending } = useFormStatus();
+
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? 'Kreiranje u tijeku...' : 'Kreiraj'}
+        </Button>
+    );
+}
+
+export type OperationCreateModalProps = {
     farms: Array<{
         id: number;
         name: string;
@@ -50,37 +59,40 @@ export type SingleOperationCreateModalProps = {
     }>;
 };
 
-export function SingleOperationCreateModal({
+export function OperationCreateModal({
     farms,
     gardens,
     raisedBeds,
     assignableUsers,
-}: SingleOperationCreateModalProps) {
+}: OperationCreateModalProps) {
     const [open, setOpen] = useState(false);
     const [selectedOperationId, setSelectedOperationId] = useState<
         string | null
     >(null);
-    const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
     const [operations, setOperations] =
         useState<Awaited<ReturnType<typeof getEntities>>>();
     const [selectedAssignedUserId, setSelectedAssignedUserId] =
         useState(unassignedValue);
-    const [state, formAction] = useActionState<
-        SingleCreateOperationActionState | null,
-        FormData
-    >(singleCreateOperationAction, null);
+    const [selectedTargetsCount, setSelectedTargetsCount] = useState(0);
+    const [approveOnCreate, setApproveOnCreate] = useState(false);
+    const [state, formAction] = useActionState(
+        bulkCreateOperationsAction,
+        null,
+    );
     const formRef = useRef<HTMLFormElement>(null);
 
     useEffect(() => {
         getEntities('operation')
             .then((ops) => setOperations(ops))
-            .catch((e) => console.error('Failed to load operations', e));
+            .catch((error) =>
+                console.error('Failed to load operations', error),
+            );
     }, []);
 
     const selectionMode = useMemo<TargetSelectionMode | undefined>(() => {
         if (!selectedOperationId) return undefined;
         const application = operations?.find(
-            (o) => o.id?.toString() === selectedOperationId,
+            (operation) => operation.id?.toString() === selectedOperationId,
         )?.attributes?.application;
         if (!application) return undefined;
         if (application === 'farm') return 'farm';
@@ -91,28 +103,35 @@ export function SingleOperationCreateModal({
 
     useEffect(() => {
         if (!state?.success) return;
+
         setOpen(false);
         setSelectedOperationId(null);
-        setSelectedTarget(null);
         setSelectedAssignedUserId(unassignedValue);
+        setSelectedTargetsCount(0);
+        setApproveOnCreate(false);
         formRef.current?.reset();
     }, [state?.success]);
 
+    const handleSubmit = (formData: FormData) => {
+        setSelectedTargetsCount(formData.getAll('targets').length);
+        return formAction(formData);
+    };
+
     return (
         <Modal
-            title={'Nova radnja'}
-            trigger={<OperationCreateTrigger mode="single" />}
+            title="Nova radnja"
+            trigger={<OperationCreateTrigger />}
             open={open}
             onOpenChange={setOpen}
         >
-            <form ref={formRef} action={formAction} className="space-y-4">
+            <form ref={formRef} action={handleSubmit} className="space-y-4">
                 <Stack spacing={4}>
                     <Typography level="h5">Nova radnja</Typography>
                     <SelectEntity
                         name="entityId"
                         label="Radnja"
                         required
-                        entityTypeName={'operation'}
+                        entityTypeName="operation"
                         value={selectedOperationId}
                         onChange={setSelectedOperationId}
                     />
@@ -127,7 +146,9 @@ export function SingleOperationCreateModal({
                             label: user.displayName
                                 ? `${user.displayName} (${user.userName})`
                                 : user.userName,
-                            searchText: `${user.displayName ?? ''} ${user.userName}`,
+                            searchText: `${user.displayName ?? ''} ${
+                                user.userName
+                            }`,
                         }))}
                         value={selectedAssignedUserId}
                         onValueChange={setSelectedAssignedUserId}
@@ -146,17 +167,29 @@ export function SingleOperationCreateModal({
                                 : selectedAssignedUserId
                         }
                     />
+                    <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/30 px-3 py-2">
+                        <span className="text-sm font-medium">
+                            Odobri odmah
+                        </span>
+                        <Switch
+                            aria-label="Odobri odmah"
+                            checked={approveOnCreate}
+                            onCheckedChange={setApproveOnCreate}
+                        />
+                    </div>
+                    <input
+                        type="hidden"
+                        name="approve"
+                        value={approveOnCreate ? 'true' : ''}
+                    />
                     <TargetsSelectionList
-                        name="target"
+                        name="targets"
                         farms={farms}
                         gardens={gardens}
                         raisedBeds={raisedBeds}
                         mode={selectionMode}
-                        selectionType="single"
-                        selectedValue={selectedTarget}
-                        onSelectedValueChange={setSelectedTarget}
                     />
-                    <Button type="submit">Kreiraj</Button>
+                    <SubmitButton />
                     {state?.message && (
                         <Typography
                             level="body2"
@@ -169,8 +202,28 @@ export function SingleOperationCreateModal({
                             {state.message}
                         </Typography>
                     )}
+                    {!state?.success && selectedTargetsCount > 0 && (
+                        <FormProgress
+                            selectedTargetsCount={selectedTargetsCount}
+                        />
+                    )}
                 </Stack>
             </form>
         </Modal>
+    );
+}
+
+function FormProgress({
+    selectedTargetsCount,
+}: {
+    selectedTargetsCount: number;
+}) {
+    const { pending } = useFormStatus();
+    if (!pending) return null;
+
+    return (
+        <Typography level="body2" className="text-muted-foreground">
+            Kreiranje {selectedTargetsCount} radnji je u tijeku...
+        </Typography>
     );
 }

@@ -215,11 +215,6 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export type SingleCreateOperationActionState = {
-    success: boolean;
-    message: string;
-};
-
 type ParsedOperationTarget = {
     accountId?: string;
     farmId?: number;
@@ -275,109 +270,6 @@ function parseOperationTarget(rawTarget: string): ParsedOperationTarget {
     };
 }
 
-export async function singleCreateOperationAction(
-    _previousState: SingleCreateOperationActionState | null,
-    formData: FormData,
-): Promise<SingleCreateOperationActionState> {
-    try {
-        const { userId } = await auth(['admin']);
-        const entityId = formData.get('entityId')
-            ? Number(formData.get('entityId'))
-            : undefined;
-        if (!entityId) {
-            throw new Error('Entity ID is required');
-        }
-        const target = getStringFormValue(formData, 'target');
-        if (!target) {
-            throw new Error('Odaberite jednu ciljnu lokaciju.');
-        }
-        const selectedAssignedUserId =
-            getStringFormValue(formData, 'assignedUserId') || undefined;
-        const scheduledDate = formData.get('scheduledDate')
-            ? new Date(formData.get('scheduledDate') as string)
-            : undefined;
-
-        const parsedTarget = parseOperationTarget(target);
-        await assertRaisedBedAllowsNewOperation(parsedTarget.raisedBedId);
-
-        if (selectedAssignedUserId && parsedTarget.farmId) {
-            const assignableFarmUsersByFarmId =
-                await getAssignableFarmUsersByFarmIds([parsedTarget.farmId]);
-            const isUserAssignableToFarm =
-                assignableFarmUsersByFarmId[parsedTarget.farmId]?.some(
-                    (user) => user.id === selectedAssignedUserId,
-                ) ?? false;
-            if (!isUserAssignableToFarm) {
-                throw new Error(
-                    'Odabrani korisnik nije dostupan za odabranu radnju.',
-                );
-            }
-        } else if (selectedAssignedUserId && parsedTarget.gardenId) {
-            const assignableFarmUsersByGardenId =
-                await getAssignableFarmUsersByGardenIds([
-                    parsedTarget.gardenId,
-                ]);
-            const isUserAssignableToGarden =
-                assignableFarmUsersByGardenId[parsedTarget.gardenId]?.some(
-                    (user) => user.id === selectedAssignedUserId,
-                ) ?? false;
-            if (!isUserAssignableToGarden) {
-                throw new Error(
-                    'Odabrani korisnik nije dostupan za odabranu radnju.',
-                );
-            }
-        }
-
-        const operationId = await createOperation({
-            entityId,
-            entityTypeName: 'operation',
-            accountId: parsedTarget.accountId,
-            farmId: parsedTarget.farmId,
-            gardenId: parsedTarget.gardenId,
-            raisedBedId: parsedTarget.raisedBedId,
-            raisedBedFieldId: parsedTarget.raisedBedFieldId,
-            timestamp: undefined,
-        });
-
-        if (scheduledDate) {
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate: scheduledDate.toISOString(),
-                }),
-            );
-            await notifyOperationUpdate(operationId, 'scheduled', {
-                scheduledDate: scheduledDate.toISOString(),
-            });
-        }
-        if (selectedAssignedUserId) {
-            await createEvent(
-                knownEvents.operations.assignedV1(operationId.toString(), {
-                    assignedUserId: selectedAssignedUserId,
-                    assignedBy: userId,
-                }),
-            );
-            await notifyOperationAssignedUsers(operationId, [
-                selectedAssignedUserId,
-            ]);
-        }
-
-        revalidatePath(KnownPages.Schedule);
-        revalidatePath(KnownPages.Operations);
-        if (parsedTarget.farmId) {
-            revalidatePath(KnownPages.Farm(parsedTarget.farmId));
-        }
-
-        return { success: true, message: 'Radnja je uspješno kreirana.' };
-    } catch (error) {
-        return {
-            success: false,
-            message:
-                error instanceof Error
-                    ? error.message
-                    : 'Došlo je do greške pri kreiranju radnje.',
-        };
-    }
-}
 export type BulkCreateOperationsActionState = {
     success: boolean;
     message: string;
@@ -520,7 +412,10 @@ export async function bulkCreateOperationsAction(
 
         return {
             success: true,
-            message: `Uspješno kreirano ${createdCount} radnji.`,
+            message:
+                createdCount === 1
+                    ? 'Radnja je uspješno kreirana.'
+                    : `Uspješno kreirano ${createdCount} radnji.`,
             createdCount,
             totalCount: targets.length,
         };
