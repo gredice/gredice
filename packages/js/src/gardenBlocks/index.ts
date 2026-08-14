@@ -33,7 +33,7 @@ type OccupiedCell = {
     topHeight: number;
 };
 
-type Placement = Position & {
+type GardenBlockPlacement = Position & {
     index: number;
     existingBlocks: string[];
 };
@@ -48,7 +48,7 @@ type ValidationResult =
 export type GardenBlockPlacementResult =
     | {
           valid: true;
-          placement: Placement;
+          placement: GardenBlockPlacement;
       }
     | {
           valid: false;
@@ -316,7 +316,7 @@ function isGroundBlock(blockName: string) {
 
 function isWaterPlacement(params: {
     blockName: string;
-    placement: Placement;
+    placement: GardenBlockPlacement;
     stacks: GardenBlockStack[];
     blockNameById: Map<string, string>;
     blockDataByName: Map<string, GardenBlockDataLike>;
@@ -449,100 +449,6 @@ export function validateStackPlacement(params: {
     return { valid: true };
 }
 
-function getRaisedBedAdjacentCount(params: {
-    stacks: GardenBlockStack[];
-    x: number;
-    y: number;
-    blockNameById: Map<string, string>;
-}) {
-    const { stacks, x, y, blockNameById } = params;
-    const neighborPositions = [
-        { x: x - 1, y },
-        { x: x + 1, y },
-        { x, y: y - 1 },
-        { x, y: y + 1 },
-    ];
-
-    return neighborPositions.filter((position) => {
-        const stack = findStackAtPosition(stacks, position);
-        if (!stack) {
-            return false;
-        }
-
-        return stack.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        );
-    }).length;
-}
-
-export function validateRaisedBedPlacement(params: {
-    stacks: GardenBlockStack[];
-    x: number;
-    y: number;
-    index: number;
-    blockNameById: Map<string, string>;
-}): ValidationResult {
-    const { stacks, x, y, blockNameById } = params;
-    const targetStack = findStackAtPosition(stacks, { x, y });
-
-    if (
-        targetStack?.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        )
-    ) {
-        return {
-            valid: false,
-            error: 'Invalid raised bed placement: cannot stack on another raised bed',
-        };
-    }
-
-    const neighborPositions = [
-        { x: x - 1, y },
-        { x: x + 1, y },
-        { x, y: y - 1 },
-        { x, y: y + 1 },
-    ].filter((position) => {
-        const stack = findStackAtPosition(stacks, position);
-        if (!stack) {
-            return false;
-        }
-
-        return stack.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        );
-    });
-
-    if (neighborPositions.length > 1) {
-        return {
-            valid: false,
-            error: 'Invalid raised bed placement: cannot place next to multiple raised bed neighbors',
-        };
-    }
-
-    if (neighborPositions.length === 1) {
-        const neighborPosition = neighborPositions[0];
-        if (!neighborPosition) {
-            return { valid: true };
-        }
-
-        const { x: neighborX, y: neighborY } = neighborPosition;
-        const neighborAdjacentCount = getRaisedBedAdjacentCount({
-            stacks,
-            x: neighborX,
-            y: neighborY,
-            blockNameById,
-        });
-        if (neighborAdjacentCount > 0) {
-            return {
-                valid: false,
-                error: 'Invalid raised bed placement: cannot place next to an already attached raised bed',
-            };
-        }
-    }
-
-    return { valid: true };
-}
-
 function validatePlacementAtPosition(params: {
     blockName: string;
     position: Position;
@@ -640,19 +546,6 @@ function validatePlacementAtPosition(params: {
                 valid: false,
                 error: 'Invalid block placement: all spanned cells must be on the same level',
             };
-        }
-    }
-
-    if (blockName === 'Raised_Bed') {
-        const placementValidation = validateRaisedBedPlacement({
-            stacks,
-            x: position.x,
-            y: position.y,
-            index: existingBlocks.length,
-            blockNameById,
-        });
-        if (!placementValidation.valid) {
-            return placementValidation;
         }
     }
 

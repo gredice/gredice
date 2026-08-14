@@ -22,7 +22,7 @@ import {
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { raisedBedFieldSectionCount } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { buildAdvancedSowingGardenPlantingVisuals } from './advancedSowingGardenVisuals';
@@ -338,10 +338,7 @@ export function RaisedBedField({
         return <RaisedBedFieldInvalidShape />;
     }
 
-    const blockCount =
-        garden && raisedBed
-            ? Math.max(getRaisedBedBlockIds(garden, raisedBed.id).length, 1)
-            : 1;
+    const blockCount = garden && raisedBed ? raisedBedFieldSectionCount : 1;
     const totalRows = blockCount * 3;
     const totalColumns = 3;
     const raisedBedSource: unknown = raisedBed;

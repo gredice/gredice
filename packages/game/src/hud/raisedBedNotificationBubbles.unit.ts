@@ -4,11 +4,9 @@ import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import { createGardenPosition } from '../types/Stack';
 import { getRaisedBedNotificationAnchor } from './RaisedBedNotificationBubbles';
 
-test('anchors one notification at the midpoint of a logical two-block raised bed', () => {
+test('anchors one notification at the midpoint of a single 1x2 raised-bed block', () => {
     const groundWest = { id: 'ground-west', name: 'Block_Grass', rotation: 0 };
-    const raisedBedWest = { id: 'bed-west', name: 'Raised_Bed', rotation: 0 };
-    const groundEast = { id: 'ground-east', name: 'Block_Grass', rotation: 0 };
-    const raisedBedEast = { id: 'bed-east', name: 'Raised_Bed', rotation: 0 };
+    const raisedBedWest = { id: 'bed-west', name: 'Raised_Bed', rotation: 1 };
     const garden = {
         raisedBeds: [
             {
@@ -20,10 +18,6 @@ test('anchors one notification at the midpoint of a logical two-block raised bed
             {
                 blocks: [groundWest, raisedBedWest],
                 position: createGardenPosition(0, 0, 3),
-            },
-            {
-                blocks: [groundEast, raisedBedEast],
-                position: createGardenPosition(1, 0, 3),
             },
         ],
     };

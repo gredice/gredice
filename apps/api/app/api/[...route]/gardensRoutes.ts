@@ -163,8 +163,6 @@ import {
 import { serializeRaisedBedGardenNotification } from '../../../lib/garden/raisedBedNotifications';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
-    validateConnectedRaisedBedMove,
-    validateRaisedBedPlacement,
     validateSpanningBlockMove,
     validateStackPlacement,
 } from '../../../lib/garden/stacksPatchValidation';
@@ -2490,11 +2488,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return await getGardenStack(gardenIdNumber, parsePath(path));
             }
 
-            async function addStack(
-                path: string,
-                value: string | string[],
-                options?: { skipRaisedBedPlacementValidation?: boolean },
-            ) {
+            async function addStack(path: string, value: string | string[]) {
                 const stackPosition = parsePath(path);
 
                 console.debug(
@@ -2512,40 +2506,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
-                    if (
-                        typeof value === 'string' &&
-                        !options?.skipRaisedBedPlacementValidation
-                    ) {
-                        const blockName = blockNameById.get(value);
-                        if (blockName === 'Raised_Bed') {
-                            const gardenState = await getGarden(gardenIdNumber);
-                            if (!gardenState) {
-                                return context.json(
-                                    { error: 'Garden not found' },
-                                    404,
-                                );
-                            }
-
-                            const targetIndex = stackPosition.append
-                                ? (existing?.blocks.length ?? 0)
-                                : 0;
-                            const placementValidation =
-                                validateRaisedBedPlacement({
-                                    stacks: gardenState.stacks,
-                                    x: stackPosition.x,
-                                    y: stackPosition.y,
-                                    index: targetIndex,
-                                    blockNameById,
-                                });
-                            if (!placementValidation.valid) {
-                                return context.json(
-                                    { error: placementValidation.error },
-                                    400,
-                                );
-                            }
-                        }
-                    }
-
                     const nextBlocks = Array.isArray(value)
                         ? stackPosition.append
                             ? [...(existing?.blocks ?? []), ...value]
@@ -2574,37 +2534,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         });
                     }
                 } else {
-                    if (
-                        typeof value === 'string' &&
-                        !options?.skipRaisedBedPlacementValidation
-                    ) {
-                        const blockName = blockNameById.get(value);
-                        if (blockName === 'Raised_Bed') {
-                            const gardenState = await getGarden(gardenIdNumber);
-                            if (!gardenState) {
-                                return context.json(
-                                    { error: 'Garden not found' },
-                                    404,
-                                );
-                            }
-
-                            const placementValidation =
-                                validateRaisedBedPlacement({
-                                    stacks: gardenState.stacks,
-                                    x: stackPosition.x,
-                                    y: stackPosition.y,
-                                    index: stackPosition.index,
-                                    blockNameById,
-                                });
-                            if (!placementValidation.valid) {
-                                return context.json(
-                                    { error: placementValidation.error },
-                                    400,
-                                );
-                            }
-                        }
-                    }
-
                     if (
                         !existing ||
                         (existing?.blocks.length ?? 0) < stackPosition.index ||
@@ -2847,27 +2776,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
-
-                        const validation = validateConnectedRaisedBedMove({
-                            stacks: initialGardenState.stacks,
-                            fromPath: from,
-                            toPath: path,
-                            movedBlockId: fromValue,
-                            blockNameById,
-                            blockDataByName,
-                            parsePath,
-                        });
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
                     }
 
-                    let resp = await addStack(path, fromValue, {
-                        skipRaisedBedPlacementValidation: true,
-                    });
+                    let resp = await addStack(path, fromValue);
                     if (resp) {
                         return resp;
                     }

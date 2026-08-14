@@ -58,15 +58,10 @@ export function useBlockRecycle() {
             position,
             blockIndex,
             raisedBedId,
-            attached,
         }: {
             position: { x: number; z: number };
             blockIndex: number;
             raisedBedId?: number;
-            attached?: {
-                position: { x: number; z: number };
-                blockIndex: number;
-            };
             onOptimisticUpdate?: () => void;
         }) => {
             console.debug('Recycling block', position, blockIndex);
@@ -86,14 +81,6 @@ export function useBlockRecycle() {
                         op: 'remove',
                         path: `/${position.x}/${position.z}/${blockIndex}`,
                     },
-                    ...(attached
-                        ? [
-                              {
-                                  op: 'remove' as const,
-                                  path: `/${attached.position.x}/${attached.position.z}/${attached.blockIndex}`,
-                              },
-                          ]
-                        : []),
                 ],
             });
 
@@ -105,7 +92,6 @@ export function useBlockRecycle() {
             position,
             blockIndex,
             raisedBedId,
-            attached,
             onOptimisticUpdate,
         }) => {
             if (!garden) {
@@ -117,23 +103,11 @@ export function useBlockRecycle() {
                 const isSourceStack =
                     stack.position.x === position.x &&
                     stack.position.z === position.z;
-                const isAttachedStack =
-                    attached !== undefined &&
-                    stack.position.x === attached.position.x &&
-                    stack.position.z === attached.position.z;
-
-                if (isSourceStack || isAttachedStack) {
+                if (isSourceStack) {
                     return {
                         ...stack,
                         blocks: stack.blocks.filter((_, index) => {
                             if (isSourceStack && index === blockIndex) {
-                                return false;
-                            }
-                            if (
-                                isAttachedStack &&
-                                attached &&
-                                index === attached.blockIndex
-                            ) {
                                 return false;
                             }
                             return true;

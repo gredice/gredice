@@ -39,7 +39,6 @@ import {
 } from '../../operationVisualRewards';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { useGameState } from '../../useGameState';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -78,6 +77,7 @@ type ShoppingCartData = NonNullable<ReturnType<typeof useShoppingCart>['data']>;
 
 export type RaisedBedFieldVisualBatchBlock = {
     blockId: string;
+    blockIndex: number;
     chunkPosition?: RaisedBedFieldVisualVector3;
     position: RaisedBedFieldVisualVector3;
 };
@@ -353,15 +353,12 @@ export function compileRaisedBedFieldVisualBatches({
         return [];
     }
 
-    const blockById = new Map(blocks.map((block) => [block.blockId, block]));
     const mutableBatches = new Map<string, MutableBatch>();
 
     for (const raisedBed of currentGarden.raisedBeds) {
-        const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-        const raisedBedBlocks = blockIds.flatMap((blockId, blockIndex) => {
-            const block = blockById.get(blockId);
-            return block ? [{ ...block, blockIndex }] : [];
-        });
+        const raisedBedBlocks = blocks
+            .filter((block) => block.blockId === raisedBed.blockId)
+            .sort((left, right) => left.blockIndex - right.blockIndex);
         if (raisedBedBlocks.length === 0) {
             continue;
         }
@@ -403,13 +400,9 @@ export function compileRaisedBedFieldVisualBatches({
             });
         }
 
-        for (const [blockIndex, blockId] of blockIds.entries()) {
-            const block = blockById.get(blockId);
-            if (!block) {
-                continue;
-            }
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+        for (const block of raisedBedBlocks) {
+            const blockIndex = block.blockIndex;
+            const blockOffset = Math.max(1 - blockIndex, 0) * 9;
             const protectiveCoverPositions =
                 resolveRaisedBedProtectiveCoverPositions({
                     blockOffset,

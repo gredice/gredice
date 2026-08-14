@@ -17,7 +17,7 @@ import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import {
     findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
+    raisedBedFieldSectionCount,
 } from '../utils/raisedBedBlocks';
 import { RaisedBed2DPlaceholder } from './raisedBed/RaisedBed2DPlaceholder';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
@@ -64,9 +64,7 @@ export function RaisedBedFieldHud({
         ? raisedBed.isValid && !isRaisedBedAbandoned(raisedBed.status)
         : false;
     const raisedBedBlockCount =
-        currentGarden && raisedBed
-            ? getRaisedBedBlockIds(currentGarden, raisedBed.id).length
-            : 1;
+        currentGarden && raisedBed ? raisedBedFieldSectionCount : 1;
     const isDoubleRaisedBed = raisedBedBlockCount === 2;
     const gridHeight = isDoubleRaisedBed
         ? GRID_SIZE * 2 + GRID_HEIGHT_ADDITIONAL

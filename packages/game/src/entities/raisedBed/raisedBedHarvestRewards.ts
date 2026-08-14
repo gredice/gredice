@@ -1,4 +1,5 @@
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import type { OperationVisualReward } from '../../operationVisualRewards';
 import type { GardenStack } from '../../types/Stack';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -215,15 +216,27 @@ export function resolveRaisedBedHarvestBasketPlacement({
     reservedPositionKeys,
     stacks,
 }: ResolveRaisedBedHarvestBasketPlacementInput): RaisedBedHarvestBasketPlacement | null {
-    const raisedBedStacks = blockIds.flatMap((blockId) => {
+    const raisedBedPlacements = blockIds.flatMap((blockId) => {
         const stack = stacks.find((candidate) =>
             candidate.blocks.some((block) => block.id === blockId),
         );
+        const block = stack?.blocks.find(
+            (candidate) => candidate.id === blockId,
+        );
 
-        return stack ? [stack] : [];
+        return stack && block ? [{ block, stack }] : [];
     });
+    const raisedBedPositions = raisedBedPlacements.flatMap(({ block, stack }) =>
+        getGardenBlockFootprintOffsets(
+            getBlockDataByName(blockData, block.name),
+            block.rotation,
+        ).map((offset) => ({
+            x: stack.position.x + offset.x,
+            z: stack.position.z + offset.y,
+        })),
+    );
     const raisedBedPositionKeys = new Set(
-        raisedBedStacks.map((stack) => stackPositionKey(stack.position)),
+        raisedBedPositions.map(stackPositionKey),
     );
     const neighborOffsets = [
         { x: 1, z: 0, rotation: Math.PI / 2 },
@@ -233,11 +246,11 @@ export function resolveRaisedBedHarvestBasketPlacement({
     ];
     const visited = new Set<string>();
 
-    for (const raisedBedStack of raisedBedStacks) {
+    for (const raisedBedPosition of raisedBedPositions) {
         for (const offset of neighborOffsets) {
             const destination = {
-                x: raisedBedStack.position.x + offset.x,
-                z: raisedBedStack.position.z + offset.z,
+                x: raisedBedPosition.x + offset.x,
+                z: raisedBedPosition.z + offset.z,
             };
             const key = stackPositionKey(destination);
             if (

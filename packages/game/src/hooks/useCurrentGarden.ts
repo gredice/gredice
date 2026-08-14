@@ -429,21 +429,13 @@ function addProfileRaisedBedPair({
     z: number;
 }): MockRaisedBed | null {
     const firstStack = stackByPosition.get(mockGardenStackPositionKey(x, z));
-    const secondStack = stackByPosition.get(
-        mockGardenStackPositionKey(x, z + 1),
-    );
-    if (!firstStack || !secondStack) {
+    if (!firstStack) {
         return null;
     }
 
     const firstBlockId = `profile-raised-bed:${id}:0`;
     firstStack.blocks.push({
         id: firstBlockId,
-        name: 'Raised_Bed',
-        rotation: 0,
-    });
-    secondStack.blocks.push({
-        id: `profile-raised-bed:${id}:1`,
         name: 'Raised_Bed',
         rotation: 0,
     });
@@ -1012,7 +1004,7 @@ function mockGarden(
             updatedAt: now,
             createdAt: now,
             isValid: true,
-            orientation: 'horizontal',
+            orientation: 'vertical',
         },
         {
             id: 2,
@@ -1027,7 +1019,7 @@ function mockGarden(
             updatedAt: now,
             createdAt: now,
             isValid: true,
-            orientation: 'horizontal',
+            orientation: 'vertical',
         },
     ];
 
@@ -1054,7 +1046,7 @@ function mockGarden(
                     {
                         id: '3',
                         name: 'Raised_Bed',
-                        rotation: 0,
+                        rotation: 1,
                     },
                 ],
             },
@@ -1149,7 +1141,7 @@ function mockGarden(
                     {
                         id: '8',
                         name: 'Raised_Bed',
-                        rotation: 0,
+                        rotation: 1,
                     },
                 ],
             },

@@ -34,8 +34,19 @@ const blockFixtures: Record<
         sunflowers: number;
         height: number;
         stackable: boolean;
+        spanDepth?: number;
+        spanWidth?: number;
     }
 > = {
+    Raised_Bed: {
+        label: 'Raised Bed',
+        shortDescription: 'One complete raised bed with a 1 by 2 footprint.',
+        sunflowers: 20,
+        height: 0.4,
+        stackable: false,
+        spanDepth: 2,
+        spanWidth: 1,
+    },
     Block_Stone: {
         label: 'Kamen',
         shortDescription:
@@ -320,6 +331,8 @@ function createBlockData(name: string, index: number) {
         attributes: {
             height: fixture?.height ?? 1,
             nightOnlyPurchase: name === 'FireflyJar',
+            spanDepth: fixture?.spanDepth,
+            spanWidth: fixture?.spanWidth,
             stackable: fixture?.stackable ?? true,
             type: name === 'Raised_Bed' ? 'raisedBed' : 'decoration',
         },

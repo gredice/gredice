@@ -20,7 +20,7 @@ import {
     useGameState,
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getGridPositionFromIndex,
@@ -312,23 +312,27 @@ function createRaisedBedTargets(
             continue;
         }
 
-        const blockIds = getRaisedBedBlockIds(garden, raisedBed.id);
         const orientation = raisedBed.orientation ?? 'vertical';
+        const blockId = raisedBed.blockId;
+        if (!blockId) {
+            continue;
+        }
 
-        for (const blockId of blockIds) {
-            const placement = findBlockPlacement(garden.stacks, blockId);
-            if (!placement) {
-                continue;
-            }
+        const placement = findBlockPlacement(garden.stacks, blockId);
+        if (!placement) {
+            continue;
+        }
 
-            const blockIndex = blockIds.indexOf(blockId);
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
-            const currentStackHeight = getStackHeight(
-                blockData,
-                placement.stack,
-                placement.block,
-            );
+        const currentStackHeight = getStackHeight(
+            blockData,
+            placement.stack,
+            placement.block,
+        );
+        for (const segment of getRaisedBedFootprintSegments(
+            placement.block.rotation,
+        )) {
+            const blockIndex = segment.blockIndex;
+            const blockOffset = segment.blockOffset;
             const offsetX =
                 orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
             const offsetY =
@@ -352,6 +356,7 @@ function createRaisedBedTargets(
                     kind: 'raised-bed-flower',
                     position: new Vector3(
                         placement.stack.position.x +
+                            segment.offset.x +
                             col * multiplierX -
                             offsetX,
                         currentStackHeight +
@@ -359,6 +364,7 @@ function createRaisedBedTargets(
                             0.75 +
                             raisedBedFlowerHoverHeight,
                         placement.stack.position.z +
+                            segment.offset.z +
                             (2 - row) * multiplierY -
                             offsetY,
                     ),

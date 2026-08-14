@@ -49,6 +49,7 @@
         "blocks:garden-lighting:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGardenLightingBlockEntities.ts",
         "blocks:terrain-variations:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertTerrainVariationBlockEntities.ts",
         "blocks:fishing-boat:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFishingBoatBlockEntity.ts",
+        "blocks:raised-bed:update": "tsx --conditions=react-server --env-file=.env ./scripts/updateRaisedBedBlockEntity.ts",
         "harvest-traces:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillHarvestTraceLinks.ts",
         "payout-items:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPayoutRequestItems.ts"
     },

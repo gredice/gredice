@@ -50,10 +50,7 @@ import {
     recordGeneratedPlantProfileLodEvaluation,
 } from '../../scene/generatedPlantProfileMetrics';
 import { useGameState } from '../../useGameState';
-import {
-    findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
-} from '../../utils/raisedBedBlocks';
+import { findRaisedBedByBlockId } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getGridPositionFromIndex,
@@ -98,6 +95,7 @@ import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
     blockId: string;
+    blockIndex: number;
     position: readonly [number, number, number];
 }
 
@@ -700,10 +698,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
             }
 
             const orientation = raisedBed.orientation ?? 'vertical';
-            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-            const blockIndex = blockIds.indexOf(block.blockId);
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+            const blockIndex = block.blockIndex;
+            const blockOffset = Math.max(1 - blockIndex, 0) * 9;
             const protectiveCoverPositionSet = new Set(
                 resolveRaisedBedProtectiveCoverPositions({
                     blockOffset,
@@ -886,17 +882,16 @@ export function RaisedBedGeneratedPlantFieldBatches({
             }
         }
 
-        const sceneBlockById = new Map(
-            blocks.map((block) => [block.blockId, block]),
-        );
         for (const raisedBed of currentGarden.raisedBeds) {
             if (raisedBed.status === 'abandoned') {
                 continue;
             }
 
             const orientation = raisedBed.orientation ?? 'vertical';
-            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-            if (blockIds.length === 0) {
+            const raisedBedBlocks = blocks
+                .filter((block) => block.blockId === raisedBed.blockId)
+                .sort((left, right) => left.blockIndex - right.blockIndex);
+            if (raisedBedBlocks.length === 0) {
                 continue;
             }
 
@@ -905,13 +900,9 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 readonly [number, number, number]
             >();
             const blockIdByPositionIndex = new Map<number, string>();
-            for (const [blockIndex, blockId] of blockIds.entries()) {
-                const sceneBlock = sceneBlockById.get(blockId);
-                if (!sceneBlock) {
-                    continue;
-                }
-                const blockOffset =
-                    Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+            for (const sceneBlock of raisedBedBlocks) {
+                const blockIndex = sceneBlock.blockIndex;
+                const blockOffset = Math.max(1 - blockIndex, 0) * 9;
                 for (
                     let localPositionIndex = 0;
                     localPositionIndex < 9;
@@ -927,13 +918,16 @@ export function RaisedBedGeneratedPlantFieldBatches({
                             positionIndex: localPositionIndex,
                         }),
                     );
-                    blockIdByPositionIndex.set(positionIndex, blockId);
+                    blockIdByPositionIndex.set(
+                        positionIndex,
+                        sceneBlock.blockId,
+                    );
                 }
             }
 
             const selectedPlantings = buildAdvancedSowingGardenPlantingVisuals(
                 readRaisedBedPlantings(raisedBed),
-                blockIds.length * 9,
+                raisedBedBlocks.length * 9,
             );
             for (const planting of selectedPlantings) {
                 const layout = buildAdvancedSowingPlantVisualLayout({

@@ -22,7 +22,7 @@ const blockData: PlacementBlockData[] = [
     },
     {
         information: { name: 'Raised_Bed' },
-        attributes: { stackable: true, height: 1 },
+        attributes: { stackable: false, height: 1, spanDepth: 2 },
     },
     {
         information: { name: 'Shade' },
@@ -130,16 +130,19 @@ describe('createOptimisticBlockPlacement', () => {
 
         assert.ok(placement);
         assert.deepStrictEqual(placement.position, { x: -1, y: 0, z: 1 });
-        assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: { x: -1, y: 0, z: 1 },
-            blocks: [
-                {
-                    id: 'optimistic-bed',
-                    name: 'Raised_Bed',
-                    rotation: 0,
-                },
-            ],
-        });
+        assert.equal(placement.blockId, 'optimistic-bed');
+        assert.deepStrictEqual(placement.stacks.slice(-1), [
+            {
+                position: { x: -1, y: 0, z: 1 },
+                blocks: [
+                    {
+                        id: 'optimistic-bed',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
     });
 
     it('avoids water stacks when automatically placing new blocks', () => {

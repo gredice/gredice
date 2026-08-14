@@ -17,7 +17,6 @@ type MoveBlockArgs = {
 
 type MoveArgs = MoveBlockArgs & {
     additionalBlocks?: MoveBlockArgs[];
-    attached?: MoveBlockArgs;
     onOptimisticUpdate?: () => void;
 };
 
@@ -36,7 +35,6 @@ function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
             sourceBlockId: args.sourceBlockId,
         },
         ...(args.additionalBlocks ?? []),
-        ...(args.attached ? [args.attached] : []),
     ];
 }
 

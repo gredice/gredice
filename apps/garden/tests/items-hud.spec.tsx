@@ -756,6 +756,27 @@ test('item picker price buttons use the soft surface', async ({
     await expect(priceButton).toHaveClass(/bg-primary\/10/u);
 });
 
+test('raised-bed picker offers one complete 1 x 2 bed at the combined price', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Gredica 1 × 2' }).click();
+
+    const raisedBedButton = page.getByRole('button', {
+        name: 'Raised Bed 1 × 2',
+        exact: true,
+    });
+    await expect(raisedBedButton).toBeVisible();
+    await raisedBedButton.click();
+
+    await expect(page.getByText('Raised Bed 1 × 2')).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /Postavi.*20/u }),
+    ).toBeEnabled();
+});
+
 test('item picker disables purchase buttons above the sunflower balance', async ({
     mount,
     page,

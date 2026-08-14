@@ -93,7 +93,7 @@ test('findEmptyRaisedBedFieldTargets can return every eligible field', () => {
         findEmptyRaisedBedFieldTargets(garden, null, {
             includeAllFields: true,
         }).map((target) => target.positionIndex),
-        [1, 2, 3, 4, 5, 6, 7, 8],
+        Array.from({ length: 17 }, (_, index) => index + 1),
     );
 });
 
@@ -122,7 +122,7 @@ test('findEmptyRaisedBedFieldTargets excludes a pending Advanced Sowing footprin
         findEmptyRaisedBedFieldTargets(garden, cartItems, {
             includeAllFields: true,
         }).map((target) => target.positionIndex),
-        [3, 4, 5, 6, 7, 8],
+        Array.from({ length: 15 }, (_, index) => index + 3),
     );
 });
 

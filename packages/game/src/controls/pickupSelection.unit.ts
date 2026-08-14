@@ -200,32 +200,4 @@ describe('createPickupSelectionMovingSegments', () => {
         assert.equal(segments[0]?.sourceStartIndex, 0);
         assert.deepEqual(segments[0]?.blocks, [lowerBlock, upperBlock]);
     });
-
-    it('does not add an attached segment already covered by a selected stack slice', () => {
-        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
-        const attachedBlock = createBlock('Block_Grass', 'attached');
-        const sourceStack = createStack(0, 0, [raisedBed, attachedBlock]);
-        const primaryTarget = createActiveDragPreviewTarget({
-            blockId: raisedBed.id,
-            blockIndex: 0,
-            stackPosition: sourceStack.position,
-        });
-
-        const segments = createPickupSelectionMovingSegments({
-            attachedSegment: {
-                sourceStack,
-                sourceStartIndex: 1,
-                blocks: [attachedBlock],
-                baseHeight: 1,
-            },
-            blockData,
-            canRecyclePrimarySegment: false,
-            primaryTarget,
-            selectedTargets: [primaryTarget],
-            stacks: [sourceStack],
-        });
-
-        assert.equal(segments.length, 1);
-        assert.deepEqual(segments[0]?.blocks, [raisedBed, attachedBlock]);
-    });
 });

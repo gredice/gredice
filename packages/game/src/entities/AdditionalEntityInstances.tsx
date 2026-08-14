@@ -18,10 +18,7 @@ import type { GLTFResult } from '../models/GameAssets';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import {
-    getConnectedRaisedBedBlockIds,
-    getRaisedBedBlockIds,
-} from '../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
@@ -988,66 +985,31 @@ type RaisedBedShapeKey =
     | 'Raised_Bed_U';
 
 type RaisedBedResolvedInstance = EntityBlockInstance & {
+    anchorPosition: EntityBlockInstance['position'];
+    blockIndex: number;
+    blockOffset: number;
     shape: RaisedBedShapeKey;
 };
 
-export function resolveRaisedBedInstance(
+export function resolveRaisedBedInstances(
     instance: EntityBlockInstance,
-    stacks: Stack[] | undefined,
-): RaisedBedResolvedInstance {
-    const neighbors = resolveEntityNeighbors(
-        stacks,
-        instance.stack,
-        instance.block,
+): RaisedBedResolvedInstance[] {
+    return getRaisedBedFootprintSegments(instance.block.rotation).map(
+        (segment) => ({
+            ...instance,
+            anchorPosition: instance.position,
+            blockIndex: segment.blockIndex,
+            blockOffset: segment.blockOffset,
+            id: `${instance.id}:segment:${segment.blockIndex.toString()}`,
+            position: [
+                instance.position[0] + segment.offset.x,
+                instance.position[1],
+                instance.position[2] + segment.offset.z,
+            ],
+            rotation: segment.shapeRotation,
+            shape: 'Raised_Bed_U',
+        }),
     );
-    let shape: RaisedBedShapeKey = 'Raised_Bed_O';
-    let shapeRotation = 0;
-    const overlapOffset = { x: 0, z: 0 };
-
-    if (neighbors.total === 1) {
-        shape = 'Raised_Bed_U';
-
-        if (neighbors.n) {
-            shapeRotation = 0;
-            overlapOffset.x = 0.05;
-        } else if (neighbors.e) {
-            shapeRotation = 1;
-            overlapOffset.z = -0.05;
-        } else if (neighbors.s) {
-            shapeRotation = 2;
-            overlapOffset.x = -0.05;
-        } else if (neighbors.w) {
-            shapeRotation = 3;
-            overlapOffset.z = 0.05;
-        }
-    } else if (neighbors.total === 2) {
-        if ((neighbors.n && neighbors.s) || (neighbors.e && neighbors.w)) {
-            shape = 'Raised_Bed_I';
-            shapeRotation = neighbors.n && neighbors.s ? 1 : 0;
-        } else {
-            shape = 'Raised_Bed_L';
-            if (neighbors.n && neighbors.e) {
-                shapeRotation = 0;
-            } else if (neighbors.e && neighbors.s) {
-                shapeRotation = 1;
-            } else if (neighbors.s && neighbors.w) {
-                shapeRotation = 2;
-            } else {
-                shapeRotation = 3;
-            }
-        }
-    }
-
-    return {
-        ...instance,
-        position: [
-            instance.position[0] + overlapOffset.x,
-            instance.position[1],
-            instance.position[2] + overlapOffset.z,
-        ],
-        rotation: shapeRotation,
-        shape,
-    };
 }
 
 function RaisedBedInstances({
@@ -1064,28 +1026,23 @@ function RaisedBedInstances({
         yOffset: 1,
     });
     const instances = useMemo(
-        () =>
-            raisedBedInstances?.map((instance) =>
-                resolveRaisedBedInstance(instance, stacks),
-            ),
-        [raisedBedInstances, stacks],
+        () => raisedBedInstances?.flatMap(resolveRaisedBedInstances),
+        [raisedBedInstances],
     );
     const raisedBedFieldVisualBlocks = useMemo(
         () =>
-            instances?.map((instance, index) => ({
+            instances?.map((instance) => ({
                 blockId: instance.block.id,
-                chunkPosition:
-                    raisedBedInstances?.[index]?.position ?? instance.position,
+                blockIndex: instance.blockIndex,
+                chunkPosition: instance.anchorPosition,
                 position: instance.position,
             })) ?? [],
-        [instances, raisedBedInstances],
+        [instances],
     );
     const raisedBedContextByBlockId = useMemo(() => {
         const context = new Map<
             string,
             {
-                blockIndex: number;
-                blockOffset: number;
                 raisedBed: NonNullable<
                     typeof currentGarden
                 >['raisedBeds'][number];
@@ -1097,16 +1054,9 @@ function RaisedBedInstances({
         }
 
         for (const raisedBed of currentGarden.raisedBeds) {
-            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-
-            blockIds.forEach((blockId, blockIndex) => {
-                context.set(blockId, {
-                    blockIndex,
-                    blockOffset:
-                        Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
-                    raisedBed,
-                });
-            });
+            if (raisedBed.blockId) {
+                context.set(raisedBed.blockId, { raisedBed });
+            }
         }
 
         return context;
@@ -1145,8 +1095,8 @@ function RaisedBedInstances({
                 }
 
                 return getRaisedBedSoilWetPatches({
-                    blockIndex: context.blockIndex,
-                    blockOffset: context.blockOffset,
+                    blockIndex: instance.blockIndex,
+                    blockOffset: instance.blockOffset,
                     blockPosition: instance.position,
                     currentTime,
                     raisedBed: context.raisedBed,
@@ -1240,17 +1190,15 @@ function RaisedBedInstances({
                 >
                     <RaisedBedFields
                         blockId={instance.block.id}
+                        blockIndex={instance.blockIndex}
+                        blockOffset={instance.blockOffset}
                         generatedPlantsHandledExternally
                     />
                 </group>
             ))}
             <RaisedBedFieldVisualBatches blocks={raisedBedFieldVisualBlocks} />
             <RaisedBedHarvestBaskets />
-            <RaisedBedHoverOutlines
-                instances={instances}
-                nodes={nodes}
-                stacks={stacks}
-            />
+            <RaisedBedHoverOutlines instances={instances} nodes={nodes} />
         </>
     );
 }
@@ -1275,34 +1223,21 @@ const raisedBedShapeParts = {
 function RaisedBedHoverOutlines({
     instances,
     nodes,
-    stacks,
 }: {
     instances: RaisedBedResolvedInstance[];
     nodes: GLTFResult['nodes'];
-    stacks: Stack[] | undefined;
 }) {
     const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
     const hasActiveDragPreview = useGameState((state) =>
         Boolean(state.activeDragPreview),
     );
 
-    if (
-        hasActiveDragPreview ||
-        hoveredBlock?.name !== 'Raised_Bed' ||
-        !stacks
-    ) {
-        return null;
-    }
-
-    const hoveredBlockIds = new Set(
-        getConnectedRaisedBedBlockIds(stacks, hoveredBlock.id),
-    );
-    if (hoveredBlockIds.size === 0) {
+    if (hasActiveDragPreview || hoveredBlock?.name !== 'Raised_Bed') {
         return null;
     }
 
     return instances.map((instance) => {
-        if (!hoveredBlockIds.has(instance.block.id)) {
+        if (instance.block.id !== hoveredBlock.id) {
             return null;
         }
 
