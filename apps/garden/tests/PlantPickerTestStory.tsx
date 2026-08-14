@@ -239,6 +239,7 @@ function createPlantPickerQueryClient({
     fieldPositionIndices = Array.from({ length: 18 }, (_, index) => index),
     inventoryItems = [],
     plantings = [],
+    propagatingRanges,
 }: {
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
@@ -246,6 +247,7 @@ function createPlantPickerQueryClient({
     fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
     plantings?: unknown[];
+    propagatingRanges?: PlantData['calendar']['propagating'];
 } = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -313,16 +315,26 @@ function createPlantPickerQueryClient({
     });
     queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
     queryClient.setQueryData(favoritesQueryKey, favorites);
+    const calendarTomatoPlant =
+        propagatingRanges === undefined
+            ? tomatoPlant
+            : {
+                  ...tomatoPlant,
+                  calendar: {
+                      ...tomatoPlant.calendar,
+                      propagating: propagatingRanges,
+                  },
+              };
     const advancedSowingTomatoPlant = advancedSowingRange
         ? {
-              ...tomatoPlant,
+              ...calendarTomatoPlant,
               attributes: {
-                  ...tomatoPlant.attributes,
+                  ...calendarTomatoPlant.attributes,
                   seedingDistanceMax: advancedSowingRange.maxDistanceCm,
                   seedingDistanceMin: advancedSowingRange.minDistanceCm,
               },
           }
-        : tomatoPlant;
+        : calendarTomatoPlant;
     const advancedSowingTomatoSorts = tomatoSorts.map((sort) => ({
         ...sort,
         information: {
@@ -348,6 +360,7 @@ function PlantPickerTestProviders({
     fieldPositionIndices,
     inventoryItems = [],
     plantings = [],
+    propagatingRanges,
     searchParams,
 }: PropsWithChildren<{
     advancedSowingRange?: TestAdvancedSowingRange;
@@ -357,6 +370,7 @@ function PlantPickerTestProviders({
     fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
     plantings?: unknown[];
+    propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
 }>) {
     const queryClient = useMemo(
@@ -368,6 +382,7 @@ function PlantPickerTestProviders({
                 fieldPositionIndices,
                 inventoryItems,
                 plantings,
+                propagatingRanges,
             }),
         [
             advancedSowingRange,
@@ -376,6 +391,7 @@ function PlantPickerTestProviders({
             fieldPositionIndices,
             inventoryItems,
             plantings,
+            propagatingRanges,
         ],
     );
     const gameStore = useMemo(
@@ -436,6 +452,7 @@ export function PlantPickerTestStory({
     plantings,
     preselectedPlantId,
     preselectedSortId,
+    propagatingRanges,
     searchParams,
     selectedCartItemId,
     showOutletRefetchControl = false,
@@ -451,6 +468,7 @@ export function PlantPickerTestStory({
     plantings?: unknown[];
     preselectedPlantId?: number;
     preselectedSortId?: number;
+    propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
     selectedCartItemId?: number;
     showOutletRefetchControl?: boolean;
@@ -465,6 +483,7 @@ export function PlantPickerTestStory({
             fieldPositionIndices={fieldPositionIndices}
             inventoryItems={inventoryItems}
             plantings={plantings}
+            propagatingRanges={propagatingRanges}
             searchParams={searchParams}
         >
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}

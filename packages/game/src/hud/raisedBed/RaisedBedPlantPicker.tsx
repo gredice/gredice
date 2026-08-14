@@ -4,7 +4,10 @@ import {
     buildAdvancedSowingSelectionRequestV1,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
-import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
+import {
+    CalendarDatePicker,
+    parseCalendarDateKey,
+} from '@gredice/ui/CalendarDatePicker';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
@@ -68,6 +71,7 @@ import {
     getLegacySowingTargetAvailability,
     readAdvancedSowingCartItemSelectionSummary,
 } from './advancedSowingSubmission';
+import { isGreenhouseSowingRecommended } from './greenhouseSowingRecommendation';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 import {
@@ -299,6 +303,19 @@ export function PlantPicker({
         currentStep = 1;
     }
 
+    // Plant options use local time for tomorrow and 3 months from now.
+    const today = new Date();
+    const tomorrow = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1,
+    );
+    const threeMonthsFromTomorrow = new Date(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth() + 3,
+        tomorrow.getDate(),
+    );
+
     useLayoutEffect(() => {
         if (
             currentStep !== 0 ||
@@ -334,6 +351,12 @@ export function PlantPicker({
         setSelectedPlantId(plant.id);
         setSelectedSortId(null);
         setUseOutletOffer(false);
+        setSowInGreenhouse(
+            isGreenhouseSowingRecommended(
+                plant,
+                plantOptions?.scheduledDate ?? tomorrow,
+            ),
+        );
         setSelectedOutletOfferId(null);
         setSelectedAdvancedSowingLayoutKey(null);
         resetSearch();
@@ -344,6 +367,12 @@ export function PlantPicker({
         setUseOutletOffer(false);
         setSelectedOutletOfferId(null);
         setUseInventoryItem(false);
+        setSowInGreenhouse(
+            isGreenhouseSowingRecommended(
+                sort.information.plant,
+                plantOptions?.scheduledDate ?? tomorrow,
+            ),
+        );
         setSelectedAdvancedSowingLayoutKey(null);
         resetSearch();
     }
@@ -584,12 +613,17 @@ export function PlantPicker({
             : null;
 
         if (selectedOutletOfferFromParam && selectedOutletPlantId) {
+            const selectedOutletPlant = allSorts?.find(
+                (sort) => sort.id === selectedOutletOfferFromParam.plantSort.id,
+            )?.information.plant;
             setSelectedPlantId(selectedOutletPlantId);
             setSelectedSortId(selectedOutletOfferFromParam.plantSort.id);
             setPlantOptions(null);
             setUseInventoryItem(false);
             setUseOutletOffer(true);
-            setSowInGreenhouse(false);
+            setSowInGreenhouse(
+                isGreenhouseSowingRecommended(selectedOutletPlant, tomorrow),
+            );
             setSelectedOutletOfferId(selectedOutletOfferFromParam.id);
             void setOutletOfferSelectionParam(null);
             resetSearch();
@@ -611,7 +645,20 @@ export function PlantPicker({
             );
         setUseInventoryItem(existingItem?.currency === 'inventory');
         setUseOutletOffer(Boolean(existingItem?.outlet));
-        setSowInGreenhouse(isGreenhouseSowing(existingItem?.additionalData));
+        const preselectedPlant =
+            allSorts?.find((sort) => sort.id === preselectedSortId)?.information
+                .plant ??
+            allSorts?.find(
+                (sort) => sort.information.plant.id === preselectedPlantId,
+            )?.information.plant;
+        setSowInGreenhouse(
+            existingItem
+                ? isGreenhouseSowing(existingItem.additionalData)
+                : isGreenhouseSowingRecommended(
+                      preselectedPlant,
+                      preselectedPlantOptions?.scheduledDate ?? tomorrow,
+                  ),
+        );
         setSelectedOutletOfferId(existingItem?.outlet?.offerId ?? null);
     }
 
@@ -626,25 +673,21 @@ export function PlantPicker({
         setSowInGreenhouse(checked);
     }
 
-    // Plant options
-    // Use local time for tomorrow and 3 months from now
-    const today = new Date();
-    const tomorrow = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1,
-    );
-    const threeMonthsFromTomorrow = new Date(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth() + 3,
-        tomorrow.getDate(),
-    );
     const plantDate = formatLocalDate(plantOptions?.scheduledDate ?? tomorrow);
     function handlePlantDateChange(date: string) {
-        const parsedDate = date ? new Date(date) : null;
+        const scheduledDate = date ? new Date(date) : null;
+        const localCalendarDate = parseCalendarDateKey(date);
         setPlantOptions({
-            scheduledDate: parsedDate,
+            scheduledDate,
         });
+        if (localCalendarDate && selectedSort) {
+            setSowInGreenhouse(
+                isGreenhouseSowingRecommended(
+                    selectedSort.information.plant,
+                    localCalendarDate,
+                ),
+            );
+        }
     }
 
     const min = formatLocalDate(tomorrow);

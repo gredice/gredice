@@ -763,6 +763,107 @@ test('planned greenhouse sowing sends greenhouse location', async ({
     expect(additionalData.sowingLocation).toBe('greenhouse');
 });
 
+test('planting calendar selects greenhouse sowing by default', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const calendarMonth = tomorrow.getMonth() + 1;
+
+    await mount(
+        <PlantPickerTestStory
+            propagatingRanges={[{ start: calendarMonth, end: calendarMonth }]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const greenhouseSwitch = page.getByRole('switch', { name: 'Staklenik' });
+    await expect(greenhouseSwitch).toBeChecked();
+
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post) || typeof post.additionalData !== 'string') {
+        return;
+    }
+    const additionalData: unknown = JSON.parse(post.additionalData);
+    expect(isRecord(additionalData)).toBe(true);
+    if (!isRecord(additionalData)) {
+        return;
+    }
+    expect(additionalData.sowingLocation).toBe('greenhouse');
+});
+
+test.describe('planting calendar date timezone', () => {
+    test.use({ timezoneId: 'America/Los_Angeles' });
+
+    test('matches a selected calendar boundary using the browser local date', async ({
+        mount,
+        page,
+    }) => {
+        await mockShoppingCartPosts(page);
+        const { calendarMonth, monthOffset, selectedDateKey } =
+            await page.evaluate(() => {
+                const initialDate = new Date();
+                initialDate.setDate(initialDate.getDate() + 1);
+                const selectedDate = new Date(
+                    initialDate.getFullYear(),
+                    initialDate.getMonth() + 1,
+                    1,
+                    12,
+                );
+                const formatDateKey = (date: Date) => {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+
+                return {
+                    calendarMonth: selectedDate.getMonth() + 1,
+                    monthOffset:
+                        (selectedDate.getFullYear() -
+                            initialDate.getFullYear()) *
+                            12 +
+                        selectedDate.getMonth() -
+                        initialDate.getMonth(),
+                    selectedDateKey: formatDateKey(selectedDate),
+                };
+            });
+
+        await mount(
+            <PlantPickerTestStory
+                propagatingRanges={[
+                    { start: calendarMonth, end: calendarMonth },
+                ]}
+            />,
+        );
+
+        await page.getByRole('button', { name: 'Sijanje' }).click();
+        await page.getByRole('button', { name: /Rajčica/ }).click();
+        await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+        const dateInput = page.getByRole('button', { name: /Datum sijanja/u });
+
+        await selectCalendarDate({
+            date: selectedDateKey,
+            monthOffset,
+            page,
+            trigger: dateInput,
+        });
+
+        await expect(
+            page.getByRole('switch', { name: 'Staklenik' }),
+        ).toBeChecked();
+    });
+});
+
 test('outlet sowing sends the selected outlet offer', async ({
     mount,
     page,
