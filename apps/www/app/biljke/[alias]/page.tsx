@@ -96,13 +96,23 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
     const getAttributeCardsForSection = (sectionId: string) => {
         switch (sectionId) {
             case 'sowing':
-                return <SowingAttributeCards attributes={plant.attributes} />;
+                return (
+                    <SowingAttributeCards
+                        attributes={plant.attributes}
+                        plantName={plant.information.name}
+                    />
+                );
             case 'growth':
                 return <GrowthAttributeCards attributes={plant.attributes} />;
             case 'watering':
                 return <WateringAttributeCards attributes={plant.attributes} />;
             case 'harvest':
-                return <HarvestAttributeCards attributes={plant.attributes} />;
+                return (
+                    <HarvestAttributeCards
+                        attributes={plant.attributes}
+                        plantName={plant.information.name}
+                    />
+                );
             default:
                 return undefined;
         }

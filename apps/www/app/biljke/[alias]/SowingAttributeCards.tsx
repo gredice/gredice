@@ -13,11 +13,14 @@ import { KnownPages } from '../../../src/KnownPages';
 
 export function SowingAttributeCards({
     attributes,
+    plantName,
 }: {
     attributes: PlantData['attributes'] | undefined;
+    plantName: string;
 }) {
     const { totalPlants } = calculatePlantsPerField(
         attributes?.seedingDistance,
+        plantName,
     );
     const formatDayRange = (
         min?: number | null,

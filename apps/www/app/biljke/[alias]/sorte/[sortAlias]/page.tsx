@@ -161,6 +161,7 @@ export default async function PlantSortPage(
                 return (
                     <SowingAttributeCards
                         attributes={basePlantData.attributes}
+                        plantName={sortData.information.name}
                     />
                 );
             case 'growth':
@@ -179,6 +180,7 @@ export default async function PlantSortPage(
                 return (
                     <HarvestAttributeCards
                         attributes={basePlantData.attributes}
+                        plantName={sortData.information.name}
                     />
                 );
             default:

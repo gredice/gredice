@@ -71,6 +71,9 @@ export function RaisedBedPlantField({
 
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
         sortData?.information?.plant.attributes?.seedingDistance,
+        sortData?.information.name ??
+            mockPlantPresetLabelsBySortId[plantSortId ?? 0] ??
+            `Plant sort #${plantSortId?.toString() ?? 'unknown'}`,
     );
     const safePlantsPerRow = Math.max(plantsPerRow, 1);
     const seedsCount = totalPlants;

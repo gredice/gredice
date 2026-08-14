@@ -165,6 +165,8 @@ export function RaisedBedPlantingScheduleSection({
         );
         const { totalPlants } = calculatePlantsPerField(
             sortData?.information?.plant?.attributes?.seedingDistance,
+            sortData?.information?.name ??
+                `Plant sort #${field.plantSortId?.toString() ?? 'unknown'}`,
         );
 
         return {

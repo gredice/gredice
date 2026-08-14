@@ -255,6 +255,9 @@ function addSeedInstances({
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
         highTargetAttributes?.seedingDistance ??
             sort?.information.plant.attributes?.seedingDistance,
+        sort?.information.name ??
+            mockPlantPresetLabelsBySortId[plantSortId] ??
+            `Plant sort #${plantSortId.toString()}`,
     );
     const descriptors = createRaisedBedFieldSeedDescriptors({
         blockIndex,
