@@ -4,6 +4,10 @@ import type {
     RaisedBedPlantingWithFields,
 } from '@gredice/storage';
 import {
+    buildGreenhouseTransplantingOperationLabel,
+    SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID,
+} from './schedule/scheduleOperationPresentation';
+import {
     getScheduleOperationCompletionRequirements,
     type ScheduleOperationCompletionRequirements,
 } from './schedule/scheduleOperationRequirements';
@@ -709,6 +713,7 @@ function buildOperationCandidates({
     farms,
     issues,
     operationDefinitions,
+    plantSorts,
     referenceDate,
     source,
     userId,
@@ -717,6 +722,7 @@ function buildOperationCandidates({
     farms: FarmTodayFarmInput[];
     issues: Set<FarmTodayDataIssue>;
     operationDefinitions: FarmTodaySource<EntityStandardized[]>;
+    plantSorts: FarmTodaySource<EntityStandardized[]>;
     referenceDate: Date;
     source: FarmTodayOperationsSourceData;
     userId: string;
@@ -755,6 +761,12 @@ function buildOperationCandidates({
                       definition.id,
                       definition,
                   ]),
+              )
+            : new Map<number, EntityStandardized>();
+    const plantSortById =
+        plantSorts.status === 'ready'
+            ? new Map(
+                  plantSorts.data.map((plantSort) => [plantSort.id, plantSort]),
               )
             : new Map<number, EntityStandardized>();
     const tasks: FarmTodayTask[] = [];
@@ -800,6 +812,18 @@ function buildOperationCandidates({
         const raisedBedField = raisedBed?.fields.find(
             (field) => field.id === operation.raisedBedFieldId,
         );
+        const plantSort = raisedBedField?.plantSortId
+            ? plantSortById.get(raisedBedField.plantSortId)
+            : undefined;
+        if (
+            plantSorts.status === 'ready' &&
+            operation.entityId === SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID &&
+            raisedBedField?.sowingLocation === 'greenhouse' &&
+            raisedBedField.plantSortId &&
+            !plantSort
+        ) {
+            issues.add('plantSortMetadataMissing');
+        }
         let location: FarmTodayTaskLocation;
         if (raisedBed) {
             location = getRaisedBedLocation({
@@ -832,6 +856,11 @@ function buildOperationCandidates({
             };
         }
 
+        const operationLabel =
+            operationDefinition?.information?.label ??
+            operationDefinition?.information?.name ??
+            `Radnja #${operation.entityId}`;
+
         tasks.push({
             ...buildTaskTiming(state, operation.scheduledDate, referenceDate),
             actionTarget: getOperationActionTarget(operation),
@@ -851,9 +880,12 @@ function buildOperationCandidates({
             key: `operation:${operation.id}`,
             kind: 'operation',
             label:
-                operationDefinition?.information?.label ??
-                operationDefinition?.information?.name ??
-                `Radnja #${operation.entityId}`,
+                buildGreenhouseTransplantingOperationLabel({
+                    operationEntityId: operation.entityId,
+                    operationLabel,
+                    plantSort,
+                    sowingLocation: raisedBedField?.sowingLocation,
+                }) ?? operationLabel,
             location,
             occurredAt: toIsoString(
                 state === 'blocked'
@@ -1097,6 +1129,7 @@ export function composeFarmTodayData({
                   farms: farms.data,
                   issues,
                   operationDefinitions,
+                  plantSorts,
                   referenceDate,
                   source: operations.data,
                   userId,

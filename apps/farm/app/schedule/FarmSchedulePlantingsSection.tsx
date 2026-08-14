@@ -1,4 +1,3 @@
-import { findCanonicalLegacyPlantingForTask } from '@gredice/js/plants';
 import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
@@ -19,6 +18,7 @@ import type {
 import {
     buildFarmSchedulePlantingLabel,
     buildFarmScheduleSelectedPlantingLabel,
+    getRecommendedPlantCountPerField,
 } from './schedulePlantingPresentation';
 import {
     compareScheduleDates,
@@ -49,15 +49,14 @@ interface FarmSchedulePlantingsSectionProps {
 function buildFieldLabel(
     field: FarmRaisedBedField,
     plantSortById: Map<number, EntityStandardized>,
-    hasCanonicalLegacyPlanting: boolean,
 ) {
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
 
     return buildFarmSchedulePlantingLabel({
-        hasCanonicalLegacyPlanting,
         plantName: sort?.information?.name,
+        recommendedPlantCount: getRecommendedPlantCountPerField(sort),
         sowingLocation: field.sowingLocation,
     });
 }
@@ -113,21 +112,11 @@ export function FarmSchedulePlantingsSection({
                             ),
                         )
                         .map((field) => {
-                            const raisedBed = groupedRaisedBeds.find(
-                                (candidate) =>
-                                    candidate.id === field.raisedBedId,
-                            );
                             const plantingIdentity =
                                 getSchedulePlantingTaskIdentity(field);
                             // Keep every legacy field task at its existing
                             // mutation boundary. Selected planting tasks are
                             // rendered separately and never synthesized here.
-                            const canonicalLegacyPlanting = raisedBed
-                                ? findCanonicalLegacyPlantingForTask(
-                                      raisedBed.plantings,
-                                      plantingIdentity,
-                                  )
-                                : null;
                             const physicalPositionIndex =
                                 getFieldPhysicalPositionIndex(
                                     field,
@@ -138,11 +127,7 @@ export function FarmSchedulePlantingsSection({
                                 ...field,
                                 plantingIdentity,
                                 physicalPositionIndex,
-                                label: buildFieldLabel(
-                                    field,
-                                    plantSortById,
-                                    canonicalLegacyPlanting !== null,
-                                ),
+                                label: buildFieldLabel(field, plantSortById),
                             };
                         })
                         .sort((left, right) => {

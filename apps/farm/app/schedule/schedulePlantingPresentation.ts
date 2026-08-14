@@ -1,20 +1,44 @@
+import { calculatePlantsPerField } from '@gredice/js/plants';
+import type { EntityStandardized } from '@gredice/storage';
+
+export function getRecommendedPlantCountPerField(
+    plantSort: EntityStandardized | null | undefined,
+) {
+    const seedingDistance =
+        plantSort?.information?.plant?.attributes?.seedingDistance;
+
+    return typeof seedingDistance === 'number'
+        ? calculatePlantsPerField(
+              seedingDistance,
+              plantSort?.information?.name ??
+                  `Plant sort #${plantSort?.id.toString() ?? 'unknown'}`,
+          ).totalPlants
+        : null;
+}
+
 export function buildFarmSchedulePlantingLabel({
-    hasCanonicalLegacyPlanting,
     plantName,
+    recommendedPlantCount,
     sowingLocation,
 }: {
-    hasCanonicalLegacyPlanting: boolean;
     plantName?: string | null;
+    recommendedPlantCount?: number | null;
     sowingLocation?: string | null;
 }) {
     const taskName =
         sowingLocation === 'greenhouse' ? 'Sijanje u stakleniku' : 'Sijanje';
     const resolvedPlantName = plantName?.trim() || 'Nepoznato';
-    const layoutNote = hasCanonicalLegacyPlanting
-        ? 'naslijeđeni raspored nije zabilježen'
+    const validRecommendedPlantCount =
+        typeof recommendedPlantCount === 'number' &&
+        Number.isSafeInteger(recommendedPlantCount) &&
+        recommendedPlantCount > 0
+            ? recommendedPlantCount
+            : null;
+    const plantCountNote = validRecommendedPlantCount
+        ? `preporučeno ${validRecommendedPlantCount.toString()} ${getPlantCountNoun(validRecommendedPlantCount)} po polju`
         : 'broj biljaka nije zabilježen';
 
-    return `${taskName}: ${resolvedPlantName} · ${layoutNote}`;
+    return `${taskName}: ${resolvedPlantName} · ${plantCountNote}`;
 }
 
 export function buildFarmScheduleSelectedPlantingLabel({
