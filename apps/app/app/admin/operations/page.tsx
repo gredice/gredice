@@ -11,7 +11,7 @@ import { AdminPageHeader } from '../../../components/admin/navigation';
 import { OperationsList } from '../../../components/operations/OperationsList';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
-import { BulkOperationCreateModal } from './BulkOperationCreateModal';
+import { OperationCreateModal } from './OperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
 import { activeSelectedPlantingFieldIds } from './operationScope';
 import {
@@ -22,7 +22,6 @@ import {
     normalizeOperationsListRecordType,
     parseOperationsListOperationEntityIds,
 } from './operationsListQuery';
-import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,20 +101,12 @@ export default async function OperationsPage({
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <div className="flex gap-2">
-                        <SingleOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={operationTargetRaisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                        <BulkOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={operationTargetRaisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                    </div>
+                    <OperationCreateModal
+                        farms={activeFarms}
+                        gardens={gardens}
+                        raisedBeds={operationTargetRaisedBeds}
+                        assignableUsers={assignableUsers}
+                    />
                 }
             />
             <OperationsFilters
