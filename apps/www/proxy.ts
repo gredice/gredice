@@ -20,6 +20,7 @@ import {
 } from './src/canonicalQueryRedirects';
 import { canonicalLegacyNewsPathname } from './src/newsPaths';
 import { toPageAlias } from './src/pageAliases';
+import { canonicalLegacyPlantSortPathname } from './src/plantSortPaths';
 
 const postHogApiKey =
     process.env.NODE_ENV === 'development'
@@ -65,7 +66,17 @@ function getCanonicalPathname(pathname: string): string | null {
         if (!plantAlias || !sortAlias) {
             return null;
         }
-        return ['', 'biljke', plantAlias, 'sorte', sortAlias].join('/');
+        const normalizedPathname = [
+            '',
+            'biljke',
+            plantAlias,
+            'sorte',
+            sortAlias,
+        ].join('/');
+        return (
+            canonicalLegacyPlantSortPathname(normalizedPathname) ??
+            normalizedPathname
+        );
     }
 
     if (segments.length === 2 && segments[0] === 'radnje') {

@@ -14,6 +14,129 @@ import {
     canonicalLegacyNewsQueryPath,
     canonicalPlantArchiveQueryPath,
 } from '../src/canonicalQueryRedirects.ts';
+import { matchesPageAlias } from '../src/pageAliases.ts';
+import { canonicalLegacyPlantSortPathname } from '../src/plantSortPaths.ts';
+
+const legacyPlantSortRedirects = [
+    [
+        '/biljke/grasak/sorte/grasak-deliket',
+        '/biljke/grasak/sorte/grasak-delikett',
+    ],
+    [
+        '/biljke/grah/sorte/grah-mahunar-zeleni-niski-starozagorski',
+        '/biljke/mahuna/sorte/grah-mahunar-zeleni-niski-starozagorski',
+    ],
+    [
+        '/biljke/mahuna/sorte/grah-zeleni-niski-starozagorski',
+        '/biljke/mahuna/sorte/grah-mahunar-zeleni-niski-starozagorski',
+    ],
+    [
+        '/biljke/rotkvica/sorte/rotkvica-schwarzer-winter',
+        '/biljke/rotkvica/sorte/rotkvica-runder-schwarzer-winter',
+    ],
+    [
+        '/biljke/bosiljak/sorte/bisiljak-italiano-classico',
+        '/biljke/bosiljak/sorte/bosiljak-italiano-classico',
+    ],
+    [
+        '/biljke/blitva/sorte/blitva-bright-lighs',
+        '/biljke/blitva/sorte/blitva-bright-lights',
+    ],
+    [
+        '/biljke/dinja/sorte/dinja-melona-ananas',
+        '/biljke/dinja/sorte/dinja-ananas',
+    ],
+    [
+        '/biljke/rajcica/sorte/rajcica-scatolone-2',
+        '/biljke/rajcica/sorte/rajcica-scatolone',
+    ],
+    [
+        '/biljke/salata/sorte/salata-puterica-zimska',
+        '/biljke/salata/sorte/salata-puterica-zimska-rjavka',
+    ],
+    [
+        '/biljke/paprika/sorte/paprika-californian-wonder',
+        '/biljke/paprika/sorte/paprika-california-wonder',
+    ],
+    [
+        '/biljke/luk/sorte/luk-blanca-barletta',
+        '/biljke/luk/sorte/luk-bianca-di-barletta',
+    ],
+    [
+        '/biljke/rotkva/sorte/rotkva-crna-zimska-nero-tondo-dinverno',
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-d-inverno',
+    ],
+    [
+        '/biljke/mahuna/sorte/grah-mahunar-meraviglia-di-veneyia-a-grano-nero',
+        '/biljke/mahuna/sorte/grah-mahunar-meraviglia-di-venezia-a-grano-nero',
+    ],
+    [
+        '/biljke/matovilac/sorte/matovilac-favor-f1',
+        '/biljke/matovilac/sorte/matovilac-favor',
+    ],
+    [
+        '/biljke/grah/sorte/grah-borloto-lingua-di-fuoco-2',
+        '/biljke/grah/sorte/grah-borlotto-lingua-di-fuoco-2',
+    ],
+    [
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-dinverno',
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-d-inverno',
+    ],
+    [
+        '/biljke/persin/sorte/persin-hablange',
+        '/biljke/persin/sorte/persin-berlinski-poludugi',
+    ],
+] as const;
+
+test('legacy plant-sort paths redirect to current canonical paths', () => {
+    for (const [
+        legacyPathname,
+        canonicalPathname,
+    ] of legacyPlantSortRedirects) {
+        assert.equal(
+            canonicalLegacyPlantSortPathname(legacyPathname),
+            canonicalPathname,
+            legacyPathname,
+        );
+    }
+});
+
+test('unknown plant-sort aliases are not redirected', () => {
+    assert.equal(
+        canonicalLegacyPlantSortPathname(
+            '/biljke/rajcica/sorte/nepostojeca-sorta',
+        ),
+        null,
+    );
+});
+
+test('page aliases match authoritative entity slugs', () => {
+    assert.equal(
+        matchesPageAlias(
+            'Promijenjeni naziv',
+            'stabilni-alias',
+            'stabilni-alias',
+        ),
+        true,
+    );
+    assert.equal(
+        matchesPageAlias('Promijenjeni naziv', 'nepostojeci', 'stabilni-alias'),
+        false,
+    );
+});
+
+test('missing plant-sort routes use a quiet not-found response', () => {
+    const source = readFileSync(
+        new URL(
+            '../app/biljke/[alias]/sorte/[sortAlias]/page.tsx',
+            import.meta.url,
+        ),
+        'utf8',
+    );
+
+    assert.doesNotMatch(source, /Base plant or sort not found/u);
+    assert.doesNotMatch(source, /Invalid parameters for plant sort page/u);
+});
 
 test('legacy root news filters redirect to their current archives', () => {
     assert.equal(
