@@ -240,6 +240,33 @@ export function getOutletGardenDisplayUnits(
     );
 }
 
+function getOutletGardenSlotUnits(offers: readonly OutletGardenLayoutOffer[]) {
+    const displayUnits = getOutletGardenDisplayUnits(offers);
+    const displayedOfferIds = new Set(
+        displayUnits.map((display) => display.id),
+    );
+    const unavailableUnits = Array.from(
+        new Map(offers.map((offer) => [offer.id, offer])).values(),
+    )
+        .filter((offer) => !displayedOfferIds.has(offer.id))
+        .filter(
+            (offer) =>
+                !Number.isSafeInteger(offer.remainingQuantity) ||
+                offer.remainingQuantity <= 0,
+        )
+        .map((offer) => ({
+            ...offer,
+            blockId: outletOfferBlockId(offer.id),
+            unitIndex: 0,
+        }));
+
+    return [...displayUnits, ...unavailableUnits].sort(
+        (left, right) =>
+            compareOutletGardenOffers(left, right) ||
+            left.unitIndex - right.unitIndex,
+    );
+}
+
 export function isOutletGardenDisplayLimited(
     offers: readonly OutletGardenLayoutOffer[],
 ) {
@@ -283,10 +310,10 @@ export function reconcileOutletGardenSlots(
     previousAssignments: OutletGardenSlotAssignments,
     offers: readonly OutletGardenLayoutOffer[],
 ) {
-    const displays = getOutletGardenDisplayUnits(offers);
-    const liveBlockIds = new Set(displays.map((display) => display.blockId));
+    const displays = getOutletGardenSlotUnits(offers);
+    const sceneBlockIds = new Set(displays.map((display) => display.blockId));
     const previousTombstoneIds = Array.from(previousAssignments.keys()).filter(
-        (blockId) => !liveBlockIds.has(blockId),
+        (blockId) => !sceneBlockIds.has(blockId),
     );
     const excessTombstoneCount = Math.max(
         0,
@@ -440,7 +467,7 @@ export function reconcileOutletGardenSlots(
     }
 
     const currentTombstoneIds = Array.from(assignments.keys()).filter(
-        (blockId) => !liveBlockIds.has(blockId),
+        (blockId) => !sceneBlockIds.has(blockId),
     );
     const tombstonesToPrune = Math.max(
         0,
@@ -613,11 +640,7 @@ export function getOutletGardenProductSignPlacements(
     offers: readonly OutletGardenLayoutOffer[],
     assignments: OutletGardenSlotAssignments,
 ) {
-    const livePlantSortIds = new Set(
-        getOutletGardenDisplayUnits(offers).map(
-            (display) => display.plantSortId,
-        ),
-    );
+    const scenePlantSortIds = new Set(offers.map((offer) => offer.plantSortId));
     const anchorByPlantSortId = new Map<
         number,
         { assignment: OutletGardenSlotAssignment; blockId: string }
@@ -626,7 +649,7 @@ export function getOutletGardenProductSignPlacements(
         Math.round(value * 100) / 100;
 
     for (const [blockId, assignment] of assignments) {
-        if (!livePlantSortIds.has(assignment.plantSortId)) {
+        if (!scenePlantSortIds.has(assignment.plantSortId)) {
             continue;
         }
 

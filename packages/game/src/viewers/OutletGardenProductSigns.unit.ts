@@ -39,7 +39,7 @@ function offer(
 }
 
 describe('getOutletGardenProductSignProducts', () => {
-    it('builds one stable sign per live plant sort', () => {
+    it('builds one stable sign per scene plant sort', () => {
         const products = getOutletGardenProductSignProducts([
             offer(302, 102),
             offer(301, 101),
@@ -49,10 +49,11 @@ describe('getOutletGardenProductSignProducts', () => {
 
         assert.deepEqual(
             products.map((product) => product.plantSortId),
-            [101, 102],
+            [101, 102, 103],
         );
         assert.equal(products[0]?.name, 'Sort 101');
         assert.equal(products[0]?.priceLabel, '2,49 €');
+        assert.equal(products[2]?.priceLabel, 'Rasprodano');
     });
 
     it('shows the minimum price when same-sort offers have different prices', () => {

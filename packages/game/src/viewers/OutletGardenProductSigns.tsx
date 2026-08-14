@@ -45,19 +45,16 @@ function firstNonEmptyImageUrl(urls: readonly (string | null)[]) {
 }
 
 /**
- * Builds stable product-sign content from live offers. A plant sort can have
- * more than one sowing-date offer, so its sign shows the lowest price when the
- * active offers do not all share one price.
+ * Builds stable product-sign content from scene offers. A plant sort can have
+ * more than one sowing-date offer, so its sign shows the lowest live price or
+ * a sold-out state when none of its offers have stock.
  */
 export function getOutletGardenProductSignProducts(
     offers: readonly OutletOfferData[],
 ) {
-    const liveOffers = offers
-        .filter((offer) => offer.remainingQuantity > 0)
-        .toSorted((left, right) => left.id - right.id);
     const offersByPlantSortId = new Map<number, OutletOfferData[]>();
 
-    for (const offer of liveOffers) {
+    for (const offer of offers.toSorted((left, right) => left.id - right.id)) {
         const sortOffers = offersByPlantSortId.get(offer.plantSort.id) ?? [];
         sortOffers.push(offer);
         offersByPlantSortId.set(offer.plantSort.id, sortOffers);
@@ -75,19 +72,27 @@ export function getOutletGardenProductSignProducts(
         const offerImageUrl = firstNonEmptyImageUrl(
             sortOffers.flatMap((offer) => offer.imageUrls),
         );
-        const prices = sortOffers.map((offer) => offer.outletPrice);
-        const minimumPrice = Math.min(...prices);
+        const availableOffers = sortOffers.filter(
+            (offer) => offer.remainingQuantity > 0,
+        );
+        const prices = availableOffers.map((offer) => offer.outletPrice);
+        const minimumPrice = prices.length ? Math.min(...prices) : null;
         const allPricesEqual = prices.every((price) => price === minimumPrice);
         const formattedPrice =
-            outletProductSignCurrencyFormatter.format(minimumPrice);
+            minimumPrice !== null
+                ? outletProductSignCurrencyFormatter.format(minimumPrice)
+                : null;
 
         return {
             imageUrl: plantSortImageUrl ?? offerImageUrl,
             name: firstOffer.plantSort.name,
             plantSortId,
-            priceLabel: allPricesEqual
-                ? formattedPrice
-                : `od ${formattedPrice}`,
+            priceLabel:
+                formattedPrice === null
+                    ? 'Rasprodano'
+                    : allPricesEqual
+                      ? formattedPrice
+                      : `od ${formattedPrice}`,
         } satisfies OutletGardenProductSignProduct;
     })
         .filter(

@@ -183,6 +183,41 @@ describe('getOutletGardenDisplayUnits', () => {
 });
 
 describe('reconcileOutletGardenSlots', () => {
+    it('keeps tables and a product sign for an unavailable sort without adding pots', () => {
+        const unavailableOffer = {
+            id: 169,
+            plantId: 16,
+            plantSortId: 161,
+            remainingQuantity: 0,
+        };
+        const assignments = reconcileOutletGardenSlots(new Map(), [
+            unavailableOffer,
+        ]);
+        const stacks = buildOutletGardenStacks([unavailableOffer], assignments);
+
+        assert.equal(assignedSlot(assignments, unavailableOffer.id), 0);
+        assert.equal(
+            stacks
+                .flatMap((stack) => stack.blocks)
+                .filter((block) => block.name === 'OutletDisplayTable').length,
+            2,
+        );
+        assert.equal(
+            stacks
+                .flatMap((stack) => stack.blocks)
+                .filter((block) => outletOfferIdFromBlockId(block.id) !== null)
+                .length,
+            0,
+        );
+        assert.deepEqual(
+            getOutletGardenProductSignPlacements(
+                [unavailableOffer],
+                assignments,
+            ).map((sign) => sign.plantSortId),
+            [unavailableOffer.plantSortId],
+        );
+    });
+
     it('updates live assignment metadata without moving its display slot', () => {
         const originalOffer = {
             id: 170,

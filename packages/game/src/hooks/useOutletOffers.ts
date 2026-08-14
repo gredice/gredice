@@ -27,10 +27,13 @@ export type OutletOfferData = {
     url: string;
 };
 
-async function getOutletOffers() {
-    const response = await clientPublic().api.outlet.offers.$get(undefined, {
-        init: { cache: 'no-store' },
-    });
+async function getOutletOffers(includeSoldOut: boolean) {
+    const response = await clientPublic().api.outlet.offers.$get(
+        includeSoldOut ? { query: { includeSoldOut: 'true' } } : { query: {} },
+        {
+            init: { cache: 'no-store' },
+        },
+    );
     if (response.status !== 200) {
         throw new Error('Failed to fetch outlet offers');
     }
@@ -42,10 +45,16 @@ async function getOutletOffers() {
 export const useOutletOffersQueryKey = ['outlet-offers'];
 const outletOffersRefetchIntervalMs = 15 * 1000;
 
-export function useOutletOffers() {
+export function useOutletOffers({
+    includeSoldOut = false,
+}: {
+    includeSoldOut?: boolean;
+} = {}) {
     return useQuery({
-        queryKey: useOutletOffersQueryKey,
-        queryFn: getOutletOffers,
+        queryKey: includeSoldOut
+            ? [...useOutletOffersQueryKey, 'including-sold-out']
+            : useOutletOffersQueryKey,
+        queryFn: () => getOutletOffers(includeSoldOut),
         staleTime: 0,
         refetchOnMount: 'always',
         refetchInterval: outletOffersRefetchIntervalMs,

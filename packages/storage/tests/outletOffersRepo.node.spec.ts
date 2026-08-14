@@ -286,6 +286,16 @@ test('reserveOutletOffer creates a held reservation and blocks overselling', asy
     const offer = await getOutletOffer(offerId, now);
     assert.equal(offer?.remainingQuantity, 0);
     assert.equal(offer?.reservedQuantity, 1);
+    const availableOffers = await getOutletOffers({ now });
+    assert.equal(
+        availableOffers.some((availableOffer) => availableOffer.id === offerId),
+        false,
+    );
+    const sceneOffers = await getOutletOffers({ includeSoldOut: true, now });
+    const soldOutSceneOffer = sceneOffers.find(
+        (sceneOffer) => sceneOffer.id === offerId,
+    );
+    assert.equal(soldOutSceneOffer?.remainingQuantity, 0);
 
     const otherAccountId = await createTestAccount();
     const otherCartItem = await createCartItem(otherAccountId, plantSortId);
