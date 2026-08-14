@@ -328,11 +328,13 @@ export async function getOutletOfferReservationsForCartItems(
 }
 
 export async function getOutletOffers({
+    includeSoldOut = false,
     includeUnavailable = false,
     statuses,
     now = new Date(),
     db = storage(),
 }: {
+    includeSoldOut?: boolean;
     includeUnavailable?: boolean;
     statuses?: OutletOfferStatus[];
     now?: Date;
@@ -382,7 +384,7 @@ export async function getOutletOffers({
         ),
     );
 
-    return includeUnavailable || statuses?.length
+    return includeUnavailable || includeSoldOut || statuses?.length
         ? offersWithAvailability
         : offersWithAvailability.filter((offer) => offer.remainingQuantity > 0);
 }

@@ -10,6 +10,7 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { publicSecurity } from '../../../lib/docs/security';
 import { setCacheControl } from '../../../lib/http/cacheControl';
+import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 
 const outletCacheControl = {
     visibility: 'public',
@@ -17,6 +18,10 @@ const outletCacheControl = {
     sharedMaxAgeSeconds: 0,
     mustRevalidate: true,
 } as const;
+
+const outletOffersQuerySchema = z.object({
+    includeSoldOut: queryBooleanSchema.optional().default(false),
+});
 
 function wwwOrigin() {
     return (
@@ -97,13 +102,16 @@ const app = new Hono()
     .get(
         '/offers',
         describeRoute({
-            description: 'List active discounted Outlet seedling offers.',
+            description:
+                'List active discounted Outlet seedling offers, optionally including sold-out offers for the garden display.',
             security: publicSecurity,
             tags: ['Outlet'],
         }),
+        zValidator('query', outletOffersQuerySchema),
         async (context) => {
+            const { includeSoldOut } = context.req.valid('query');
             const [offers, plantSortsById] = await Promise.all([
-                getOutletOffers(),
+                getOutletOffers({ includeSoldOut }),
                 getPlantSortsById(),
             ]);
 

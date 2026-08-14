@@ -67,6 +67,21 @@ const outletOffers = [
     },
 ];
 
+const soldOutOutletOffer = {
+    ...outletOffers[0],
+    id: 303,
+    plantSort: {
+        ...outletOffers[0].plantSort,
+        id: 103,
+        name: 'Bosiljak Genovese',
+        plant: { id: 3, name: 'Bosiljak' },
+    },
+    quantity: 2,
+    remainingQuantity: 0,
+    reservedQuantity: 0,
+    soldQuantity: 2,
+};
+
 const outletTargetGarden = {
     backgroundPalette: 'current',
     createdAt: '2026-07-01T00:00:00.000Z',
@@ -168,7 +183,7 @@ async function mockOutletGardenApi(page: Page) {
 
     await page.route('**/api/gredice/**', async (route) => {
         const request = route.request();
-        const { pathname } = new URL(request.url());
+        const { pathname, searchParams } = new URL(request.url());
 
         if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
             mutationRequests.push(`${request.method()} ${pathname}`);
@@ -185,8 +200,16 @@ async function mockOutletGardenApi(page: Page) {
 
         if (pathname.endsWith('/api/outlet/offers')) {
             outletOfferRequestCount += 1;
+            const includeSoldOut =
+                searchParams.get('includeSoldOut') === 'true';
             await route.fulfill({
-                body: JSON.stringify({ items: currentOffers }),
+                body: JSON.stringify({
+                    items: includeSoldOut
+                        ? currentOffers
+                        : currentOffers.filter(
+                              (offer) => offer.remainingQuantity > 0,
+                          ),
+                }),
                 contentType: 'application/json',
                 status: 200,
             });
@@ -568,6 +591,7 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     }
     await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
+    outletApi.setOffers([...outletOffers, soldOutOutletOffer]);
 
     await page.goto('/outlet');
 
@@ -579,7 +603,7 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(page.locator('canvas')).toBeVisible();
     await expectOutletCanvasToFillScene(page);
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
-    await expect(productSigns).toHaveCount(2);
+    await expect(productSigns).toHaveCount(3);
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-scale',
         '0.9',
@@ -613,6 +637,11 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         tomatoSortImageUrl,
     );
     await expect(tomatoSign).toHaveCSS('pointer-events', 'none');
+    const soldOutSign = productSigns.filter({ hasText: 'Bosiljak Genovese' });
+    await expect(soldOutSign).toHaveAttribute(
+        'data-outlet-garden-product-sign-price',
+        'Rasprodano',
+    );
     await expect(
         page.locator('[data-controls-tooltip-hud="open"]'),
     ).toBeVisible();

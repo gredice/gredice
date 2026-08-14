@@ -94,11 +94,15 @@ export function OutletGardenViewer({
 }: OutletGardenViewerProps = {}) {
     const router = useRouter();
     const {
-        data: offers = [],
+        data: sceneOffers = [],
         isError,
         isLoading,
         refetch,
-    } = useOutletOffers();
+    } = useOutletOffers({ includeSoldOut: true });
+    const offers = useMemo(
+        () => sceneOffers.filter((offer) => offer.remainingQuantity > 0),
+        [sceneOffers],
+    );
     const [selectedOfferId, setSelectedOfferId] = useQueryState(
         'ponuda',
         parseAsInteger,
@@ -151,7 +155,7 @@ export function OutletGardenViewer({
         () =>
             Array.from(
                 new Map(
-                    offers.map((offer) => [
+                    sceneOffers.map((offer) => [
                         offer.id,
                         {
                             id: offer.id,
@@ -175,7 +179,7 @@ export function OutletGardenViewer({
                     ].join(':'),
                 )
                 .join(','),
-        [offers],
+        [sceneOffers],
     );
     const layoutOffers = useMemo(() => {
         if (layoutOffersKey.length === 0) {
@@ -237,7 +241,7 @@ export function OutletGardenViewer({
         reconciledSlotAssignments.has(display.blockId),
     );
     const sceneAvailable =
-        layoutReady && offers.length > 0 && sceneInitialView !== null;
+        layoutReady && sceneOffers.length > 0 && sceneInitialView !== null;
     const visibleAvatarView = sceneAvailable ? avatarView : 'overview';
     const avatarWalking = visibleAvatarView !== 'overview';
 
@@ -343,7 +347,7 @@ export function OutletGardenViewer({
             sceneInitialView ||
             !initialSceneViewport ||
             !layoutReady ||
-            offers.length === 0
+            sceneOffers.length === 0
         ) {
             return;
         }
@@ -360,7 +364,7 @@ export function OutletGardenViewer({
     }, [
         initialSceneViewport,
         layoutReady,
-        offers.length,
+        sceneOffers.length,
         outletGarden.stacks,
         sceneInitialView,
     ]);
@@ -567,12 +571,12 @@ export function OutletGardenViewer({
                             <>
                                 <OutletGardenSeedlingMarkers
                                     highlightedOfferId={hoveredOfferId}
-                                    offers={offers}
+                                    offers={sceneOffers}
                                     stacks={outletGarden.stacks}
                                 />
                                 <Suspense fallback={null}>
                                     <OutletGardenProductSigns
-                                        offers={offers}
+                                        offers={sceneOffers}
                                         placements={productSignPlacements}
                                         stacks={outletGarden.stacks}
                                     />
@@ -591,7 +595,7 @@ export function OutletGardenViewer({
                         label={
                             isError
                                 ? 'Outlet vrt čeka ponovni pokušaj učitavanja.'
-                                : offers.length === 0 && !isLoading
+                                : sceneOffers.length === 0 && !isLoading
                                   ? 'Nove sadnice uskoro stižu u Outlet vrt.'
                                   : 'Teleportiramo te u Outlet vrt...'
                         }
