@@ -64,6 +64,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     instances: RaisedBedGeneratedPlantBatchInstance[];
     leafGeometryDetail?: PlantLeafGeometryDetail;
     lodLevel?: PlantLodLevel;
+    showFlowers?: boolean;
     showProduce?: boolean;
     taskPriority?: GeneratedPlantTaskPriority;
 }
@@ -185,6 +186,7 @@ export function RaisedBedGeneratedPlantBatch({
     instances,
     leafGeometryDetail = 'full',
     lodLevel = 'near',
+    showFlowers = true,
     showProduce = true,
     taskPriority = 'normal',
 }: RaisedBedGeneratedPlantBatchProps) {
@@ -217,6 +219,7 @@ export function RaisedBedGeneratedPlantBatch({
                     generation: instance.generation,
                     plantDefinition: definition,
                     seed: instance.seed,
+                    showFlowers,
                     showProduce,
                 }),
             })),
@@ -226,6 +229,7 @@ export function RaisedBedGeneratedPlantBatch({
             fruitGrowth,
             instances,
             instanceVariations,
+            showFlowers,
             showProduce,
         ],
     );
@@ -251,6 +255,7 @@ export function RaisedBedGeneratedPlantBatch({
                 flowerGrowth,
                 fruitGrowth,
                 generation,
+                showFlowers,
                 showProduce,
                 variant,
             });
@@ -281,6 +286,7 @@ export function RaisedBedGeneratedPlantBatch({
                     plantDefinition: definition,
                     rootTransforms: [rootTransform],
                     seed,
+                    showFlowers,
                     showProduce,
                     templateKey,
                 },
@@ -301,6 +307,7 @@ export function RaisedBedGeneratedPlantBatch({
         instances,
         instanceVariations,
         renderDetailedGeometry,
+        showFlowers,
         showProduce,
     ]);
     const renderChunkSignature = useMemo(

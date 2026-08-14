@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { MAX_PLANT_GENERATION } from '../../generators/plant/lib/plant-definitions';
+import {
+    MAX_PLANT_GENERATION,
+    plantTypes,
+} from '../../generators/plant/lib/plant-definitions';
 import {
     type AdvancedSowingWorldPosition,
     buildAdvancedSowingPlantVisualLayout,
     getSelectedPlantingVisualGeneration,
+    resolveAdvancedSowingPlantVisualStage,
 } from './advancedSowingPlantVisualLayout';
 
 describe('Advanced Sowing generated-plant layout', () => {
@@ -90,5 +94,26 @@ describe('Advanced Sowing generated-plant layout', () => {
             MAX_PLANT_GENERATION,
         );
         assert.equal(getSelectedPlantingVisualGeneration('removed'), null);
+    });
+
+    it('applies lifecycle status to selected root-crop visuals', () => {
+        const sprouted = resolveAdvancedSowingPlantVisualStage({
+            lifecycleStatus: 'sprouted',
+            plantDefinition: plantTypes.carrot,
+        });
+        const harvested = resolveAdvancedSowingPlantVisualStage({
+            lifecycleStatus: 'harvested',
+            plantDefinition: plantTypes.carrot,
+        });
+
+        assert.ok(sprouted);
+        assert.equal(sprouted.key, 'sprouted');
+        assert.equal(sprouted.showProduce, false);
+        assert.ok(sprouted.generation <= MAX_PLANT_GENERATION * 0.25);
+
+        assert.ok(harvested);
+        assert.equal(harvested.key, 'harvested');
+        assert.equal(harvested.showProduce, false);
+        assert.ok(harvested.generation < MAX_PLANT_GENERATION * 0.85);
     });
 });

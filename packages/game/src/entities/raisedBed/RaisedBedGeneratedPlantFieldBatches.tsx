@@ -61,7 +61,7 @@ import {
 } from '../../utils/raisedBedOrientation';
 import {
     buildAdvancedSowingPlantVisualLayout,
-    getSelectedPlantingVisualGeneration,
+    resolveAdvancedSowingPlantVisualStage,
 } from './advancedSowingPlantVisualLayout';
 import { reconcileGeneratedPlantBatches } from './generatedPlantBatchReconciliation';
 import {
@@ -89,7 +89,11 @@ import {
 } from './RaisedBedGeneratedPlantClusterBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
-import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
+import {
+    type RaisedBedPlantVisualStage,
+    resolveRaisedBedPlantVisualStage,
+    shouldRenderRaisedBedPlant,
+} from './raisedBedPlantVisualStatus';
 import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
@@ -114,6 +118,7 @@ type GeneratedPlantField = {
     position: readonly [number, number, number];
     raisedBedId: number;
     renderVariant: string;
+    visualStage: RaisedBedPlantVisualStage;
 };
 
 type GeneratedPlantBatch = {
@@ -123,6 +128,7 @@ type GeneratedPlantBatch = {
     lodLevel: 'near';
     signature: string;
     taskPriority: GeneratedPlantTaskPriority;
+    visualStage: RaisedBedPlantVisualStage;
 };
 
 type GeneratedPlantClusterBatch = {
@@ -824,6 +830,11 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     resolvedPlantPreset,
                     supported,
                 );
+                const visualStage = resolveRaisedBedPlantVisualStage({
+                    generation: plantGeneration,
+                    plantDefinition,
+                    plantStatus: field.plantStatus,
+                });
                 const fieldPosition = getFieldPosition({
                     blockIndex,
                     blockPosition: block.position,
@@ -845,7 +856,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         safePlantsPerRow * seedLayout.offset;
 
                     instances.push({
-                        generation: plantGeneration,
+                        generation: visualStage.generation,
                         fieldKey: getFieldRenderKey(block.blockId, field),
                         position: [
                             fieldPosition[0] + slotX,
@@ -866,7 +877,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances,
                     position: fieldPosition,
                     raisedBedId: raisedBed.id,
-                    renderVariant: `${resolvedPlantPreset.plantType}:${supported ? 'supported' : 'free'}`,
+                    renderVariant: `${resolvedPlantPreset.plantType}:${supported ? 'supported' : 'free'}:${visualStage.key}`,
+                    visualStage,
                 });
             }
         }
@@ -921,12 +933,6 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 blockIds.length * 9,
             );
             for (const planting of selectedPlantings) {
-                const generation = getSelectedPlantingVisualGeneration(
-                    planting.lifecycleStatus,
-                );
-                if (generation === null) {
-                    continue;
-                }
                 const layout = buildAdvancedSowingPlantVisualLayout({
                     fieldPositionByIndex,
                     planting,
@@ -964,6 +970,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     resolvedPlantPreset,
                     false,
                 );
+                const visualStage = resolveAdvancedSowingPlantVisualStage({
+                    lifecycleStatus: planting.lifecycleStatus,
+                    plantDefinition,
+                });
+                if (!visualStage) {
+                    continue;
+                }
                 const fieldKey = `advanced-sowing:${raisedBed.id.toString()}:${planting.id.toString()}`;
                 const instances = layout.instancePositions.map(
                     (
@@ -971,7 +984,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         index,
                     ): RaisedBedGeneratedPlantBatchInstance => ({
                         fieldKey,
-                        generation,
+                        generation: visualStage.generation,
                         position,
                         raisedBedId: raisedBed.id,
                         scale: plantInstanceScale,
@@ -989,7 +1002,8 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances,
                     position: layout.centroid,
                     raisedBedId: raisedBed.id,
-                    renderVariant: `${resolvedPlantPreset.plantType}:advanced-selected`,
+                    renderVariant: `${resolvedPlantPreset.plantType}:advanced-selected:${visualStage.key}`,
+                    visualStage,
                 });
             }
         }
@@ -1143,8 +1157,12 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 const clusterField = {
                     definition: field.definition,
                     fieldKey: field.fieldKey,
+                    flowerGrowth: field.visualStage.flowerGrowth,
+                    fruitGrowth: field.visualStage.fruitGrowth,
                     instances: field.instances,
                     renderVariant: field.renderVariant,
+                    showFlowers: field.visualStage.showFlowers,
+                    showProduce: field.visualStage.showProduce,
                 } satisfies RaisedBedGeneratedPlantClusterField;
 
                 if (clusterBatch) {
@@ -1180,6 +1198,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         : focusActive
                           ? 'background'
                           : 'normal',
+                    visualStage: field.visualStage,
                 };
                 detailedBatchMap.set(batchKey, batch);
             }
@@ -1208,6 +1227,11 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     batch.lodLevel,
                     batch.definition.name,
                     batch.taskPriority,
+                    batch.visualStage.key,
+                    batch.visualStage.flowerGrowth,
+                    batch.visualStage.fruitGrowth,
+                    batch.visualStage.showFlowers,
+                    batch.visualStage.showProduce,
                     ...batch.instances.map(getGeneratedPlantInstanceSignature),
                 ].join('|'),
             })),
@@ -1342,6 +1366,10 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances={batch.instances}
                     leafGeometryDetail={leafGeometryDetail}
                     lodLevel={batch.lodLevel}
+                    flowerGrowth={batch.visualStage.flowerGrowth}
+                    fruitGrowth={batch.visualStage.fruitGrowth}
+                    showFlowers={batch.visualStage.showFlowers}
+                    showProduce={batch.visualStage.showProduce}
                     taskPriority={batch.taskPriority}
                 />
             ))}

@@ -1,5 +1,9 @@
-import { MAX_PLANT_GENERATION } from '../../generators/plant/lib/plant-definitions';
+import {
+    MAX_PLANT_GENERATION,
+    type PlantDefinition,
+} from '../../generators/plant/lib/plant-definitions';
 import type { AdvancedSowingGardenPlantingVisual } from '../../hud/raisedBed/advancedSowingGardenVisuals';
+import { resolveRaisedBedPlantVisualStage } from './raisedBedPlantVisualStatus';
 
 export type AdvancedSowingWorldPosition = readonly [number, number, number];
 
@@ -32,6 +36,25 @@ export function getSelectedPlantingVisualGeneration(
     return typeof fraction === 'number'
         ? fraction * MAX_PLANT_GENERATION
         : null;
+}
+
+export function resolveAdvancedSowingPlantVisualStage({
+    lifecycleStatus,
+    plantDefinition,
+}: {
+    lifecycleStatus: string | null | undefined;
+    plantDefinition: PlantDefinition;
+}) {
+    const generation = getSelectedPlantingVisualGeneration(lifecycleStatus);
+    if (generation === null) {
+        return null;
+    }
+
+    return resolveRaisedBedPlantVisualStage({
+        generation,
+        plantDefinition,
+        plantStatus: lifecycleStatus,
+    });
 }
 
 /**
