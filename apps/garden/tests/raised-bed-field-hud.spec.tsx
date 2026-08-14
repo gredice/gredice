@@ -785,6 +785,34 @@ function daysFromNowIso(days: number): string {
 test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     test.use({ viewport: DESKTOP_VIEWPORT });
 
+    test('quick sowing heading keeps the card text color in dark mode', async ({
+        mount,
+        page,
+    }) => {
+        await page.evaluate(() =>
+            document.documentElement.classList.add('dark'),
+        );
+        await mount(
+            <RaisedBedFieldSuggestionsStory scenario={emptyScenario()} />,
+        );
+
+        const recommendations = page.locator(
+            '[data-quick-sowing-recommendations]',
+        );
+        const heading = page.getByText('Brzo sijanje', { exact: true });
+
+        await expect(heading).toBeVisible();
+        expect(
+            await heading.evaluate(
+                (element) => getComputedStyle(element).color,
+            ),
+        ).toBe(
+            await recommendations.evaluate(
+                (element) => getComputedStyle(element).color,
+            ),
+        );
+    });
+
     test('opens the plant details modal on the Dnevnik tab from a field deep link', async ({
         mount,
         page,
