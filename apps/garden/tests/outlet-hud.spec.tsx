@@ -96,7 +96,7 @@ test('outlet garden teleport stays hidden when its flag is disabled', async ({
 
     const dialog = page.getByRole('dialog', { name: 'Outlet sadnica' });
     await expect(
-        dialog.getByRole('link', { name: 'Uđi u 3D Outlet vrt' }),
+        dialog.getByRole('link', { name: 'Pogledaj dostupne sadnice' }),
     ).toHaveCount(0);
 });
 
@@ -113,7 +113,7 @@ test('outlet garden teleport preserves the selected offer when its flag is enabl
 
     const teleportLink = page
         .getByRole('dialog', { name: 'Outlet sadnica' })
-        .getByRole('link', { name: 'Uđi u 3D Outlet vrt' });
+        .getByRole('link', { name: 'Pogledaj dostupne sadnice' });
     await expect(teleportLink).toBeVisible();
     await expect(teleportLink).toHaveAttribute('href', '/outlet?ponuda=302');
 });

@@ -108,14 +108,12 @@ export type OutletGardenOfferBrowserStoryState =
     | 'ready';
 
 export function OutletGardenOfferBrowserStory({
-    displayLimited = false,
     commerceUnavailable = false,
     initialSelectedOfferId = null,
     selectionDriven = false,
     state = 'ready',
 }: {
     commerceUnavailable?: boolean;
-    displayLimited?: boolean;
     initialSelectedOfferId?: number | null;
     selectionDriven?: boolean;
     state?: OutletGardenOfferBrowserStoryState;
@@ -178,7 +176,6 @@ export function OutletGardenOfferBrowserStory({
                 <OutletGardenOfferBrowser
                     className="h-full w-full max-w-md"
                     commerce={commerce}
-                    displayLimited={displayLimited}
                     isError={state === 'error'}
                     isLoading={state === 'loading'}
                     offers={state === 'ready' ? outletOffers : []}

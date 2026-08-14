@@ -673,15 +673,15 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(canvas).toBeVisible();
 
     await page
-        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
         .click();
     const offerDialog = page.getByRole('dialog', {
-        name: 'Popis Outlet ponuda',
+        name: 'Dostupne sadnice',
     });
     await expect(offerDialog).toBeVisible();
     await expect(
         offerDialog.getByRole('button', {
-            name: 'Zatvori popis Outlet ponuda',
+            name: 'Zatvori popis dostupnih sadnica',
         }),
     ).toBeVisible();
     await expect(
@@ -699,7 +699,11 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         '302',
     );
     await offerDialog
-        .getByRole('heading', { name: 'Outlet vrt', exact: true })
+        .getByRole('heading', {
+            name: 'Dostupne sadnice',
+            exact: true,
+            level: 1,
+        })
         .hover();
     await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
@@ -708,9 +712,32 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
 
     await paprikaOffer.click();
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
+    const detailsDialog = page.getByRole('dialog', {
+        name: 'Paprika Zlata Snack',
+    });
+    const selectedDetails = page.locator(
+        '[data-outlet-garden-selected-offer="302"]',
+    );
+    await expect(detailsDialog).toBeVisible();
     await expect(
-        page.locator('[data-outlet-garden-selected-offer="302"]'),
-    ).toContainText('3 sadnica');
+        detailsDialog.locator('#outlet-garden-selected-title'),
+    ).toBeVisible();
+    const cover = selectedDetails.locator(
+        '[data-outlet-garden-offer-cover="true"]',
+    );
+    await expect(cover).toBeVisible();
+    await expect(detailsDialog).toHaveCSS('max-width', '432px');
+    const coverBox = await cover.boundingBox();
+    expect(coverBox).not.toBeNull();
+    expect(
+        Math.abs((coverBox?.width ?? 0) - (coverBox?.height ?? 0)),
+    ).toBeLessThanOrEqual(1);
+    await expect(selectedDetails).toHaveCSS('border-top-width', '0px');
+    await expect(selectedDetails).toHaveCSS('border-top-left-radius', '0px');
+    await expect(selectedDetails).toContainText('3 sadnica');
+    await expect(detailsDialog).not.toContainText('Outlet vrt');
+    await expect(detailsDialog).not.toContainText('Interaktivni prikaz');
+    await expect(detailsDialog).not.toContainText('3D pregled');
     await expect(page.locator('[data-outlet-garden-commerce]')).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }),
@@ -785,7 +812,7 @@ test('guest Outlet garden reconciles live offers without replacing its canvas @o
         productSigns.filter({ hasText: 'Rajčica mini red cherry' }),
     ).toHaveCount(0);
     await page
-        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
         .click({ timeout: 90_000 });
     await expect(
         page.locator('[data-outlet-garden-offer-list]').getByRole('button'),
@@ -875,11 +902,11 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
     );
 
     await page
-        .getByRole('button', { name: 'Prikaži popis Outlet ponuda' })
+        .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
         .click({ timeout: 90_000 });
     await page
         .getByRole('button', {
-            name: 'Prikaži Outlet ponude bez 3D prikaza',
+            name: 'Otvori pregledni popis sadnica',
         })
         .click({ timeout: 90_000 });
     await expect(
@@ -893,7 +920,7 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
 
     await page
         .getByRole('button', {
-            name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
+            name: 'Pokušaj ponovno otvoriti prikaz vrta',
         })
         .click({ timeout: 90_000 });
     await expect(
@@ -921,7 +948,7 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
     await expect(
         page.locator('[data-outlet-garden-renderer="list"]'),
     ).toBeVisible();
-    await expect(page.getByText(/3D prikaz je prekinut/u)).toBeFocused();
+    await expect(page.getByText(/Prikaz vrta je prekinut/u)).toBeFocused();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
     await expect(
@@ -1099,9 +1126,9 @@ test('Outlet visitor walks in third and first person without mutations and recov
             timeout: 18_000,
         })
         .toBeGreaterThan(offerRequestCountBeforeSceneLoss);
-    await expect(
-        page.getByText('Nove sadnice uskoro stižu u Outlet vrt.'),
-    ).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText('Nove sadnice uskoro stižu.')).toBeVisible({
+        timeout: 90_000,
+    });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'overview',
@@ -1138,10 +1165,10 @@ test('guest Outlet garden falls back to the semantic offer list without WebGL', 
     ).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(
-        page.getByText('Ovaj uređaj ne podržava 3D prikaz.'),
+        page.getByText('Ovaj uređaj ne može prikazati vrt.'),
     ).toBeVisible();
     await expect(
-        page.getByText('Ovaj uređaj ne podržava 3D prikaz.'),
+        page.getByText('Ovaj uređaj ne može prikazati vrt.'),
     ).toBeFocused();
     await expect(
         page.locator('[data-outlet-garden-selected-offer="302"]'),
@@ -1153,7 +1180,7 @@ test('guest Outlet garden falls back to the semantic offer list without WebGL', 
     ).toHaveCount(0);
     await expect(
         page.getByRole('button', {
-            name: 'Pokušaj ponovno otvoriti 3D Outlet vrt',
+            name: 'Pokušaj ponovno otvoriti prikaz vrta',
         }),
     ).toHaveCount(0);
 

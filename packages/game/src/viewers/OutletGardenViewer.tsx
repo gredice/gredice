@@ -544,7 +544,7 @@ export function OutletGardenViewer({
             data-outlet-garden-walking={avatarWalking || undefined}
         >
             <main
-                aria-label="Interaktivni 3D prikaz Outlet vrta"
+                aria-label="Vrt s dostupnim sadnicama"
                 className="relative min-h-0 overflow-hidden"
                 ref={sceneContainerRef}
                 tabIndex={focusOnMount ? -1 : undefined}
@@ -594,10 +594,10 @@ export function OutletGardenViewer({
                     <OutletGardenScenePlaceholder
                         label={
                             isError
-                                ? 'Outlet vrt čeka ponovni pokušaj učitavanja.'
+                                ? 'Prikaz vrta čeka ponovni pokušaj učitavanja.'
                                 : sceneOffers.length === 0 && !isLoading
-                                  ? 'Nove sadnice uskoro stižu u Outlet vrt.'
-                                  : 'Teleportiramo te u Outlet vrt...'
+                                  ? 'Nove sadnice uskoro stižu.'
+                                  : 'Pripremamo vrt...'
                         }
                     />
                 )}
@@ -621,7 +621,7 @@ export function OutletGardenViewer({
                                 className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
                                 aria-controls="outlet-garden-browser"
                                 aria-expanded={offerListOpen}
-                                aria-label="Prikaži popis Outlet ponuda"
+                                aria-label="Prikaži popis dostupnih sadnica"
                                 data-outlet-garden-list-trigger
                                 onClick={openOfferList}
                                 size="lg"
@@ -655,7 +655,7 @@ export function OutletGardenViewer({
             </main>
 
             <GameModal
-                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 md:max-w-3xl"
+                className={`max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 [&>div:last-child]:p-0 md:!p-0 ${offerListOpen ? 'md:!max-w-3xl' : 'md:!max-w-[27rem]'}`}
                 hideClose
                 hudLayer
                 onOpenChange={(open) => {
@@ -667,15 +667,18 @@ export function OutletGardenViewer({
                     !avatarWalking &&
                     (offerListOpen || selectedOfferId !== null)
                 }
-                title={offerListOpen ? 'Popis Outlet ponuda' : 'Outlet ponuda'}
+                title={
+                    offerListOpen
+                        ? 'Dostupne sadnice'
+                        : (selectedOffer?.plantSort.name ?? 'Detalji sadnice')
+                }
             >
                 <OutletGardenOfferBrowser
                     commerce={commerce}
-                    displayLimited={displayLimited}
                     headerAction={
                         offerListOpen && onUseListFallback ? (
                             <Button
-                                aria-label="Prikaži Outlet ponude bez 3D prikaza"
+                                aria-label="Otvori pregledni popis sadnica"
                                 onClick={requestListFallback}
                                 size="lg"
                                 startDecorator={
@@ -683,7 +686,7 @@ export function OutletGardenViewer({
                                 }
                                 variant="plain"
                             >
-                                Lagani prikaz bez 3D-a
+                                Pregledni popis
                             </Button>
                         ) : undefined
                     }

@@ -198,7 +198,7 @@ export function OutletHud() {
                             startDecorator={<Navigate className="size-5" />}
                             variant="soft"
                         >
-                            Uđi u 3D Outlet vrt
+                            Pogledaj dostupne sadnice
                         </Button>
                     ) : null}
                     {isLoading ? (
