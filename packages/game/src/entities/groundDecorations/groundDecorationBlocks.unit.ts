@@ -43,6 +43,19 @@ test('skips decoration blocks covered by swamp water', () => {
     );
 });
 
+test('skips decoration blocks covered by any mulch', () => {
+    for (const mulchName of ['MulchHey', 'MulchCoconut', 'MulchWood']) {
+        const grass = block(`grass-${mulchName}`, 'Block_Grass');
+        const mulch = block(`mulch-${mulchName}`, mulchName);
+
+        assert.deepEqual(
+            getGroundDecorationBlocks([stack([grass, mulch])]),
+            [],
+            mulchName,
+        );
+    }
+});
+
 test('keeps grass and sand decoration blocks when water is lower in the stack', () => {
     const water = block('water-low', 'Block_Water');
     const grass = block('grass-top', 'Block_Grass');
@@ -57,5 +70,19 @@ test('keeps grass and sand decoration blocks when water is lower in the stack', 
             ({ block: decorationBlock }) => decorationBlock.id,
         ),
         ['grass-top', 'sand-top'],
+    );
+});
+
+test('keeps decoration blocks when mulch is lower in the stack', () => {
+    const mulch = block('mulch-low', 'MulchWood');
+    const grass = block('grass-top', 'Block_Grass');
+
+    const decorationBlocks = getGroundDecorationBlocks([stack([mulch, grass])]);
+
+    assert.deepEqual(
+        decorationBlocks.map(
+            ({ block: decorationBlock }) => decorationBlock.id,
+        ),
+        ['grass-top'],
     );
 });
