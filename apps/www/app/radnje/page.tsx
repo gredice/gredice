@@ -21,7 +21,7 @@ import {
 } from './operationFilters';
 
 const pageDescription = `Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`;
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 export const metadata: Metadata = createPublicMetadata({
     title: 'Radnje',
     description: pageDescription,

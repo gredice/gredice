@@ -18,6 +18,17 @@ const staticDataLoaders = [
     '../lib/sunflowerPackages.ts',
 ] as const;
 
+const twelveHourCatalogueRevalidationPages = [
+    '../app/biljke/[alias]/page.tsx',
+    '../app/biljke/[alias]/sorte/[sortAlias]/page.tsx',
+    '../app/radnje/page.tsx',
+    '../app/radnje/[alias]/page.tsx',
+    '../app/blokovi/page.tsx',
+    '../app/blokovi/[alias]/page.tsx',
+    '../app/blokovi/biljke/page.tsx',
+    '../app/blokovi/biljke/[alias]/page.tsx',
+] as const;
+
 const httpDataSourcePattern =
     /\bdirectoriesClient\b|\bclientPublic\b|\bgetServerGrediceApiOrigin\b|\bfetch\s*\(/u;
 
@@ -29,6 +40,22 @@ test('static page data loaders do not call the public API', () => {
         );
         assert.doesNotMatch(source, httpDataSourcePattern, relativePath);
     }
+});
+
+test('catalogue pages declare a twelve-hour revalidation interval', () => {
+    for (const relativePath of twelveHourCatalogueRevalidationPages) {
+        const source = readFileSync(
+            new URL(relativePath, import.meta.url),
+            'utf8',
+        );
+        assert.match(source, /export const revalidate = 43200;/u, relativePath);
+    }
+
+    const nextConfig = readFileSync(
+        new URL('../next.config.ts', import.meta.url),
+        'utf8',
+    );
+    assert.match(nextConfig, /expireTime: 54000,/u);
 });
 
 test('sitemap generation reads source data without HTTP fallbacks', () => {

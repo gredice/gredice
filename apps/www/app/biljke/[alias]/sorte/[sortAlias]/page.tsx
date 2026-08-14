@@ -30,7 +30,7 @@ import { PlantTips } from '../../PlantTips';
 import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>,
