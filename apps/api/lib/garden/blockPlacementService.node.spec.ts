@@ -47,7 +47,17 @@ const blockDataByName = new Map([
             },
         },
     ],
-    ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
+    [
+        'Raised_Bed',
+        {
+            attributes: {
+                stackable: false,
+                height: 1,
+                spanWidth: 1,
+                spanDepth: 2,
+            },
+        },
+    ],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
     [
         'LemonadeStand',
@@ -129,6 +139,26 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
+    it('resolves a raised-bed purchase as one complete 1 x 2 offer', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Raised_Bed',
+            requestedPosition: { x: 4, y: 6 },
+            stacks: [],
+            blockNameById: new Map(),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 4,
+                y: 6,
+                index: 0,
+                existingBlocks: [],
+            },
+        });
+    });
+
     it('starts automatic placement near the preferred position', () => {
         const placement = resolveGardenBlockPlacement({
             blockName: 'Shade',
@@ -188,7 +218,7 @@ describe('resolveGardenBlockPlacement', () => {
 
         assert.deepStrictEqual(placement, {
             valid: false,
-            error: 'Invalid raised bed placement: cannot place next to an already attached raised bed',
+            error: 'Invalid block placement: block bed-a cannot support Raised_Bed',
         });
     });
 

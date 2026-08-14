@@ -4,6 +4,7 @@ import {
     canStackBlockOnBlock,
     type GardenBlockDataLike,
     getEffectiveGardenStackBlockHeight,
+    getGardenBlockFootprintOffsets,
     getGardenStackHeightByBlockIds,
     isBlockPlaceableOnWater,
     isEdgeOrCornerTerrainBlockName,
@@ -13,6 +14,18 @@ import {
 const nonStackable: GardenBlockDataLike = {
     attributes: { stackable: false },
 };
+
+test('represents a raised bed as one two-cell block footprint', () => {
+    assert.deepStrictEqual(
+        getGardenBlockFootprintOffsets({
+            attributes: { spanWidth: 1, spanDepth: 2 },
+        }),
+        [
+            { x: 0, y: 0 },
+            { x: 0, y: 1 },
+        ],
+    );
+});
 
 test('recognizes standard and swamp water as water terrain', () => {
     assert.equal(isWaterBlockName('Block_Water'), true);

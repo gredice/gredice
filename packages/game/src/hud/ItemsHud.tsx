@@ -42,6 +42,7 @@ import {
 type HudItemEntity = {
     type: 'entity';
     name: string;
+    footprintLabel?: string;
 };
 
 type HudItemPicker = {
@@ -260,9 +261,15 @@ const giftBoxPickerImageSrc =
 const items: HudItem[] = [
     {
         type: 'picker',
-        label: 'Gredice',
+        label: 'Gredica 1 × 2',
         imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.webp',
-        items: [{ type: 'entity', name: 'Raised_Bed' }],
+        items: [
+            {
+                type: 'entity',
+                name: 'Raised_Bed',
+                footprintLabel: '1 × 2',
+            },
+        ],
     },
     { type: 'separator' },
     {
@@ -932,7 +939,12 @@ type EntityItemProps = HudItemEntity & {
     onHudDragStart?: () => void;
 };
 
-function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
+function EntityItem({
+    footprintLabel,
+    name,
+    onHudDragEnd,
+    onHudDragStart,
+}: EntityItemProps) {
     const [open, setOpen] = useState(false);
     const entityPlacement = useHudEntityPlacementState(name);
     const dragPlacement = useHudEntityDragPlacement({
@@ -945,6 +957,9 @@ function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
     if (!entityPlacement) return null;
 
     const { block } = entityPlacement;
+    const displayLabel = footprintLabel
+        ? `${block.information.label} ${footprintLabel}`
+        : block.information.label;
 
     return (
         <Stack spacing={2}>
@@ -956,7 +971,7 @@ function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
                 className="w-fit p-2 max-w-xs md:w-80 border-tertiary border-b-4"
                 trigger={
                     <IconButton
-                        aria-label={block.information.label}
+                        aria-label={displayLabel}
                         size="lg"
                         className={cx('size-16', dragPlacement.className)}
                         variant="plain"
@@ -967,7 +982,7 @@ function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
                     >
                         <BlockImage
                             blockName={name}
-                            alt={block.information.label}
+                            alt={displayLabel}
                             draggable={false}
                             width={64}
                             height={64}
@@ -979,15 +994,13 @@ function EntityItem({ name, onHudDragEnd, onHudDragStart }: EntityItemProps) {
                     <Row spacing={4} alignItems="start">
                         <BlockImage
                             blockName={name}
-                            alt={block.information.label}
+                            alt={displayLabel}
                             width={96}
                             height={96}
                             className="size-24 z-10 border rounded-lg"
                         />
                         <Stack spacing={2} className="w-full">
-                            <Typography semiBold>
-                                {block.information.label}
-                            </Typography>
+                            <Typography semiBold>{displayLabel}</Typography>
                             <Typography level="body2">
                                 {block.information.shortDescription}
                             </Typography>

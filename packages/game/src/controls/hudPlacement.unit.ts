@@ -8,10 +8,12 @@ import { resolveHudPlacementPreview } from './hudPlacement';
 function createBlockData({
     height = 1,
     name,
+    spanDepth,
     stackable = true,
 }: {
     height?: number;
     name: string;
+    spanDepth?: number;
     stackable?: boolean;
 }): BlockData {
     return {
@@ -30,6 +32,7 @@ function createBlockData({
         },
         attributes: {
             height,
+            spanDepth,
             stackable,
             type: 'decoration',
             nightOnlyPurchase: false,
@@ -63,6 +66,7 @@ const blockData = [
     createBlockData({ name: 'Tree' }),
     createBlockData({ name: 'StoneLarge', stackable: false }),
     createBlockData({ name: 'Block_Grass', height: 0.2 }),
+    createBlockData({ name: 'Raised_Bed', spanDepth: 2, stackable: false }),
 ];
 
 describe('resolveHudPlacementPreview', () => {
@@ -117,5 +121,17 @@ describe('resolveHudPlacementPreview', () => {
         );
         assert.equal(preview?.hoverHeight, 1);
         assert.deepEqual(preview?.position, { x: 0, z: 0 });
+    });
+
+    it('previews one block whose footprint spans two cells', () => {
+        const preview = resolveHudPlacementPreview({
+            blockData,
+            blockName: 'Raised_Bed',
+            garden: { stacks: [] },
+            position: { x: 2, z: 3 },
+        });
+
+        assert.equal(preview?.isBlocked, false);
+        assert.deepEqual(preview?.position, { x: 2, z: 3 });
     });
 });

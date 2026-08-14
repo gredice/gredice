@@ -1,6 +1,6 @@
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import type { GardenStack } from '../../types/Stack';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { raisedBedFieldSectionCount } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getLegacySowingTargetAvailability,
@@ -100,10 +100,7 @@ export function findEmptyRaisedBedFieldTargets(
             continue;
         }
 
-        const blockCount = Math.max(
-            getRaisedBedBlockIds(garden, raisedBed.id).length,
-            1,
-        );
+        const blockCount = Math.max(raisedBedFieldSectionCount, 1);
         const occupiedPositionIndices = new Set(
             raisedBed.fields
                 .filter(isRaisedBedFieldOccupied)

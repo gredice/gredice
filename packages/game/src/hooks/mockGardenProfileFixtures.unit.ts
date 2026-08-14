@@ -6,7 +6,6 @@ import {
     highTargetOperationVisualOperationIds,
 } from '../operationVisualRewardDebugProfile';
 import {
-    getConnectedRaisedBedBlockIds,
     getRaisedBedBlockIds,
     isRaisedBedShapeValid,
 } from '../utils/raisedBedBlocks';
@@ -59,9 +58,9 @@ test('high-target garden cardinality matches the high-quality workload', () => {
         baseBlockCount: 270,
         detailBlockCount: 24,
         raisedBedCount: 3,
-        raisedBedBlockCount: 6,
+        raisedBedBlockCount: 3,
         occupiedFieldCount: 54,
-        totalBlockCount: 300,
+        totalBlockCount: 297,
     });
 
     const stackPositions = createHighTargetMockGardenStackPositions();
@@ -176,9 +175,9 @@ test('high-target operation visuals retain the target and expose exact legacy wo
         baseBlockCount: 270,
         detailBlockCount: 24,
         raisedBedCount: 3,
-        raisedBedBlockCount: 6,
+        raisedBedBlockCount: 3,
         occupiedFieldCount: 54,
-        totalBlockCount: 300,
+        totalBlockCount: 297,
     });
 
     const fieldMulchDefinition =
@@ -210,19 +209,18 @@ test('high-target operation visuals require the exact query opt-in', () => {
     );
 });
 
-test('high-target raised beds remain three separate valid pairs', () => {
-    const stacks = highTargetMockGardenRaisedBedFixtures.flatMap(
-        ({ id, x, z }) =>
-            [z, z + 1].map((blockZ, blockIndex) => ({
-                position: new Vector3(x, 0, blockZ),
-                blocks: [
-                    {
-                        id: `profile-raised-bed:${id.toString()}:${blockIndex.toString()}`,
-                        name: 'Raised_Bed',
-                        rotation: 0,
-                    },
-                ],
-            })),
+test('high-target raised beds remain three separate 1x2 blocks', () => {
+    const stacks = highTargetMockGardenRaisedBedFixtures.map(
+        ({ id, x, z }) => ({
+            position: new Vector3(x, 0, z),
+            blocks: [
+                {
+                    id: `profile-raised-bed:${id.toString()}:0`,
+                    name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+        }),
     );
     const garden = {
         stacks,
@@ -234,34 +232,12 @@ test('high-target raised beds remain three separate valid pairs', () => {
     };
 
     for (const fixture of highTargetMockGardenRaisedBedFixtures) {
-        assert.deepEqual(
-            getConnectedRaisedBedBlockIds(
-                stacks,
-                `profile-raised-bed:${fixture.id.toString()}:0`,
-            ).toSorted(),
-            [
-                `profile-raised-bed:${fixture.id.toString()}:0`,
-                `profile-raised-bed:${fixture.id.toString()}:1`,
-            ],
-        );
         assert.equal(isRaisedBedShapeValid(garden, fixture.id), true);
 
         const blockIds = getRaisedBedBlockIds(garden, fixture.id);
-        assert.equal(blockIds.length, 2);
-        assert.deepEqual(
-            blockIds
-                .flatMap((blockId) => {
-                    const blockIndex = blockIds.indexOf(blockId);
-                    const blockOffset =
-                        Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
-                    return Array.from(
-                        { length: 9 },
-                        (_, index) => blockOffset + index,
-                    );
-                })
-                .toSorted((left, right) => left - right),
-            Array.from({ length: 18 }, (_, index) => index),
-        );
+        assert.deepEqual(blockIds, [
+            `profile-raised-bed:${fixture.id.toString()}:0`,
+        ]);
     }
 });
 

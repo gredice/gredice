@@ -504,9 +504,13 @@ function RaisedBedFieldSupportVisual({
 
 export function RaisedBedFields({
     blockId,
+    blockIndex: requestedBlockIndex,
+    blockOffset: requestedBlockOffset,
     generatedPlantsHandledExternally = false,
 }: {
     blockId: string;
+    blockIndex?: number;
+    blockOffset?: number;
     generatedPlantsHandledExternally?: boolean;
 }) {
     const { renderDetails } = useGameSceneDetails();
@@ -533,8 +537,10 @@ export function RaisedBedFields({
 
     // Bottom-right most block (last in position-sorted list) is offset 0;
     // other blocks get increasing offsets based on distance from bottom-right
-    const blockIndex = blockIds.indexOf(blockId);
-    const blockOffset = Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+    const blockIndex = requestedBlockIndex ?? blockIds.indexOf(blockId);
+    const blockOffset =
+        requestedBlockOffset ??
+        Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
 
     const cartItems = cart?.items.filter(
         (item) =>

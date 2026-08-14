@@ -5,7 +5,7 @@ import { Html } from '@react-three/drei';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
 import type { GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../utils/raisedBedBlocks';
 import { getStackHeight } from '../utils/stackHeightCore';
 import {
     RaisedBedNotificationBubbleContent,
@@ -55,33 +55,27 @@ export function getRaisedBedNotificationAnchor(
     garden: RaisedBedNotificationAnchorGarden,
     raisedBedId: number,
 ): [x: number, y: number, z: number] | null {
-    const placements = getRaisedBedBlockIds(garden, raisedBedId).flatMap(
-        (blockId) => {
-            const placement = findBlockPlacement(garden, blockId);
-            return placement ? [placement] : [];
-        },
-    );
-    if (!placements.length) {
+    const blockId = garden.raisedBeds.find(
+        (raisedBed) => raisedBed.id === raisedBedId,
+    )?.blockId;
+    const placement = blockId ? findBlockPlacement(garden, blockId) : null;
+    if (!placement) {
         return null;
     }
 
-    const x =
-        placements.reduce(
-            (sum, placement) => sum + placement.stack.position.x,
-            0,
-        ) / placements.length;
-    const z =
-        placements.reduce(
-            (sum, placement) => sum + placement.stack.position.z,
-            0,
-        ) / placements.length;
-    const y = Math.max(
-        ...placements.map(
-            ({ block, stack }) =>
-                getStackHeight(blockData, stack, block) +
-                raisedBedNotificationAnchorOffsetY,
-        ),
+    const segments = getRaisedBedFootprintSegments(placement.block.rotation);
+    const centerOffset = segments.reduce(
+        (sum, segment) => ({
+            x: sum.x + segment.offset.x / segments.length,
+            z: sum.z + segment.offset.z / segments.length,
+        }),
+        { x: 0, z: 0 },
     );
+    const x = placement.stack.position.x + centerOffset.x;
+    const z = placement.stack.position.z + centerOffset.z;
+    const y =
+        getStackHeight(blockData, placement.stack, placement.block) +
+        raisedBedNotificationAnchorOffsetY;
 
     return [x, y, z];
 }

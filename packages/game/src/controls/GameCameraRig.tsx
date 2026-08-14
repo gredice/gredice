@@ -9,7 +9,7 @@ import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
+    getRaisedBedFootprintSegments,
 } from '../utils/raisedBedBlocks';
 import {
     applyCursorAnchoredZoom,
@@ -336,38 +336,20 @@ export function GameCameraRig({
             };
         }
 
-        const raisedBedBlockIds = getRaisedBedBlockIds(garden, raisedBed.id);
-        if (raisedBedBlockIds.length !== 2) {
-            return {
-                key: `${closeupBlock.id}:top-down:${raisedBed.orientation ?? 'vertical'}:${closeupBlockPosition.x}:${closeupBlockPosition.y}:${closeupBlockPosition.z}:${closeupZoom}`,
-                mode: 'top-down',
-                orientation: raisedBed.orientation,
-                target: closeupBlockPosition.clone(),
-                zoom: closeupZoom,
-            };
-        }
-
-        const connectedBlockPositions = raisedBedBlockIds
-            .map((blockId) => getStackPositionByBlockId(blockId))
-            .filter((position): position is Vector3 => Boolean(position));
-
-        if (connectedBlockPositions.length !== 2) {
-            return {
-                key: `${closeupBlock.id}:top-down:${raisedBed.orientation ?? 'vertical'}:${closeupBlockPosition.x}:${closeupBlockPosition.y}:${closeupBlockPosition.z}:${closeupZoom}`,
-                mode: 'top-down',
-                orientation: raisedBed.orientation,
-                target: closeupBlockPosition.clone(),
-                zoom: closeupZoom,
-            };
-        }
-
-        const target = new Vector3(
-            (connectedBlockPositions[0].x + connectedBlockPositions[1].x) / 2,
-            (connectedBlockPositions[0].y + connectedBlockPositions[1].y) / 2,
-            (connectedBlockPositions[0].z + connectedBlockPositions[1].z) / 2,
+        const segments = getRaisedBedFootprintSegments(closeupBlock.rotation);
+        const target = segments.reduce(
+            (center, segment) =>
+                center.add(
+                    new Vector3(
+                        segment.offset.x / segments.length,
+                        0,
+                        segment.offset.z / segments.length,
+                    ),
+                ),
+            closeupBlockPosition.clone(),
         );
         return {
-            key: `${raisedBedBlockIds.join('|')}:top-down:${raisedBed.orientation ?? 'vertical'}:${target.x}:${target.y}:${target.z}:${closeupZoom}`,
+            key: `${closeupBlock.id}:top-down:${raisedBed.orientation ?? 'vertical'}:${target.x}:${target.y}:${target.z}:${closeupZoom}`,
             mode: 'top-down',
             orientation: raisedBed.orientation,
             target,

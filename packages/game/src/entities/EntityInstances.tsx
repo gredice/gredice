@@ -14,7 +14,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     AdditionalEntityInstances,
     additionalInstancedBlockNames,
-    resolveRaisedBedInstance,
+    resolveRaisedBedInstances,
 } from './AdditionalEntityInstances';
 import {
     EntityInstancesBlock,
@@ -184,7 +184,7 @@ function RaisedBedGeneratedPlantInstances({
         name: 'Raised_Bed',
         stacks,
         yOffset: 1,
-    })?.map((instance) => resolveRaisedBedInstance(instance, stacks));
+    })?.flatMap(resolveRaisedBedInstances);
 
     if (!instances?.length) {
         return null;
@@ -194,6 +194,7 @@ function RaisedBedGeneratedPlantInstances({
         <RaisedBedGeneratedPlantFieldBatches
             blocks={instances.map((instance) => ({
                 blockId: instance.block.id,
+                blockIndex: instance.blockIndex,
                 position: instance.position,
             }))}
             quality={quality}

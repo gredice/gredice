@@ -3,13 +3,13 @@ import { describe, it } from 'node:test';
 import { purchaseGardenBlock } from './purchaseGardenBlockService';
 
 describe('purchaseGardenBlock', () => {
-    it('synchronizes raised beds after purchasing a raised bed', async () => {
+    it('creates and synchronizes one raised-bed block', async () => {
         const calls: string[] = [];
 
         const result = await purchaseGardenBlock({
             accountId: 'account-1',
             blockName: 'Raised_Bed',
-            cost: 30,
+            cost: 200,
             gardenId: 42,
             hasTargetStack: false,
             placement: {
@@ -28,8 +28,8 @@ describe('purchaseGardenBlock', () => {
                 deleteGardenBlock: async () => {
                     calls.push('deleteGardenBlock');
                 },
-                spendSunflowers: async () => {
-                    calls.push('spendSunflowers');
+                spendSunflowers: async (_accountId, amount) => {
+                    calls.push(`spendSunflowers:${amount.toString()}`);
                 },
                 synchronizeGardenStacksAndRaisedBeds: async () => {
                     calls.push('synchronizeGardenStacksAndRaisedBeds');
@@ -40,16 +40,16 @@ describe('purchaseGardenBlock', () => {
             },
         });
 
-        assert.deepStrictEqual(result, {
+        assert.deepEqual(result, {
             ok: true,
             blockId: 'block-1',
             position: { x: 3, y: 4 },
         });
-        assert.deepStrictEqual(calls, [
+        assert.deepEqual(calls, [
             'createGardenStack',
             'createGardenBlock',
             'updateGardenStack',
-            'spendSunflowers',
+            'spendSunflowers:200',
             'synchronizeGardenStacksAndRaisedBeds',
         ]);
     });
@@ -91,12 +91,12 @@ describe('purchaseGardenBlock', () => {
             },
         });
 
-        assert.deepStrictEqual(result, {
+        assert.deepEqual(result, {
             ok: true,
             blockId: 'block-1',
             position: { x: 3, y: 4 },
         });
-        assert.deepStrictEqual(calls, [
+        assert.deepEqual(calls, [
             'createGardenBlock',
             'updateGardenStack',
             'spendSunflowers',

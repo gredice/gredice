@@ -92,7 +92,6 @@ export function resolveHudPlacementPreview({
         position,
         stacks: garden.stacks,
     });
-
     return {
         baseBlocks: support.baseBlocks,
         error: placement?.valid === false ? placement.error : null,

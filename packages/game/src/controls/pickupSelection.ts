@@ -8,13 +8,6 @@ import type { GardenStack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
 import type { MovingSegment } from './PickupPlacementResolver';
 
-export type AttachedPickupSegment = {
-    sourceStack: GardenStack;
-    sourceStartIndex: number;
-    blocks: Block[];
-    baseHeight: number;
-};
-
 export type PickupSelectionMoveRequest = {
     sourcePosition: { x: number; z: number };
     destinationPosition: { x: number; z: number };
@@ -112,26 +105,13 @@ function getSelectedSegmentCandidates({
     return Array.from(candidateByStackKey.values());
 }
 
-function attachedSegmentIsAlreadySelected(
-    attachedSegment: AttachedPickupSegment,
-    selectedCandidates: SelectedSegmentCandidate[],
-) {
-    return selectedCandidates.some(
-        (candidate) =>
-            candidate.sourceStack === attachedSegment.sourceStack &&
-            candidate.sourceStartIndex <= attachedSegment.sourceStartIndex,
-    );
-}
-
 export function createPickupSelectionMovingSegments({
-    attachedSegment,
     blockData,
     canRecyclePrimarySegment,
     primaryTarget,
     selectedTargets,
     stacks,
 }: {
-    attachedSegment?: AttachedPickupSegment | null;
     blockData: BlockData[] | null | undefined;
     canRecyclePrimarySegment: boolean;
     primaryTarget: ActiveDragPreviewTarget;
@@ -162,21 +142,7 @@ export function createPickupSelectionMovingSegments({
             activeDragPreviewTargetMatches(candidate.target, primaryTarget),
     }));
 
-    if (
-        !attachedSegment ||
-        attachedSegment.blocks.length === 0 ||
-        attachedSegmentIsAlreadySelected(attachedSegment, selectedCandidates)
-    ) {
-        return selectedSegments;
-    }
-
-    return [
-        ...selectedSegments,
-        {
-            ...attachedSegment,
-            canRecycle: false,
-        },
-    ];
+    return selectedSegments;
 }
 
 export function createPickupSelectionMoveRequests(
