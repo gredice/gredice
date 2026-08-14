@@ -77,6 +77,73 @@ test('raw entity loading preserves active values for retired definitions', async
     );
 });
 
+test('raw entity loading preserves definitions after entity type reassignment', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const sourceTypeName = `reassigned-source-${suffix}`;
+    const targetTypeName = `reassigned-target-${suffix}`;
+
+    await upsertEntityType({
+        name: sourceTypeName,
+        label: `Reassigned Source ${suffix}`,
+    });
+    await upsertEntityType({
+        name: targetTypeName,
+        label: `Reassigned Target ${suffix}`,
+    });
+    const sourceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'legacyName',
+        label: 'Legacy name',
+        entityTypeName: sourceTypeName,
+        dataType: 'text',
+    });
+    const targetDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'currentName',
+        label: 'Current name',
+        entityTypeName: targetTypeName,
+        dataType: 'text',
+    });
+    const entityId = await createEntity(sourceTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: sourceDefinitionId,
+        entityTypeName: sourceTypeName,
+        entityId,
+        value: 'Legacy value',
+    });
+
+    await updateEntity({ id: entityId, entityTypeName: targetTypeName });
+    await updateEntity({ id: entityId, state: 'published' });
+
+    const rawEntity = (await getEntitiesRaw(targetTypeName)).find(
+        (entity) => entity.id === entityId,
+    );
+    const reassignedAttribute = rawEntity?.attributes.find(
+        (attribute) => attribute.attributeDefinitionId === sourceDefinitionId,
+    );
+
+    assert.equal(reassignedAttribute?.value, 'Legacy value');
+    assert.equal(
+        reassignedAttribute?.attributeDefinition.entityTypeName,
+        sourceTypeName,
+    );
+    assert.deepEqual(
+        rawEntity?.entityType.attributeDefinitions.map(
+            (definition) => definition.id,
+        ),
+        [targetDefinitionId],
+    );
+
+    const formattedEntity = (
+        await getEntitiesFormatted<{
+            id: number;
+            information?: { legacyName?: string };
+        }>(targetTypeName)
+    ).find((entity) => entity.id === entityId);
+    assert.equal(formattedEntity?.information?.legacyName, 'Legacy value');
+});
+
 test('CMS entity references are resolved by entity ID', async () => {
     createTestDb();
     const suffix = randomUUID();

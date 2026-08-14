@@ -290,8 +290,22 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
         throw new Error(`Entity type ${entityTypeName} was not found.`);
     }
 
+    const referencedDefinitionIds = [
+        ...new Set(
+            rawAttributes.map((attribute) => attribute.attributeDefinitionId),
+        ),
+    ];
+    const referencedAttributeDefinitions =
+        referencedDefinitionIds.length === 0
+            ? []
+            : await storage().query.attributeDefinitions.findMany({
+                  where: inArray(
+                      attributeDefinitions.id,
+                      referencedDefinitionIds,
+                  ),
+              });
     const attributeDefinitionsById = new Map(
-        entityType.attributeDefinitions.map((definition) => [
+        referencedAttributeDefinitions.map((definition) => [
             definition.id,
             definition,
         ]),
