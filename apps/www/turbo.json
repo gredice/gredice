@@ -13,7 +13,6 @@
                 "FACEBOOK_CAPI_API_VERSION",
                 "FACEBOOK_CAPI_PIXEL_ID",
                 "FACEBOOK_CAPI_TOKEN",
-                "FLAGS_SECRET",
                 "GREDICE_API_HOST",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",

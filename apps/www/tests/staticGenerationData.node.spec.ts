@@ -58,6 +58,20 @@ test('catalogue pages declare a twelve-hour revalidation interval', () => {
     assert.match(nextConfig, /expireTime: 54000,/u);
 });
 
+test('plant detail pages remain compatible with static generation', () => {
+    const source = readFileSync(
+        new URL('../app/biljke/[alias]/page.tsx', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(source, /export async function generateStaticParams\(\)/u);
+    assert.match(source, /export const revalidate = 43200;/u);
+    assert.doesNotMatch(
+        source,
+        /flags\/next|recipesFlag|\bheaders\(|\bcookies\(|force-dynamic/u,
+    );
+});
+
 test('sitemap generation reads source data without HTTP fallbacks', () => {
     const configSource = readFileSync(
         new URL('../next-sitemap.config.ts', import.meta.url),
