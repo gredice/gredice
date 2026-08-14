@@ -1,6 +1,8 @@
 export type LegacyRaisedBedRecord = {
     blockId: string;
     gardenId: number;
+    maxFieldPosition?: number | null;
+    minFieldPosition?: number | null;
     orientation: 'horizontal' | 'vertical';
     raisedBedId: number;
     status: string;
@@ -35,6 +37,11 @@ export type RaisedBedSingleBlockMigrationUnsafe = {
     reason: string;
 };
 
+export type RaisedBedSingleBlockMigrationResolvedPair = {
+    firstRaisedBedId: number;
+    secondRaisedBedId: number;
+};
+
 function isAdjacent(
     left: LegacyRaisedBedPlacement,
     right: LegacyRaisedBedPlacement,
@@ -46,26 +53,240 @@ function isAdjacent(
     );
 }
 
+function canMergeReferencedPair(
+    left: LegacyRaisedBedRecord,
+    right: LegacyRaisedBedRecord,
+) {
+    return isMergeableLegacyHalf(left) && isMergeableLegacyHalf(right);
+}
+
+function isMixedLegacyPair(
+    left: LegacyRaisedBedRecord,
+    right: LegacyRaisedBedRecord,
+) {
+    return isMergeableLegacyHalf(left) !== isMergeableLegacyHalf(right);
+}
+
+function isMergeableLegacyHalf(raisedBed: LegacyRaisedBedRecord) {
+    return (
+        (raisedBed.minFieldPosition ?? 0) >= 0 &&
+        (raisedBed.maxFieldPosition ?? -1) < 9
+    );
+}
+
+function pairKey(leftRaisedBedId: number, rightRaisedBedId: number) {
+    return [leftRaisedBedId, rightRaisedBedId]
+        .sort((left, right) => left - right)
+        .join(':');
+}
+
 export function planRaisedBedSingleBlockMigration({
     nativeFootprint,
     placements,
     raisedBeds,
+    resolvedPairs = [],
+    separatePairs = [],
 }: {
     nativeFootprint: boolean;
     placements: LegacyRaisedBedPlacement[];
     raisedBeds: LegacyRaisedBedRecord[];
+    resolvedPairs?: RaisedBedSingleBlockMigrationResolvedPair[];
+    separatePairs?: RaisedBedSingleBlockMigrationResolvedPair[];
 }) {
     const alreadySingle: number[] = [];
     const plans: RaisedBedSingleBlockMigrationPlan[] = [];
     const unplaced: number[] = [];
     const unsafe: RaisedBedSingleBlockMigrationUnsafe[] = [];
     const processedRaisedBedIds = new Set<number>();
+    const separatePairKeys = new Set<string>();
+
+    for (const separatePair of separatePairs) {
+        const firstRaisedBed = raisedBeds.find(
+            (raisedBed) =>
+                raisedBed.raisedBedId === separatePair.firstRaisedBedId,
+        );
+        const secondRaisedBed = raisedBeds.find(
+            (raisedBed) =>
+                raisedBed.raisedBedId === separatePair.secondRaisedBedId,
+        );
+        const firstPlacement = firstRaisedBed
+            ? placements.find(
+                  (placement) => placement.blockId === firstRaisedBed.blockId,
+              )
+            : undefined;
+        const secondPlacement = secondRaisedBed
+            ? placements.find(
+                  (placement) => placement.blockId === secondRaisedBed.blockId,
+              )
+            : undefined;
+        if (
+            separatePair.firstRaisedBedId === separatePair.secondRaisedBedId ||
+            !firstRaisedBed ||
+            !secondRaisedBed ||
+            firstRaisedBed.gardenId !== secondRaisedBed.gardenId ||
+            !firstPlacement ||
+            !secondPlacement ||
+            !isAdjacent(firstPlacement, secondPlacement)
+        ) {
+            unsafe.push({
+                blockId: firstRaisedBed?.blockId ?? '',
+                gardenId: firstRaisedBed?.gardenId ?? 0,
+                raisedBedId: firstRaisedBed?.raisedBedId ?? null,
+                reason: `invalid explicit keep-separate pair ${separatePair.firstRaisedBedId.toString()}:${separatePair.secondRaisedBedId.toString()}`,
+            });
+            continue;
+        }
+        separatePairKeys.add(
+            pairKey(firstRaisedBed.raisedBedId, secondRaisedBed.raisedBedId),
+        );
+    }
+
+    const resolvedRaisedBedIds = new Set<number>();
+    const resolvedBlockIds = new Set<string>();
+    if (nativeFootprint && resolvedPairs.length > 0) {
+        unsafe.push({
+            blockId: '',
+            gardenId: 0,
+            raisedBedId: null,
+            reason: 'explicit pair resolutions are only valid before the native footprint is applied',
+        });
+    }
+    for (const resolvedPair of nativeFootprint ? [] : resolvedPairs) {
+        const pairRaisedBeds = [
+            raisedBeds.find(
+                (raisedBed) =>
+                    raisedBed.raisedBedId === resolvedPair.firstRaisedBedId,
+            ),
+            raisedBeds.find(
+                (raisedBed) =>
+                    raisedBed.raisedBedId === resolvedPair.secondRaisedBedId,
+            ),
+        ];
+        const firstRaisedBed = pairRaisedBeds[0];
+        const secondRaisedBed = pairRaisedBeds[1];
+        const resolutionFailure = (reason: string) => {
+            unsafe.push({
+                blockId:
+                    firstRaisedBed?.blockId ?? secondRaisedBed?.blockId ?? '',
+                gardenId:
+                    firstRaisedBed?.gardenId ?? secondRaisedBed?.gardenId ?? 0,
+                raisedBedId:
+                    firstRaisedBed?.raisedBedId ??
+                    secondRaisedBed?.raisedBedId ??
+                    null,
+                reason: `invalid explicit pair ${resolvedPair.firstRaisedBedId.toString()}:${resolvedPair.secondRaisedBedId.toString()}: ${reason}`,
+            });
+        };
+
+        if (resolvedPair.firstRaisedBedId === resolvedPair.secondRaisedBedId) {
+            resolutionFailure('raised-bed ids must differ');
+            continue;
+        }
+        if (!firstRaisedBed || !secondRaisedBed) {
+            resolutionFailure('both active raised beds must exist');
+            continue;
+        }
+        if (
+            resolvedRaisedBedIds.has(firstRaisedBed.raisedBedId) ||
+            resolvedRaisedBedIds.has(secondRaisedBed.raisedBedId)
+        ) {
+            resolutionFailure('a raised bed can appear in only one resolution');
+            continue;
+        }
+        if (firstRaisedBed.gardenId !== secondRaisedBed.gardenId) {
+            resolutionFailure('raised beds must belong to the same garden');
+            continue;
+        }
+        if (
+            firstRaisedBed.status !== 'new' ||
+            secondRaisedBed.status !== 'new'
+        ) {
+            resolutionFailure('both raised beds must still be new');
+            continue;
+        }
+        if (!canMergeReferencedPair(firstRaisedBed, secondRaisedBed)) {
+            resolutionFailure('only two legacy half records can be merged');
+            continue;
+        }
+        if (
+            separatePairKeys.has(
+                pairKey(
+                    firstRaisedBed.raisedBedId,
+                    secondRaisedBed.raisedBedId,
+                ),
+            )
+        ) {
+            resolutionFailure('pair is also marked to remain separate');
+            continue;
+        }
+
+        const firstPlacement = placements.find(
+            (placement) => placement.blockId === firstRaisedBed.blockId,
+        );
+        const secondPlacement = placements.find(
+            (placement) => placement.blockId === secondRaisedBed.blockId,
+        );
+        if (
+            !firstPlacement ||
+            !secondPlacement ||
+            !isAdjacent(firstPlacement, secondPlacement)
+        ) {
+            resolutionFailure(
+                'both blocks must be adjacent at the same stack index',
+            );
+            continue;
+        }
+
+        const target =
+            firstRaisedBed.blockId.localeCompare(secondRaisedBed.blockId) <= 0
+                ? { raisedBed: firstRaisedBed, placement: firstPlacement }
+                : { raisedBed: secondRaisedBed, placement: secondPlacement };
+        const source =
+            target.raisedBed.raisedBedId === firstRaisedBed.raisedBedId
+                ? { raisedBed: secondRaisedBed, placement: secondPlacement }
+                : { raisedBed: firstRaisedBed, placement: firstPlacement };
+        const horizontal = target.placement.x === source.placement.x;
+        plans.push({
+            anchor: horizontal
+                ? {
+                      x: target.placement.x,
+                      y: Math.min(target.placement.y, source.placement.y),
+                  }
+                : {
+                      x: Math.min(target.placement.x, source.placement.x),
+                      y: target.placement.y,
+                  },
+            canonicalBlockId: target.raisedBed.blockId,
+            gardenId: target.raisedBed.gardenId,
+            legacyBlockId: source.raisedBed.blockId,
+            orientation: horizontal ? 'horizontal' : 'vertical',
+            raisedBedId: target.raisedBed.raisedBedId,
+            rotation: horizontal ? 0 : 1,
+            sourceRaisedBedId: source.raisedBed.raisedBedId,
+            stackIndex: target.placement.index,
+        });
+        resolvedRaisedBedIds.add(firstRaisedBed.raisedBedId);
+        resolvedRaisedBedIds.add(secondRaisedBed.raisedBedId);
+        resolvedBlockIds.add(firstRaisedBed.blockId);
+        resolvedBlockIds.add(secondRaisedBed.blockId);
+    }
+
+    const remainingRaisedBeds = raisedBeds.filter(
+        (raisedBed) => !resolvedRaisedBedIds.has(raisedBed.raisedBedId),
+    );
+    const remainingPlacements = placements.filter(
+        (placement) => !resolvedBlockIds.has(placement.blockId),
+    );
     const raisedBedByBlockId = new Map(
-        raisedBeds.map((raisedBed) => [raisedBed.blockId, raisedBed]),
+        remainingRaisedBeds.map((raisedBed) => [raisedBed.blockId, raisedBed]),
     );
     const referencedAdjacency = new Map<number, Set<number>>();
-    for (let leftIndex = 0; leftIndex < placements.length; leftIndex++) {
-        const leftPlacement = placements[leftIndex];
+    for (
+        let leftIndex = 0;
+        leftIndex < remainingPlacements.length;
+        leftIndex++
+    ) {
+        const leftPlacement = remainingPlacements[leftIndex];
         const leftRaisedBed = leftPlacement
             ? raisedBedByBlockId.get(leftPlacement.blockId)
             : undefined;
@@ -74,10 +295,10 @@ export function planRaisedBedSingleBlockMigration({
         }
         for (
             let rightIndex = leftIndex + 1;
-            rightIndex < placements.length;
+            rightIndex < remainingPlacements.length;
             rightIndex++
         ) {
-            const rightPlacement = placements[rightIndex];
+            const rightPlacement = remainingPlacements[rightIndex];
             const rightRaisedBed = rightPlacement
                 ? raisedBedByBlockId.get(rightPlacement.blockId)
                 : undefined;
@@ -85,7 +306,14 @@ export function planRaisedBedSingleBlockMigration({
                 !rightPlacement ||
                 !rightRaisedBed ||
                 leftPlacement.gardenId !== rightPlacement.gardenId ||
-                !isAdjacent(leftPlacement, rightPlacement)
+                !isAdjacent(leftPlacement, rightPlacement) ||
+                !canMergeReferencedPair(leftRaisedBed, rightRaisedBed) ||
+                separatePairKeys.has(
+                    pairKey(
+                        leftRaisedBed.raisedBedId,
+                        rightRaisedBed.raisedBedId,
+                    ),
+                )
             ) {
                 continue;
             }
@@ -103,13 +331,13 @@ export function planRaisedBedSingleBlockMigration({
         }
     }
 
-    for (const raisedBed of raisedBeds) {
+    for (const raisedBed of remainingRaisedBeds) {
         if (processedRaisedBedIds.has(raisedBed.raisedBedId)) {
             continue;
         }
         processedRaisedBedIds.add(raisedBed.raisedBedId);
 
-        const canonicalPlacement = placements.find(
+        const canonicalPlacement = remainingPlacements.find(
             (placement) =>
                 placement.gardenId === raisedBed.gardenId &&
                 placement.blockId === raisedBed.blockId,
@@ -153,7 +381,7 @@ export function planRaisedBedSingleBlockMigration({
             continue;
         }
 
-        const adjacentPlacements = placements.filter(
+        const adjacentPlacements = remainingPlacements.filter(
             (placement) =>
                 placement.gardenId === raisedBed.gardenId &&
                 placement.blockId !== raisedBed.blockId &&
@@ -164,8 +392,37 @@ export function planRaisedBedSingleBlockMigration({
         );
         const referencedCandidates = adjacentPlacements.flatMap((placement) => {
             const candidate = raisedBedByBlockId.get(placement.blockId);
-            return candidate ? [{ placement, raisedBed: candidate }] : [];
+            return candidate &&
+                canMergeReferencedPair(raisedBed, candidate) &&
+                !separatePairKeys.has(
+                    pairKey(raisedBed.raisedBedId, candidate.raisedBedId),
+                )
+                ? [{ placement, raisedBed: candidate }]
+                : [];
         });
+        const mixedCandidates = adjacentPlacements.flatMap((placement) => {
+            const candidate = raisedBedByBlockId.get(placement.blockId);
+            return candidate &&
+                isMixedLegacyPair(raisedBed, candidate) &&
+                !separatePairKeys.has(
+                    pairKey(raisedBed.raisedBedId, candidate.raisedBedId),
+                )
+                ? [{ placement, raisedBed: candidate }]
+                : [];
+        });
+
+        if (mixedCandidates.length > 0) {
+            for (const candidate of mixedCandidates) {
+                processedRaisedBedIds.add(candidate.raisedBed.raisedBedId);
+            }
+            unsafe.push({
+                blockId: raisedBed.blockId,
+                gardenId: raisedBed.gardenId,
+                raisedBedId: raisedBed.raisedBedId,
+                reason: 'adjacent legacy half and full raised bed require an explicit keep-separate decision',
+            });
+            continue;
+        }
 
         if (
             orphanCandidates.length + referencedCandidates.length > 1 ||
@@ -301,7 +558,7 @@ export function planRaisedBedSingleBlockMigration({
             plan.legacyBlockId ? [plan.legacyBlockId] : [],
         ),
     );
-    for (const placement of placements) {
+    for (const placement of remainingPlacements) {
         if (
             placement.referenced ||
             consumedLegacyBlockIds.has(placement.blockId)
