@@ -1064,7 +1064,10 @@ test('Outlet visitor walks in third and first person without mutations and recov
         page.getByRole('button', { name: 'Prošetaj Outlet vrtom' }),
     ).toHaveCount(0);
     await expect(walkButton).toBeVisible({ timeout: 90_000 });
-    await walkButton.click({ timeout: 90_000 });
+    // The prompt follows the roaming 3D avatar every frame, so it never has a
+    // stable screen position for Playwright's pointer actionability check.
+    // Keyboard activation still exercises the real semantic button handler.
+    await walkButton.press('Enter', { timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
@@ -1111,7 +1114,7 @@ test('Outlet visitor walks in third and first person without mutations and recov
     const offerRequestCountBeforeSceneLoss =
         outletApi.getOutletOfferRequestCount();
     await expect(walkButton).toBeVisible({ timeout: 90_000 });
-    await walkButton.click({ timeout: 90_000 });
+    await walkButton.press('Enter', { timeout: 90_000 });
     await expect(outlet).toHaveAttribute(
         'data-outlet-garden-avatar-view',
         'third-person',
