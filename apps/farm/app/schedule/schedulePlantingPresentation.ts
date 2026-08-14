@@ -1,3 +1,21 @@
+import { calculatePlantsPerField } from '@gredice/js/plants';
+import type { EntityStandardized } from '@gredice/storage';
+
+export function getRecommendedPlantCountPerField(
+    plantSort: EntityStandardized | null | undefined,
+) {
+    const seedingDistance =
+        plantSort?.information?.plant?.attributes?.seedingDistance;
+
+    return typeof seedingDistance === 'number'
+        ? calculatePlantsPerField(
+              seedingDistance,
+              plantSort?.information?.name ??
+                  `Plant sort #${plantSort?.id.toString() ?? 'unknown'}`,
+          ).totalPlants
+        : null;
+}
+
 export function buildFarmSchedulePlantingLabel({
     plantName,
     recommendedPlantCount,

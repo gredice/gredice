@@ -15,6 +15,7 @@ import type {
     FarmScheduleDayData,
     FarmScheduleRaisedBedPhotoPreview,
 } from './scheduleData';
+import { buildGreenhouseTransplantingOperationLabel } from './scheduleOperationPresentation';
 import type { FarmScheduleOperationsMode } from './scheduleShared';
 import {
     compareScheduleDates,
@@ -99,11 +100,20 @@ function buildOperationCardData(
         : null;
     const isFullRaisedBed =
         operationData?.attributes?.application === 'raisedBedFull';
+    const operationLabel =
+        operationData?.information?.label ?? operation.entityId.toString();
+    const defaultLabel = `${operationLabel}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
     return {
         ...operation,
         durationMinutes: getOperationDurationMinutes(operationData),
-        label: `${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`,
+        label:
+            buildGreenhouseTransplantingOperationLabel({
+                operationEntityId: operation.entityId,
+                operationLabel,
+                plantSort: sort,
+                sowingLocation: field?.sowingLocation,
+            }) ?? defaultLabel,
         positionNumber: isFullRaisedBed ? null : physicalPositionIndex,
         raisedBedLabel: raisedBed
             ? raisedBed.physicalId

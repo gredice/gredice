@@ -1,4 +1,3 @@
-import { calculatePlantsPerField } from '@gredice/js/plants';
 import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
@@ -19,6 +18,7 @@ import type {
 import {
     buildFarmSchedulePlantingLabel,
     buildFarmScheduleSelectedPlantingLabel,
+    getRecommendedPlantCountPerField,
 } from './schedulePlantingPresentation';
 import {
     compareScheduleDates,
@@ -53,20 +53,10 @@ function buildFieldLabel(
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    const seedingDistance =
-        sort?.information?.plant?.attributes?.seedingDistance;
-    const recommendedPlantCount =
-        typeof seedingDistance === 'number'
-            ? calculatePlantsPerField(
-                  seedingDistance,
-                  sort?.information?.name ??
-                      `Plant sort #${sort?.id.toString() ?? 'unknown'}`,
-              ).totalPlants
-            : null;
 
     return buildFarmSchedulePlantingLabel({
         plantName: sort?.information?.name,
-        recommendedPlantCount,
+        recommendedPlantCount: getRecommendedPlantCountPerField(sort),
         sowingLocation: field.sowingLocation,
     });
 }

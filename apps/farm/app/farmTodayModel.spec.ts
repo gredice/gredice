@@ -487,6 +487,59 @@ test('composes mixed operation and planting work without merging pending into co
     });
 });
 
+test('shows the greenhouse transplant quantity in Today operation work', () => {
+    const greenhouseParsley = buildField({
+        id: 211,
+        plantSortId: 213,
+        sowingLocation: 'greenhouse',
+    });
+    const raisedBed = buildRaisedBed({ fields: [greenhouseParsley] });
+    const transplanting = buildOperation({
+        entityId: 593,
+        id: 111,
+        raisedBedFieldId: greenhouseParsley.id,
+    });
+    const result = composeFarmTodayData(
+        buildInput({
+            operationDefinitions: ready([
+                buildDefinition({
+                    id: 593,
+                    label: 'Presađivanje presadnica',
+                }),
+            ]),
+            operations: ready({
+                authorizationScope: 'farmMembership',
+                pendingOperations: [],
+                pendingOperationsComplete: true,
+                raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
+                scheduledOperations: [transplanting],
+                scheduledOperationsComplete: true,
+            }),
+            plantSorts: ready([
+                {
+                    id: 213,
+                    information: {
+                        name: 'Peršin lisnati',
+                        plant: {
+                            id: 148,
+                            attributes: { seedingDistance: 5 },
+                        },
+                    },
+                },
+            ]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+    expect(result.focusQueue.map(({ label }) => label)).toEqual([
+        'Presađivanje presadnica: Peršin lisnati · presaditi 36 biljaka u polje',
+    ]);
+});
+
 test('keeps physical positions continuous across raised-bed blocks', () => {
     const firstField = buildField({ id: 201, raisedBedId: 10 });
     const secondField = buildField({ id: 202, raisedBedId: 11 });

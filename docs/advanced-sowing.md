@@ -327,7 +327,9 @@ guidance for new Advanced Sowing work uses the persisted snapshot. A legacy
 Farm task may show an explicitly labeled recommendation calculated from the
 current catalogue spacing. That recommendation is presentation guidance only:
 it does not populate the missing snapshot or change the task's persisted
-footprint, collision behavior, or history.
+footprint, collision behavior, or history. A greenhouse transplant operation
+may repeat that current recommendation as the number of seedlings to move into
+the field so the Farm task remains unambiguous.
 Garden 3D derives instance count, density, centroid, footprint, and growth from
 the planting snapshot. It currently uses the plant sort's catalogue label only
 to choose the existing species mesh preset; a future requirement for immutable
