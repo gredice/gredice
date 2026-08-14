@@ -21,7 +21,10 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
-import { shouldRenderRaisedBedPlant } from './raisedBedPlantVisualStatus';
+import {
+    resolveRaisedBedPlantVisualStage,
+    shouldRenderRaisedBedPlant,
+} from './raisedBedPlantVisualStatus';
 
 export const mockPlantPresetLabelsBySortId: Record<number, string> = {
     219: 'pepper',
@@ -131,9 +134,6 @@ export function RaisedBedPlantField({
                   plantStatus: field.plantStatus,
               })
             : 0;
-    const visualPlantGeneration = harvestedVisual
-        ? Math.max(0.8, plantGeneration * 0.7)
-        : plantGeneration;
     const shouldRenderGeneratedPlants =
         Boolean(resolvedPlantPreset) &&
         shouldRenderRaisedBedPlant({
@@ -148,6 +148,14 @@ export function RaisedBedPlantField({
               resolvedPlantPreset,
               supportedVisual === true,
           )
+        : null;
+    const plantVisualStage = plantDefinition
+        ? resolveRaisedBedPlantVisualStage({
+              generation: plantGeneration,
+              harvestedVisual,
+              plantDefinition,
+              plantStatus: field.plantStatus,
+          })
         : null;
     const approximateFieldPlantHeight = plantDefinition
         ? getApproximatePlantHeight(plantDefinition) * plantInstanceScale
@@ -166,7 +174,7 @@ export function RaisedBedPlantField({
         }
 
         return fieldSlots.map((position, index) => ({
-            generation: visualPlantGeneration,
+            generation: plantVisualStage?.generation ?? plantGeneration,
             position: [position[0], 0.02, position[2]] as const,
             scale: plantInstanceScale,
             seed: `${plantSortId ?? 'sort'}:${positionIndex}:${blockIndex}:${index}`,
@@ -177,8 +185,9 @@ export function RaisedBedPlantField({
         plantInstanceScale,
         plantSortId,
         positionIndex,
+        plantGeneration,
+        plantVisualStage?.generation,
         resolvedPlantPreset,
-        visualPlantGeneration,
     ]);
 
     const seedColor = plantSowDate ? '#4b3223' : '#6495ED';
@@ -213,11 +222,12 @@ export function RaisedBedPlantField({
                         definition={
                             plantDefinition ?? resolvedPlantPreset.definition
                         }
-                        flowerGrowth={harvestedVisual ? 0.35 : 1}
-                        fruitGrowth={harvestedVisual ? 0.1 : 1}
+                        flowerGrowth={plantVisualStage?.flowerGrowth}
+                        fruitGrowth={plantVisualStage?.fruitGrowth}
                         instances={generatedPlantInstances}
                         lodLevel={fieldLod.level}
-                        showProduce={!harvestedVisual}
+                        showFlowers={plantVisualStage?.showFlowers}
+                        showProduce={plantVisualStage?.showProduce}
                     />
                 ) : (
                     fieldSlots.map((position) => {
