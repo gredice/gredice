@@ -245,6 +245,10 @@ function getOutletGardenSlotUnits(offers: readonly OutletGardenLayoutOffer[]) {
     const displayedOfferIds = new Set(
         displayUnits.map((display) => display.id),
     );
+    const soldOutSlotBudget = Math.max(
+        0,
+        outletGardenMaxDisplayedUnitsTotal - displayUnits.length,
+    );
     const unavailableUnits = Array.from(
         new Map(offers.map((offer) => [offer.id, offer])).values(),
     )
@@ -254,6 +258,8 @@ function getOutletGardenSlotUnits(offers: readonly OutletGardenLayoutOffer[]) {
                 !Number.isSafeInteger(offer.remainingQuantity) ||
                 offer.remainingQuantity <= 0,
         )
+        .sort(compareOutletGardenOffers)
+        .slice(0, soldOutSlotBudget)
         .map((offer) => ({
             ...offer,
             blockId: outletOfferBlockId(offer.id),

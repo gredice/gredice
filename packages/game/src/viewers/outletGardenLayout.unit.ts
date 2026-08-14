@@ -218,6 +218,44 @@ describe('reconcileOutletGardenSlots', () => {
         );
     });
 
+    it('bounds sold-out table slots within the shared scene budget', () => {
+        const liveOffer = {
+            id: 10_000,
+            plantId: 10_000,
+            plantSortId: 10_000,
+            remainingQuantity: 25,
+        };
+        const soldOutOffers = Array.from(
+            { length: outletGardenMaxDisplayedUnitsTotal + 100 },
+            (_, index) => ({
+                id: 20_000 + index,
+                plantId: 20_000 + index,
+                plantSortId: 20_000 + index,
+                remainingQuantity: 0,
+            }),
+        );
+        const assignments = reconcileOutletGardenSlots(new Map(), [
+            ...soldOutOffers.toReversed(),
+            liveOffer,
+        ]);
+
+        assert.equal(assignments.size, outletGardenMaxDisplayedUnitsTotal);
+        assert.equal(
+            Array.from(assignments.values()).filter(
+                (assignment) => assignment.offerId === liveOffer.id,
+            ).length,
+            liveOffer.remainingQuantity,
+        );
+        assert.equal(
+            assignedSlot(assignments, soldOutOffers[0]?.id ?? 0) !== undefined,
+            true,
+        );
+        assert.equal(
+            assignedSlot(assignments, soldOutOffers.at(-1)?.id ?? 0),
+            undefined,
+        );
+    });
+
     it('updates live assignment metadata without moving its display slot', () => {
         const originalOffer = {
             id: 170,
