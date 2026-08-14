@@ -7,6 +7,7 @@ import {
     bustCachedByPrefixes,
     cacheKeys,
 } from '../cache/directoriesCached';
+import { bustEntityReadModelsForMutatedTypes } from '../cache/entityReadModelInvalidation';
 import {
     attributeDefinitionPath,
     generatedImageAttributeValue,
@@ -159,9 +160,7 @@ export async function flushAttributeValueMutationSideEffects(
         ...Array.from(sideEffects.entityIds).map((entityId) =>
             bustCached(cacheKeys.entity(entityId)),
         ),
-        ...Array.from(sideEffects.entityTypeNames).map((entityTypeName) =>
-            bustCached(cacheKeys.entityTypeName(entityTypeName)),
-        ),
+        bustEntityReadModelsForMutatedTypes(sideEffects.entityTypeNames),
         sideEffects.dashboardAdmin
             ? bustCachedByPrefixes(['dashboard:admin:'])
             : undefined,
@@ -966,13 +965,19 @@ async function upsertAttributeValueInternal(
     );
 
     addAttributeValueMutationSideEffects(sideEffects, {
-        entityId: attributeValue.entityId ?? existingValue?.entityId,
-        entityTypeName:
-            attributeValue.entityTypeName ?? existingValue?.entityTypeName,
+        entityId: attributeValue.entityId,
+        entityTypeName: attributeValue.entityTypeName,
         relatedEntityIds: [
             ...impactedRelationshipTargetIds,
             ...affectedPlantHealthIds,
         ],
+    });
+    addAttributeValueMutationSideEffects(sideEffects, {
+        entityId: existingValue?.entityId,
+        entityTypeName: existingValue?.entityTypeName,
+    });
+    addAttributeValueMutationSideEffects(sideEffects, {
+        entityTypeName: definition?.entityTypeName,
     });
     if (
         definition &&

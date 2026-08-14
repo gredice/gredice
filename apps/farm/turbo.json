@@ -23,6 +23,8 @@
                 "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
                 "NEXT_PUBLIC_POSTHOG_UI_HOST",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
                 "POSTGRES_PASSWORD",
@@ -34,6 +36,7 @@
                 "POSTHOG_SERVER_HOST",
                 "SLACK_BOT_TOKEN",
                 "VERCEL",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

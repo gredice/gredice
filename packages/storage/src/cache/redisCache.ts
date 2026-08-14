@@ -1,4 +1,8 @@
 import { Redis } from '@upstash/redis';
+import {
+    decodeRedisCacheValue,
+    encodeRedisCacheValue,
+} from './redisCacheCodec';
 
 export type RedisCacheNamespace = 'plants' | 'gredice';
 
@@ -7,21 +11,31 @@ type RedisCacheOptions = {
     ttl?: number;
     jitterRatio?: number;
     maxPayloadBytes?: number;
-};
-
-type RedisCacheEnvelope = {
-    __grediceCacheEnvelope: 'v1';
-    value: unknown;
+    required?: boolean;
 };
 
 const DEFAULT_TTL_SECONDS = 60;
 const DEFAULT_JITTER_RATIO = 0.15;
 const DEFAULT_MAX_PAYLOAD_BYTES = 512 * 1024;
-const CACHE_DATE_KEY = '__grediceCacheDate';
 
 const redisClients: Partial<Record<RedisCacheNamespace, Redis>> = {};
 const disabledNamespaces = new Set<RedisCacheNamespace>();
 const inFlightCacheMisses = new Map<string, Promise<unknown>>();
+const missingCredentialWarnings = new Set<RedisCacheNamespace>();
+const oversizedCacheWarnings = new Set<string>();
+
+export function redisCacheKeyForEnvironment(
+    key: string,
+    environment = process.env.VERCEL_ENV,
+    projectPrefix = process.env.GREDICE_DIRECTORY_CACHE_PREFIX,
+) {
+    const prefixSegments = [
+        projectPrefix?.trim().replace(/:+$/u, ''),
+        environment && environment !== 'production' ? environment : undefined,
+    ].filter((segment): segment is string => Boolean(segment));
+
+    return [...prefixSegments, key].join(':');
+}
 
 function cacheCredentials(namespace: RedisCacheNamespace) {
     if (namespace === 'gredice') {
@@ -63,69 +77,6 @@ export function redisCacheClient(
     return client;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function serializeCacheValue(value: unknown): unknown {
-    if (value instanceof Date) {
-        return {
-            [CACHE_DATE_KEY]: value.toISOString(),
-        };
-    }
-
-    if (Array.isArray(value)) {
-        return value.map(serializeCacheValue);
-    }
-
-    if (!isRecord(value)) {
-        return value;
-    }
-
-    const serialized: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-        serialized[key] = serializeCacheValue(item);
-    }
-    return serialized;
-}
-
-function deserializeCacheValue(value: unknown): unknown {
-    if (Array.isArray(value)) {
-        return value.map(deserializeCacheValue);
-    }
-
-    if (!isRecord(value)) {
-        return value;
-    }
-
-    const dateValue = value[CACHE_DATE_KEY];
-    if (typeof dateValue === 'string') {
-        const date = new Date(dateValue);
-        return Number.isNaN(date.getTime()) ? dateValue : date;
-    }
-
-    const deserialized: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-        deserialized[key] = deserializeCacheValue(item);
-    }
-    return deserialized;
-}
-
-function cacheEnvelope(value: unknown): RedisCacheEnvelope {
-    return {
-        __grediceCacheEnvelope: 'v1',
-        value: serializeCacheValue(value),
-    };
-}
-
-function isCacheEnvelope(value: unknown): value is RedisCacheEnvelope {
-    return (
-        isRecord(value) &&
-        value.__grediceCacheEnvelope === 'v1' &&
-        'value' in value
-    );
-}
-
 function ttlWithJitter(ttl: number, jitterRatio: number) {
     const jitter = Math.floor(ttl * jitterRatio);
     if (jitter <= 0) {
@@ -142,29 +93,61 @@ export async function redisCached<T>(
     options: RedisCacheOptions = {},
 ): Promise<T> {
     const namespace = options.namespace ?? 'plants';
-    const client = redisCacheClient(namespace);
-    if (!client) {
-        return fn();
-    }
-
-    const inFlightKey = `${namespace}:${key}`;
+    const cacheKey = redisCacheKeyForEnvironment(key);
+    const inFlightKey = `${namespace}:${cacheKey}`;
     const pending = inFlightCacheMisses.get(inFlightKey);
     if (pending) {
         return pending as Promise<T>;
     }
 
     const promise = (async () => {
-        try {
-            const cachedValue = await client.get<RedisCacheEnvelope>(key);
-            if (isCacheEnvelope(cachedValue)) {
-                return deserializeCacheValue(cachedValue.value) as T;
+        const client = redisCacheClient(namespace);
+        if (!client) {
+            if (options.required) {
+                throw new Error(
+                    `Redis cache credentials are required for the ${namespace} namespace.`,
+                );
             }
+            if (
+                process.env.VERCEL_ENV &&
+                !missingCredentialWarnings.has(namespace)
+            ) {
+                missingCredentialWarnings.add(namespace);
+                console.warn('Redis cache credentials are not configured', {
+                    namespace,
+                    environment: process.env.VERCEL_ENV,
+                });
+            }
+            return fn();
+        }
 
+        try {
+            const cachedValue = await client.get<unknown>(cacheKey);
             if (cachedValue !== null) {
-                await client.del(key);
+                try {
+                    const decoded = decodeRedisCacheValue(cachedValue);
+                    if (decoded.hit) {
+                        return decoded.value as T;
+                    }
+                } catch (error) {
+                    console.warn('Failed to decode Redis cache value', {
+                        key: cacheKey,
+                        error,
+                    });
+                }
+                await client.del(cacheKey);
             }
         } catch (error) {
-            console.warn(`Error reading Redis cache for key "${key}":`, error);
+            if (options.required) {
+                throw new Error(
+                    `Required Redis cache read failed for key "${cacheKey}".`,
+                    { cause: error },
+                );
+            }
+            console.warn(
+                `Error reading Redis cache for key "${cacheKey}":`,
+                error,
+            );
         }
 
         const value = await fn();
@@ -173,21 +156,45 @@ export async function redisCached<T>(
         }
 
         try {
-            const envelope = cacheEnvelope(value);
-            const payload = JSON.stringify(envelope);
             const maxPayloadBytes =
                 options.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES;
+            const encoded = encodeRedisCacheValue(value, {
+                maxStoredBytes: maxPayloadBytes,
+            });
 
-            if (Buffer.byteLength(payload) <= maxPayloadBytes) {
-                await client.set(key, envelope, {
+            if (encoded.cacheValue) {
+                await client.set(cacheKey, encoded.cacheValue, {
                     ex: ttlWithJitter(
                         options.ttl ?? DEFAULT_TTL_SECONDS,
                         options.jitterRatio ?? DEFAULT_JITTER_RATIO,
                     ),
                 });
+            } else if (!oversizedCacheWarnings.has(inFlightKey)) {
+                oversizedCacheWarnings.add(inFlightKey);
+                console.warn('Redis cache value exceeds the storage limit', {
+                    key: cacheKey,
+                    sourceBytes: encoded.sourceBytes,
+                    storedBytes: encoded.storedBytes,
+                    maxPayloadBytes,
+                });
+            }
+
+            if (!encoded.cacheValue && options.required) {
+                throw new Error(
+                    `Required Redis cache value exceeds the storage limit for key "${cacheKey}".`,
+                );
             }
         } catch (error) {
-            console.warn(`Error setting Redis cache for key "${key}":`, error);
+            if (options.required) {
+                throw new Error(
+                    `Required Redis cache write failed for key "${cacheKey}".`,
+                    { cause: error },
+                );
+            }
+            console.warn(
+                `Error setting Redis cache for key "${cacheKey}":`,
+                error,
+            );
         }
 
         return value;
@@ -231,6 +238,7 @@ export async function redisCachedInfo(
 export async function bustRedisCached(
     key: string,
     namespace: RedisCacheNamespace = 'plants',
+    projectPrefix = process.env.GREDICE_DIRECTORY_CACHE_PREFIX,
 ) {
     try {
         const client = redisCacheClient(namespace);
@@ -238,7 +246,13 @@ export async function bustRedisCached(
             return;
         }
 
-        await client.del(key);
+        await client.del(
+            redisCacheKeyForEnvironment(
+                key,
+                process.env.VERCEL_ENV,
+                projectPrefix,
+            ),
+        );
     } catch (error) {
         console.warn(`Error busting Redis cache for key "${key}":`, error);
     }
@@ -247,6 +261,7 @@ export async function bustRedisCached(
 export async function bustRedisCacheByPrefixes(
     prefixes: string[],
     namespace: RedisCacheNamespace = 'plants',
+    projectPrefixes = [process.env.GREDICE_DIRECTORY_CACHE_PREFIX ?? ''],
 ) {
     try {
         const client = redisCacheClient(namespace);
@@ -263,8 +278,17 @@ export async function bustRedisCacheByPrefixes(
             keys.push(...scanResult[1]);
         } while (cursor !== '0');
 
+        const environmentPrefixes = projectPrefixes.flatMap((projectPrefix) =>
+            prefixes.map((prefix) =>
+                redisCacheKeyForEnvironment(
+                    prefix,
+                    process.env.VERCEL_ENV,
+                    projectPrefix,
+                ),
+            ),
+        );
         const keysToDelete = keys.filter((key) =>
-            prefixes.some((prefix) => key.startsWith(prefix)),
+            environmentPrefixes.some((prefix) => key.startsWith(prefix)),
         );
 
         await Promise.all(keysToDelete.map((key) => client.del(key)));

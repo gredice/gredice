@@ -6,6 +6,7 @@ import {
     attributeValues,
     entities,
     entityRevisions,
+    entityTypes,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -20,6 +21,7 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { bustEntityReadModelsForMutatedTypes } from '../cache/entityReadModelInvalidation';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
 import {
     attributeDefinitionPath,
@@ -248,7 +250,7 @@ function resolveAttributeDefaultValue(
 }
 
 export async function getEntitiesRaw(entityTypeName: string, state?: string) {
-    const rawEntities = await storage().query.entities.findMany({
+    const entityRows = await storage().query.entities.findMany({
         where: state
             ? and(
                   eq(entities.entityTypeName, entityTypeName),
@@ -260,22 +262,73 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
                   eq(entities.isDeleted, false),
               ),
         orderBy: desc(entities.updatedAt),
-        with: {
-            attributes: {
-                where: eq(attributeValues.isDeleted, false),
-                with: {
-                    attributeDefinition: true,
-                },
-            },
-            entityType: {
-                with: {
-                    attributeDefinitions: {
-                        where: eq(attributeDefinitions.isDeleted, false),
-                    },
-                },
-            },
-        },
     });
+
+    if (entityRows.length === 0) {
+        return [];
+    }
+
+    const [rawAttributes, entityType] = await Promise.all([
+        storage().query.attributeValues.findMany({
+            where: and(
+                inArray(
+                    attributeValues.entityId,
+                    entityRows.map((entity) => entity.id),
+                ),
+                eq(attributeValues.isDeleted, false),
+            ),
+        }),
+        storage().query.entityTypes.findFirst({
+            where: eq(entityTypes.name, entityTypeName),
+            with: {
+                attributeDefinitions: true,
+            },
+        }),
+    ]);
+
+    if (!entityType) {
+        throw new Error(`Entity type ${entityTypeName} was not found.`);
+    }
+
+    const attributeDefinitionsById = new Map(
+        entityType.attributeDefinitions.map((definition) => [
+            definition.id,
+            definition,
+        ]),
+    );
+    const attributesByEntityId = new Map<number, EntityAttribute[]>();
+    for (const attribute of rawAttributes) {
+        const attributeDefinition = attributeDefinitionsById.get(
+            attribute.attributeDefinitionId,
+        );
+        if (!attributeDefinition) {
+            throw new Error(
+                `Attribute definition ${attribute.attributeDefinitionId} was not found.`,
+            );
+        }
+
+        const entityAttributes =
+            attributesByEntityId.get(attribute.entityId) ?? [];
+        entityAttributes.push({
+            ...attribute,
+            attributeDefinition,
+        });
+        attributesByEntityId.set(attribute.entityId, entityAttributes);
+    }
+
+    const activeAttributeDefinitions = entityType.attributeDefinitions.filter(
+        (definition) => !definition.isDeleted,
+    );
+    const rawEntities: EntityWithAttributesAndDefinitions[] = entityRows.map(
+        (entity) => ({
+            ...entity,
+            attributes: attributesByEntityId.get(entity.id) ?? [],
+            entityType: {
+                ...entityType,
+                attributeDefinitions: activeAttributeDefinitions,
+            },
+        }),
+    );
 
     return Promise.all(
         rawEntities.map((entity) => buildEffectiveEntity(entity)),
@@ -985,22 +1038,22 @@ export async function createEntity(
     entityTypeName: string,
     actor?: { id?: string; name?: string },
 ) {
-    const [result] = await Promise.all([
-        storage()
-            .insert(entities)
-            .values({ entityTypeName })
-            .returning({ id: entities.id }),
-        bustCached(cacheKeys.entityTypeName(entityTypeName)),
+    const result = await storage()
+        .insert(entities)
+        .values({ entityTypeName })
+        .returning({ id: entities.id });
+    const entityId = result[0].id;
+    await Promise.all([
+        storage().insert(entityRevisions).values({
+            entityId,
+            entityTypeName,
+            action: 'entity.created',
+            actorId: actor?.id,
+            actorName: actor?.name,
+        }),
+        bustEntityReadModelsForMutatedTypes([entityTypeName]),
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
-    const entityId = result[0].id;
-    await storage().insert(entityRevisions).values({
-        entityId,
-        entityTypeName,
-        action: 'entity.created',
-        actorId: actor?.id,
-        actorName: actor?.name,
-    });
     return entityId;
 }
 
@@ -1019,9 +1072,9 @@ export async function duplicateEntity(id: number) {
         order: attr.order,
     }));
 
+    await storage().insert(attributeValues).values(newAttributes);
     await Promise.all([
-        storage().insert(attributeValues).values(newAttributes),
-        bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
+        bustEntityReadModelsForMutatedTypes([entity.entityTypeName]),
         bustCached(cacheKeys.entity(newEntityId)),
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
@@ -1144,64 +1197,40 @@ export async function updateEntity(
         : [];
 
     await Promise.all([
-        previousEntity
-            ? storage()
-                  .insert(entityRevisions)
-                  .values({
-                      entityId: entity.id,
-                      entityTypeName:
-                          entity.entityTypeName ??
-                          previousEntity.entityTypeName,
-                      action:
-                          previousEntity.state !== updateData.state
-                              ? 'entity.state_changed'
-                              : 'entity.updated',
-                      actorId: actor?.id,
-                      actorName: actor?.name,
-                      previousState: previousEntity.state,
-                      nextState: updateData.state ?? previousEntity.state,
-                  })
-            : undefined,
+        storage()
+            .insert(entityRevisions)
+            .values({
+                entityId: entity.id,
+                entityTypeName: nextEntityTypeName,
+                action:
+                    previousEntity.state !== updateData.state
+                        ? 'entity.state_changed'
+                        : 'entity.updated',
+                actorId: actor?.id,
+                actorName: actor?.name,
+                previousState: previousEntity.state,
+                nextState: updateData.state ?? previousEntity.state,
+            }),
         storage()
             .update(entities)
             .set(updateData)
             .where(eq(entities.id, entity.id)),
+    ]);
+
+    await Promise.all([
         bustCached(cacheKeys.entity(entity.id)),
-        entity.id
-            ? storage()
-                  .select()
-                  .from(entities)
-                  .where(eq(entities.id, entity.id))
-                  .then((entityToUpdate) => {
-                      return Promise.all([
-                          entityToUpdate?.[0].id
-                              ? bustCached(
-                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
-                                )
-                              : undefined,
-                          entityToUpdate?.[0].entityTypeName
-                              ? bustCached(
-                                    cacheKeys.entityTypeName(
-                                        entityToUpdate?.[0].entityTypeName,
-                                    ),
-                                )
-                              : undefined,
-                      ]);
-                  })
-            : undefined,
-        entity.entityTypeName
-            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
-            : null,
-        isPlantHealthIssueEntityTypeName(
-            entity.entityTypeName ?? previousEntity.entityTypeName,
-        )
-            ? Promise.all([
-                  bustCached(cacheKeys.entityTypeName('plant')),
-                  ...previousPlantHealthTargetIds.map((plantId) =>
+        bustEntityReadModelsForMutatedTypes([
+            previousEntity.entityTypeName,
+            nextEntityTypeName,
+        ]),
+        isPlantHealthIssueEntityTypeName(previousEntity.entityTypeName) ||
+        isPlantHealthIssueEntityTypeName(nextEntityTypeName)
+            ? Promise.all(
+                  previousPlantHealthTargetIds.map((plantId) =>
                       bustCached(cacheKeys.entity(plantId)),
                   ),
-              ])
-            : null,
+              )
+            : undefined,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
@@ -1237,18 +1266,18 @@ export async function deleteEntity(
             .update(entities)
             .set({ isDeleted: true })
             .where(eq(entities.id, id)),
+    ]);
+
+    await Promise.all([
         bustCached(cacheKeys.entity(id)),
-        entity.entityTypeName
-            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
-            : null,
+        bustEntityReadModelsForMutatedTypes([entity.entityTypeName]),
         isPlantHealthIssueEntityTypeName(entity.entityTypeName)
-            ? Promise.all([
-                  bustCached(cacheKeys.entityTypeName('plant')),
-                  ...plantHealthTargetIds.map((plantId) =>
+            ? Promise.all(
+                  plantHealthTargetIds.map((plantId) =>
                       bustCached(cacheKeys.entity(plantId)),
                   ),
-              ])
-            : null,
+              )
+            : undefined,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
