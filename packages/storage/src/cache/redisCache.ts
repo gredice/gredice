@@ -3,6 +3,7 @@ import {
     decodeRedisCacheValue,
     encodeRedisCacheValue,
 } from './redisCacheCodec';
+import { createUpstashRedisRequester } from './upstashRedisRequester';
 
 export type RedisCacheNamespace = 'plants' | 'gredice';
 
@@ -69,10 +70,9 @@ export function redisCacheClient(
         return null;
     }
 
-    const client = new Redis({
-        url,
-        token,
-    });
+    const client = new Redis({ url, token });
+    const requester = createUpstashRedisRequester({ url, token });
+    client.use((request) => requester.request(request));
     redisClients[namespace] = client;
     return client;
 }
