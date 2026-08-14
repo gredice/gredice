@@ -13,11 +13,6 @@ import {
     type OutletGardenCommerceController,
     OutletGardenReservationPanel,
 } from './OutletGardenCommerce';
-import {
-    outletGardenMaxDisplayedUnitsPerOffer,
-    outletGardenMaxDisplayedUnitsTotal,
-} from './outletGardenLayout';
-import type { OutletGardenRenderer } from './outletGardenRenderer';
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
     style: 'currency',
@@ -137,7 +132,6 @@ function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
 export type OutletGardenOfferBrowserProps = {
     className?: string;
     commerce?: OutletGardenCommerceController;
-    displayLimited?: boolean;
     headerAction?: ReactNode;
     isError: boolean;
     isLoading: boolean;
@@ -149,7 +143,6 @@ export type OutletGardenOfferBrowserProps = {
     onRetry: () => void;
     onSelectOffer: (offerId: number | null) => void;
     onShowOfferList?: () => void;
-    renderer?: OutletGardenRenderer;
     selectedOfferId: number | null;
     surface?: 'modal' | 'panel';
     view?: 'combined' | 'details' | 'list';
@@ -158,7 +151,6 @@ export type OutletGardenOfferBrowserProps = {
 export function OutletGardenOfferBrowser({
     className,
     commerce,
-    displayLimited = false,
     headerAction,
     isError,
     isLoading,
@@ -170,7 +162,6 @@ export function OutletGardenOfferBrowser({
     onRetry,
     onSelectOffer,
     onShowOfferList,
-    renderer = 'webgl',
     selectedOfferId,
     surface = 'panel',
     view = 'combined',
@@ -185,6 +176,8 @@ export function OutletGardenOfferBrowser({
         selectedOfferId !== null && !selectedOffer && !isLoading && !isError;
     const showOfferList = view !== 'details';
     const showSelectedOffer = view !== 'list';
+    const showModalDetails =
+        surface === 'modal' && view === 'details' && selectedOffer !== null;
     const selectedOfferIdForFocus = selectedOffer?.id ?? null;
     const state = isLoading
         ? 'loading'
@@ -207,7 +200,11 @@ export function OutletGardenOfferBrowser({
 
     return (
         <aside
-            aria-labelledby="outlet-garden-offers-title"
+            aria-labelledby={
+                showModalDetails
+                    ? 'outlet-garden-selected-title'
+                    : 'outlet-garden-offers-title'
+            }
             className={cx(
                 'relative flex min-h-0 flex-col overflow-hidden',
                 surface === 'panel'
@@ -219,73 +216,66 @@ export function OutletGardenOfferBrowser({
             data-outlet-garden-state={state}
             id="outlet-garden-browser"
         >
-            <header className="border-b px-4 py-3 sm:px-5 sm:py-4">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <div className="mb-1 flex items-center gap-2">
-                            <span className="rounded-full bg-lime-100 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-lime-900 uppercase dark:bg-lime-950 dark:text-lime-100">
-                                {renderer === 'webgl'
-                                    ? '3D pregled'
-                                    : 'Popis ponuda'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {renderer === 'webgl'
-                                    ? 'Interaktivni prikaz'
-                                    : 'Bez 3D prikaza'}
-                            </span>
+            {!showModalDetails ? (
+                <header className="border-b px-4 py-3 sm:px-5 sm:py-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <h1
+                                className="truncate text-xl font-bold"
+                                id="outlet-garden-offers-title"
+                            >
+                                Dostupne sadnice
+                            </h1>
+                            {view !== 'details' ? (
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Odaberi sadnicu i provjeri detalje ponude.
+                                </p>
+                            ) : null}
                         </div>
-                        <h1
-                            className="truncate text-xl font-bold"
-                            id="outlet-garden-offers-title"
-                        >
-                            Outlet vrt
-                        </h1>
+                        {onClose ? (
+                            <IconButton
+                                aria-label={
+                                    view === 'details'
+                                        ? 'Zatvori detalje sadnice'
+                                        : 'Zatvori popis dostupnih sadnica'
+                                }
+                                className="shrink-0 rounded-full"
+                                onClick={onClose}
+                                size="lg"
+                                variant="plain"
+                            >
+                                <Close aria-hidden className="size-4" />
+                            </IconButton>
+                        ) : (
+                            <Button
+                                aria-label="Povratak u moj vrt"
+                                href="/"
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    onExit('garden', '/');
+                                }}
+                                size="lg"
+                                startDecorator={
+                                    <ArrowLeft className="size-4" />
+                                }
+                                variant="soft"
+                            >
+                                Povratak
+                            </Button>
+                        )}
                     </div>
-                    {onClose ? (
-                        <IconButton
-                            aria-label={
-                                view === 'details'
-                                    ? 'Zatvori detalje sadnice'
-                                    : 'Zatvori popis Outlet ponuda'
-                            }
-                            className="shrink-0 rounded-full"
-                            onClick={onClose}
-                            size="lg"
-                            variant="plain"
-                        >
-                            <Close aria-hidden className="size-4" />
-                        </IconButton>
-                    ) : (
-                        <Button
-                            aria-label="Povratak u moj vrt"
-                            href="/"
-                            onClick={(event) => {
-                                event.preventDefault();
-                                onExit('garden', '/');
-                            }}
-                            size="lg"
-                            startDecorator={<ArrowLeft className="size-4" />}
-                            variant="soft"
-                        >
-                            Povratak
-                        </Button>
-                    )}
-                </div>
-                {view !== 'details' ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        {renderer === 'list'
-                            ? 'Razgledaj aktualne ponude, njihove cijene i punu dostupnu količinu.'
-                            : displayLimited
-                              ? `Razgledaj aktualne ponude. Za velike zalihe prikazujemo najviše ${outletGardenMaxDisplayedUnitsPerOffer.toString()} sadnica po ponudi i ${outletGardenMaxDisplayedUnitsTotal.toString()} ukupno; kartice uvijek pokazuju punu dostupnu količinu.`
-                              : 'Razgledaj aktualne ponude. Broj 3D sadnica prati trenutno dostupnu količinu svake ponude.'}
-                    </p>
-                ) : null}
-                {headerAction ? (
-                    <div className="mt-3">{headerAction}</div>
-                ) : null}
-            </header>
+                    {headerAction ? (
+                        <div className="mt-3">{headerAction}</div>
+                    ) : null}
+                </header>
+            ) : null}
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+            <div
+                className={cx(
+                    'min-h-0 flex-1 overflow-y-auto overscroll-contain',
+                    showModalDetails ? 'p-0' : 'p-4 sm:p-5',
+                )}
+            >
                 <div aria-live="polite">
                     {isLoading ? (
                         <div
@@ -309,7 +299,7 @@ export function OutletGardenOfferBrowser({
                                 Ponude se trenutačno ne mogu učitati.
                             </p>
                             <p className="mt-1 text-muted-foreground">
-                                Pokušaj ponovno bez napuštanja Outlet vrta.
+                                Pokušaj ponovno bez zatvaranja ovog pregleda.
                             </p>
                             <Button
                                 className="mt-3"
@@ -333,8 +323,8 @@ export function OutletGardenOfferBrowser({
                                 Trenutačno nema aktivnih ponuda.
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Vrati se uskoro — Outlet vrt se puni čim nove
-                                sadnice postanu dostupne.
+                                Vrati se uskoro — nove sadnice dodajemo čim
+                                postanu dostupne.
                             </p>
                         </div>
                     ) : null}
@@ -609,14 +599,27 @@ export function OutletGardenOfferBrowser({
                     <article
                         aria-labelledby="outlet-garden-selected-title"
                         className={cx(
-                            'overflow-hidden rounded-2xl border bg-card shadow-sm outline-hidden',
+                            'overflow-hidden outline-hidden',
+                            showModalDetails
+                                ? 'bg-background'
+                                : 'rounded-2xl border bg-card shadow-sm',
                             showOfferList ? 'mt-4' : null,
                         )}
                         data-outlet-garden-selected-offer={selectedOffer.id}
                         ref={selectedDetailsRef}
                         tabIndex={-1}
                     >
-                        <div className="relative aspect-[16/9] bg-lime-50 dark:bg-lime-950/30">
+                        <div
+                            className={cx(
+                                'relative bg-lime-50 dark:bg-lime-950/30',
+                                showModalDetails
+                                    ? 'aspect-square'
+                                    : 'aspect-[16/9]',
+                            )}
+                            data-outlet-garden-offer-cover={
+                                showModalDetails || undefined
+                            }
+                        >
                             {offerImageUrl(selectedOffer) ? (
                                 // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
                                 <img
@@ -630,12 +633,34 @@ export function OutletGardenOfferBrowser({
                                     <Sprout className="size-12 text-lime-700" />
                                 </div>
                             )}
+                            {showModalDetails && onClose ? (
+                                <IconButton
+                                    aria-label="Zatvori detalje sadnice"
+                                    className="absolute top-3 right-3 rounded-full bg-background/90 shadow-md backdrop-blur-sm"
+                                    onClick={onClose}
+                                    size="lg"
+                                    variant="plain"
+                                >
+                                    <Close aria-hidden className="size-4" />
+                                </IconButton>
+                            ) : null}
                         </div>
-                        <div className="p-4">
+                        <div
+                            className={
+                                showModalDetails
+                                    ? 'p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]'
+                                    : 'p-4'
+                            }
+                        >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <h2
-                                        className="text-lg font-bold"
+                                        className={cx(
+                                            'font-bold',
+                                            showModalDetails
+                                                ? 'text-2xl'
+                                                : 'text-lg',
+                                        )}
                                         id="outlet-garden-selected-title"
                                     >
                                         {selectedOffer.plantSort.name}
@@ -712,8 +737,8 @@ export function OutletGardenOfferBrowser({
                             </dl>
 
                             <p className="mt-3 text-[10px] leading-4 text-muted-foreground/70">
-                                Fotografija i 3D prikaz su reprezentativni.
-                                Zaliha se rezervira tek nakon potvrde polja.
+                                Fotografija je reprezentativna. Sadnica se
+                                rezervira tek nakon potvrde polja.
                             </p>
 
                             {commerce ? (
@@ -735,7 +760,7 @@ export function OutletGardenOfferBrowser({
 
                             {view === 'details' && onShowOfferList ? (
                                 <Button
-                                    aria-label="Prikaži popis Outlet ponuda"
+                                    aria-label="Prikaži popis dostupnih sadnica"
                                     className="mt-4"
                                     fullWidth
                                     onClick={onShowOfferList}
@@ -744,7 +769,7 @@ export function OutletGardenOfferBrowser({
                                     }
                                     variant="outlined"
                                 >
-                                    Sve Outlet ponude
+                                    Sve dostupne sadnice
                                 </Button>
                             ) : null}
 

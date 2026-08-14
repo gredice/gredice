@@ -9,8 +9,8 @@ import {
 } from '../flags';
 
 export const metadata: Metadata = {
-    title: 'Outlet vrt | Gredice',
-    description: 'Razgledaj dostupne outlet sadnice u interaktivnom 3D vrtu.',
+    title: 'Dostupne sadnice | Gredice',
+    description: 'Pregledaj dostupne outlet sadnice i detalje ponude.',
     robots: { follow: false, index: false },
 };
 

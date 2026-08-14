@@ -1,20 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OutletGardenOfferBrowserStory } from './OutletGardenOfferBrowserStory';
 
-test('explains when extreme stock is summarized in 3D', async ({
-    mount,
-    page,
-}) => {
-    await mount(<OutletGardenOfferBrowserStory displayLimited />);
-
-    await expect(
-        page.getByText(/najviše 100 sadnica po ponudi i 500 ukupno/u),
-    ).toBeVisible();
-    await expect(
-        page.getByText(/kartice uvijek pokazuju punu dostupnu količinu/u),
-    ).toBeVisible();
-});
-
 test('selects a live offer and exposes truthful read-only details', async ({
     mount,
     page,
@@ -59,7 +45,7 @@ test('selects a live offer and exposes truthful read-only details', async ({
     await expect(details).toContainText('Prvi cvjetovi');
     await expect(details).toContainText('21. kolovoza 2026.');
     await expect(details).toContainText(
-        'Fotografija i 3D prikaz su reprezentativni. Zaliha se rezervira tek nakon potvrde polja.',
+        'Fotografija je reprezentativna. Sadnica se rezervira tek nakon potvrde polja.',
     );
     await expect(
         details.getByRole('link', { name: 'Nastavi u postojećem Outletu' }),
@@ -207,7 +193,7 @@ test('previews the matching scene offer on pointer hover and keyboard focus', as
     await offer.hover();
     await expect(hoveredOffer).toHaveText('303');
 
-    await page.getByRole('heading', { name: 'Outlet vrt' }).hover();
+    await page.getByRole('heading', { name: 'Dostupne sadnice' }).hover();
     await expect(hoveredOffer).toHaveText('none');
 
     await offer.focus();

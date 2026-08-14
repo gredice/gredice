@@ -15,15 +15,15 @@ import type { OutletGardenFallbackReason } from './outletGardenRenderer';
 function fallbackMessage(reason: OutletGardenFallbackReason) {
     switch (reason) {
         case 'unsupported_webgl':
-            return 'Ovaj uređaj ne podržava 3D prikaz. Sve ponude možeš pregledati i odabrati u popisu.';
+            return 'Ovaj uređaj ne može prikazati vrt. Sve dostupne sadnice možeš pregledati i odabrati u popisu.';
         case 'constrained_device':
             return 'Za ugodniji rad prikazujemo laganiji popis sa svim aktualnim ponudama.';
         case 'context_lost':
         case 'scene_load_error':
         case 'scene_ready_timeout':
-            return '3D prikaz je prekinut. Odabrana ponuda i sve aktualne ponude ostale su dostupne u popisu.';
+            return 'Prikaz vrta je prekinut. Odabrana sadnica i sve aktualne ponude ostale su dostupne u popisu.';
         case 'user':
-            return 'Pregledavaš sve aktualne ponude u popisu bez 3D prikaza.';
+            return 'Pregledavaš sve aktualne ponude u preglednom popisu.';
     }
 }
 
@@ -136,7 +136,7 @@ export function OutletGardenBrowserViewer({
                         </p>
                         {onUse3D ? (
                             <Button
-                                aria-label="Pokušaj ponovno otvoriti 3D Outlet vrt"
+                                aria-label="Pokušaj ponovno otvoriti prikaz vrta"
                                 onClick={request3D}
                                 size="lg"
                                 startDecorator={
@@ -144,7 +144,7 @@ export function OutletGardenBrowserViewer({
                                 }
                                 variant="outlined"
                             >
-                                Pokušaj 3D prikaz
+                                Vrati prikaz vrta
                             </Button>
                         ) : null}
                     </div>
@@ -156,7 +156,6 @@ export function OutletGardenBrowserViewer({
                 onAuthenticationRequired={onAuthenticationRequired}
                 onRetry={retryOffers}
                 onSelectOffer={selectOffer}
-                renderer="list"
                 selectedOfferId={selectedOfferId}
             />
         </div>

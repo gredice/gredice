@@ -1131,7 +1131,7 @@ export function buildOutletGardenDetail(
         isSandbox: false,
         latitude: 45.815,
         longitude: 15.982,
-        name: 'Outlet vrt',
+        name: 'Vrt dostupnih sadnica',
         raisedBeds: [],
         stacks: outletGardenResponseStacks(
             buildOutletGardenStacks(offers, assignments),
