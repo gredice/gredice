@@ -40,6 +40,7 @@
         "operations:material-cost:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertOperationMaterialCostAttribute.ts",
         "plant-health:operations-backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthOperations.ts",
         "plants:advanced-sowing-attributes": "tsx --conditions=react-server --env-file=.env ./scripts/upsertAdvancedSowingAttributes.ts",
+        "plants:advanced-sowing-distances": "tsx --conditions=react-server --env-file=.env ./scripts/backfillAdvancedSowingPlantSpacing.ts",
         "plants:advanced-sowing-catalogue:audit": "tsx --conditions=react-server --env-file=.env ./scripts/auditAdvancedSowingCatalogue.ts",
         "plants:advanced-sowing-cart:audit": "tsx --conditions=react-server --env-file=.env ./scripts/auditAdvancedSowingReservedCartData.ts",
         "plants:advanced-sowing-plantings:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillAdvancedSowingPlantings.ts",
