@@ -4,6 +4,7 @@ import { cx } from '@gredice/ui/utils';
 import {
     type HTMLAttributes,
     Suspense,
+    useCallback,
     useEffect,
     useMemo,
     useRef,
@@ -91,6 +92,7 @@ import {
     type WinterMode,
 } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
+import { useWoodenSignParam } from './useUrlState';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -333,6 +335,10 @@ export function GameScene({
     const setGardenAvatarView = useGameState(
         (state) => state.setGardenAvatarView,
     );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const [, setWoodenSignParam] = useWoodenSignParam();
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
@@ -468,6 +474,20 @@ export function GameScene({
         }
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
     const isLoading = gardenLoading;
+    const interactWithAvatarBlock = useCallback(
+        (block: Block) => {
+            if (block.name === 'GardenBox' && !isLocalSandbox) {
+                setOpenGardenBoxBlockId(block.id);
+                return true;
+            }
+            if (block.name === 'WoodenSign') {
+                setWoodenSignParam(block.id);
+                return true;
+            }
+            return false;
+        },
+        [isLocalSandbox, setOpenGardenBoxBlockId, setWoodenSignParam],
+    );
 
     const loadingContext = useGameLoading();
     useEffect(() => {
@@ -651,6 +671,9 @@ export function GameScene({
                                     zoom !== 'far' && (
                                         <Suspense fallback={null}>
                                             <GardenAvatar
+                                                onInteractBlock={
+                                                    interactWithAvatarBlock
+                                                }
                                                 stacks={garden?.stacks}
                                             />
                                         </Suspense>

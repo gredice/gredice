@@ -78,11 +78,7 @@ function setListPreference(enabled: boolean) {
     }
 }
 
-export function OutletGardenRenderer({
-    commerceEnabled,
-}: {
-    commerceEnabled: boolean;
-}) {
+export function OutletGardenRenderer() {
     const { track } = useGameAnalytics();
     const [mode, setMode] = useState<OutletGardenRendererMode>('checking');
     const [fallbackReason, setFallbackReason] =
@@ -107,7 +103,7 @@ export function OutletGardenRenderer({
         [setReservationIntent],
     );
     const commerce: OutletGardenCommerceController = useOutletGardenCommerce({
-        enabled: commerceEnabled,
+        enabled: true,
         onReservationIntentChange: updateReservationIntent,
         renderer,
         requested: reservationIntent === 1,

@@ -4,7 +4,8 @@ export type DogBehavior =
     | 'cover'
     | 'low-entity'
     | 'chase-bird'
-    | 'interact-cat';
+    | 'interact-cat'
+    | 'follow-avatar';
 
 export type DogWeather = {
     cloudy?: number | null;
@@ -189,6 +190,10 @@ export function getDogDwellSeconds({
 
     if (behavior === 'low-entity') {
         return 4 + amount * 7;
+    }
+
+    if (behavior === 'follow-avatar') {
+        return 1;
     }
 
     return 2.5 + amount * 5.5;

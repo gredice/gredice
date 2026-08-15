@@ -1,15 +1,8 @@
-import { useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameState } from '../../useGameState';
 import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
 import { normalizeRainParticleIntensity } from './rainParticles';
 import { rainFragmentShader } from './rainShaders';
 
@@ -20,8 +13,7 @@ interface DropsProps {
 
 export const Drops = ({ count = 2000, intensity }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
-    const camera = useThree((state) => state.camera);
-    const gameCamera = useGameState((state) => state.gameCamera);
+    usePrecipitationFieldPosition({ fieldRef: fref, followCamera: true });
     const timeUniform = useSceneTimeUniform();
     useSceneTimeInvalidation();
     const rainProgressUniformRef = useRef<THREE.IUniform<number> | null>(null);
@@ -85,31 +77,6 @@ export const Drops = ({ count = 2000, intensity }: DropsProps) => {
     useLayoutEffect(() => {
         rainProgressUniform.value = normalizeRainParticleIntensity(intensity);
     }, [intensity, rainProgressUniform]);
-
-    const updateRainFieldPosition = useCallback((x: number, z: number) => {
-        const group = fref.current;
-        if (!group) {
-            return;
-        }
-
-        group.position.set(x, 0, z);
-    }, []);
-
-    useLayoutEffect(() => {
-        const snapshot = gameCamera?.getSnapshot();
-        updateRainFieldPosition(
-            snapshot?.target[0] ?? camera.position.x,
-            snapshot?.target[2] ?? camera.position.z,
-        );
-
-        if (!gameCamera) {
-            return;
-        }
-
-        return gameCamera.subscribe((snapshot) => {
-            updateRainFieldPosition(snapshot.target[0], snapshot.target[2]);
-        });
-    }, [camera, gameCamera, updateRainFieldPosition]);
 
     const vertexShader = useMemo(
         () => /* glsl */ `

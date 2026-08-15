@@ -328,6 +328,33 @@ export type AnimalDisturbance = {
     radius: number;
 };
 
+export type GardenAvatarPresence = {
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    updatedAt: number;
+    yaw: number;
+};
+
+export type GardenAvatarAnimalPetRequest = {
+    createdAt: number;
+    sequence: number;
+    species: 'Cat' | 'Dog';
+    targetId: string;
+};
+
+export type GardenAvatarBeachBallKickRequest = {
+    createdAt: number;
+    direction: {
+        x: number;
+        z: number;
+    };
+    sequence: number;
+    targetId: string;
+};
+
 type WeatherOverride = {
     cloudy: number;
     rainy: number;
@@ -455,6 +482,10 @@ export type GameState = {
     gardenAvatarJumpRequest: number;
     gardenAvatarBoatId: string | null;
     gardenAvatarAimedBoatId: string | null;
+    gardenAvatarSeatId: string | null;
+    gardenAvatarPresence: GardenAvatarPresence | null;
+    gardenAvatarAnimalPetRequest: GardenAvatarAnimalPetRequest | null;
+    gardenAvatarBeachBallKickRequest: GardenAvatarBeachBallKickRequest | null;
     closeupBlock: Block | null;
     closeupCameraActive: boolean;
     closeupCameraSettled: boolean;
@@ -473,6 +504,17 @@ export type GameState = {
     requestGardenAvatarJump: () => void;
     setGardenAvatarBoatId: (blockId: string | null) => void;
     setGardenAvatarAimedBoatId: (blockId: string | null) => void;
+    setGardenAvatarSeatId: (blockId: string | null) => void;
+    setGardenAvatarPresence: (presence: GardenAvatarPresence | null) => void;
+    petGardenAvatarAnimal: (
+        request: Pick<GardenAvatarAnimalPetRequest, 'species' | 'targetId'>,
+    ) => void;
+    kickGardenAvatarBeachBall: (
+        request: Pick<
+            GardenAvatarBeachBallKickRequest,
+            'direction' | 'targetId'
+        >,
+    ) => void;
 
     // Debug (overrides)
     editHitboxDebugVisible: boolean;
@@ -1073,6 +1115,10 @@ export function createGameState({
         gardenAvatarJumpRequest: 0,
         gardenAvatarBoatId: null,
         gardenAvatarAimedBoatId: null,
+        gardenAvatarSeatId: null,
+        gardenAvatarPresence: null,
+        gardenAvatarAnimalPetRequest: null,
+        gardenAvatarBeachBallKickRequest: null,
         closeupBlock: null,
         closeupCameraActive: false,
         closeupCameraSettled: false,
@@ -1109,6 +1155,8 @@ export function createGameState({
                           gardenAvatarCameraZoom: defaultGardenAvatarCameraZoom,
                           gardenAvatarBoatId: null,
                           gardenAvatarAimedBoatId: null,
+                          gardenAvatarSeatId: null,
+                          gardenAvatarPresence: null,
                       }
                     : {
                           gardenAvatarView,
@@ -1143,12 +1191,46 @@ export function createGameState({
             set({
                 gardenAvatarBoatId,
                 gardenAvatarAimedBoatId: null,
+                gardenAvatarSeatId: null,
                 gardenAvatarCrouchInput: false,
                 gardenAvatarSprintInput: false,
             });
         },
         setGardenAvatarAimedBoatId: (gardenAvatarAimedBoatId) =>
             set({ gardenAvatarAimedBoatId }),
+        setGardenAvatarSeatId: (gardenAvatarSeatId) => {
+            if (get().gardenAvatarSeatId !== gardenAvatarSeatId) {
+                triggerSelectionHaptic();
+            }
+            set({
+                gardenAvatarSeatId,
+                gardenAvatarBoatId: null,
+                gardenAvatarAimedBoatId: null,
+                gardenAvatarCrouchInput: false,
+                gardenAvatarSprintInput: false,
+            });
+        },
+        setGardenAvatarPresence: (gardenAvatarPresence) =>
+            set({ gardenAvatarPresence }),
+        petGardenAvatarAnimal: (request) =>
+            set((state) => ({
+                gardenAvatarAnimalPetRequest: {
+                    ...request,
+                    createdAt: Date.now(),
+                    sequence:
+                        (state.gardenAvatarAnimalPetRequest?.sequence ?? 0) + 1,
+                },
+            })),
+        kickGardenAvatarBeachBall: (request) =>
+            set((state) => ({
+                gardenAvatarBeachBallKickRequest: {
+                    ...request,
+                    createdAt: Date.now(),
+                    sequence:
+                        (state.gardenAvatarBeachBallKickRequest?.sequence ??
+                            0) + 1,
+                },
+            })),
 
         isDragging: false,
         gameCamera: null,
