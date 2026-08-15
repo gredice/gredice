@@ -2,7 +2,6 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import type { OutletOfferData } from '../../../packages/game/src/hooks/useOutletOffers';
 import { OutletHud } from '../../../packages/game/src/hud/OutletHud';
@@ -186,10 +185,8 @@ function createOutletHudQueryClient() {
 
 function OutletHudTestProviders({
     children,
-    enableOutletGardenFlag = true,
     searchParams = 'vrt=1',
 }: PropsWithChildren<{
-    enableOutletGardenFlag?: boolean;
     searchParams?: string;
 }>) {
     const queryClient = useMemo(() => createOutletHudQueryClient(), []);
@@ -208,13 +205,9 @@ function OutletHudTestProviders({
         <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameFlagsContext.Provider
-                        value={{ enableOutletGardenFlag }}
-                    >
-                        <GameAnalyticsProvider capture={() => undefined}>
-                            {children}
-                        </GameAnalyticsProvider>
-                    </GameFlagsContext.Provider>
+                    <GameAnalyticsProvider capture={() => undefined}>
+                        {children}
+                    </GameAnalyticsProvider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -222,17 +215,12 @@ function OutletHudTestProviders({
 }
 
 export function OutletHudStory({
-    enableOutletGardenFlag,
     searchParams,
 }: {
-    enableOutletGardenFlag?: boolean;
     searchParams?: string;
 } = {}) {
     return (
-        <OutletHudTestProviders
-            enableOutletGardenFlag={enableOutletGardenFlag}
-            searchParams={searchParams}
-        >
+        <OutletHudTestProviders searchParams={searchParams}>
             <OutletHud />
         </OutletHudTestProviders>
     );

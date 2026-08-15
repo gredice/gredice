@@ -1,7 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { encryptOverrides } from 'flags';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
-import { outletGardenTestFlagsSecret } from '../playwright/outletGardenFlagTestSupport';
 
 const currentUser = {
     avatarUrl: null,
@@ -486,36 +484,6 @@ async function mockOutletGardenCommerceApi(
     };
 }
 
-async function enableOutletGardenCommerce(page: Page, baseURL: string) {
-    const override = await encryptOverrides(
-        { enableOutletGardenCommerce: true },
-        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
-        '1h',
-    );
-    await page.context().addCookies([
-        {
-            name: 'vercel-flag-overrides',
-            url: baseURL,
-            value: override,
-        },
-    ]);
-}
-
-async function disableOutletGardenCommerce(page: Page, baseURL: string) {
-    const override = await encryptOverrides(
-        { enableOutletGardenCommerce: false },
-        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
-        '1h',
-    );
-    await page.context().addCookies([
-        {
-            name: 'vercel-flag-overrides',
-            url: baseURL,
-            value: override,
-        },
-    ]);
-}
-
 async function disableWebGL(page: Page) {
     await page.addInitScript(() => {
         const originalGetContext = HTMLCanvasElement.prototype.getContext;
@@ -581,15 +549,10 @@ async function expectOutletCanvasToFillScene(page: Page) {
 
 test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout', async ({
     page,
-}, testInfo) => {
+}) => {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
     outletApi.setOffers([...outletOffers, soldOutOutletOffer]);
 
@@ -738,10 +701,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(detailsDialog).not.toContainText('Outlet vrt');
     await expect(detailsDialog).not.toContainText('Interaktivni prikaz');
     await expect(detailsDialog).not.toContainText('3D pregled');
-    await expect(page.locator('[data-outlet-garden-commerce]')).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: 'Rezerviraj u svom vrtu' }),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
@@ -749,15 +711,10 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
 
 test('guest Outlet garden reconciles live offers without replacing its canvas @outlet-slow @outlet-reconcile', async ({
     page,
-}, testInfo) => {
+}) => {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
 
     await page.goto('/outlet?ponuda=302');
@@ -849,15 +806,10 @@ test('guest Outlet garden reconciles live offers without replacing its canvas @o
 
 test('guest Outlet garden preserves its deep link through reload, fallback, and context loss @outlet-slow @outlet-lifecycle', async ({
     page,
-}, testInfo) => {
+}) => {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
 
     await page.goto('/outlet?ponuda=302');
@@ -964,15 +916,10 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
 
 test('3D Outlet opens the normal garden in a fresh renderer document', async ({
     page,
-}, testInfo) => {
+}) => {
     test.setTimeout(60_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden Playwright base URL is required.');
-    }
-    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
 
     await page.goto('/outlet');
@@ -1015,15 +962,10 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
 
 test('Outlet visitor walks in third and first person without mutations and recovers when offers disappear @outlet-slow @outlet-walk', async ({
     page,
-}, testInfo) => {
+}) => {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden Playwright base URL is required.');
-    }
-    await disableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenApi(page);
     const avatarModelLoaded = page.waitForResponse(
         (response) =>
@@ -1193,14 +1135,8 @@ test('guest Outlet garden falls back to the semantic offer list without WebGL', 
 
 test('signed-in list fallback holds the final unit and keeps its verified receipt', async ({
     page,
-}, testInfo) => {
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-
+}) => {
     await disableWebGL(page);
-    await enableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenCommerceApi(page);
 
     await page.goto('/outlet?ponuda=302');
@@ -1278,14 +1214,8 @@ test('signed-in list fallback holds the final unit and keeps its verified receip
 
 test('switches gardens when the default garden has no free targets', async ({
     page,
-}, testInfo) => {
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-
+}) => {
     await disableWebGL(page);
-    await enableOutletGardenCommerce(page, baseURL);
     await mockOutletGardenCommerceApi(page, {
         defaultGardenHasNoTargets: true,
     });
@@ -1323,14 +1253,8 @@ test('switches gardens when the default garden has no free targets', async ({
 
 test('refreshes the selected garden and moves off a rejected target', async ({
     page,
-}, testInfo) => {
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-
+}) => {
     await disableWebGL(page);
-    await enableOutletGardenCommerce(page, baseURL);
     const outletApi = await mockOutletGardenCommerceApi(page, {
         targetUnavailableOnce: true,
     });
@@ -1371,14 +1295,8 @@ test('refreshes the selected garden and moves off a rejected target', async ({
 
 test('expired cached authentication returns to sign-in instead of reporting no fields', async ({
     page,
-}, testInfo) => {
-    const baseURL = testInfo.project.use.baseURL;
-    if (typeof baseURL !== 'string') {
-        throw new Error('Garden route test requires a Playwright base URL');
-    }
-
+}) => {
     await disableWebGL(page);
-    await enableOutletGardenCommerce(page, baseURL);
     await mockOutletGardenCommerceApi(page, { gardensUnauthorized: true });
 
     await page.goto('/outlet?ponuda=302');

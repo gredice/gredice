@@ -3,14 +3,12 @@ import { Discount } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useMemo } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { useGameFlags } from '../GameFlagsContext';
 import { useOutletOffers } from '../hooks/useOutletOffers';
 import { HudCard } from './components/HudCard';
 
 export function OutletHud() {
     const { data: offers, isLoading } = useOutletOffers();
     const { track } = useGameAnalytics();
-    const { enableOutletGardenFlag = false } = useGameFlags();
     const availableItemsCount = useMemo(
         () =>
             offers?.reduce(
@@ -20,10 +18,7 @@ export function OutletHud() {
         [offers],
     );
 
-    if (
-        !enableOutletGardenFlag ||
-        (!isLoading && (!offers || offers.length === 0))
-    ) {
+    if (!isLoading && (!offers || offers.length === 0)) {
         return null;
     }
 

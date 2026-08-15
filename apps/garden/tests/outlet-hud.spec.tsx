@@ -27,14 +27,3 @@ test('outlet HUD links directly to the 3D garden and keeps the inventory badge',
         page.getByRole('dialog', { name: 'Outlet sadnica' }),
     ).toHaveCount(0);
 });
-
-test('outlet HUD stays hidden when the 3D garden flag is disabled', async ({
-    mount,
-    page,
-}) => {
-    await mount(<OutletHudStory enableOutletGardenFlag={false} />);
-
-    await expect(
-        page.getByRole('link', { name: 'Outlet sadnica' }),
-    ).toHaveCount(0);
-});
