@@ -29,9 +29,11 @@ export function GardenAvatarHud() {
     const view = useGameState((state) => state.gardenAvatarView);
     const cameraZoom = useGameState((state) => state.gardenAvatarCameraZoom);
     const boatId = useGameState((state) => state.gardenAvatarBoatId);
+    const seatId = useGameState((state) => state.gardenAvatarSeatId);
     const aimedBoatId = useGameState((state) => state.gardenAvatarAimedBoatId);
     const setView = useGameState((state) => state.setGardenAvatarView);
     const setBoatId = useGameState((state) => state.setGardenAvatarBoatId);
+    const setSeatId = useGameState((state) => state.setGardenAvatarSeatId);
     const setSprintInput = useGameState(
         (state) => state.setGardenAvatarSprintInput,
     );
@@ -78,7 +80,9 @@ export function GardenAvatarHud() {
                 <div className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-1/2 hidden -translate-x-1/2 rounded-full border border-border/50 bg-background/75 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm md:block">
                     {boatId
                         ? 'W/S za vožnju · A/D za skretanje · E za izlazak iz barke · Esc za pregled'
-                        : 'WASD za hodanje · Shift za trčanje · Ctrl za čučanj · kotačić za zumiranje · dvaput Space za dvostruki skok · naciljaj barku i klikni za ukrcaj · Esc za izlaz'}
+                        : seatId
+                          ? 'E ili smjer kretanja za ustajanje · Esc za pregled'
+                          : 'WASD za hodanje · Shift za trčanje · Ctrl za čučanj · kotačić za zumiranje · dvaput Space za dvostruki skok · naciljaj barku i klikni za ukrcaj · Esc za izlaz'}
                 </div>
             ) : null}
 
@@ -129,11 +133,21 @@ export function GardenAvatarHud() {
                     )}
                 </IconButton>
                 <IconButton
-                    title={boatId ? 'Izađi iz barke' : 'Izađi iz šetnje'}
+                    title={
+                        boatId
+                            ? 'Izađi iz barke'
+                            : seatId
+                              ? 'Ustani'
+                              : 'Izađi iz šetnje'
+                    }
                     variant="plain"
                     className={avatarHudButtonClassName}
                     onClick={() =>
-                        boatId ? setBoatId(null) : setView('overview')
+                        boatId
+                            ? setBoatId(null)
+                            : seatId
+                              ? setSeatId(null)
+                              : setView('overview')
                     }
                 >
                     <LogOut className="hidden size-5 sm:block" />
@@ -147,14 +161,18 @@ export function GardenAvatarHud() {
                         <GardenAvatarJoystick />
                     </div>
 
-                    {boatId ? (
+                    {boatId || seatId ? (
                         <div className="absolute right-[calc(var(--game-safe-area-right,0px)+0.75rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.75rem)]">
                             <IconButton
                                 type="button"
-                                aria-label="Izađi iz barke"
+                                aria-label={
+                                    boatId ? 'Izađi iz barke' : 'Ustani'
+                                }
                                 variant="plain"
                                 className={avatarTouchActionButtonClassName}
-                                onClick={() => setBoatId(null)}
+                                onClick={() =>
+                                    boatId ? setBoatId(null) : setSeatId(null)
+                                }
                             >
                                 <LogOut aria-hidden="true" className="size-6" />
                             </IconButton>

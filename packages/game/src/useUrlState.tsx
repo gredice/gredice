@@ -16,10 +16,6 @@ export function usePaymentStatusParam() {
     return useQueryState('placanje', parseAsString);
 }
 
-export function useOutletOpenParam() {
-    return useQueryState('outlet', parseAsString);
-}
-
 export function useOutletOfferSelectionParam() {
     return useQueryState('outlet-ponuda', parseAsInteger);
 }
@@ -110,7 +106,6 @@ export function useOverviewSectionParam() {
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
     placanje: parseAsString,
-    outlet: parseAsString,
     'outlet-ponuda': parseAsInteger,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,

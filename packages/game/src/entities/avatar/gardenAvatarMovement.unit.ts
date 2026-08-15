@@ -392,6 +392,7 @@ test('walks on the support below water instead of the water surface', () => {
         0.4,
     );
     assert.equal(findGardenAvatarSpawnPoint(world), null);
+    assert.equal(findGardenAvatarSpawnPoint(world, { x: 0, z: 0 }), null);
 });
 
 test('uses narrow trunk collision instead of a tree canopy-sized box', () => {
@@ -1012,4 +1013,46 @@ test('selects a collision-safe spawn near the garden center', () => {
     };
 
     assert.deepEqual(findGardenAvatarSpawnPoint(world), { x: 0, y: 0, z: 0 });
+});
+
+test('spawns on the base plane when an empty garden has no block surfaces', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [],
+    });
+
+    assert.deepEqual(findGardenAvatarSpawnPoint(world), { x: 0, y: 0, z: 0 });
+    assert.deepEqual(findGardenAvatarSpawnPoint(world, { x: 4.5, z: -2.25 }), {
+        x: 4.5,
+        y: 0,
+        z: -2.25,
+    });
+
+    const movement = resolveGardenAvatarHorizontalMovement({
+        deltaX: 1.5,
+        deltaZ: -0.75,
+        position: { x: 0, y: 0, z: 0 },
+        world,
+    });
+    assert.equal(movement.collided, false);
+    assert.ok(Math.abs(movement.position.x - 1.5) < 0.000_001);
+    assert.equal(movement.position.y, 0);
+    assert.ok(Math.abs(movement.position.z + 0.75) < 0.000_001);
+});
+
+test('spawns beside a decoration when there is no roamable terrain', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [{ id: 'garden-box', name: 'GardenBox', rotation: 0 }],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const spawn = findGardenAvatarSpawnPoint(world);
+
+    assert.ok(spawn);
+    assert.equal(spawn.y, 0);
+    assert.notDeepEqual({ x: spawn.x, z: spawn.z }, { x: 0, z: 0 });
 });

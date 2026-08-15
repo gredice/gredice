@@ -14,6 +14,7 @@ import {
     type AnimalPresenceEntry,
     type GameState,
     useGameState,
+    useGameStateStore,
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -27,8 +28,15 @@ import {
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import { AnimalPetHearts } from '../animals/AnimalPetHearts';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { catSpeechMessages } from '../animals/actorSpeechMessages';
+import {
+    animalAvatarFollowRepathSeconds,
+    animalAvatarFollowSeconds,
+    getAnimalAvatarFollowPosition,
+    isFreshGardenAvatarPresence,
+} from '../animals/animalAvatarFollowing';
 import {
     type AnimalMovementSurface,
     canAnimalSettleAt,
@@ -1265,6 +1273,7 @@ function Cat({
     const gltf = useGameGLTF('Cat');
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
+    const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
@@ -1272,6 +1281,9 @@ function Cat({
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
+    const lastPetRequestSequenceRef = useRef(0);
+    const followAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
+    const nextFollowAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
     const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<CatAnimationName>('Cat_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
@@ -1494,6 +1506,66 @@ function Cat({
             if (habitat.pillow.facingYaw !== undefined) {
                 group.rotation.y = habitat.pillow.facingYaw;
             }
+        }
+
+        const { gardenAvatarAnimalPetRequest, gardenAvatarPresence } =
+            gameStateStore.getState();
+        if (
+            gardenAvatarAnimalPetRequest &&
+            gardenAvatarAnimalPetRequest.sequence !==
+                lastPetRequestSequenceRef.current
+        ) {
+            lastPetRequestSequenceRef.current =
+                gardenAvatarAnimalPetRequest.sequence;
+            if (
+                gardenAvatarAnimalPetRequest.species === 'Cat' &&
+                gardenAvatarAnimalPetRequest.targetId === habitat.id
+            ) {
+                followAvatarUntilRef.current = now + animalAvatarFollowSeconds;
+                nextFollowAvatarRepathAtRef.current = Number.NEGATIVE_INFINITY;
+            }
+        }
+
+        if (
+            now < followAvatarUntilRef.current &&
+            isFreshGardenAvatarPresence(gardenAvatarPresence, now) &&
+            now >= nextFollowAvatarRepathAtRef.current
+        ) {
+            const followPosition =
+                getAnimalAvatarFollowPosition(gardenAvatarPresence);
+            const lookAtPosition = new Vector3(
+                gardenAvatarPresence.position.x,
+                gardenAvatarPresence.position.y + 0.85,
+                gardenAvatarPresence.position.z,
+            );
+            const target = {
+                behavior: 'follow-avatar',
+                id: `avatar-follow:${habitat.id}`,
+                lookAtPosition,
+                position: followPosition,
+            } satisfies CatTarget;
+            const movingState = makeMovingState({
+                blockedCells: habitat.blockedCells,
+                from: group.position.clone(),
+                groundSurfaces: habitat.groundSurfaces,
+                now,
+                target,
+            });
+            runtime =
+                movingState ??
+                makeSettledState({
+                    now,
+                    random,
+                    target: {
+                        ...target,
+                        position: group.position.clone(),
+                    },
+                    timeOfDay,
+                    weather,
+                });
+            runtimeRef.current = runtime;
+            nextFollowAvatarRepathAtRef.current =
+                now + animalAvatarFollowRepathSeconds;
         }
 
         if (
@@ -1723,6 +1795,11 @@ function Cat({
             >
                 <primitive object={catModel.scene} />
             </group>
+            <AnimalPetHearts
+                actorRef={groupRef}
+                offsetY={0.72}
+                targetId={habitat.id}
+            />
             {speechMessage ? (
                 <ActorSpeechBubble
                     actorRef={groupRef}

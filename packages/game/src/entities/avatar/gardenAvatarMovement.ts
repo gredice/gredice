@@ -1039,11 +1039,15 @@ export function findGardenAvatarSpawnPoint(
     preferredPosition?: Pick<GardenAvatarPoint, 'x' | 'z'>,
 ) {
     const surfaces = [...createWalkableSurfaceMap(world).values()];
-    if (surfaces.length === 0) {
-        return null;
-    }
 
-    if (preferredPosition) {
+    if (
+        preferredPosition &&
+        !world.surfaces.some(
+            (surface) =>
+                surface.roamable === false &&
+                circleIntersectsSurface(preferredPosition, surface),
+        )
+    ) {
         const preferredGroundY = getGardenAvatarGroundY({
             currentGroundY: 0,
             position: preferredPosition,
@@ -1056,6 +1060,47 @@ export function findGardenAvatarSpawnPoint(
                 z: preferredPosition.z,
             };
         }
+    }
+
+    if (surfaces.length === 0) {
+        if (world.surfaces.some((surface) => surface.kind === 'water')) {
+            return null;
+        }
+        for (let radius = 0; radius <= 12; radius += 1) {
+            const candidates =
+                radius === 0
+                    ? [{ x: 0, z: 0 }]
+                    : [
+                          { x: radius, z: 0 },
+                          { x: -radius, z: 0 },
+                          { x: 0, z: radius },
+                          { x: 0, z: -radius },
+                          { x: radius, z: radius },
+                          { x: radius, z: -radius },
+                          { x: -radius, z: radius },
+                          { x: -radius, z: -radius },
+                      ];
+            for (const candidate of candidates) {
+                if (
+                    world.surfaces.some(
+                        (surface) =>
+                            surface.roamable === false &&
+                            circleIntersectsSurface(candidate, surface),
+                    )
+                ) {
+                    continue;
+                }
+                const groundY = getGardenAvatarGroundY({
+                    currentGroundY: 0,
+                    position: candidate,
+                    world,
+                });
+                if (groundY !== null) {
+                    return { ...candidate, y: groundY };
+                }
+            }
+        }
+        return null;
     }
 
     const center = surfaces.reduce(
