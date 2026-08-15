@@ -34,10 +34,6 @@ const woodParts = [
         materialName: 'Material.FishingBoat.WarmWood',
         nodeName: 'FishingBoat_Benches',
     },
-    {
-        materialName: 'Material.FishingBoat.WarmWood',
-        nodeName: 'FishingBoat_Oars',
-    },
 ] satisfies Array<{
     materialName: keyof GLTFResult['materials'];
     nodeName: FishingBoatNodeName;
@@ -75,6 +71,7 @@ export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
     const { materials, nodes } = useGameGLTF('FishingBoat');
     const registry = useFishingBoatRegistry();
     const groupRef = useRef<Group>(null);
+    const oarsRef = useRef<Group>(null);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const placementYOffset = getWaterSurfacePlacementYOffset(stack, block);
@@ -91,10 +88,11 @@ export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
 
     useLayoutEffect(() => {
         const object = groupRef.current;
-        if (!registry || !object) {
+        const oars = oarsRef.current;
+        if (!registry || !object || !oars) {
             return;
         }
-        return registry.register({ blockId: block.id, object });
+        return registry.register({ blockId: block.id, oars, object });
     }, [block.id, registry]);
 
     return (
@@ -113,6 +111,26 @@ export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
                     snow={{ ...snowPresets.tool, maxThickness: 0.035 }}
                 />
             ))}
+            <group
+                ref={oarsRef}
+                name={`Animation:FishingBoatOars:${block.id}`}
+                position={nodes.FishingBoat_Oars.position}
+            >
+                <group
+                    position={[
+                        -nodes.FishingBoat_Oars.position.x,
+                        -nodes.FishingBoat_Oars.position.y,
+                        -nodes.FishingBoat_Oars.position.z,
+                    ]}
+                >
+                    <WeatheredEntityPart
+                        material={materials['Material.FishingBoat.WarmWood']}
+                        node={nodes.FishingBoat_Oars}
+                        rain={woodRain}
+                        snow={{ ...snowPresets.tool, maxThickness: 0.035 }}
+                    />
+                </group>
+            </group>
             {gearParts.map(({ materialName, nodeName }) => (
                 <WeatheredEntityPart
                     key={nodeName}

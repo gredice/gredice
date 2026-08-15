@@ -599,6 +599,43 @@ test('garden avatar view enters play mode and resets controls on exit', () => {
         assert.equal(store.getState().gardenAvatarSprintInput, false);
         assert.equal(store.getState().gardenAvatarCrouchInput, false);
 
+        store.getState().setGardenAvatarSeatId('bench-a');
+        assert.equal(store.getState().gardenAvatarSeatId, 'bench-a');
+        assert.equal(store.getState().gardenAvatarBoatId, null);
+        store.getState().setGardenAvatarBoatId('boat-a');
+        assert.equal(store.getState().gardenAvatarSeatId, null);
+
+        store.getState().setGardenAvatarPresence({
+            position: { x: 1, y: 0, z: -2 },
+            updatedAt: 4,
+            yaw: 0.5,
+        });
+        store.getState().petGardenAvatarAnimal({
+            species: 'Cat',
+            targetId: 'cat-a',
+        });
+        store.getState().petGardenAvatarAnimal({
+            species: 'Dog',
+            targetId: 'dog-a',
+        });
+        store.getState().kickGardenAvatarBeachBall({
+            direction: { x: 0, z: -1 },
+            targetId: 'ball-a',
+        });
+        assert.equal(store.getState().gardenAvatarPresence?.position.x, 1);
+        assert.equal(
+            store.getState().gardenAvatarAnimalPetRequest?.sequence,
+            2,
+        );
+        assert.equal(
+            store.getState().gardenAvatarAnimalPetRequest?.targetId,
+            'dog-a',
+        );
+        assert.equal(
+            store.getState().gardenAvatarBeachBallKickRequest?.targetId,
+            'ball-a',
+        );
+
         store.getState().setGardenAvatarCollisionDebugVisible(true);
         assert.equal(store.getState().gardenAvatarCollisionDebugVisible, true);
 
@@ -613,6 +650,8 @@ test('garden avatar view enters play mode and resets controls on exit', () => {
         assert.equal(store.getState().gardenAvatarCameraZoom, 1);
         assert.equal(store.getState().gardenAvatarBoatId, null);
         assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+        assert.equal(store.getState().gardenAvatarSeatId, null);
+        assert.equal(store.getState().gardenAvatarPresence, null);
     } finally {
         store.getState().audio.dispose();
     }

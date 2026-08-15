@@ -447,6 +447,7 @@ function PublicGardenScene({
     localVisitorSpawnPoint,
     noWeather,
     normalizedStacks,
+    onAvatarInteractBlock,
     onSelectBlock,
     onSelectRaisedBedBlock,
     onSceneContextLost,
@@ -470,6 +471,7 @@ function PublicGardenScene({
     localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     noWeather: boolean;
     normalizedStacks: Stack[];
+    onAvatarInteractBlock?: (blockId: string) => void;
     onSelectBlock?: (blockId: string) => void;
     onSelectRaisedBedBlock: (blockId: string) => void;
     onSceneContextLost?: () => void;
@@ -499,6 +501,16 @@ function PublicGardenScene({
     );
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
+    const interactWithAvatarBlock = useCallback(
+        (block: Block) => {
+            if (!onAvatarInteractBlock) {
+                return false;
+            }
+            onAvatarInteractBlock(block.id);
+            return true;
+        },
+        [onAvatarInteractBlock],
+    );
 
     return (
         <div
@@ -663,11 +675,17 @@ function PublicGardenScene({
                                                 initialSpawnPoint={
                                                     localVisitorSpawnPoint
                                                 }
+                                                interactiveBlockIds={
+                                                    interactiveBlockIds
+                                                }
                                                 key={
                                                     visitorPresence.localVisitorId
                                                 }
                                                 onPresenceChange={
                                                     visitorPresence.onLocalPresenceChange
+                                                }
+                                                onInteractBlock={
+                                                    interactWithAvatarBlock
                                                 }
                                                 roamSeed={
                                                     visitorPresence.localVisitorId
@@ -1088,6 +1106,7 @@ export function PublicGardenViewer({
                                     }
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
+                                    onAvatarInteractBlock={onSelectBlock}
                                     onSelectBlock={openInteractiveBlock}
                                     onSelectRaisedBedBlock={
                                         openRaisedBedByBlockId

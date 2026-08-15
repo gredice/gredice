@@ -4,7 +4,8 @@ export type CatBehavior =
     | 'cover'
     | 'low-entity'
     | 'stalk-bird'
-    | 'interact-dog';
+    | 'interact-dog'
+    | 'follow-avatar';
 
 export type CatWeather = {
     cloudy?: number | null;
@@ -174,6 +175,10 @@ export function getCatDwellSeconds({
 
     if (behavior === 'low-entity') {
         return 8 + amount * 12;
+    }
+
+    if (behavior === 'follow-avatar') {
+        return 1;
     }
 
     return 5 + amount * 9;
