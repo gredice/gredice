@@ -4,7 +4,6 @@ import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
     enableGardenAvatarFlag?: boolean;
-    enableOutletGardenFlag?: boolean;
     enableDebugHudFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;

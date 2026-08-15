@@ -18,6 +18,7 @@ import {
 export type FishingBoatController = {
     blockId: string;
     object: Group;
+    oars: Group;
 };
 
 type FishingBoatRegistry = {

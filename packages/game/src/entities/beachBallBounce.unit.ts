@@ -9,6 +9,7 @@ import {
     createBeachBallBounceEnvironment,
     getBeachBallSurfaceHeight,
     isBeachBallPassableTerrainBlockName,
+    startBeachBallBounce,
 } from './beachBallBounce';
 
 function block(name: string, id = name, rotation = 0): Block {
@@ -53,6 +54,27 @@ function activeState(
 }
 
 describe('beach ball bounce', () => {
+    it('starts a normalized forward kick without moving the stored offset', () => {
+        const state = activeState({
+            active: false,
+            collisionCount: 2,
+            offsetX: 0.4,
+            offsetZ: -0.2,
+        });
+        const kicked = startBeachBallBounce({
+            direction: { x: 3, z: 4 },
+            speed: 2.5,
+            state,
+        });
+
+        assert.equal(kicked.active, true);
+        assert.equal(kicked.collisionCount, 2);
+        assert.equal(kicked.offsetX, 0.4);
+        assert.equal(kicked.offsetZ, -0.2);
+        assert.equal(kicked.velocityX, 1.5);
+        assert.equal(kicked.velocityZ, 2);
+    });
+
     it('ignores terrain and the moving beach ball block as obstacles', () => {
         const environment = createBeachBallBounceEnvironment({
             movingBlockId: 'ball',

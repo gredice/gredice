@@ -8,6 +8,7 @@ import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState, useGameStateStore } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useActorGroundingShadow } from './animals/ActorGroundingShadows';
@@ -17,6 +18,7 @@ import {
     createBeachBallBounceEnvironment,
     createBeachBallBounceState,
     getBeachBallSurfaceHeight,
+    startBeachBallBounce,
 } from './beachBallBounce';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -154,7 +156,16 @@ export function BeachBall({
     const bounceStateRef = useRef(createBeachBallBounceState());
     const visualBounceRef = useRef(createBeachBallVisualBounce());
     const clickCountRef = useRef(0);
+    const lastAvatarKickSequenceRef = useRef(0);
+    const lastPresenceUpdateRef = useRef(Number.NEGATIVE_INFINITY);
     const [hovered, setHovered] = useState(false);
+    const gameStateStore = useGameStateStore();
+    const setAnimalPresenceEntry = useGameState(
+        (state) => state.setAnimalPresenceEntry,
+    );
+    const removeAnimalPresenceEntry = useGameState(
+        (state) => state.removeAnimalPresenceEntry,
+    );
     const updateGroundingShadow = useActorGroundingShadow({
         id: `beach-ball:${block.id}`,
         primaryCasterCount: 0,
@@ -185,7 +196,12 @@ export function BeachBall({
         rollingGroup.rotation.set(0, 0, 0);
     }, [block.id, stack.position.x, stack.position.z]);
 
-    useFrame((_, deltaSeconds) => {
+    useEffect(
+        () => () => removeAnimalPresenceEntry(`beach-ball:${block.id}`),
+        [block.id, removeAnimalPresenceEntry],
+    );
+
+    useFrame(({ clock }, deltaSeconds) => {
         const motionGroup = motionGroupRef.current;
         const rollingGroup = rollingGroupRef.current;
         if (!motionGroup || !rollingGroup) {
@@ -194,6 +210,35 @@ export function BeachBall({
 
         const currentState = bounceStateRef.current;
         const visualBounce = visualBounceRef.current;
+        const avatarKickRequest =
+            gameStateStore.getState().gardenAvatarBeachBallKickRequest;
+        if (
+            avatarKickRequest &&
+            avatarKickRequest.targetId === block.id &&
+            avatarKickRequest.sequence !== lastAvatarKickSequenceRef.current
+        ) {
+            lastAvatarKickSequenceRef.current = avatarKickRequest.sequence;
+            bounceStateRef.current = startBeachBallBounce({
+                direction: avatarKickRequest.direction,
+                speed: beachBallKickSpeed,
+                state: bounceStateRef.current,
+            });
+        }
+
+        if (clock.elapsedTime - lastPresenceUpdateRef.current >= 0.2) {
+            lastPresenceUpdateRef.current = clock.elapsedTime;
+            setAnimalPresenceEntry({
+                behavior: currentState.active ? 'rolling' : 'idle',
+                id: `beach-ball:${block.id}`,
+                position: {
+                    x: stack.position.x + currentState.offsetX,
+                    y: position.y + motionGroup.position.y,
+                    z: stack.position.z + currentState.offsetZ,
+                },
+                species: 'BeachBall',
+                updatedAt: clock.elapsedTime,
+            });
+        }
 
         const setMotionPosition = (state: typeof currentState, bounceY = 0) => {
             const surfaceHeight = getBeachBallSurfaceHeight(bounceEnvironment, {
@@ -302,15 +347,11 @@ export function BeachBall({
             beachBallKickSpeed +
             (clickCountRef.current % 3) * beachBallKickSpeedVariance;
 
-        bounceStateRef.current = {
-            active: true,
-            collisionCount: currentState.collisionCount,
-            elapsedSeconds: 0,
-            offsetX: currentState.offsetX,
-            offsetZ: currentState.offsetZ,
-            velocityX: directionX * speed,
-            velocityZ: directionZ * speed,
-        };
+        bounceStateRef.current = startBeachBallBounce({
+            direction: { x: directionX, z: directionZ },
+            speed,
+            state: currentState,
+        });
     }
 
     function handlePointerEnter(event: ThreeEvent<PointerEvent>) {

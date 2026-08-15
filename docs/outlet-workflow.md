@@ -7,7 +7,7 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 ## Actors
 
 - Public visitor: browses `/outlet` and landing-page outlet highlights.
-- Customer: opens the game Outlet panel, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
+- Customer: enters the 3D Outlet garden from the game, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
 - Internal admin: creates, edits, publishes, pauses, closes, and audits offers at `/admin/outlet`.
 - System cron: releases expired holds and closes expired published offers.
 - Stripe webhook: validates paid cart metadata and converts the held reservation.
@@ -15,9 +15,6 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 ## Configuration
 
 - `CRON_SECRET` protects `GET /api/internal/cron/outlet-lifecycle`.
-- `enableOutletGarden` is a managed Vercel boolean flag. Its local fallback is
-  enabled in development and Preview, and disabled in Production if the flag
-  provider cannot be reached.
 - `FLAGS` connects the Garden app to Vercel Flags. `FLAGS_SECRET` protects the
   flag discovery and browser-override flow.
 - Existing Stripe, auth, database, and PostHog configuration apply through checkout and webhook code.
@@ -55,7 +52,7 @@ Price, sowing date, and initial plant status are copied from the offer into the 
 ## Happy path
 
 1. Admin creates an offer with plant sort, sowing date, image URLs, outlet price, optional compare price, quantity, start/end time, and status.
-2. A published active offer appears on `/outlet`, the landing-page section, and the garden Outlet panel.
+2. A published active offer appears on `/outlet`, the landing-page section, and the 3D Outlet garden linked from the game HUD.
 3. The customer chooses a raised-bed field and adds the outlet seedling to cart.
 4. The API locks the offer row, checks active held plus converted quantity, and creates or refreshes the cart reservation.
 5. Checkout refreshes valid outlet holds before creating the Stripe session and writes outlet metadata onto Stripe products.
@@ -64,19 +61,17 @@ Price, sowing date, and initial plant status are copied from the offer into the 
 
 ## 3D garden browsing
 
-- `/outlet?ponuda=<offer-id>` is a guest-readable, read-only 3D view of the
-  currently active offers. Selecting a seedling updates `ponuda` but does not
-  reserve stock or mutate a garden.
+- `/outlet?ponuda=<offer-id>` is a guest-readable 3D view of the currently
+  active offers. Selecting a seedling updates `ponuda`; an explicit reservation
+  action is required before stock or garden state changes.
 - Devices without WebGL, renderer failures, context loss, and scene readiness
   timeouts fall back to the same semantic offer browser without losing the
   selected offer.
 - Customers can switch to the list explicitly. That preference lasts for the
   browser session and can be reversed from the list.
-- The public Outlet cards link to the 3D route. The selected offer can still be
-  continued in the existing Garden Outlet flow, which remains responsible for
-  field selection, reservation, cart, and checkout.
-- Disabling `enableOutletGarden` removes the in-game teleport entry and sends a
-  direct 3D route visit back to the classic Outlet flow.
+- The public Outlet cards and the game HUD link directly to the 3D route. The
+  experience handles field selection, reservation, cart, and checkout for all
+  users, prompting guests to sign in when they start a reservation.
 
 ## Failure handling
 
@@ -96,33 +91,6 @@ Price, sowing date, and initial plant status are copied from the offer into the 
   values and device/input classes; they do not include garden contents or
   customer-entered text.
 - Checkout and webhook failures use existing API logging paths and should avoid logging private payment payloads or secrets.
-
-## 3D launch and rollback
-
-Enable the compatible deployed build for everyone only after a clean Production
-smoke test:
-
-```bash
-vercel flags enable enableOutletGarden \
-  --environment production \
-  --message "Launch the 3D Outlet garden for all users" \
-  --cwd apps/garden \
-  --scope gredice
-```
-
-Rollback does not require a deployment:
-
-```bash
-vercel flags disable enableOutletGarden \
-  --environment production \
-  --message "Rollback to the classic Outlet flow" \
-  --cwd apps/garden \
-  --scope gredice
-```
-
-After either change, use a clean browser without a
-`vercel-flag-overrides` cookie. Verify the final browser URL, because the
-disabled Next.js route can stream its redirect in a successful HTTP response.
 
 ## Validation
 
