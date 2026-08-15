@@ -124,6 +124,8 @@ const instancedSnowOverlayCounts = {
     DeadTreeStump: 4,
     DeadTreeTall: 7,
     Fence: 1,
+    PolishedStoneFence: 1,
+    StoneFence: 3,
     WhiteFence: 1,
     GardenBox: 2,
     GiftBox_BlueWhite: 3,

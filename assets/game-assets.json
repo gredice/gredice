@@ -1645,6 +1645,36 @@
             ]
         },
         {
+            "name": "StoneFence",
+            "source": "StoneFence.blend",
+            "output": "StoneFence.glb",
+            "version": "b9c98ea04ac5",
+            "preload": "lazy",
+            "objects": [
+                "StoneFence_Solo",
+                "StoneFence_Single",
+                "StoneFence_Middle",
+                "StoneFence_Corner",
+                "StoneFence_T",
+                "StoneFence_Cross"
+            ]
+        },
+        {
+            "name": "PolishedStoneFence",
+            "source": "PolishedStoneFence.blend",
+            "output": "PolishedStoneFence.glb",
+            "version": "49b27abc186e",
+            "preload": "lazy",
+            "objects": [
+                "PolishedStoneFence_Solo",
+                "PolishedStoneFence_Single",
+                "PolishedStoneFence_Middle",
+                "PolishedStoneFence_Corner",
+                "PolishedStoneFence_T",
+                "PolishedStoneFence_Cross"
+            ]
+        },
+        {
             "name": "Greenhouse",
             "source": "Greenhouse.blend",
             "output": "Greenhouse.glb",

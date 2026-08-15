@@ -64,6 +64,7 @@ import { PaintRoller } from './PaintRoller';
 import { PalmTree } from './PalmTree';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
+import { PolishedStoneFence } from './PolishedStoneFence';
 import { Pot } from './Pot';
 import { RaisedBed } from './RaisedBed';
 import { RoofTileLantern } from './RoofTileLantern';
@@ -77,6 +78,7 @@ import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
 import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
+import { StoneFence } from './StoneFence';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
@@ -136,6 +138,8 @@ export const entityNameMap = {
     BeachUmbrella: BeachUmbrella,
     Fence: Fence,
     WhiteFence: WhiteFence,
+    StoneFence: StoneFence,
+    PolishedStoneFence: PolishedStoneFence,
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,

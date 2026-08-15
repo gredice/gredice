@@ -652,6 +652,87 @@ test('does not connect white fence rails to the brown fence', () => {
     );
 });
 
+test('models isolated stone fences as pillars without connecting walls', () => {
+    for (const name of ['StoneFence', 'PolishedStoneFence']) {
+        const world = createGardenAvatarCollisionWorld({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [
+                {
+                    blocks: [{ id: `${name}-solo`, name, rotation: 0 }],
+                    position: new Vector3(0, 0, 0),
+                },
+            ],
+        });
+
+        assert.equal(world.surfaces.length, 1);
+        assert.equal(world.surfaces[0]?.halfDepth, 0.14);
+        assert.equal(world.surfaces[0]?.halfWidth, 0.14);
+        assert.equal(world.surfaces[0]?.y, 0.68);
+    }
+});
+
+test('uses material-specific wall thickness for connected stone fences', () => {
+    for (const { name, wallHalfThickness } of [
+        { name: 'StoneFence', wallHalfThickness: 0.08 },
+        { name: 'PolishedStoneFence', wallHalfThickness: 0.14 },
+    ]) {
+        const world = createGardenAvatarCollisionWorld({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [
+                {
+                    blocks: [{ id: `${name}-a`, name, rotation: 0 }],
+                    position: new Vector3(0, 0, 0),
+                },
+                {
+                    blocks: [{ id: `${name}-b`, name, rotation: 0 }],
+                    position: new Vector3(1, 0, 0),
+                },
+            ],
+        });
+        const walls = world.surfaces.filter(
+            (surface) =>
+                surface.halfWidth === 0.18 &&
+                surface.halfDepth === wallHalfThickness,
+        );
+
+        assert.equal(world.surfaces.length, 4);
+        assert.equal(walls.length, 2);
+        assert.ok(walls.every((surface) => surface.y === 0.48));
+    }
+});
+
+test('does not connect rough and polished stone fence walls together', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'rough-stone', name: 'StoneFence', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+            {
+                blocks: [
+                    {
+                        id: 'polished-stone',
+                        name: 'PolishedStoneFence',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(1, 0, 0),
+            },
+        ],
+    });
+
+    assert.equal(world.surfaces.length, 2);
+    assert.ok(
+        world.surfaces.every(
+            (surface) =>
+                surface.halfDepth === 0.14 && surface.halfWidth === 0.14,
+        ),
+    );
+});
+
 test('centers multi-cell collisions and blocks their complete roaming footprint', () => {
     const decorationWorld = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
