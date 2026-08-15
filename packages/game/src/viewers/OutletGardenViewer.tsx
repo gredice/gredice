@@ -24,6 +24,7 @@ import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenProductSigns } from './OutletGardenProductSigns';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
+import { shouldOpenOutletGardenOfferModal } from './outletGardenAvatarInteractions';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
@@ -556,13 +557,11 @@ export function OutletGardenViewer({
                         className="size-full"
                         garden={outletGarden}
                         initialView={sceneInitialView}
-                        interactiveBlockIds={
-                            avatarWalking ? undefined : interactiveBlockIds
-                        }
+                        interactiveBlockIds={interactiveBlockIds}
                         localVisitorSpawnPoint={outletGardenVisitorSpawnPoint}
                         noWeather
                         onLocalVisitorViewChange={handleLocalVisitorViewChange}
-                        onSelectBlock={avatarWalking ? undefined : selectBlock}
+                        onSelectBlock={selectBlock}
                         onSceneContextLost={reportSceneContextLost}
                         onSceneReady={trackSceneReady}
                         renderDetails={false}
@@ -663,10 +662,11 @@ export function OutletGardenViewer({
                         closeOfferBrowser();
                     }
                 }}
-                open={
-                    !avatarWalking &&
-                    (offerListOpen || selectedOfferId !== null)
-                }
+                open={shouldOpenOutletGardenOfferModal({
+                    avatarWalking,
+                    offerListOpen,
+                    selectedOfferId,
+                })}
                 title={
                     offerListOpen
                         ? 'Dostupne sadnice'

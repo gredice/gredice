@@ -60,6 +60,31 @@ export const beachBallCollisionRadius = 0.24;
 const beachBallRollableSurfaceMaxHeight = 0.1;
 const maxMotionSubstepDistance = beachBallCollisionRadius / 2;
 
+export function startBeachBallBounce({
+    direction,
+    speed,
+    state,
+}: {
+    direction: { x: number; z: number };
+    speed: number;
+    state: BeachBallBounceState;
+}) {
+    const directionLength = Math.hypot(direction.x, direction.z);
+    if (state.active || directionLength <= 0.0001 || speed <= 0) {
+        return state;
+    }
+
+    return {
+        active: true,
+        collisionCount: state.collisionCount,
+        elapsedSeconds: 0,
+        offsetX: state.offsetX,
+        offsetZ: state.offsetZ,
+        velocityX: (direction.x / directionLength) * speed,
+        velocityZ: (direction.z / directionLength) * speed,
+    } satisfies BeachBallBounceState;
+}
+
 function cellKey(position: { x: number; z: number }) {
     return `${position.x}|${position.z}`;
 }
