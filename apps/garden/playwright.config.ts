@@ -11,7 +11,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
-import { outletGardenTestFlagsSecret } from './playwright/outletGardenFlagTestSupport';
+import { gardenTestFlagsSecret } from './playwright/gardenFlagTestSupport';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = getAppByName('garden');
@@ -113,8 +113,7 @@ export const config: PlaywrightTestConfig = {
     webServer: {
         command: 'node ../../scripts/run-app-command.mjs start',
         env: {
-            FLAGS_SECRET:
-                process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
+            FLAGS_SECRET: process.env.FLAGS_SECRET ?? gardenTestFlagsSecret,
             GREDICE_DETACH_CHILD_PROCESS: 'false',
             VERCEL_ENV: 'preview',
         },

@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { createAccessProof } from 'flags';
-import { outletGardenEnabledByDefault } from '../app/outletGardenFlagDefault';
-import { outletGardenTestFlagsSecret } from '../playwright/outletGardenFlagTestSupport';
+import { gardenTestFlagsSecret } from '../playwright/gardenFlagTestSupport';
 
 const gardenFlagKeys = [
     'deliveryChargeAtCheckout',
@@ -11,33 +10,11 @@ const gardenFlagKeys = [
     'enableDebugHud',
     'enableSuncokretDebug',
     'enableGardenAvatar',
-    'enableOutletGarden',
-    'enableOutletGardenCommerce',
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
-
-test('Outlet garden provider fallback stays safe across environments', () => {
-    expect(
-        outletGardenEnabledByDefault({
-            NODE_ENV: 'production',
-            VERCEL_ENV: 'production',
-        }),
-    ).toBe(false);
-    expect(
-        outletGardenEnabledByDefault({
-            NODE_ENV: 'production',
-            VERCEL_ENV: 'preview',
-        }),
-    ).toBe(true);
-    expect(
-        outletGardenEnabledByDefault({
-            NODE_ENV: 'development',
-        }),
-    ).toBe(true);
-});
 
 test('flag discovery merges all code-defined and managed Vercel metadata', () => {
     const discoverySource = readFileSync(
@@ -68,16 +45,13 @@ test('flag discovery merges all code-defined and managed Vercel metadata', () =>
     );
 
     expect(discoveredFlagKeys).toEqual(gardenFlagKeys);
-    expect(flagsSource).toMatch(
-        /enableOutletGardenCommerceFlag[\s\S]*?adapter: vercelAdapter,[\s\S]*?defaultValue: false,/u,
-    );
 });
 
 test('authenticated discovery endpoint exposes every Garden flag', async ({
     request,
 }) => {
     const accessProof = await createAccessProof(
-        process.env.FLAGS_SECRET ?? outletGardenTestFlagsSecret,
+        process.env.FLAGS_SECRET ?? gardenTestFlagsSecret,
         '1h',
     );
     const response = await request.get('/.well-known/vercel/flags', {
