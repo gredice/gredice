@@ -667,14 +667,19 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         const centerX = canvasBox.x + canvasBox.width / 2;
         const centerY = canvasBox.y + canvasBox.height / 2;
         await page.mouse.move(centerX, centerY);
+        await page.mouse.wheel(0, -120);
         await page.mouse.down();
         await page.mouse.move(centerX + 36, centerY + 24, { steps: 4 });
         await page.mouse.up();
-        await page.mouse.wheel(0, -120);
     }
     await expect(canvas).toHaveAttribute('data-test-pointer-moves', /[1-9]/u);
     await expect(canvas).toHaveAttribute('data-test-pointer-downs', /[1-9]/u);
     await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
+    await expect(canvas).toBeVisible();
+
+    await page.goto('/outlet');
+    await expect(page.locator('[data-outlet-garden]')).toBeVisible();
+    await expect(productSigns).toHaveCount(3);
     await expect(canvas).toBeVisible();
 
     await page
