@@ -7,7 +7,7 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 ## Actors
 
 - Public visitor: browses `/outlet` and landing-page outlet highlights.
-- Customer: opens the game Outlet panel, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
+- Customer: enters the 3D Outlet garden from the game, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
 - Internal admin: creates, edits, publishes, pauses, closes, and audits offers at `/admin/outlet`.
 - System cron: releases expired holds and closes expired published offers.
 - Stripe webhook: validates paid cart metadata and converts the held reservation.
@@ -55,7 +55,7 @@ Price, sowing date, and initial plant status are copied from the offer into the 
 ## Happy path
 
 1. Admin creates an offer with plant sort, sowing date, image URLs, outlet price, optional compare price, quantity, start/end time, and status.
-2. A published active offer appears on `/outlet`, the landing-page section, and the garden Outlet panel.
+2. A published active offer appears on `/outlet`, the landing-page section, and the 3D Outlet garden linked from the game HUD.
 3. The customer chooses a raised-bed field and adds the outlet seedling to cart.
 4. The API locks the offer row, checks active held plus converted quantity, and creates or refreshes the cart reservation.
 5. Checkout refreshes valid outlet holds before creating the Stripe session and writes outlet metadata onto Stripe products.
@@ -72,11 +72,11 @@ Price, sowing date, and initial plant status are copied from the offer into the 
   selected offer.
 - Customers can switch to the list explicitly. That preference lasts for the
   browser session and can be reversed from the list.
-- The public Outlet cards link to the 3D route. The selected offer can still be
-  continued in the existing Garden Outlet flow, which remains responsible for
-  field selection, reservation, cart, and checkout.
+- The public Outlet cards and the game HUD link directly to the 3D route. When
+  3D commerce is enabled, that experience handles field selection,
+  reservation, cart, and checkout.
 - Disabling `enableOutletGarden` removes the in-game teleport entry and sends a
-  direct 3D route visit back to the classic Outlet flow.
+  direct 3D route visit back to the garden.
 
 ## Failure handling
 

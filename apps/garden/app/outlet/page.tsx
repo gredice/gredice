@@ -23,38 +23,22 @@ export const viewport: Viewport = {
     width: 'device-width',
 };
 
-async function OutletGardenGate({
-    searchParams,
-}: {
-    searchParams: Promise<{ ponuda?: string | string[] }>;
-}) {
-    const [enabled, commerceEnabled, params] = await Promise.all([
+async function OutletGardenGate() {
+    const [enabled, commerceEnabled] = await Promise.all([
         enableOutletGardenFlag(),
         enableOutletGardenCommerceFlag(),
-        searchParams,
     ]);
     if (!enabled) {
-        const selectedOfferId = Array.isArray(params.ponuda)
-            ? params.ponuda[0]
-            : params.ponuda;
-        const outletParam =
-            selectedOfferId && /^[1-9]\d*$/u.test(selectedOfferId)
-                ? selectedOfferId
-                : '1';
-        redirect(`/?outlet=${outletParam}`);
+        redirect('/');
     }
 
     return <OutletGardenWithAnalytics commerceEnabled={commerceEnabled} />;
 }
 
-export default function OutletGardenPage({
-    searchParams,
-}: {
-    searchParams: Promise<{ ponuda?: string | string[] }>;
-}) {
+export default function OutletGardenPage() {
     return (
         <Suspense fallback={<GardenRouteLoading />}>
-            <OutletGardenGate searchParams={searchParams} />
+            <OutletGardenGate />
         </Suspense>
     );
 }

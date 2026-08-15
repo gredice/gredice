@@ -186,8 +186,8 @@ function createOutletHudQueryClient() {
 
 function OutletHudTestProviders({
     children,
-    enableOutletGardenFlag = false,
-    searchParams = 'vrt=1&outlet=1',
+    enableOutletGardenFlag = true,
+    searchParams = 'vrt=1',
 }: PropsWithChildren<{
     enableOutletGardenFlag?: boolean;
     searchParams?: string;
