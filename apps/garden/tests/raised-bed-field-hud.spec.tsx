@@ -917,6 +917,21 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(fieldButton).toContainText('20');
     });
 
+    test('full raised-bed HUD preserves controls for a pending cart planting', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+
+        await expect(
+            page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
+        ).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(1);
+        await expect(
+            page.locator('[data-scheduled-sowing-badge]'),
+        ).toContainText('20');
+    });
+
     test('checked out scheduled field shows scheduled date badge until sown', async ({
         mount,
         page,

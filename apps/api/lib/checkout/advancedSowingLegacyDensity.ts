@@ -55,3 +55,25 @@ export function buildAdvancedSowingLegacyDensitySnapshots({
         }
     });
 }
+
+export function haveMatchingAdvancedSowingLegacyDensitySnapshots(
+    persistedSnapshots: readonly AdvancedSowingLegacyDensitySnapshotV1[],
+    currentSnapshots: readonly AdvancedSowingLegacyDensitySnapshotV1[],
+) {
+    if (persistedSnapshots.length !== currentSnapshots.length) {
+        return false;
+    }
+
+    const currentByPlantingId = new Map(
+        currentSnapshots.map((snapshot) => [snapshot.plantingId, snapshot]),
+    );
+    return persistedSnapshots.every((persistedSnapshot) => {
+        const currentSnapshot = currentByPlantingId.get(
+            persistedSnapshot.plantingId,
+        );
+        return (
+            currentSnapshot?.plantSortId === persistedSnapshot.plantSortId &&
+            currentSnapshot.layoutKey === persistedSnapshot.layoutKey
+        );
+    });
+}

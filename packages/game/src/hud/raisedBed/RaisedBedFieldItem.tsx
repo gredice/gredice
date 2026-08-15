@@ -133,7 +133,7 @@ export function RaisedBedFieldItem({
         );
     }
 
-    if (!plantingMode && plantingCount > 0 && !hasField) {
+    if (!plantingMode && plantingCount > 0 && !hasField && !cartPlantItem) {
         return (
             <RaisedBedFieldItemButton
                 aria-label={`Polje ${positionIndex + 1} sadrži naprednu sjetvu`}
