@@ -610,19 +610,27 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
-        '0.0225',
+        '0.061',
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-front-only',
         'true',
     );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-price-renderer',
+        'text3d',
+    );
     await expect(productSigns.first()).toHaveCSS(
         'backface-visibility',
         'hidden',
     );
+    await expect(productSigns.first()).toHaveCSS(
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+    );
     await expect(productSigns.first()).toHaveCSS('box-shadow', 'none');
     const canvas = page.locator('canvas');
-    await expect(canvas).toHaveCSS('z-index', '1');
+    await expect(canvas).toHaveCSS('z-index', 'auto');
     await expect(canvas).toHaveCSS('pointer-events', 'auto');
     await expect(
         page.locator('[data-outlet-garden-product-sign-back]'),
