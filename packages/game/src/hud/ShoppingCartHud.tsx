@@ -1,14 +1,7 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
-import {
-    Calendar,
-    Delete,
-    Info,
-    Navigate,
-    ShoppingCart as ShoppingCartIcon,
-    Truck,
-} from '@gredice/ui/icons';
+import { Calendar, Delete, Info, Navigate, Truck } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -548,7 +541,16 @@ export function ShoppingCartHud() {
                         ) : checkoutStep === 'harvest' ? (
                             <Calendar className="size-7 shrink-0" />
                         ) : (
-                            <ShoppingCartIcon className="size-7 shrink-0" />
+                            <Image
+                                alt=""
+                                aria-hidden="true"
+                                className="h-auto w-10 max-w-none object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.25)]"
+                                data-shopping-basket-modal-icon="true"
+                                height={40}
+                                src={shoppingBasketIconSrc}
+                                unoptimized
+                                width={40}
+                            />
                         )
                     }
                     hudLayer
