@@ -579,19 +579,31 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
-        '0.061',
+        '0.0225',
     );
     await expect(productSigns.first()).toHaveAttribute(
-        'data-outlet-garden-product-sign-front-only',
-        'true',
+        'data-outlet-garden-product-sign-face',
+        'front',
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-price-renderer',
-        'text3d',
+        'flat-text3d',
+    );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-price-depth',
+        '0.004',
+    );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-price-font-size',
+        '0.082',
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-occlusion',
         'visual-targets',
+    );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-occlusion-probe-offset',
+        '0.5',
     );
     await expect(productSigns.first()).toHaveCSS(
         'backface-visibility',
@@ -605,9 +617,18 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     const canvas = page.locator('canvas');
     await expect(canvas).toHaveCSS('z-index', 'auto');
     await expect(canvas).toHaveCSS('pointer-events', 'auto');
-    await expect(
-        page.locator('[data-outlet-garden-product-sign-back]'),
-    ).toHaveCount(0);
+    const productSignBacks = page.locator(
+        '[data-outlet-garden-product-sign-back]',
+    );
+    await expect(productSignBacks).toHaveCount(3);
+    await expect(productSignBacks.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-depth',
+        '-0.0225',
+    );
+    await expect(productSignBacks.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-face',
+        'back',
+    );
     const tomatoSign = productSigns.filter({
         hasText: 'Rajčica mini red cherry',
     });
@@ -619,12 +640,32 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'src',
         tomatoSortImageUrl,
     );
+    await expect(tomatoSign.locator('img')).toHaveCSS('width', '112px');
+    await expect(tomatoSign.locator('img')).toHaveCSS('box-shadow', 'none');
     await expect(tomatoSign).toHaveCSS('pointer-events', 'none');
     const soldOutSign = productSigns.filter({ hasText: 'Bosiljak Genovese' });
     await expect(soldOutSign).toHaveAttribute(
         'data-outlet-garden-product-sign-price',
         'Rasprodano',
     );
+    const pepperSign = productSigns.filter({
+        hasText: 'Paprika Zlata Snack',
+    });
+    const pepperSignBack = productSignBacks.filter({
+        hasText: 'Paprika Zlata Snack',
+    });
+    await page.keyboard.press('KeyQ');
+    await page.keyboard.press('KeyQ');
+    await expect(pepperSign).toBeHidden();
+    await expect(pepperSignBack).toBeVisible();
+    await expect(pepperSignBack.locator('img')).toHaveAttribute(
+        'src',
+        pepperSortImageUrl,
+    );
+    await page.keyboard.press('KeyW');
+    await page.keyboard.press('KeyW');
+    await expect(pepperSign).toBeVisible();
+    await expect(pepperSignBack).toBeHidden();
     await expect(
         page.locator('[data-controls-tooltip-hud="open"]'),
     ).toBeVisible();
