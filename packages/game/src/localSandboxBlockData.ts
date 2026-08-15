@@ -48,6 +48,8 @@ export const localSandboxBlockNames = [
     'OutletDisplayTable',
     'Fence',
     'WhiteFence',
+    'StoneFence',
+    'PolishedStoneFence',
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',
@@ -211,6 +213,16 @@ const localSandboxBlockMetadata: Partial<
         shortDescription:
             'Tanka bijela ograda sa širokim šiljastim daskama koja se povezuje sa susjednim dijelovima.',
     },
+    StoneFence: {
+        label: 'Kamena ograda',
+        shortDescription:
+            'Ograda od nepravilnog kamena koja se povezuje sa susjednim kamenim dijelovima.',
+    },
+    PolishedStoneFence: {
+        label: 'Ograda od poliranog kamena',
+        shortDescription:
+            'Jednostavna glatka ograda koja se povezuje sa susjednim dijelovima od poliranog kamena.',
+    },
     StoneWalkway: {
         label: 'Kamena staza',
         shortDescription:
@@ -327,6 +339,8 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WoodenSign: 1.16,
         OutletDisplayTable: 0.67,
         WhiteFence: 0.72,
+        StoneFence: 0.68,
+        PolishedStoneFence: 0.68,
         PalmTree: 1.5,
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
@@ -482,6 +496,16 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
     WhiteFence: {
         hitboxDepth: 1,
         hitboxHeight: 0.72,
+        hitboxWidth: 1,
+    },
+    StoneFence: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.68,
+        hitboxWidth: 1,
+    },
+    PolishedStoneFence: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.68,
         hitboxWidth: 1,
     },
 };

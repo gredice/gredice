@@ -365,6 +365,7 @@ type FenceCollisionProfile = {
     picketSpacing?: number;
     postDepth: number;
     postWidth: number;
+    railHeight?: number;
     railThickness: number;
 };
 
@@ -381,6 +382,20 @@ const fenceCollisionProfiles: Record<string, FenceCollisionProfile> = {
         postDepth: 0.045,
         postWidth: 0.215,
         railThickness: 0.04,
+    },
+    StoneFence: {
+        height: 0.68,
+        postDepth: 0.28,
+        postWidth: 0.28,
+        railHeight: 0.48,
+        railThickness: 0.16,
+    },
+    PolishedStoneFence: {
+        height: 0.68,
+        postDepth: 0.28,
+        postWidth: 0.28,
+        railHeight: 0.48,
+        railThickness: 0.28,
     },
 };
 const hazelLightArchName = 'HazelLightArch';
@@ -547,6 +562,7 @@ function createFenceCollisionSurfaces({
             halfWidth: alongX ? railHalfLength : profile.railThickness / 2,
             roamBlockedCells: [],
             x: stack.position.x + direction.x * railCenterOffset,
+            y: bottomY + (profile.railHeight ?? profile.height),
             z: stack.position.z + direction.z * railCenterOffset,
         });
         if (profile.picketSpacing) {

@@ -19,6 +19,8 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
     { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
+    { label: 'Kamena ograda', price: 5, picker: 'Ograde' },
+    { label: 'Ograda od poliranog kamena', price: 5, picker: 'Ograde' },
     { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
     { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
     { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
@@ -648,10 +650,7 @@ test('garden lights are grouped under Rasvjeta', async ({ mount, page }) => {
     }
 });
 
-test('brown and white fences are grouped under Ograde', async ({
-    mount,
-    page,
-}) => {
+test('connected fences are grouped under Ograde', async ({ mount, page }) => {
     await page.setViewportSize(TABLET_VIEWPORT);
     await mount(<ItemsHudAlignmentStory />);
 
@@ -668,6 +667,12 @@ test('brown and white fences are grouped under Ograde', async ({
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Bijela ograda' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Kamena ograda' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Ograda od poliranog kamena' }),
     ).toBeVisible();
 });
 

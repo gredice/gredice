@@ -49,6 +49,7 @@ import {
 } from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
+import { polishedStoneFenceVariantNames } from './PolishedStoneFence';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedFieldVisualBatches } from './raisedBed/RaisedBedFieldVisualBatches';
 import { RaisedBedHarvestBaskets } from './raisedBed/RaisedBedHarvestBasket';
@@ -56,6 +57,7 @@ import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
+import { stoneFenceVariantNames } from './StoneFence';
 import { swampGroundBaseColor } from './swampGroundPalette';
 import { whiteFenceVariantNames } from './WhiteFence';
 import {
@@ -333,6 +335,8 @@ export const additionalInstancedBlockNames = [
     'Shade',
     'Fence',
     'WhiteFence',
+    'StoneFence',
+    'PolishedStoneFence',
     'GardenBox',
     'Stool',
     'Bucket',
@@ -1428,6 +1432,8 @@ const shadeKeys = [
 type FenceKey = (typeof fenceVariantNames)[keyof typeof fenceVariantNames];
 type WhiteFenceKey =
     (typeof whiteFenceVariantNames)[keyof typeof whiteFenceVariantNames];
+type PolishedStoneFenceKey =
+    (typeof polishedStoneFenceVariantNames)[keyof typeof polishedStoneFenceVariantNames];
 
 function resolveConnectedFenceVariant<Key extends string>(
     instance: EntityBlockInstance,
@@ -1568,6 +1574,167 @@ const whiteFenceKeys = [
     whiteFenceVariantNames.T,
     whiteFenceVariantNames.Cross,
 ] satisfies WhiteFenceKey[];
+
+function LoadedStoneFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const { nodes } = useGameGLTF('StoneFence');
+    const instances = useEntityBlockInstances({
+        name: 'StoneFence',
+        stacks,
+        yOffset: 1,
+    });
+    const resolved = instances?.map((instance) => {
+        const neighbors = resolveEntityNeighbors(
+            stacks,
+            instance.stack,
+            instance.block,
+        );
+        const connection = resolveFenceConnection(neighbors, instance.rotation);
+        return {
+            instance: mapInstanceRotation(instance, connection.rotation),
+            shape: connection.shape,
+        };
+    });
+
+    if (!resolved?.length) {
+        return null;
+    }
+
+    return (
+        <>
+            {stoneFenceShapes.flatMap((shape) =>
+                stoneFenceVariantNames[shape].map((key) => (
+                    <EntityInstancesGeometry
+                        key={key}
+                        instanceKey={key}
+                        instances={resolved
+                            .filter((item) => item.shape === shape)
+                            .map(({ instance }) => instance)}
+                        geometry={nodes[key].geometry}
+                        material={nodes[key].material}
+                        staticOpaqueCacheGroup="static-props"
+                        renderRainWetOverlay
+                        snow={{
+                            maxThickness: 0.05,
+                            slopeExponent: 2.9,
+                            noiseScale: 3.3,
+                        }}
+                        {...commonSnowProps}
+                    />
+                )),
+            )}
+        </>
+    );
+}
+
+function StoneFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+    const hasInstances = hasIndexedEntityBlocks(instanceIndex, 'StoneFence');
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedStoneFenceInstances stacks={stacks} {...commonSnowProps} />
+        </Suspense>
+    );
+}
+
+const stoneFenceShapes = [
+    'Solo',
+    'Single',
+    'Middle',
+    'Corner',
+    'T',
+    'Cross',
+] satisfies FenceConnectionShape[];
+
+function LoadedPolishedStoneFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const { nodes, materials } = useGameGLTF('PolishedStoneFence');
+    const instances = useEntityBlockInstances({
+        name: 'PolishedStoneFence',
+        stacks,
+        yOffset: 1,
+    });
+    const resolved = instances?.map((instance) =>
+        resolveConnectedFenceVariant(
+            instance,
+            stacks,
+            polishedStoneFenceVariantNames,
+        ),
+    );
+
+    if (!resolved?.length) {
+        return null;
+    }
+
+    return (
+        <>
+            {polishedStoneFenceKeys.map((key) => (
+                <EntityInstancesGeometry
+                    key={key}
+                    instanceKey={key}
+                    instances={resolved
+                        .filter(({ variant }) => variant === key)
+                        .map(({ instance }) => instance)}
+                    geometry={nodes[key].geometry}
+                    material={materials['Material.PolishedStoneFence.Surface']}
+                    staticOpaqueCacheGroup="static-props"
+                    renderRainWetOverlay
+                    snow={{
+                        maxThickness: 0.035,
+                        slopeExponent: 2.9,
+                        noiseScale: 3.3,
+                    }}
+                    {...commonSnowProps}
+                />
+            ))}
+        </>
+    );
+}
+
+function PolishedStoneFenceInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const instanceIndex = useEntityBlockInstanceIndex(stacks);
+    const hasInstances = hasIndexedEntityBlocks(
+        instanceIndex,
+        'PolishedStoneFence',
+    );
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedPolishedStoneFenceInstances
+                stacks={stacks}
+                {...commonSnowProps}
+            />
+        </Suspense>
+    );
+}
+
+const polishedStoneFenceKeys = [
+    polishedStoneFenceVariantNames.Solo,
+    polishedStoneFenceVariantNames.Single,
+    polishedStoneFenceVariantNames.Middle,
+    polishedStoneFenceVariantNames.Corner,
+    polishedStoneFenceVariantNames.T,
+    polishedStoneFenceVariantNames.Cross,
+] satisfies PolishedStoneFenceKey[];
 
 function GardenBoxInstances({
     stacks,
@@ -2813,6 +2980,8 @@ export function AdditionalEntityInstances({
             <ShadeInstances stacks={stacks} {...commonSnowProps} />
             <FenceInstances stacks={stacks} {...commonSnowProps} />
             <WhiteFenceInstances stacks={stacks} {...commonSnowProps} />
+            <StoneFenceInstances stacks={stacks} {...commonSnowProps} />
+            <PolishedStoneFenceInstances stacks={stacks} {...commonSnowProps} />
             <GardenBoxInstances stacks={stacks} {...commonSnowProps} />
             <BucketInstances stacks={stacks} {...commonSnowProps} />
             <WateringCanInstances stacks={stacks} {...commonSnowProps} />

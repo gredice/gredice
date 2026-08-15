@@ -112,6 +112,8 @@ const lightingItems: HudItemEntity[] = [
 const fenceItems: HudItemEntity[] = [
     { type: 'entity', name: 'Fence' },
     { type: 'entity', name: 'WhiteFence' },
+    { type: 'entity', name: 'StoneFence' },
+    { type: 'entity', name: 'PolishedStoneFence' },
 ];
 
 const summerItems: HudItemEntity[] = [

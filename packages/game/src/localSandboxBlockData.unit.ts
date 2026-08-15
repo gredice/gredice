@@ -209,6 +209,31 @@ test('local sandbox exposes the connected white fence with model bounds', () => 
     assert.equal(whiteFence.attributes.stackable, false);
 });
 
+test('local sandbox exposes both connected stone fences with model bounds', () => {
+    const blockData = getLocalSandboxBlockData();
+    const fences = [
+        { label: 'Kamena ograda', name: 'StoneFence' },
+        {
+            label: 'Ograda od poliranog kamena',
+            name: 'PolishedStoneFence',
+        },
+    ];
+
+    for (const { label, name } of fences) {
+        const fence = blockData.find(
+            (block) => block.information.name === name,
+        );
+
+        assert.ok(fence, `Missing local sandbox fence ${name}`);
+        assert.equal(fence.information.label, label);
+        assert.equal(fence.attributes.height, 0.68);
+        assert.equal(fence.attributes.hitboxDepth, 1);
+        assert.equal(fence.attributes.hitboxHeight, 0.68);
+        assert.equal(fence.attributes.hitboxWidth, 1);
+        assert.equal(fence.attributes.stackable, false);
+    }
+});
+
 test('local sandbox exposes the small wooden bridge with its model bounds', () => {
     const bridge = getLocalSandboxBlockData().find(
         (block) => block.information.name === 'SmallWoodenBridge',
