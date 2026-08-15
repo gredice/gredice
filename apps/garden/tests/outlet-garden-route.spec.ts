@@ -641,9 +641,24 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
 
     const canvasElement = await canvas.elementHandle();
     expect(canvasElement).not.toBeNull();
-    const canvasBox = await canvas.boundingBox();
-    expect(canvasBox).not.toBeNull();
-    if (canvasBox) {
+    const canvasInputPoint = await canvas.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const gridSize = 10;
+
+        for (let yIndex = gridSize - 1; yIndex > 0; yIndex -= 1) {
+            for (let xIndex = gridSize - 1; xIndex > 0; xIndex -= 1) {
+                const x = bounds.left + (bounds.width * xIndex) / gridSize;
+                const y = bounds.top + (bounds.height * yIndex) / gridSize;
+                if (document.elementFromPoint(x, y) === element) {
+                    return { x, y };
+                }
+            }
+        }
+
+        return null;
+    });
+    expect(canvasInputPoint).not.toBeNull();
+    if (canvasInputPoint) {
         await canvas.evaluate((element) => {
             element.dataset.testPointerMoves = '0';
             element.dataset.testPointerDowns = '0';
@@ -664,25 +679,22 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
                 ).toString();
             });
         });
-        const centerX = canvasBox.x + canvasBox.width / 2;
-        const centerY = canvasBox.y + canvasBox.height / 2;
-        await page.mouse.move(centerX, centerY);
+        await page.mouse.move(canvasInputPoint.x, canvasInputPoint.y);
         await page.mouse.wheel(0, -120);
         await page.mouse.down();
-        await page.mouse.move(centerX + 36, centerY + 24, { steps: 4 });
+        await page.mouse.move(
+            canvasInputPoint.x - 36,
+            canvasInputPoint.y - 24,
+            {
+                steps: 4,
+            },
+        );
         await page.mouse.up();
     }
     await expect(canvas).toHaveAttribute('data-test-pointer-moves', /[1-9]/u);
     await expect(canvas).toHaveAttribute('data-test-pointer-downs', /[1-9]/u);
     await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
     await expect(canvas).toBeVisible();
-
-    const closeSelectedOffer = page.getByRole('button', {
-        name: 'Zatvori detalje sadnice',
-    });
-    if (await closeSelectedOffer.isVisible()) {
-        await closeSelectedOffer.click();
-    }
 
     await page
         .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
