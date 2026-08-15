@@ -638,12 +638,28 @@ export function InventoryHud() {
         'ml-1 rounded-full bg-muted px-1.5 text-[10px] font-semibold leading-4 text-muted-foreground';
 
     return (
-        <HudCard open position="floating" className="static p-0.5">
+        <HudCard
+            open
+            position="floating"
+            className="static size-12 p-0.5"
+            data-inventory-hud-shell="true"
+        >
             <GameModal
                 open={isOpen}
                 onOpenChange={handleOpenChange}
                 title="Inventar"
-                headerIcon={<BackpackIcon className="size-7 shrink-0" />}
+                headerIcon={
+                    <Image
+                        alt=""
+                        aria-hidden="true"
+                        className="h-auto w-10 max-w-none object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.25)]"
+                        data-inventory-modal-icon="true"
+                        height={40}
+                        src={inventoryBackpackIconSrc}
+                        unoptimized
+                        width={40}
+                    />
+                }
                 trigger={
                     <IconButton
                         variant="plain"

@@ -14,8 +14,12 @@ test('outlet HUD links directly to the 3D garden and keeps the inventory badge',
         '[data-outlet-availability-badge]',
     );
     const outletIcon = outletLink.locator('[data-outlet-trigger-icon]');
+    const outletHudShell = page.locator('[data-outlet-hud-shell]');
 
     await expect(outletLink).toBeVisible();
+    await expect(outletHudShell).toHaveCSS('width', '48px');
+    await expect(outletHudShell).toHaveCSS('height', '48px');
+    await expect(outletHudShell).toHaveClass(/rounded-full/u);
     await expect(outletLink).toHaveAccessibleName('Outlet sadnica');
     await expect(outletLink).toHaveAttribute('href', '/outlet');
     await expect(outletIcon).toHaveAttribute(

@@ -14,8 +14,12 @@ test('inventory HUD badge counts backpack items without garden box contents', as
     const inventoryIcon = inventoryButton.locator(
         '[data-inventory-trigger-icon]',
     );
+    const inventoryHudShell = page.locator('[data-inventory-hud-shell]');
 
     await expect(inventoryButton).toBeVisible();
+    await expect(inventoryHudShell).toHaveCSS('width', '48px');
+    await expect(inventoryHudShell).toHaveCSS('height', '48px');
+    await expect(inventoryHudShell).toHaveClass(/rounded-full/u);
     await expect(inventoryIcon).toHaveAttribute(
         'src',
         '/assets/hud/inventory-backpack.webp',
@@ -38,7 +42,14 @@ test('inventory can open directly on garden boxes tab', async ({
 }) => {
     await mount(<InventoryHudGardenBoxesOpenStory />);
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+    const inventoryDialog = page.getByRole('dialog');
+    const modalIcon = inventoryDialog.locator('[data-inventory-modal-icon]');
+
+    await expect(inventoryDialog).toBeVisible();
+    await expect(modalIcon).toHaveAttribute(
+        'src',
+        '/assets/hud/inventory-backpack.webp',
+    );
     await expect(
         page.getByRole('tab', { name: /Kutije\s+1/u }),
     ).toHaveAttribute('data-state', 'active');

@@ -25,7 +25,12 @@ export function OutletHud() {
     }
 
     return (
-        <HudCard open position="floating" className="static p-0.5">
+        <HudCard
+            open
+            position="floating"
+            className="static size-12 p-0.5"
+            data-outlet-hud-shell="true"
+        >
             <IconButton
                 aria-label="Outlet sadnica"
                 title="Outlet sadnica"
