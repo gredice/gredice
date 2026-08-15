@@ -332,7 +332,8 @@ export function OutletGardenProductSigns({
 
         // Drei Html instances share these canvas styles. A later non-blending
         // avatar label can reset them, so retain the blending layer while any
-        // product sign is visible in the scene.
+        // product sign is visible in the scene. Product signs are read-only,
+        // so keep the canvas interactive for hover raycasts and camera input.
         const canvasStyle = gl.domElement.style;
         if (canvasStyle.zIndex !== '1') {
             canvasStyle.zIndex = '1';
@@ -340,8 +341,8 @@ export function OutletGardenProductSigns({
         if (canvasStyle.position !== 'absolute') {
             canvasStyle.position = 'absolute';
         }
-        if (canvasStyle.pointerEvents !== 'none') {
-            canvasStyle.pointerEvents = 'none';
+        if (canvasStyle.pointerEvents !== 'auto') {
+            canvasStyle.pointerEvents = 'auto';
         }
     });
 

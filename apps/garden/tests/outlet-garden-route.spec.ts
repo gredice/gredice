@@ -621,7 +621,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'hidden',
     );
     await expect(productSigns.first()).toHaveCSS('box-shadow', 'none');
-    await expect(page.locator('canvas')).toHaveCSS('z-index', '1');
+    const canvas = page.locator('canvas');
+    await expect(canvas).toHaveCSS('z-index', '1');
+    await expect(canvas).toHaveCSS('pointer-events', 'auto');
     await expect(
         page.locator('[data-outlet-garden-product-sign-back]'),
     ).toHaveCount(0);
@@ -656,12 +658,31 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(page.getByText('Razgledaj Outlet vrt')).toHaveCount(0);
     await expect(page.locator('[data-outlet-garden-browser]')).toHaveCount(0);
 
-    const canvas = page.locator('canvas');
     const canvasElement = await canvas.elementHandle();
     expect(canvasElement).not.toBeNull();
     const canvasBox = await canvas.boundingBox();
     expect(canvasBox).not.toBeNull();
     if (canvasBox) {
+        await canvas.evaluate((element) => {
+            element.dataset.testPointerMoves = '0';
+            element.dataset.testPointerDowns = '0';
+            element.dataset.testWheelEvents = '0';
+            element.addEventListener('pointermove', () => {
+                element.dataset.testPointerMoves = (
+                    Number(element.dataset.testPointerMoves) + 1
+                ).toString();
+            });
+            element.addEventListener('pointerdown', () => {
+                element.dataset.testPointerDowns = (
+                    Number(element.dataset.testPointerDowns) + 1
+                ).toString();
+            });
+            element.addEventListener('wheel', () => {
+                element.dataset.testWheelEvents = (
+                    Number(element.dataset.testWheelEvents) + 1
+                ).toString();
+            });
+        });
         const centerX = canvasBox.x + canvasBox.width / 2;
         const centerY = canvasBox.y + canvasBox.height / 2;
         await page.mouse.move(centerX, centerY);
@@ -670,6 +691,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         await page.mouse.up();
         await page.mouse.wheel(0, -120);
     }
+    await expect(canvas).toHaveAttribute('data-test-pointer-moves', /[1-9]/u);
+    await expect(canvas).toHaveAttribute('data-test-pointer-downs', /[1-9]/u);
+    await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
     await expect(canvas).toBeVisible();
 
     await page
