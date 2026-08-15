@@ -363,6 +363,43 @@ test('selected footprint can submit a compatible Advanced Sowing co-plant', asyn
     }
 });
 
+test('legacy field permits only a different-density co-plant', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            plantings={[
+                {
+                    configurationSource: 'legacy',
+                    id: 71,
+                    isActive: true,
+                    layoutKey: null,
+                    memberships: [{ positionIndex: 17 }],
+                    plantSortId: 101,
+                },
+            ]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeDisabled();
+    const selectedDifferentDensity = preview.getByRole('radio', {
+        name: /4 biljke.*15 cm/u,
+    });
+    await selectedDifferentDensity.check();
+    await expect(selectedDifferentDensity).toBeEnabled();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+});
+
 test('selected footprint blocks an unsupported legacy fallback', async ({
     mount,
     page,
@@ -793,17 +830,26 @@ test.describe('planting calendar date timezone', () => {
     });
 });
 
-test('outlet sowing sends the selected outlet offer', async ({
+test('outlet sowing bypasses Advanced Sowing and sends the selected offer', async ({
     mount,
     page,
 }) => {
     const posts = await mockShoppingCartPosts(page);
 
-    await mount(<PlantPickerTestStory />);
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+        />,
+    );
 
     await page.getByRole('button', { name: 'Sijanje' }).click();
     await page.getByRole('button', { name: /Rajčica/ }).click();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const advancedSowingPreview = page.locator(
+        '[data-advanced-sowing-preview]',
+    );
+    await expect(advancedSowingPreview).toBeVisible();
 
     const sowingMode = page.getByRole('radiogroup', {
         name: 'Način sijanja',
@@ -813,11 +859,14 @@ test('outlet sowing sends the selected outlet offer', async ({
     });
     await sowingMode.getByText('Preostalo 3').click();
     await expect(laterOutletOffer).toBeChecked();
+    await expect(advancedSowingPreview).toHaveCount(0);
     await expect(
         page.getByRole('button', { name: /Datum sijanja/u }),
     ).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    const addToCart = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(addToCart).toBeEnabled();
+    await addToCart.click();
 
     await expect.poll(() => posts.length).toBe(1);
     const post = posts[0];
@@ -827,6 +876,8 @@ test('outlet sowing sends the selected outlet offer', async ({
     }
     expect(post.outletOfferId).toBe(302);
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
+    expect(post.advancedSowingSelection).toBeUndefined();
+    expect(post.forceCreate).toBeUndefined();
 });
 
 test('outlet sowing converts an existing inventory row to euros', async ({

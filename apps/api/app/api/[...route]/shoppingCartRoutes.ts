@@ -49,6 +49,7 @@ import {
     getLegacySowingCartMutationTarget,
     LegacySowingSelectedPlantingConflictError,
 } from '../../../lib/checkout/advancedSowingAvailability';
+import { buildAdvancedSowingLegacyDensitySnapshots } from '../../../lib/checkout/advancedSowingLegacyDensity';
 import {
     AdvancedSowingPlanBoundaryError,
     assertNoReservedAdvancedSowingAdditionalData,
@@ -72,6 +73,42 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+
+async function loadLegacyDensitySnapshots(
+    plantings: Awaited<ReturnType<typeof getRaisedBedPlantingsForRaisedBed>>,
+) {
+    const legacyPlantSortIds = Array.from(
+        new Set(
+            plantings.flatMap((planting) =>
+                planting.configurationSource === 'legacy' &&
+                planting.isActive &&
+                !planting.isDeleted
+                    ? [planting.plantSortId]
+                    : [],
+            ),
+        ),
+    );
+    const seedingDistanceByPlantSortId = new Map<
+        number,
+        number | null | undefined
+    >();
+    await Promise.all(
+        legacyPlantSortIds.map(async (plantSortId) => {
+            const plantSort =
+                await getEntityFormatted<EntityStandardized>(plantSortId);
+            if (plantSort) {
+                seedingDistanceByPlantSortId.set(
+                    plantSortId,
+                    plantSort.information?.plant?.attributes?.seedingDistance,
+                );
+            }
+        }),
+    );
+    return buildAdvancedSowingLegacyDensitySnapshots({
+        plantings,
+        seedingDistanceByPlantSortId,
+    });
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -566,7 +603,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             'invalid_request',
                         );
                     }
-                    advancedSowingAuthorization = authorizedSelection;
                     const [
                         blockingPlantOperations,
                         plantings,
@@ -583,12 +619,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             cart.items.map((item) => item.id),
                         ),
                     ]);
+                    const legacyDensitySnapshots =
+                        await loadLegacyDensitySnapshots(plantings);
+                    advancedSowingAuthorization = {
+                        ...authorizedSelection,
+                        ...(legacyDensitySnapshots.length > 0
+                            ? { legacyDensitySnapshots }
+                            : {}),
+                    };
                     assertAdvancedSowingPlanAvailable({
                         authorizationsByCartItemId: pendingAuthorizations,
                         blockingPlantOperations,
                         cartItems: cart.items,
                         excludedCartItemId: id,
                         gardenId,
+                        legacyDensitySnapshots,
                         plan: authorizedSelection.plan,
                         plantings,
                         raisedBedId,

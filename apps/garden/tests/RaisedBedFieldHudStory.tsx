@@ -50,6 +50,7 @@ function buildGarden(scenario: RaisedBedScenario) {
                 blockId: 'raised-bed-1',
                 physicalId: '1',
                 fields,
+                plantings: scenario.plantings ?? [],
                 appliedOperations: [],
                 status: scenario.raisedBedStatus ?? 'new',
                 abandonReason: scenario.raisedBedAbandonReason ?? null,
@@ -367,7 +368,7 @@ export function RaisedBedFieldDndDialogStory({
                     Test dialog
                 </div>
             )}
-            <div className="size-60">
+            <div className="ml-12 size-60">
                 <RaisedBedField
                     gardenId={TEST_GARDEN_ID}
                     raisedBedId={TEST_RAISED_BED_ID}

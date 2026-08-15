@@ -259,6 +259,54 @@ function plantedGrowingScenario(): RaisedBedScenario {
     };
 }
 
+function legacyDualSowingScenario(
+    includeSelectedPlanting = false,
+): RaisedBedScenario {
+    return {
+        ...plantedGrowingScenario(),
+        plantings: [
+            {
+                configurationSource: 'legacy',
+                id: 201,
+                isActive: true,
+                isDeleted: false,
+                layoutKey: null,
+                memberships: [{ positionIndex: 0 }],
+                plantSortId: testSorts.tomato.id,
+            },
+            ...(includeSelectedPlanting
+                ? [
+                      {
+                          anchorPositionIndex: 0,
+                          configurationSource: 'selected',
+                          id: 202,
+                          isActive: true,
+                          isDeleted: false,
+                          layoutKey: 'v1:fields:1x1:plants:2x2',
+                          layoutVersion: 1,
+                          lifecycleStartedAt: '2026-05-10T00:00:00.000Z',
+                          memberships: [
+                              {
+                                  isAnchor: true,
+                                  positionIndex: 0,
+                                  relativeColumn: 0,
+                                  relativeRow: 0,
+                              },
+                          ],
+                          plantCount: 4,
+                          plantSortId: testSorts.basil.id,
+                          plantsPerAxis: 2,
+                          selectedSeedingDistanceCm: 15,
+                          selectedTask: null,
+                          spanColumns: 1,
+                          spanRows: 1,
+                      },
+                  ]
+                : []),
+        ],
+    };
+}
+
 function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
     const operations = [
         buildOperation({
@@ -869,6 +917,21 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(fieldButton).toContainText('20');
     });
 
+    test('full raised-bed HUD preserves controls for a pending cart planting', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+
+        await expect(
+            page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
+        ).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(1);
+        await expect(
+            page.locator('[data-scheduled-sowing-badge]'),
+        ).toContainText('20');
+    });
+
     test('checked out scheduled field shows scheduled date badge until sown', async ({
         mount,
         page,
@@ -939,7 +1002,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         );
 
         const layerToggles = page.locator('[data-raised-bed-layer-control]');
-        await expect(layerToggles).toHaveCount(2);
+        await expect(layerToggles).toHaveCount(3);
 
         for (const isDarkMode of [false, true]) {
             await page.evaluate((dark) => {
@@ -950,6 +1013,53 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 await expect(layerToggle).toHaveCSS('border-top-width', '0px');
             }
         }
+    });
+
+    test('planting mode turns an active legacy field into an add-plant button', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario()}
+            />,
+        );
+
+        const fieldPlantingTrigger = page.locator(
+            '[data-raised-bed-plant-picker-trigger][data-position-index="0"]',
+        );
+        await expect(fieldPlantingTrigger).toHaveCount(0);
+
+        await page
+            .getByRole('button', { name: 'Dodaj biljku u polje' })
+            .click();
+
+        await expect(fieldPlantingTrigger).toBeVisible();
+        await fieldPlantingTrigger.click();
+        await expect(
+            page.getByRole('dialog', { name: 'Sijanje biljke' }),
+        ).toBeVisible();
+    });
+
+    test('planting mode does not expose a third planting button', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario(true)}
+            />,
+        );
+
+        await page
+            .getByRole('button', { name: 'Dodaj biljku u polje' })
+            .click();
+
+        await expect(
+            page.locator(
+                '[data-raised-bed-plant-picker-trigger][data-position-index="0"]',
+            ),
+        ).toHaveCount(0);
     });
 
     test('abandoned raised bed shows inactivity message instead of sowing grid', async ({

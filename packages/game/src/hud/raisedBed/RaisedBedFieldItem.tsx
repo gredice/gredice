@@ -1,3 +1,5 @@
+import { ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD } from '@gredice/js/plants';
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
@@ -21,6 +23,8 @@ export function RaisedBedFieldItem({
     showPlantHistoryBadges = true,
     positionIndex,
     isDragging,
+    plantingCount = 0,
+    plantingMode = false,
 }: {
     raisedBedId: number;
     gardenId: number;
@@ -29,6 +33,8 @@ export function RaisedBedFieldItem({
     showPlantHistoryBadges?: boolean;
     positionIndex: number;
     isDragging?: boolean;
+    plantingCount?: number;
+    plantingMode?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const [fieldDetailsParams, setFieldDetailsParams] =
@@ -92,6 +98,46 @@ export function RaisedBedFieldItem({
         return (
             <RaisedBedFieldItemButton
                 isLoading={true}
+                positionIndex={positionIndex}
+            />
+        );
+    }
+
+    const plantingLimitReached =
+        plantingCount >= ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD;
+
+    if (plantingMode && !plantingLimitReached) {
+        return (
+            <RaisedBedFieldItemEmpty
+                cartPlantItem={cartPlantItem}
+                gardenId={gardenId}
+                plantHistory={visiblePlantHistory}
+                isCartPending={isCartPending}
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                isDragging={isDragging}
+            />
+        );
+    }
+
+    if (plantingMode && plantingLimitReached && !hasField) {
+        return (
+            <RaisedBedFieldItemButton
+                aria-label={`Polje ${positionIndex + 1} već ima dvije sadnje`}
+                disabled
+                positionIndex={positionIndex}
+                title="Polje već ima dvije sadnje"
+            >
+                <PlantingSeedIcon className="size-8 opacity-40" />
+            </RaisedBedFieldItemButton>
+        );
+    }
+
+    if (!plantingMode && plantingCount > 0 && !hasField && !cartPlantItem) {
+        return (
+            <RaisedBedFieldItemButton
+                aria-label={`Polje ${positionIndex + 1} sadrži naprednu sjetvu`}
+                disabled
                 positionIndex={positionIndex}
             />
         );

@@ -3,6 +3,7 @@ import {
     type AdvancedSowingCartAuthorizationV1,
     type AdvancedSowingCartConfigurationV1,
     type AdvancedSowingDistanceRangeInput,
+    type AdvancedSowingLegacyDensitySnapshotV1,
     type AdvancedSowingSelectionRequestV1,
     advancedSowingCartAuthorizationKind,
     buildAdvancedSowingCartConfigurationV1,
@@ -31,6 +32,7 @@ export type AdvancedSowingPlanReasonCode =
     | 'invalid_request'
     | 'layout_conflict'
     | 'legacy_layout_unknown'
+    | 'planting_limit'
     | 'plant_operation_conflict'
     | 'reserved_additional_data'
     | 'spacing_out_of_range'
@@ -103,6 +105,8 @@ const advancedSowingPlanErrorMessages: Record<
         'Advanced Sowing layout is already active or pending on the target fields.',
     legacy_layout_unknown:
         'Advanced Sowing cannot share fields with a planting whose layout is unknown.',
+    planting_limit:
+        'A raised-bed field can contain at most two active plantings.',
     plant_operation_conflict:
         'Advanced Sowing cannot replace field targets while plant work is still actionable.',
     reserved_additional_data:
@@ -311,11 +315,13 @@ function buildCanonicalPlan({
 export function authorizeAdvancedSowingCartSelection({
     clientAdditionalData,
     selectionRequest,
+    legacyDensitySnapshots = [],
     catalogueDistanceRange,
     target,
 }: {
     clientAdditionalData: unknown;
     selectionRequest: unknown;
+    legacyDensitySnapshots?: readonly AdvancedSowingLegacyDensitySnapshotV1[];
     catalogueDistanceRange: AdvancedSowingDistanceRangeInput;
     target: AdvancedSowingCartTarget;
 }) {
@@ -337,6 +343,9 @@ export function authorizeAdvancedSowingCartSelection({
     });
     const authorization: AdvancedSowingCartAuthorizationV1 = {
         kind: advancedSowingCartAuthorizationKind,
+        ...(legacyDensitySnapshots.length > 0
+            ? { legacyDensitySnapshots: [...legacyDensitySnapshots] }
+            : {}),
         plan,
         version: 1,
     };

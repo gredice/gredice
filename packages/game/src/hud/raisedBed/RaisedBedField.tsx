@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
 import { Heart, History, Lightning } from '@gredice/ui/icons';
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -26,6 +27,7 @@ import { raisedBedFieldSectionCount } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { buildAdvancedSowingGardenPlantingVisuals } from './advancedSowingGardenVisuals';
+import { getRaisedBedPlantingCountsByPosition } from './advancedSowingSubmission';
 import {
     getRaisedBedFieldRelationshipIndicators,
     type RaisedBedFieldRelationshipIndicator as RaisedBedFieldRelationshipIndicatorData,
@@ -168,7 +170,7 @@ function RaisedBedFieldLayerToggle({
     isPressed: boolean;
     label: string;
     onClick: () => void;
-    storageName: 'history' | 'relationships';
+    storageName: 'history' | 'planting' | 'relationships';
 }) {
     return (
         <ButtonGreen
@@ -208,6 +210,7 @@ export function RaisedBedField({
     const moveSequenceRef = useRef(0);
     const [dropAnimationDisabled, setDropAnimationDisabled] = useState(false);
     const [isHudDialogOpen, setIsHudDialogOpen] = useState(false);
+    const [isPlantingMode, setIsPlantingMode] = useState(false);
     const [layerPreferences, setLayerPreferences] = useState(
         readRaisedBedFieldLayerPreferences,
     );
@@ -218,6 +221,9 @@ export function RaisedBedField({
     const relationshipsToggleLabel = layerPreferences.showRelationshipIndicators
         ? 'Sakrij dobre i loše susjede'
         : 'Prikaži dobre i loše susjede';
+    const plantingModeToggleLabel = isPlantingMode
+        ? 'Završi dodavanje biljaka'
+        : 'Dodaj biljku u polje';
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -309,6 +315,26 @@ export function RaisedBedField({
 
         return itemsByPosition;
     }, [baseCartItemsByPosition, pendingMove]);
+    const raisedBedSource: unknown = raisedBed;
+    const plantingCountsByPosition = useMemo(
+        () =>
+            getRaisedBedPlantingCountsByPosition({
+                cartItems: cart?.items ?? [],
+                fields: raisedBed?.fields,
+                gardenId,
+                plantings: isRecord(raisedBedSource)
+                    ? raisedBedSource.plantings
+                    : null,
+                raisedBedId,
+            }),
+        [
+            cart?.items,
+            gardenId,
+            raisedBed?.fields,
+            raisedBedId,
+            raisedBedSource,
+        ],
+    );
 
     useEffect(() => {
         if (!pendingMove) {
@@ -341,7 +367,6 @@ export function RaisedBedField({
     const blockCount = garden && raisedBed ? raisedBedFieldSectionCount : 1;
     const totalRows = blockCount * 3;
     const totalColumns = 3;
-    const raisedBedSource: unknown = raisedBed;
     const advancedSowingPlantings = buildAdvancedSowingGardenPlantingVisuals(
         isRecord(raisedBedSource) ? raisedBedSource.plantings : null,
         totalRows * totalColumns,
@@ -350,7 +375,6 @@ export function RaisedBedField({
         id: sort.id,
         name: sort.information.name,
     }));
-
     const rows = Array.from({ length: totalRows }, (_, index) => ({
         id: `row-${index.toString()}`,
         index,
@@ -472,6 +496,21 @@ export function RaisedBedField({
     return (
         <div className="relative size-full">
             <div className="absolute -left-12 bottom-0 z-30 flex flex-col gap-2">
+                <RaisedBedFieldLayerToggle
+                    isPressed={isPlantingMode}
+                    label={plantingModeToggleLabel}
+                    onClick={() => {
+                        setIsPlantingMode((current) => !current);
+                        track('game_raised_bed_planting_mode_toggled', {
+                            enabled: !isPlantingMode,
+                            garden_id: gardenId,
+                            raised_bed_id: raisedBedId,
+                        });
+                    }}
+                    storageName="planting"
+                >
+                    <PlantingSeedIcon aria-hidden className="size-5" />
+                </RaisedBedFieldLayerToggle>
                 <RaisedBedFieldLayerToggle
                     isPressed={layerPreferences.showPlantHistoryBadges}
                     label={plantHistoryToggleLabel}
@@ -606,6 +645,14 @@ export function RaisedBedField({
                                                             }
                                                             isDragging={
                                                                 isDragging
+                                                            }
+                                                            plantingCount={
+                                                                plantingCountsByPosition.get(
+                                                                    positionIndex,
+                                                                ) ?? 0
+                                                            }
+                                                            plantingMode={
+                                                                isPlantingMode
                                                             }
                                                         />
                                                         {relationshipIndicatorsByPosition

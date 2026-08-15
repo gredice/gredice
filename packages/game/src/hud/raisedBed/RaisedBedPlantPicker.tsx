@@ -2,6 +2,7 @@ import type { PlantData, PlantSortData } from '@gredice/client';
 import {
     ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
     buildAdvancedSowingSelectionRequestV1,
+    resolveLegacySowingDensityLayoutKey,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import {
@@ -463,11 +464,12 @@ export function PlantPicker({
             return;
         }
 
-        const advancedSowingSelection = selectedAdvancedSowingOption?.plan
-            ? buildAdvancedSowingSelectionRequestV1(
-                  selectedAdvancedSowingOption.plan.selectedDistanceCm,
-              )
-            : undefined;
+        const advancedSowingSelection =
+            !useOutletOffer && selectedAdvancedSowingOption?.plan
+                ? buildAdvancedSowingSelectionRequestV1(
+                      selectedAdvancedSowingOption.plan.selectedDistanceCm,
+                  )
+                : undefined;
         const existingItem = advancedSowingSelection
             ? advancedSowingExistingItem
             : cart?.items.find(
@@ -513,8 +515,9 @@ export function PlantPicker({
             use_outlet_offer: Boolean(selectedOutletOffer),
             advanced_sowing_distance_cm:
                 advancedSowingSelection?.selectedDistanceCm,
-            advanced_sowing_layout_key:
-                selectedAdvancedSowingOption?.plan?.layoutKey,
+            advanced_sowing_layout_key: advancedSowingSelection
+                ? selectedAdvancedSowingOption?.plan?.layoutKey
+                : undefined,
         });
         showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
@@ -770,6 +773,22 @@ export function PlantPicker({
                   selectedCartItemId,
               })
             : null;
+    const legacyLayoutKeysByPlantSortId = useMemo(() => {
+        const layoutKeys = new Map<number, string>();
+        for (const sort of allSorts ?? []) {
+            try {
+                layoutKeys.set(
+                    sort.id,
+                    resolveLegacySowingDensityLayoutKey(
+                        sort.information.plant.attributes?.seedingDistance,
+                    ),
+                );
+            } catch {
+                // Invalid catalogue density stays unavailable and fails closed.
+            }
+        }
+        return layoutKeys;
+    }, [allSorts]);
     const advancedSowingUnavailableLayoutKeys = useMemo(() => {
         if (advancedSowingPreview.status !== 'supported') {
             return new Set<string>();
@@ -782,6 +801,7 @@ export function PlantPicker({
                     cartItems: cart?.items ?? [],
                     excludedCartItemId: advancedSowingEditedItem?.id,
                     gardenId,
+                    legacyLayoutKeysByPlantSortId,
                     plan: option.plan,
                     plantings: raisedBedPlantings,
                     raisedBedId,
@@ -795,6 +815,7 @@ export function PlantPicker({
         advancedSowingPreview,
         cart?.items,
         gardenId,
+        legacyLayoutKeysByPlantSortId,
         raisedBedPlantings,
         raisedBedId,
     ]);
@@ -803,11 +824,13 @@ export function PlantPicker({
         selectedAdvancedSowingLayoutKey,
         advancedSowingUnavailableLayoutKeys,
     );
+    const usesAdvancedSowingSelection =
+        !useOutletOffer && Boolean(selectedAdvancedSowingOption?.plan);
     const advancedSowingBlocksMutation =
-        advancedSowingPreview.status === 'invalid' ||
-        (advancedSowingPreview.status === 'supported' &&
-            (!selectedAdvancedSowingOption?.plan ||
-                Boolean(selectedOutletOffer)));
+        !useOutletOffer &&
+        (advancedSowingPreview.status === 'invalid' ||
+            (advancedSowingPreview.status === 'supported' &&
+                !selectedAdvancedSowingOption?.plan));
     const legacySowingTargetAvailability = useMemo(
         () =>
             getLegacySowingTargetAvailability({
@@ -818,7 +841,7 @@ export function PlantPicker({
     );
     const legacySowingBlocksMutation =
         !legacySowingTargetAvailability.available &&
-        !selectedAdvancedSowingOption?.plan;
+        !usesAdvancedSowingSelection;
     const sowingBlocksMutation =
         advancedSowingBlocksMutation || legacySowingBlocksMutation;
     const sowingMutationNoticeId = legacySowingBlocksMutation
@@ -970,7 +993,8 @@ export function PlantPicker({
                                 }
                                 onInventoryToggle={handleSortInventoryToggle}
                             />
-                            {advancedSowingPreview.status !== 'unsupported' ? (
+                            {!useOutletOffer &&
+                            advancedSowingPreview.status !== 'unsupported' ? (
                                 <AdvancedSowingPickerPreview
                                     bedFieldCount={raisedBedFieldCount}
                                     noticeId={advancedSowingNoticeId}
@@ -1362,9 +1386,7 @@ export function PlantPicker({
                                               : legacySowingBlocksMutation
                                                 ? 'Obična sjetva nije dostupna na polju postojeće napredne sjetve'
                                                 : advancedSowingBlocksMutation
-                                                  ? selectedOutletOffer
-                                                      ? 'Napredna sjetva nije dostupna za outlet sadnice'
-                                                      : 'Odabrani raspored nije dostupan na ovim poljima'
+                                                  ? 'Odabrani raspored nije dostupan na ovim poljima'
                                                   : undefined
                                     }
                                     loading={

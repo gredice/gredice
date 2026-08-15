@@ -6,6 +6,7 @@ import {
     cartContainsDeliverableItems,
     consumeInventoryItem,
     createStripeCheckoutAttempt,
+    type EntityStandardized,
     fingerprintStripeCheckoutValue,
     getAccount,
     getActiveStripeCheckoutAttempt,
@@ -14,6 +15,7 @@ import {
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
     getDeliveryAddress,
+    getEntityFormatted,
     getEntityRaw,
     getGarden,
     getHarvestScheduleForCart,
@@ -62,6 +64,10 @@ import {
     DuplicateDirectSowingCartTargetError,
     LegacySowingSelectedPlantingConflictError,
 } from '../../../lib/checkout/advancedSowingAvailability';
+import {
+    buildAdvancedSowingLegacyDensitySnapshots,
+    haveMatchingAdvancedSowingLegacyDensitySnapshots,
+} from '../../../lib/checkout/advancedSowingLegacyDensity';
 import {
     AdvancedSowingPlanBoundaryError,
     assertNoReservedAdvancedSowingAdditionalData,
@@ -120,6 +126,42 @@ const OUTLET_CHECKOUT_HOLD_MINUTES = Math.max(
     // Stripe requires checkout sessions to expire at least 30 minutes out.
     STRIPE_MIN_CHECKOUT_SESSION_LIFETIME_MINUTES + 1,
 );
+
+async function loadLegacyDensitySnapshots(
+    plantings: Awaited<ReturnType<typeof getRaisedBedPlantingsForRaisedBed>>,
+) {
+    const legacyPlantSortIds = Array.from(
+        new Set(
+            plantings.flatMap((planting) =>
+                planting.configurationSource === 'legacy' &&
+                planting.isActive &&
+                !planting.isDeleted
+                    ? [planting.plantSortId]
+                    : [],
+            ),
+        ),
+    );
+    const seedingDistanceByPlantSortId = new Map<
+        number,
+        number | null | undefined
+    >();
+    await Promise.all(
+        legacyPlantSortIds.map(async (plantSortId) => {
+            const plantSort =
+                await getEntityFormatted<EntityStandardized>(plantSortId);
+            if (plantSort) {
+                seedingDistanceByPlantSortId.set(
+                    plantSortId,
+                    plantSort.information?.plant?.attributes?.seedingDistance,
+                );
+            }
+        }),
+    );
+    return buildAdvancedSowingLegacyDensitySnapshots({
+        plantings,
+        seedingDistanceByPlantSortId,
+    });
+}
 
 const packageCheckoutBodySchema = z.object({
     returnContext: z
@@ -735,16 +777,33 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                         'invalid_authorization',
                                     );
                                 }
+                                const plantings =
+                                    await loadPlantingsForRaisedBed(
+                                        item.raisedBedId,
+                                    );
+                                const currentLegacyDensitySnapshots =
+                                    await loadLegacyDensitySnapshots(plantings);
+                                if (
+                                    !haveMatchingAdvancedSowingLegacyDensitySnapshots(
+                                        validatedAuthorization.legacyDensitySnapshots ??
+                                            [],
+                                        currentLegacyDensitySnapshots,
+                                    )
+                                ) {
+                                    throw new AdvancedSowingPlanBoundaryError(
+                                        'legacy_layout_unknown',
+                                    );
+                                }
                                 assertAdvancedSowingPlanAvailable({
                                     authorizationsByCartItemId:
                                         persistedAdvancedSowingAuthorizationsByCartItemId,
                                     cartItems: cart.items,
                                     excludedCartItemId: cartItemId,
                                     gardenId: item.gardenId,
+                                    legacyDensitySnapshots:
+                                        currentLegacyDensitySnapshots,
                                     plan: validatedAuthorization.plan,
-                                    plantings: await loadPlantingsForRaisedBed(
-                                        item.raisedBedId,
-                                    ),
+                                    plantings,
                                     raisedBedId: item.raisedBedId,
                                 });
                                 return [

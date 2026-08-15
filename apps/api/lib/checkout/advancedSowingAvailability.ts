@@ -1,7 +1,9 @@
 import type {
     AdvancedSowingCartAuthorizationV1,
     AdvancedSowingCartConfigurationV1,
+    AdvancedSowingLegacyDensitySnapshotV1,
 } from '@gredice/js/plants';
+import { ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD } from '@gredice/js/plants';
 import { AdvancedSowingPlanBoundaryError } from './advancedSowingPlan';
 
 type PendingCartItem = {
@@ -34,10 +36,12 @@ type LegacySowingCartMutation = {
 
 type RaisedBedPlantingAvailabilitySource = {
     configurationSource: string;
+    id?: number;
     isActive: boolean;
     isDeleted?: boolean;
     layoutKey: string | null;
     memberships: readonly unknown[];
+    plantSortId?: number;
 };
 
 export class LegacySowingSelectedPlantingConflictError extends Error {
@@ -325,11 +329,29 @@ export function assertNoBlockingLegacyPlantOperations(
     }
 }
 
+function incrementPlantingCount(
+    countByPositionIndex: Map<number, number>,
+    positionIndex: number,
+) {
+    countByPositionIndex.set(
+        positionIndex,
+        (countByPositionIndex.get(positionIndex) ?? 0) + 1,
+    );
+}
+
 function assertActivePlantingsAvailable(
     plan: AdvancedSowingCartConfigurationV1,
     plantings: readonly RaisedBedPlantingAvailabilitySource[],
+    legacyDensitySnapshots: readonly AdvancedSowingLegacyDensitySnapshotV1[],
 ) {
     const occupiedPositionIndices = new Set(plan.occupiedPositionIndices);
+    const plantingCountByPositionIndex = new Map<number, number>();
+    const legacyDensitySnapshotByPlantingId = new Map(
+        legacyDensitySnapshots.map((snapshot) => [
+            snapshot.plantingId,
+            snapshot,
+        ]),
+    );
     for (const planting of plantings) {
         if (!planting.isActive || planting.isDeleted === true) {
             continue;
@@ -347,17 +369,41 @@ function assertActivePlantingsAvailable(
         if (!overlaps(occupiedPositionIndices, validPositions)) {
             continue;
         }
-        if (
+        for (const positionIndex of validPositions) {
+            if (occupiedPositionIndices.has(positionIndex)) {
+                incrementPlantingCount(
+                    plantingCountByPositionIndex,
+                    positionIndex,
+                );
+            }
+        }
+
+        let existingLayoutKey = planting.layoutKey;
+        if (planting.configurationSource === 'legacy') {
+            const snapshot =
+                typeof planting.id === 'number'
+                    ? legacyDensitySnapshotByPlantingId.get(planting.id)
+                    : undefined;
+            if (!snapshot || snapshot.plantSortId !== planting.plantSortId) {
+                throw new AdvancedSowingPlanBoundaryError(
+                    'legacy_layout_unknown',
+                );
+            }
+            existingLayoutKey = snapshot.layoutKey;
+        } else if (
             planting.configurationSource !== 'selected' ||
-            typeof planting.layoutKey !== 'string' ||
-            planting.layoutKey.length === 0
+            typeof existingLayoutKey !== 'string' ||
+            existingLayoutKey.length === 0
         ) {
             throw new AdvancedSowingPlanBoundaryError('legacy_layout_unknown');
         }
-        if (planting.layoutKey === plan.layoutKey) {
+
+        if (existingLayoutKey === plan.layoutKey) {
             throw new AdvancedSowingPlanBoundaryError('layout_conflict');
         }
     }
+
+    return plantingCountByPositionIndex;
 }
 
 function assertPendingCartAvailable({
@@ -365,6 +411,7 @@ function assertPendingCartAvailable({
     cartItems,
     excludedCartItemId,
     gardenId,
+    plantingCountByPositionIndex,
     plan,
     raisedBedId,
 }: {
@@ -375,6 +422,7 @@ function assertPendingCartAvailable({
     cartItems: readonly PendingCartItem[];
     excludedCartItemId?: number;
     gardenId: number;
+    plantingCountByPositionIndex: Map<number, number>;
     plan: AdvancedSowingCartConfigurationV1;
     raisedBedId: number;
 }) {
@@ -403,15 +451,34 @@ function assertPendingCartAvailable({
             }
             continue;
         }
+        const overlappingPositions =
+            authorization.plan.occupiedPositionIndices.filter((positionIndex) =>
+                occupiedPositionIndices.has(positionIndex),
+            );
         if (
-            overlaps(
-                occupiedPositionIndices,
-                authorization.plan.occupiedPositionIndices,
-            ) &&
+            overlappingPositions.length > 0 &&
             authorization.plan.layoutKey === plan.layoutKey
         ) {
             throw new AdvancedSowingPlanBoundaryError('layout_conflict');
         }
+        for (const positionIndex of overlappingPositions) {
+            incrementPlantingCount(plantingCountByPositionIndex, positionIndex);
+        }
+    }
+}
+
+function assertPlantingCapacity(
+    plan: AdvancedSowingCartConfigurationV1,
+    plantingCountByPositionIndex: ReadonlyMap<number, number>,
+) {
+    if (
+        plan.occupiedPositionIndices.some(
+            (positionIndex) =>
+                (plantingCountByPositionIndex.get(positionIndex) ?? 0) >=
+                ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD,
+        )
+    ) {
+        throw new AdvancedSowingPlanBoundaryError('planting_limit');
     }
 }
 
@@ -425,6 +492,7 @@ export function assertAdvancedSowingPlanAvailable({
     cartItems,
     excludedCartItemId,
     gardenId,
+    legacyDensitySnapshots = [],
     plan,
     plantings,
     raisedBedId,
@@ -437,18 +505,25 @@ export function assertAdvancedSowingPlanAvailable({
     cartItems: readonly PendingCartItem[];
     excludedCartItemId?: number;
     gardenId: number;
+    legacyDensitySnapshots?: readonly AdvancedSowingLegacyDensitySnapshotV1[];
     plan: AdvancedSowingCartConfigurationV1;
     plantings: readonly RaisedBedPlantingAvailabilitySource[];
     raisedBedId: number;
 }) {
     assertNoBlockingLegacyPlantOperations(blockingPlantOperations);
-    assertActivePlantingsAvailable(plan, plantings);
+    const plantingCountByPositionIndex = assertActivePlantingsAvailable(
+        plan,
+        plantings,
+        legacyDensitySnapshots,
+    );
     assertPendingCartAvailable({
         authorizationsByCartItemId,
         cartItems,
         excludedCartItemId,
         gardenId,
+        plantingCountByPositionIndex,
         plan,
         raisedBedId,
     });
+    assertPlantingCapacity(plan, plantingCountByPositionIndex);
 }

@@ -3342,6 +3342,7 @@ describe('processCheckoutSession', () => {
             'layout_collision',
             'legacy_layout_unknown',
             'plant_operation_conflict',
+            'planting_limit',
         ] as const) {
             const calls: RecordedCall[] = [];
             const dependencies = makeDependencies(calls, {

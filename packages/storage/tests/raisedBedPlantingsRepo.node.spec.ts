@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import type { AdvancedSowingLegacyDensitySnapshotV1 } from '@gredice/js/plants';
 import {
     createAccount,
     createEntity,
@@ -401,6 +402,7 @@ function layoutOccupancy(
 ): RaisedBedPlantingLayoutOccupancy {
     return {
         plantingId: 1,
+        plantSortId: 10,
         raisedBedFieldId: 30,
         layoutKey: 'density:1',
         configurationSource: 'selected',
@@ -452,6 +454,51 @@ test('layout conflicts reject selected creation over an active unknown legacy la
 
     assert.equal(conflict?.code, 'legacy_layout_unknown');
     assert.equal(conflict?.occupancy.plantingId, 2);
+});
+
+test('layout conflicts use an authorized legacy density snapshot', () => {
+    const legacyOccupancy = layoutOccupancy({
+        configurationSource: 'legacy',
+        layoutKey: null,
+        plantingId: 2,
+        plantSortId: 20,
+    });
+    const snapshots = [
+        {
+            layoutKey: 'v1:fields:1x1:plants:1x1',
+            plantingId: 2,
+            plantSortId: 20,
+        },
+    ] satisfies AdvancedSowingLegacyDensitySnapshotV1[];
+
+    assert.equal(
+        findRaisedBedPlantingLayoutConflict(
+            [legacyOccupancy],
+            'v1:fields:1x1:plants:2x2',
+            snapshots,
+        ),
+        null,
+    );
+    assert.equal(
+        findRaisedBedPlantingLayoutConflict(
+            [legacyOccupancy],
+            'v1:fields:1x1:plants:1x1',
+            snapshots,
+        )?.code,
+        'layout_collision',
+    );
+});
+
+test('layout conflicts reject a third active planting in one field', () => {
+    const conflict = findRaisedBedPlantingLayoutConflict(
+        [
+            layoutOccupancy({ plantingId: 1, layoutKey: 'density:1' }),
+            layoutOccupancy({ plantingId: 2, layoutKey: 'density:2' }),
+        ],
+        'density:3',
+    );
+
+    assert.equal(conflict?.code, 'planting_limit');
 });
 
 function persistedPlanting(
@@ -1239,29 +1286,39 @@ test('legacy reads and collisions follow replace, remove, and new-cycle events w
         ],
     );
 
+    const legacyCoPlantInput = selectedPlantingInput({
+        raisedBedId,
+        plantSortId: replacementSortId,
+        eventAggregateId: `raised-bed-planting:selected:different:${suffix}`,
+        anchorPositionIndex: 0,
+        selectedSeedingDistanceCm: 30,
+        plantsPerAxis: 1,
+        plantCount: 1,
+        layoutKey: 'v1:fields:1x1:plants:1x1',
+        memberships: [
+            {
+                raisedBedFieldId: field.id,
+                relativeRow: 0,
+                relativeColumn: 0,
+                isAnchor: true,
+            },
+        ],
+    });
     await expectAsyncPlantingError(
-        createRaisedBedPlanting(
-            selectedPlantingInput({
-                raisedBedId,
-                plantSortId: replacementSortId,
-                eventAggregateId: `raised-bed-planting:selected:different:${suffix}`,
-                anchorPositionIndex: 0,
-                selectedSeedingDistanceCm: 30,
-                plantsPerAxis: 1,
-                plantCount: 1,
-                layoutKey: 'v1:fields:1x1:plants:1x1',
-                memberships: [
-                    {
-                        raisedBedFieldId: field.id,
-                        relativeRow: 0,
-                        relativeColumn: 0,
-                        isAnchor: true,
-                    },
-                ],
-            }),
-        ),
+        createRaisedBedPlanting(legacyCoPlantInput),
         'legacy_layout_unknown',
     );
+    const compatibleCoPlant = await createRaisedBedPlanting({
+        ...legacyCoPlantInput,
+        legacyDensitySnapshots: [
+            {
+                layoutKey: 'v1:fields:1x1:plants:2x2',
+                plantingId: secondLegacy.planting.id,
+                plantSortId: originalSortId,
+            },
+        ],
+    });
+    assert.equal(compatibleCoPlant.created, true);
 
     await deleteRaisedBed(raisedBedId);
     const replay = await createRaisedBedPlanting(selectedInput);

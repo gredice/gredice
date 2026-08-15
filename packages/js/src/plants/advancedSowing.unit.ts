@@ -16,6 +16,7 @@ import {
     parseAdvancedSowingSelectionRequestV1,
     resolveAdvancedSowingDistanceRange,
     resolveAdvancedSowingLayout,
+    resolveLegacySowingDensityLayoutKey,
 } from './advancedSowing';
 
 describe('resolveAdvancedSowingDistanceRange', () => {
@@ -180,6 +181,23 @@ describe('resolveAdvancedSowingLayout', () => {
                     selectedDistanceCm: 61,
                 }),
             /within the configured range/u,
+        );
+    });
+});
+
+describe('resolveLegacySowingDensityLayoutKey', () => {
+    it('mirrors the one-field legacy renderer density', () => {
+        assert.equal(
+            resolveLegacySowingDensityLayoutKey(15),
+            'v1:fields:1x1:plants:2x2',
+        );
+        assert.equal(
+            resolveLegacySowingDensityLayoutKey(60),
+            'v1:fields:1x1:plants:1x1',
+        );
+        assert.equal(
+            resolveLegacySowingDensityLayoutKey(),
+            'v1:fields:1x1:plants:1x1',
         );
     });
 });
@@ -562,6 +580,22 @@ describe('Advanced Sowing shared cart contracts', () => {
         assert.deepEqual(
             parseAdvancedSowingCartAuthorizationV1(authorization),
             authorization,
+        );
+        const legacyCompatibleAuthorization = {
+            ...authorization,
+            legacyDensitySnapshots: [
+                {
+                    layoutKey: 'v1:fields:1x1:plants:2x2',
+                    plantingId: 41,
+                    plantSortId: 101,
+                },
+            ],
+        };
+        assert.deepEqual(
+            parseAdvancedSowingCartAuthorizationV1(
+                legacyCompatibleAuthorization,
+            ),
+            legacyCompatibleAuthorization,
         );
         assert.deepEqual(buildAdvancedSowingSelectionSummaryV1(authorization), {
             fieldSpanColumns: 2,

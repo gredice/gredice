@@ -205,6 +205,7 @@ export function buildSelectedPlantingFromPaidCheckout({
         spanRows: plan.fieldSpanRows,
         spanColumns: plan.fieldSpanColumns,
         layoutVersion: plan.version,
+        legacyDensitySnapshots: authorization.legacyDensitySnapshots,
         isActive: true,
         memberships,
         lifecycleStarted: {

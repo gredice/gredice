@@ -3186,7 +3186,8 @@ function advancedSowingCheckoutConflictCode(error: unknown) {
         error instanceof RaisedBedPlantingError &&
         (error.code === 'layout_collision' ||
             error.code === 'legacy_layout_unknown' ||
-            error.code === 'plant_operation_conflict')
+            error.code === 'plant_operation_conflict' ||
+            error.code === 'planting_limit')
     ) {
         return error.code;
     }
