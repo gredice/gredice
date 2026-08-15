@@ -561,6 +561,14 @@ test.describe('shopping cart item presence', () => {
         await mount(<ShoppingCartHudItemsPresenceStory />);
 
         const cartTrigger = page.getByTitle('Košara');
+        const cartIcon = cartTrigger.locator(
+            '[data-shopping-basket-trigger-icon]',
+        );
+        await expect(cartIcon).toHaveAttribute(
+            'src',
+            '/assets/hud/shopping-basket.webp',
+        );
+        await expect(cartIcon).toHaveClass(/w-12/u);
         await cartTrigger.click();
         const cartDialog = page.getByRole('dialog', { name: 'Košara' });
         await expect(cartDialog).toBeVisible();

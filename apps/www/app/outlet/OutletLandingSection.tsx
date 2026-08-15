@@ -4,6 +4,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { KnownPages } from '../../src/KnownPages';
+import { OutletBrandMark } from './OutletBrandMark';
 import { OutletLandingOfferCard } from './OutletLandingOfferCard';
 import { getOutletOffers } from './outletData';
 
@@ -18,9 +19,12 @@ export async function OutletLandingSection() {
         <section className="my-20">
             <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] lg:items-center">
                 <Stack spacing={5}>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                        <Discount aria-hidden className="size-4" />
-                        Outlet cijena, Gredice kvaliteta
+                    <div className="flex flex-wrap items-center gap-4">
+                        <OutletBrandMark className="h-auto w-20 shrink-0 object-contain drop-shadow-md sm:w-24" />
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                            <Discount aria-hidden className="size-4" />
+                            Outlet cijena, Gredice kvaliteta
+                        </div>
                     </div>
                     <Stack spacing={2} className="max-w-xl">
                         <Typography level="body1" semiBold tertiary>
