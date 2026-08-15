@@ -12,16 +12,18 @@ import {
     useIsFetching,
 } from '@tanstack/react-query';
 import {
+    createContext,
     type HTMLAttributes,
     type ReactNode,
     Suspense,
     useCallback,
+    useContext,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react';
-import { Vector3 } from 'three';
+import { type Group, Vector3 } from 'three';
 import { BlockInteractionLayer } from '../controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from '../controls/BlockInteractionRegistry';
 import {
@@ -84,6 +86,12 @@ import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
 import type { PublicGardenRaisedBed } from './publicGardenRaisedBedDetailsModel';
 
 export type PublicGardenBlock = Block;
+
+const PublicGardenVisualOccludersContext = createContext<Group | null>(null);
+
+export function usePublicGardenVisualOccluders() {
+    return useContext(PublicGardenVisualOccludersContext);
+}
 
 export type PublicGardenStack = {
     x: number;
@@ -501,6 +509,7 @@ function PublicGardenScene({
     );
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
+    const [visualOccluders, setVisualOccluders] = useState<Group | null>(null);
     const interactWithAvatarBlock = useCallback(
         (block: Block) => {
             if (!onAvatarInteractBlock) {
@@ -569,144 +578,179 @@ function PublicGardenScene({
                                 weather={undefined}
                             />
                             <Suspense fallback={null}>
-                                <group name="PublicGardenScene:Entities">
-                                    {normalizedStacks.map((stack) =>
-                                        stack.blocks.map((block) => (
-                                            <EntityFactory
-                                                key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
-                                                name={block.name}
-                                                stack={stack}
-                                                block={block}
-                                                stacks={normalizedStacks}
-                                                rotation={block.rotation}
-                                                variant={block.variant}
-                                                noRenderInView={
-                                                    instancedBlockNames
-                                                }
-                                                noControl
-                                            />
-                                        )),
-                                    )}
-                                    <EntityInstances
-                                        farmId={garden?.farmId}
-                                        quality={qualityProfile}
-                                        renderGroundDecorations={shouldRenderPublicGardenGroundDecorations(
-                                            renderLivingDetails,
-                                            renderGroundDecorations,
-                                        )}
-                                        stacks={normalizedStacks}
-                                        renderDetails={renderLivingDetails}
-                                    />
-                                    {sceneChildren}
-                                    {onSceneReady ? (
-                                        <PublicGardenSceneReady
-                                            onReady={onSceneReady}
-                                        />
-                                    ) : null}
-                                    {renderLivingDetails && garden ? (
-                                        <Suspense fallback={null}>
-                                            <RaisedBedMulchOverlays
+                                <PublicGardenVisualOccludersContext.Provider
+                                    value={visualOccluders}
+                                >
+                                    <group name="PublicGardenScene:Entities">
+                                        {/* DOM signs raycast only visible scene
+                                            content; invisible interaction
+                                            receivers remain sibling targets. */}
+                                        <group
+                                            ref={setVisualOccluders}
+                                            name="PublicGardenScene:VisualOccluders"
+                                        >
+                                            {normalizedStacks.map((stack) =>
+                                                stack.blocks.map((block) => (
+                                                    <EntityFactory
+                                                        key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
+                                                        name={block.name}
+                                                        stack={stack}
+                                                        block={block}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                        rotation={
+                                                            block.rotation
+                                                        }
+                                                        variant={block.variant}
+                                                        noRenderInView={
+                                                            instancedBlockNames
+                                                        }
+                                                        noControl
+                                                    />
+                                                )),
+                                            )}
+                                            <EntityInstances
+                                                farmId={garden?.farmId}
                                                 quality={qualityProfile}
+                                                renderGroundDecorations={shouldRenderPublicGardenGroundDecorations(
+                                                    renderLivingDetails,
+                                                    renderGroundDecorations,
+                                                )}
+                                                stacks={normalizedStacks}
+                                                renderDetails={
+                                                    renderLivingDetails
+                                                }
                                             />
-                                        </Suspense>
-                                    ) : null}
-                                    {!capture && !gardenAvatarActive ? (
-                                        <>
-                                            {interactiveBlockIds?.size &&
-                                            onSelectBlock ? (
-                                                <PublicGardenBlockInteractions
-                                                    blockIds={
-                                                        interactiveBlockIds
-                                                    }
-                                                    onSelect={onSelectBlock}
-                                                    stacks={normalizedStacks}
+                                            {sceneChildren}
+                                            {onSceneReady ? (
+                                                <PublicGardenSceneReady
+                                                    onReady={onSceneReady}
                                                 />
                                             ) : null}
-                                            <PublicGardenRaisedBedInteractions
-                                                onSelect={
-                                                    onSelectRaisedBedBlock
-                                                }
-                                                stacks={normalizedStacks}
-                                            />
-                                            <BlockInteractionLayer
-                                                controlsEnabled
-                                                stacks={normalizedStacks}
-                                            />
-                                        </>
-                                    ) : null}
-                                    {renderTransientDetails && (
-                                        <Suspense fallback={null}>
-                                            <Birds stacks={normalizedStacks} />
-                                        </Suspense>
-                                    )}
-                                    {renderTransientDetails && (
-                                        <Suspense fallback={null}>
-                                            <Cats
-                                                farmId={garden?.farmId}
-                                                stacks={normalizedStacks}
-                                            />
-                                        </Suspense>
-                                    )}
-                                    {renderTransientDetails && (
-                                        <Suspense fallback={null}>
-                                            <Dogs
-                                                farmId={garden?.farmId}
-                                                stacks={normalizedStacks}
-                                            />
-                                        </Suspense>
-                                    )}
-                                    {renderTransientDetails && garden && (
-                                        <Suspense fallback={null}>
-                                            <Bees
-                                                farmId={garden.farmId}
-                                                garden={garden}
-                                                groundDecorationDensity={
-                                                    qualityProfile.groundDecorationDensity
-                                                }
-                                            />
-                                        </Suspense>
-                                    )}
-                                    {visitorPresence ? (
-                                        <Suspense fallback={null}>
-                                            <GardenAvatar
-                                                activationRequest={
-                                                    localVisitorActivationRequest
-                                                }
-                                                initialSpawnPoint={
-                                                    localVisitorSpawnPoint
-                                                }
-                                                interactiveBlockIds={
-                                                    interactiveBlockIds
-                                                }
-                                                key={
-                                                    visitorPresence.localVisitorId
-                                                }
-                                                onPresenceChange={
-                                                    visitorPresence.onLocalPresenceChange
-                                                }
-                                                onInteractBlock={
-                                                    interactWithAvatarBlock
-                                                }
-                                                roamSeed={
-                                                    visitorPresence.localVisitorId
-                                                }
-                                                showActivationPrompt={
-                                                    localVisitorActivationRequest ===
-                                                    undefined
-                                                }
-                                                stacks={normalizedStacks}
-                                            />
-                                            {visitorPresence.visitors.map(
-                                                (visitor) => (
-                                                    <GardenVisitorAvatar
-                                                        key={visitor.id}
-                                                        presence={visitor}
+                                            {renderLivingDetails && garden ? (
+                                                <Suspense fallback={null}>
+                                                    <RaisedBedMulchOverlays
+                                                        quality={qualityProfile}
                                                     />
-                                                ),
+                                                </Suspense>
+                                            ) : null}
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
+                                                    <Birds
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
                                             )}
-                                        </Suspense>
-                                    ) : null}
-                                </group>
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
+                                                    <Cats
+                                                        farmId={garden?.farmId}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
+                                            )}
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
+                                                    <Dogs
+                                                        farmId={garden?.farmId}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
+                                            )}
+                                            {renderTransientDetails &&
+                                                garden && (
+                                                    <Suspense fallback={null}>
+                                                        <Bees
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
+                                                            groundDecorationDensity={
+                                                                qualityProfile.groundDecorationDensity
+                                                            }
+                                                        />
+                                                    </Suspense>
+                                                )}
+                                            {visitorPresence ? (
+                                                <Suspense fallback={null}>
+                                                    <GardenAvatar
+                                                        activationRequest={
+                                                            localVisitorActivationRequest
+                                                        }
+                                                        initialSpawnPoint={
+                                                            localVisitorSpawnPoint
+                                                        }
+                                                        interactiveBlockIds={
+                                                            interactiveBlockIds
+                                                        }
+                                                        key={
+                                                            visitorPresence.localVisitorId
+                                                        }
+                                                        onPresenceChange={
+                                                            visitorPresence.onLocalPresenceChange
+                                                        }
+                                                        onInteractBlock={
+                                                            interactWithAvatarBlock
+                                                        }
+                                                        roamSeed={
+                                                            visitorPresence.localVisitorId
+                                                        }
+                                                        showActivationPrompt={
+                                                            localVisitorActivationRequest ===
+                                                            undefined
+                                                        }
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                    {visitorPresence.visitors.map(
+                                                        (visitor) => (
+                                                            <GardenVisitorAvatar
+                                                                key={visitor.id}
+                                                                presence={
+                                                                    visitor
+                                                                }
+                                                            />
+                                                        ),
+                                                    )}
+                                                </Suspense>
+                                            ) : null}
+                                        </group>
+                                        {!capture && !gardenAvatarActive ? (
+                                            <>
+                                                {interactiveBlockIds?.size &&
+                                                onSelectBlock ? (
+                                                    <PublicGardenBlockInteractions
+                                                        blockIds={
+                                                            interactiveBlockIds
+                                                        }
+                                                        onSelect={onSelectBlock}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                ) : null}
+                                                <PublicGardenRaisedBedInteractions
+                                                    onSelect={
+                                                        onSelectRaisedBedBlock
+                                                    }
+                                                    stacks={normalizedStacks}
+                                                />
+                                                <BlockInteractionLayer
+                                                    controlsEnabled
+                                                    stacks={normalizedStacks}
+                                                />
+                                            </>
+                                        ) : null}
+                                    </group>
+                                </PublicGardenVisualOccludersContext.Provider>
                             </Suspense>
                             <GameCameraRig
                                 closeupFocus={selectedBlockFocus}
