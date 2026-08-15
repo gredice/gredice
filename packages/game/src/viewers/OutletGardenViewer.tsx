@@ -24,6 +24,7 @@ import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenProductSigns } from './OutletGardenProductSigns';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
+import { getOutletGardenInitialView } from './outletGardenInitialView';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
@@ -352,18 +353,25 @@ export function OutletGardenViewer({
             return;
         }
 
+        const fittedView = getPublicGardenCaptureInitialView({
+            minimumZoom: outletGardenCameraMinZoom,
+            stacks: normalizePublicGardenStacks(
+                publicGardenStacksFromResponse(outletGarden.stacks),
+            ),
+            viewport: initialSceneViewport,
+        });
         setSceneInitialView(
-            getPublicGardenCaptureInitialView({
-                minimumZoom: outletGardenCameraMinZoom,
-                stacks: normalizePublicGardenStacks(
-                    publicGardenStacksFromResponse(outletGarden.stacks),
-                ),
-                viewport: initialSceneViewport,
+            getOutletGardenInitialView({
+                displayUnits,
+                fittedView,
+                slotAssignments: reconciledSlotAssignments,
             }),
         );
     }, [
+        displayUnits,
         initialSceneViewport,
         layoutReady,
+        reconciledSlotAssignments,
         sceneOffers.length,
         outletGarden.stacks,
         sceneInitialView,
