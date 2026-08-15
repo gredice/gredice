@@ -664,7 +664,7 @@ export function InventoryHud() {
                         {backpackItemsTotal > 0 && (
                             <div
                                 className={cx(
-                                    'absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
+                                    'pointer-events-none absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
                                     backpackItemsTotal > 99 && 'text-[10px]',
                                 )}
                             >

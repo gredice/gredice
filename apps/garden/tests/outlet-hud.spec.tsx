@@ -23,6 +23,7 @@ test('outlet HUD matches the inventory badge colors', async ({
     );
     await expect(outletIcon).toHaveClass(/-translate-y-2\.5/u);
     await expect(availabilityBadge).toHaveText('4');
+    await expect(availabilityBadge).toHaveClass(/pointer-events-none/u);
     await expect(availabilityBadge).toHaveClass(/bg-tertiary/u);
     await expect(availabilityBadge).toHaveClass(/text-tertiary-foreground/u);
     await expect(availabilityBadge).toHaveClass(

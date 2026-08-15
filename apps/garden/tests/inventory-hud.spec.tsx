@@ -21,7 +21,9 @@ test('inventory HUD badge counts backpack items without garden box contents', as
         '/assets/hud/inventory-backpack.webp',
     );
     await expect(inventoryIcon).toHaveClass(/-translate-y-2\.5/u);
-    await expect(inventoryButton.getByText('3', { exact: true })).toBeVisible();
+    const inventoryBadge = inventoryButton.getByText('3', { exact: true });
+    await expect(inventoryBadge).toBeVisible();
+    await expect(inventoryBadge).toHaveClass(/pointer-events-none/u);
     await expect(inventoryButton.getByText('32', { exact: true })).toHaveCount(
         0,
     );
