@@ -6,6 +6,21 @@ export type FenceConnectionShape =
     | 'T'
     | 'Cross';
 
+export const fenceBlockNames = [
+    'Fence',
+    'WhiteFence',
+    'StoneFence',
+    'PolishedStoneFence',
+] as const;
+
+export type FenceBlockName = (typeof fenceBlockNames)[number];
+
+const fenceBlockNameSet: ReadonlySet<string> = new Set(fenceBlockNames);
+
+export function isFenceBlockName(name: string): name is FenceBlockName {
+    return fenceBlockNameSet.has(name);
+}
+
 export const fenceConnectionShapes = [
     'Solo',
     'Single',

@@ -11,7 +11,11 @@ import {
     isAnimalWaterBlockName,
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
-import { resolveFenceConnection } from '../fenceConnections';
+import {
+    type FenceBlockName,
+    isFenceBlockName,
+    resolveFenceConnection,
+} from '../fenceConnections';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import {
     getStackedOnWalkwayPlacementYOffset,
@@ -369,7 +373,7 @@ type FenceCollisionProfile = {
     railThickness: number;
 };
 
-const fenceCollisionProfiles: Record<string, FenceCollisionProfile> = {
+const fenceCollisionProfiles: Record<FenceBlockName, FenceCollisionProfile> = {
     Fence: {
         height: 0.55,
         postDepth: 0.15,
@@ -398,6 +402,12 @@ const fenceCollisionProfiles: Record<string, FenceCollisionProfile> = {
         railThickness: 0.28,
     },
 };
+
+function getFenceCollisionProfile(blockName: string) {
+    return isFenceBlockName(blockName)
+        ? fenceCollisionProfiles[blockName]
+        : undefined;
+}
 const hazelLightArchName = 'HazelLightArch';
 const hazelLightArchPostOffset = 0.443;
 const hazelLightArchPostHalfSize = 0.052;
@@ -460,9 +470,8 @@ function getAvatarCollisionFootprint(block: BlockData | undefined) {
 function fenceLayerKey(
     stack: { position: Pick<GardenAvatarPoint, 'x' | 'z'> },
     blockIndex: number,
-    blockName: string,
 ) {
-    return `${blockName}:${stack.position.x}:${stack.position.z}:${blockIndex}`;
+    return `${stack.position.x}:${stack.position.z}:${blockIndex}`;
 }
 
 function createFenceCollisionSurfaces({
@@ -509,7 +518,7 @@ function createFenceCollisionSurfaces({
                 z: stack.position.z + direction.z,
             },
         };
-        return fenceLayers.has(fenceLayerKey(neighbor, blockIndex, blockName));
+        return fenceLayers.has(fenceLayerKey(neighbor, blockIndex));
     });
     const fallbackAlongX = rotation % 2 === 0;
     const connection = resolveFenceConnection(
@@ -675,10 +684,8 @@ export function createGardenAvatarCollisionWorld({
     const fenceLayers = new Set(
         (stacks ?? []).flatMap((stack) =>
             stack.blocks.flatMap((block, blockIndex) => {
-                const profile = fenceCollisionProfiles[block.name];
-                return profile
-                    ? [fenceLayerKey(stack, blockIndex, block.name)]
-                    : [];
+                const profile = getFenceCollisionProfile(block.name);
+                return profile ? [fenceLayerKey(stack, blockIndex)] : [];
             }),
         ),
     );
@@ -720,7 +727,7 @@ export function createGardenAvatarCollisionWorld({
             }
 
             waterSupportY = null;
-            const fenceProfile = fenceCollisionProfiles[block.name];
+            const fenceProfile = getFenceCollisionProfile(block.name);
             if (fenceProfile) {
                 surfaces.push(
                     ...createFenceCollisionSurfaces({
