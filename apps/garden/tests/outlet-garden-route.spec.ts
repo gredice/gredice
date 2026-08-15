@@ -677,6 +677,13 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
     await expect(canvas).toBeVisible();
 
+    const closeSelectedOffer = page.getByRole('button', {
+        name: 'Zatvori detalje sadnice',
+    });
+    if (await closeSelectedOffer.isVisible()) {
+        await closeSelectedOffer.click();
+    }
+
     await page
         .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
         .click();
