@@ -7,8 +7,10 @@ import {
 } from '@gredice/js/plants';
 import {
     findAdvancedSowingCartItem,
+    findDirectSowingCartItem,
     getAdvancedSowingPlanAvailability,
     getLegacySowingTargetAvailability,
+    getPendingAdvancedSowingTargetAvailability,
     getRaisedBedPlantingCountsByPosition,
     readAdvancedSowingSelectionSummary,
 } from './advancedSowingSubmission';
@@ -93,6 +95,24 @@ describe('Advanced Sowing Garden submission', () => {
                 raisedBedId: 1,
             }),
             null,
+        );
+    });
+
+    it('preserves the explicitly selected row when direct sowing replaces a co-plant', () => {
+        const items = [
+            cartItem({ id: 21, selectedDistanceCm: 15 }),
+            cartItem({ id: 22, selectedDistanceCm: 30 }),
+        ];
+
+        assert.equal(
+            findDirectSowingCartItem({
+                cartItems: items,
+                gardenId: 1,
+                positionIndex: 17,
+                raisedBedId: 1,
+                selectedCartItemId: 22,
+            })?.id,
+            22,
         );
     });
 
@@ -250,6 +270,30 @@ describe('Advanced Sowing Garden submission', () => {
                 gardenId: 1,
                 plan: plan(15),
                 plantings: [],
+                raisedBedId: 1,
+            }),
+            { available: true },
+        );
+    });
+
+    it('blocks a direct target covered by another pending Advanced Sowing row', () => {
+        const existingItem = cartItem({ id: 21, selectedDistanceCm: 15 });
+
+        assert.deepEqual(
+            getPendingAdvancedSowingTargetAvailability({
+                cartItems: [existingItem],
+                gardenId: 1,
+                positionIndex: 17,
+                raisedBedId: 1,
+            }),
+            { available: false, reason: 'pending-advanced-sowing' },
+        );
+        assert.deepEqual(
+            getPendingAdvancedSowingTargetAvailability({
+                cartItems: [existingItem],
+                excludedCartItemId: 21,
+                gardenId: 1,
+                positionIndex: 17,
                 raisedBedId: 1,
             }),
             { available: true },

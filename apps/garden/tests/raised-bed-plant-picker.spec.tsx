@@ -880,6 +880,35 @@ test('outlet sowing bypasses Advanced Sowing and sends the selected offer', asyn
     expect(post.forceCreate).toBeUndefined();
 });
 
+test('outlet sowing stays blocked by another pending Advanced Sowing footprint', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            cartItems={[advancedSowingCartItem(41, 15)]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+
+    await expect(
+        page.getByText(/postojećoj ili planiranoj naprednoj sjetvi/u),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
+});
+
 test('outlet sowing converts an existing inventory row to euros', async ({
     mount,
     page,

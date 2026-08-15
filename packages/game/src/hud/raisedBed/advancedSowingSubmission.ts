@@ -24,6 +24,10 @@ export type LegacySowingTargetAvailability =
           reason: 'malformed-selected-layout' | 'selected-planting';
       };
 
+export type PendingAdvancedSowingTargetAvailability =
+    | { available: true }
+    | { available: false; reason: 'pending-advanced-sowing' };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -180,6 +184,49 @@ export function findAdvancedSowingCartItem<T>({
     });
 
     return matches.length === 1 ? (matches[0] ?? null) : null;
+}
+
+/**
+ * Resolves the exact cart row selected by the HUD before falling back to the
+ * legacy single-row target lookup. This prevents mode changes from mutating a
+ * sibling Advanced Sowing row that shares the same anchor.
+ */
+export function findDirectSowingCartItem<
+    T extends {
+        entityTypeName: string;
+        gardenId: number | null;
+        id: number;
+        positionIndex: number | null;
+        raisedBedId: number | null;
+    },
+>({
+    cartItems,
+    gardenId,
+    positionIndex,
+    raisedBedId,
+    selectedCartItemId,
+}: {
+    cartItems: readonly T[];
+    gardenId: number;
+    positionIndex: number;
+    raisedBedId: number;
+    selectedCartItemId?: number;
+}): T | undefined {
+    const selectedItem =
+        selectedCartItemId === undefined
+            ? undefined
+            : cartItems.find((item) => item.id === selectedCartItemId);
+
+    return (
+        selectedItem ??
+        cartItems.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
+        )
+    );
 }
 
 function overlaps(
@@ -345,6 +392,45 @@ export function getLegacySowingTargetAvailability({
         }
         if (plantingPositionIndices.includes(positionIndex)) {
             return { available: false, reason: 'selected-planting' };
+        }
+    }
+
+    return { available: true };
+}
+
+/**
+ * Mirrors the Outlet reservation guard for a direct field target. Pending
+ * Advanced Sowing rows reserve their complete footprint, even when the picker
+ * is currently using the single-seedling Outlet path.
+ */
+export function getPendingAdvancedSowingTargetAvailability({
+    cartItems,
+    excludedCartItemId,
+    gardenId,
+    positionIndex,
+    raisedBedId,
+}: {
+    cartItems: readonly unknown[];
+    excludedCartItemId?: number;
+    gardenId: number;
+    positionIndex: number;
+    raisedBedId: number;
+}): PendingAdvancedSowingTargetAvailability {
+    for (const item of cartItems) {
+        if (
+            !isRecord(item) ||
+            item.status !== 'new' ||
+            item.entityTypeName !== 'plantSort' ||
+            item.gardenId !== gardenId ||
+            item.raisedBedId !== raisedBedId ||
+            item.id === excludedCartItemId
+        ) {
+            continue;
+        }
+
+        const summary = readAdvancedSowingCartItemSelectionSummary(item);
+        if (summary?.occupiedPositionIndices.includes(positionIndex)) {
+            return { available: false, reason: 'pending-advanced-sowing' };
         }
     }
 
