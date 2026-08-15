@@ -11,6 +11,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
@@ -32,6 +33,7 @@ import {
 import { HudCard } from './components/HudCard';
 
 const BACKPACK_GRID_SIZE = 24;
+const inventoryBackpackIconSrc = '/assets/hud/inventory-backpack.webp';
 
 type InventoryItemData = {
     entityTypeName: string;
@@ -645,25 +647,32 @@ export function InventoryHud() {
                 trigger={
                     <IconButton
                         variant="plain"
-                        className="rounded-full size-10"
+                        className="relative size-10 overflow-visible rounded-full"
                         title="Inventar"
                     >
-                        <div className="relative flex items-center justify-center">
-                            <BackpackIcon className="size-6" />
-                            {backpackItemsTotal > 0 && (
-                                <div
-                                    className={cx(
-                                        'absolute -top-4 -right-4 size-6 px-1.5 rounded-full bg-tertiary text-tertiary-foreground text-sm font-semibold leading-none flex items-center justify-center shadow-md border border-tertiary-foreground/30',
-                                        backpackItemsTotal > 99 &&
-                                            'text-[10px]',
-                                    )}
-                                >
-                                    {backpackItemsTotal > 99
-                                        ? '99+'
-                                        : backpackItemsTotal}
-                                </div>
-                            )}
-                        </div>
+                        <Image
+                            alt=""
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-1/2 top-0 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-2.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                            data-inventory-trigger-icon="true"
+                            height={48}
+                            loading="eager"
+                            src={inventoryBackpackIconSrc}
+                            unoptimized
+                            width={48}
+                        />
+                        {backpackItemsTotal > 0 && (
+                            <div
+                                className={cx(
+                                    'absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
+                                    backpackItemsTotal > 99 && 'text-[10px]',
+                                )}
+                            >
+                                {backpackItemsTotal > 99
+                                    ? '99+'
+                                    : backpackItemsTotal}
+                            </div>
+                        )}
                     </IconButton>
                 }
             >

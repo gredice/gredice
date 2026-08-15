@@ -14,6 +14,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { consumeOutletGardenCommerceAttribution } from '../analytics/outletGardenCommerceAttribution';
@@ -45,6 +46,7 @@ import { ShoppingCartItemsPresence } from './components/shopping-cart/ShoppingCa
 import { ShoppingCartStepTransition } from './components/shopping-cart/ShoppingCartStepTransition';
 
 const sunflowerSuggestionLayoutExitDelayMs = 150;
+const shoppingBasketIconSrc = '/assets/hud/shopping-basket.webp';
 
 function useSunflowerSuggestionLayout(showSuggestion: boolean) {
     const [reserveLayout, setReserveLayout] = useState(showSuggestion);
@@ -554,9 +556,21 @@ export function ShoppingCartHud() {
                         <Button
                             title="Košara"
                             variant="plain"
-                            className="relative rounded-full p-2 gap-2"
+                            className="relative gap-2 overflow-visible rounded-full p-2"
                         >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <span className="relative h-6 w-8 shrink-0">
+                                <Image
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute left-1/2 top-1/2 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-[60%] object-contain drop-shadow-[0_3px_3px_rgba(31,52,30,0.24)]"
+                                    data-shopping-basket-trigger-icon="true"
+                                    height={45}
+                                    loading="eager"
+                                    src={shoppingBasketIconSrc}
+                                    unoptimized
+                                    width={48}
+                                />
+                            </span>
                             <Typography
                                 level="body2"
                                 semiBold
@@ -565,7 +579,7 @@ export function ShoppingCartHud() {
                                 {(cart?.total ?? 0).toFixed(2)} €
                             </Typography>
                             {Boolean(cart?.items.length) && (
-                                <div className="absolute -right-2 -top-2">
+                                <div className="absolute -right-2 -top-2 z-20">
                                     <div className="absolute inset-[3.5px] border bg-green-500 border-green-500 size-[17px] rounded-full animate-ping -z-10"></div>
                                     <DotIndicator
                                         size={24}

@@ -13,9 +13,15 @@ test('outlet HUD matches the inventory badge colors', async ({
     const availabilityBadge = outletButton.locator(
         '[data-outlet-availability-badge]',
     );
+    const outletIcon = outletButton.locator('[data-outlet-trigger-icon]');
 
     await expect(outletButton).toBeVisible();
     await expect(outletButton).toHaveAccessibleName('Outlet sadnica');
+    await expect(outletIcon).toHaveAttribute(
+        'src',
+        '/assets/hud/outlet-seedling-price-tag.webp',
+    );
+    await expect(outletIcon).toHaveClass(/-translate-y-2\.5/u);
     await expect(availabilityBadge).toHaveText('4');
     await expect(availabilityBadge).toHaveClass(/bg-tertiary/u);
     await expect(availabilityBadge).toHaveClass(/text-tertiary-foreground/u);

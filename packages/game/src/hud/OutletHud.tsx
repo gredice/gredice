@@ -5,6 +5,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useGameFlags } from '../GameFlagsContext';
@@ -34,6 +35,8 @@ const dateFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: 'numeric',
     month: 'short',
 });
+
+const outletIconSrc = '/assets/hud/outlet-seedling-price-tag.webp';
 
 function offerImageUrl(offer: {
     imageUrls: string[];
@@ -153,26 +156,33 @@ export function OutletHud() {
                         aria-label="Outlet sadnica"
                         title="Outlet sadnica"
                         variant="plain"
-                        className="size-10 rounded-full"
+                        className="relative size-10 overflow-visible rounded-full"
                     >
-                        <div className="relative flex items-center justify-center">
-                            <Discount className="size-6" />
-                            {availableItemsCount > 0 && (
-                                <div
-                                    aria-hidden="true"
-                                    className={cx(
-                                        'absolute -top-4 -right-4 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
-                                        availableItemsCount > 99 &&
-                                            'text-[10px]',
-                                    )}
-                                    data-outlet-availability-badge
-                                >
-                                    {availableItemsCount > 99
-                                        ? '99+'
-                                        : availableItemsCount}
-                                </div>
-                            )}
-                        </div>
+                        <Image
+                            alt=""
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-1/2 top-0 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-2.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                            data-outlet-trigger-icon="true"
+                            height={44}
+                            loading="eager"
+                            src={outletIconSrc}
+                            unoptimized
+                            width={48}
+                        />
+                        {availableItemsCount > 0 && (
+                            <div
+                                aria-hidden="true"
+                                className={cx(
+                                    'absolute -top-4 -right-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
+                                    availableItemsCount > 99 && 'text-[10px]',
+                                )}
+                                data-outlet-availability-badge
+                            >
+                                {availableItemsCount > 99
+                                    ? '99+'
+                                    : availableItemsCount}
+                            </div>
+                        )}
                     </IconButton>
                 }
             >

@@ -11,8 +11,16 @@ test('inventory HUD badge counts backpack items without garden box contents', as
     await mount(<InventoryHudClosedStory />);
 
     const inventoryButton = page.locator('button[title="Inventar"]');
+    const inventoryIcon = inventoryButton.locator(
+        '[data-inventory-trigger-icon]',
+    );
 
     await expect(inventoryButton).toBeVisible();
+    await expect(inventoryIcon).toHaveAttribute(
+        'src',
+        '/assets/hud/inventory-backpack.webp',
+    );
+    await expect(inventoryIcon).toHaveClass(/-translate-y-2\.5/u);
     await expect(inventoryButton.getByText('3', { exact: true })).toBeVisible();
     await expect(inventoryButton.getByText('32', { exact: true })).toHaveCount(
         0,
