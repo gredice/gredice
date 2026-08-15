@@ -8,9 +8,21 @@ Public status page for Gredice services. The app reads current monitor state fro
 CHECKLY_API_KEY=
 CHECKLY_ACCOUNT_ID=
 CHECKLY_STATUS_TAG=gredice-status
+GREDICE_LIVE_DATABASE_URL=
 ```
 
 `CHECKLY_ACCOUNT_ID` is optional when the API key only has one Checkly account. Set it explicitly if the key can access multiple accounts.
+
+`GREDICE_LIVE_DATABASE_URL` is a read-only PostgreSQL connection used by
+`/live` and `/api/live`. Its database role must only have column-level `SELECT`
+access to `events.id`, `events.type`, and `events.created_at`. The public feed
+maps an allowlist of domain-event types to privacy-safe Croatian descriptions;
+it never reads event payloads or aggregate identifiers. The feed polls every
+30 seconds and only includes the previous three hours. A short playback queue
+softens bursts, then becomes genuinely quiet until another event arrives.
+
+The view can be pinned with `?view=orbit`, `?view=rain`, `?view=soil`, or
+`?view=network`. Omit the parameter to cycle through all four compositions.
 
 ## Checkly checks
 
