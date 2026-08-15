@@ -49,31 +49,10 @@ const commonInput = {
 };
 
 describe('Advanced Sowing server availability', () => {
-    it('permits overlapping active and pending selections with a different layout', () => {
+    it('permits one overlapping active selection with a different layout', () => {
         assert.doesNotThrow(() =>
             assertAdvancedSowingPlanAvailable({
                 ...commonInput,
-                authorizationsByCartItemId: new Map([
-                    [
-                        10,
-                        {
-                            kind: advancedSowingCartAuthorizationKind,
-                            plan: plan(30),
-                            version: 1,
-                        },
-                    ],
-                ]),
-                cartItems: [
-                    {
-                        amount: 1,
-                        entityTypeName: 'plantSort',
-                        gardenId: 1,
-                        id: 10,
-                        positionIndex: 4,
-                        raisedBedId: 2,
-                        status: 'new',
-                    },
-                ],
                 plantings: [
                     {
                         configurationSource: 'selected',
@@ -103,6 +82,70 @@ describe('Advanced Sowing server availability', () => {
                     ],
                 }),
             'legacy_layout_unknown',
+        );
+    });
+
+    it('permits a legacy overlap only with a matching different-density snapshot', () => {
+        const legacyPlanting = {
+            configurationSource: 'legacy',
+            id: 21,
+            isActive: true,
+            layoutKey: null,
+            memberships: [{ raisedBedField: { positionIndex: 4 } }],
+            plantSortId: 301,
+        };
+
+        assert.doesNotThrow(() =>
+            assertAdvancedSowingPlanAvailable({
+                ...commonInput,
+                legacyDensitySnapshots: [
+                    {
+                        layoutKey: plan(30).layoutKey,
+                        plantingId: 21,
+                        plantSortId: 301,
+                    },
+                ],
+                plantings: [legacyPlanting],
+            }),
+        );
+        expectReason(
+            () =>
+                assertAdvancedSowingPlanAvailable({
+                    ...commonInput,
+                    legacyDensitySnapshots: [
+                        {
+                            layoutKey: plan(15).layoutKey,
+                            plantingId: 21,
+                            plantSortId: 301,
+                        },
+                    ],
+                    plantings: [legacyPlanting],
+                }),
+            'layout_conflict',
+        );
+    });
+
+    it('rejects a third active planting even when all density layouts differ', () => {
+        expectReason(
+            () =>
+                assertAdvancedSowingPlanAvailable({
+                    ...commonInput,
+                    plantings: [
+                        {
+                            configurationSource: 'selected',
+                            isActive: true,
+                            layoutKey: plan(30).layoutKey,
+                            memberships: [{ positionIndex: 4 }],
+                        },
+                        {
+                            configurationSource: 'selected',
+                            isActive: true,
+                            layoutKey: plan(60).layoutKey,
+                            memberships: [{ positionIndex: 4 }],
+                        },
+                    ],
+                }),
+            'planting_limit',
         );
     });
 

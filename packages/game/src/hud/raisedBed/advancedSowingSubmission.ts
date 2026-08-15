@@ -1,4 +1,5 @@
 import {
+    ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD,
     type AdvancedSowingCartConfigurationV1,
     type AdvancedSowingLayoutKey,
     type AdvancedSowingSelectionSummaryV1,
@@ -9,7 +10,11 @@ export type AdvancedSowingPlanAvailability =
     | { available: true }
     | {
           available: false;
-          reason: 'legacy-layout-unknown' | 'malformed-layout' | 'same-layout';
+          reason:
+              | 'legacy-layout-unknown'
+              | 'malformed-layout'
+              | 'planting-limit'
+              | 'same-layout';
       };
 
 export type LegacySowingTargetAvailability =
@@ -206,6 +211,105 @@ function readPlantingPositionIndices(planting: Record<string, unknown>) {
     return Array.from(new Set(positionIndices));
 }
 
+function incrementPositionCount(
+    countByPositionIndex: Map<number, number>,
+    positionIndex: number,
+) {
+    countByPositionIndex.set(
+        positionIndex,
+        (countByPositionIndex.get(positionIndex) ?? 0) + 1,
+    );
+}
+
+/**
+ * Counts persisted and pending logical plantings per physical field. Legacy
+ * field rows are counted only when their first-class projection is absent.
+ */
+export function getRaisedBedPlantingCountsByPosition({
+    cartItems,
+    fields,
+    gardenId,
+    plantings,
+    raisedBedId,
+}: {
+    cartItems: readonly unknown[];
+    fields: unknown;
+    gardenId: number;
+    plantings: unknown;
+    raisedBedId: number;
+}) {
+    const countByPositionIndex = new Map<number, number>();
+    const projectedLegacyPositions = new Set<number>();
+
+    if (Array.isArray(plantings)) {
+        for (const planting of plantings) {
+            if (
+                !isRecord(planting) ||
+                planting.isActive !== true ||
+                planting.isDeleted === true
+            ) {
+                continue;
+            }
+            const positionIndices = readPlantingPositionIndices(planting);
+            if (!positionIndices) {
+                continue;
+            }
+            for (const positionIndex of positionIndices) {
+                incrementPositionCount(countByPositionIndex, positionIndex);
+                if (planting.configurationSource === 'legacy') {
+                    projectedLegacyPositions.add(positionIndex);
+                }
+            }
+        }
+    }
+
+    if (Array.isArray(fields)) {
+        for (const field of fields) {
+            if (
+                !isRecord(field) ||
+                field.active !== true ||
+                field.isDeleted === true ||
+                typeof field.plantSortId !== 'number' ||
+                typeof field.positionIndex !== 'number' ||
+                !Number.isSafeInteger(field.positionIndex) ||
+                field.positionIndex < 0 ||
+                projectedLegacyPositions.has(field.positionIndex)
+            ) {
+                continue;
+            }
+            incrementPositionCount(countByPositionIndex, field.positionIndex);
+        }
+    }
+
+    for (const item of cartItems) {
+        if (
+            !isRecord(item) ||
+            item.status !== 'new' ||
+            item.entityTypeName !== 'plantSort' ||
+            item.gardenId !== gardenId ||
+            item.raisedBedId !== raisedBedId ||
+            typeof item.amount !== 'number' ||
+            item.amount <= 0
+        ) {
+            continue;
+        }
+        const summary = readAdvancedSowingCartItemSelectionSummary(item);
+        if (summary) {
+            for (const positionIndex of summary.occupiedPositionIndices) {
+                incrementPositionCount(countByPositionIndex, positionIndex);
+            }
+        } else if (
+            typeof item.positionIndex === 'number' &&
+            Number.isSafeInteger(item.positionIndex) &&
+            item.positionIndex >= 0
+        ) {
+            incrementPositionCount(countByPositionIndex, item.positionIndex);
+        }
+    }
+
+    return countByPositionIndex;
+}
+
 /**
  * A legacy cart row has no layout key and therefore cannot safely share a
  * physical field with an active selected planting. This read-model guard is
@@ -257,6 +361,7 @@ export function getAdvancedSowingPlanAvailability({
     cartItems,
     excludedCartItemId,
     gardenId,
+    legacyLayoutKeysByPlantSortId = new Map(),
     plan,
     plantings,
     raisedBedId,
@@ -264,15 +369,28 @@ export function getAdvancedSowingPlanAvailability({
     cartItems: readonly unknown[];
     excludedCartItemId?: number;
     gardenId: number;
+    legacyLayoutKeysByPlantSortId?: ReadonlyMap<number, string>;
     plan: AdvancedSowingCartConfigurationV1;
     plantings: unknown;
     raisedBedId: number;
 }): AdvancedSowingPlanAvailability {
     const occupiedPositionIndices = new Set(plan.occupiedPositionIndices);
+    const plantingCountByPositionIndex = new Map<number, number>();
+
+    function incrementCount(positionIndex: number) {
+        plantingCountByPositionIndex.set(
+            positionIndex,
+            (plantingCountByPositionIndex.get(positionIndex) ?? 0) + 1,
+        );
+    }
 
     if (Array.isArray(plantings)) {
         for (const planting of plantings) {
-            if (!isRecord(planting) || planting.isActive !== true) {
+            if (
+                !isRecord(planting) ||
+                planting.isActive !== true ||
+                planting.isDeleted === true
+            ) {
                 continue;
             }
 
@@ -284,14 +402,30 @@ export function getAdvancedSowingPlanAvailability({
             if (!overlaps(occupiedPositionIndices, plantingPositionIndices)) {
                 continue;
             }
+            for (const positionIndex of plantingPositionIndices) {
+                if (occupiedPositionIndices.has(positionIndex)) {
+                    incrementCount(positionIndex);
+                }
+            }
+
+            let existingLayoutKey = planting.layoutKey;
+            if (planting.configurationSource === 'legacy') {
+                existingLayoutKey =
+                    typeof planting.plantSortId === 'number'
+                        ? legacyLayoutKeysByPlantSortId.get(
+                              planting.plantSortId,
+                          )
+                        : undefined;
+            } else if (planting.configurationSource !== 'selected') {
+                existingLayoutKey = undefined;
+            }
             if (
-                planting.configurationSource !== 'selected' ||
-                typeof planting.layoutKey !== 'string' ||
-                !planting.layoutKey.trim()
+                typeof existingLayoutKey !== 'string' ||
+                !existingLayoutKey.trim()
             ) {
                 return { available: false, reason: 'legacy-layout-unknown' };
             }
-            if (planting.layoutKey === plan.layoutKey) {
+            if (existingLayoutKey === plan.layoutKey) {
                 return { available: false, reason: 'same-layout' };
             }
         }
@@ -311,14 +445,17 @@ export function getAdvancedSowingPlanAvailability({
 
         const summary = readAdvancedSowingCartItemSelectionSummary(item);
         if (summary) {
+            const overlappingPositions = summary.occupiedPositionIndices.filter(
+                (positionIndex) => occupiedPositionIndices.has(positionIndex),
+            );
             if (
-                overlaps(
-                    occupiedPositionIndices,
-                    summary.occupiedPositionIndices,
-                ) &&
+                overlappingPositions.length > 0 &&
                 summary.layoutKey === plan.layoutKey
             ) {
                 return { available: false, reason: 'same-layout' };
+            }
+            for (const positionIndex of overlappingPositions) {
+                incrementCount(positionIndex);
             }
             continue;
         }
@@ -329,6 +466,16 @@ export function getAdvancedSowingPlanAvailability({
         ) {
             return { available: false, reason: 'legacy-layout-unknown' };
         }
+    }
+
+    if (
+        plan.occupiedPositionIndices.some(
+            (positionIndex) =>
+                (plantingCountByPositionIndex.get(positionIndex) ?? 0) >=
+                ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD,
+        )
+    ) {
+        return { available: false, reason: 'planting-limit' };
     }
 
     return { available: true };

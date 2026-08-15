@@ -741,6 +741,8 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                     cartItems: cart.items,
                                     excludedCartItemId: cartItemId,
                                     gardenId: item.gardenId,
+                                    legacyDensitySnapshots:
+                                        validatedAuthorization.legacyDensitySnapshots,
                                     plan: validatedAuthorization.plan,
                                     plantings: await loadPlantingsForRaisedBed(
                                         item.raisedBedId,

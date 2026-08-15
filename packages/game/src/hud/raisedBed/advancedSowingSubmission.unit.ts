@@ -9,6 +9,7 @@ import {
     findAdvancedSowingCartItem,
     getAdvancedSowingPlanAvailability,
     getLegacySowingTargetAvailability,
+    getRaisedBedPlantingCountsByPosition,
     readAdvancedSowingSelectionSummary,
 } from './advancedSowingSubmission';
 
@@ -39,6 +40,7 @@ function cartItem({
     selectedDistanceCm: number;
 }) {
     return {
+        amount: 1,
         advancedSowingSelection: summary(selectedDistanceCm),
         entityId: '101',
         entityTypeName: 'plantSort',
@@ -151,6 +153,92 @@ describe('Advanced Sowing Garden submission', () => {
             }),
             { available: true },
         );
+    });
+
+    it('uses the legacy plant density to permit only a different co-plant layout', () => {
+        const legacyPlanting = {
+            configurationSource: 'legacy',
+            isActive: true,
+            layoutKey: null,
+            memberships: [{ positionIndex: 17 }],
+            plantSortId: 101,
+        };
+        const legacyLayoutKeysByPlantSortId = new Map([
+            [101, plan(30).layoutKey],
+        ]);
+
+        assert.deepEqual(
+            getAdvancedSowingPlanAvailability({
+                cartItems: [],
+                gardenId: 1,
+                legacyLayoutKeysByPlantSortId,
+                plan: plan(15),
+                plantings: [legacyPlanting],
+                raisedBedId: 1,
+            }),
+            { available: true },
+        );
+        assert.deepEqual(
+            getAdvancedSowingPlanAvailability({
+                cartItems: [],
+                gardenId: 1,
+                legacyLayoutKeysByPlantSortId,
+                plan: plan(30),
+                plantings: [legacyPlanting],
+                raisedBedId: 1,
+            }),
+            { available: false, reason: 'same-layout' },
+        );
+    });
+
+    it('blocks a third logical planting in the same physical field', () => {
+        assert.deepEqual(
+            getAdvancedSowingPlanAvailability({
+                cartItems: [],
+                gardenId: 1,
+                plan: plan(60),
+                plantings: [
+                    {
+                        configurationSource: 'selected',
+                        isActive: true,
+                        layoutKey: plan(15).layoutKey,
+                        memberships: [{ positionIndex: 17 }],
+                    },
+                    {
+                        configurationSource: 'selected',
+                        isActive: true,
+                        layoutKey: plan(30).layoutKey,
+                        memberships: [{ positionIndex: 17 }],
+                    },
+                ],
+                raisedBedId: 1,
+            }),
+            { available: false, reason: 'planting-limit' },
+        );
+    });
+
+    it('counts legacy projections once and includes pending selections', () => {
+        const counts = getRaisedBedPlantingCountsByPosition({
+            cartItems: [
+                cartItem({ id: 21, selectedDistanceCm: 15 }),
+                {
+                    ...cartItem({ id: 22, selectedDistanceCm: 15 }),
+                    gardenId: 2,
+                },
+            ],
+            fields: [{ active: true, plantSortId: 101, positionIndex: 17 }],
+            gardenId: 1,
+            plantings: [
+                {
+                    configurationSource: 'legacy',
+                    isActive: true,
+                    memberships: [{ positionIndex: 17 }],
+                },
+            ],
+            raisedBedId: 1,
+        });
+
+        assert.equal(counts.get(17), 2);
     });
 
     it('excludes the exact row being updated from pending-cart collisions', () => {

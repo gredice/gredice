@@ -2,7 +2,10 @@ import 'server-only';
 
 import {
     ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+    ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD,
+    type AdvancedSowingLegacyDensitySnapshotV1,
     getAdvancedSowingFootprintPositions,
+    parseAdvancedSowingLegacyDensitySnapshotsV1,
     resolveAdvancedSowingLayout,
 } from '@gredice/js/plants';
 import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
@@ -63,6 +66,7 @@ export type RaisedBedPlantingErrorCode =
     | 'legacy_layout_unknown'
     | 'legacy_event_conflict'
     | 'plant_operation_conflict'
+    | 'planting_limit'
     | 'plant_sort_not_found'
     | 'raised_bed_not_found';
 
@@ -123,6 +127,7 @@ export type CreateSelectedRaisedBedPlantingInput =
         spanRows: number;
         spanColumns: number;
         layoutVersion: number;
+        legacyDensitySnapshots?: readonly AdvancedSowingLegacyDensitySnapshotV1[];
         lifecycleStarted: {
             commandId: string;
             scheduledDate: string | null;
@@ -152,6 +157,7 @@ export type NormalizedCreateRaisedBedPlantingInput = {
     spanRows: number;
     spanColumns: number;
     layoutVersion: number;
+    legacyDensitySnapshots: AdvancedSowingLegacyDensitySnapshotV1[];
     configurationSource: RaisedBedPlantingConfigurationSource;
     isActive: boolean;
     memberships: RaisedBedPlantingMembershipInput[];
@@ -198,6 +204,7 @@ export type RaisedBedPlantingLayoutOccupancy = {
     plantingId: number;
     raisedBedFieldId: number;
     layoutKey: string | null;
+    plantSortId: number;
     configurationSource: RaisedBedPlantingConfigurationSource;
     isActive: boolean;
     plantingIsDeleted: boolean;
@@ -212,6 +219,10 @@ export type RaisedBedPlantingLayoutConflict =
     | {
           code: 'legacy_layout_unknown';
           occupancy: RaisedBedPlantingLayoutOccupancy;
+      }
+    | {
+          code: 'planting_limit';
+          occupancy: RaisedBedPlantingLayoutOccupancy;
       };
 
 /**
@@ -221,6 +232,7 @@ export type RaisedBedPlantingLayoutConflict =
 export function findRaisedBedPlantingLayoutConflict(
     occupancies: readonly RaisedBedPlantingLayoutOccupancy[],
     requestedLayoutKey: string,
+    legacyDensitySnapshots: readonly AdvancedSowingLegacyDensitySnapshotV1[] = [],
 ): RaisedBedPlantingLayoutConflict | null {
     const activeOccupancies = occupancies.filter(
         (occupancy) =>
@@ -228,22 +240,53 @@ export function findRaisedBedPlantingLayoutConflict(
             !occupancy.plantingIsDeleted &&
             !occupancy.membershipIsDeleted,
     );
-    const unknownLegacyLayout = activeOccupancies.find(
-        (occupancy) =>
-            occupancy.configurationSource === 'legacy' &&
-            occupancy.layoutKey === null,
+    const occupancyCountsByFieldId = new Map<number, number>();
+    let plantingLimitOccupancy: RaisedBedPlantingLayoutOccupancy | undefined;
+    for (const occupancy of activeOccupancies) {
+        const count =
+            (occupancyCountsByFieldId.get(occupancy.raisedBedFieldId) ?? 0) + 1;
+        occupancyCountsByFieldId.set(occupancy.raisedBedFieldId, count);
+        if (
+            count >= ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD &&
+            !plantingLimitOccupancy
+        ) {
+            plantingLimitOccupancy = occupancy;
+        }
+    }
+    const legacyDensitySnapshotByPlantingId = new Map(
+        legacyDensitySnapshots.map((snapshot) => [
+            snapshot.plantingId,
+            snapshot,
+        ]),
     );
+    const unknownLegacyLayout = activeOccupancies.find((occupancy) => {
+        if (occupancy.configurationSource !== 'legacy') {
+            return false;
+        }
+        const snapshot = legacyDensitySnapshotByPlantingId.get(
+            occupancy.plantingId,
+        );
+        return !snapshot || snapshot.plantSortId !== occupancy.plantSortId;
+    });
     if (unknownLegacyLayout) {
         return {
             code: 'legacy_layout_unknown',
             occupancy: unknownLegacyLayout,
         };
     }
-    const matchingLayout = activeOccupancies.find(
-        (occupancy) => occupancy.layoutKey === requestedLayoutKey,
-    );
-    return matchingLayout
-        ? { code: 'layout_collision', occupancy: matchingLayout }
+    const matchingLayout = activeOccupancies.find((occupancy) => {
+        const layoutKey =
+            occupancy.configurationSource === 'legacy'
+                ? legacyDensitySnapshotByPlantingId.get(occupancy.plantingId)
+                      ?.layoutKey
+                : occupancy.layoutKey;
+        return layoutKey === requestedLayoutKey;
+    });
+    if (matchingLayout) {
+        return { code: 'layout_collision', occupancy: matchingLayout };
+    }
+    return plantingLimitOccupancy
+        ? { code: 'planting_limit', occupancy: plantingLimitOccupancy }
         : null;
 }
 
@@ -619,6 +662,7 @@ export function validateRaisedBedPlantingInput(
     let spanRows: number;
     let spanColumns: number;
     let layoutVersion: number;
+    let legacyDensitySnapshots: AdvancedSowingLegacyDensitySnapshotV1[] = [];
     let lifecycleStarted: NormalizedCreateRaisedBedPlantingInput['lifecycleStarted'] =
         null;
 
@@ -646,6 +690,11 @@ export function validateRaisedBedPlantingInput(
         if (Object.hasOwn(input, 'lifecycleStarted')) {
             invalidInput(
                 'Legacy projections cannot define a selected lifecycle-started snapshot.',
+            );
+        }
+        if (Object.hasOwn(input, 'legacyDensitySnapshots')) {
+            invalidInput(
+                'Legacy projections cannot define compatibility density snapshots.',
             );
         }
     } else {
@@ -709,6 +758,16 @@ export function validateRaisedBedPlantingInput(
         lifecycleStarted = normalizeSelectedLifecycleStarted(
             input.lifecycleStarted,
         );
+        try {
+            legacyDensitySnapshots =
+                parseAdvancedSowingLegacyDensitySnapshotsV1(
+                    input.legacyDensitySnapshots ?? [],
+                );
+        } catch {
+            invalidInput(
+                'Selected planting legacy density snapshots are invalid.',
+            );
+        }
     }
 
     const memberships = normalizeMemberships(
@@ -739,6 +798,7 @@ export function validateRaisedBedPlantingInput(
         spanRows,
         spanColumns,
         layoutVersion,
+        legacyDensitySnapshots,
         configurationSource: input.configurationSource,
         isActive: input.isActive ?? true,
         memberships,
@@ -1494,6 +1554,7 @@ async function assertNoActiveLayoutCollision(
     const collisions = await transaction
         .select({
             plantingId: raisedBedPlantings.id,
+            plantSortId: raisedBedPlantings.plantSortId,
             raisedBedId: raisedBedPlantings.raisedBedId,
             raisedBedFieldId: raisedBedPlantingFields.raisedBedFieldId,
             positionIndex: raisedBedFields.positionIndex,
@@ -1556,6 +1617,12 @@ async function assertNoActiveLayoutCollision(
                 : (legacyCyclesBySourceEventId.get(
                       collision.legacyPlantPlaceEventId,
                   )?.isActive ?? collision.isActive),
+        plantSortId:
+            collision.legacyPlantPlaceEventId === null
+                ? collision.plantSortId
+                : (legacyCyclesBySourceEventId.get(
+                      collision.legacyPlantPlaceEventId,
+                  )?.plantSortId ?? collision.plantSortId),
     }));
     if (input.layoutKey === null) {
         const occupied = authoritativeOccupancies.find(
@@ -1575,6 +1642,7 @@ async function assertNoActiveLayoutCollision(
     const conflict = findRaisedBedPlantingLayoutConflict(
         authoritativeOccupancies,
         input.layoutKey,
+        input.legacyDensitySnapshots,
     );
     if (conflict?.code === 'legacy_layout_unknown') {
         throw new RaisedBedPlantingError(
@@ -1586,6 +1654,12 @@ async function assertNoActiveLayoutCollision(
         throw new RaisedBedPlantingError(
             'layout_collision',
             `Layout ${input.layoutKey} is already active in field ${conflict.occupancy.raisedBedFieldId.toString()}.`,
+        );
+    }
+    if (conflict?.code === 'planting_limit') {
+        throw new RaisedBedPlantingError(
+            'planting_limit',
+            `Field ${conflict.occupancy.raisedBedFieldId.toString()} already contains two active plantings.`,
         );
     }
 }

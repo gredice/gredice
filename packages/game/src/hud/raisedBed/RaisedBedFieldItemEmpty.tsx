@@ -123,6 +123,7 @@ export function RaisedBedFieldItemEmpty({
             <PlantPicker
                 trigger={
                     <RaisedBedFieldItemButton
+                        aria-label={`Posij biljku na polju ${positionIndex + 1}`}
                         isLoading={isLoading}
                         positionIndex={positionIndex}
                         className={cx(

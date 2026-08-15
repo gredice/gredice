@@ -2,6 +2,7 @@ import { FIELD_SIZE_CM } from './fieldCalculations';
 
 export const ADVANCED_SOWING_BED_COLUMN_COUNT = 3;
 export const ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT = 18;
+export const ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD = 2;
 export const advancedSowingSelectionRequestKind =
     'advanced-sowing-selection' as const;
 export const advancedSowingCartAuthorizationKind =
@@ -97,9 +98,25 @@ export type AdvancedSowingSelectionRequestV1 = {
 
 export type AdvancedSowingCartAuthorizationV1 = {
     kind: typeof advancedSowingCartAuthorizationKind;
+    legacyDensitySnapshots?: AdvancedSowingLegacyDensitySnapshotV1[];
     version: 1;
     plan: AdvancedSowingCartConfigurationV1;
 };
+
+export type AdvancedSowingLegacyDensitySnapshotV1 = {
+    layoutKey: AdvancedSowingLayoutKey;
+    plantingId: number;
+    plantSortId: number;
+};
+
+function isLegacyDensityLayoutKey(
+    value: unknown,
+): value is AdvancedSowingLayoutKey {
+    return (
+        typeof value === 'string' &&
+        /^v1:fields:1x1:plants:(\d+)x\1$/u.test(value)
+    );
+}
 
 export type AdvancedSowingSelectionSummaryV1 = {
     kind: typeof advancedSowingSelectionSummaryKind;
@@ -226,6 +243,21 @@ export function resolveAdvancedSowingLayout({
         plantsPerAxis: safePlantsPerAxis,
         selectedDistanceCm: selected,
     };
+}
+
+/**
+ * Mirrors the density used by the legacy one-field Garden renderer. Legacy
+ * plantings never span more than one field, even when their catalogue spacing
+ * is greater than the field size.
+ */
+export function resolveLegacySowingDensityLayoutKey(
+    seedingDistanceCm?: number | null,
+): AdvancedSowingLayoutKey {
+    const distance = seedingDistanceCm ?? FIELD_SIZE_CM;
+    requireFinitePositiveDistance(distance, 'Legacy sowing distance');
+    const plantsPerAxis = Math.max(1, Math.floor(FIELD_SIZE_CM / distance));
+    requirePositiveSafeInteger(plantsPerAxis, 'Legacy plants per axis');
+    return `v1:fields:1x1:plants:${plantsPerAxis}x${plantsPerAxis}`;
 }
 
 function getDensityLayoutRepresentativeDistance(plantsPerAxis: number) {
@@ -655,20 +687,71 @@ export function parseAdvancedSowingSelectionRequestV1(
 export function parseAdvancedSowingCartAuthorizationV1(
     value: unknown,
 ): AdvancedSowingCartAuthorizationV1 {
+    const allowedKeys = ['kind', 'legacyDensitySnapshots', 'plan', 'version'];
     if (
         !isUnknownRecord(value) ||
-        !hasExactKeys(value, ['kind', 'plan', 'version']) ||
+        Object.keys(value).some((key) => !allowedKeys.includes(key)) ||
+        !Object.hasOwn(value, 'kind') ||
+        !Object.hasOwn(value, 'plan') ||
+        !Object.hasOwn(value, 'version') ||
         value.kind !== advancedSowingCartAuthorizationKind ||
         value.version !== 1
     ) {
         throw new TypeError('Invalid Advanced Sowing cart authorization.');
     }
 
+    let legacyDensitySnapshots:
+        | AdvancedSowingLegacyDensitySnapshotV1[]
+        | undefined;
+    if (Object.hasOwn(value, 'legacyDensitySnapshots')) {
+        legacyDensitySnapshots = parseAdvancedSowingLegacyDensitySnapshotsV1(
+            value.legacyDensitySnapshots,
+        );
+    }
+
     return {
         kind: advancedSowingCartAuthorizationKind,
+        ...(legacyDensitySnapshots ? { legacyDensitySnapshots } : {}),
         plan: parseAdvancedSowingCartConfigurationV1(value.plan),
         version: 1,
     };
+}
+
+export function parseAdvancedSowingLegacyDensitySnapshotsV1(
+    value: unknown,
+): AdvancedSowingLegacyDensitySnapshotV1[] {
+    if (!Array.isArray(value)) {
+        throw new TypeError(
+            'Invalid Advanced Sowing legacy density snapshots.',
+        );
+    }
+    const plantingIds = new Set<number>();
+    return value.map((snapshot) => {
+        if (
+            !isUnknownRecord(snapshot) ||
+            !hasExactKeys(snapshot, [
+                'layoutKey',
+                'plantingId',
+                'plantSortId',
+            ]) ||
+            !Number.isSafeInteger(snapshot.plantingId) ||
+            Number(snapshot.plantingId) <= 0 ||
+            !Number.isSafeInteger(snapshot.plantSortId) ||
+            Number(snapshot.plantSortId) <= 0 ||
+            !isLegacyDensityLayoutKey(snapshot.layoutKey) ||
+            plantingIds.has(Number(snapshot.plantingId))
+        ) {
+            throw new TypeError(
+                'Invalid Advanced Sowing legacy density snapshots.',
+            );
+        }
+        plantingIds.add(Number(snapshot.plantingId));
+        return {
+            layoutKey: snapshot.layoutKey,
+            plantingId: Number(snapshot.plantingId),
+            plantSortId: Number(snapshot.plantSortId),
+        };
+    });
 }
 
 export function buildAdvancedSowingSelectionSummaryV1(

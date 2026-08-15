@@ -363,6 +363,43 @@ test('selected footprint can submit a compatible Advanced Sowing co-plant', asyn
     }
 });
 
+test('legacy field permits only a different-density co-plant', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            advancedSowingRange={{ maxDistanceCm: 60, minDistanceCm: 10 }}
+            plantings={[
+                {
+                    configurationSource: 'legacy',
+                    id: 71,
+                    isActive: true,
+                    layoutKey: null,
+                    memberships: [{ positionIndex: 17 }],
+                    plantSortId: 101,
+                },
+            ]}
+            positionIndex={17}
+        />,
+    );
+    await selectAdvancedSowingSort(page);
+
+    const preview = page.locator('[data-advanced-sowing-preview]');
+    await expect(
+        preview.getByRole('radio', { name: /30 cm.*preporučeno/u }),
+    ).toBeDisabled();
+    const selectedDifferentDensity = preview.getByRole('radio', {
+        name: /4 biljke.*15 cm/u,
+    });
+    await selectedDifferentDensity.check();
+    await expect(selectedDifferentDensity).toBeEnabled();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    await expect.poll(() => posts.length).toBe(1);
+});
+
 test('selected footprint blocks an unsupported legacy fallback', async ({
     mount,
     page,

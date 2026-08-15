@@ -167,9 +167,9 @@ export function AdvancedSowingPickerPreview({
                                     </span>
                                 ) : unavailable ? (
                                     <span className="block text-xs text-amber-800 dark:text-amber-200">
-                                        Ovaj raspored već zauzima biljka s istim
-                                        rasporedom ili biljka bez poznatog
-                                        rasporeda.
+                                        Ova gustoća nije dostupna: polje već ima
+                                        istu gustoću, nepoznat raspored ili
+                                        dvije sadnje.
                                     </span>
                                 ) : null}
                             </span>

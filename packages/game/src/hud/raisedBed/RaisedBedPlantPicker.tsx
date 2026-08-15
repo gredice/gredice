@@ -2,6 +2,7 @@ import type { PlantData, PlantSortData } from '@gredice/client';
 import {
     ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
     buildAdvancedSowingSelectionRequestV1,
+    resolveLegacySowingDensityLayoutKey,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import {
@@ -770,6 +771,22 @@ export function PlantPicker({
                   selectedCartItemId,
               })
             : null;
+    const legacyLayoutKeysByPlantSortId = useMemo(() => {
+        const layoutKeys = new Map<number, string>();
+        for (const sort of allSorts ?? []) {
+            try {
+                layoutKeys.set(
+                    sort.id,
+                    resolveLegacySowingDensityLayoutKey(
+                        sort.information.plant.attributes?.seedingDistance,
+                    ),
+                );
+            } catch {
+                // Invalid catalogue density stays unavailable and fails closed.
+            }
+        }
+        return layoutKeys;
+    }, [allSorts]);
     const advancedSowingUnavailableLayoutKeys = useMemo(() => {
         if (advancedSowingPreview.status !== 'supported') {
             return new Set<string>();
@@ -782,6 +799,7 @@ export function PlantPicker({
                     cartItems: cart?.items ?? [],
                     excludedCartItemId: advancedSowingEditedItem?.id,
                     gardenId,
+                    legacyLayoutKeysByPlantSortId,
                     plan: option.plan,
                     plantings: raisedBedPlantings,
                     raisedBedId,
@@ -795,6 +813,7 @@ export function PlantPicker({
         advancedSowingPreview,
         cart?.items,
         gardenId,
+        legacyLayoutKeysByPlantSortId,
         raisedBedPlantings,
         raisedBedId,
     ]);
