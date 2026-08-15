@@ -18,6 +18,7 @@ import {
     normalizePublicGardenStacks,
     type PublicGardenDetail,
     publicGardenStacksFromResponse,
+    usePublicGardenVisualOccluders,
 } from './PublicGardenViewer';
 
 const outletProductSignCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
@@ -31,6 +32,13 @@ const outletProductSignTypefaceUrl =
 // Keep the HTML image and variety label just ahead of the wooden frame so the
 // content stays clear of the board surface without visually floating.
 const outletProductSignFaceDepth = 0.061;
+// Raycast above the board so the sign's own display table and pot cannot hide
+// its face. The DOM content is translated back onto the wooden board below.
+const outletProductSignOcclusionProbeOffsetY = 0.23;
+const outletProductSignFaceCssOffsetY =
+    (outletProductSignOcclusionProbeOffsetY /
+        outletProductSignFaceDistanceFactor) *
+    400;
 const outletProductSignPriceTagColor = '#bf4b2f';
 const outletProductSignPriceTagEdgeColor = '#74301f';
 const outletProductSignPriceTextColor = '#fff4ce';
@@ -158,6 +166,7 @@ function OutletGardenProductSignFace({
             data-outlet-garden-product-sign-front-only
             data-outlet-garden-product-sign-scale={outletProductSignScale}
             data-outlet-garden-product-sign-name={product.name}
+            data-outlet-garden-product-sign-occlusion="visual-targets"
             data-outlet-garden-product-sign-price={product.priceLabel}
             data-outlet-garden-product-sign-price-renderer="text3d"
             style={{
@@ -374,6 +383,18 @@ export function OutletGardenProductSigns({
 }) {
     const { nodes } = useGameGLTF('WoodenSign');
     const { data: blockData } = useBlockData();
+    const visualOccluders = usePublicGardenVisualOccluders();
+    const occlusionTargets = useMemo(
+        () =>
+            visualOccluders
+                ? [
+                      {
+                          current: visualOccluders,
+                      },
+                  ]
+                : null,
+        [visualOccluders],
+    );
     const products = useMemo(
         () => getOutletGardenProductSignProducts(offers),
         [offers],
@@ -445,11 +466,17 @@ export function OutletGardenProductSigns({
                     <Html
                         transform
                         distanceFactor={outletProductSignFaceDistanceFactor}
+                        occlude={occlusionTargets ?? 'raycast'}
                         pointerEvents="none"
-                        position={[0, 0.93, outletProductSignFaceDepth]}
+                        position={[
+                            0,
+                            0.93 + outletProductSignOcclusionProbeOffsetY,
+                            outletProductSignFaceDepth,
+                        ]}
                         style={{
                             backfaceVisibility: 'hidden',
                             pointerEvents: 'none',
+                            transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
                             WebkitBackfaceVisibility: 'hidden',
                         }}
                         zIndexRange={[2, 0]}

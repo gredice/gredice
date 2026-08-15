@@ -595,6 +595,12 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
 
     await page.goto('/outlet');
 
+    const outletSignFontResponse = await page.request.get(
+        '/assets/fonts/outlet-sign-bold.typeface.json',
+    );
+    expect(outletSignFontResponse.ok()).toBe(true);
+    expect(await outletSignFontResponse.text()).toContain('"r":{');
+
     await expect(page.locator('[data-outlet-garden]')).toBeVisible();
     await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
         'data-outlet-garden-display-count',
@@ -619,6 +625,10 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-price-renderer',
         'text3d',
+    );
+    await expect(productSigns.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-occlusion',
+        'visual-targets',
     );
     await expect(productSigns.first()).toHaveCSS(
         'backface-visibility',
