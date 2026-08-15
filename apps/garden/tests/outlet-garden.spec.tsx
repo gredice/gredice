@@ -121,7 +121,7 @@ test('returns unavailable 3D reservations to the in-scene offer list', async ({
     await expect(page.locator('[data-commerce-close-count]')).toHaveText('1');
 });
 
-test('shows representative hierarchy imagery and complete offer pricing', async ({
+test('shows plant sort imagery and names in every offer card', async ({
     mount,
     page,
 }) => {
@@ -138,29 +138,36 @@ test('shows representative hierarchy imagery and complete offer pricing', async 
     const tomatoGroup = offerList.locator(
         '[data-outlet-garden-plant-group="1"]',
     );
-    const plantImage = tomatoGroup.locator('[data-outlet-garden-plant-image]');
-    await expect(plantImage).toBeVisible();
-    await expect(plantImage).toHaveAttribute(
-        'src',
-        'https://manual-images.example/offer-301.svg',
-    );
     await expect(
-        tomatoGroup
-            .locator('[data-outlet-garden-sort-group="101"]')
-            .locator('[data-outlet-garden-sort-image]'),
-    ).toBeVisible();
-    await expect(
-        tomatoGroup
-            .locator('[data-outlet-garden-sort-group="103"]')
-            .locator('[data-outlet-garden-sort-image-fallback]'),
-    ).toBeVisible();
+        tomatoGroup.locator(
+            '[data-outlet-garden-plant-image], [data-outlet-garden-plant-image-fallback]',
+        ),
+    ).toHaveCount(0);
     await expect(tomatoGroup).not.toContainText('2 sorte · 3 ponude');
 
     const discountedOffer = offerList.locator(
         '[data-outlet-garden-offer-id="301"]',
     );
+    await expect(discountedOffer).toContainText('Rajčica mini red cherry');
+    await expect(
+        discountedOffer.locator('[data-outlet-garden-offer-image]'),
+    ).toHaveAttribute('src', 'https://manual-images.example/offer-301.svg');
     await expect(discountedOffer).toContainText('2,49');
     await expect(discountedOffer.locator('del')).toContainText('3,99');
+    const secondBatchOffer = offerList.locator(
+        '[data-outlet-garden-offer-id="303"]',
+    );
+    await expect(secondBatchOffer).toContainText('Rajčica mini red cherry');
+    await expect(
+        secondBatchOffer.locator('[data-outlet-garden-offer-image]'),
+    ).toHaveAttribute('src', 'https://manual-images.example/offer-301.svg');
+    const fallbackImageOffer = offerList.locator(
+        '[data-outlet-garden-offer-id="304"]',
+    );
+    await expect(fallbackImageOffer).toContainText('Rajčica Scatolone');
+    await expect(
+        fallbackImageOffer.locator('[data-outlet-garden-offer-image-fallback]'),
+    ).toBeVisible();
     await discountedOffer.click();
     await expect(
         page
@@ -173,12 +180,8 @@ test('shows representative hierarchy imagery and complete offer pricing', async 
     );
     await expect(offerWithoutComparisonPrice).toContainText('2,29');
     await expect(offerWithoutComparisonPrice.locator('del')).toHaveCount(0);
-    await expect(
-        offerList.locator('[data-outlet-garden-offer-id="303"]'),
-    ).toContainText('Spremna za presađivanje');
-    await expect(
-        offerList.locator('[data-outlet-garden-offer-id="303"]'),
-    ).not.toContainText('Spremna za berbu');
+    await expect(secondBatchOffer).toContainText('Spremna za presađivanje');
+    await expect(secondBatchOffer).not.toContainText('Spremna za berbu');
 });
 
 test('previews the matching scene offer on pointer hover and keyboard focus', async ({

@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
 import { ArrowLeft, LayoutList, Sprout } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
@@ -67,7 +66,6 @@ export type OutletGardenViewerProps = {
     onAuthenticationRequired?: () => void;
     onSceneFailure?: (reason: OutletGardenSceneFailureReason) => void;
     onSceneReady?: () => void;
-    onUseListFallback?: () => void;
     sceneStartedAt?: number;
 };
 
@@ -94,7 +92,6 @@ export function OutletGardenViewer({
     onAuthenticationRequired,
     onSceneFailure,
     onSceneReady,
-    onUseListFallback,
     sceneStartedAt,
 }: OutletGardenViewerProps = {}) {
     const router = useRouter();
@@ -516,15 +513,6 @@ export function OutletGardenViewer({
         });
     }, [offers.length, track]);
 
-    const requestListFallback = useCallback(() => {
-        track('game_outlet_garden_fallback_requested', {
-            fallback_reason: 'user',
-            renderer: 'webgl',
-            scene_ready: sceneReadyTrackedRef.current,
-        });
-        onUseListFallback?.();
-    }, [onUseListFallback, track]);
-
     const closeOfferBrowser = useCallback(() => {
         void setSelectedOfferId(null);
         setFocusedBlockId(null);
@@ -692,21 +680,6 @@ export function OutletGardenViewer({
             >
                 <OutletGardenOfferBrowser
                     commerce={commerce}
-                    headerAction={
-                        offerListOpen && onUseListFallback ? (
-                            <Button
-                                aria-label="Otvori pregledni popis sadnica"
-                                onClick={requestListFallback}
-                                size="lg"
-                                startDecorator={
-                                    <LayoutList className="size-4" />
-                                }
-                                variant="plain"
-                            >
-                                Pregledni popis
-                            </Button>
-                        ) : undefined
-                    }
                     isError={isError}
                     isLoading={isLoading}
                     offers={offers}

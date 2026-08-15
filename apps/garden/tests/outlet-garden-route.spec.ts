@@ -851,7 +851,7 @@ test('guest Outlet garden reconciles live offers without replacing its canvas @o
     expect(runtimeErrors).toEqual([]);
 });
 
-test('guest Outlet garden preserves its deep link through reload, fallback, and context loss @outlet-slow @outlet-lifecycle', async ({
+test('guest Outlet garden preserves its deep link through reload and context loss @outlet-slow @outlet-lifecycle', async ({
     page,
 }) => {
     test.setTimeout(180_000);
@@ -903,32 +903,9 @@ test('guest Outlet garden preserves its deep link through reload, fallback, and 
     await page
         .getByRole('button', { name: 'Prikaži popis dostupnih sadnica' })
         .click({ timeout: 90_000 });
-    await page
-        .getByRole('button', {
-            name: 'Otvori pregledni popis sadnica',
-        })
-        .click({ timeout: 90_000 });
     await expect(
-        page.locator('[data-outlet-garden-renderer="list"]'),
-    ).toBeVisible();
-    await expect(
-        page.getByText(/Pregledavaš sve aktualne ponude/u),
-    ).toBeFocused();
-    await expect(page.locator('canvas')).toHaveCount(0);
-    await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
-
-    await page
-        .getByRole('button', {
-            name: 'Pokušaj ponovno otvoriti prikaz vrta',
-        })
-        .click({ timeout: 90_000 });
-    await expect(
-        page.locator('[data-outlet-garden-renderer="webgl"]'),
-    ).toBeVisible();
-    await expect(
-        page.locator('[data-outlet-garden-selected-offer="302"]'),
-    ).toBeFocused();
-    await expect(page.locator('canvas')).toBeVisible();
+        page.getByRole('button', { name: 'Otvori pregledni popis sadnica' }),
+    ).toHaveCount(0);
 
     const contextLossRequested = await page
         .locator('canvas')

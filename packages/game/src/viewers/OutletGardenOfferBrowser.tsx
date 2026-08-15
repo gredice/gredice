@@ -118,17 +118,6 @@ function sortGroupImageUrl(sortGroup: OutletGardenSortGroup) {
     return null;
 }
 
-function plantGroupImageUrl(plantGroup: OutletGardenPlantGroup) {
-    for (const sortGroup of plantGroup.sorts) {
-        const imageUrl = sortGroupImageUrl(sortGroup);
-        if (imageUrl) {
-            return imageUrl;
-        }
-    }
-
-    return null;
-}
-
 export type OutletGardenOfferBrowserProps = {
     className?: string;
     commerce?: OutletGardenCommerceController;
@@ -374,8 +363,6 @@ export function OutletGardenOfferBrowser({
                         >
                             {plantGroups.map((plantGroup) => {
                                 const plantHeadingId = `outlet-garden-${plantGroup.key}-title`;
-                                const plantImageUrl =
-                                    plantGroupImageUrl(plantGroup);
 
                                 return (
                                     <section
@@ -386,28 +373,7 @@ export function OutletGardenOfferBrowser({
                                         }
                                         key={plantGroup.key}
                                     >
-                                        <div className="mb-3 flex items-center gap-3">
-                                            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-lime-100 text-lime-800 dark:bg-lime-950 dark:text-lime-300">
-                                                {plantImageUrl ? (
-                                                    // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
-                                                    <img
-                                                        alt=""
-                                                        className="size-full object-cover"
-                                                        data-outlet-garden-plant-image
-                                                        decoding="async"
-                                                        loading="lazy"
-                                                        src={plantImageUrl}
-                                                    />
-                                                ) : (
-                                                    <span
-                                                        aria-hidden="true"
-                                                        className="grid size-full place-items-center"
-                                                        data-outlet-garden-plant-image-fallback
-                                                    >
-                                                        <Sprout className="size-5" />
-                                                    </span>
-                                                )}
-                                            </div>
+                                        <div className="mb-3">
                                             <h3
                                                 className="text-sm font-bold"
                                                 id={plantHeadingId}
@@ -434,42 +400,15 @@ export function OutletGardenOfferBrowser({
                                                             }
                                                             key={sortGroup.id}
                                                         >
-                                                            <div className="mb-2 flex items-center gap-2">
-                                                                <div className="relative size-8 shrink-0 overflow-hidden rounded-md bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
-                                                                    {sortImageUrl ? (
-                                                                        // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
-                                                                        <img
-                                                                            alt=""
-                                                                            className="size-full object-cover"
-                                                                            data-outlet-garden-sort-image
-                                                                            decoding="async"
-                                                                            loading="lazy"
-                                                                            src={
-                                                                                sortImageUrl
-                                                                            }
-                                                                        />
-                                                                    ) : (
-                                                                        <span
-                                                                            aria-hidden="true"
-                                                                            className="grid size-full place-items-center"
-                                                                            data-outlet-garden-sort-image-fallback
-                                                                        >
-                                                                            <Sprout className="size-4" />
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <h4
-                                                                    className="text-xs font-semibold text-muted-foreground"
-                                                                    id={
-                                                                        sortHeadingId
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        sortGroup.name
-                                                                    }
-                                                                </h4>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                                                            <h4
+                                                                className="sr-only"
+                                                                id={
+                                                                    sortHeadingId
+                                                                }
+                                                            >
+                                                                {sortGroup.name}
+                                                            </h4>
+                                                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
                                                                 {sortGroup.offers.map(
                                                                     (offer) => {
                                                                         const selected =
@@ -543,39 +482,73 @@ export function OutletGardenOfferBrowser({
                                                                                 }}
                                                                                 type="button"
                                                                             >
-                                                                                <span className="block truncate text-xs font-medium">
-                                                                                    Sjetva{' '}
-                                                                                    {shortDateFormatter.format(
-                                                                                        new Date(
-                                                                                            offer.sowingDate,
-                                                                                        ),
-                                                                                    )}{' '}
-                                                                                    ·{' '}
-                                                                                    {
-                                                                                        status
-                                                                                    }
-                                                                                </span>
-                                                                                <span className="mt-1 flex flex-wrap items-end justify-between gap-x-2 text-xs text-muted-foreground">
-                                                                                    <span>
-                                                                                        preostalo{' '}
-                                                                                        {
-                                                                                            offer.remainingQuantity
-                                                                                        }
+                                                                                <span className="flex gap-3">
+                                                                                    <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
+                                                                                        {sortImageUrl ? (
+                                                                                            // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
+                                                                                            <img
+                                                                                                alt=""
+                                                                                                className="size-full object-cover"
+                                                                                                data-outlet-garden-offer-image
+                                                                                                decoding="async"
+                                                                                                loading="lazy"
+                                                                                                src={
+                                                                                                    sortImageUrl
+                                                                                                }
+                                                                                            />
+                                                                                        ) : (
+                                                                                            <span
+                                                                                                aria-hidden="true"
+                                                                                                className="grid size-full place-items-center"
+                                                                                                data-outlet-garden-offer-image-fallback
+                                                                                            >
+                                                                                                <Sprout className="size-5" />
+                                                                                            </span>
+                                                                                        )}
                                                                                     </span>
-                                                                                    <span className="shrink-0 text-right">
-                                                                                        <strong className="block text-base leading-tight text-lime-800 dark:text-lime-300">
-                                                                                            {currencyFormatter.format(
-                                                                                                offer.outletPrice,
-                                                                                            )}
-                                                                                        </strong>
-                                                                                        {offer.comparePrice !==
-                                                                                        null ? (
-                                                                                            <del className="block text-[11px] leading-tight text-muted-foreground">
-                                                                                                {currencyFormatter.format(
-                                                                                                    offer.comparePrice,
-                                                                                                )}
-                                                                                            </del>
-                                                                                        ) : null}
+                                                                                    <span className="min-w-0 flex-1">
+                                                                                        <span className="block truncate text-sm font-semibold">
+                                                                                            {
+                                                                                                offer
+                                                                                                    .plantSort
+                                                                                                    .name
+                                                                                            }
+                                                                                        </span>
+                                                                                        <span className="mt-1 block truncate text-xs font-medium">
+                                                                                            Sjetva{' '}
+                                                                                            {shortDateFormatter.format(
+                                                                                                new Date(
+                                                                                                    offer.sowingDate,
+                                                                                                ),
+                                                                                            )}{' '}
+                                                                                            ·{' '}
+                                                                                            {
+                                                                                                status
+                                                                                            }
+                                                                                        </span>
+                                                                                        <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 text-xs text-muted-foreground">
+                                                                                            <span>
+                                                                                                preostalo{' '}
+                                                                                                {
+                                                                                                    offer.remainingQuantity
+                                                                                                }
+                                                                                            </span>
+                                                                                            <span className="shrink-0 text-right">
+                                                                                                <strong className="block text-base leading-tight text-lime-800 dark:text-lime-300">
+                                                                                                    {currencyFormatter.format(
+                                                                                                        offer.outletPrice,
+                                                                                                    )}
+                                                                                                </strong>
+                                                                                                {offer.comparePrice !==
+                                                                                                null ? (
+                                                                                                    <del className="block text-[11px] leading-tight text-muted-foreground">
+                                                                                                        {currencyFormatter.format(
+                                                                                                            offer.comparePrice,
+                                                                                                        )}
+                                                                                                    </del>
+                                                                                                ) : null}
+                                                                                            </span>
+                                                                                        </span>
                                                                                     </span>
                                                                                 </span>
                                                                             </button>
