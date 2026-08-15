@@ -9,6 +9,28 @@ import type { PublicGardenInitialView } from './PublicGardenViewer';
 const outletGardenInitialCameraZoom = 120;
 const outletGardenTabletopFocusHeight = 1.5;
 
+export function shouldSetOutletGardenInitialView({
+    hasInitialView,
+    hasInitialViewport,
+    layoutReady,
+    offersFetchedAfterMount,
+    sceneOfferCount,
+}: {
+    hasInitialView: boolean;
+    hasInitialViewport: boolean;
+    layoutReady: boolean;
+    offersFetchedAfterMount: boolean;
+    sceneOfferCount: number;
+}) {
+    return (
+        !hasInitialView &&
+        hasInitialViewport &&
+        layoutReady &&
+        offersFetchedAfterMount &&
+        sceneOfferCount > 0
+    );
+}
+
 export function getOutletGardenInitialView({
     displayUnits,
     fittedView,

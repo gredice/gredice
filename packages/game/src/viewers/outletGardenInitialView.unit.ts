@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
-import { getOutletGardenInitialView } from './outletGardenInitialView';
+import {
+    getOutletGardenInitialView,
+    shouldSetOutletGardenInitialView,
+} from './outletGardenInitialView';
 import {
     getOutletGardenDisplayUnits,
     type OutletGardenLayoutOffer,
@@ -60,5 +63,31 @@ describe('getOutletGardenInitialView', () => {
         });
 
         assert.equal(view, originalView);
+    });
+});
+
+describe('shouldSetOutletGardenInitialView', () => {
+    it('waits for a cached query mount refetch before locking the view', () => {
+        const readyState = {
+            hasInitialView: false,
+            hasInitialViewport: true,
+            layoutReady: true,
+            sceneOfferCount: offers.length,
+        };
+
+        assert.equal(
+            shouldSetOutletGardenInitialView({
+                ...readyState,
+                offersFetchedAfterMount: false,
+            }),
+            false,
+        );
+        assert.equal(
+            shouldSetOutletGardenInitialView({
+                ...readyState,
+                offersFetchedAfterMount: true,
+            }),
+            true,
+        );
     });
 });

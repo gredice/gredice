@@ -24,7 +24,10 @@ import type { OutletGardenCommerceController } from './OutletGardenCommerce';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenProductSigns } from './OutletGardenProductSigns';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
-import { getOutletGardenInitialView } from './outletGardenInitialView';
+import {
+    getOutletGardenInitialView,
+    shouldSetOutletGardenInitialView,
+} from './outletGardenInitialView';
 import {
     buildOutletGardenDetail,
     getOutletGardenDisplayUnits,
@@ -97,6 +100,7 @@ export function OutletGardenViewer({
     const {
         data: sceneOffers = [],
         isError,
+        isFetchedAfterMount,
         isLoading,
         refetch,
     } = useOutletOffers({ includeSoldOut: true });
@@ -345,10 +349,14 @@ export function OutletGardenViewer({
 
     useEffect(() => {
         if (
-            sceneInitialView ||
-            !initialSceneViewport ||
-            !layoutReady ||
-            sceneOffers.length === 0
+            !shouldSetOutletGardenInitialView({
+                hasInitialView: sceneInitialView !== null,
+                hasInitialViewport: initialSceneViewport !== null,
+                layoutReady,
+                offersFetchedAfterMount: isFetchedAfterMount,
+                sceneOfferCount: sceneOffers.length,
+            }) ||
+            !initialSceneViewport
         ) {
             return;
         }
@@ -370,6 +378,7 @@ export function OutletGardenViewer({
     }, [
         displayUnits,
         initialSceneViewport,
+        isFetchedAfterMount,
         layoutReady,
         reconciledSlotAssignments,
         sceneOffers.length,
