@@ -9,7 +9,9 @@
     position: relative;
     isolation: isolate;
     display: grid;
-    min-height: 100dvh;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
     padding: clamp(1.2rem, 2.6vw, 2.5rem);
@@ -17,7 +19,7 @@
     background:
         radial-gradient(
             circle at 55% 47%,
-            rgb(81 135 68 / 0.16),
+            rgb(81 135 68 / 0.24),
             transparent 30rem
         ),
         radial-gradient(
@@ -130,7 +132,7 @@
     display: grid;
     width: 100%;
     max-width: 96rem;
-    min-height: min(76rem, calc(100dvh - 9rem));
+    min-height: 0;
     grid-template-columns: minmax(20rem, 0.72fr) minmax(34rem, 1.28fr);
     align-items: center;
     margin-inline: auto;
@@ -177,7 +179,8 @@
 
 .visualization {
     position: relative;
-    min-height: clamp(40rem, 73vh, 58rem);
+    height: 100%;
+    min-height: 0;
 }
 
 .visualization [data-category="garden"] {
@@ -211,7 +214,7 @@
 .glowThree {
     position: absolute;
     border-radius: 50%;
-    filter: blur(4rem);
+    filter: blur(3.2rem);
     animation: atmosphericDrift 14s ease-in-out infinite alternate;
 }
 
@@ -220,7 +223,7 @@
     left: 23%;
     width: 14rem;
     height: 14rem;
-    background: rgb(169 227 120 / 0.11);
+    background: rgb(169 227 120 / 0.22);
 }
 
 .glowTwo {
@@ -228,7 +231,7 @@
     bottom: 18%;
     width: 11rem;
     height: 11rem;
-    background: rgb(121 201 216 / 0.1);
+    background: rgb(121 201 216 / 0.19);
     animation-delay: -4s;
 }
 
@@ -237,7 +240,7 @@
     right: 17%;
     width: 8rem;
     height: 8rem;
-    background: rgb(237 195 107 / 0.09);
+    background: rgb(237 195 107 / 0.17);
     animation-delay: -9s;
 }
 
@@ -263,17 +266,17 @@
 }
 
 .sceneFrame::before {
-    border: 1px solid rgb(245 240 230 / 0.035);
+    border: 1px solid rgb(245 240 230 / 0.065);
     background: radial-gradient(
         circle,
-        rgb(169 227 120 / 0.035),
+        rgb(169 227 120 / 0.075),
         transparent 67%
     );
 }
 
 .sceneFrame::after {
     inset: 16%;
-    box-shadow: 0 0 8rem rgb(169 227 120 / 0.035);
+    box-shadow: 0 0 8rem rgb(169 227 120 / 0.1);
 }
 
 .orbitScene,
@@ -297,23 +300,23 @@
 
 .ringOuter {
     inset: 2%;
-    border: 1px solid rgb(245 240 230 / 0.075);
-    border-left-color: rgb(169 227 120 / 0.25);
+    border: 1px solid rgb(245 240 230 / 0.12);
+    border-left-color: rgb(169 227 120 / 0.4);
     animation: rotate 38s linear infinite;
 }
 
 .ringMiddle {
     inset: 17%;
-    border: 1px dashed rgb(245 240 230 / 0.1);
+    border: 1px dashed rgb(245 240 230 / 0.16);
     animation: rotateReverse 46s linear infinite;
 }
 
 .ringInner {
     inset: 35%;
-    border: 1px solid rgb(169 227 120 / 0.16);
+    border: 1px solid rgb(169 227 120 / 0.28);
     box-shadow:
-        0 0 0 2.6rem rgb(169 227 120 / 0.018),
-        0 0 0 5.2rem rgb(169 227 120 / 0.012);
+        0 0 0 2.6rem rgb(169 227 120 / 0.035),
+        0 0 0 5.2rem rgb(169 227 120 / 0.022);
     animation: ringBreath 5.6s ease-in-out infinite;
 }
 
@@ -321,7 +324,7 @@
     position: absolute;
     border: 1px solid currentColor;
     border-radius: 50%;
-    opacity: 0.09;
+    opacity: 0.15;
 }
 
 .dataOrbit:nth-child(3n) {
@@ -336,7 +339,8 @@
     height: 1px;
     border-radius: 999px;
     background: linear-gradient(90deg, transparent, currentColor 82%, #fff);
-    filter: drop-shadow(0 0 0.32rem currentColor);
+    filter: drop-shadow(0 0 0.48rem currentColor)
+        drop-shadow(0 0 1.1rem currentColor);
     offset-anchor: 100% 50%;
     offset-path: ellipse(50% 50% at 50% 50%);
     offset-rotate: auto;
@@ -353,8 +357,8 @@
     border-radius: 50%;
     background: currentColor;
     box-shadow:
-        0 0 0.8rem currentColor,
-        0 0 1.8rem currentColor;
+        0 0 1.2rem currentColor,
+        0 0 2.8rem currentColor;
     content: "";
     transform: translateY(-50%);
 }
@@ -367,7 +371,7 @@
     height: 1px;
     overflow: hidden;
     transform-origin: left center;
-    background: linear-gradient(90deg, rgb(255 255 255 / 0.22), transparent);
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.34), transparent);
 }
 
 .route::after {
@@ -377,6 +381,7 @@
     width: 22%;
     height: 100%;
     background: linear-gradient(90deg, transparent, currentColor, transparent);
+    box-shadow: 0 0 0.9rem currentColor;
     content: "";
     animation: travel 3.5s ease-in-out infinite;
 }
@@ -425,9 +430,9 @@
 .coreHalo {
     width: 11rem;
     height: 11rem;
-    border: 1px solid rgb(169 227 120 / 0.12);
-    background: rgb(169 227 120 / 0.025);
-    box-shadow: 0 0 4rem rgb(169 227 120 / 0.06);
+    border: 1px solid rgb(169 227 120 / 0.22);
+    background: rgb(169 227 120 / 0.06);
+    box-shadow: 0 0 5rem rgb(169 227 120 / 0.2);
     animation: corePulse 3.8s ease-in-out infinite;
 }
 
@@ -436,14 +441,16 @@
     width: 6.7rem;
     height: 6.7rem;
     place-items: center;
-    border: 1px solid rgb(245 240 230 / 0.16);
+    border: 1px solid rgb(245 240 230 / 0.25);
     background:
         radial-gradient(circle at 46% 42%, currentColor, transparent 13%),
         radial-gradient(circle at 50% 50%, currentColor, transparent 52%),
         rgb(10 19 11 / 0.84);
     box-shadow:
+        0 0 2.6rem currentColor,
+        0 0 5rem rgb(169 227 120 / 0.14),
         0 1.6rem 5rem rgb(0 0 0 / 0.5),
-        inset 0 0 2rem rgb(169 227 120 / 0.035);
+        inset 0 0 2rem rgb(245 240 230 / 0.08);
     backdrop-filter: blur(1rem);
 }
 
@@ -461,28 +468,29 @@
     width: 2.8rem;
     height: 2.8rem;
     border: 1px solid currentColor;
-    opacity: 0.26;
+    opacity: 0.45;
+    box-shadow: 0 0 1.4rem currentColor;
     animation: coreSignal 4.2s ease-in-out infinite;
 }
 
 .core::after {
-    width: 0.82rem;
-    height: 0.82rem;
+    width: 0.95rem;
+    height: 0.95rem;
     background: radial-gradient(circle at 36% 32%, #fff, currentColor 54%);
     box-shadow:
-        0 0 1.2rem currentColor,
-        0 0 3.2rem currentColor;
+        0 0 1.8rem currentColor,
+        0 0 4.5rem currentColor;
 }
 
 .coreLight {
     position: absolute;
     top: 21%;
     left: 25%;
-    width: 0.3rem;
-    height: 0.3rem;
+    width: 0.38rem;
+    height: 0.38rem;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 0 1rem currentColor;
+    box-shadow: 0 0 2rem currentColor;
     animation: satelliteDrift 5.4s ease-in-out infinite;
 }
 
@@ -493,8 +501,15 @@
     border: 1px solid currentColor;
     border-radius: 50%;
     color: var(--leaf);
-    background: #0e150f;
-    box-shadow: 0 0 1.2rem currentColor;
+    background: radial-gradient(
+        circle,
+        #fff 0 16%,
+        currentColor 20% 34%,
+        #0e150f 38%
+    );
+    box-shadow:
+        0 0 1.4rem currentColor,
+        0 0 2.6rem currentColor;
 }
 
 .nodePulse {
@@ -580,7 +595,9 @@
     width: 1px;
     min-height: 5rem;
     background: linear-gradient(transparent, currentColor 65%, #fff);
-    box-shadow: 0 0 1rem currentColor;
+    box-shadow:
+        0 0 1.5rem currentColor,
+        0 0 2.8rem currentColor;
     animation: rainFall linear infinite;
 }
 
@@ -604,8 +621,8 @@
     border-radius: 50%;
     background: #fff;
     box-shadow:
-        0 0 0.7rem currentColor,
-        0 0 1.7rem currentColor;
+        0 0 1.1rem currentColor,
+        0 0 2.5rem currentColor;
 }
 
 .rainHorizon {
@@ -678,7 +695,7 @@
 }
 
 .soilLayer[data-active="true"] {
-    filter: drop-shadow(0 0 0.75rem currentColor);
+    filter: drop-shadow(0 0 1.25rem currentColor);
 }
 
 .soilTrack {
@@ -694,7 +711,7 @@
         currentColor 14% 86%,
         transparent
     );
-    opacity: 0.21;
+    opacity: 0.32;
 }
 
 .soilTrack::before,
@@ -740,7 +757,9 @@
     height: 2px;
     border-radius: 999px;
     background: linear-gradient(90deg, transparent, currentColor 72%, #fff);
-    box-shadow: 0 0 0.8rem currentColor;
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 2.4rem currentColor;
     animation: soilTravel linear infinite;
 }
 
@@ -837,23 +856,23 @@
 
 .networkPath {
     stroke-width: 1;
-    opacity: 0.13;
+    opacity: 0.2;
     transition:
         opacity 800ms ease,
         filter 800ms ease;
 }
 
 .networkPath[data-active="true"] {
-    opacity: 0.58;
-    filter: drop-shadow(0 0 0.45rem currentColor);
+    opacity: 0.78;
+    filter: drop-shadow(0 0 0.8rem currentColor);
 }
 
 .networkSignal {
-    stroke-width: 1.5;
+    stroke-width: 2;
     stroke-dasharray: 0.075 0.925;
     stroke-linecap: round;
     animation: networkTravel linear infinite;
-    filter: drop-shadow(0 0 0.28rem currentColor);
+    filter: drop-shadow(0 0 0.55rem currentColor);
 }
 
 .networkNode {
@@ -863,7 +882,9 @@
     border: 1px solid currentColor;
     border-radius: 50%;
     background: #0e150f;
-    box-shadow: 0 0 1rem currentColor;
+    box-shadow:
+        0 0 1.5rem currentColor,
+        0 0 2.8rem currentColor;
     transform: translate(-50%, -50%);
     transition:
         scale 700ms ease,
@@ -905,7 +926,8 @@
 .networkCoreHalo {
     width: 10rem;
     height: 10rem;
-    border: 1px solid rgb(245 240 230 / 0.07);
+    border: 1px solid rgb(245 240 230 / 0.14);
+    box-shadow: 0 0 4rem rgb(169 227 120 / 0.14);
     animation: corePulse 4.6s ease-in-out infinite;
 }
 
@@ -920,8 +942,8 @@
         transparent 72%
     );
     box-shadow:
-        0 0 1rem currentColor,
-        0 0 4rem currentColor;
+        0 0 1.8rem currentColor,
+        0 0 5.5rem currentColor;
     animation: coreSignal 4.2s ease-in-out infinite;
 }
 
@@ -949,6 +971,7 @@
     width: 2.8rem;
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--sky));
+    box-shadow: 0 0 0.8rem var(--sky);
 }
 
 .activityCard {
@@ -970,7 +993,9 @@
     width: 3.5rem;
     height: 1px;
     background: currentColor;
-    box-shadow: 0 0 1rem currentColor;
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 2.4rem currentColor;
     content: "";
 }
 
@@ -1402,6 +1427,8 @@
 
 @media (max-width: 820px) {
     .page {
+        height: auto;
+        min-height: 100dvh;
         overflow-y: auto;
     }
 
