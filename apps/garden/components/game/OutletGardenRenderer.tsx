@@ -236,7 +236,6 @@ export function OutletGardenRenderer() {
                     onSceneReady={() => {
                         sceneReadyRef.current = true;
                     }}
-                    onUseListFallback={() => showList('user', true)}
                     sceneStartedAt={sceneStartedAtRef.current}
                 />
             </OutletGardenSceneErrorBoundary>
