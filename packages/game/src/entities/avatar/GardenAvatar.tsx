@@ -20,6 +20,7 @@ import {
     Vector2,
     Vector3,
 } from 'three';
+import { blockInteractionPassthroughUserDataKey } from '../../controls/BlockInteractionResolver';
 import { useBlockData } from '../../hooks/useBlockData';
 import {
     sceneFrameRates,
@@ -61,12 +62,14 @@ import {
 } from './gardenAvatarCameraZoom';
 import {
     findGardenAvatarCactusContact,
+    findGardenAvatarSeatExit,
     type GardenAvatarSeatPose,
     gardenAvatarBeachBallKickDistance,
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
     getGardenAvatarForwardDirection,
     getGardenAvatarSeatPose,
+    isGardenAvatarInteractionOccluded,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -658,7 +661,7 @@ export function GardenAvatar({
         (state) => state.kickGardenAvatarBeachBall,
     );
     const fishingBoatRegistry = useFishingBoatRegistry();
-    const { camera, clock, gl } = useThree();
+    const { camera, clock, gl, scene } = useThree();
     const actorRef = useRef<Group>(null);
     const yawRef = useRef(0);
     const pitchRef = useRef(-0.08);
@@ -750,6 +753,14 @@ export function GardenAvatar({
         );
         return target ? getGardenAvatarSeatPose(target) : null;
     }, [interactionTargets, seatId]);
+    const standUpFromSeat = useCallback(() => {
+        if (!seatPose || !findGardenAvatarSeatExit({ pose: seatPose, world })) {
+            return false;
+        }
+
+        setSeatId(null);
+        return true;
+    }, [seatPose, setSeatId, world]);
     const roamCandidates = useMemo(
         () => getGardenAvatarRoamTargets(world),
         [world],
@@ -804,12 +815,20 @@ export function GardenAvatar({
 
         const raycaster = interactionRaycasterRef.current;
         raycaster.setFromCamera(interactionRayCenterRef.current, camera);
-        const blockTarget = resolveAimedGardenAvatarBlock({
+        const blockResolution = resolveAimedGardenAvatarBlock({
             actorPosition: actor.position,
             ray: raycaster.ray,
             targets: interactionTargets,
         });
-        if (blockTarget) {
+        const isOccluded = (hitPoint: Vector3) =>
+            isGardenAvatarInteractionOccluded({
+                intersections: raycaster.intersectObjects(scene.children, true),
+                layerObject: actor,
+                ray: raycaster.ray,
+                resolvedHitPoint: hitPoint,
+            });
+        if (blockResolution && !isOccluded(blockResolution.hitPoint)) {
+            const blockTarget = blockResolution.target;
             if (blockTarget.block.name === 'BeachBall') {
                 kickBeachBall({
                     direction: getGardenAvatarForwardDirection(
@@ -830,12 +849,16 @@ export function GardenAvatar({
             }
         }
 
-        const animal = resolveAimedGardenAvatarAnimal({
+        const animalResolution = resolveAimedGardenAvatarAnimal({
             actorPosition: actor.position,
             entries: gameStateStore.getState().animalPresenceEntries,
             now: clock.elapsedTime,
             ray: raycaster.ray,
         });
+        const animal =
+            animalResolution && !isOccluded(animalResolution.hitPoint)
+                ? animalResolution.entry
+                : null;
         if (animal?.species === 'Cat' || animal?.species === 'Dog') {
             petAnimal({
                 species: animal.species,
@@ -854,6 +877,7 @@ export function GardenAvatar({
         kickBeachBall,
         onInteractBlock,
         petAnimal,
+        scene,
         setSeatId,
     ]);
     const dismountFishingBoat = useCallback(() => {
@@ -932,29 +956,29 @@ export function GardenAvatar({
             return;
         }
 
-        previousSeatPoseRef.current = null;
-        const exitGroundY = getGardenAvatarGroundY({
-            currentGroundY: previousSeatPose.y,
-            position: {
-                x: previousSeatPose.exitX,
-                z: previousSeatPose.exitZ,
-            },
+        const exit = findGardenAvatarSeatExit({
+            pose: previousSeatPose,
             world,
         });
-        if (exitGroundY === null) {
+        if (!exit) {
+            const seatStillExists = interactionTargets.some(
+                (target) => target.block.id === previousSeatPose.blockId,
+            );
+            if (seatStillExists) {
+                setSeatId(previousSeatPose.blockId);
+            } else {
+                previousSeatPoseRef.current = null;
+            }
             return;
         }
 
-        actor.position.set(
-            previousSeatPose.exitX,
-            exitGroundY,
-            previousSeatPose.exitZ,
-        );
-        groundYRef.current = exitGroundY;
+        previousSeatPoseRef.current = null;
+        actor.position.set(exit.x, exit.y, exit.z);
+        groundYRef.current = exit.y;
         velocityRef.current.set(0, 0, 0);
         verticalVelocityRef.current = 0;
         groundedRef.current = true;
-    }, [seatPose, world]);
+    }, [interactionTargets, seatPose, setSeatId, world]);
 
     useEffect(() => {
         if (!avatarActive) {
@@ -1115,7 +1139,7 @@ export function GardenAvatar({
                 if (mountedBoatRef.current) {
                     dismountFishingBoat();
                 } else {
-                    setSeatId(null);
+                    standUpFromSeat();
                 }
                 return;
             }
@@ -1315,7 +1339,7 @@ export function GardenAvatar({
         interactWithAimedTarget,
         scaleCameraZoom,
         seatId,
-        setSeatId,
+        standUpFromSeat,
         setView,
     ]);
 
@@ -1515,7 +1539,7 @@ export function GardenAvatar({
                 keys.has('ArrowRight');
             if (wantsToStand) {
                 jumpQueuedRef.current = false;
-                setSeatId(null);
+                standUpFromSeat();
             }
 
             actor.position.set(seatPose.x, seatPose.y, seatPose.z);
@@ -1972,6 +1996,9 @@ export function GardenAvatar({
             {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js actor enters the playable camera mode. */}
             <group
                 ref={actorRef}
+                userData={{
+                    [blockInteractionPassthroughUserDataKey]: true,
+                }}
                 onPointerDown={stopAvatarPointer}
                 onClick={enterAvatarView}
                 onPointerOver={showAvatarPointer}

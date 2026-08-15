@@ -4,13 +4,19 @@ import { createBlockInteractionTargetKey } from '../../controls/BlockInteraction
 import {
     type BlockInteractionLayerTarget,
     getBlockInteractionRotatedHitboxFootprint,
+    hasCloserNonLayerIntersection,
     resolveBlockInteractionLayerTarget,
 } from '../../controls/BlockInteractionResolver';
 import type { Stack } from '../../types/Stack';
 import type { AnimalPresenceEntry } from '../../useGameState';
 import { getBlockHitboxSize } from '../../utils/blockHitbox';
 import { getBlockDataByName, getStackHeight } from '../../utils/getStackHeight';
-import { gardenAvatarRadius } from './gardenAvatarMovement';
+import {
+    type GardenAvatarCollisionWorld,
+    type GardenAvatarPoint,
+    gardenAvatarRadius,
+    getGardenAvatarGroundY,
+} from './gardenAvatarMovement';
 
 export const gardenAvatarInteractionRange = 3.2;
 export const gardenAvatarAnimalPetRange = 2.4;
@@ -34,6 +40,7 @@ export type GardenAvatarBlockInteractionTarget = BlockInteractionLayerTarget;
 
 export type GardenAvatarSeatPose = {
     blockId: string;
+    exitCandidates: Pick<GardenAvatarPoint, 'x' | 'z'>[];
     exitX: number;
     exitZ: number;
     x: number;
@@ -41,6 +48,12 @@ export type GardenAvatarSeatPose = {
     yaw: number;
     z: number;
 };
+
+export function isGardenAvatarInteractionOccluded(
+    options: Parameters<typeof hasCloserNonLayerIntersection>[0],
+) {
+    return hasCloserNonLayerIntersection(options);
+}
 
 export function isGardenAvatarSeatBlockName(blockName: string) {
     return blockName === 'BeachChair' || blockName === 'WoodenBench';
@@ -113,7 +126,7 @@ export function resolveAimedGardenAvatarBlock({
         resolved.hitPoint.y - actorPosition.y,
         resolved.hitPoint.z - actorPosition.z,
     ) <= gardenAvatarInteractionRange
-        ? resolved.target
+        ? resolved
         : null;
 }
 
@@ -128,51 +141,60 @@ export function resolveAimedGardenAvatarAnimal({
     now: number;
     ray: Ray;
 }) {
-    return (
-        entries
-            .filter(
-                (entry) =>
-                    (entry.species === 'Cat' || entry.species === 'Dog') &&
-                    now - entry.updatedAt <= 3.5 &&
-                    Math.hypot(
-                        entry.position.x - actorPosition.x,
-                        entry.position.y - actorPosition.y,
-                        entry.position.z - actorPosition.z,
-                    ) <= gardenAvatarAnimalPetRange,
-            )
-            .map((entry) => {
-                const center = {
-                    x: entry.position.x,
-                    y:
-                        entry.position.y +
-                        (entry.species === 'Dog' ? 0.42 : 0.3),
-                    z: entry.position.z,
-                };
-                const alongRay =
-                    (center.x - ray.origin.x) * ray.direction.x +
-                    (center.y - ray.origin.y) * ray.direction.y +
-                    (center.z - ray.origin.z) * ray.direction.z;
-                const closest = ray.at(
-                    Math.max(0, alongRay),
-                    ray.direction.clone(),
-                );
-                return {
-                    alongRay,
-                    distanceToRay: Math.hypot(
-                        closest.x - center.x,
-                        closest.y - center.y,
-                        closest.z - center.z,
-                    ),
-                    entry,
-                };
-            })
-            .filter(
-                (candidate) =>
-                    candidate.alongRay >= 0 && candidate.distanceToRay <= 0.42,
-            )
-            .sort((left, right) => left.alongRay - right.alongRay)[0]?.entry ??
-        null
+    const candidate = entries
+        .filter(
+            (entry) =>
+                (entry.species === 'Cat' || entry.species === 'Dog') &&
+                now - entry.updatedAt <= 3.5 &&
+                Math.hypot(
+                    entry.position.x - actorPosition.x,
+                    entry.position.y - actorPosition.y,
+                    entry.position.z - actorPosition.z,
+                ) <= gardenAvatarAnimalPetRange,
+        )
+        .map((entry) => {
+            const center = {
+                x: entry.position.x,
+                y: entry.position.y + (entry.species === 'Dog' ? 0.42 : 0.3),
+                z: entry.position.z,
+            };
+            const alongRay =
+                (center.x - ray.origin.x) * ray.direction.x +
+                (center.y - ray.origin.y) * ray.direction.y +
+                (center.z - ray.origin.z) * ray.direction.z;
+            const closest = ray.at(
+                Math.max(0, alongRay),
+                ray.direction.clone(),
+            );
+            return {
+                alongRay,
+                distanceToRay: Math.hypot(
+                    closest.x - center.x,
+                    closest.y - center.y,
+                    closest.z - center.z,
+                ),
+                entry,
+            };
+        })
+        .filter(
+            (candidate) =>
+                candidate.alongRay >= 0 && candidate.distanceToRay <= 0.42,
+        )
+        .sort((left, right) => left.alongRay - right.alongRay)[0];
+    if (!candidate) {
+        return null;
+    }
+
+    const hitDistance = Math.max(
+        0,
+        candidate.alongRay -
+            Math.sqrt(Math.max(0, 0.42 ** 2 - candidate.distanceToRay ** 2)),
     );
+
+    return {
+        entry: candidate.entry,
+        hitPoint: ray.at(hitDistance, ray.direction.clone()),
+    };
 }
 
 export function getGardenAvatarForwardDirection(yaw: number) {
@@ -196,16 +218,62 @@ export function getGardenAvatarSeatPose(
             ? { offset: -0.04, seatHeight: 0.3 }
             : { offset: 0, seatHeight: 0.29 };
     const exitDistance = target.hitbox.depth / 2 + gardenAvatarRadius + 0.1;
+    const sideExitDistance = target.hitbox.width / 2 + gardenAvatarRadius + 0.1;
+    const right = { x: Math.cos(yaw), z: -Math.sin(yaw) };
+    const exitCandidates = [
+        {
+            x: target.stack.position.x + forward.x * exitDistance,
+            z: target.stack.position.z + forward.z * exitDistance,
+        },
+        {
+            x: target.stack.position.x + right.x * sideExitDistance,
+            z: target.stack.position.z + right.z * sideExitDistance,
+        },
+        {
+            x: target.stack.position.x - right.x * sideExitDistance,
+            z: target.stack.position.z - right.z * sideExitDistance,
+        },
+        {
+            x: target.stack.position.x - forward.x * exitDistance,
+            z: target.stack.position.z - forward.z * exitDistance,
+        },
+    ];
+    const preferredExit = exitCandidates[0];
+    if (!preferredExit) {
+        return null;
+    }
 
     return {
         blockId: target.block.id,
-        exitX: target.stack.position.x + forward.x * exitDistance,
-        exitZ: target.stack.position.z + forward.z * exitDistance,
+        exitCandidates,
+        exitX: preferredExit.x,
+        exitZ: preferredExit.z,
         x: target.stack.position.x + forward.x * config.offset,
         y: target.stackHeight + config.seatHeight,
         yaw,
         z: target.stack.position.z + forward.z * config.offset,
     };
+}
+
+export function findGardenAvatarSeatExit({
+    pose,
+    world,
+}: {
+    pose: GardenAvatarSeatPose;
+    world: GardenAvatarCollisionWorld;
+}): GardenAvatarPoint | null {
+    for (const candidate of pose.exitCandidates) {
+        const y = getGardenAvatarGroundY({
+            currentGroundY: pose.y,
+            position: candidate,
+            world,
+        });
+        if (y !== null) {
+            return { ...candidate, y };
+        }
+    }
+
+    return null;
 }
 
 function circleIntersectsTarget(

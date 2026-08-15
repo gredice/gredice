@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Ray, Vector3 } from 'three';
+import { Object3D, Ray, Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../../localSandboxBlockData';
 import type { Stack } from '../../types/Stack';
 import {
     findGardenAvatarCactusContact,
+    findGardenAvatarSeatExit,
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
     getGardenAvatarForwardDirection,
     getGardenAvatarSeatPose,
+    isGardenAvatarInteractionOccluded,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -43,7 +45,7 @@ describe('garden avatar world interactions', () => {
                 actorPosition: new Vector3(0, 0, 0),
                 ray,
                 targets: nearTargets,
-            })?.block.id,
+            })?.target.block.id,
             'chair',
         );
         assert.equal(
@@ -98,6 +100,69 @@ describe('garden avatar world interactions', () => {
         assert.ok(Math.hypot(benchPose.exitX + 2, benchPose.exitZ - 1) > 0.4);
     });
 
+    it('uses an alternate seat exit and stays seated when every exit is blocked', () => {
+        const [target] = getGardenAvatarBlockInteractionTargets({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [stack(3, 4, 'BeachChair', 'chair', 1)],
+        });
+        const pose = target ? getGardenAvatarSeatPose(target) : null;
+        assert.ok(pose);
+        const preferredExit = pose.exitCandidates[0];
+        const alternateExit = pose.exitCandidates[1];
+        assert.ok(preferredExit);
+        assert.ok(alternateExit);
+
+        assert.deepEqual(
+            findGardenAvatarSeatExit({
+                pose,
+                world: {
+                    blockedCells: [preferredExit],
+                    surfaces: [],
+                },
+            }),
+            { ...alternateExit, y: 0 },
+        );
+        assert.equal(
+            findGardenAvatarSeatExit({
+                pose,
+                world: {
+                    blockedCells: pose.exitCandidates,
+                    surfaces: [],
+                },
+            }),
+            null,
+        );
+    });
+
+    it('rejects an aimed block hidden by closer scene geometry', () => {
+        const targets = getGardenAvatarBlockInteractionTargets({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [stack(0, -2, 'WoodenSign', 'sign')],
+        });
+        const ray = new Ray(new Vector3(0, 0.3, 0), new Vector3(0, 0, -1));
+        const resolved = resolveAimedGardenAvatarBlock({
+            actorPosition: new Vector3(0, 0, 0),
+            ray,
+            targets,
+        });
+        assert.ok(resolved);
+
+        assert.equal(
+            isGardenAvatarInteractionOccluded({
+                intersections: [
+                    {
+                        distance: 0.75,
+                        object: new Object3D(),
+                    },
+                ],
+                layerObject: new Object3D(),
+                ray,
+                resolvedHitPoint: resolved.hitPoint,
+            }),
+            true,
+        );
+    });
+
     it('selects only a fresh, close cat or dog on the center ray', () => {
         const ray = new Ray(new Vector3(0, 0.3, 0), new Vector3(0, 0, -1));
         const aimed = resolveAimedGardenAvatarAnimal({
@@ -122,7 +187,7 @@ describe('garden avatar world interactions', () => {
             ray,
         });
 
-        assert.equal(aimed?.id, 'cat-a');
+        assert.equal(aimed?.entry.id, 'cat-a');
     });
 
     it('detects cactus contact and bounces away from its spikes', () => {
