@@ -67,8 +67,10 @@ import {
 } from './advancedSowingPicker';
 import {
     findAdvancedSowingCartItem,
+    findDirectSowingCartItem,
     getAdvancedSowingPlanAvailability,
     getLegacySowingTargetAvailability,
+    getPendingAdvancedSowingTargetAvailability,
     readAdvancedSowingCartItemSelectionSummary,
 } from './advancedSowingSubmission';
 import { isGreenhouseSowingRecommended } from './greenhouseSowingRecommendation';
@@ -472,13 +474,13 @@ export function PlantPicker({
                 : undefined;
         const existingItem = advancedSowingSelection
             ? advancedSowingExistingItem
-            : cart?.items.find(
-                  (item) =>
-                      item.entityTypeName === 'plantSort' &&
-                      item.gardenId === gardenId &&
-                      item.raisedBedId === raisedBedId &&
-                      item.positionIndex === positionIndex,
-              );
+            : findDirectSowingCartItem({
+                  cartItems: cart?.items ?? [],
+                  gardenId,
+                  positionIndex,
+                  raisedBedId,
+                  selectedCartItemId,
+              });
 
         if (
             advancedSowingSelection &&
@@ -842,9 +844,30 @@ export function PlantPicker({
     const legacySowingBlocksMutation =
         !legacySowingTargetAvailability.available &&
         !usesAdvancedSowingSelection;
+    const pendingAdvancedSowingTargetAvailability = useMemo(
+        () =>
+            getPendingAdvancedSowingTargetAvailability({
+                cartItems: cart?.items ?? [],
+                excludedCartItemId: advancedSowingEditedItem?.id,
+                gardenId,
+                positionIndex,
+                raisedBedId,
+            }),
+        [
+            advancedSowingEditedItem?.id,
+            cart?.items,
+            gardenId,
+            positionIndex,
+            raisedBedId,
+        ],
+    );
+    const outletSowingBlocksMutation =
+        useOutletOffer && !pendingAdvancedSowingTargetAvailability.available;
+    const directSowingBlocksMutation =
+        legacySowingBlocksMutation || outletSowingBlocksMutation;
     const sowingBlocksMutation =
-        advancedSowingBlocksMutation || legacySowingBlocksMutation;
-    const sowingMutationNoticeId = legacySowingBlocksMutation
+        advancedSowingBlocksMutation || directSowingBlocksMutation;
+    const sowingMutationNoticeId = directSowingBlocksMutation
         ? legacySowingNoticeId
         : advancedSowingBlocksMutation
           ? advancedSowingNoticeId
@@ -1010,17 +1033,17 @@ export function PlantPicker({
                                     }
                                 />
                             ) : null}
-                            {legacySowingBlocksMutation && selectedSortId ? (
+                            {directSowingBlocksMutation && selectedSortId ? (
                                 <Typography
                                     className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
                                     id={legacySowingNoticeId}
                                     level="body2"
                                     role="alert"
                                 >
-                                    Ovo polje pripada postojećoj naprednoj
-                                    sjetvi. Obična sjetva ovdje nije dostupna;
-                                    odaberi podržani drugačiji raspored ili
-                                    drugo polje.
+                                    Ovo polje pripada postojećoj ili planiranoj
+                                    naprednoj sjetvi. Obična sjetva ovdje nije
+                                    dostupna; odaberi podržani drugačiji
+                                    raspored ili drugo polje.
                                 </Typography>
                             ) : null}
                             {isSandbox ? (
@@ -1383,8 +1406,8 @@ export function PlantPicker({
                                             ? 'Odaberi sortu prije potvrde'
                                             : selectedOutletOfferUnavailable
                                               ? 'Odabrana outlet sadnica više nije dostupna'
-                                              : legacySowingBlocksMutation
-                                                ? 'Obična sjetva nije dostupna na polju postojeće napredne sjetve'
+                                              : directSowingBlocksMutation
+                                                ? 'Obična sjetva nije dostupna na polju postojeće ili planirane napredne sjetve'
                                                 : advancedSowingBlocksMutation
                                                   ? 'Odabrani raspored nije dostupan na ovim poljima'
                                                   : undefined
