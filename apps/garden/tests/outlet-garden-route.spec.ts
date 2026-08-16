@@ -547,6 +547,17 @@ async function expectOutletCanvasToFillScene(page: Page) {
         .toBe(true);
 }
 
+async function waitForOutletCameraFrames(page: Page) {
+    await page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => resolve());
+                });
+            }),
+    );
+}
+
 test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout', async ({
     page,
 }) => {
@@ -659,7 +670,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         hasText: 'Paprika Zlata Snack',
     });
     await page.keyboard.press('KeyQ');
+    await waitForOutletCameraFrames(page);
     await page.keyboard.press('KeyQ');
+    await waitForOutletCameraFrames(page);
     await expect(pepperSign).toBeHidden();
     await expect(pepperSignBack).toBeVisible();
     await expect(pepperSignBack).toHaveAttribute(
@@ -675,7 +688,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         pepperSortImageUrl,
     );
     await page.keyboard.press('KeyW');
+    await waitForOutletCameraFrames(page);
     await page.keyboard.press('KeyW');
+    await waitForOutletCameraFrames(page);
     await expect(pepperSign).toBeVisible();
     await expect(pepperSignBack).toBeHidden();
     await expect(
