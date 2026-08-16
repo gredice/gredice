@@ -5,6 +5,7 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { dryGroundBaseColor } from './dryGroundPalette';
 import { useGroundPatchStandardMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
@@ -17,7 +18,7 @@ export function BlockDryGroundAngle({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const material = useGroundPatchStandardMaterial({
-        color: '#b8895f',
+        color: dryGroundBaseColor,
         metalness: 0,
         roughness: 1,
         surface: 'dryDirt',

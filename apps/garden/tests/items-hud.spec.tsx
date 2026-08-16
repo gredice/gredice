@@ -477,7 +477,7 @@ test('terrain blocks are grouped by biome or material type', async ({
     const groups = [
         ['Trava', 'Block Grass Angle'],
         ['Zemlja', 'Block Ground Corner'],
-        ['Suha zemlja', 'Suha zemlja rub'],
+        ['Suha zemlja', 'Suha zemlja obrnuti kut'],
         ['Močvara', 'Močvarna voda'],
         ['Kamen', 'Kutne kamene stube'],
         ['Polirani kamen', 'Kutne polirane kamene stube'],

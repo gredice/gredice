@@ -82,7 +82,7 @@ const blockFixtures: Record<
     Block_Dry_Ground: {
         label: 'Suha zemlja',
         shortDescription:
-            'Svijetla suha zemlja bez raslinja za osunčane i ogoljene dijelove vrta.',
+            'Topla smeđa suha zemlja, tek nešto svjetlija od obične zemlje, za osunčane i ogoljene dijelove vrta.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -90,7 +90,23 @@ const blockFixtures: Record<
     Block_Dry_Ground_Angle: {
         label: 'Suha zemlja rub',
         shortDescription:
-            'Kosi rub svijetle suhe zemlje za blage prijelaze između terenskih razina.',
+            'Kosi rub tople smeđe suhe zemlje za blage prijelaze između terenskih razina.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Dry_Ground_Corner: {
+        label: 'Suha zemlja kut',
+        shortDescription:
+            'Kutni nagib tople smeđe suhe zemlje za vanjske zavoje terena.',
+        sunflowers: 5,
+        height: 0.4,
+        stackable: true,
+    },
+    Block_Dry_Ground_Reverse_Corner: {
+        label: 'Suha zemlja obrnuti kut',
+        shortDescription:
+            'Obrnuti kutni nagib tople smeđe suhe zemlje za unutarnje zavoje terena.',
         sunflowers: 5,
         height: 0.4,
         stackable: true,
@@ -482,6 +498,8 @@ const blockNames = [
     'Block_Grass_Angle',
     'Block_Ground_Angle',
     'Block_Dry_Ground_Angle',
+    'Block_Dry_Ground_Corner',
+    'Block_Dry_Ground_Reverse_Corner',
     'Block_Swamp_Ground_Angle',
     'Block_Stone_Angle',
     'Block_Polished_Stone_Angle',

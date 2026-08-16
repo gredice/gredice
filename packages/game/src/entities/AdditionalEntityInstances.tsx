@@ -26,6 +26,7 @@ import {
     chunkMeshInstances,
     type MeshInstanceChunk,
 } from './chunkedMeshGeometry';
+import { dryGroundBaseColor } from './dryGroundPalette';
 import {
     type EntityBlockInstance,
     EntityInstancesBlock,
@@ -318,6 +319,8 @@ export const additionalInstancedBlockNames = [
     'Block_Ground_Reverse_Corner',
     'Block_Dry_Ground',
     'Block_Dry_Ground_Angle',
+    'Block_Dry_Ground_Corner',
+    'Block_Dry_Ground_Reverse_Corner',
     'Block_Swamp_Ground',
     'Block_Swamp_Ground_Angle',
     'Block_Stone',
@@ -559,7 +562,7 @@ function TerrainVariationInstances({
     const dryGroundMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
-                color: '#b8895f',
+                color: dryGroundBaseColor,
                 metalness: 0,
                 roughness: 1,
             }),
@@ -604,6 +607,38 @@ function TerrainVariationInstances({
                 geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
                 material={() => dryGroundMaterial}
                 snow={snowPresets.sandAngle}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            <AssetBlock
+                assetName="BlockTerrainCorner"
+                stacks={stacks}
+                name="Block_Dry_Ground_Corner"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="dryDirt"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                material={() => dryGroundMaterial}
+                snow={snowPresets.sandCorner}
+                snowLift={0.003}
+                renderStableChunksAsMergedGeometry
+                {...commonSnowProps}
+            />
+            <AssetBlock
+                assetName="BlockTerrainReverseCorner"
+                stacks={stacks}
+                name="Block_Dry_Ground_Reverse_Corner"
+                staticOpaqueCacheGroup="base-terrain"
+                groundPatch="dryDirt"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                }
+                material={() => dryGroundMaterial}
+                snow={snowPresets.sandReverseCorner}
                 snowLift={0.003}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}

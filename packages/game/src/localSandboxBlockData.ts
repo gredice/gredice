@@ -101,6 +101,8 @@ export const localSandboxBlockNames = [
     'Block_Grass_Angle',
     'Block_Ground_Angle',
     'Block_Dry_Ground_Angle',
+    'Block_Dry_Ground_Corner',
+    'Block_Dry_Ground_Reverse_Corner',
     'Block_Swamp_Ground_Angle',
     'Block_Stone_Angle',
     'Block_Polished_Stone_Angle',
@@ -151,12 +153,22 @@ const localSandboxBlockMetadata: Partial<
     Block_Dry_Ground: {
         label: 'Suha zemlja',
         shortDescription:
-            'Svijetla suha zemlja bez raslinja za osunčane i ogoljene dijelove vrta.',
+            'Topla smeđa suha zemlja, tek nešto svjetlija od obične zemlje, za osunčane i ogoljene dijelove vrta.',
     },
     Block_Dry_Ground_Angle: {
         label: 'Suha zemlja rub',
         shortDescription:
-            'Kosi rub svijetle suhe zemlje za blage prijelaze između terenskih razina.',
+            'Kosi rub tople smeđe suhe zemlje za blage prijelaze između terenskih razina.',
+    },
+    Block_Dry_Ground_Corner: {
+        label: 'Suha zemlja kut',
+        shortDescription:
+            'Kutni nagib tople smeđe suhe zemlje za vanjske zavoje terena.',
+    },
+    Block_Dry_Ground_Reverse_Corner: {
+        label: 'Suha zemlja obrnuti kut',
+        shortDescription:
+            'Obrnuti kutni nagib tople smeđe suhe zemlje za unutarnje zavoje terena.',
     },
     Block_Swamp_Ground: {
         label: 'Močvarna zemlja',
@@ -299,6 +311,8 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Block_Grass_Angle: 0.4,
         Block_Ground_Angle: 0.4,
         Block_Dry_Ground_Angle: 0.4,
+        Block_Dry_Ground_Corner: 0.4,
+        Block_Dry_Ground_Reverse_Corner: 0.4,
         Block_Swamp_Ground_Angle: 0.4,
         Block_Stone_Angle: 0.4,
         Block_Polished_Stone_Angle: 0.4,
