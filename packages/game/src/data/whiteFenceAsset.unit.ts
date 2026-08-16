@@ -101,12 +101,16 @@ describe('white fence asset', () => {
                 'WhiteFence_Corner',
                 'WhiteFence_T',
                 'WhiteFence_Cross',
+                'WhiteFence_Pole',
+                'WhiteFence_Extension',
             ],
         );
 
         const solo = meshBounds(document, 'WhiteFence_Solo_Mesh');
         const middle = meshBounds(document, 'WhiteFence_Middle_Mesh');
         const cross = meshBounds(document, 'WhiteFence_Cross_Mesh');
+        const pole = meshBounds(document, 'WhiteFence_Pole_Mesh');
+        const extension = meshBounds(document, 'WhiteFence_Extension_Mesh');
         close(solo.minimum[0], -0.3575);
         close(solo.maximum[0], 0.3575);
         close(solo.minimum[1], -1);
@@ -119,6 +123,10 @@ describe('white fence asset', () => {
         close(cross.maximum[0], 0.6075);
         close(cross.minimum[2], -0.6075);
         close(cross.maximum[2], 0.6075);
+        close(pole.minimum[2], -0.0225);
+        close(pole.maximum[2], 0.0225);
+        close(extension.minimum[2], -1);
+        close(extension.maximum[2], -0.5);
         assert.equal(solo.vertexCount, 282);
         assert.equal(middle.vertexCount, 534);
         assert.equal(cross.vertexCount, 1038);

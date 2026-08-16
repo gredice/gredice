@@ -128,14 +128,21 @@ describe('stone fence assets', () => {
             const { document } = readAsset(asset.name);
             assert.deepEqual(
                 document.nodes.map((node) => node.name),
-                ['Solo', 'Single', 'Middle', 'Corner', 'T', 'Cross'].map(
-                    (variant) => `${asset.name}_${variant}`,
-                ),
+                [
+                    ...['Solo', 'Single', 'Middle', 'Corner', 'T', 'Cross'].map(
+                        (variant) => `${asset.name}_${variant}`,
+                    ),
+                    `${asset.name}_Extension`,
+                ],
             );
 
             const solo = meshBounds(document, `${asset.name}_Solo_Mesh`);
             const middle = meshBounds(document, `${asset.name}_Middle_Mesh`);
             const cross = meshBounds(document, `${asset.name}_Cross_Mesh`);
+            const extension = meshBounds(
+                document,
+                `${asset.name}_Extension_Mesh`,
+            );
 
             asset.soloMinimum.forEach((expected, index) => {
                 close(solo.minimum[index] ?? 0, expected);
@@ -149,6 +156,8 @@ describe('stone fence assets', () => {
             close(cross.maximum[0], 0.5);
             close(cross.minimum[2], -0.5);
             close(cross.maximum[2], 0.5);
+            close(extension.minimum[2], -1);
+            close(extension.maximum[2], -0.5);
             assert.equal(solo.primitiveCount, asset.materialNames.length);
         });
 

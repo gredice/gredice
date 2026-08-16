@@ -37,12 +37,8 @@ import {
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
-import { fenceVariantNames } from './Fence';
-import {
-    type FenceConnectionShape,
-    isFenceBlockName,
-    resolveFenceConnection,
-} from './fenceConnections';
+import { fenceExtensionName, fenceVariantNames } from './Fence';
+import type { FenceConnectionShape } from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import {
     type GroundPatchSurface,
@@ -50,7 +46,11 @@ import {
 } from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
-import { polishedStoneFenceVariantNames } from './PolishedStoneFence';
+import { resolveFenceConnectionState } from './helpers/useFenceConnectionState';
+import {
+    polishedStoneFenceExtensionName,
+    polishedStoneFenceVariantNames,
+} from './PolishedStoneFence';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedFieldVisualBatches } from './raisedBed/RaisedBedFieldVisualBatches';
 import { RaisedBedHarvestBaskets } from './raisedBed/RaisedBedHarvestBasket';
@@ -58,9 +58,13 @@ import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
-import { stoneFenceVariantNames } from './StoneFence';
+import { stoneFenceExtensionNames, stoneFenceVariantNames } from './StoneFence';
 import { swampGroundBaseColor } from './swampGroundPalette';
-import { whiteFenceVariantNames } from './WhiteFence';
+import {
+    whiteFenceExtensionName,
+    whiteFencePoleName,
+    whiteFenceVariantNames,
+} from './WhiteFence';
 import {
     getWaterBlockColumnSurfaceY,
     getWaterBlockDepthSamples,
@@ -1432,26 +1436,32 @@ const shadeKeys = [
 
 type FenceKey = (typeof fenceVariantNames)[keyof typeof fenceVariantNames];
 type WhiteFenceKey =
-    (typeof whiteFenceVariantNames)[keyof typeof whiteFenceVariantNames];
+    | (typeof whiteFenceVariantNames)[keyof typeof whiteFenceVariantNames]
+    | typeof whiteFencePoleName;
 type PolishedStoneFenceKey =
     (typeof polishedStoneFenceVariantNames)[keyof typeof polishedStoneFenceVariantNames];
 
-function resolveConnectedFenceVariant<Key extends string>(
+function resolveConnectedFenceInstance(
     instance: EntityBlockInstance,
     stacks: Stack[] | undefined,
-    variants: Record<FenceConnectionShape, Key>,
 ) {
-    const neighbors = resolveEntityNeighbors(
+    const state = resolveFenceConnectionState(
         stacks,
         instance.stack,
         instance.block,
-        isFenceBlockName,
+        instance.rotation,
     );
-    const connection = resolveFenceConnection(neighbors, instance.rotation);
 
     return {
-        instance: mapInstanceRotation(instance, connection.rotation),
-        variant: variants[connection.shape],
+        extensionInstances: state.extensionRotations.map(
+            (extensionRotation) => ({
+                ...mapInstanceRotation(instance, extensionRotation),
+                id: `${instance.id}:fence-extension:${extensionRotation}`,
+            }),
+        ),
+        hasAdjacentFence: state.hasAdjacentFence,
+        instance: mapInstanceRotation(instance, state.connection.rotation),
+        shape: state.connection.shape,
     };
 }
 
@@ -1466,7 +1476,7 @@ function FenceInstances({
         yOffset: 1,
     });
     const resolved = instances?.map((instance) =>
-        resolveConnectedFenceVariant(instance, stacks, fenceVariantNames),
+        resolveConnectedFenceInstance(instance, stacks),
     );
 
     if (!resolved?.length) {
@@ -1480,7 +1490,7 @@ function FenceInstances({
                     key={key}
                     instanceKey={key}
                     instances={resolved
-                        .filter(({ variant }) => variant === key)
+                        .filter(({ shape }) => fenceVariantNames[shape] === key)
                         .map(({ instance }) => instance)}
                     geometry={nodes[key].geometry}
                     material={materials[planksMaterialName]}
@@ -1494,6 +1504,22 @@ function FenceInstances({
                     {...commonSnowProps}
                 />
             ))}
+            <EntityInstancesGeometry
+                instanceKey={fenceExtensionName}
+                instances={resolved.flatMap(
+                    ({ extensionInstances }) => extensionInstances,
+                )}
+                geometry={nodes[fenceExtensionName].geometry}
+                material={materials[planksMaterialName]}
+                staticOpaqueCacheGroup="static-props"
+                renderRainWetOverlay
+                snow={{
+                    maxThickness: 0.09,
+                    slopeExponent: 2.9,
+                    noiseScale: 3.3,
+                }}
+                {...commonSnowProps}
+            />
         </>
     );
 }
@@ -1518,7 +1544,7 @@ function LoadedWhiteFenceInstances({
         yOffset: 1,
     });
     const resolved = instances?.map((instance) =>
-        resolveConnectedFenceVariant(instance, stacks, whiteFenceVariantNames),
+        resolveConnectedFenceInstance(instance, stacks),
     );
 
     if (!resolved?.length) {
@@ -1532,7 +1558,13 @@ function LoadedWhiteFenceInstances({
                     key={key}
                     instanceKey={key}
                     instances={resolved
-                        .filter(({ variant }) => variant === key)
+                        .filter(({ hasAdjacentFence, shape }) => {
+                            const variant =
+                                shape === 'Solo' && hasAdjacentFence
+                                    ? whiteFencePoleName
+                                    : whiteFenceVariantNames[shape];
+                            return variant === key;
+                        })
                         .map(({ instance }) => instance)}
                     geometry={nodes[key].geometry}
                     material={materials['Material.WhitePaint']}
@@ -1546,6 +1578,22 @@ function LoadedWhiteFenceInstances({
                     {...commonSnowProps}
                 />
             ))}
+            <EntityInstancesGeometry
+                instanceKey={whiteFenceExtensionName}
+                instances={resolved.flatMap(
+                    ({ extensionInstances }) => extensionInstances,
+                )}
+                geometry={nodes[whiteFenceExtensionName].geometry}
+                material={materials['Material.WhitePaint']}
+                staticOpaqueCacheGroup="static-props"
+                renderRainWetOverlay
+                snow={{
+                    maxThickness: 0.035,
+                    slopeExponent: 2.9,
+                    noiseScale: 3.3,
+                }}
+                {...commonSnowProps}
+            />
         </>
     );
 }
@@ -1575,6 +1623,7 @@ const whiteFenceKeys = [
     whiteFenceVariantNames.Corner,
     whiteFenceVariantNames.T,
     whiteFenceVariantNames.Cross,
+    whiteFencePoleName,
 ] satisfies WhiteFenceKey[];
 
 function LoadedStoneFenceInstances({
@@ -1587,19 +1636,9 @@ function LoadedStoneFenceInstances({
         stacks,
         yOffset: 1,
     });
-    const resolved = instances?.map((instance) => {
-        const neighbors = resolveEntityNeighbors(
-            stacks,
-            instance.stack,
-            instance.block,
-            isFenceBlockName,
-        );
-        const connection = resolveFenceConnection(neighbors, instance.rotation);
-        return {
-            instance: mapInstanceRotation(instance, connection.rotation),
-            shape: connection.shape,
-        };
-    });
+    const resolved = instances?.map((instance) =>
+        resolveConnectedFenceInstance(instance, stacks),
+    );
 
     if (!resolved?.length) {
         return null;
@@ -1628,6 +1667,25 @@ function LoadedStoneFenceInstances({
                     />
                 )),
             )}
+            {stoneFenceExtensionNames.map((key) => (
+                <EntityInstancesGeometry
+                    key={key}
+                    instanceKey={key}
+                    instances={resolved.flatMap(
+                        ({ extensionInstances }) => extensionInstances,
+                    )}
+                    geometry={nodes[key].geometry}
+                    material={nodes[key].material}
+                    staticOpaqueCacheGroup="static-props"
+                    renderRainWetOverlay
+                    snow={{
+                        maxThickness: 0.05,
+                        slopeExponent: 2.9,
+                        noiseScale: 3.3,
+                    }}
+                    {...commonSnowProps}
+                />
+            ))}
         </>
     );
 }
@@ -1670,11 +1728,7 @@ function LoadedPolishedStoneFenceInstances({
         yOffset: 1,
     });
     const resolved = instances?.map((instance) =>
-        resolveConnectedFenceVariant(
-            instance,
-            stacks,
-            polishedStoneFenceVariantNames,
-        ),
+        resolveConnectedFenceInstance(instance, stacks),
     );
 
     if (!resolved?.length) {
@@ -1688,7 +1742,10 @@ function LoadedPolishedStoneFenceInstances({
                     key={key}
                     instanceKey={key}
                     instances={resolved
-                        .filter(({ variant }) => variant === key)
+                        .filter(
+                            ({ shape }) =>
+                                polishedStoneFenceVariantNames[shape] === key,
+                        )
                         .map(({ instance }) => instance)}
                     geometry={nodes[key].geometry}
                     material={materials['Material.PolishedStoneFence.Surface']}
@@ -1702,6 +1759,22 @@ function LoadedPolishedStoneFenceInstances({
                     {...commonSnowProps}
                 />
             ))}
+            <EntityInstancesGeometry
+                instanceKey={polishedStoneFenceExtensionName}
+                instances={resolved.flatMap(
+                    ({ extensionInstances }) => extensionInstances,
+                )}
+                geometry={nodes[polishedStoneFenceExtensionName].geometry}
+                material={materials['Material.PolishedStoneFence.Surface']}
+                staticOpaqueCacheGroup="static-props"
+                renderRainWetOverlay
+                snow={{
+                    maxThickness: 0.035,
+                    slopeExponent: 2.9,
+                    noiseScale: 3.3,
+                }}
+                {...commonSnowProps}
+            />
         </>
     );
 }
