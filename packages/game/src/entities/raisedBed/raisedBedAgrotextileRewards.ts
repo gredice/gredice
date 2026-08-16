@@ -1,4 +1,7 @@
-import type { OperationVisualReward } from '../../operationVisualRewards';
+import type {
+    OperationVisualReward,
+    OperationVisualRewardFamily,
+} from '../../operationVisualRewards';
 
 type RaisedBedProtectiveCoverFieldInput = {
     active?: boolean | null;
@@ -18,35 +21,53 @@ type HasActiveRaisedBedProtectiveCoverInput = {
     visualRewards: OperationVisualReward[];
 };
 
-function isActiveProtectiveCoverReward(
+type RaisedBedCoverFamily = Extract<
+    OperationVisualRewardFamily,
+    'agrotextile' | 'insectMesh'
+>;
+
+function isActiveCoverReward(
     reward: OperationVisualReward,
     raisedBedId: number,
+    family: RaisedBedCoverFamily,
 ) {
     return (
         reward.active &&
-        (reward.family === 'agrotextile' || reward.family === 'insectMesh') &&
+        reward.family === family &&
         reward.raisedBedId === raisedBedId
     );
 }
 
-export function hasActiveRaisedBedProtectiveCover({
+function hasActiveRaisedBedCover({
+    family,
     raisedBedId,
     visualRewards,
-}: HasActiveRaisedBedProtectiveCoverInput) {
+}: HasActiveRaisedBedProtectiveCoverInput & {
+    family: RaisedBedCoverFamily;
+}) {
     return visualRewards.some(
         (reward) =>
-            isActiveProtectiveCoverReward(reward, raisedBedId) &&
+            isActiveCoverReward(reward, raisedBedId, family) &&
             reward.scope === 'raisedBed',
     );
 }
 
-export function resolveRaisedBedProtectiveCoverPositions({
+function resolveRaisedBedCoverPositions({
     blockOffset,
+    family,
     fields,
     raisedBedId,
     visualRewards,
-}: ResolveRaisedBedProtectiveCoverPositionsInput) {
-    if (hasActiveRaisedBedProtectiveCover({ raisedBedId, visualRewards })) {
+}: ResolveRaisedBedProtectiveCoverPositionsInput & {
+    family: RaisedBedCoverFamily;
+}) {
+    if (
+        hasActiveRaisedBedCover({
+            family,
+            raisedBedId,
+            visualRewards,
+        })
+    ) {
         return Array.from({ length: 9 }, (_, positionIndex) => positionIndex);
     }
 
@@ -54,7 +75,7 @@ export function resolveRaisedBedProtectiveCoverPositions({
         visualRewards
             .filter(
                 (reward) =>
-                    isActiveProtectiveCoverReward(reward, raisedBedId) &&
+                    isActiveCoverReward(reward, raisedBedId, family) &&
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null,
             )
@@ -77,9 +98,39 @@ export function resolveRaisedBedProtectiveCoverPositions({
     ).sort((a, b) => a - b);
 }
 
-// Both operation families intentionally share this renderer. Preserve the
-// original internal names for any existing consumers.
-export const hasActiveRaisedBedAgrotextileCover =
-    hasActiveRaisedBedProtectiveCover;
-export const resolveRaisedBedAgrotextileCoverPositions =
-    resolveRaisedBedProtectiveCoverPositions;
+export function hasActiveRaisedBedAgrotextileCover(
+    input: HasActiveRaisedBedProtectiveCoverInput,
+) {
+    return hasActiveRaisedBedCover({ ...input, family: 'agrotextile' });
+}
+
+export function resolveRaisedBedAgrotextileCoverPositions(
+    input: ResolveRaisedBedProtectiveCoverPositionsInput,
+) {
+    return resolveRaisedBedCoverPositions({
+        ...input,
+        family: 'agrotextile',
+    });
+}
+
+export function hasActiveRaisedBedInsectMesh(
+    input: HasActiveRaisedBedProtectiveCoverInput,
+) {
+    return hasActiveRaisedBedCover({ ...input, family: 'insectMesh' });
+}
+
+export function resolveRaisedBedInsectMeshPositions(
+    input: ResolveRaisedBedProtectiveCoverPositionsInput,
+) {
+    return resolveRaisedBedCoverPositions({
+        ...input,
+        family: 'insectMesh',
+    });
+}
+
+// Keep existing consumers on agrotextile semantics. Insect mesh has its own
+// raised tunnel renderer and must not hide plants as an opaque cover.
+export const hasActiveRaisedBedProtectiveCover =
+    hasActiveRaisedBedAgrotextileCover;
+export const resolveRaisedBedProtectiveCoverPositions =
+    resolveRaisedBedAgrotextileCoverPositions;
