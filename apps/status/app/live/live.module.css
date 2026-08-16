@@ -6,6 +6,8 @@
     --clay: #e9906c;
     --sky: #86a7e4;
     --lilac: #c9a8e8;
+    --platform: #8ebcff;
+    --code: #e0a7ff;
     position: relative;
     isolation: isolate;
     display: grid;
@@ -99,6 +101,7 @@
 .nodeLabel,
 .networkLabel,
 .sourceNote,
+.sources,
 .viewControls,
 .soilLabel {
     font-size: 0.67rem;
@@ -201,6 +204,22 @@
 
 .visualization [data-category="exchange"] {
     color: var(--water);
+}
+
+.visualization [data-category="platform"] {
+    color: var(--platform);
+}
+
+.visualization [data-category="code"] {
+    color: var(--code);
+}
+
+.visualization [data-source="vercel"] {
+    color: var(--platform);
+}
+
+.visualization [data-source="github"] {
+    color: var(--code);
 }
 
 .atmosphere {
@@ -558,6 +577,18 @@
     top: 48%;
     left: 3%;
     color: var(--lilac);
+}
+
+.nodePlatform {
+    top: 7%;
+    left: 49%;
+    color: var(--platform);
+}
+
+.nodeCode {
+    top: 48%;
+    left: 1%;
+    color: var(--code);
 }
 
 /* Rain view */
@@ -948,6 +979,60 @@
 }
 
 /* Live caption and controls */
+
+.sources {
+    position: absolute;
+    top: 7%;
+    left: 2%;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: rgb(245 240 230 / 0.38);
+}
+
+.sourceSignal {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    transition:
+        color 500ms ease,
+        opacity 500ms ease,
+        filter 500ms ease;
+}
+
+.sourceSignal[data-source="gredice"] {
+    color: var(--leaf);
+}
+
+.sourceSignal[data-connected="false"] {
+    opacity: 0.2;
+}
+
+.sourceSignal[data-active="true"] {
+    color: currentColor;
+    filter: brightness(1.35);
+}
+
+.sourceSpark {
+    width: 0.32rem;
+    height: 0.32rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.sourceSignal[data-active="true"] .sourceSpark {
+    background: currentColor;
+    box-shadow:
+        0 0 0.8rem currentColor,
+        0 0 1.8rem currentColor;
+    animation: breathe 2.4s ease-in-out infinite;
+}
 
 .sourceNote {
     position: absolute;
@@ -1469,6 +1554,11 @@
         right: 0;
     }
 
+    .sources {
+        top: 8%;
+        left: 0;
+    }
+
     .viewControls {
         right: 0;
         bottom: 2%;
@@ -1542,8 +1632,14 @@
     }
 
     .sourceNote {
-        top: 2%;
-        font-size: 0.58rem;
+        display: none;
+    }
+
+    .sources {
+        top: 1%;
+        left: 0;
+        gap: 0.65rem;
+        font-size: 0.56rem;
     }
 
     .activityCard {

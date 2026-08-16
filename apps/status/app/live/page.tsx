@@ -5,14 +5,14 @@ import { LiveActivity } from './LiveActivity';
 import styles from './live.module.css';
 
 export const metadata: Metadata = {
-    title: 'Živi vrt',
+    title: 'Živi puls',
     description: 'Vizualni puls svega što se upravo događa u Gredicama.',
     openGraph: {
-        title: 'Živi vrt | Gredice',
+        title: 'Živi puls | Gredice',
         description: 'Vizualni puls svega što se upravo događa u Gredicama.',
         images: [
             {
-                alt: 'Vrt se upravo događa.',
+                alt: 'Gredice se upravo događaju.',
                 height: 941,
                 url: '/og-live.png',
                 width: 1672,
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Živi vrt | Gredice',
+        title: 'Živi puls | Gredice',
         description: 'Vizualni puls svega što se upravo događa u Gredicama.',
         images: ['/og-live.png'],
     },
@@ -40,11 +40,11 @@ export default async function LivePage() {
                 <div className={styles.brand}>
                     <Logotype className={styles.logo} height={28} priority />
                     <span aria-hidden="true" className={styles.brandLine} />
-                    <span className={styles.brandNote}>živi vrt</span>
+                    <span className={styles.brandNote}>živi puls</span>
                 </div>
                 <div className={styles.liveMark}>
                     <span className={styles.liveDot} aria-hidden="true" />
-                    pratimo vrt
+                    sustav živi
                 </div>
             </header>
 
@@ -52,12 +52,12 @@ export default async function LivePage() {
                 <div className={styles.hero}>
                     <p className={styles.eyebrow}>Pogled u Gredice</p>
                     <h1>
-                        Vrt se upravo
+                        Gredice se upravo
                         <span>događa.</span>
                     </h1>
                     <p className={styles.intro}>
-                        Tragovi sadnje, vode, vremena i ljudi — spojeni u jedan
-                        živi prizor.
+                        Tragovi vrta, aplikacija i koda — spojeni u jedan živi
+                        prizor.
                     </p>
                 </div>
 
@@ -65,7 +65,7 @@ export default async function LivePage() {
             </section>
 
             <footer className={styles.footer}>
-                <p>Stvarni događaji iz posljednja tri sata.</p>
+                <p>Stvarni tragovi iz posljednja tri sata.</p>
                 <p className={styles.footerWhisper}>nastavlja se…</p>
             </footer>
         </main>

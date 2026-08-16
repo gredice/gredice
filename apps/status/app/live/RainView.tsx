@@ -18,6 +18,7 @@ export function RainView({ activeEvent, events }: RainViewProps) {
                     <span
                         className={styles.rainColumn}
                         data-category={event.category}
+                        data-source={event.source}
                         key={event.id}
                         style={{
                             animationDelay: `${-(index % 17) * 0.71}s`,
@@ -35,6 +36,7 @@ export function RainView({ activeEvent, events }: RainViewProps) {
             <span
                 className={styles.rainBloom}
                 data-category={activeEvent?.category ?? 'garden'}
+                data-source={activeEvent?.source ?? 'gredice'}
             />
         </div>
     );

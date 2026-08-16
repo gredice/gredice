@@ -1,6 +1,7 @@
-import type { LiveActivityCategory } from './types';
+import type { LiveActivityCategory, LiveActivitySource } from './types';
 
 type LiveEventDefinition = {
+    source: LiveActivitySource;
     category: LiveActivityCategory;
     label: string;
     title: string;
@@ -12,6 +13,7 @@ const garden = (
     title: string,
     detail: string,
 ): LiveEventDefinition => ({
+    source: 'gredice',
     category: 'garden',
     label,
     title,
@@ -23,6 +25,7 @@ const care = (
     title: string,
     detail: string,
 ): LiveEventDefinition => ({
+    source: 'gredice',
     category: 'care',
     label,
     title,
@@ -34,6 +37,7 @@ const journey = (
     title: string,
     detail: string,
 ): LiveEventDefinition => ({
+    source: 'gredice',
     category: 'journey',
     label,
     title,
@@ -45,6 +49,7 @@ const community = (
     title: string,
     detail: string,
 ): LiveEventDefinition => ({
+    source: 'gredice',
     category: 'community',
     label,
     title,
@@ -56,7 +61,32 @@ const exchange = (
     title: string,
     detail: string,
 ): LiveEventDefinition => ({
+    source: 'gredice',
     category: 'exchange',
+    label,
+    title,
+    detail,
+});
+
+const platform = (
+    label: string,
+    title: string,
+    detail: string,
+): LiveEventDefinition => ({
+    source: 'vercel',
+    category: 'platform',
+    label,
+    title,
+    detail,
+});
+
+const code = (
+    label: string,
+    title: string,
+    detail: string,
+): LiveEventDefinition => ({
+    source: 'github',
+    category: 'code',
     label,
     title,
     detail,
@@ -313,11 +343,86 @@ export const liveEventCatalog: Record<string, LiveEventDefinition> = {
         'Sačuvan je trag jedne razmjene.',
         'Sustav je tiho završio svoj dio posla.',
     ),
+    'vercel.request': platform(
+        'Zahtjev',
+        'Novi zahtjev prošao je kroz sustav.',
+        'Jedna aplikacija upravo je odgovorila nekome tko ju je otvorio.',
+    ),
+    'vercel.function': platform(
+        'Izvršenje',
+        'Poslužitelj je obavio još jedan tihi posao.',
+        'Kod se pokrenuo, povezao dijelove sustava i nastavio dalje.',
+    ),
+    'vercel.build': platform(
+        'Izgradnja',
+        'Nova verzija upravo poprima oblik.',
+        'Slojevi aplikacije ponovno se slažu u jednu cjelinu.',
+    ),
+    'vercel.guard': platform(
+        'Zaštita',
+        'Zaštitni sloj sustava upravo je reagirao.',
+        'Promet je prošao kroz još jednu tihu provjeru.',
+    ),
+    'vercel.error': platform(
+        'Signal',
+        'Sustav je poslao jači signal.',
+        'Jedan tehnički trag izdvojio se iz uobičajenog ritma.',
+    ),
+    'github.push': code(
+        'Kod',
+        'Nova promjena stigla je u repozitorij.',
+        'Ideja se upravo pretvorila u dio zajedničkog koda.',
+    ),
+    'github.pull_request': code(
+        'Promjena',
+        'Otvoren je novi put kroz kod.',
+        'Jedna promjena spremna je za razgovor i provjeru.',
+    ),
+    'github.merge': code(
+        'Spojeno',
+        'Promjena je postala dio cjeline.',
+        'Novi kod upravo se pridružio glavnom toku.',
+    ),
+    'github.review': code(
+        'Pregled',
+        'Kod je dobio još jedan pažljiv pogled.',
+        'Promjena se brusi prije nego što nastavi dalje.',
+    ),
+    'github.workflow.success': code(
+        'Provjera',
+        'Automatske provjere završile su mirno.',
+        'Kod je prošao kroz svoj tehnički ritam.',
+    ),
+    'github.workflow.failure': code(
+        'Provjera',
+        'Automatska provjera poslala je signal.',
+        'Jedan dio koda traži još malo pažnje.',
+    ),
+    'github.deployment.success': code(
+        'Isporuka',
+        'Nova verzija stigla je do aplikacija.',
+        'Kod iz repozitorija upravo je postao dio stvarnog sustava.',
+    ),
+    'github.deployment.failure': code(
+        'Isporuka',
+        'Jedna isporuka poslala je jači signal.',
+        'Nova verzija zastala je prije dolaska do aplikacija.',
+    ),
+    'github.release': code(
+        'Izdanje',
+        'Objavljena je nova cjelina.',
+        'Niz promjena upravo je dobio zajednički trenutak.',
+    ),
+    'github.issue': code(
+        'Razgovor',
+        'Otvorena je nova tema za rad.',
+        'Jedna ideja ili problem upravo je dobio svoje mjesto.',
+    ),
 };
 
-export const liveEventTypeEntries = Object.entries(liveEventCatalog).map(
-    ([type, definition]) => ({
+export const domainLiveEventTypeEntries = Object.entries(liveEventCatalog)
+    .filter(([, definition]) => definition.source === 'gredice')
+    .map(([type, definition]) => ({
         type,
         category: definition.category,
-    }),
-);
+    }));
