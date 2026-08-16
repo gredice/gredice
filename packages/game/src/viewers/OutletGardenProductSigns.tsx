@@ -2,8 +2,22 @@
 
 import { Sprout } from '@gredice/ui/icons';
 import { Center, Html, Text3D } from '@react-three/drei';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Euler, type InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
+import { useFrame } from '@react-three/fiber';
+import {
+    type ComponentProps,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import {
+    Euler,
+    type Group,
+    type InstancedMesh,
+    Matrix4,
+    Quaternion,
+    Vector3,
+} from 'three';
 import { blockInteractionPassthroughUserDataKey } from '../controls/BlockInteractionResolver';
 import { useBlockData } from '../hooks/useBlockData';
 import type { OutletOfferData } from '../hooks/useOutletOffers';
@@ -29,12 +43,12 @@ const outletProductSignScale = 0.9;
 const outletProductSignFaceDistanceFactor = 1;
 const outletProductSignTypefaceUrl =
     '/assets/fonts/outlet-sign-bold.typeface.json';
-// Keep the HTML image and variety label just ahead of the wooden frame so the
-// content stays clear of the board surface without visually floating.
-const outletProductSignFaceDepth = 0.061;
+// The inset board faces are at +/-0.0215. Keep each content face just above its
+// board while remaining clearly behind the surrounding frame at +/-0.05.
+const outletProductSignFaceDepth = 0.0225;
 // Raycast above the board so the sign's own display table and pot cannot hide
 // its face. The DOM content is translated back onto the wooden board below.
-const outletProductSignOcclusionProbeOffsetY = 0.23;
+const outletProductSignOcclusionProbeOffsetY = 0.5;
 const outletProductSignFaceCssOffsetY =
     (outletProductSignOcclusionProbeOffsetY /
         outletProductSignFaceDistanceFactor) *
@@ -42,6 +56,9 @@ const outletProductSignFaceCssOffsetY =
 const outletProductSignPriceTagColor = '#bf4b2f';
 const outletProductSignPriceTagEdgeColor = '#74301f';
 const outletProductSignPriceTextColor = '#fff4ce';
+const outletProductSignPriceTextDepth = 0.004;
+const outletProductSignPriceTextSurfaceDepth = 0.056;
+const outletProductSignFrontNormal = new Vector3(0, 0, 1);
 const woodenSignNodeNames = [
     'WoodenSign_Post',
     'WoodenSign_Board',
@@ -55,6 +72,13 @@ export type OutletGardenProductSignProduct = {
     plantSortId: number;
     priceLabel: string;
 };
+
+type OutletGardenProductSignFaceSide = 'back' | 'front';
+
+const outletProductSignFaceSides = [
+    'front',
+    'back',
+] satisfies OutletGardenProductSignFaceSide[];
 
 function firstNonEmptyImageUrl(urls: readonly (string | null)[]) {
     return urls.find((url): url is string => Boolean(url?.trim())) ?? null;
@@ -128,10 +152,10 @@ function OutletGardenProductSignImage({
         return (
             <span
                 aria-hidden="true"
-                className="grid size-[106px] shrink-0 place-items-center rounded-[8px] bg-[#dce8be] text-[#50713a] ring-[3px] ring-[#58391f]/35"
+                className="grid size-[112px] shrink-0 place-items-center rounded-[6px] bg-[#dce8be] text-[#50713a]"
                 data-outlet-garden-product-sign-image-fallback
             >
-                <Sprout className="size-[48px]" />
+                <Sprout className="size-[52px]" />
             </span>
         );
     }
@@ -140,7 +164,7 @@ function OutletGardenProductSignImage({
         // biome-ignore lint/performance/noImgElement: Outlet images are API-provided and can use administrator-configured origins that are valid in the DOM but not as WebGL textures.
         <img
             alt=""
-            className="size-[106px] shrink-0 rounded-[8px] object-cover ring-[3px] ring-[#58391f]/35"
+            className="size-[112px] shrink-0 rounded-[6px] object-cover"
             data-outlet-garden-product-sign-image
             decoding="async"
             draggable={false}
@@ -153,22 +177,43 @@ function OutletGardenProductSignImage({
 }
 
 function OutletGardenProductSignFace({
+    face,
     product,
 }: {
+    face: OutletGardenProductSignFaceSide;
     product: OutletGardenProductSignProduct;
 }) {
+    const isFront = face === 'front';
+    const priceFontSize = outletProductSignPriceFontSize(product.priceLabel);
+
     return (
         <div
             aria-hidden="true"
-            className="pointer-events-none flex h-[116px] w-[264px] items-center gap-[12px] overflow-visible bg-transparent p-[5px] text-[#352519]"
-            data-outlet-garden-product-sign={product.plantSortId}
-            data-outlet-garden-product-sign-depth={outletProductSignFaceDepth}
-            data-outlet-garden-product-sign-front-only
+            className="pointer-events-none flex h-[116px] w-[264px] items-center gap-[8px] overflow-visible bg-transparent p-[2px] text-[#352519]"
+            data-outlet-garden-product-sign={
+                isFront ? product.plantSortId : undefined
+            }
+            data-outlet-garden-product-sign-back={
+                isFront ? undefined : product.plantSortId
+            }
+            data-outlet-garden-product-sign-depth={
+                isFront
+                    ? outletProductSignFaceDepth
+                    : -outletProductSignFaceDepth
+            }
+            data-outlet-garden-product-sign-face={face}
             data-outlet-garden-product-sign-scale={outletProductSignScale}
             data-outlet-garden-product-sign-name={product.name}
             data-outlet-garden-product-sign-occlusion="visual-targets"
+            data-outlet-garden-product-sign-occlusion-probe-offset={
+                outletProductSignOcclusionProbeOffsetY
+            }
             data-outlet-garden-product-sign-price={product.priceLabel}
-            data-outlet-garden-product-sign-price-renderer="text3d"
+            data-outlet-garden-product-sign-price-depth={
+                outletProductSignPriceTextDepth
+            }
+            data-outlet-garden-product-sign-price-font-size={priceFontSize}
+            data-outlet-garden-product-sign-price-renderer="flat-text3d"
             style={{
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
@@ -179,9 +224,9 @@ function OutletGardenProductSignFace({
                 imageUrl={product.imageUrl}
                 name={product.name}
             />
-            <span className="flex min-w-0 flex-1 items-end self-stretch pb-[7px]">
+            <span className="flex min-w-0 flex-1 items-end self-stretch pb-[5px]">
                 <span
-                    className="line-clamp-3 rounded-[5px] bg-[#40562c]/90 px-[5px] py-[4px] text-[16px] leading-[1.05] font-extrabold tracking-[-0.01em] text-[#fff4ce]"
+                    className="line-clamp-3 rounded-[5px] bg-[#40562c]/90 px-[6px] py-[4px] text-[18px] leading-[1.04] font-extrabold tracking-[-0.01em] text-[#fff4ce]"
                     style={{
                         textShadow: '0 1px 2px rgb(38 28 17 / 48%)',
                     }}
@@ -195,12 +240,12 @@ function OutletGardenProductSignFace({
 
 function outletProductSignPriceFontSize(priceLabel: string) {
     if (priceLabel.length >= 10) {
-        return 0.046;
+        return 0.056;
     }
     if (priceLabel.length >= 8) {
-        return 0.052;
+        return 0.066;
     }
-    return 0.066;
+    return 0.082;
 }
 
 function OutletGardenProductSignPriceText({
@@ -212,27 +257,28 @@ function OutletGardenProductSignPriceText({
 }) {
     return (
         <group
-            position={[0, -0.005, back ? -0.061 : 0.061]}
+            position={[
+                0,
+                -0.005,
+                back
+                    ? -outletProductSignPriceTextSurfaceDepth
+                    : outletProductSignPriceTextSurfaceDepth,
+            ]}
             rotation={[0, back ? Math.PI : 0, 0]}
         >
             <Center cacheKey={priceLabel} disableZ>
                 <Text3D
-                    bevelEnabled
-                    bevelSegments={2}
-                    bevelSize={0.0025}
-                    bevelThickness={0.003}
-                    castShadow
                     curveSegments={5}
                     font={outletProductSignTypefaceUrl}
-                    height={0.018}
+                    height={outletProductSignPriceTextDepth}
                     raycast={() => null}
                     size={outletProductSignPriceFontSize(priceLabel)}
                 >
                     {priceLabel}
                     <meshStandardMaterial
                         color={outletProductSignPriceTextColor}
-                        metalness={0.04}
-                        roughness={0.48}
+                        metalness={0.01}
+                        roughness={0.72}
                     />
                 </Text3D>
             </Center>
@@ -248,8 +294,8 @@ function OutletGardenProductSignPriceTag({
     return (
         <group
             name={`OutletGardenProductSignPriceTag:${product.plantSortId.toString()}`}
-            position={[0.29, 1.105, 0]}
-            rotation={[0, 0, -0.075]}
+            position={[0.29, 1.24, 0]}
+            rotation={[0, 0, -0.02]}
         >
             <mesh castShadow raycast={() => null} receiveShadow>
                 <boxGeometry args={[0.46, 0.2, 0.105]} />
@@ -285,6 +331,102 @@ function OutletGardenProductSignPriceTag({
                 back
                 priceLabel={product.priceLabel}
             />
+        </group>
+    );
+}
+
+function OutletGardenProductSignFaces({
+    occlude,
+    product,
+}: {
+    occlude: ComponentProps<typeof Html>['occlude'];
+    product: OutletGardenProductSignProduct;
+}) {
+    const groupRef = useRef<Group>(null);
+    const frontFaceRef = useRef<HTMLDivElement>(null);
+    const backFaceRef = useRef<HTMLDivElement>(null);
+    const lastVisibleFaceRef = useRef<OutletGardenProductSignFaceSide | null>(
+        null,
+    );
+    const cameraPositionRef = useRef(new Vector3());
+    const signPositionRef = useRef(new Vector3());
+    const signQuaternionRef = useRef(new Quaternion());
+    const signNormalRef = useRef(new Vector3());
+    const toCameraRef = useRef(new Vector3());
+
+    useFrame(({ camera }) => {
+        const group = groupRef.current;
+        const frontFace = frontFaceRef.current;
+        const backFace = backFaceRef.current;
+        if (!group || !frontFace || !backFace) {
+            return;
+        }
+
+        group.getWorldPosition(signPositionRef.current);
+        group.getWorldQuaternion(signQuaternionRef.current);
+        camera.getWorldPosition(cameraPositionRef.current);
+        signNormalRef.current
+            .copy(outletProductSignFrontNormal)
+            .applyQuaternion(signQuaternionRef.current);
+        toCameraRef.current
+            .copy(cameraPositionRef.current)
+            .sub(signPositionRef.current);
+        const visibleFace =
+            signNormalRef.current.dot(toCameraRef.current) >= 0
+                ? 'front'
+                : 'back';
+        if (lastVisibleFaceRef.current === visibleFace) {
+            return;
+        }
+
+        frontFace.style.visibility =
+            visibleFace === 'front' ? 'visible' : 'hidden';
+        backFace.style.visibility =
+            visibleFace === 'back' ? 'visible' : 'hidden';
+        lastVisibleFaceRef.current = visibleFace;
+    });
+
+    return (
+        <group ref={groupRef}>
+            {outletProductSignFaceSides.map((face) => {
+                const isFront = face === 'front';
+                return (
+                    <Html
+                        key={face}
+                        transform
+                        distanceFactor={outletProductSignFaceDistanceFactor}
+                        occlude={occlude}
+                        pointerEvents="none"
+                        position={[
+                            0,
+                            0.93 + outletProductSignOcclusionProbeOffsetY,
+                            isFront
+                                ? outletProductSignFaceDepth
+                                : -outletProductSignFaceDepth,
+                        ]}
+                        rotation={[0, isFront ? 0 : Math.PI, 0]}
+                        style={{
+                            backfaceVisibility: 'hidden',
+                            pointerEvents: 'none',
+                            transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
+                            WebkitBackfaceVisibility: 'hidden',
+                        }}
+                        zIndexRange={[2, 0]}
+                    >
+                        <div
+                            ref={isFront ? frontFaceRef : backFaceRef}
+                            style={{
+                                visibility: isFront ? 'visible' : 'hidden',
+                            }}
+                        >
+                            <OutletGardenProductSignFace
+                                face={face}
+                                product={product}
+                            />
+                        </div>
+                    </Html>
+                );
+            })}
         </group>
     );
 }
@@ -463,26 +605,10 @@ export function OutletGardenProductSigns({
                     rotation={[0, placement.rotation * (Math.PI / 2), 0]}
                     scale={outletProductSignScale}
                 >
-                    <Html
-                        transform
-                        distanceFactor={outletProductSignFaceDistanceFactor}
+                    <OutletGardenProductSignFaces
                         occlude={occlusionTargets ?? 'raycast'}
-                        pointerEvents="none"
-                        position={[
-                            0,
-                            0.93 + outletProductSignOcclusionProbeOffsetY,
-                            outletProductSignFaceDepth,
-                        ]}
-                        style={{
-                            backfaceVisibility: 'hidden',
-                            pointerEvents: 'none',
-                            transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
-                            WebkitBackfaceVisibility: 'hidden',
-                        }}
-                        zIndexRange={[2, 0]}
-                    >
-                        <OutletGardenProductSignFace product={product} />
-                    </Html>
+                        product={product}
+                    />
                     <OutletGardenProductSignPriceTag product={product} />
                 </group>
             ))}
